@@ -1442,6 +1442,67 @@ export default function App() {
 
 
 
+
+
+      {/* Delete Confirmation Modal */}
+      <AnimatePresence>
+        {moduleToDelete && (
+          <div className="fixed inset-0 z-[10000] flex items-center justify-center p-6">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setModuleToDelete(null)}
+              className="absolute inset-0 bg-black/60 backdrop-blur-md"
+            />
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              className="relative w-full max-w-sm bg-[var(--card-bg)] rounded-[2.5rem] p-8 shadow-2xl border border-[var(--border)] text-center overflow-hidden"
+            >
+              <div className="w-16 h-16 bg-red-500/10 rounded-2xl flex items-center justify-center text-red-500 mx-auto mb-6">
+                <Trash2 className="w-8 h-8" />
+              </div>
+              <h3 className="text-xl font-bold text-[var(--text-main)] mb-2">Elimina Modulo</h3>
+              <p className="text-[var(--text-muted)] text-sm mb-8">
+                Sei sicuro di voler eliminare <span className="text-[var(--text-main)] font-bold">"{moduleToDelete.title || 'questo modulo'}"</span>? 
+                Questa azione è irreversibile e i dati verranno rimossi permanentemente.
+              </p>
+              
+              <div className="flex flex-col gap-3">
+                <button
+                  onClick={() => deleteModule(moduleToDelete.id)}
+                  className="w-full py-4 bg-red-500 hover:bg-red-600 text-white rounded-2xl font-bold transition-all shadow-lg shadow-red-500/20 active:scale-[0.98]"
+                >
+                  Sì, Elimina
+                </button>
+                <button
+                  onClick={() => setModuleToDelete(null)}
+                  className="w-full py-4 bg-[var(--bg)] hover:bg-[var(--border)] text-[var(--text-muted)] hover:text-[var(--text-main)] rounded-2xl font-bold transition-all"
+                >
+                  Annulla
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Floating Action Button */}
+      {modules.length > 0 && (
+        <button
+          onClick={() => setIsAdding(true)}
+          className="hidden md:flex fixed bottom-10 right-10 w-16 h-16 bg-amber-500 hover:bg-amber-600 text-white rounded-full items-center justify-center shadow-2xl shadow-amber-500/40 transition-transform hover:scale-110 z-30"
+          aria-label="Aggiungi Modulo"
+        >
+          <Plus className="w-8 h-8" />
+        </button>
+      )}
+          </div>
+        </ErrorBoundary>
+      )}
+
       {/* Toast Notification */}
       <AnimatePresence>
         {toast && (
@@ -1535,65 +1596,6 @@ export default function App() {
           </div>
         )}
       </AnimatePresence>
-
-      {/* Delete Confirmation Modal */}
-      <AnimatePresence>
-        {moduleToDelete && (
-          <div className="fixed inset-0 z-[10000] flex items-center justify-center p-6">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setModuleToDelete(null)}
-              className="absolute inset-0 bg-black/60 backdrop-blur-md"
-            />
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0, y: 20 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.9, opacity: 0, y: 20 }}
-              className="relative w-full max-w-sm bg-[var(--card-bg)] rounded-[2.5rem] p-8 shadow-2xl border border-[var(--border)] text-center overflow-hidden"
-            >
-              <div className="w-16 h-16 bg-red-500/10 rounded-2xl flex items-center justify-center text-red-500 mx-auto mb-6">
-                <Trash2 className="w-8 h-8" />
-              </div>
-              <h3 className="text-xl font-bold text-[var(--text-main)] mb-2">Elimina Modulo</h3>
-              <p className="text-[var(--text-muted)] text-sm mb-8">
-                Sei sicuro di voler eliminare <span className="text-[var(--text-main)] font-bold">"{moduleToDelete.title || 'questo modulo'}"</span>? 
-                Questa azione è irreversibile e i dati verranno rimossi permanentemente.
-              </p>
-              
-              <div className="flex flex-col gap-3">
-                <button
-                  onClick={() => deleteModule(moduleToDelete.id)}
-                  className="w-full py-4 bg-red-500 hover:bg-red-600 text-white rounded-2xl font-bold transition-all shadow-lg shadow-red-500/20 active:scale-[0.98]"
-                >
-                  Sì, Elimina
-                </button>
-                <button
-                  onClick={() => setModuleToDelete(null)}
-                  className="w-full py-4 bg-[var(--bg)] hover:bg-[var(--border)] text-[var(--text-muted)] hover:text-[var(--text-main)] rounded-2xl font-bold transition-all"
-                >
-                  Annulla
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-
-      {/* Floating Action Button */}
-      {modules.length > 0 && (
-        <button
-          onClick={() => setIsAdding(true)}
-          className="hidden md:flex fixed bottom-10 right-10 w-16 h-16 bg-amber-500 hover:bg-amber-600 text-white rounded-full items-center justify-center shadow-2xl shadow-amber-500/40 transition-transform hover:scale-110 z-30"
-          aria-label="Aggiungi Modulo"
-        >
-          <Plus className="w-8 h-8" />
-        </button>
-      )}
-          </div>
-        </ErrorBoundary>
-      )}
     </>
   );
 }
