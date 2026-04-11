@@ -1,0 +1,28 @@
+
+> chelona@1.0.0 build
+> vite build
+
+vite v6.4.1 building for production...
+transforming...
+✓ 2310 modules transformed.
+✗ Build failed in 1.75s
+error during build:
+src/services/updateService.ts (4:9): "CapacitorApkInstaller" is not exported by "node_modules/@bixbyte/capacitor-apk-installer/dist/esm/index.js", imported by "src/services/updateService.ts".
+file: /Users/davidedari/Documents/Progetti/app/chelona/src/services/updateService.ts:4:9
+
+2: import { Filesystem, Directory } from '@capacitor/filesystem';
+3: import { Device } from '@capacitor/device';
+4: import { CapacitorApkInstaller } from '@bixbyte/capacitor-apk-installer';
+            ^
+5: import packageJson from '../../package.json';
+
+    at getRollupError (file:///Users/davidedari/Documents/Progetti/app/chelona/node_modules/rollup/dist/es/shared/parseAst.js:402:41)
+    at error (file:///Users/davidedari/Documents/Progetti/app/chelona/node_modules/rollup/dist/es/shared/parseAst.js:398:42)
+    at Module.error (file:///Users/davidedari/Documents/Progetti/app/chelona/node_modules/rollup/dist/es/shared/node-entry.js:17040:16)
+    at Module.traceVariable (file:///Users/davidedari/Documents/Progetti/app/chelona/node_modules/rollup/dist/es/shared/node-entry.js:17452:29)
+    at ModuleScope.findVariable (file:///Users/davidedari/Documents/Progetti/app/chelona/node_modules/rollup/dist/es/shared/node-entry.js:15070:39)
+    at ChildScope.findVariable (file:///Users/davidedari/Documents/Progetti/app/chelona/node_modules/rollup/dist/es/shared/node-entry.js:5673:38)
+    at ClassBodyScope.findVariable (file:///Users/davidedari/Documents/Progetti/app/chelona/node_modules/rollup/dist/es/shared/node-entry.js:5673:38)
+    at ChildScope.findVariable (file:///Users/davidedari/Documents/Progetti/app/chelona/node_modules/rollup/dist/es/shared/node-entry.js:5673:38)
+    at ChildScope.findVariable (file:///Users/davidedari/Documents/Progetti/app/chelona/node_modules/rollup/dist/es/shared/node-entry.js:5673:38)
+    at FunctionScope.findVariable (file:///Users/davidedari/Documents/Progetti/app/chelona/node_modules/rollup/dist/es/shared/node-entry.js:5673:38)

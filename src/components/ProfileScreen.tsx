@@ -351,16 +351,40 @@ export function ProfileScreen({
                     <Share2 className="w-6 h-6" />
                   </div>
                   <div className="flex-1">
-                    <h3 className="text-lg font-bold text-[var(--text-main)]">Backup Profilo</h3>
-                    <p className="text-sm text-[var(--text-muted)]">Crea un QR Code per trasferire questo profilo su un altro dispositivo</p>
+                    <h3 className="text-lg font-bold text-[var(--text-main)]">Backup e Aggiornamenti</h3>
+                    <p className="text-sm text-[var(--text-muted)]">Gestisci i trasferimenti e cerca nuove versioni dell'app</p>
                   </div>
-                  <button
-                    onClick={handleGenerateBackup}
-                    className="px-6 py-3 bg-[var(--accent)] text-white rounded-xl font-bold hover:bg-[var(--accent-hover)] transition-all flex items-center gap-2 shadow-lg shadow-amber-600/20"
-                  >
-                    <QrCode className="w-5 h-5" />
-                    Backup QR
-                  </button>
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    <button
+                      onClick={handleGenerateBackup}
+                      className="px-6 py-3 bg-[var(--bg)] text-[var(--text-main)] border border-[var(--border)] rounded-xl font-bold hover:bg-[var(--border)] transition-all flex items-center gap-2 shadow-sm"
+                    >
+                      <QrCode className="w-5 h-5" />
+                      Backup QR
+                    </button>
+                    <button
+                      onClick={async () => {
+                        try {
+                          import('../services/updateService').then(async (m) => {
+                            const info = await m.updateService.checkForUpdates();
+                            if (info && info.available) {
+                              // We need to pass this back to App somehow or show it here.
+                              // For simplicity, we'll trigger a reload or use a custom event.
+                              window.dispatchEvent(new CustomEvent('chelona_update_available', { detail: info }));
+                            } else {
+                              showToast('L\'app è già aggiornata!', 'info');
+                            }
+                          });
+                        } catch (e) {
+                          showToast('Errore durante il controllo aggiornamenti', 'error');
+                        }
+                      }}
+                      className="px-6 py-3 bg-[var(--accent)] text-white rounded-xl font-bold hover:bg-[var(--accent-hover)] transition-all flex items-center gap-2 shadow-lg shadow-amber-600/20"
+                    >
+                      <Download className="w-5 h-5" />
+                      Aggiorna
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>

@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Sun, Moon, Wrench, Plus, LayoutDashboard, Settings, User, LogOut, Search, Mic, Bell, CreditCard, Fingerprint, ShieldCheck, Wallet, Lock, Menu, X, StickyNote, Grid2X2, Car, QrCode, Folder as FolderIcon, Check, Edit2, Trash2, BookOpen, ArrowLeft, FileDown, Hourglass, Users } from 'lucide-react';
+import { Sun, Moon, Wrench, Plus, LayoutDashboard, Settings, User, LogOut, Search, Mic, Bell, CreditCard, Fingerprint, ShieldCheck, Wallet, Lock, Menu, X, StickyNote, Grid2X2, Car, QrCode, Folder as FolderIcon, Check, Edit2, Trash2, BookOpen, ArrowLeft, FileDown, Hourglass, Users, Download } from 'lucide-react';
 import { Module, ModuleType, Folder, DocumentModule } from './types';
 import { storage, AppState } from './services/storage';
 import { encryption } from './services/encryption';
@@ -18,7 +18,7 @@ import { SplitScreen } from './components/SplitScreen';
 import { notificationService } from './services/notificationService';
 import { motion, AnimatePresence } from 'motion/react';
 import JSZip from 'jszip';
-// import { updateService, UpdateInfo } from './services/updateService';
+import { updateService, UpdateInfo } from './services/updateService';
 // UI Libraries removed as per request (CSS Grid migration)
 
 // ResponsiveGridLayout removed (DnD disabled)
@@ -211,7 +211,6 @@ export default function App() {
     });
 
     // Controllo aggiornamenti all'avvio
-    /*
     if (window.Capacitor) {
       updateService.checkForUpdates().then(info => {
         if (info && info.available) {
@@ -219,7 +218,13 @@ export default function App() {
         }
       });
     }
-    */
+    // Ascolta eventi manuali di aggiornamento
+    const handleManualUpdate = (e: any) => {
+      if (e.detail) setAvailableUpdate(e.detail);
+    };
+    window.addEventListener('chelona_update_available', handleManualUpdate);
+    
+    return () => window.removeEventListener('chelona_update_available', handleManualUpdate);
   }, []);
 
   const saveAppState = async (newModules: Module[], newFolders: Folder[]) => {
@@ -1472,54 +1477,60 @@ export default function App() {
               exit={{ scale: 0.9, opacity: 0, y: 20 }}
               className="relative w-full max-w-sm bg-[var(--card-bg)] rounded-[2.5rem] p-8 shadow-2xl border border-[var(--border)] text-center overflow-hidden"
             >
-              <div className="w-16 h-16 bg-amber-500/10 rounded-2xl flex items-center justify-center text-amber-500 mx-auto mb-6">
-                <FileDown className="w-8 h-8" />
+              <div className="flex flex-col gap-4">
+              <div className="flex items-start gap-4">
+                <div className="w-12 h-12 bg-[var(--accent)]/10 rounded-2xl flex items-center justify-center text-[var(--accent)] shrink-0">
+                  <Download className="w-6 h-6" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-lg font-bold text-[var(--text-main)]">Aggiornamento Disponibile</h3>
+                  <p className="text-sm text-[var(--text-muted)] mt-1">
+                    È disponibile una nuova versione: <span className="text-[var(--accent)] font-bold">v{availableUpdate.latestVersion}</span>
+                  </p>
+                </div>
               </div>
-              <h3 className="text-xl font-bold text-[var(--text-main)] mb-2">Aggiornamento Disponibile</h3>
-              <p className="text-[var(--text-muted)] text-sm mb-4">
-                È disponibile una nuova versione: <span className="text-[var(--accent)] font-bold">v{availableUpdate.latestVersion}</span>
-              </p>
               
-              <div className="max-h-32 overflow-y-auto mb-8 p-4 bg-[var(--bg)] rounded-2xl text-left">
-                <p className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest mb-2">Novità:</p>
+              <div className="bg-[var(--bg)] p-4 rounded-2xl border border-[var(--border)]">
+                <p className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest mb-2">Note di Rilascio</p>
                 <p className="text-xs text-[var(--text-main)] whitespace-pre-wrap">{availableUpdate.releaseNotes || 'Nessuna nota di rilascio disponibile.'}</p>
               </div>
 
               {updateProgress !== null ? (
-                <div className="space-y-4">
-                  <div className="w-full h-2 bg-[var(--bg)] rounded-full overflow-hidden border border-[var(--border)]">
+                <div className="space-y-2">
+                  <div className="h-2 w-full bg-[var(--bg)] rounded-full overflow-hidden">
                     <motion.div 
-                      className="h-full bg-amber-500"
                       initial={{ width: 0 }}
                       animate={{ width: `${updateProgress}%` }}
+                      className="h-full bg-[var(--accent)]"
                     />
                   </div>
-                  <p className="text-[10px] font-bold text-amber-500 uppercase tracking-widest">Download in corso: {updateProgress}%</p>
+                  <p className="text-[10px] font-bold text-center text-[var(--text-muted)] uppercase tracking-widest">Download in corso: {updateProgress}%</p>
                 </div>
               ) : (
-                <div className="flex flex-col gap-3">
+                <div className="flex gap-3">
                   <button
                     onClick={async () => {
                       try {
                         setUpdateProgress(0);
                         await updateService.downloadAndInstall(availableUpdate, (p) => setUpdateProgress(p));
-                      } catch (e) {
+                      } catch (e: any) {
                         setUpdateProgress(null);
-                        showToast('Errore durante l\'aggiornamento', 'error');
+                        showToast(e.message || 'Errore durante l\'aggiornamento', 'error');
                       }
                     }}
-                    className="w-full py-4 bg-amber-500 hover:bg-amber-600 text-white rounded-2xl font-bold transition-all shadow-lg shadow-amber-500/20 active:scale-[0.98]"
+                    className="flex-1 py-4 bg-[var(--accent)] text-white rounded-2xl font-bold hover:bg-[var(--accent-hover)] transition-all shadow-lg shadow-amber-500/20"
                   >
-                    Aggiorna Ora
+                    Scarica e Installa APK
                   </button>
                   <button
                     onClick={() => setAvailableUpdate(null)}
-                    className="w-full py-4 bg-[var(--bg)] hover:bg-[var(--border)] text-[var(--text-muted)] hover:text-[var(--text-main)] rounded-2xl font-bold transition-all"
+                    className="px-6 py-4 bg-[var(--bg)] text-[var(--text-muted)] rounded-2xl font-bold hover:bg-[var(--border)] transition-all border border-[var(--border)]"
                   >
-                    Più tardi
+                    Dopo
                   </button>
                 </div>
               )}
+            </div>
             </motion.div>
           </div>
         )}

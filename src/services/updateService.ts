@@ -1,7 +1,7 @@
 
 import { Filesystem, Directory } from '@capacitor/filesystem';
 import { Device } from '@capacitor/device';
-import { CapacitorApkInstaller } from '@bixbyte/capacitor-apk-installer';
+import { ApkInstaller } from '@bixbyte/capacitor-apk-installer';
 import packageJson from '../../package.json';
 
 const GITHUB_OWNER = 'davide-dari';
@@ -81,7 +81,7 @@ class UpdateService {
       });
 
       // 2. Install the APK
-      await CapacitorApkInstaller.installApk({ filePath: savedFile.uri });
+      await ApkInstaller.installApk({ filePath: savedFile.uri });
 
     } catch (error) {
       console.error('Error during update installation:', error);
