@@ -62,17 +62,21 @@ class UpdateService {
 
   async downloadAndInstall(updateInfo: UpdateInfo, onProgress?: (p: number) => void) {
     try {
+      console.log(`[UpdateService] Downloading update from: ${updateInfo.downloadUrl}`);
       // 1. Download the file
       const fileName = `update_${updateInfo.latestVersion}.apk`;
       
-      // In a real app, we would use CapacitorHttp for large files to avoid memory issues
-      // but for this example we'll fetch and use Filesystem.
       const response = await fetch(updateInfo.downloadUrl);
+      if (!response.ok) {
+        throw new Error(`Download failed: ${response.status} ${response.statusText}`);
+      }
+
       const reader = response.body?.getReader();
       const contentLength = +(response.headers.get('Content-Length') || 0);
+      console.log(`[UpdateService] Content-Length: ${contentLength}`);
       
       let receivedLength = 0;
-      const chunks = [];
+      const chunks: Uint8Array[] = [];
       
       if (reader) {
         while(true) {
