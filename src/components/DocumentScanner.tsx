@@ -27,6 +27,7 @@ export const DocumentScanner = ({ onCapture, onClose, downloadOnly = false }: Do
   const [isReady, setIsReady] = useState(false);
   const [isDetected, setIsDetected] = useState(false);
   const [torch, setTorch] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const [mode, setMode] = useState<'scanning' | 'editing' | 'preview'>('scanning');
   const [captureData, setCaptureData] = useState<{
@@ -241,8 +242,7 @@ export const DocumentScanner = ({ onCapture, onClose, downloadOnly = false }: Do
         }
       } catch (err) {
         console.error('Camera error:', err);
-        alert('Impossibile accedere alla fotocamera.');
-        onClose();
+        setError('Impossibile accedere alla fotocamera. Controlla i permessi nelle impostazioni del dispositivo.');
       }
     };
     if (mode === 'scanning') start();
@@ -711,6 +711,22 @@ export const DocumentScanner = ({ onCapture, onClose, downloadOnly = false }: Do
               <div className={`absolute bottom-0 right-0 w-8 h-8 border-b-2 border-r-2 rounded-br-xl transition-colors duration-300 ${isDetected ? 'border-amber-400' : 'border-white/20'}`} />
             </div>
           </div>
+          
+          {error && (
+            <div className="absolute inset-x-6 top-1/2 -translate-y-1/2 z-[320] p-6 bg-[var(--card-bg)] border border-red-500/30 rounded-[2rem] shadow-2xl text-center">
+              <div className="w-12 h-12 bg-red-500/10 rounded-2xl flex items-center justify-center text-red-500 mx-auto mb-4">
+                <Camera className="w-6 h-6" />
+              </div>
+              <h4 className="text-white font-bold mb-2">Errore Fotocamera</h4>
+              <p className="text-white/60 text-xs mb-6 leading-relaxed">{error}</p>
+              <button 
+                onClick={onClose}
+                className="w-full py-3 bg-white/10 hover:bg-white/20 text-white rounded-xl font-bold transition-all"
+              >
+                Chiudi
+              </button>
+            </div>
+          )}
         </div>
       ) : mode === 'editing' ? (
         captureData && <CornerEditor data={captureData} />
