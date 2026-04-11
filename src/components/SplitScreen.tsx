@@ -9,6 +9,7 @@ interface SplitScreenProps {
   module: SplitModule;
   onClose: () => void;
   onSave: (m: SplitModule) => void;
+  onSaveToSandbox?: (title: string, base64: string) => Promise<void>;
 }
 
 const COMMON_CURRENCIES = ['EUR', 'USD', 'GBP', 'JPY', 'CHF', 'AUD', 'CAD'];
@@ -16,7 +17,7 @@ const COMMON_CURRENCIES = ['EUR', 'USD', 'GBP', 'JPY', 'CHF', 'AUD', 'CAD'];
 // Helper for initials
 const getInitials = (name: string) => name.substring(0, 2).toUpperCase();
 
-export const SplitScreen = ({ module, onClose, onSave }: SplitScreenProps) => {
+export const SplitScreen = ({ module, onClose, onSave, onSaveToSandbox }: SplitScreenProps) => {
   const [activeTab, setActiveTab] = useState<'expenses' | 'participants' | 'balances' | 'dashboard'>('expenses');
   const [currency, setCurrency] = useState(module.currency || 'EUR');
   const [participants, setParticipants] = useState<SplitParticipant[]>(module.participants || []);
@@ -41,6 +42,10 @@ export const SplitScreen = ({ module, onClose, onSave }: SplitScreenProps) => {
 
   const [showReceiptScanner, setShowReceiptScanner] = useState(false);
   const [viewingReceipt, setViewingReceipt] = useState<string | null>(null);
+  
+  // Personal Mode
+  const [expIsPersonal, setExpIsPersonal] = useState(false);
+  const [expShouldArchive, setExpShouldArchive] = useState(false);
 
   const formatCurrency = (val: number) => {
     try {
@@ -90,6 +95,8 @@ export const SplitScreen = ({ module, onClose, onSave }: SplitScreenProps) => {
     setExpParticipants(participants.map(p => ({ participantId: p.id, value: 0 })));
     setEditingExpenseId(null);
     setExpReceipt(undefined);
+    setExpIsPersonal(false);
+    setExpShouldArchive(false);
     setShowExpenseModal(true);
   };
 
@@ -101,27 +108,34 @@ export const SplitScreen = ({ module, onClose, onSave }: SplitScreenProps) => {
     setExpSplitType(exp.splitType);
     setExpParticipants(exp.participants.map(p => ({ participantId: p.participantId, value: p.value || 0 })));
     setExpReceipt(exp.receiptAttachment);
+    setExpIsPersonal(exp.participants.length === 1 && exp.participants[0].participantId === exp.paidById);
+    setExpShouldArchive(false);
     setEditingExpenseId(exp.id);
     setShowExpenseModal(true);
   };
 
-  const handleSaveExpense = () => {
+  const handleSaveExpense = async () => {
     if (!expTitle || !expAmount || !expPaidBy) return;
     
     // validazione selettori a seconda del tipo
     let validParticipants = expParticipants;
-    if (expSplitType === 'percentages' as any || expSplitType === 'percentage') {
-       const sum = validParticipants.reduce((a, b) => a + (b.value || 0), 0);
-       if (Math.abs(sum - 100) > 0.1) {
-          alert("La somma delle percentuali deve essere 100%");
-          return;
-       }
-    } else if (expSplitType === 'exact') {
-       const sum = validParticipants.reduce((a, b) => a + (b.value || 0), 0);
-       if (Math.abs(sum - Number(expAmount)) > 0.1) {
-          alert(`La somma degli importi esatti deve essere ${expAmount}`);
-          return;
-       }
+    
+    if (expIsPersonal) {
+      validParticipants = [{ participantId: expPaidBy, value: Number(expAmount) }];
+    } else {
+      if (expSplitType === 'percentages' as any || expSplitType === 'percentage') {
+         const sum = validParticipants.reduce((a, b) => a + (b.value || 0), 0);
+         if (Math.abs(sum - 100) > 0.1) {
+            alert("La somma delle percentuali deve essere 100%");
+            return;
+         }
+      } else if (expSplitType === 'exact') {
+         const sum = validParticipants.reduce((a, b) => a + (b.value || 0), 0);
+         if (Math.abs(sum - Number(expAmount)) > 0.1) {
+            alert(`La somma degli importi esatti deve essere ${expAmount}`);
+            return;
+         }
+      }
     }
 
     const newExp: SplitExpense = {
@@ -130,10 +144,17 @@ export const SplitScreen = ({ module, onClose, onSave }: SplitScreenProps) => {
       amount: Number(expAmount),
       date: expDate,
       paidById: expPaidBy,
-      splitType: expSplitType,
-      participants: validParticipants.filter(p => expSplitType === 'equal' ? true : p.value !== 0),
+      splitType: expIsPersonal ? 'exact' : expSplitType,
+      participants: expIsPersonal 
+        ? [{ participantId: expPaidBy, value: 1 }] 
+        : validParticipants.filter(p => expSplitType === 'equal' ? true : p.value !== 0),
       receiptAttachment: expReceipt,
     };
+
+    // Archiviazione se richiesto
+    if (expShouldArchive && expReceipt && onSaveToSandbox) {
+      await onSaveToSandbox(`Ricevuta: ${expTitle}`, expReceipt);
+    }
 
     if (editingExpenseId) {
       setExpenses(expenses.map(e => e.id === editingExpenseId ? newExp : e));
@@ -376,12 +397,30 @@ export const SplitScreen = ({ module, onClose, onSave }: SplitScreenProps) => {
         {activeTab === 'dashboard' && (
           <div className="space-y-8 fade-in pb-10">
             {/* Riepilogo Totale */}
-            <div className="bg-gradient-to-br from-amber-500 to-orange-500 p-8 rounded-[2.5rem] text-white shadow-xl shadow-amber-500/20 relative overflow-hidden">
-                <div className="absolute top-0 right-0 p-4 opacity-10">
+            <div className="bg-gradient-to-br from-amber-500 to-orange-500 p-8 rounded-[2.5rem] text-white shadow-xl shadow-amber-500/20 relative overflow-hidden group">
+                <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
                     <Wallet className="w-24 h-24" />
                 </div>
-                <p className="text-amber-100 text-xs font-black uppercase tracking-widest mb-1">Spesa Totale Gruppo</p>
-                <h2 className="text-4xl font-black">{formatCurrency(expenses.reduce((s, e) => s + e.amount, 0))}</h2>
+                <div className="flex justify-between items-start relative z-10">
+                  <div>
+                    <p className="text-amber-100 text-[10px] font-black uppercase tracking-widest mb-1">Spesa Totale Gruppo</p>
+                    <h2 className="text-4xl font-black">{formatCurrency(expenses.reduce((s, e) => s + e.amount, 0))}</h2>
+                  </div>
+                  <button 
+                    onClick={() => {
+                      if (participants.length === 0) {
+                        alert("Aggiungi prima dei partecipanti!");
+                        setActiveTab('participants');
+                        return;
+                      }
+                      openNewExpense();
+                    }}
+                    className="p-3 bg-white/20 hover:bg-white/30 backdrop-blur-md rounded-2xl transition-all border border-white/20"
+                    title="Aggiungi Nuova Spesa"
+                  >
+                    <Plus className="w-6 h-6 text-white" />
+                  </button>
+                </div>
                 <div className="mt-4 flex items-center gap-4 text-[10px] font-bold uppercase tracking-wider text-amber-100/80">
                    <span>{expenses.length} Spese</span>
                    <span>•</span>
@@ -553,9 +592,35 @@ export const SplitScreen = ({ module, onClose, onSave }: SplitScreenProps) => {
                       </button>
                   </div>
 
-                  <div className="p-5 overflow-y-auto custom-scrollbar flex-1 space-y-4">
+                  <div className="p-5 overflow-y-auto custom-scrollbar flex-1 space-y-5">
+                      {/* Tipo Spesa: Gruppo o Personale */}
+                      <div className="flex bg-[var(--bg)] p-1 rounded-2xl border border-[var(--border)]">
+                        <button 
+                          onClick={() => setExpIsPersonal(false)}
+                          className={`flex-1 py-2.5 text-[10px] font-bold uppercase tracking-widest rounded-xl transition-all ${!expIsPersonal ? 'bg-[var(--card-bg)] text-amber-500 shadow-sm border border-[var(--border)]' : 'text-[var(--text-muted)]'}`}
+                        >
+                          <div className="flex items-center justify-center gap-2">
+                            <Users className="w-3.5 h-3.5" />
+                            Spesa di Gruppo
+                          </div>
+                        </button>
+                        <button 
+                          onClick={() => {
+                            setExpIsPersonal(true);
+                            // Se personale, il pagatore è il primo partecipante (di solito l'utente)
+                            if (!expPaidBy && participants.length > 0) setExpPaidBy(participants[0].id);
+                          }}
+                          className={`flex-1 py-2.5 text-[10px] font-bold uppercase tracking-widest rounded-xl transition-all ${expIsPersonal ? 'bg-[var(--card-bg)] text-amber-500 shadow-sm border border-[var(--border)]' : 'text-[var(--text-muted)]'}`}
+                        >
+                          <div className="flex items-center justify-center gap-2">
+                            <User className="w-3.5 h-3.5" />
+                            Spesa Personale
+                          </div>
+                        </button>
+                      </div>
+
                       {/* Descrizione / Importo */}
-                      <div className="grid grid-cols-1 gap-4">
+                      <div className="grid grid-cols-1 gap-4 pt-2">
                           <input 
                               type="text" placeholder="Descrizione (es. Cena Pizzeria)"
                               value={expTitle} onChange={e => setExpTitle(e.target.value)}
@@ -598,6 +663,23 @@ export const SplitScreen = ({ module, onClose, onSave }: SplitScreenProps) => {
                             <span className="text-xs uppercase tracking-wider">Scansiona Scontrino</span>
                           </button>
                         )}
+
+                        {expReceipt && (
+                          <div className="mt-3 flex items-center gap-3 px-4 py-3 bg-[var(--bg)] border border-[var(--border)] rounded-2xl relative overflow-hidden group/receipt">
+                            <div className="absolute inset-0 bg-emerald-500/5 opacity-0 group-hover/receipt:opacity-100 transition-opacity" />
+                            <input 
+                              type="checkbox"
+                              id="archiveToggle"
+                              checked={expShouldArchive}
+                              onChange={(e) => setExpShouldArchive(e.target.checked)}
+                              className="w-5 h-5 rounded-lg border-[var(--border)] text-amber-500 focus:ring-amber-500 bg-[var(--card-bg)] relative z-10"
+                            />
+                            <label htmlFor="archiveToggle" className="text-xs font-bold text-[var(--text-main)] cursor-pointer relative z-10 flex-1">
+                              Archivia in Documenti
+                            </label>
+                            <Check className="w-4 h-4 text-emerald-500" />
+                          </div>
+                        )}
                       </div>
 
                       <div className="grid grid-cols-2 gap-4">
@@ -620,8 +702,9 @@ export const SplitScreen = ({ module, onClose, onSave }: SplitScreenProps) => {
                          </div>
                       </div>
 
-                      {/* Divisione Type */}
-                      <div className="mt-4 border-t border-[var(--border)] pt-4">
+                      {/* Divisione Type - Only show if not personal */}
+                      {!expIsPersonal && (
+                        <div className="mt-4 border-t border-[var(--border)] pt-4">
                           <label className="text-[10px] font-bold uppercase text-[var(--text-muted)] mb-2 block">Riparto spesa per</label>
                           <div className="flex flex-wrap gap-2 mb-4 bg-[var(--bg)] p-1 rounded-xl border border-[var(--border)]">
                               {[
@@ -691,7 +774,8 @@ export const SplitScreen = ({ module, onClose, onSave }: SplitScreenProps) => {
                                   );
                               })}
                           </div>
-                      </div>
+                        </div>
+                      )}
 
                   </div>
                   

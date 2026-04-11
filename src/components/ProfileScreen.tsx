@@ -1,8 +1,9 @@
 import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, User, Lock, Fingerprint, LogOut, Camera, Check, AlertCircle, Share2, Download, Copy, ShieldCheck, QrCode, SunDim } from 'lucide-react';
+import { X, User, Lock, Fingerprint, LogOut, Camera, Check, AlertCircle, Share2, Download, Copy, ShieldCheck, QrCode, SunDim, RefreshCw } from 'lucide-react';
 import { storage } from '../services/storage';
 import { encryption } from '../services/encryption';
+import { updateService } from '../services/updateService';
 import { Module, Folder } from '../types';
 import { QRCodeSVG } from 'qrcode.react';
 
@@ -385,6 +386,10 @@ export function ProfileScreen({
                       Aggiorna
                     </button>
                   </div>
+                </div>
+
+                <div className="mt-4 pt-6 border-t border-[var(--border)]">
+                   <p className="text-[10px] text-center text-[var(--text-muted)] font-bold uppercase tracking-[0.2em]">Versione Chelona: 1.0.3</p>
                 </div>
               </div>
             </div>

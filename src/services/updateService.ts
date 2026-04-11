@@ -19,18 +19,31 @@ class UpdateService {
   private currentVersion = packageJson.version;
 
   async checkForUpdates(): Promise<UpdateInfo | null> {
+    console.log(`[UpdateService] Checking for updates... Current version: ${this.currentVersion}`);
     try {
       const response = await fetch(`https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/releases/latest`);
-      if (!response.ok) return null;
+      
+      if (!response.ok) {
+        console.log(`[UpdateService] GitHub API error: ${response.status} ${response.statusText}`);
+        return null;
+      }
 
       const data = await response.json();
       const latestVersion = data.tag_name.replace('v', '');
+      console.log(`[UpdateService] Latest version available on GitHub: ${latestVersion}`);
       
-      if (this.compareVersions(latestVersion, this.currentVersion) > 0) {
+      const comparison = this.compareVersions(latestVersion, this.currentVersion);
+      console.log(`[UpdateService] Comparison result: ${comparison} (1: update available, 0/ -1: up to date)`);
+
+      if (comparison > 0) {
         // Find APK in assets
         const apkAsset = data.assets.find((asset: any) => asset.name.endsWith('.apk'));
-        if (!apkAsset) return null;
+        if (!apkAsset) {
+          console.warn('[UpdateService] Update available but no APK found in release assets.');
+          return null;
+        }
 
+        console.log(`[UpdateService] New update found! Downloading from: ${apkAsset.browser_download_url}`);
         return {
           available: true,
           currentVersion: this.currentVersion,
@@ -38,9 +51,11 @@ class UpdateService {
           releaseNotes: data.body,
           downloadUrl: apkAsset.browser_download_url
         };
+      } else {
+        console.log('[UpdateService] App is up to date.');
       }
     } catch (error) {
-      console.error('Error checking for updates:', error);
+      console.error('[UpdateService] Error checking for updates:', error);
     }
     return null;
   }

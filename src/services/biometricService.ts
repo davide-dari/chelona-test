@@ -3,18 +3,33 @@
  */
 
 export const biometricService = {
-  // Check if WebAuthn is supported and biometrics are available
+  // Check if WebAuthn is supported
   async isSupported(): Promise<boolean> {
-    return (
-      window.PublicKeyCredential !== undefined &&
-      typeof window.PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable === 'function' &&
-      await window.PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable()
-    );
+    const isBasicSupported = window.PublicKeyCredential !== undefined &&
+           typeof window.PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable === 'function';
+    
+    if (!isBasicSupported) {
+      console.warn('[BiometricService] WebAuthn PublicKeyCredential not found or method missing.');
+      return false;
+    }
+
+    try {
+      const isUVPAAvailable = await window.PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
+      console.log(`[BiometricService] isUserVerifyingPlatformAuthenticatorAvailable: ${isUVPAAvailable}`);
+      
+      // We return true if basic API exists, even if isUVPAAvailable is false, 
+      // to avoid false negatives in some WebViews. Actual enrollment will confirm availability.
+      return true;
+    } catch (e) {
+      console.error('[BiometricService] Error checking UVPA availability', e);
+      return false;
+    }
   },
 
   // Register a new biometric credential
   async register(username: string): Promise<{ credentialId: string; publicKey: string } | null> {
     try {
+      console.log(`[BiometricService] Starting registration for: ${username}`);
       const challenge = crypto.getRandomValues(new Uint8Array(32));
       const userId = crypto.getRandomValues(new Uint8Array(16));
 
@@ -22,7 +37,7 @@ export const biometricService = {
         challenge,
         rp: {
           name: 'Chelona Secure',
-          id: window.location.hostname
+          id: window.location.hostname || 'localhost'
         },
         user: {
           id: userId,
@@ -35,12 +50,15 @@ export const biometricService = {
         ],
         authenticatorSelection: {
           authenticatorAttachment: 'platform',
-          userVerification: 'required'
+          userVerification: 'required',
+          residentKey: 'preferred', // Optimized for mobile passkeys
+          requireResidentKey: false
         },
         timeout: 60000,
         attestation: 'none'
       };
 
+      console.log('[BiometricService] Calling navigator.credentials.create...');
       const credential = await navigator.credentials.create({ publicKey: options }) as PublicKeyCredential;
 
       if (!credential) return null;

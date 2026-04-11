@@ -5,6 +5,7 @@ import { storage } from '../services/storage';
 import { encryption } from '../services/encryption';
 import { biometricService } from '../services/biometricService';
 import { ProfileConfig } from '../types';
+import packageJson from '../../package.json';
 
 interface LockScreenProps {
   isVisible?: boolean;
@@ -12,9 +13,10 @@ interface LockScreenProps {
   onStartScan: () => void;
   onOpenTools: () => void;
   onImportFile: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onCheckUpdate?: () => void;
 }
 
-export const LockScreen = ({ isVisible, onAuthenticated, onStartScan, onOpenTools, onImportFile }: LockScreenProps) => {
+export const LockScreen = ({ isVisible, onAuthenticated, onStartScan, onOpenTools, onImportFile, onCheckUpdate }: LockScreenProps) => {
   const [profiles, setProfiles] = useState<ProfileConfig[]>([]);
   const [selectedProfile, setSelectedProfile] = useState<ProfileConfig | null>(null);
   const [view, setView] = useState<'selector' | 'login' | 'setup'>('selector');
@@ -50,6 +52,10 @@ export const LockScreen = ({ isVisible, onAuthenticated, onStartScan, onOpenTool
     refreshProfiles();
     window.addEventListener('chelona_profiles_updated', refreshProfiles);
     biometricService.isSupported().then(setIsBioSupported);
+    
+    // Controllo aggiornamenti all'arrivo nel login
+    if (onCheckUpdate) onCheckUpdate();
+
     return () => window.removeEventListener('chelona_profiles_updated', refreshProfiles);
   }, []);
 
@@ -271,13 +277,24 @@ export const LockScreen = ({ isVisible, onAuthenticated, onStartScan, onOpenTool
                 </button>
               </div>
 
-              <div className="mt-12 flex justify-center">
+              <div className="mt-12 pt-8 border-t border-[var(--border)] flex flex-col items-center gap-4">
                 <button 
                   onClick={() => setShowResetConfirm(true)}
-                  className="text-xs text-red-300 hover:text-red-500 transition-colors font-medium underline underline-offset-2"
+                  className="text-[10px] uppercase tracking-widest text-red-400/50 hover:text-red-500 transition-colors font-black"
                 >
-                  Resetta App
+                  Resetta Applicazione
                 </button>
+                
+                <div className="flex items-center gap-2 px-3 py-1.5 bg-[var(--bg)] rounded-full border border-[var(--border)] shadow-sm">
+                   <span className="text-[10px] font-bold text-[var(--text-muted)]">Versione {packageJson.version}</span>
+                   <div className="w-1 h-1 rounded-full bg-[var(--border)]" />
+                   <button 
+                    onClick={() => onCheckUpdate?.()}
+                    className="text-[10px] font-bold text-amber-500 hover:text-amber-600 transition-colors uppercase flex items-center gap-1"
+                   >
+                     Cerca aggiornamenti
+                   </button>
+                </div>
               </div>
             </motion.div>
           ) : (

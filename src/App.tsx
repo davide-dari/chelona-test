@@ -210,14 +210,26 @@ export default function App() {
       m.biometricService.isSupported().then(setIsBioSupported);
     });
 
-    // Controllo aggiornamenti all'avvio
-    if (window.Capacitor) {
-      updateService.checkForUpdates().then(info => {
-        if (info && info.available) {
-          setAvailableUpdate(info);
+    const handleCheckUpdate = async (silent = true) => {
+      // Controllo aggiornamenti
+      if (window.Capacitor || (window.location.search.includes('debug_update=1'))) {
+        try {
+          const info = await updateService.checkForUpdates();
+          if (info && info.available) {
+            setAvailableUpdate(info);
+            return true;
+          } else if (!silent) {
+            showToast('L\'applicazione è aggiornata.', 'success');
+          }
+        } catch (e) {
+          if (!silent) showToast('Errore durante il controllo aggiornamenti.', 'error');
         }
-      });
-    }
+      }
+      return false;
+    };
+
+    // Controllo aggiornamenti all'avvio
+    handleCheckUpdate(true);
     // Ascolta eventi manuali di aggiornamento
     const handleManualUpdate = (e: any) => {
       if (e.detail) setAvailableUpdate(e.detail);
@@ -489,35 +501,46 @@ export default function App() {
 
     try {
       const m = await import('./services/biometricService');
+      const supported = await m.biometricService.isSupported();
+      
+      console.log('[App] Attempting biometric registration...');
       const result = await m.biometricService.register(username);
-      if (result) {
-        const profiles = storage.loadProfiles();
-        const profile = profiles.find(p => p.id === currentProfileId);
-        if (profile) {
-          const bioSalt = encryption.generateSalt();
-          const masterKeyStr = await encryption.exportKey(encryptionKey);
-          const signature = await m.biometricService.authenticate(result.credentialId);
-          if (signature) {
-            const signatureStr = btoa(String.fromCharCode(...signature));
-            const bioKey = await encryption.deriveKey(signatureStr, bioSalt, 10000);
-            const encryptedMasterKey = await encryption.encrypt(masterKeyStr, bioKey);
+      
+      if (!result) {
+        setBioError('Il sensore biometrico non ha risposto o l\'operazione è stata annullata.');
+        return;
+      }
 
-            const updatedProfile = {
-              ...profile,
-              isBiometricEnabled: true,
-              credentialId: result.credentialId,
-              encryptedMasterKey,
-              bioSalt
-            };
-            
-            storage.saveProfiles(profiles.map(p => p.id === currentProfileId ? updatedProfile : p));
-            setIsBioEnabled(true);
-            alert('Biometria abilitata con successo!');
-          }
+      const profiles = storage.loadProfiles();
+      const profile = profiles.find(p => p.id === currentProfileId);
+      if (profile) {
+        const bioSalt = encryption.generateSalt();
+        const masterKeyStr = await encryption.exportKey(encryptionKey);
+        const signature = await m.biometricService.authenticate(result.credentialId);
+        
+        if (signature) {
+          const signatureStr = btoa(String.fromCharCode(...signature));
+          const bioKey = await encryption.deriveKey(signatureStr, bioSalt, 10000);
+          const encryptedMasterKey = await encryption.encrypt(masterKeyStr, bioKey);
+
+          const updatedProfile = {
+            ...profile,
+            isBiometricEnabled: true,
+            credentialId: result.credentialId,
+            encryptedMasterKey,
+            bioSalt
+          };
+          
+          storage.saveProfiles(profiles.map(p => p.id === currentProfileId ? updatedProfile : p));
+          setIsBioEnabled(true);
+          showToast('Biometria abilitata con successo!', 'success');
+        } else {
+          setBioError('Impossibile verificare l\'impronta appena registrata.');
         }
       }
     } catch (e: any) {
-      setBioError(e.message || 'Errore durante la registrazione biometrica.');
+      console.error('[App] Biometric activation error', e);
+      setBioError(e.message || 'Errore durante la registrazione biometrica. Assicurati di avere almeno un\'impronta registrata sul sistema.');
     }
   };
 
@@ -772,6 +795,7 @@ export default function App() {
           onStartScan={() => setIsScanning(true)}
           onOpenTools={() => setIsPublicToolsOpen(true)}
           onImportFile={handleImportFile}
+          onCheckUpdate={() => handleCheckUpdate(true)}
         />
       </div>
 
@@ -979,6 +1003,7 @@ export default function App() {
                 module={editingSplitModule}
                 onSave={(mod) => { updateModuleDirect(mod); setEditingSplitModule(null); }}
                 onClose={() => setEditingSplitModule(null)}
+                onSaveToSandbox={handleSaveToSandbox}
               />
             ) : isAdding ? (
               <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="max-w-3xl mx-auto h-full flex flex-col w-full">
@@ -1525,7 +1550,7 @@ export default function App() {
       {/* Update Modal */}
       <AnimatePresence>
         {availableUpdate && (
-          <div className="fixed inset-0 z-[20000] flex items-center justify-center p-6">
+          <div className="fixed inset-0 z-[200000] flex items-center justify-center p-6">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
