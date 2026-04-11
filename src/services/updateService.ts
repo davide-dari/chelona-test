@@ -5,7 +5,7 @@ import { ApkInstaller } from '@bixbyte/capacitor-apk-installer';
 import packageJson from '../../package.json';
 
 const GITHUB_OWNER = 'davide-dari';
-const GITHUB_REPO = 'chelona';
+const GITHUB_REPO = 'chelona-test';
 
 export interface UpdateInfo {
   available: boolean;
