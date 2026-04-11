@@ -659,7 +659,7 @@ export const DocumentScanner = ({ onCapture, onClose, downloadOnly = false }: Do
       <div className="absolute top-0 left-0 right-0 z-[310] flex items-center justify-between px-6 py-8">
         <button
           onClick={onClose}
-          className="w-10 h-10 flex items-center justify-center bg-black/20 hover:bg-black/40 rounded-full backdrop-blur-md transition-all active:scale-95 text-white"
+          className="w-10 h-10 flex items-center justify-center bg-black/40 hover:bg-black/60 rounded-full backdrop-blur-xl border border-white/10 transition-all active:scale-95 text-white"
         >
           <X className="w-5 h-5" />
         </button>
@@ -845,10 +845,10 @@ export const DocumentScanner = ({ onCapture, onClose, downloadOnly = false }: Do
           {/* Shutter Button — centered only */}
           <button
             onClick={handleCapture}
-            disabled={!isReady || isProcessing}
+            disabled={isProcessing}
             className={`relative w-20 h-20 flex items-center justify-center transition-all duration-300 ${isProcessing ? 'opacity-50' : 'opacity-100'} active:scale-90`}
           >
-            <div className="absolute inset-0 rounded-full border-[3px] border-white" />
+            <div className={`absolute inset-0 rounded-full border-[3px] transition-colors ${isDetected ? 'border-amber-400' : 'border-white'}`} />
             <div className="w-16 h-16 rounded-full bg-white flex items-center justify-center transition-transform group-active:scale-95" />
           </button>
         </div>

@@ -17,7 +17,7 @@ const COMMON_CURRENCIES = ['EUR', 'USD', 'GBP', 'JPY', 'CHF', 'AUD', 'CAD'];
 const getInitials = (name: string) => name.substring(0, 2).toUpperCase();
 
 export const SplitScreen = ({ module, onClose, onSave }: SplitScreenProps) => {
-  const [activeTab, setActiveTab] = useState<'expenses' | 'participants' | 'balances'>('expenses');
+  const [activeTab, setActiveTab] = useState<'expenses' | 'participants' | 'balances' | 'dashboard'>('expenses');
   const [currency, setCurrency] = useState(module.currency || 'EUR');
   const [participants, setParticipants] = useState<SplitParticipant[]>(module.participants || []);
   const [expenses, setExpenses] = useState<SplitExpense[]>(module.expenses || []);
@@ -195,7 +195,8 @@ export const SplitScreen = ({ module, onClose, onSave }: SplitScreenProps) => {
       <div className="flex justify-around items-center border-b border-[var(--border)] bg-[var(--card-bg)] shrink-0">
         {[
           { id: 'expenses', icon: Receipt, label: 'Spese' },
-          { id: 'participants', icon: Users, label: 'Partecipanti' },
+          { id: 'participants', icon: Users, label: 'Chi' },
+          { id: 'dashboard', icon: Wallet, label: 'Grafici' },
           { id: 'balances', icon: ArrowRightLeft, label: 'Bilanci' },
         ].map(tab => (
           <button
@@ -366,6 +367,148 @@ export const SplitScreen = ({ module, onClose, onSave }: SplitScreenProps) => {
                             );
                         })}
                     </div>
+                )}
+            </div>
+          </div>
+        )}
+
+        {/* DASHBOARD TAB */}
+        {activeTab === 'dashboard' && (
+          <div className="space-y-8 fade-in pb-10">
+            {/* Riepilogo Totale */}
+            <div className="bg-gradient-to-br from-amber-500 to-orange-500 p-8 rounded-[2.5rem] text-white shadow-xl shadow-amber-500/20 relative overflow-hidden">
+                <div className="absolute top-0 right-0 p-4 opacity-10">
+                    <Wallet className="w-24 h-24" />
+                </div>
+                <p className="text-amber-100 text-xs font-black uppercase tracking-widest mb-1">Spesa Totale Gruppo</p>
+                <h2 className="text-4xl font-black">{formatCurrency(expenses.reduce((s, e) => s + e.amount, 0))}</h2>
+                <div className="mt-4 flex items-center gap-4 text-[10px] font-bold uppercase tracking-wider text-amber-100/80">
+                   <span>{expenses.length} Spese</span>
+                   <span>•</span>
+                   <span>{participants.length} Partecipanti</span>
+                </div>
+            </div>
+
+            {/* Grafico Distribuzione per Partecipante (Pie Chart SVG) */}
+            <div className="bg-[var(--card-bg)] p-6 rounded-[2rem] border border-[var(--border)] shadow-sm">
+                <h3 className="text-sm font-bold text-[var(--text-main)] uppercase tracking-wider mb-6">Distribuzione Spese</h3>
+                {expenses.length === 0 ? (
+                  <p className="text-center text-xs text-[var(--text-muted)] py-10">Aggiungi spese per vedere il grafico</p>
+                ) : (
+                  <div className="flex flex-col sm:flex-row items-center gap-8">
+                    <div className="relative w-48 h-48 shrink-0">
+                      <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
+                        {(() => {
+                          const total = expenses.reduce((s, e) => s + e.amount, 0);
+                          let currentAngle = 0;
+                          const COLORS = ['#f59e0b', '#10b981', '#3b82f6', '#8b5cf6', '#ec4899', '#ef4444'];
+                          
+                          const participantTotals = participants.map(p => ({
+                            name: p.name,
+                            total: expenses.filter(e => e.paidById === p.id).reduce((s, e) => s + e.amount, 0)
+                          })).filter(p => p.total > 0);
+
+                          return participantTotals.map((p, i) => {
+                            const percentage = (p.total / total) * 100;
+                            const angle = (percentage / 100) * 360;
+                            const x1 = 50 + 40 * Math.cos((currentAngle * Math.PI) / 180);
+                            const y1 = 50 + 40 * Math.sin((currentAngle * Math.PI) / 180);
+                            currentAngle += angle;
+                            const x2 = 50 + 40 * Math.cos((currentAngle * Math.PI) / 180);
+                            const y2 = 50 + 40 * Math.sin((currentAngle * Math.PI) / 180);
+                            const largeArc = angle > 180 ? 1 : 0;
+                            
+                            return (
+                              <path
+                                key={i}
+                                d={`M 50 50 L ${x1} ${y1} A 40 40 0 ${largeArc} 1 ${x2} ${y2} Z`}
+                                fill={COLORS[i % COLORS.length]}
+                                className="transition-all hover:opacity-80 cursor-pointer"
+                                stroke="var(--card-bg)"
+                                strokeWidth="2"
+                              />
+                            );
+                          });
+                        })()}
+                      </svg>
+                      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                         <div className="w-24 h-24 bg-[var(--card-bg)] rounded-full border-4 border-[var(--bg)] shadow-inner" />
+                      </div>
+                    </div>
+                    <div className="flex-1 space-y-3 w-full">
+                       {participants.map((p, i) => {
+                         const total = expenses.reduce((s, e) => s + e.amount, 0);
+                         const pTotal = expenses.filter(e => e.paidById === p.id).reduce((s, e) => s + e.amount, 0);
+                         if (pTotal === 0) return null;
+                         const COLORS = ['#f59e0b', '#10b981', '#3b82f6', '#8b5cf6', '#ec4899', '#ef4444'];
+                         return (
+                           <div key={p.id} className="flex items-center justify-between gap-4">
+                             <div className="flex items-center gap-2 min-w-0">
+                               <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: COLORS[i % COLORS.length] }} />
+                               <span className="text-xs font-bold text-[var(--text-main)] truncate">{p.name}</span>
+                             </div>
+                             <span className="text-xs font-mono font-bold text-[var(--text-muted)] shrink-0">{((pTotal/total)*100).toFixed(1)}%</span>
+                           </div>
+                         );
+                       })}
+                    </div>
+                  </div>
+                )}
+            </div>
+
+            {/* Grafico Andamento Temporale (Bar Chart SVG) */}
+            <div className="bg-[var(--card-bg)] p-6 rounded-[2rem] border border-[var(--border)] shadow-sm">
+                <h3 className="text-sm font-bold text-[var(--text-main)] uppercase tracking-wider mb-6">Andamento Spese</h3>
+                {expenses.length === 0 ? (
+                  <p className="text-center text-xs text-[var(--text-muted)] py-10">Aggiungi spese per vedere l'andamento</p>
+                ) : (
+                  <div className="h-48 w-full">
+                    <svg viewBox="0 0 400 120" className="w-full h-full">
+                      {(() => {
+                        // Raggruppa per data (ultimi 7 giorni con spese)
+                        const dates = [...new Set(expenses.map(e => e.date))].sort();
+                        const dailyTotals = dates.map(d => ({
+                          date: d,
+                          total: expenses.filter(e => e.date === d).reduce((s, e) => s + e.amount, 0)
+                        })).slice(-10); // Mostra solo le ultime 10 date
+
+                        const max = Math.max(...dailyTotals.map(d => d.total));
+                        const step = dailyTotals.length > 0 ? 380 / dailyTotals.length : 0;
+
+                        return dailyTotals.map((d, i) => {
+                          const barH = (d.total / max) * 80;
+                          return (
+                            <g key={i}>
+                              <rect
+                                x={10 + i * step}
+                                y={100 - barH}
+                                width={step * 0.7}
+                                height={barH}
+                                fill="url(#barGradient)"
+                                rx="4"
+                              />
+                              <text
+                                x={10 + i * step + (step * 0.35)}
+                                y="115"
+                                fontSize="6"
+                                fontWeight="bold"
+                                fill="var(--text-muted)"
+                                textAnchor="middle"
+                              >
+                                {new Date(d.date).toLocaleDateString('it', { day: '2-digit', month: 'short' })}
+                              </text>
+                            </g>
+                          );
+                        });
+                      })()}
+                      <defs>
+                        <linearGradient id="barGradient" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="#f59e0b" />
+                          <stop offset="100%" stopColor="#ef4444" />
+                        </linearGradient>
+                      </defs>
+                    </svg>
+                  </div>
                 )}
             </div>
           </div>

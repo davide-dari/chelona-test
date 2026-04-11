@@ -23,7 +23,7 @@ export const QrScanner: React.FC<QrScannerProps> = ({ onScan, onClose }) => {
     let html5QrCode: Html5Qrcode | null = null;
     let isMounted = true;
     
-    const timer = setTimeout(() => {
+    const runScanner = () => {
       if (!isMounted) return;
       
       try {
@@ -85,11 +85,12 @@ export const QrScanner: React.FC<QrScannerProps> = ({ onScan, onClose }) => {
       } catch (e) {
         console.error("Html5Qrcode init error", e);
       }
-    }, 200);
+    };
+
+    runScanner();
 
     return () => {
       isMounted = false;
-      clearTimeout(timer);
       if (html5QrCode) {
         html5QrCode.stop().then(() => {
           html5QrCode?.clear();
@@ -128,12 +129,7 @@ export const QrScanner: React.FC<QrScannerProps> = ({ onScan, onClose }) => {
     <div className="fixed inset-0 z-[100001] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
       <div className="relative bg-[var(--card-bg)] rounded-[2.5rem] overflow-hidden w-full max-w-md shadow-2xl border border-[var(--border)]">
         <div className="flex items-center justify-between p-6 border-b border-[var(--border)] bg-[var(--header-bg)]">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-amber-500/10 rounded-xl flex items-center justify-center text-amber-500">
-              <Camera className="w-5 h-5" />
-            </div>
-            <h3 className="font-bold text-[var(--text-main)]">Scansiona QR Code</h3>
-          </div>
+            <h3 className="font-bold text-[var(--text-main)] translate-x-1">Scansiona QR Code</h3>
           <button onClick={onClose} className="p-2 hover:bg-[var(--bg)] rounded-xl text-[var(--text-muted)] transition-colors">
             <X className="w-6 h-6" />
           </button>

@@ -790,7 +790,7 @@ export default function App() {
              </button>
            </header>
            <main className="flex-1 overflow-y-auto w-full h-full max-w-[1200px] mx-auto">
-             <ToolsScreen showToast={showToast} />
+             <ToolsScreen showToast={showToast} onSaveToSandbox={handleSaveToSandbox} modules={modules} />
            </main>
         </div>
       )}

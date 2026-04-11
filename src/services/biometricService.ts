@@ -68,8 +68,7 @@ export const biometricService = {
         challenge,
         allowCredentials: [{
           id: idBuffer,
-          type: 'public-key',
-          transports: ['internal']
+          type: 'public-key'
         }],
         userVerification: 'required',
         timeout: 60000
