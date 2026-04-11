@@ -1,0 +1,88 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+}
+
+:root {
+  color-scheme: light;
+  --bg: #F8F9FA;
+  --card-bg: #FFFFFF;
+  --accent: #F59E0B; /* Amber 500 */
+  --accent-hover: #D97706; /* Amber 600 */
+  --accent-bg: rgba(245, 158, 11, 0.1);
+  --text-main: #111827; /* Gray 900 */
+  --text-muted: #6B7280; /* Gray 500 */
+  --border: #E5E7EB; /* Gray 200 */
+  --header-bg: rgba(248, 249, 250, 0.7);
+  --sidebar-bg: rgba(255, 255, 255, 0.8);
+  
+  /* Semantic Colors - Light */
+  --danger: #EF4444;
+  --danger-bg: #FEF2F2;
+  --success: #10B981;
+  --success-bg: #ECFDF5;
+  --warning: #F59E0B;
+  --warning-bg: #FFFBEB;
+  --info: #3B82F6;
+  --info-bg: #EFF6FF;
+}
+
+[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #030712; /* Very deep slate/black */
+  --card-bg: #0F172A; /* Deep slate card */
+  --accent: #FBBF24; /* Amber 400 - brighter for dark */
+  --accent-hover: #F59E0B; /* Amber 500 */
+  --accent-bg: rgba(251, 191, 36, 0.1);
+  --text-main: #F9FAFB; /* Gray 50 */
+  --text-muted: #94A3B8; /* Slate 400 */
+  --border: #1E293B; /* Slate 800 */
+  --header-bg: rgba(3, 7, 18, 0.7);
+  --sidebar-bg: rgba(15, 23, 42, 0.9);
+
+  /* Semantic Colors - Dark */
+  --danger: #F87171;
+  --danger-bg: rgba(127, 29, 29, 0.2);
+  --success: #34D399;
+  --success-bg: rgba(6, 78, 59, 0.2);
+  --warning: #FB7185;
+  --warning-bg: rgba(159, 18, 57, 0.2);
+  --info: #60A5FA;
+  --info-bg: rgba(30, 58, 138, 0.2);
+}
+
+body {
+  background-color: var(--bg);
+  color: var(--text-main);
+  font-family: var(--font-sans);
+}
+
+.glass-card {
+  background: var(--card-bg);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--border);
+}
+
+.module-card {
+  background-color: var(--card-bg);
+  color: var(--text-main);
+  border-radius: 1rem;
+  border: 1px solid var(--border);
+  padding: 1.25rem;
+  transition: all 0.2s;
+}
+.module-card:hover {
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+.hide-scrollbar {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+

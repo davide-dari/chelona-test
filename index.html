@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Chelona</title>
+    <script type="text/javascript">
+      // Fix for "TrustedHTML" violation errors caused by external libraries like OpenCV/Jscanify
+      if (window.trustedTypes && window.trustedTypes.createPolicy) {
+        if (!window.trustedTypes.defaultPolicy) {
+          window.trustedTypes.createPolicy('default', {
+            createHTML: (string) => string,
+            createScriptURL: (string) => string,
+            createScript: (string) => string,
+          });
+        }
+      }
+
+      var Module = {
+        onRuntimeInitialized: function() {
+          window.cvReady = true;
+        }
+      };
+    </script>
+    <!-- 
+    <script src="https://docs.opencv.org/4.7.0/opencv.js" type="text/javascript"></script>
+    <script src="https://cdn.jsdelivr.net/gh/puffinsoft/jscanify@master/src/jscanify.js" type="text/javascript"></script>
+    -->
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+
