@@ -205,28 +205,28 @@ export default function App() {
     init();
   }, [encryptionKey, currentProfileId]);
 
+  const handleCheckUpdate = React.useCallback(async (silent = true) => {
+    // Controllo aggiornamenti
+    if (window.Capacitor || (window.location.search.includes('debug_update=1'))) {
+      try {
+        const info = await updateService.checkForUpdates();
+        if (info && info.available) {
+          setAvailableUpdate(info);
+          return true;
+        } else if (!silent) {
+          showToast('L\'applicazione è aggiornata.', 'success');
+        }
+      } catch (e) {
+        if (!silent) showToast('Errore durante il controllo aggiornamenti.', 'error');
+      }
+    }
+    return false;
+  }, []);
+
   useEffect(() => {
     import('./services/biometricService').then(m => {
       m.biometricService.isSupported().then(setIsBioSupported);
     });
-
-    const handleCheckUpdate = async (silent = true) => {
-      // Controllo aggiornamenti
-      if (window.Capacitor || (window.location.search.includes('debug_update=1'))) {
-        try {
-          const info = await updateService.checkForUpdates();
-          if (info && info.available) {
-            setAvailableUpdate(info);
-            return true;
-          } else if (!silent) {
-            showToast('L\'applicazione è aggiornata.', 'success');
-          }
-        } catch (e) {
-          if (!silent) showToast('Errore durante il controllo aggiornamenti.', 'error');
-        }
-      }
-      return false;
-    };
 
     // Controllo aggiornamenti all'avvio
     handleCheckUpdate(true);
@@ -237,7 +237,7 @@ export default function App() {
     window.addEventListener('chelona_update_available', handleManualUpdate);
     
     return () => window.removeEventListener('chelona_update_available', handleManualUpdate);
-  }, []);
+  }, [handleCheckUpdate]);
 
   const saveAppState = async (newModules: Module[], newFolders: Folder[]) => {
     if (!encryptionKey || !currentProfileId) return;

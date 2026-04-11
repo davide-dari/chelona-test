@@ -6,6 +6,7 @@ import { CAR_BRANDS } from '../utils/carBrands';
 import JSZip from 'jszip';
 import { encryption } from '../services/encryption';
 import { notificationService } from '../services/notificationService';
+import { DocumentViewer } from './DocumentViewer';
 
 interface ModuleWrapperProps {
   module: Module;
@@ -66,24 +67,15 @@ export const DocumentCard = ({ module, onDelete, onEdit, onShare, dragHandleProp
     document.body.removeChild(link);
   };
 
+  const [viewerData, setViewerData] = useState<{ title: string; data: string; type: 'pdf' | 'image' } | null>(null);
+
   const handleViewPdf = () => {
-    if (!module.pdfAttachment) return;
-    try {
-      const base64Data = module.pdfAttachment.split(',')[1] || module.pdfAttachment;
-      const byteCharacters = atob(base64Data);
-      const byteNumbers = new Array(byteCharacters.length);
-      for (let i = 0; i < byteCharacters.length; i++) {
-        byteNumbers[i] = byteCharacters.charCodeAt(i);
-      }
-      const byteArray = new Uint8Array(byteNumbers);
-      const blob = new Blob([byteArray], { type: 'application/pdf' });
-      
-      const url = URL.createObjectURL(blob);
-      window.open(url, '_blank');
-      
-      setTimeout(() => URL.revokeObjectURL(url), 60000);
-    } catch (e) {
-      console.error('Error viewing PDF', e);
+    if (module.pdfAttachment) {
+      setViewerData({
+        title: module.title || 'Documento',
+        data: module.pdfAttachment,
+        type: 'pdf'
+      });
     }
   };
 
@@ -216,6 +208,13 @@ export const DocumentCard = ({ module, onDelete, onEdit, onShare, dragHandleProp
           </div>
         )}
       </AnimatePresence>
+      <DocumentViewer
+        isOpen={!!viewerData}
+        onClose={() => setViewerData(null)}
+        title={viewerData?.title || ''}
+        data={viewerData?.data || ''}
+        type={viewerData?.type}
+      />
     </>
   );
 };
@@ -316,6 +315,13 @@ export const GenericCard = ({ module, onDelete, onEdit, onShare, dragHandleProps
           </div>
         )}
       </AnimatePresence>
+      <DocumentViewer
+        isOpen={!!viewerData}
+        onClose={() => setViewerData(null)}
+        title={viewerData?.title || ''}
+        data={viewerData?.data || ''}
+        type={viewerData?.type}
+      />
     </>
   );
 };
@@ -329,20 +335,15 @@ export const AutoCard = ({ module, onDelete, onEdit, onDirectUpdate, onShare, dr
   const [notifOffset, setNotifOffset] = useState(14);
   const [notifRefresh, setNotifRefresh] = useState(0);
 
-  const handleViewPdf = (pdfBase64?: string) => {
-    if (!pdfBase64) return;
-    try {
-      const base64Data = pdfBase64.split(',')[1] || pdfBase64;
-      const byteCharacters = atob(base64Data);
-      const byteNumbers = new Array(byteCharacters.length);
-      for (let i = 0; i < byteCharacters.length; i++) byteNumbers[i] = byteCharacters.charCodeAt(i);
-      const byteArray = new Uint8Array(byteNumbers);
-      const blob = new Blob([byteArray], { type: 'application/pdf' });
-      const url = URL.createObjectURL(blob);
-      window.open(url, '_blank');
-      setTimeout(() => URL.revokeObjectURL(url), 60000);
-    } catch (e) {
-      console.error('Error viewing PDF', e);
+  const [viewerData, setViewerData] = useState<{ title: string; data: string; type: 'pdf' | 'image' } | null>(null);
+
+  const handleViewPdf = (pdfBase64?: string, label?: string) => {
+    if (pdfBase64) {
+      setViewerData({
+        title: `${module.brand} ${module.model} - ${label || 'Documento'}`,
+        data: pdfBase64,
+        type: 'pdf'
+      });
     }
   };
 
@@ -550,8 +551,8 @@ export const AutoCard = ({ module, onDelete, onEdit, onDirectUpdate, onShare, dr
                           <div className="flex items-center justify-between mb-1">
                             <p className="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-wider">{d.label}</p>
                               <div className="flex items-center gap-1">
-                                {module[d.field + 'Doc' as keyof AutoModule] && (
-                                  <button onClick={(e) => { e.stopPropagation(); handleViewPdf(module[d.field + 'Doc' as keyof AutoModule] as string); }} className="p-1 text-emerald-500 hover:bg-emerald-500/10 rounded-lg transition-all" title="Vedi documento">
+                                    {module[d.field + 'Doc' as keyof AutoModule] && (
+                                      <button onClick={(e) => { e.stopPropagation(); handleViewPdf(module[d.field + 'Doc' as keyof AutoModule] as string, d.label); }} className="p-1 text-emerald-500 hover:bg-emerald-500/10 rounded-lg transition-all" title="Vedi documento">
                                     <FileText className="w-3 h-3" />
                                   </button>
                                 )}
@@ -922,6 +923,13 @@ export const AutoCard = ({ module, onDelete, onEdit, onDirectUpdate, onShare, dr
           </div>
         )}
       </AnimatePresence>
+      <DocumentViewer
+        isOpen={!!viewerData}
+        onClose={() => setViewerData(null)}
+        title={viewerData?.title || ''}
+        data={viewerData?.data || ''}
+        type={viewerData?.type}
+      />
     </>
   );
 };

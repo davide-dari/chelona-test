@@ -4,6 +4,12 @@ import { SplitModule, SplitExpense, SplitParticipant, SplitType } from '../types
 import { calculateSplits, Settlement } from '../utils/splitAlgorithm';
 import { encryption } from '../services/encryption';
 import { DocumentScanner } from './DocumentScanner';
+import { DocumentViewer } from './DocumentViewer';
+import { 
+  PieChart, Pie, Cell, ResponsiveContainer, 
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, 
+  Tooltip, Legend, LineChart, Line 
+} from 'recharts';
 
 interface SplitScreenProps {
   module: SplitModule;
@@ -427,126 +433,111 @@ export const SplitScreen = ({ module, onClose, onSave, onSaveToSandbox }: SplitS
                    <span>{participants.length} Partecipanti</span>
                 </div>
             </div>
-
-            {/* Grafico Distribuzione per Partecipante (Pie Chart SVG) */}
             <div className="bg-[var(--card-bg)] p-6 rounded-[2rem] border border-[var(--border)] shadow-sm">
                 <h3 className="text-sm font-bold text-[var(--text-main)] uppercase tracking-wider mb-6">Distribuzione Spese</h3>
                 {expenses.length === 0 ? (
                   <p className="text-center text-xs text-[var(--text-muted)] py-10">Aggiungi spese per vedere il grafico</p>
                 ) : (
-                  <div className="flex flex-col sm:flex-row items-center gap-8">
-                    <div className="relative w-48 h-48 shrink-0">
-                      <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
-                        {(() => {
-                          const total = expenses.reduce((s, e) => s + e.amount, 0);
-                          let currentAngle = 0;
-                          const COLORS = ['#f59e0b', '#10b981', '#3b82f6', '#8b5cf6', '#ec4899', '#ef4444'];
-                          
-                          const participantTotals = participants.map(p => ({
+                  <div className="h-64 w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={participants.map((p, i) => ({
                             name: p.name,
-                            total: expenses.filter(e => e.paidById === p.id).reduce((s, e) => s + e.amount, 0)
-                          })).filter(p => p.total > 0);
-
-                          return participantTotals.map((p, i) => {
-                            const percentage = (p.total / total) * 100;
-                            const angle = (percentage / 100) * 360;
-                            const x1 = 50 + 40 * Math.cos((currentAngle * Math.PI) / 180);
-                            const y1 = 50 + 40 * Math.sin((currentAngle * Math.PI) / 180);
-                            currentAngle += angle;
-                            const x2 = 50 + 40 * Math.cos((currentAngle * Math.PI) / 180);
-                            const y2 = 50 + 40 * Math.sin((currentAngle * Math.PI) / 180);
-                            const largeArc = angle > 180 ? 1 : 0;
-                            
-                            return (
-                              <path
-                                key={i}
-                                d={`M 50 50 L ${x1} ${y1} A 40 40 0 ${largeArc} 1 ${x2} ${y2} Z`}
-                                fill={COLORS[i % COLORS.length]}
-                                className="transition-all hover:opacity-80 cursor-pointer"
-                                stroke="var(--card-bg)"
-                                strokeWidth="2"
-                              />
-                            );
-                          });
-                        })()}
-                      </svg>
-                      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                         <div className="w-24 h-24 bg-[var(--card-bg)] rounded-full border-4 border-[var(--bg)] shadow-inner" />
-                      </div>
-                    </div>
-                    <div className="flex-1 space-y-3 w-full">
-                       {participants.map((p, i) => {
-                         const total = expenses.reduce((s, e) => s + e.amount, 0);
-                         const pTotal = expenses.filter(e => e.paidById === p.id).reduce((s, e) => s + e.amount, 0);
-                         if (pTotal === 0) return null;
-                         const COLORS = ['#f59e0b', '#10b981', '#3b82f6', '#8b5cf6', '#ec4899', '#ef4444'];
-                         return (
-                           <div key={p.id} className="flex items-center justify-between gap-4">
-                             <div className="flex items-center gap-2 min-w-0">
-                               <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: COLORS[i % COLORS.length] }} />
-                               <span className="text-xs font-bold text-[var(--text-main)] truncate">{p.name}</span>
-                             </div>
-                             <span className="text-xs font-mono font-bold text-[var(--text-muted)] shrink-0">{((pTotal/total)*100).toFixed(1)}%</span>
-                           </div>
-                         );
-                       })}
-                    </div>
+                            value: expenses.filter(e => e.paidById === p.id).reduce((s, e) => s + e.amount, 0)
+                          })).filter(d => d.value > 0)}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={60}
+                          outerRadius={80}
+                          paddingAngle={5}
+                          dataKey="value"
+                        >
+                          {participants.map((_, index) => (
+                            <Cell key={`cell-${index}`} fill={['#f59e0b', '#10b981', '#3b82f6', '#8b5cf6', '#ec4899', '#ef4444'][index % 6]} stroke="none" />
+                          ))}
+                        </Pie>
+                        <Tooltip 
+                          contentStyle={{ backgroundColor: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: '12px', fontSize: '12px' }}
+                          itemStyle={{ fontWeight: 'bold' }}
+                        />
+                        <Legend iconType="circle" />
+                      </PieChart>
+                    </ResponsiveContainer>
                   </div>
                 )}
             </div>
 
-            {/* Grafico Andamento Temporale (Bar Chart SVG) */}
+            {/* Grafico Andamento Mensile (Recharts) */}
             <div className="bg-[var(--card-bg)] p-6 rounded-[2rem] border border-[var(--border)] shadow-sm">
-                <h3 className="text-sm font-bold text-[var(--text-main)] uppercase tracking-wider mb-6">Andamento Spese</h3>
+                <h3 className="text-sm font-bold text-[var(--text-main)] uppercase tracking-wider mb-6">Analisi Personale vs Gruppo</h3>
                 {expenses.length === 0 ? (
                   <p className="text-center text-xs text-[var(--text-muted)] py-10">Aggiungi spese per vedere l'andamento</p>
                 ) : (
-                  <div className="h-48 w-full">
-                    <svg viewBox="0 0 400 120" className="w-full h-full">
-                      {(() => {
-                        // Raggruppa per data (ultimi 7 giorni con spese)
-                        const dates = [...new Set(expenses.map(e => e.date))].sort();
-                        const dailyTotals = dates.map(d => ({
-                          date: d,
-                          total: expenses.filter(e => e.date === d).reduce((s, e) => s + e.amount, 0)
-                        })).slice(-10); // Mostra solo le ultime 10 date
-
-                        const max = Math.max(...dailyTotals.map(d => d.total));
-                        const step = dailyTotals.length > 0 ? 380 / dailyTotals.length : 0;
-
-                        return dailyTotals.map((d, i) => {
-                          const barH = (d.total / max) * 80;
-                          return (
-                            <g key={i}>
-                              <rect
-                                x={10 + i * step}
-                                y={100 - barH}
-                                width={step * 0.7}
-                                height={barH}
-                                fill="url(#barGradient)"
-                                rx="4"
-                              />
-                              <text
-                                x={10 + i * step + (step * 0.35)}
-                                y="115"
-                                fontSize="6"
-                                fontWeight="bold"
-                                fill="var(--text-muted)"
-                                textAnchor="middle"
-                              >
-                                {new Date(d.date).toLocaleDateString('it', { day: '2-digit', month: 'short' })}
-                              </text>
-                            </g>
-                          );
-                        });
-                      })()}
-                      <defs>
-                        <linearGradient id="barGradient" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor="#f59e0b" />
-                          <stop offset="100%" stopColor="#ef4444" />
-                        </linearGradient>
-                      </defs>
-                    </svg>
+                  <div className="h-64 w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart
+                        data={[
+                          {
+                            name: 'Spese Totali',
+                            Gruppo: expenses.filter(e => !e.categoryId || e.categoryId !== 'personal').reduce((s, e) => s + e.amount, 0),
+                            Personali: expenses.filter(e => e.categoryId === 'personal').reduce((s, e) => s + e.amount, 0)
+                          }
+                        ]}
+                      >
+                        <XAxis dataKey="name" hide />
+                        <YAxis hide />
+                        <Tooltip cursor={{fill: 'transparent'}} contentStyle={{ backgroundColor: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: '12px', fontSize: '12px' }} />
+                        <Legend />
+                        <Bar 
+                          dataKey="Gruppo" 
+                          fill="#f59e0b" 
+                          radius={[10, 10, 10, 10]} 
+                          name="Spese di Gruppo"
+                        />
+                        <Bar 
+                          dataKey="Personali" 
+                          fill="#3b82f6" 
+                          radius={[10, 10, 10, 10]} 
+                          name="Spese Personali"
+                        />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                )}
+            </div>
+            {/* Grafico Andamento Temporale (Recharts Line Chart) */}
+            <div className="bg-[var(--card-bg)] p-6 rounded-[2rem] border border-[var(--border)] shadow-sm">
+                <h3 className="text-sm font-bold text-[var(--text-main)] uppercase tracking-wider mb-6">Andamento Spese Ultimi 30 Giorni</h3>
+                {expenses.length === 0 ? (
+                  <p className="text-center text-xs text-[var(--text-muted)] py-10">Aggiungi spese per vedere l'andamento</p>
+                ) : (
+                  <div className="h-64 w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart
+                        data={[...new Set(expenses.map(e => e.date))]
+                          .sort()
+                          .slice(-15)
+                          .map(date => ({
+                            date: new Date(date).toLocaleDateString('it', { day: '2-digit', month: 'short' }),
+                            Importo: expenses.filter(e => e.date === date).reduce((s, e) => s + e.amount, 0)
+                          }))
+                        }
+                      >
+                        <XAxis dataKey="date" fontSize={10} tick={{fill: 'var(--text-muted)'}} />
+                        <YAxis hide />
+                        <Tooltip 
+                          contentStyle={{ backgroundColor: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: '12px', fontSize: '12px' }}
+                        />
+                        <Line 
+                          type="monotone" 
+                          dataKey="Importo" 
+                          stroke="#f59e0b" 
+                          strokeWidth={4} 
+                          dot={{r: 4, fill: '#f59e0b', strokeWidth: 2, stroke: 'var(--card-bg)'}} 
+                        />
+                      </LineChart>
+                    </ResponsiveContainer>
                   </div>
                 )}
             </div>
@@ -799,74 +790,13 @@ export const SplitScreen = ({ module, onClose, onSave, onSaveToSandbox }: SplitS
         />
       )}
 
-      {/* Receipt Viewer Modal */}
-      {viewingReceipt && (
-        <div className="fixed inset-0 z-[250] bg-black/80 backdrop-blur-sm flex flex-col items-center justify-center p-4">
-          <div className="w-full max-w-lg bg-[var(--card-bg)] border border-[var(--border)] rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[85vh]">
-            <div className="flex items-center justify-between p-4 border-b border-[var(--border)]">
-              <h3 className="text-sm font-bold text-[var(--text-main)] uppercase tracking-wider">Scontrino Allegato</h3>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => {
-                    try {
-                      const base64 = viewingReceipt.split(',')[1] || viewingReceipt;
-                      const binary = atob(base64);
-                      const bytes = new Uint8Array(binary.length);
-                      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-                      const blob = new Blob([bytes], { type: 'application/pdf' });
-                      const url = URL.createObjectURL(blob);
-                      const a = document.createElement('a');
-                      a.href = url;
-                      a.download = `scontrino_${Date.now()}.pdf`;
-                      document.body.appendChild(a);
-                      a.click();
-                      document.body.removeChild(a);
-                      URL.revokeObjectURL(url);
-                    } catch (e) { console.error(e); }
-                  }}
-                  className="p-2 bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 rounded-xl transition-all"
-                  title="Scarica PDF"
-                >
-                  <FileDown className="w-5 h-5" />
-                </button>
-                <button
-                  onClick={() => {
-                    try {
-                      const base64 = viewingReceipt.split(',')[1] || viewingReceipt;
-                      const binary = atob(base64);
-                      const bytes = new Uint8Array(binary.length);
-                      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-                      const blob = new Blob([bytes], { type: 'application/pdf' });
-                      const url = URL.createObjectURL(blob);
-                      window.open(url, '_blank');
-                      setTimeout(() => URL.revokeObjectURL(url), 60000);
-                    } catch (e) { console.error(e); }
-                  }}
-                  className="p-2 bg-blue-500/10 text-blue-500 hover:bg-blue-500/20 rounded-xl transition-all"
-                  title="Apri PDF"
-                >
-                  <Eye className="w-5 h-5" />
-                </button>
-                <button
-                  onClick={() => setViewingReceipt(null)}
-                  className="p-2 hover:bg-red-500/10 text-[var(--text-muted)] hover:text-red-500 rounded-xl transition-all"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-            </div>
-            <div className="flex-1 flex items-center justify-center p-8">
-              <div className="text-center">
-                <div className="w-20 h-20 mx-auto mb-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
-                  <Receipt className="w-10 h-10 text-amber-500" />
-                </div>
-                <p className="text-sm font-bold text-[var(--text-main)] mb-1">Scontrino PDF</p>
-                <p className="text-xs text-[var(--text-muted)]">Usa i tasti sopra per aprire o scaricare</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <DocumentViewer
+        isOpen={!!viewingReceipt}
+        onClose={() => setViewingReceipt(null)}
+        title="Scontrino Allegato"
+        data={viewingReceipt || ''}
+        type="pdf"
+      />
 
     </div>
   );

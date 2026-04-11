@@ -1,0 +1,40 @@
+
+> chelona@1.0.5 build
+> vite build
+
+vite v6.4.1 building for production...
+transforming...
+✓ 20 modules transformed.
+✗ Build failed in 474ms
+error during build:
+[vite:esbuild] Transform failed with 2 errors:
+/Users/davidedari/Documents/Progetti/app/chelona/src/components/LockScreen.tsx:500:10: ERROR: Unexpected closing "AnimatePresence" tag does not match opening "motion.div" tag
+/Users/davidedari/Documents/Progetti/app/chelona/src/components/LockScreen.tsx:501:19: ERROR: Unterminated regular expression
+file: /Users/davidedari/Documents/Progetti/app/chelona/src/components/LockScreen.tsx:500:10
+
+Unexpected closing "AnimatePresence" tag does not match opening "motion.div" tag
+498|              </>
+499|            )}
+500|          </AnimatePresence>
+   |            ^
+501|        </motion.div>
+502|      </div>
+
+Unterminated regular expression
+499|            )}
+500|          </AnimatePresence>
+501|        </motion.div>
+   |                     ^
+502|      </div>
+503|    );
+
+    at failureErrorWithLog (/Users/davidedari/Documents/Progetti/app/chelona/node_modules/vite/node_modules/esbuild/lib/main.js:1467:15)
+    at /Users/davidedari/Documents/Progetti/app/chelona/node_modules/vite/node_modules/esbuild/lib/main.js:736:50
+    at responseCallbacks.<computed> (/Users/davidedari/Documents/Progetti/app/chelona/node_modules/vite/node_modules/esbuild/lib/main.js:603:9)
+    at handleIncomingPacket (/Users/davidedari/Documents/Progetti/app/chelona/node_modules/vite/node_modules/esbuild/lib/main.js:658:12)
+    at Socket.readFromStdout (/Users/davidedari/Documents/Progetti/app/chelona/node_modules/vite/node_modules/esbuild/lib/main.js:581:7)
+    at Socket.emit (node:events:508:28)
+    at addChunk (node:internal/streams/readable:559:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:510:3)
+    at Readable.push (node:internal/streams/readable:390:5)
+    at Pipe.onStreamRead (node:internal/stream_base_commons:189:23)

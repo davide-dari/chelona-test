@@ -28,6 +28,7 @@ export const LockScreen = ({ isVisible, onAuthenticated, onStartScan, onOpenTool
   const [isLoading, setIsLoading] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [isBioSupported, setIsBioSupported] = useState(false);
+  const [onboardingStep, setOnboardingStep] = useState(0); // 0: Welcome, 1: Privacy, 2: Setup
 
   useEffect(() => {
     if (isVisible) {
@@ -304,15 +305,83 @@ export const LockScreen = ({ isVisible, onAuthenticated, onStartScan, onOpenTool
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: 20 }}
             >
-              {profiles.length > 0 && (
-                <button onClick={() => setView('selector')} className="flex items-center gap-2 text-gray-400 hover:text-gray-600 transition-colors mb-6 text-sm font-bold">
-                  <ArrowLeft className="w-4 h-4" />
-                  Torna ai profili
-                </button>
-              )}
+              {profiles.length === 0 && onboardingStep < 2 ? (
+                <div className="flex flex-col items-center py-4">
+                  <AnimatePresence mode="wait">
+                    {onboardingStep === 0 && (
+                      <motion.div 
+                        key="step0"
+                        initial={{ opacity: 0, scale: 0.9 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 1.1 }}
+                        className="flex flex-col items-center text-center"
+                      >
+                        <div className="w-24 h-24 bg-amber-500 rounded-[2.5rem] flex items-center justify-center text-white shadow-2xl shadow-amber-500/40 mb-10 relative">
+                            <motion.div 
+                                animate={{ scale: [1, 1.2, 1] }} 
+                                transition={{ repeat: Infinity, duration: 3 }}
+                                className="absolute inset-0 bg-amber-500 rounded-[2.5rem] blur-2xl opacity-20" 
+                            />
+                            <Lock className="w-12 h-12 relative z-10" />
+                        </div>
+                        <h1 className="text-3xl font-black text-[var(--text-main)] mb-4 tracking-tight">Chelona</h1>
+                        <p className="text-[var(--text-muted)] text-base font-medium px-4 leading-relaxed mb-12">
+                          La tua cassaforte digitale <span className="text-amber-500 font-bold">100% offline</span> e sicura.
+                        </p>
+                        <button 
+                          onClick={() => setOnboardingStep(1)}
+                          className="group flex items-center gap-3 px-8 py-4 bg-[var(--text-main)] text-[var(--bg)] rounded-2xl font-black hover:scale-105 active:scale-95 transition-all shadow-xl"
+                        >
+                          Inizia ora
+                          <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                        </button>
+                      </motion.div>
+                    )}
 
-              <div className="flex flex-col items-center mb-6 sm:mb-8">
-                {view === 'login' && selectedProfile ? (
+                    {onboardingStep === 1 && (
+                      <motion.div 
+                        key="step1"
+                        initial={{ opacity: 0, x: 50 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: -50 }}
+                        className="flex flex-col items-center text-center"
+                      >
+                        <div className="w-20 h-20 bg-emerald-500/10 rounded-3xl flex items-center justify-center text-emerald-500 border border-emerald-500/20 mb-8">
+                             <Fingerprint className="w-10 h-10" />
+                        </div>
+                        <h2 className="text-2xl font-black text-[var(--text-main)] mb-4 tracking-tight">Privacy Totale</h2>
+                        <p className="text-[var(--text-muted)] text-sm font-medium px-6 leading-relaxed mb-10">
+                          Tutti i dati sono criptati con <span className="text-emerald-500 font-bold">AES-256</span> direttamente sul tuo dispositivo. Nessun server, nessun cloud.
+                        </p>
+                        <div className="flex flex-col gap-3 w-full px-4">
+                            <button 
+                              onClick={() => setOnboardingStep(2)}
+                              className="w-full flex items-center justify-center gap-3 px-8 py-4 bg-amber-500 text-white rounded-2xl font-black hover:scale-[1.02] active:scale-95 transition-all shadow-xl shadow-amber-500/20"
+                            >
+                              Configura Profilo
+                            </button>
+                            <button 
+                              onClick={() => setOnboardingStep(0)}
+                              className="text-[var(--text-muted)] text-xs font-bold py-2"
+                            >
+                              Indietro
+                            </button>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              ) : (
+                <>
+                  {profiles.length > 0 && (
+                    <button onClick={() => setView('selector')} className="flex items-center gap-2 text-gray-400 hover:text-gray-600 transition-colors mb-6 text-sm font-bold">
+                      <ArrowLeft className="w-4 h-4" />
+                      Torna ai profili
+                    </button>
+                  )}
+
+                  <div className="flex flex-col items-center mb-6 sm:mb-8">
+                    {view === 'login' && selectedProfile ? (
                   <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-[var(--bg)] shadow-lg bg-[var(--accent-bg)]">
                     {selectedProfile.avatar ? (
                       <img src={selectedProfile.avatar} alt={selectedProfile.username} className="w-full h-full object-cover" />
@@ -426,10 +495,12 @@ export const LockScreen = ({ isVisible, onAuthenticated, onStartScan, onOpenTool
                   )}
                 </div>
               )}
-            </motion.div>
+            </>
           )}
-        </AnimatePresence>
-      </motion.div>
-    </div>
-  );
+        </motion.div>
+      )}
+    </AnimatePresence>
+  </motion.div>
+</div>
+);
 };
