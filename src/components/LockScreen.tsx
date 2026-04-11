@@ -41,9 +41,8 @@ export const LockScreen = ({ isVisible, onAuthenticated, onStartScan, onOpenTool
     const refreshProfiles = () => {
       const loadedProfiles = storage.loadProfiles();
       setProfiles(loadedProfiles);
-      if (loadedProfiles.length === 0) {
-        setView('setup');
-      } else if (view === 'setup') {
+      // Don't auto-jump to setup anymore, stay in selector to show tools
+      if (loadedProfiles.length > 0 && view === 'setup') {
         setView('selector');
       }
     };
@@ -200,8 +199,14 @@ export const LockScreen = ({ isVisible, onAuthenticated, onStartScan, onOpenTool
               exit={{ opacity: 0, scale: 0.95 }}
             >
               <div className="text-center mb-8">
-                <h1 className="text-2xl sm:text-3xl font-bold text-[var(--text-main)]">Chi sta guardando?</h1>
-                <p className="text-[var(--text-muted)] mt-2">Seleziona il tuo profilo per accedere ai tuoi dati protetti.</p>
+                <h1 className="text-2xl sm:text-3xl font-bold text-[var(--text-main)]">
+                  {profiles.length > 0 ? 'Chi sta guardando?' : 'Benvenuto su Chelona'}
+                </h1>
+                <p className="text-[var(--text-muted)] mt-2">
+                  {profiles.length > 0 
+                    ? 'Seleziona il tuo profilo per accedere ai tuoi dati protetti.' 
+                    : 'Crea un profilo o usa gli strumenti rapidi per iniziare.'}
+                </p>
               </div>
 
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 sm:gap-6 justify-center">
