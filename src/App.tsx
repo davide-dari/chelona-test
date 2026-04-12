@@ -577,6 +577,17 @@ export default function App() {
     }
   };
 
+  const handleUpdateWidgets = (catIds: string[], toolIds: string[]) => {
+    setPinnedCategoryIds(catIds);
+    setPinnedToolIds(toolIds);
+    
+    // Save to profile
+    const profiles = storage.loadProfiles();
+    const updated = profiles.map(p => p.id === currentProfileId ? { ...p, pinnedCategoryIds: catIds, pinnedToolIds: toolIds } : p);
+    storage.saveProfiles(updated);
+    showToast('Widget aggiornati!');
+  };
+
   const handleLogout = () => {
     setEncryptionKey(null);
     setCurrentProfileId(null);
@@ -959,6 +970,9 @@ export default function App() {
                 folders={folders}
                 onEncryptionKeyChanged={setEncryptionKey}
                 showToast={showToast}
+                pinnedCategoryIds={pinnedCategoryIds}
+                pinnedToolIds={pinnedToolIds}
+                onUpdateWidgets={handleUpdateWidgets}
               />
             ) : isToolsOpen ? (
               <ToolsScreen 
@@ -1696,7 +1710,7 @@ export default function App() {
 
       {/* Update Modal */}
       <AnimatePresence>
-        {availableUpdate && (
+        {availableUpdate && encryptionKey && (
           <div className="fixed inset-0 z-[200000] flex items-center justify-center p-6">
             <motion.div
               initial={{ opacity: 0 }}
