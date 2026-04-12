@@ -1,0 +1,10 @@
+{
+  "appId": "com.davidedari.chelona",
+  "appName": "Chelona",
+  "webDir": "dist",
+  "plugins": {
+    "CapacitorHttp": {
+      "enabled": true
+    }
+  }
+}
