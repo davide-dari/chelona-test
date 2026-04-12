@@ -1,4 +1,4 @@
-export type ModuleType = 'generic' | 'auto' | 'document' | 'split';
+export type ModuleType = 'generic' | 'auto' | 'document' | 'split' | 'single-expense';
 export type FuelType = 'benzina' | 'diesel' | 'gpl' | 'metano' | 'ibrida' | 'elettrica';
 
 export interface Folder {
@@ -103,7 +103,17 @@ export interface SplitModule extends BaseModule {
   expenses: SplitExpense[];
 }
 
-export type Module = GenericModule | AutoModule | DocumentModule | SplitModule;
+export interface SingleExpenseModule extends BaseModule {
+  type: 'single-expense';
+  amount: number;
+  date: string;
+  category: string;
+  description: string;
+  attachment?: string; // base64 PDF/Image
+  currency: string;
+}
+
+export type Module = GenericModule | AutoModule | DocumentModule | SplitModule | SingleExpenseModule;
 
 export interface DashboardState {
   modules: Module[];

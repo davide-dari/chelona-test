@@ -16,6 +16,7 @@ import { ToolsScreen, TOOLS } from './components/ToolsScreen';
 import { AutoEditScreen } from './components/AutoEditScreen';
 import { SplitScreen } from './components/SplitScreen';
 import { DocumentArchive } from './components/DocumentArchive';
+import { SingleExpenseScreen } from './components/SingleExpenseScreen';
 import { notificationService } from './services/notificationService';
 import { motion, AnimatePresence } from 'motion/react';
 import JSZip from 'jszip';
@@ -104,6 +105,12 @@ const TEMPLATES = {
     icon: Wallet,
     color: 'text-purple-500'
   },
+  'single-expense': {
+    title: 'Spesa Singola',
+    content: '',
+    icon: Receipt,
+    color: 'text-amber-500'
+  },
   none: {
     title: 'Appunto Libero',
     content: '',
@@ -125,6 +132,7 @@ export default function App() {
   const [editingModuleId, setEditingModuleId] = useState<string | null>(null);
   const [editingAutoModule, setEditingAutoModule] = useState<import('./types').AutoModule | null>(null);
   const [editingSplitModule, setEditingSplitModule] = useState<import('./types').SplitModule | null>(null);
+  const [editingSingleExpenseModule, setEditingSingleExpenseModule] = useState<import('./types').SingleExpenseModule | null>(null);
   const [sharingModule, setSharingModule] = useState<Module | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedType, setSelectedType] = useState<ModuleType | null>(null);
@@ -449,6 +457,10 @@ export default function App() {
     }
     if (module.type === 'split') {
       setEditingSplitModule(module as import('./types').SplitModule);
+      return;
+    }
+    if (module.type === 'single-expense') {
+      setEditingSingleExpenseModule(module as import('./types').SingleExpenseModule);
       return;
     }
     setEditingModuleId(module.id);
@@ -1064,6 +1076,59 @@ export default function App() {
                     </div>
                   )}
 
+                  {/* Single Expense Screen (Edit/Create) */}
+                  {(editingSingleExpenseModule || formData.template === 'single-expense') && (
+                    <SingleExpenseScreen
+                      module={editingSingleExpenseModule || {
+                        id: crypto.randomUUID(),
+                        type: 'single-expense',
+                        title: 'Spesa Singola',
+                        description: '',
+                        amount: 0,
+                        date: new Date().toISOString().substring(0, 10),
+                        category: 'other',
+                        currency: 'EUR',
+                        x: 0, y: 0, w: 2, h: 2
+                      }}
+                      onClose={() => {
+                        setEditingSingleExpenseModule(null);
+                        setFormData({});
+                        setIsAdding(false);
+                      }}
+                      onSave={async (updated) => {
+                        if (editingSingleExpenseModule) {
+                          const updatedModules = modules.map(m => m.id === updated.id ? updated : m);
+                          setModules(updatedModules);
+                          await saveAppState(updatedModules, folders);
+                        } else {
+                          const updatedModules = [...modules, updated];
+                          setModules(updatedModules);
+                          await saveAppState(updatedModules, folders);
+                        }
+                        setEditingSingleExpenseModule(null);
+                        setFormData({});
+                        setIsAdding(false);
+                        showToast(editingSingleExpenseModule ? 'Spesa aggiornata!' : 'Spesa creata!', 'success');
+                      }}
+                      onSaveToSandbox={async (title, base64) => {
+                        const doc: DocumentModule = {
+                           id: crypto.randomUUID(),
+                           type: 'document',
+                           title,
+                           documentType: 'generic',
+                           pdfAttachment: base64,
+                           createdAt: new Date().toISOString(),
+                           updatedAt: new Date().toISOString(),
+                           x: 0, y: 0, w: 2, h: 2
+                        };
+                        const updatedModules = [...modules, doc];
+                        setModules(updatedModules);
+                        await saveAppState(updatedModules, folders);
+                        showToast("Allegato salvato nell'archivio documenti");
+                      }}
+                    />
+                  )}
+
                   {/* Sub-menu Spese */}
                   {!editingModuleId && !formData.template && spesaSubMenu && (
                     <div className="bg-[var(--card-bg)]/80 backdrop-blur-3xl rounded-[2.5rem] border border-[var(--border)] p-6 lg:p-10 shadow-[0_8px_40px_rgba(0,0,0,0.06)]">
@@ -1089,6 +1154,20 @@ export default function App() {
                           <div className="text-center">
                             <span className="font-bold text-xs uppercase tracking-wider block">Gruppo Spese</span>
                             <span className="text-[10px] text-[var(--text-muted)] mt-1 block">Dividi le spese con altri</span>
+                          </div>
+                        </button>
+                        <button
+                          onClick={() => {
+                            setSpesaSubMenu(false);
+                            setFormData({ ...formData, template: 'single-expense', title: 'Spesa Singola', content: '' });
+                            setAutoFormStep(0);
+                          }}
+                          className="flex flex-col items-center justify-center gap-4 p-8 rounded-2xl border border-[var(--border)] hover:border-emerald-500/60 hover:bg-emerald-500/10 transition-all group text-center h-full text-[var(--text-main)]"
+                        >
+                          <CreditCard className="w-8 h-8 text-emerald-500 group-hover:scale-110 transition-transform" />
+                          <div className="text-center">
+                            <span className="font-bold text-xs uppercase tracking-wider block">Spesa Singola</span>
+                            <span className="text-[10px] text-[var(--text-muted)] mt-1 block">Traccia una spesa</span>
                           </div>
                         </button>
                       </div>
@@ -1523,6 +1602,8 @@ export default function App() {
                                 <DocumentCard module={module} onDelete={requestDelete} onEdit={openEditModal} onShare={setSharingModule} />
                               ) : module.type === 'split' ? (
                                 <SplitCard module={module as any} onDelete={requestDelete} onEdit={openEditModal} onShare={setSharingModule} />
+                              ) : module.type === 'single-expense' ? (
+                                <SingleExpenseCard module={module as any} onDelete={requestDelete} onEdit={openEditModal} onShare={setSharingModule} />
                               ) : (
                                 <GenericCard module={module as any} onDelete={requestDelete} onEdit={openEditModal} onShare={setSharingModule} />
                               )}

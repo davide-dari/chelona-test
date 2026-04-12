@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { CreditCard, ShieldCheck, Wallet, Fingerprint, Plus, Trash2, Calendar, DollarSign, Pencil, StickyNote, Copy, Check, GripVertical, Car, Wrench, AlertCircle, FileText, QrCode, FileDown, X, Clock, Eye, Lock, ChevronRight, Bell, BellOff, Gauge, Users } from 'lucide-react';
-import { Module, GenericModule, AutoModule, DocumentModule, SplitModule } from '../types';
+import { Module, GenericModule, AutoModule, DocumentModule, SplitModule, SingleExpenseModule } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
 import { CAR_BRANDS } from '../utils/carBrands';
 import JSZip from 'jszip';
@@ -930,6 +930,84 @@ export const AutoCard = ({ module, onDelete, onEdit, onDirectUpdate, onShare, dr
         data={viewerData?.data || ''}
         type={viewerData?.type}
       />
+    </>
+  );
+};
+
+export const SingleExpenseCard = ({ module, onDelete, onEdit, onShare, dragHandleProps }: { module: SingleExpenseModule; onDelete: (id: string) => void; onEdit: (m: Module) => void; onShare: (m: Module) => void; dragHandleProps?: any }) => {
+  const [viewingAttachment, setViewingAttachment] = useState<string | null>(null);
+  
+  const getCategoryTheme = (cat: string) => {
+    switch (cat) {
+      case 'food':          return { icon: '🛒', color: 'text-orange-500', bg: 'bg-orange-500/10' };
+      case 'transport':     return { icon: '🚗', color: 'text-blue-500', bg: 'bg-blue-500/10' };
+      case 'housing':       return { icon: '🏠', color: 'text-emerald-500', bg: 'bg-emerald-500/10' };
+      case 'health':        return { icon: '🏥', color: 'text-red-500', bg: 'bg-red-500/10' };
+      case 'entertainment': return { icon: '🎬', color: 'text-purple-500', bg: 'bg-purple-500/10' };
+      case 'shopping':      return { icon: '🛍️', color: 'text-pink-500', bg: 'bg-pink-500/10' };
+      default:               return { icon: '✨', color: 'text-gray-500', bg: 'bg-gray-500/10' };
+    }
+  };
+
+  const theme = getCategoryTheme(module.category);
+  const formattedAmount = new Intl.NumberFormat(undefined, { style: 'currency', currency: module.currency || 'EUR' }).format(module.amount);
+
+  return (
+    <>
+      <ModuleWrapper module={module} onDelete={onDelete} onEdit={onEdit} dragHandleProps={dragHandleProps}>
+        <div 
+          className="flex flex-col cursor-pointer group/card hover:bg-[var(--bg)] transition-colors p-3 -m-3 rounded-2xl active:scale-[0.98] h-full"
+          onClick={() => onEdit(module)}
+        >
+          <div className="flex items-center justify-between mb-3 shrink-0">
+            <div className="flex items-center gap-3">
+              <div className={`w-10 h-10 ${theme.bg} rounded-xl flex items-center justify-center border border-[var(--border)] shrink-0`}>
+                <span className="text-lg">{theme.icon}</span>
+              </div>
+              <div className="min-w-0">
+                <h4 className="font-bold text-[14px] text-[var(--text-main)] leading-tight truncate">{module.description || 'Spesa'}</h4>
+                <p className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider">{new Date(module.date).toLocaleDateString()}</p>
+              </div>
+            </div>
+            {module.attachment && (
+              <button 
+                onClick={(e) => { e.stopPropagation(); setViewingAttachment(module.attachment!); }}
+                className="p-1 px-1.5 bg-emerald-500/10 text-emerald-500 rounded-md border border-emerald-500/20 hover:bg-emerald-500/20 transition-colors"
+                title="Vedi Allegato"
+              >
+                <Paperclip className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+
+          <div className="flex-1 flex flex-col justify-end mt-2">
+            <p className="text-[10px] uppercase font-black text-amber-500 tracking-[0.1em] mb-1">Importo</p>
+            <div className="text-2xl font-black text-[var(--text-main)] tracking-tight">
+              {formattedAmount}
+            </div>
+          </div>
+
+          <div className="mt-4 pt-3 border-t border-[var(--border)] shrink-0" onClick={e => e.stopPropagation()}>
+            <button
+              onClick={() => onShare(module)}
+              className="w-full flex items-center justify-center gap-2 py-2.5 bg-[var(--info-bg)] hover:bg-[var(--info)]/20 text-[var(--info)] border border-[var(--info)]/30 rounded-xl text-[10px] font-bold transition-all shadow-sm"
+            >
+              <QrCode className="w-3.5 h-3.5" />
+              Condividi
+            </button>
+          </div>
+        </div>
+      </ModuleWrapper>
+
+      <AnimatePresence>
+        {viewingAttachment && (
+          <DocumentViewer 
+            pdfBase64={viewingAttachment}
+            title={module.description || 'Scontrino'}
+            onClose={() => setViewingAttachment(null)}
+          />
+        )}
+      </AnimatePresence>
     </>
   );
 };
