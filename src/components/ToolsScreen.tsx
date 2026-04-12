@@ -186,7 +186,6 @@ export const ToolsScreen = ({ showToast, onSaveToSandbox, initialToolId, onReset
     { id: 'all', label: 'Tutti', icon: ClipboardList },
     { id: 'pdf', label: 'PDF', icon: FileDown },
     { id: 'utility', label: 'Vario', icon: Settings2 },
-    { id: 'archive', label: 'Archivio', icon: Book },
   ];
 
   return (
@@ -305,57 +304,6 @@ export const ToolsScreen = ({ showToast, onSaveToSandbox, initialToolId, onReset
                              })()}
                            </p>
                         </div>
-                      </div>
-                    </div>
-                  ) : activeTool === 'archive' ? (
-                    <div className="space-y-6">
-                      <div className="relative group">
-                        <SearchIcon className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--text-muted)] group-focus-within:text-amber-500" />
-                        <input 
-                          type="text" 
-                          placeholder="Cerca nei documenti..." 
-                          value={archiveSearch}
-                          onChange={(e) => setArchiveSearch(e.target.value)}
-                          className="w-full pl-14 pr-6 py-4 bg-[var(--card-bg)] border border-[var(--border)] rounded-3xl outline-none focus:ring-4 focus:ring-amber-500/5 transition-all font-bold text-[var(--text-main)]"
-                        />
-                      </div>
-
-                      <div className="grid grid-cols-1 gap-3 max-h-[60vh] overflow-y-auto scrollbar-none">
-                        {modules
-                          .filter(m => {
-                            const hasPdf = (m as any).pdfAttachment || (m as any).receiptAttachment;
-                            if (!hasPdf) return false;
-                            const title = (m.title || '').toLowerCase();
-                            const search = archiveSearch.toLowerCase();
-                            return title.includes(search);
-                          })
-                          .map(m => (
-                            <div 
-                              key={m.id} 
-                              onClick={() => {
-                                setViewingDoc((m as any).pdfAttachment || (m as any).receiptAttachment);
-                                setViewingTitle(m.title);
-                              }}
-                              className="bg-[var(--card-bg)] p-4 rounded-2xl border border-[var(--border)] hover:border-amber-500/50 transition-all cursor-pointer flex items-center gap-4 group shadow-sm"
-                            >
-                               <div className="w-10 h-10 bg-amber-500/10 rounded-xl flex items-center justify-center text-amber-500 shrink-0 group-hover:scale-110 transition-transform">
-                                  <Book className="w-5 h-5" />
-                               </div>
-                               <div className="min-w-0 flex-1">
-                                  <h4 className="font-bold text-[var(--text-main)] truncate text-xs">{m.title}</h4>
-                                  <p className="text-[9px] text-[var(--text-muted)] font-black uppercase mt-0.5">
-                                    {new Date(m.createdAt || Date.now()).toLocaleDateString()}
-                                  </p>
-                               </div>
-                               <Eye className="w-4 h-4 text-amber-500 opacity-0 group-hover:opacity-100 transition-opacity" />
-                            </div>
-                          ))
-                        }
-                        {modules.filter(m => (m as any).pdfAttachment || (m as any).receiptAttachment).length === 0 && (
-                          <div className="py-12 text-center bg-[var(--card-bg)]/30 border-2 border-dashed border-[var(--border)] rounded-[2.5rem]">
-                            <p className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-widest">Nessun PDF salvato</p>
-                          </div>
-                        )}
                       </div>
                     </div>
                   ) : (

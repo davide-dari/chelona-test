@@ -1079,6 +1079,14 @@ export default function App() {
                             <span className="font-bold text-xs uppercase tracking-wider">{t.title}</span>
                           </button>
                         ))}
+                        <button
+                          onClick={() => { setIsArchiveOpen(true); setIsAdding(false); }}
+                          className="flex flex-col items-center justify-center gap-4 p-8 rounded-2xl border-2 border-dashed border-amber-500/30 hover:border-amber-500 hover:bg-amber-500/10 transition-all group text-center h-full text-[var(--text-main)] overflow-hidden relative"
+                        >
+                          <div className="absolute top-0 right-0 bg-amber-500 text-white text-[8px] font-black px-2 py-0.5 rounded-bl-lg uppercase tracking-widest shadow-sm">PDF</div>
+                          <BookOpen className="w-8 h-8 text-amber-500 group-hover:scale-110 transition-transform" />
+                          <span className="font-bold text-xs uppercase tracking-wider text-amber-600">Archivio</span>
+                        </button>
                       </div>
                     </div>
                   )}
@@ -1648,7 +1656,27 @@ export default function App() {
                     </button>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 3xl:grid-cols-6 gap-6 stagger-fade-in px-4 lg:px-8 pb-32 md:pb-8">
+                  <>
+                    {selectedType === 'document' && (
+                      <div className="px-4 lg:px-8 mb-8 stagger-fade-in">
+                        <button
+                          onClick={() => setIsArchiveOpen(true)}
+                          className="w-full bg-gradient-to-r from-amber-500 to-amber-400 p-6 rounded-[2.2rem] flex items-center justify-between group shadow-xl shadow-amber-500/20 active:scale-[0.98] transition-all"
+                        >
+                          <div className="flex items-center gap-4">
+                            <div className="w-14 h-14 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center text-white">
+                               <BookOpen className="w-7 h-7" />
+                            </div>
+                            <div className="text-left">
+                               <h3 className="text-lg font-black text-white leading-tight">Archivio Documenti PDF</h3>
+                               <p className="text-xs font-bold text-white/80 uppercase tracking-widest mt-0.5">Sfoglia tutti i file salvati</p>
+                            </div>
+                          </div>
+                          <ArrowLeft className="w-6 h-6 text-white rotate-180 group-hover:translate-x-1 transition-transform" />
+                        </button>
+                      </div>
+                    )}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 3xl:grid-cols-6 gap-6 stagger-fade-in px-4 lg:px-8 pb-32 md:pb-8">
                     {filteredModules.map((module) => (
                       <div key={module.id} className="w-full">
                         {module.type === 'auto' ? (
@@ -1663,7 +1691,8 @@ export default function App() {
                       </div>
                     ))}
                   </div>
-                )}
+                </>
+              )}
               </div>
             )}
           </div>
