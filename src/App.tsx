@@ -236,6 +236,8 @@ export default function App() {
           .filter(m => m.type === 'auto')
           .map(m => ({ id: m.id, brand: (m as any).brand, model: (m as any).model, currentKm: (m as any).currentKm }));
         notificationService.checkAndFire(autoMods);
+        // Trigger automatic update check upon successful unlock
+        handleCheckUpdate(true);
       }
     };
     init();

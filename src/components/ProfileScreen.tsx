@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, User, Lock, Fingerprint, LogOut, Camera, Check, AlertCircle, Share2, Download, Copy, ShieldCheck, QrCode, SunDim, RefreshCw, LayoutDashboard, Plus } from 'lucide-react';
+import { X, User, Lock, Fingerprint, LogOut, Camera, Check, AlertCircle, Share2, Download, Copy, ShieldCheck, QrCode, SunDim, RefreshCw, LayoutDashboard, Plus, Sun, Moon } from 'lucide-react';
 import { storage } from '../services/storage';
 import { encryption } from '../services/encryption';
 import { updateService } from '../services/updateService';
