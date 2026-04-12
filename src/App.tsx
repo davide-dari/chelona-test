@@ -162,24 +162,29 @@ export default function App() {
   // Banking-Style Auto-Lock: listen for app background/minimize events
   useEffect(() => {
     console.log('[App] Initializing Lifecycle Listener');
-    const listener = App.addListener('appStateChange', ({ isActive }) => {
-      console.log('[App] State changed, isActive:', isActive);
-      if (!isActive) {
-        console.log('[App] Backgrounding: Locking application for security.');
-        // Wipe sensitive data from memory
-        setEncryptionKey(null);
-        // Reset navigation to prevent UI flickers when returning
-        setIsProfileOpen(false);
-        setIsSettingsOpen(false);
-        setIsAdding(false);
-        setIsToolsOpen(false);
-        setSelectedType(null);
-      }
-    });
-
-    return () => {
-      listener.then(l => l.remove());
-    };
+    let listenerPromise: Promise<import('@capacitor/app').AppRestoredResult & { remove: () => void }> | null = null;
+    
+    // Check if App plugin is available and has the required methods
+    if (App && typeof App.addListener === 'function') {
+      const listener = App.addListener('appStateChange', ({ isActive }) => {
+        console.log('[App] State changed, isActive:', isActive);
+        if (!isActive) {
+          console.log('[App] Backgrounding: Locking application for security.');
+          setEncryptionKey(null);
+          setIsProfileOpen(false);
+          setIsSettingsOpen(false);
+          setIsAdding(false);
+          setIsToolsOpen(false);
+          setSelectedType(null);
+        }
+      });
+      
+      return () => {
+        listener.then(l => l.remove());
+      };
+    } else {
+      console.warn('[App] Capacitor App plugin not available or addListener missing.');
+    }
   }, []);
   const [availableUpdate, setAvailableUpdate] = useState<UpdateInfo | null>(null);
   const [updateProgress, setUpdateProgress] = useState<number | null>(null);

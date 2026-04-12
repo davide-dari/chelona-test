@@ -7,9 +7,14 @@ export const biometricService = {
   // Check if Biometrics/FaceID is supported and available
   async isSupported(): Promise<boolean> {
     try {
+      if (!NativeBiometric || typeof NativeBiometric.isAvailable !== 'function') {
+        console.warn('[BiometricService] NativeBiometric plugin is not initialized.');
+        return false;
+      }
       const result = await NativeBiometric.isAvailable();
       return result.isAvailable;
     } catch (e) {
+      console.error('[BiometricService] isSupported error:', e);
       return false;
     }
   },
@@ -17,6 +22,7 @@ export const biometricService = {
   // Get biometry type
   async getBiometryType(): Promise<string> {
     try {
+      if (!NativeBiometric || typeof NativeBiometric.isAvailable !== 'function') return 'None';
       const result = await NativeBiometric.isAvailable();
       if (!result.isAvailable) return 'None';
       
@@ -37,6 +43,9 @@ export const biometricService = {
 
   // Save the master key securely using biometrics
   async saveMasterKey(profileId: string, masterKeyStr: string): Promise<void> {
+    if (!NativeBiometric || typeof NativeBiometric.setCredentials !== 'function') {
+      throw new Error('Servizio biometrico non disponibile.');
+    }
     await NativeBiometric.setCredentials({
       username: profileId,
       password: masterKeyStr,
@@ -47,11 +56,11 @@ export const biometricService = {
   // Retrieve the master key using biometrics
   async getMasterKey(profileId: string): Promise<string | null> {
     try {
+      if (!NativeBiometric || typeof NativeBiometric.getCredentials !== 'function') return null;
       const credentials = await NativeBiometric.getCredentials({
         server: 'chelona.app',
       });
       
-      // The plugin might return multiple or we check the username
       if (credentials && credentials.username === profileId) {
         return credentials.password;
       }
@@ -64,6 +73,7 @@ export const biometricService = {
 
   // Delete credentials
   async deleteCredentials(profileId: string): Promise<void> {
+    if (!NativeBiometric || typeof NativeBiometric.deleteCredentials !== 'function') return;
     await NativeBiometric.deleteCredentials({
       server: 'chelona.app',
     });
