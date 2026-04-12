@@ -246,10 +246,17 @@ export const QrScanner: React.FC<QrScannerProps> = ({ onScan, onClose }) => {
               padding: 4px 12px;
               font-size: 12px;
             }
+            video::-webkit-media-controls { 
+              display:none !important; 
+            }
+            video::-webkit-media-controls-start-playback-button {
+              display: none !important;
+            }
             #reader video {
               object-fit: cover !important;
               width: 100% !important;
               height: 100% !important;
+              background: black;
             }
           `}</style>
 

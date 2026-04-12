@@ -37,7 +37,7 @@ export const biometricService = {
         challenge,
         rp: {
           name: 'Chelona Secure',
-          id: window.location.hostname || 'localhost'
+          id: window.location.hostname === 'localhost' ? 'localhost' : window.location.hostname
         },
         user: {
           id: userId,
@@ -45,13 +45,12 @@ export const biometricService = {
           displayName: username
         },
         pubKeyCredParams: [
-          { alg: -7, type: 'public-key' }, // ES256
-          { alg: -257, type: 'public-key' } // RS256
+          { alg: -7, type: 'public-key' } // ES256 - most widely supported
         ],
         authenticatorSelection: {
           authenticatorAttachment: 'platform',
           userVerification: 'required',
-          residentKey: 'preferred', // Optimized for mobile passkeys
+          residentKey: 'preferred',
           requireResidentKey: false
         },
         timeout: 60000,
@@ -63,16 +62,25 @@ export const biometricService = {
 
       if (!credential) return null;
 
+      // Convert rawId to Base64url (cleaner than btoa)
+      const credentialId = btoa(String.fromCharCode(...new Uint8Array(credential.rawId)))
+        .replace(/\+/g, '-')
+        .replace(/\//g, '_')
+        .replace(/=/g, '');
+
       return {
-        credentialId: btoa(String.fromCharCode(...new Uint8Array(credential.rawId))),
-        publicKey: 'verified' // In a real server-side app, we'd store the actual public key
+        credentialId,
+        publicKey: 'verified'
       };
     } catch (e: any) {
-      console.error('Biometric registration failed', e);
-      if (e.message && e.message.includes('publickey-credentials-create')) {
-        throw new Error('Per utilizzare il FaceID/TouchID, apri l\'app in una nuova scheda cliccando l\'icona in alto a destra. L\'anteprima non supporta questa funzione di sicurezza.');
+      console.error('Biometric registration failed:', e);
+      if (e.name === 'NotAllowedError') {
+        throw new Error('Inserimento impronta annullato o non autorizzato.');
       }
-      return null;
+      if (e.message && e.message.includes('publickey-credentials-create')) {
+        throw new Error('L\'anteprima browser non supporta la biometria. Per favore apri l\'app esternamente o installala.');
+      }
+      throw e;
     }
   },
 

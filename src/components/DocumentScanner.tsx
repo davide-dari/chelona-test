@@ -678,7 +678,25 @@ export const DocumentScanner = ({ onCapture, onClose, downloadOnly = false }: Do
           onClick={handleTapFocus}
           onTouchStart={handleTapFocus}
         >
-          <video ref={videoRef} autoPlay playsInline muted className="absolute inset-0 w-full h-full object-cover" />
+          <video 
+            ref={videoRef} 
+            autoPlay 
+            playsInline 
+            muted 
+            className="absolute inset-0 w-full h-full object-cover" 
+            style={{ 
+              WebkitMediaControls: 'none',
+              background: 'black'
+            }}
+          />
+          <style>{`
+            video::-webkit-media-controls { 
+              display:none !important; 
+            }
+            video::-webkit-media-controls-start-playback-button {
+              display: none !important;
+            }
+          `}</style>
           <canvas ref={canvasRef} className="absolute inset-0 w-full h-full object-cover pointer-events-none" />
 
           {/* Tap-to-focus ring */}

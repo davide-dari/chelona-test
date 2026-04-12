@@ -146,6 +146,9 @@ export default function App() {
   const [bioError, setBioError] = useState<string | null>(null);
   const [isScanning, setIsScanning] = useState(false);
   const [isToolsOpen, setIsToolsOpen] = useState(false);
+  const [pinnedCategoryIds, setPinnedCategoryIds] = useState<string[]>([]);
+  const [pinnedToolIds, setPinnedToolIds] = useState<string[]>([]);
+  const [isListening, setIsListening] = useState(false);
   const [isPublicToolsOpen, setIsPublicToolsOpen] = useState(false);
   const [activeToolId, setActiveToolId] = useState<string | null>(null);
   const [isAddingFolder, setIsAddingFolder] = useState(false);
@@ -179,6 +182,8 @@ export default function App() {
           setUsername(profile.username);
           setAvatar(profile.avatar);
           setIsBioEnabled(profile.isBiometricEnabled);
+          setPinnedCategoryIds(profile.pinnedCategoryIds || []);
+          setPinnedToolIds(profile.pinnedToolIds || []);
         }
 
         const saved = await storage.loadState(encryptionKey, currentProfileId);
@@ -701,16 +706,45 @@ export default function App() {
   const handleVoiceSearch = () => {
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SpeechRecognition) {
-      showToast('La ricerca vocale non è supportata.', 'error');
+      showToast('La ricerca vocale non è supportata su questo browser.', 'error');
       return;
     }
     const recognition = new SpeechRecognition();
     recognition.lang = 'it-IT';
-    recognition.start();
+    recognition.continuous = false;
+    recognition.interimResults = false;
+
+    recognition.onstart = () => {
+      setIsListening(true);
+      if (navigator.vibrate) navigator.vibrate(50);
+    };
+
     recognition.onresult = (event: any) => {
       const transcript = event.results[0][0].transcript;
       setSearchQuery(transcript);
+      if (navigator.vibrate) navigator.vibrate([30, 30]);
     };
+
+    recognition.onerror = (event: any) => {
+      console.error('Speech recognition error', event.error);
+      if (event.error === 'not-allowed') {
+        showToast('Permesso microfono negato.', 'error');
+      } else {
+        showToast('Errore durante la ricerca vocale.', 'error');
+      }
+      setIsListening(false);
+    };
+
+    recognition.onend = () => {
+      setIsListening(false);
+    };
+
+    try {
+      recognition.start();
+    } catch (e) {
+      console.error('Failed to start recognition', e);
+      setIsListening(false);
+    }
   };
 
   // Layout state removed (DnD disabled)
@@ -818,27 +852,9 @@ export default function App() {
         />
       )}
 
-      {isProfileOpen && encryptionKey && currentProfileId && (
-        <ProfileScreen
-          onClose={() => setIsProfileOpen(false)}
-          username={username}
-          avatar={avatar}
-          currentProfileId={currentProfileId}
-          onUpdateProfile={handleUpdateProfile}
-          isBioSupported={isBioSupported}
-          isBioEnabled={isBioEnabled}
-          onEnableBiometrics={handleEnableBiometrics}
-          bioError={bioError}
-          onLogout={handleLogout}
-          encryptionKey={encryptionKey}
-          modules={modules}
-          folders={folders}
-          onEncryptionKeyChanged={setEncryptionKey}
-          showToast={showToast}
-        />
-      )}
 
-      {encryptionKey && currentProfileId && !isProfileOpen && (
+
+      {encryptionKey && currentProfileId && (
         <ErrorBoundary>
           <div className="flex h-screen bg-[var(--bg)] overflow-hidden relative font-sans transition-colors duration-300">
             
@@ -1371,118 +1387,91 @@ export default function App() {
                   </div>
                 )}
 
-                {!selectedType && !searchQuery.trim() ? (
-                  <div className="px-4 lg:px-8 pb-32">
-                    {/* Hero Dashboard Section */}
-                    <div className="mb-12">
-                      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
+                {!selectedType && !searchQuery.trim() && !isListening ? (
+                  <div className="px-4 lg:px-8 pb-40">
+                    {/* Hero Dashboard Section - Minimalist */}
+                    <div className="mb-8 pt-4">
+                      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                         <div>
                           <h2 className="text-3xl lg:text-4xl font-extrabold text-[var(--text-main)] tracking-tight">
                             Ciao, <span className="text-[var(--accent)]">{username}</span>
                           </h2>
-                          <p className="text-[var(--text-muted)] font-bold uppercase tracking-[0.2em] text-xs mt-2">Centro di Controllo Sandbox</p>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <button 
-                            onClick={() => setIsAdding(true)}
-                            className="flex-1 md:flex-none px-6 py-4 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white rounded-2xl font-bold transition-all shadow-xl shadow-amber-500/20 flex items-center justify-center gap-2 group"
-                          >
-                            <Plus className="w-5 h-5 group-hover:rotate-90 transition-transform" />
-                            Nuovo Appunto
-                          </button>
-                          <button 
-                            onClick={() => setIsScanning(true)}
-                            className="px-6 py-4 bg-[var(--card-bg)] text-[var(--text-main)] border border-[var(--border)] rounded-2xl font-bold transition-all hover:bg-[var(--bg)] shadow-sm flex items-center justify-center gap-2"
-                          >
-                            <QrCode className="w-5 h-5" />
-                            Scanner
-                          </button>
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                        {/* Stats / Quick Summary Card */}
-                        <div className="bg-[var(--card-bg)] p-8 rounded-[2.5rem] border border-[var(--border)] shadow-sm relative overflow-hidden group">
-                          <div className="absolute top-0 right-0 w-32 h-32 bg-[var(--accent)]/5 rounded-full -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-700" />
-                          <div className="relative z-10">
-                            <h3 className="text-lg font-bold text-[var(--text-main)] mb-6 flex items-center gap-2">
-                              <LayoutDashboard className="w-5 h-5 text-[var(--accent)]" />
-                              Panoramica
-                            </h3>
-                            <div className="grid grid-cols-2 gap-4">
-                              <div className="bg-[var(--bg)] p-5 rounded-3xl border border-[var(--border)]">
-                                <p className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest mb-1">Totali</p>
-                                <p className="text-3xl font-extrabold text-[var(--text-main)]">{modules.length}</p>
-                              </div>
-                              <div className="bg-[var(--bg)] p-5 rounded-3xl border border-[var(--border)]">
-                                <p className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest mb-1">Recenti</p>
-                                <p className="text-3xl font-extrabold text-[var(--accent)]">{recentModules.length}</p>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Quick Utility Grid */}
-                        <div className="grid grid-cols-2 gap-4">
-                          <button 
-                            onClick={() => { setIsToolsOpen(true); setActiveToolId('scanner'); }}
-                            className="bg-[var(--card-bg)] p-6 rounded-[2rem] border border-[var(--border)] shadow-sm hover:border-amber-500/50 hover:shadow-md transition-all text-left flex flex-col justify-between group"
-                          >
-                            <div className="w-10 h-10 bg-amber-500/10 rounded-xl flex items-center justify-center text-amber-500 mb-4 group-hover:scale-110 transition-transform">
-                              <Wrench className="w-5 h-5" />
-                            </div>
-                            <div>
-                              <p className="font-bold text-[var(--text-main)] text-sm">Scanner PDF</p>
-                              <p className="text-[10px] text-[var(--text-muted)] font-medium mt-0.5">Crea documenti</p>
-                            </div>
-                          </button>
-                          <button 
-                            onClick={() => setIsArchiveOpen(true)}
-                            className="bg-[var(--card-bg)] p-6 rounded-[2rem] border border-[var(--border)] shadow-sm hover:border-emerald-500/50 hover:shadow-md transition-all text-left flex flex-col justify-between group"
-                          >
-                            <div className="w-10 h-10 bg-emerald-500/10 rounded-xl flex items-center justify-center text-emerald-500 mb-4 group-hover:scale-110 transition-transform">
-                              <BookOpen className="w-5 h-5" />
-                            </div>
-                            <div>
-                              <p className="font-bold text-[var(--text-main)] text-sm">Archivio</p>
-                              <p className="text-[10px] text-[var(--text-muted)] font-medium mt-0.5">Sfoglia tutti i PDF</p>
-                            </div>
-                          </button>
+                          <p className="text-[var(--text-muted)] font-bold uppercase tracking-[0.2em] text-[10px] mt-2">Sandbox Dashboard</p>
                         </div>
                       </div>
                     </div>
 
-                    {/* Categories Grid */}
-                    <div className="mb-12">
-                      <h3 className="text-xl font-bold text-[var(--text-main)] mb-6 px-2 flex items-center gap-2">
-                        <Grid2X2 className="w-5 h-5 text-[var(--accent)]" />
-                        Esplora Categorie
-                      </h3>
-                      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-                        {Object.entries(TEMPLATES).map(([key, t]) => (
-                          <button
-                            key={key}
-                            onClick={() => setSelectedType(key as ModuleType)}
-                            className="bg-[var(--card-bg)] p-6 rounded-[2rem] border border-[var(--border)] shadow-sm hover:border-[var(--accent)] hover:shadow-lg hover:-translate-y-1 transition-all group flex flex-col items-center text-center gap-4"
-                          >
-                            <div className={`w-14 h-14 bg-[var(--bg)] rounded-3xl flex items-center justify-center ${t.color} group-hover:bg-[var(--accent-bg)] transition-colors shadow-inner`}>
-                              <t.icon className="w-7 h-7" />
-                            </div>
-                            <div>
-                              <p className="font-bold text-[var(--text-main)] text-sm">{t.title}</p>
-                              <p className="text-[10px] text-[var(--text-muted)] font-bold uppercase tracking-widest mt-1">
-                                {modules.filter(m => m.type === key).length} Moduli
-                              </p>
-                            </div>
-                          </button>
-                        ))}
+                    {/* Widgets Section (Shortcuts) */}
+                    {(pinnedToolIds.length > 0 || pinnedCategoryIds.length > 0) && (
+                      <div className="mb-10">
+                        <h3 className="text-lg font-bold text-[var(--text-main)] mb-5 flex items-center gap-2">
+                          <LayoutDashboard className="w-5 h-5 text-[var(--accent)]" />
+                          I Tuoi Widget
+                        </h3>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+                          {/* Categories Pinned */}
+                          {pinnedCategoryIds.map(catId => {
+                            const t = TEMPLATES[catId as ModuleType];
+                            if (!t) return null;
+                            return (
+                              <button
+                                key={`pinned-cat-${catId}`}
+                                onClick={() => setSelectedType(catId as ModuleType)}
+                                className="bg-[var(--card-bg)] p-5 rounded-3xl border border-[var(--border)] shadow-sm hover:border-[var(--accent)] transition-all flex items-center gap-4 group"
+                              >
+                                <div className={`w-12 h-12 bg-[var(--bg)] rounded-2xl flex items-center justify-center ${t.color} group-hover:scale-110 transition-transform shadow-inner`}>
+                                  <t.icon className="w-6 h-6" />
+                                </div>
+                                <span className="font-bold text-xs text-[var(--text-main)]">{t.title}</span>
+                              </button>
+                            );
+                          })}
+                          {/* Tools Pinned */}
+                          {pinnedToolIds.map(toolId => {
+                            const t = (Object.values(TOOLS_UTILITY).flat() as any[]).find(t => t.id === toolId);
+                            if (!t) return null;
+                            return (
+                              <button
+                                key={`pinned-tool-${toolId}`}
+                                onClick={() => { setIsToolsOpen(true); setActiveToolId(toolId); }}
+                                className="bg-[var(--card-bg)] p-5 rounded-3xl border border-[var(--border)] shadow-sm hover:border-[var(--accent)] transition-all flex items-center gap-4 group"
+                              >
+                                <div className={`w-12 h-12 bg-[var(--bg)] rounded-2xl flex items-center justify-center ${t.color} group-hover:scale-110 transition-transform shadow-inner text-[var(--accent)]`}>
+                                  <t.icon className="w-6 h-6" />
+                                </div>
+                                <span className="font-bold text-xs text-[var(--text-main)]">{t.title}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
                       </div>
+                    )}
+
+                    {/* All Categories Grid (Main Entry Point) */}
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 pb-12">
+                      {Object.entries(TEMPLATES).map(([key, t]) => (
+                        <button
+                          key={key}
+                          onClick={() => setSelectedType(key as ModuleType)}
+                          className="bg-[var(--card-bg)] p-6 lg:p-8 rounded-[2.5rem] border border-[var(--border)] shadow-sm hover:border-[var(--accent)] hover:shadow-lg hover:-translate-y-1 transition-all group flex flex-col items-center text-center gap-4"
+                        >
+                          <div className={`w-14 h-14 lg:w-16 lg:h-16 bg-[var(--bg)] rounded-3xl flex items-center justify-center ${t.color} group-hover:bg-[var(--accent-bg)] transition-colors shadow-inner`}>
+                            <t.icon className="w-7 h-7 lg:w-8 lg:h-8" />
+                          </div>
+                          <div>
+                            <p className="font-black text-[var(--text-main)] text-sm">{t.title}</p>
+                            <p className="text-[10px] text-[var(--text-muted)] font-bold uppercase tracking-widest mt-1">
+                              {modules.filter(m => m.type === key).length} Moduli
+                            </p>
+                          </div>
+                        </button>
+                      ))}
                     </div>
 
                     {/* Recent Activities */}
                     {recentModules.length > 0 && (
-                      <div className="mb-12">
-                        <h3 className="text-xl font-bold text-[var(--text-main)] mb-6 px-2 flex items-center justify-between">
+                      <div>
+                        <h3 className="text-lg font-bold text-[var(--text-main)] mb-6 flex items-center justify-between">
                           <div className="flex items-center gap-2">
                             <StickyNote className="w-5 h-5 text-[var(--accent)]" />
                             Recenti
@@ -1548,34 +1537,39 @@ export default function App() {
           </div>
           
           {/* Mobile Bottom Navigation Bar - Hidden during full-screen edit/modals */}
-          {!isAdding && !isScanning && !editingModuleId && !isProfileOpen && !isToolsOpen && (
+          {!isAdding && !isScanning && !editingModuleId && !isProfileOpen && !isToolsOpen && !isArchiveOpen && (
             <nav className="md:hidden fixed bottom-6 left-6 right-6 bg-[var(--sidebar-bg)] backdrop-blur-3xl rounded-[2.5rem] shadow-[0_20px_50px_-10px_rgba(0,0,0,0.15)] border border-[var(--border)] flex items-center justify-around px-2 py-3 z-50">
+              {/* 1. Dashboard / Home */}
               <button 
-                onClick={() => { setSelectedType(null); setIsToolsOpen(false); setIsProfileOpen(false); }} 
+                onClick={() => { setSelectedType(null); setIsToolsOpen(false); setIsProfileOpen(false); setSearchQuery(''); }} 
                 className={`relative p-3 flex flex-col items-center gap-1 transition-all ${!selectedType && !isToolsOpen && !isProfileOpen ? 'text-[var(--accent)]' : 'text-[var(--text-muted)] font-medium'}`}
               >
                 {!selectedType && !isToolsOpen && !isProfileOpen && <motion.div layoutId="nav-pill" className="absolute inset-0 bg-[var(--accent-bg)] rounded-2xl -z-10" />}
                 <LayoutDashboard size={24} strokeWidth={!selectedType && !isToolsOpen && !isProfileOpen ? 2.5 : 2} />
               </button>
               
+              {/* 2. Strumenti */}
               <button 
-                onClick={() => { setIsToolsOpen(true); setIsProfileOpen(false); }} 
+                onClick={() => { setIsToolsOpen(true); setIsProfileOpen(false); setSelectedType(null); }} 
                 className={`relative p-3 flex flex-col items-center gap-1 transition-all ${isToolsOpen ? 'text-[var(--accent)]' : 'text-[var(--text-muted)] font-medium'}`}
               >
                 {isToolsOpen && <motion.div layoutId="nav-pill" className="absolute inset-0 bg-amber-500/10 rounded-2xl -z-10" />}
                 <Wrench size={24} strokeWidth={isToolsOpen ? 2.5 : 2} />
               </button>
               
+              {/* 3. Nuovo (+) */}
               <button onClick={() => setIsAdding(true)} className="flex items-center justify-center w-[58px] h-[58px] bg-gradient-to-tr from-amber-500 to-amber-400 rounded-[1.4rem] text-white shadow-xl shadow-amber-500/30 -mt-12 hover:scale-105 active:scale-95 transition-all border-4 border-[var(--bg)]">
                 <Plus size={32} strokeWidth={3} />
               </button>
               
-              <button onClick={() => { setIsScanning(true); setIsProfileOpen(false); }} className="relative p-3 flex flex-col items-center gap-1 text-[var(--text-muted)] hover:text-[var(--accent)] transition-all font-medium">
+              {/* 4. Scanner */}
+              <button onClick={() => { setIsScanning(true); setIsProfileOpen(false); setIsToolsOpen(false); }} className="relative p-3 flex flex-col items-center gap-1 text-[var(--text-muted)] hover:text-[var(--accent)] transition-all font-medium">
                 <QrCode size={24} strokeWidth={2} />
               </button>
               
+              {/* 5. Profilo */}
               <button 
-                onClick={() => { setIsProfileOpen(true); setIsToolsOpen(false); }} 
+                onClick={() => { setIsProfileOpen(true); setIsToolsOpen(false); setSelectedType(null); }} 
                 className={`relative p-3 flex flex-col items-center gap-1 transition-all ${isProfileOpen ? 'text-[var(--accent)]' : 'text-[var(--text-muted)] font-medium'}`}
               >
                 {isProfileOpen && <motion.div layoutId="nav-pill" className="absolute inset-0 bg-amber-500/10 rounded-2xl -z-10" />}
@@ -1583,7 +1577,7 @@ export default function App() {
               </button>
             </nav>
           )}
-        </main>
+
 
 
 
@@ -1644,8 +1638,9 @@ export default function App() {
           <Plus className="w-8 h-8" />
         </button>
       )}
-          </div>
-        </ErrorBoundary>
+          </main>
+        </div>
+      </ErrorBoundary>
       )}
 
       {/* Toast Notification */}

@@ -23,6 +23,9 @@ interface ProfileScreenProps {
   onEncryptionKeyChanged: (newKey: CryptoKey) => void;
   currentProfileId: string;
   showToast: (msg: string, type?: 'success' | 'error' | 'info') => void;
+  pinnedCategoryIds: string[];
+  pinnedToolIds: string[];
+  onUpdateWidgets: (catIds: string[], toolIds: string[]) => void;
 }
 
 export function ProfileScreen({
@@ -40,9 +43,12 @@ export function ProfileScreen({
   modules,
   folders,
   onEncryptionKeyChanged,
-  showToast
+  showToast,
+  pinnedCategoryIds,
+  pinnedToolIds,
+  onUpdateWidgets
 }: ProfileScreenProps) {
-  const [activeTab, setActiveTab] = useState<'profile' | 'security'>('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'security' | 'widgets'>('profile');
   
   const [editName, setEditName] = useState(username);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -187,13 +193,19 @@ export function ProfileScreen({
             onClick={() => setActiveTab('profile')}
             className={`flex-1 py-3 text-sm font-bold rounded-xl transition-all ${activeTab === 'profile' ? 'bg-[var(--card-bg)] shadow-sm text-[var(--accent)] border border-[var(--border)]' : 'text-[var(--text-muted)]'}`}
           >
-            Informazioni Personali
+            Informazioni
           </button>
           <button
             onClick={() => setActiveTab('security')}
             className={`flex-1 py-3 text-sm font-bold rounded-xl transition-all ${activeTab === 'security' ? 'bg-[var(--card-bg)] shadow-sm text-[var(--accent)] border border-[var(--border)]' : 'text-[var(--text-muted)]'}`}
           >
-            Sicurezza e Accesso
+            Sicurezza
+          </button>
+          <button
+            onClick={() => setActiveTab('widgets')}
+            className={`flex-1 py-3 text-sm font-bold rounded-xl transition-all ${activeTab === 'widgets' ? 'bg-[var(--card-bg)] shadow-sm text-[var(--accent)] border border-[var(--border)]' : 'text-[var(--text-muted)]'}`}
+          >
+            Widget
           </button>
         </div>
 
@@ -251,7 +263,7 @@ export function ProfileScreen({
                 </button>
               </div>
             </div>
-          ) : (
+          ) : activeTab === 'security' ? (
             <div className="space-y-6">
               <div className="bg-[var(--card-bg)] rounded-3xl p-6 lg:p-8 border border-[var(--border)] shadow-sm space-y-6">
                 <div className="flex items-center gap-4 border-b border-[var(--border)] pb-6 mb-2">
@@ -388,10 +400,70 @@ export function ProfileScreen({
                   </div>
                 </div>
 
-                <div className="mt-4 pt-6 border-t border-[var(--border)]">
-                   <p className="text-[10px] text-center text-[var(--text-muted)] font-bold uppercase tracking-[0.2em]">Versione Chelona: 1.0.3</p>
+                <div className="mt-4 pt-6 border-t border-[var(--border)] text-center">
+                   <p className="text-[10px] text-[var(--text-muted)] font-bold uppercase tracking-[0.2em]">Versione Chelona: 1.1.0</p>
                 </div>
               </div>
+            </div>
+          ) : (
+            <div className="space-y-6">
+               <div className="bg-[var(--card-bg)] rounded-3xl p-6 lg:p-8 border border-[var(--border)] shadow-sm space-y-6">
+                 <div className="flex items-center gap-4 border-b border-[var(--border)] pb-6 mb-2">
+                   <div className="w-12 h-12 bg-[var(--accent-hover)]/10 rounded-2xl flex items-center justify-center text-[var(--accent)]">
+                     <LayoutDashboard className="w-6 h-6" />
+                   </div>
+                   <div>
+                     <h3 className="text-lg font-bold text-[var(--text-main)]">Gestione Widget</h3>
+                     <p className="text-sm text-[var(--text-muted)]">Scegli quali categorie o strumenti avere in Home</p>
+                   </div>
+                 </div>
+
+                 <div className="space-y-8">
+                   <div>
+                     <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--text-muted)] mb-4">Categorie Appuntate</p>
+                     <div className="grid grid-cols-2 gap-3">
+                       {['generic', 'auto', 'document', 'split'].map(catId => {
+                         const isPinned = pinnedCategoryIds.includes(catId);
+                         return (
+                           <button
+                             key={catId}
+                             onClick={() => {
+                               const next = isPinned ? pinnedCategoryIds.filter(id => id !== catId) : [...pinnedCategoryIds, catId];
+                               onUpdateWidgets(next, pinnedToolIds);
+                             }}
+                             className={`p-4 rounded-2xl border transition-all flex items-center justify-between group ${isPinned ? 'bg-[var(--accent-bg)] border-[var(--accent)]' : 'bg-[var(--bg)] border-[var(--border)] hover:border-[var(--text-muted)]'}`}
+                           >
+                             <span className={`text-sm font-bold ${isPinned ? 'text-[var(--accent)]' : 'text-[var(--text-muted)]'}`}>{catId.charAt(0).toUpperCase() + catId.slice(1)}</span>
+                             {isPinned ? <Check className="w-4 h-4 text-[var(--accent)]" /> : <Plus className="w-4 h-4 text-[var(--text-muted)] opacity-50" />}
+                           </button>
+                         );
+                       })}
+                     </div>
+                   </div>
+
+                   <div>
+                     <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--text-muted)] mb-4">Strumenti Appuntati</p>
+                     <div className="grid grid-cols-2 gap-3">
+                       {['scanner', 'archive', 'qr_gen', 'unit_conv', 'expense_stats'].map(toolId => {
+                         const isPinned = pinnedToolIds.includes(toolId);
+                         return (
+                           <button
+                             key={toolId}
+                             onClick={() => {
+                               const next = isPinned ? pinnedToolIds.filter(id => id !== toolId) : [...pinnedToolIds, toolId];
+                               onUpdateWidgets(pinnedCategoryIds, next);
+                             }}
+                             className={`p-4 rounded-2xl border transition-all flex items-center justify-between group ${isPinned ? 'bg-[var(--accent-bg)] border-[var(--accent)]' : 'bg-[var(--bg)] border-[var(--border)] hover:border-[var(--text-muted)]'}`}
+                           >
+                             <span className={`text-sm font-bold ${isPinned ? 'text-[var(--accent)]' : 'text-[var(--text-muted)]'}`}>{toolId.replace('_', ' ').toUpperCase()}</span>
+                             {isPinned ? <Check className="w-4 h-4 text-[var(--accent)]" /> : <Plus className="w-4 h-4 text-[var(--text-muted)] opacity-50" />}
+                           </button>
+                         );
+                       })}
+                     </div>
+                   </div>
+                 </div>
+               </div>
             </div>
           )}
         </div>
