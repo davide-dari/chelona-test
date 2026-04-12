@@ -1,25 +1,29 @@
-import React, { useState } from 'react';
-import { FileUp, FileDown, Layers, SplitSquareHorizontal, RotateCw, Image as ImageIcon, Type, X, FileCheck, ArrowRight, Percent, Scan, ArrowLeft, Book, Search as SearchIcon, Eye, Trash2 } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { 
+  FileUp, FileDown, Layers, SplitSquareHorizontal, RotateCw, 
+  Image as ImageIcon, Type, X, FileCheck, ArrowRight, Percent, 
+  Scan, ArrowLeft, Book, Search as SearchIcon, Eye, Trash2,
+  Wrench, ClipboardList, Settings2
+} from 'lucide-react';
 import { DocumentScanner } from './DocumentScanner';
 import { PDFDocument, rgb, degrees } from 'pdf-lib';
 import { Module } from '../types';
-
 import { motion, AnimatePresence } from 'motion/react';
 
 export const TOOLS_PDF = [
-  { id: 'merge', title: 'Unisci PDF', desc: 'Unisci più PDF e organizzali nel modo che preferisci.', icon: Layers, color: 'var(--danger)', bg: 'var(--danger-bg)' },
-  { id: 'split', title: 'Dividi PDF', desc: 'Estrai una o varie pagine di un PDF in documenti separati.', icon: SplitSquareHorizontal, color: 'var(--warning)', bg: 'var(--warning-bg)' },
-  { id: 'img2pdf', title: 'JPG in PDF', desc: 'Converti le tue immagini JPG o PNG in un documento PDF.', icon: ImageIcon, color: 'var(--accent)', bg: 'rgba(245, 158, 11, 0.1)' },
-  { id: 'rotate', title: 'Ruota PDF', desc: 'Ruota i PDF come vuoi. Ruota molti documenti allo stesso tempo.', icon: RotateCw, color: 'var(--info)', bg: 'var(--info-bg)' },
-  { id: 'watermark', title: 'Filigrana', desc: 'Aggiungi un testo trasparente sopra un PDF come filigrana.', icon: Type, color: 'var(--success)', bg: 'var(--success-bg)' },
+  { id: 'merge', title: 'Unisci PDF', desc: 'Unisci più documenti in uno.', icon: Layers, color: 'text-rose-500', bg: 'bg-rose-500/10', category: 'pdf' },
+  { id: 'img2pdf', title: 'JPG in PDF', desc: 'Converti immagini in PDF.', icon: ImageIcon, color: 'text-amber-500', bg: 'bg-amber-500/10', category: 'pdf' },
+  { id: 'rotate', title: 'Ruota PDF', desc: 'Cambia orientamento alle pagine.', icon: RotateCw, color: 'text-blue-500', bg: 'bg-blue-500/10', category: 'pdf' },
 ];
 
 export const TOOLS_UTILITY = [
-  { id: 'scanner', title: 'Scanner Documenti', desc: 'Scansiona documenti con la fotocamera e trasforma in PDF.', icon: Scan, color: 'var(--accent)', bg: 'rgba(245, 158, 11, 0.1)' },
-  { id: 'percent', title: 'Calcolo Percentuale', desc: 'Calcola facilmente sconti, ricarichi e proporzioni percentuali.', icon: Percent, color: 'var(--success)', bg: 'var(--success-bg)' }
+  { id: 'scanner', title: 'Scanner', desc: 'Scansiona e crea PDF.', icon: Scan, color: 'text-emerald-500', bg: 'bg-emerald-500/10', category: 'utility' },
+  { id: 'percent', title: 'Percentuale', desc: 'Sconti e variazioni.', icon: Percent, color: 'text-indigo-500', bg: 'bg-indigo-500/10', category: 'utility' }
 ];
 
-export const TOOLS = [...TOOLS_PDF, ...TOOLS_UTILITY];
+export const TOOLS = [...TOOLS_PDF, ...TOOLS_UTILITY, { id: 'archive', title: 'Archivio', desc: 'I tuoi documenti salvati.', icon: Book, color: 'text-orange-500', bg: 'bg-orange-500/10', category: 'archive' }];
+
+type ToolCategory = 'all' | 'pdf' | 'utility' | 'archive';
 
 export const ToolsScreen = ({ showToast, onSaveToSandbox, initialToolId, onReset, modules = [] }: { 
   showToast: (m: string, t?: 'success'|'error'|'info') => void, 
@@ -29,6 +33,7 @@ export const ToolsScreen = ({ showToast, onSaveToSandbox, initialToolId, onReset
   modules?: Module[]
 }) => {
   const [activeTool, setActiveTool] = useState<string | null>(initialToolId || null);
+  const [category, setCategory] = useState<ToolCategory>('all');
   const [files, setFiles] = useState<File[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [percentMode, setPercentMode] = useState<'of'|'discount'|'increase'>('of');
@@ -43,6 +48,11 @@ export const ToolsScreen = ({ showToast, onSaveToSandbox, initialToolId, onReset
       setActiveTool(initialToolId);
     }
   }, [initialToolId]);
+
+  const filteredTools = useMemo(() => {
+    if (category === 'all') return TOOLS;
+    return TOOLS.filter(t => t.category === category);
+  }, [category]);
 
   const bytesToBase64 = (bytes: Uint8Array): string => {
     let binary = '';
@@ -172,291 +182,266 @@ export const ToolsScreen = ({ showToast, onSaveToSandbox, initialToolId, onReset
     }
   };
 
+  const CATEGORIES = [
+    { id: 'all', label: 'Tutti', icon: ClipboardList },
+    { id: 'pdf', label: 'PDF', icon: FileDown },
+    { id: 'utility', label: 'Vario', icon: Settings2 },
+    { id: 'archive', label: 'Archivio', icon: Book },
+  ];
+
   return (
-    <div className="h-full flex flex-col p-4 lg:p-8 overflow-y-auto">
-      <div className="max-w-[1200px] mx-auto w-full">
+    <div className="h-full flex flex-col overflow-hidden bg-[var(--bg)]">
+      <div className="max-w-[1000px] mx-auto w-full h-full flex flex-col">
         {!activeTool ? (
           <>
-            <div className="mb-10 text-center pt-8">
-              <h2 className="text-3xl lg:text-5xl font-extrabold text-[var(--text-main)] mb-4 tracking-tight">I Tuoi Strumenti</h2>
-              <p className="text-[var(--text-muted)] text-lg max-w-2xl mx-auto">Tutto ciò di cui hai bisogno a portata di mano. Completamente offline, sicuro e privato.</p>
-            </div>
-            
-            <h3 className="text-xl font-bold text-[var(--text-main)] mb-6 drop-shadow-sm border-b border-[var(--border)] pb-2">PDF</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-12">
-              {TOOLS_PDF.map(t => (
-                <button
-                  key={t.id}
-                  onClick={() => setActiveTool(t.id)}
-                  className="bg-[var(--card-bg)] backdrop-blur-3xl border border-[var(--border)] p-6 rounded-[2rem] hover:border-amber-500 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_12px_40px_rgb(0,0,0,0.08)] transition-all group flex flex-col items-start text-left h-full"
-                >
-                  <div 
-                    className="w-14 h-14 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform shadow-sm"
-                    style={{ backgroundColor: t.bg, color: t.color }}
-                  >
-                    <t.icon className="w-7 h-7" />
-                  </div>
-                  <h3 className="text-xl font-bold text-[var(--text-main)] mb-2">{t.title}</h3>
-                  <p className="text-sm text-[var(--text-muted)] flex-1">{t.desc}</p>
-                </button>
-              ))}
+            {/* Compact Header */}
+            <div className="px-6 py-6 lg:py-10 text-center lg:text-left">
+              <h2 className="text-2xl lg:text-3xl font-black text-[var(--text-main)] tracking-tight">Strumenti</h2>
+              <p className="text-[var(--text-muted)] text-xs lg:text-sm font-medium mt-1">Utility offline, sicure e private.</p>
             </div>
 
-            <h3 className="text-xl font-bold text-[var(--text-main)] mb-6 drop-shadow-sm border-b border-[var(--border)] pb-2">Utilità</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 pb-40">
-              {TOOLS_UTILITY.map(t => (
-                <button
-                  key={t.id}
-                  onClick={() => setActiveTool(t.id)}
-                  className="bg-[var(--card-bg)] backdrop-blur-3xl border border-[var(--border)] p-6 rounded-[2rem] hover:border-amber-500 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_12px_40px_rgb(0,0,0,0.08)] transition-all group flex flex-col items-start text-left h-full"
-                >
-                  <div 
-                    className="w-14 h-14 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform shadow-sm"
-                    style={{ backgroundColor: t.bg, color: t.color }}
+            {/* Category Pills - Sticky */}
+            <div className="px-4 mb-6 sticky top-0 z-20 bg-[var(--bg)] pb-2 overflow-x-auto scrollbar-none">
+              <div className="flex bg-[var(--card-bg)] p-1 rounded-2xl border border-[var(--border)] shadow-sm min-w-max">
+                {CATEGORIES.map(cat => (
+                  <button
+                    key={cat.id}
+                    onClick={() => setCategory(cat.id as ToolCategory)}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all ${
+                      category === cat.id 
+                        ? 'bg-amber-500 text-white shadow-lg shadow-amber-500/20' 
+                        : 'text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--bg)]'
+                    }`}
                   >
-                    <t.icon className="w-7 h-7" />
-                  </div>
-                  <h3 className="text-xl font-bold text-[var(--text-main)] mb-2">{t.title}</h3>
-                  <p className="text-sm text-[var(--text-muted)] flex-1">{t.desc}</p>
-                </button>
-              ))}
+                    <cat.icon className="w-3.5 h-3.5" />
+                    {cat.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto px-4 pb-32 scrollbar-none">
+               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 stagger-fade-in">
+                  {filteredTools.map(t => (
+                    <button
+                      key={t.id}
+                      onClick={() => setActiveTool(t.id)}
+                      className="bg-[var(--card-bg)] border border-[var(--border)] p-4 rounded-2xl hover:border-amber-500 shadow-sm hover:shadow-md transition-all group flex items-center gap-4 text-left"
+                    >
+                      <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${t.bg} ${t.color} group-hover:scale-110 transition-transform`}>
+                        <t.icon className="w-6 h-6" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <h3 className="text-sm font-bold text-[var(--text-main)] truncate">{t.title}</h3>
+                        <p className="text-[10px] text-[var(--text-muted)] font-medium truncate">{t.desc}</p>
+                      </div>
+                      <ArrowRight className="w-4 h-4 text-[var(--text-muted)] group-hover:text-amber-500 transition-colors mr-1" />
+                    </button>
+                  ))}
+               </div>
             </div>
           </>
         ) : (
-          <div className="bg-[var(--card-bg)] rounded-3xl p-8 border border-[var(--border)] shadow-sm max-w-2xl mx-auto text-center mt-10">
-            <div className="flex items-center gap-4 mb-8 pb-4 border-b border-[var(--border)] text-left">
-              <button onClick={reset} className="p-2 hover:bg-[var(--bg)] rounded-xl transition-colors text-[var(--accent)] group" title="Torna agli strumenti">
-                <ArrowLeft className="w-6 h-6 group-hover:-translate-x-1 transition-transform" />
-              </button>
-              <h2 className="text-2xl font-bold text-[var(--text-main)] flex items-center gap-3">
-                {TOOLS.find(t => t.id === activeTool)?.title}
-              </h2>
-            </div>
-
-            {activeTool === 'scanner' ? (
-              <DocumentScanner 
-                onClose={reset} 
-                downloadOnly={!onSaveToSandbox}
-                onCapture={(pdf) => {
-                  if (onSaveToSandbox) onSaveToSandbox("Scansione Documento", pdf);
-                  else showToast("Documento acquisito!");
-                  reset();
-                }}
-              />
-            ) : activeTool === 'percent' ? (
-              <div className="py-8 flex flex-col items-center">
-                <div className="w-full text-left bg-[var(--bg)] rounded-[2rem] p-6 lg:p-8 border border-[var(--border)]">
-                  <div className="space-y-6">
-                    <div className="flex bg-[var(--card-bg)] p-1 rounded-xl border border-[var(--border)]">
-                      {(['of', 'discount', 'increase'] as const).map(m => (
-                        <button key={m} onClick={() => setPercentMode(m)} className={`flex-1 py-2 text-[10px] font-bold uppercase transition-all rounded-lg ${percentMode === m ? 'bg-amber-500 text-white shadow-md' : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'}`}>
-                          {m === 'of' ? '%' : m === 'discount' ? 'Sconto' : 'Più'}
-                        </button>
-                      ))}
-                    </div>
-                    <div className="space-y-4">
-                       <input type="number" placeholder={percentMode === 'of' ? 'Quanto è il...' : percentMode === 'discount' ? 'Sconto del...' : 'Aggiungi il...'} value={percentVal1} onChange={e => setPercentVal1(e.target.value)} className="w-full p-4 bg-[var(--card-bg)] border border-[var(--border)] rounded-2xl outline-none focus:border-amber-500 font-bold text-center text-xl text-[var(--text-main)]" />
-                       <input type="number" placeholder="...del valore" value={percentVal2} onChange={e => setPercentVal2(e.target.value)} className="w-full p-4 bg-[var(--card-bg)] border border-[var(--border)] rounded-2xl outline-none focus:border-amber-500 font-bold text-center text-xl text-[var(--text-main)]" />
-                    </div>
-                    <div className="p-6 bg-amber-500/10 rounded-2xl border border-amber-500/20 text-center">
-                       <p className="text-[10px] font-bold text-amber-600 uppercase mb-1">Risultato</p>
-                       <p className="text-3xl font-black text-amber-700">
-                         {(() => {
-                           const v1 = parseFloat(percentVal1);
-                           const v2 = parseFloat(percentVal2);
-                           if (isNaN(v1) || isNaN(v2)) return '0.00';
-                           if (percentMode === 'of') return ((v1 / 100) * v2).toFixed(2);
-                           if (percentMode === 'discount') return (v2 - (v1 / 100 * v2)).toFixed(2);
-                           return (v2 + (v1 / 100 * v2)).toFixed(2);
-                         })()}
-                       </p>
-                    </div>
+          <div className="flex-1 flex flex-col overflow-hidden">
+             {/* Tool Active Header */}
+             <div className="px-6 py-6 border-b border-[var(--border)] flex items-center justify-between bg-[var(--card-bg)]/50 backdrop-blur-xl">
+               <div className="flex items-center gap-4">
+                  <button onClick={reset} className="p-2.5 bg-[var(--bg)] border border-[var(--border)] rounded-xl text-amber-500 hover:bg-amber-500/10 transition-all">
+                    <ArrowLeft className="w-5 h-5" />
+                  </button>
+                  <div>
+                    <h2 className="text-lg font-black text-[var(--text-main)] leading-tight">
+                      {TOOLS.find(t => t.id === activeTool)?.title}
+                    </h2>
+                    <p className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest">Strumento {TOOLS.find(t => t.id === activeTool)?.category}</p>
                   </div>
-                </div>
-              </div>
-            ) : activeTool === 'archive' ? (
-              <div className="space-y-6 text-left">
-                <div className="relative group">
-                  <SearchIcon className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--text-muted)] group-focus-within:text-amber-500" />
-                  <input 
-                    type="text" 
-                    placeholder="Cerca nei documenti salvati..." 
-                    value={archiveSearch}
-                    onChange={(e) => setArchiveSearch(e.target.value)}
-                    className="w-full pl-14 pr-6 py-4 bg-[var(--bg)] border border-[var(--border)] rounded-[2rem] outline-none focus:ring-4 focus:ring-amber-500/5 transition-all font-bold text-[var(--text-main)]"
-                  />
-                </div>
+               </div>
+               {activeTool === 'percent' && (
+                 <div className="flex bg-[var(--bg)] p-1 rounded-xl border border-[var(--border)]">
+                    {(['of', 'discount', 'increase'] as const).map(m => (
+                      <button key={m} onClick={() => setPercentMode(m)} className={`px-3 py-1.5 text-[9px] font-bold uppercase transition-all rounded-lg ${percentMode === m ? 'bg-amber-500 text-white shadow-md' : 'text-[var(--text-muted)]'}`}>
+                        {m === 'of' ? '%' : m === 'discount' ? '-' : '+'}
+                      </button>
+                    ))}
+                  </div>
+               )}
+             </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-h-96 overflow-y-auto pr-2 custom-scrollbar">
-                  {modules
-                    .filter(m => {
-                      const hasPdf = (m as any).pdfAttachment || (m as any).receiptAttachment;
-                      if (!hasPdf) return false;
-                      const title = (m.title || '').toLowerCase();
-                      const search = archiveSearch.toLowerCase();
-                      return title.includes(search);
-                    })
-                    .map(m => (
-                      <div 
-                        key={m.id} 
-                        onClick={() => {
-                          setViewingDoc((m as any).pdfAttachment || (m as any).receiptAttachment);
-                          setViewingTitle(m.title);
-                        }}
-                        className="bg-[var(--bg)] p-5 rounded-3xl border border-[var(--border)] hover:border-amber-500/50 shadow-sm transition-all cursor-pointer group"
-                      >
-                        <div className="flex items-start gap-4">
-                          <div className="w-12 h-12 bg-amber-500/10 rounded-2xl flex items-center justify-center text-amber-500 group-hover:scale-110 transition-transform">
-                            <Book className="w-6 h-6" />
+             <div className="flex-1 overflow-y-auto px-6 py-8 pb-32">
+                <div className="max-w-xl mx-auto space-y-6">
+                  {activeTool === 'scanner' ? (
+                    <DocumentScanner 
+                      onClose={reset} 
+                      downloadOnly={!onSaveToSandbox}
+                      onCapture={(pdf) => {
+                        if (onSaveToSandbox) onSaveToSandbox("Scansione Documento", pdf);
+                        else showToast("Documento acquisito!");
+                        reset();
+                      }}
+                    />
+                  ) : activeTool === 'percent' ? (
+                    <div className="bg-[var(--card-bg)] rounded-3xl p-6 lg:p-10 border border-[var(--border)] shadow-xl animate-scale-up">
+                      <div className="space-y-8">
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                             <label className="text-[10px] font-black text-[var(--text-muted)] uppercase ml-2">{percentMode === 'of' ? 'Percentuale' : 'Variazione %'}</label>
+                             <input type="number" placeholder="Es. 22" value={percentVal1} onChange={e => setPercentVal1(e.target.value)} className="w-full p-5 bg-[var(--bg)] border border-[var(--border)] rounded-2xl outline-none focus:border-amber-500 font-black text-center text-2xl text-[var(--text-main)] shadow-inner" />
                           </div>
-                          <div className="flex-1 min-w-0">
-                            <h4 className="font-bold text-[var(--text-main)] truncate text-sm">{m.title}</h4>
-                            <p className="text-[10px] text-[var(--text-muted)] font-bold uppercase mt-1">
-                              {new Date(m.createdAt || Date.now()).toLocaleDateString()}
-                            </p>
+                          <div className="space-y-2">
+                             <label className="text-[10px] font-black text-[var(--text-muted)] uppercase ml-2">Valore Base</label>
+                             <input type="number" placeholder="Es. 100" value={percentVal2} onChange={e => setPercentVal2(e.target.value)} className="w-full p-5 bg-[var(--bg)] border border-[var(--border)] rounded-2xl outline-none focus:border-amber-500 font-black text-center text-2xl text-[var(--text-main)] shadow-inner" />
                           </div>
-                          <Eye className="w-4 h-4 text-[var(--text-muted)] opacity-0 group-hover:opacity-100 transition-opacity" />
+                        </div>
+                        <div className="p-8 bg-gradient-to-br from-amber-500 to-amber-400 rounded-2xl text-center shadow-lg shadow-amber-500/20">
+                           <p className="text-[10px] font-black text-white/80 uppercase mb-2 tracking-widest">Risultato Finale</p>
+                           <p className="text-5xl font-black text-white drop-shadow-md">
+                             {(() => {
+                               const v1 = parseFloat(percentVal1);
+                               const v2 = parseFloat(percentVal2);
+                               if (isNaN(v1) || isNaN(v2)) return '0.00';
+                               if (percentMode === 'of') return ((v1 / 100) * v2).toFixed(2);
+                               if (percentMode === 'discount') return (v2 - (v1 / 100 * v2)).toFixed(2);
+                               return (v2 + (v1 / 100 * v2)).toFixed(2);
+                             })()}
+                           </p>
                         </div>
                       </div>
-                    ))
-                  }
-                  {modules.filter(m => (m as any).pdfAttachment || (m as any).receiptAttachment).length === 0 && (
-                    <div className="col-span-full py-12 text-center bg-[var(--bg)] border-2 border-dashed border-[var(--border)] rounded-[2.5rem]">
-                      <div className="w-16 h-16 bg-[var(--card-bg)] rounded-2xl flex items-center justify-center mx-auto mb-4 opacity-30">
-                        <Book className="w-8 h-8 text-[var(--text-muted)]" />
+                    </div>
+                  ) : activeTool === 'archive' ? (
+                    <div className="space-y-6">
+                      <div className="relative group">
+                        <SearchIcon className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--text-muted)] group-focus-within:text-amber-500" />
+                        <input 
+                          type="text" 
+                          placeholder="Cerca nei documenti..." 
+                          value={archiveSearch}
+                          onChange={(e) => setArchiveSearch(e.target.value)}
+                          className="w-full pl-14 pr-6 py-4 bg-[var(--card-bg)] border border-[var(--border)] rounded-3xl outline-none focus:ring-4 focus:ring-amber-500/5 transition-all font-bold text-[var(--text-main)]"
+                        />
                       </div>
-                      <p className="text-sm font-bold text-[var(--text-muted)]">Nessun documento PDF salvato.</p>
+
+                      <div className="grid grid-cols-1 gap-3 max-h-[60vh] overflow-y-auto scrollbar-none">
+                        {modules
+                          .filter(m => {
+                            const hasPdf = (m as any).pdfAttachment || (m as any).receiptAttachment;
+                            if (!hasPdf) return false;
+                            const title = (m.title || '').toLowerCase();
+                            const search = archiveSearch.toLowerCase();
+                            return title.includes(search);
+                          })
+                          .map(m => (
+                            <div 
+                              key={m.id} 
+                              onClick={() => {
+                                setViewingDoc((m as any).pdfAttachment || (m as any).receiptAttachment);
+                                setViewingTitle(m.title);
+                              }}
+                              className="bg-[var(--card-bg)] p-4 rounded-2xl border border-[var(--border)] hover:border-amber-500/50 transition-all cursor-pointer flex items-center gap-4 group shadow-sm"
+                            >
+                               <div className="w-10 h-10 bg-amber-500/10 rounded-xl flex items-center justify-center text-amber-500 shrink-0 group-hover:scale-110 transition-transform">
+                                  <Book className="w-5 h-5" />
+                               </div>
+                               <div className="min-w-0 flex-1">
+                                  <h4 className="font-bold text-[var(--text-main)] truncate text-xs">{m.title}</h4>
+                                  <p className="text-[9px] text-[var(--text-muted)] font-black uppercase mt-0.5">
+                                    {new Date(m.createdAt || Date.now()).toLocaleDateString()}
+                                  </p>
+                               </div>
+                               <Eye className="w-4 h-4 text-amber-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+                            </div>
+                          ))
+                        }
+                        {modules.filter(m => (m as any).pdfAttachment || (m as any).receiptAttachment).length === 0 && (
+                          <div className="py-12 text-center bg-[var(--card-bg)]/30 border-2 border-dashed border-[var(--border)] rounded-[2.5rem]">
+                            <p className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-widest">Nessun PDF salvato</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-6">
+                      <div className={`py-12 flex flex-col items-center justify-center border-2 border-dashed border-[var(--border)] rounded-[2.5rem] bg-[var(--card-bg)]/30 relative hover:bg-amber-500/5 transition-colors cursor-pointer group ${files.length > 0 ? 'py-8' : 'py-12'}`}>
+                        <input
+                          type="file"
+                          multiple
+                          accept={activeTool === 'img2pdf' ? 'image/jpeg, image/png' : 'application/pdf'}
+                          onChange={handleFileChange}
+                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                        />
+                        <div className={`rounded-2xl bg-amber-500/10 flex items-center justify-center transition-all ${files.length > 0 ? 'w-12 h-12 mb-4' : 'w-20 h-20 mb-6'}`}>
+                          <FileUp className={`${files.length > 0 ? 'w-6 h-6' : 'w-10 h-10'} text-amber-500`} />
+                        </div>
+                        <p className={`${files.length > 0 ? 'text-sm' : 'text-lg'} font-black text-[var(--text-main)]`}>
+                          {files.length > 0 ? 'Aggiungi altri file' : 'Seleziona File'}
+                        </p>
+                      </div>
+
+                      {files.length > 0 && (
+                        <div className="space-y-4 animate-fade-in">
+                          <div className="space-y-2 max-h-40 overflow-y-auto scrollbar-none">
+                            {files.map((f, i) => (
+                              <div key={i} className="flex items-center gap-3 p-3 bg-[var(--card-bg)] rounded-xl border border-[var(--border)] shadow-sm">
+                                <FileCheck className="w-4 h-4 text-emerald-500 shrink-0" />
+                                <span className="text-[11px] font-bold text-[var(--text-main)] truncate flex-1">{f.name}</span>
+                                <button onClick={() => removeFile(i)} className="p-1.5 hover:bg-rose-500/10 text-rose-500 rounded-lg"><X className="w-4 h-4" /></button>
+                              </div>
+                            ))}
+                          </div>
+                          
+                          <div className="grid grid-cols-2 gap-3 pt-2">
+                            <button onClick={() => executeTool(false)} disabled={isProcessing} className="py-4 bg-[var(--card-bg)] border-2 border-amber-500 text-amber-600 rounded-2xl font-black text-xs uppercase tracking-widest shadow-sm">
+                              {isProcessing ? '...' : 'Scarica'}
+                            </button>
+                            <button onClick={() => executeTool(true)} disabled={isProcessing} className="py-4 bg-amber-500 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg shadow-amber-500/20">
+                              {isProcessing ? '...' : 'Salva Appunto'}
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
-              </div>
-            ) : (
-              <div className="space-y-6">
-                <div className="py-12 flex flex-col items-center justify-center border-2 border-dashed border-[var(--border)] rounded-[2.5rem] bg-[var(--bg)] relative hover:bg-[var(--bg)]/80 transition-colors cursor-pointer group hover:border-amber-300">
-                  <input
-                    type="file"
-                    multiple
-                    accept={activeTool === 'img2pdf' ? 'image/jpeg, image/png' : 'application/pdf'}
-                    onChange={handleFileChange}
-                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                  />
-                  <div className="w-20 h-20 bg-[var(--card-bg)] rounded-full flex items-center justify-center mb-6 group-hover:scale-110 transition-transform shadow-sm">
-                    <FileUp className="w-10 h-10 text-amber-500" />
-                  </div>
-                  <p className="text-xl font-bold text-[var(--text-main)] mb-2">
-                    {files.length > 0 ? 'Aggiungi altri file' : `Seleziona i file ${activeTool === 'img2pdf' ? 'immagini' : 'PDF'}`}
-                  </p>
-                  <p className="text-sm text-[var(--text-muted)]">oppure trascinali e rilasciali qui</p>
-                </div>
-
-                {files.length > 0 && (
-                  <div className="mt-8 text-left">
-                    <h4 className="text-sm font-bold text-[var(--text-muted)] uppercase mb-4">File selezionati ({files.length})</h4>
-                    <div className="space-y-2 mb-8 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
-                      {files.map((f, i) => (
-                        <div key={i} className="flex items-center gap-3 p-3 bg-[var(--bg)] rounded-xl border border-[var(--border)] group/file shadow-sm">
-                          <FileCheck className="w-5 h-5 text-green-500 shrink-0" />
-                          <span className="text-sm font-medium text-[var(--text-main)] truncate flex-1">{f.name}</span>
-                          <button 
-                            onClick={() => removeFile(i)}
-                            className="p-1.5 hover:bg-red-500/10 text-[var(--text-muted)] hover:text-red-500 rounded-lg transition-colors opacity-0 group-hover/file:opacity-100"
-                            title="Rimuovi file"
-                          >
-                            <X className="w-4 h-4" />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                    
-                    <div className="flex flex-col sm:flex-row gap-4">
-                      <button
-                        onClick={() => executeTool(false)}
-                        disabled={isProcessing}
-                        className="flex-1 py-4 bg-[var(--card-bg)] border-2 border-amber-500 text-amber-600 hover:bg-amber-500/10 disabled:opacity-50 rounded-2xl font-bold text-lg flex items-center justify-center gap-2 transition-all shadow-sm active:scale-95"
-                      >
-                        <FileDown className="w-5 h-5" />
-                        {isProcessing ? 'Elaborazione...' : 'Scarica PDF'}
-                      </button>
-                      {onSaveToSandbox && (
-                        <button
-                          onClick={() => executeTool(true)}
-                          disabled={isProcessing}
-                          className="flex-1 py-4 bg-gradient-to-tr from-amber-500 to-amber-400 hover:from-amber-600 hover:to-amber-500 disabled:opacity-50 text-white rounded-2xl font-bold text-lg flex items-center justify-center gap-2 transition-all shadow-lg shadow-amber-500/20 hover:scale-[1.02] active:scale-[0.98]"
-                        >
-                          {isProcessing ? 'Elaborazione...' : 'Salva in Sandbox'}
-                          <ArrowRight className="w-5 h-5" />
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
+             </div>
           </div>
         )}
       </div>
 
-      {/* Document Preview Modal */}
+      {/* Document Viewer Modal - Unchanged but compactified internal padding */}
       {viewingDoc && (
-        <div className="fixed inset-0 z-[100002] bg-black/80 backdrop-blur-md flex flex-col items-center justify-center p-4">
-          <div className="w-full max-w-lg bg-[var(--card-bg)] border border-[var(--border)] rounded-[2.5rem] overflow-hidden shadow-2xl flex flex-col max-h-[85vh]">
-            <div className="flex items-center justify-between p-6 border-b border-[var(--border)]">
+        <div className="fixed inset-0 z-[100002] bg-black/60 backdrop-blur-xl flex items-end sm:items-center justify-center p-0 sm:p-4">
+          <motion.div initial={{ y: '100%' }} animate={{ y: 0 }} className="w-full max-w-lg bg-[var(--card-bg)] rounded-t-[2.5rem] sm:rounded-b-[2.5rem] overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
+            <div className="p-6 border-b border-[var(--border)] flex items-center justify-between">
               <div className="min-w-0">
-                <h3 className="text-sm font-bold text-[var(--text-main)] truncate uppercase tracking-wider">{viewingTitle}</h3>
-                <p className="text-[9px] font-bold text-amber-500 uppercase tracking-widest mt-0.5">Visualizzatore Interno</p>
+                <h3 className="text-sm font-bold text-[var(--text-main)] truncate uppercase tracking-tight">{viewingTitle}</h3>
+                <p className="text-[9px] font-black text-amber-500 uppercase tracking-widest">Documento PDF</p>
               </div>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => {
-                    const base64 = viewingDoc.split(',')[1] || viewingDoc;
-                    const binary = atob(base64);
-                    const bytes = new Uint8Array(binary.length);
-                    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-                    const blob = new Blob([bytes], { type: 'application/pdf' });
-                    const url = URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = `documento_${Date.now()}.pdf`;
-                    a.click();
-                    URL.revokeObjectURL(url);
-                  }}
-                  className="p-2.5 bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 rounded-xl transition-all"
-                  title="Scarica"
-                >
-                  <FileDown className="w-5 h-5" />
-                </button>
-                <button
-                  onClick={() => setViewingDoc(null)}
-                  className="p-2.5 hover:bg-red-500/10 text-[var(--text-muted)] hover:text-red-500 rounded-xl transition-all"
-                >
-                  <X className="w-5 h-5" />
-                </button>
+              <button onClick={() => setViewingDoc(null)} className="p-2.5 bg-[var(--bg)] rounded-xl text-[var(--text-muted)]"><X className="w-5 h-5" /></button>
+            </div>
+            <div className="flex-1 p-10 bg-black/5 flex flex-col items-center justify-center text-center">
+              <div className="w-20 h-20 bg-amber-500/10 rounded-2xl flex items-center justify-center text-amber-500 mb-6"><Book className="w-10 h-10" /></div>
+              <p className="text-sm font-bold text-[var(--text-main)] mb-10">Il documento è pronto per la visualizzazione esterna o il download.</p>
+              <div className="w-full space-y-3">
+                 <button onClick={() => {
+                   const base64 = viewingDoc.split(',')[1] || viewingDoc;
+                   const binary = atob(base64);
+                   const bytes = new Uint8Array(binary.length);
+                   for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+                   const blob = new Blob([bytes], { type: 'application/pdf' });
+                   const url = URL.createObjectURL(blob);
+                   window.open(url, '_blank');
+                 }} className="w-full py-4 bg-amber-500 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg">Apri Documento</button>
+                 <button onClick={() => {
+                   const base64 = viewingDoc.split(',')[1] || viewingDoc;
+                   const binary = atob(base64);
+                   const bytes = new Uint8Array(binary.length);
+                   for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+                   const blob = new Blob([bytes], { type: 'application/pdf' });
+                   const url = URL.createObjectURL(blob);
+                   const a = document.createElement('a'); a.href = url; a.download = `${viewingTitle}.pdf`; a.click();
+                 }} className="w-full py-4 bg-[var(--bg)] text-[var(--text-main)] border border-[var(--border)] rounded-2xl font-black text-xs uppercase tracking-widest">Scarica</button>
               </div>
             </div>
-            <div className="flex-1 flex flex-col items-center justify-center p-10 bg-black/5">
-              <div className="w-24 h-24 mb-6 bg-amber-500/10 rounded-3xl flex items-center justify-center text-amber-500">
-                <Book className="w-12 h-12" />
-              </div>
-              <p className="text-sm font-bold text-[var(--text-main)] text-center mb-8">
-                Documento Pronto per la visualizzazione
-              </p>
-              <button
-                onClick={() => {
-                  const base64 = viewingDoc.split(',')[1] || viewingDoc;
-                  const binary = atob(base64);
-                  const bytes = new Uint8Array(binary.length);
-                  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-                  const blob = new Blob([bytes], { type: 'application/pdf' });
-                  const url = URL.createObjectURL(blob);
-                  window.open(url, '_blank');
-                  setTimeout(() => URL.revokeObjectURL(url), 60000);
-                }}
-                className="w-full py-4 bg-amber-500 hover:bg-amber-600 text-white rounded-2xl font-bold flex items-center justify-center gap-2 transition-all shadow-lg"
-              >
-                <Eye className="w-5 h-5" /> Apri PDF Intero
-              </button>
-            </div>
-          </div>
+          </motion.div>
         </div>
       )}
     </div>
