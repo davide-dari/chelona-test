@@ -41,6 +41,7 @@ export const DocumentScanner = ({ onCapture, onClose, downloadOnly = false }: Do
   const [activeFilter, setActiveFilter] = useState<'original' | 'enhance' | 'bw' | 'document'>('original');
   const [rotation, setRotation] = useState(0);
   const [focusPoint, setFocusPoint] = useState<{ x: number; y: number } | null>(null);
+  const [showFlash, setShowFlash] = useState(false);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -296,8 +297,10 @@ export const DocumentScanner = ({ onCapture, onClose, downloadOnly = false }: Do
   };
 
   const handleCapture = async () => {
-    if (!scannerRef.current || !videoRef.current || isProcessing) return;
+    if (!videoRef.current || isProcessing) return;
     const video = videoRef.current;
+    setShowFlash(true);
+    setTimeout(() => setShowFlash(false), 150);
     
     // Safety check: Ensure video is actually playing and ready
     if (video.readyState < 2 || video.paused) {
@@ -331,7 +334,11 @@ export const DocumentScanner = ({ onCapture, onClose, downloadOnly = false }: Do
 
       let corners: CornerPoints;
       let contour;
-      try { contour = scannerRef.current.findPaperContour(detectCanvas); } catch (e) {}
+      try { 
+        if (scannerRef.current) {
+          contour = scannerRef.current.findPaperContour(detectCanvas); 
+        }
+      } catch (e) {}
 
       if (contour) {
         const raw = scannerRef.current.getCornerPoints(contour);
@@ -683,7 +690,23 @@ export const DocumentScanner = ({ onCapture, onClose, downloadOnly = false }: Do
         >
           {torch ? <Zap className="w-5 h-5 text-amber-400 fill-amber-400" /> : <ZapOff className="w-5 h-5 text-white/50" />}
         </button>
+
+        <div className="flex items-center gap-2 bg-black/40 border border-white/10 px-3 py-1.5 rounded-full backdrop-blur-xl">
+          <div className={`w-1.5 h-1.5 rounded-full ${isReady ? 'bg-emerald-500 animate-pulse' : 'bg-red-500'}`} />
+          <span className="text-[9px] font-bold text-white/80 uppercase tracking-widest">{isReady ? 'Smart AI ON' : 'Loading AI...'}</span>
+        </div>
       </div>
+
+      <AnimatePresence>
+        {showFlash && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[500] bg-white pointer-events-none"
+          />
+        )}
+      </AnimatePresence>
 
       {mode === 'scanning' ? (
         <div
