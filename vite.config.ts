@@ -11,6 +11,9 @@ export default defineConfig({
       '@': path.resolve(__dirname, '.'),
     },
   },
+  build: {
+    target: 'chrome80',
+  },
   server: {
     hmr: true,
   },
