@@ -236,9 +236,13 @@ export const DocumentScanner = ({ onCapture, onClose, downloadOnly = false }: Do
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
           videoRef.current.onloadedmetadata = () => {
-            videoRef.current?.play();
-            rafRef.current = requestAnimationFrame(runDetection);
+             if (videoRef.current) {
+               videoRef.current.play().catch(e => console.warn("Auto-play blocked, wait for user", e));
+               rafRef.current = requestAnimationFrame(runDetection);
+             }
           };
+          // Force play again just in case
+          videoRef.current.play().catch(() => {});
         }
       } catch (err) {
         console.error('Camera error:', err);
@@ -293,8 +297,17 @@ export const DocumentScanner = ({ onCapture, onClose, downloadOnly = false }: Do
 
   const handleCapture = async () => {
     if (!scannerRef.current || !videoRef.current || isProcessing) return;
-    setIsProcessing(true);
     const video = videoRef.current;
+    
+    // Safety check: Ensure video is actually playing and ready
+    if (video.readyState < 2 || video.paused) {
+      try { await video.play(); } catch (e) { 
+        console.error("Video not ready for capture", e);
+        return;
+      }
+    }
+
+    setIsProcessing(true);
     try {
       // ── 1. Grab full-res frame directly from video (fastest path) ──────────
       const fullW = video.videoWidth;
@@ -686,7 +699,8 @@ export const DocumentScanner = ({ onCapture, onClose, downloadOnly = false }: Do
             className="absolute inset-0 w-full h-full object-cover" 
             style={{ 
               WebkitMediaControls: 'none',
-              background: 'black'
+              background: 'black',
+              pointerEvents: 'none' // Prevent interactions that might trigger play buttons
             }}
           />
           <style>{`
@@ -695,6 +709,13 @@ export const DocumentScanner = ({ onCapture, onClose, downloadOnly = false }: Do
             }
             video::-webkit-media-controls-start-playback-button {
               display: none !important;
+              -webkit-appearance: none;
+            }
+            video::-internal-media-controls-download-button {
+                display:none !important;
+            }
+            video::-webkit-media-controls-enclosure {
+                display:none !important;
             }
           `}</style>
           <canvas ref={canvasRef} className="absolute inset-0 w-full h-full object-cover pointer-events-none" />
