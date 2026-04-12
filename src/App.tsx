@@ -627,7 +627,11 @@ export default function App() {
       if (!folderMatch) return false;
 
       // Type (Category) filter
-      if (selectedType && m.type !== selectedType) return false;
+      if (selectedType === 'split') {
+        if (m.type !== 'split' && m.type !== 'single-expense') return false;
+      } else if (selectedType && m.type !== selectedType) {
+        return false;
+      }
 
       // Search filter
       if (searchQuery.trim()) {
@@ -1056,7 +1060,9 @@ export default function App() {
                     <div className="bg-[var(--card-bg)]/80 backdrop-blur-3xl rounded-[2.5rem] border border-[var(--border)] p-6 lg:p-10 shadow-[0_8px_40px_rgba(0,0,0,0.06)]">
                       <h3 className="text-lg font-bold text-[var(--text-main)] mb-8 uppercase tracking-widest text-center">Scegli un Template</h3>
                       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                        {Object.entries(TEMPLATES).map(([key, t]) => (
+                        {Object.entries(TEMPLATES)
+                          .filter(([key]) => key !== 'single-expense')
+                          .map(([key, t]) => (
                           <button
                             key={key}
                             onClick={() => {
@@ -1565,23 +1571,31 @@ export default function App() {
 
                     {/* All Categories Grid (Main Entry Point) */}
                     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 pb-12">
-                      {Object.entries(TEMPLATES).map(([key, t]) => (
-                        <button
-                          key={key}
-                          onClick={() => setSelectedType(key as ModuleType)}
-                          className="bg-[var(--card-bg)] p-6 lg:p-8 rounded-[2.5rem] border border-[var(--border)] shadow-sm hover:border-[var(--accent)] hover:shadow-lg hover:-translate-y-1 transition-all group flex flex-col items-center text-center gap-4"
-                        >
-                          <div className={`w-14 h-14 lg:w-16 lg:h-16 bg-[var(--bg)] rounded-3xl flex items-center justify-center ${t.color} group-hover:bg-[var(--accent-bg)] transition-colors shadow-inner`}>
-                            <t.icon className="w-7 h-7 lg:w-8 lg:h-8" />
-                          </div>
-                          <div>
-                            <p className="font-black text-[var(--text-main)] text-sm">{t.title}</p>
-                            <p className="text-[10px] text-[var(--text-muted)] font-bold uppercase tracking-widest mt-1">
-                              {modules.filter(m => m.type === key).length} Moduli
-                            </p>
-                          </div>
-                        </button>
-                      ))}
+                      {Object.entries(TEMPLATES)
+                        .filter(([key]) => key !== 'single-expense')
+                        .map(([key, t]) => {
+                        const count = key === 'split' 
+                          ? modules.filter(m => m.type === 'split' || m.type === 'single-expense').length
+                          : modules.filter(m => m.type === key).length;
+                        
+                        return (
+                          <button
+                            key={key}
+                            onClick={() => setSelectedType(key as ModuleType)}
+                            className="bg-[var(--card-bg)] p-6 lg:p-8 rounded-[2.5rem] border border-[var(--border)] shadow-sm hover:border-[var(--accent)] hover:shadow-lg hover:-translate-y-1 transition-all group flex flex-col items-center text-center gap-4"
+                          >
+                            <div className={`w-14 h-14 lg:w-16 lg:h-16 bg-[var(--bg)] rounded-3xl flex items-center justify-center ${t.color} group-hover:bg-[var(--accent-bg)] transition-colors shadow-inner`}>
+                              <t.icon className="w-7 h-7 lg:w-8 lg:h-8" />
+                            </div>
+                            <div>
+                              <p className="font-black text-[var(--text-main)] text-sm">{t.title}</p>
+                              <p className="text-[10px] text-[var(--text-muted)] font-bold uppercase tracking-widest mt-1">
+                                {count} Moduli
+                              </p>
+                            </div>
+                          </button>
+                        );
+                      })}
                     </div>
 
                     {/* Recent Activities */}
