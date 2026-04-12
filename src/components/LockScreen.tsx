@@ -66,8 +66,8 @@ export const LockScreen = ({ isVisible, onAuthenticated, onStartScan, onOpenTool
     window.addEventListener('chelona_profiles_updated', () => refreshProfiles());
     biometricService.isSupported().then(setIsBioSupported);
     
-    // Controllo aggiornamenti all'arrivo nel login
-    if (onCheckUpdate) onCheckUpdate();
+    // Controllo aggiornamenti all'arrivo nel login - Rimosso su richiesta utente
+    // if (onCheckUpdate) onCheckUpdate();
 
     return () => window.removeEventListener('chelona_profiles_updated', () => refreshProfiles());
   }, []);

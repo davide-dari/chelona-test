@@ -264,8 +264,8 @@ export default function App() {
       m.biometricService.isSupported().then(setIsBioSupported);
     });
 
-    // Controllo aggiornamenti all'avvio
-    handleCheckUpdate(true);
+    // Controllo aggiornamenti all'avvio - Rimosso su richiesta utente
+    // handleCheckUpdate(true);
     // Ascolta eventi manuali di aggiornamento
     const handleManualUpdate = (e: any) => {
       if (e.detail) setAvailableUpdate(e.detail);
