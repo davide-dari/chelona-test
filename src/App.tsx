@@ -376,10 +376,10 @@ export default function App() {
         if (confirm(`Vuoi importare il profilo "${profile.username}"?`)) {
           storage.saveProfiles([...currentProfiles, profile]);
           if (encData) {
-            localStorage.setItem(`lifemod_dashboard_state_enc_${profile.id}`, encData);
+            localStorage.setItem(`chelona_dashboard_state_enc_${profile.id}`, encData);
           }
           showToast(`Profilo "${profile.username}" importato!`);
-          window.dispatchEvent(new Event('lifemod_profiles_updated'));
+          window.dispatchEvent(new Event('chelona_profiles_updated'));
         }
         return;
       }
@@ -580,8 +580,14 @@ export default function App() {
   const handleLogout = () => {
     setEncryptionKey(null);
     setCurrentProfileId(null);
-    setModules([]);
+    // CRITICAL: We NO LONGER call setModules([]) here. 
+    // This avoids a race condition with the auto-save useEffect 
+    // that could overwrite encrypted data with an empty array.
+    setIsProfileOpen(false);
     setIsSidebarOpen(false);
+    setIsSettingsOpen(false);
+    setIsAdding(false);
+    setSearchQuery('');
   };
 
   // useContainerWidth removed (DnD disabled)
