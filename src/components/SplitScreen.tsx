@@ -5,6 +5,7 @@ import { calculateSplits, Settlement } from '../utils/splitAlgorithm';
 import { encryption } from '../services/encryption';
 import { DocumentScanner } from './DocumentScanner';
 import { DocumentViewer } from './DocumentViewer';
+import { generateUUID } from '../utils/uuid';
 import { 
   PieChart, Pie, Cell, ResponsiveContainer, 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, 
@@ -75,7 +76,7 @@ export const SplitScreen = ({ module, onClose, onSave, onSaveToSandbox }: SplitS
   const handleAddParticipant = () => {
     if (!newParticipantName.trim()) return;
     const newP: SplitParticipant = {
-      id: crypto.randomUUID(),
+      id: generateUUID(),
       name: newParticipantName.trim()
     };
     setParticipants([...participants, newP]);
@@ -145,7 +146,7 @@ export const SplitScreen = ({ module, onClose, onSave, onSaveToSandbox }: SplitS
     }
 
     const newExp: SplitExpense = {
-      id: editingExpenseId || crypto.randomUUID(),
+      id: editingExpenseId || generateUUID(),
       title: expTitle,
       amount: Number(expAmount),
       date: expDate,

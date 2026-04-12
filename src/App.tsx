@@ -22,6 +22,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import JSZip from 'jszip';
 import { updateService, UpdateInfo } from './services/updateService';
 import { App } from '@capacitor/app';
+import { generateUUID } from './utils/uuid';
 // UI Libraries removed as per request (CSS Grid migration)
 
 // ResponsiveGridLayout removed (DnD disabled)
@@ -413,7 +414,7 @@ export default function App() {
         const moduleData = parsedData.data;
         const { id, folderId, createdAt, updatedAt, ...cleanData } = moduleData;
         
-        const newId = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : Math.random().toString(36).substr(2, 9);
+        const newId = generateUUID();
         const selfDestructAt = parsedData.durationMs ? Date.now() + parsedData.durationMs : parsedData.expiresAt;
 
         const newModule: Module = {
@@ -1080,7 +1081,7 @@ export default function App() {
                   {(editingSingleExpenseModule || formData.template === 'single-expense') && (
                     <SingleExpenseScreen
                       module={editingSingleExpenseModule || {
-                        id: crypto.randomUUID(),
+                        id: generateUUID(),
                         type: 'single-expense',
                         title: 'Spesa Singola',
                         description: '',
@@ -1112,7 +1113,7 @@ export default function App() {
                       }}
                       onSaveToSandbox={async (title, base64) => {
                         const doc: DocumentModule = {
-                           id: crypto.randomUUID(),
+                           id: generateUUID(),
                            type: 'document',
                            title,
                            documentType: 'generic',
