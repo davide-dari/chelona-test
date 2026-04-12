@@ -147,13 +147,24 @@ export const LockScreen = ({ isVisible, onAuthenticated, onStartScan, onOpenTool
     setIsLoading(true);
     try {
       const m = await import('../services/biometricService');
+      
+      // STEP 1: Explicit Physical Hardware Verification
+      // This forces the OS to show the native prompt and wait for a real scan
+      const verified = await m.biometricService.verifyIdentity('Accedi al tuo profilo sicuro.');
+      if (!verified) {
+        setError('Verifica hardware fallita. Usa l\'impronta fisica sul sensore.');
+        setIsLoading(false);
+        return;
+      }
+
+      // STEP 2: Retrieve the master key from the secure store
       const masterKeyStr = await m.biometricService.getMasterKey(selectedProfile.id);
       
       if (masterKeyStr) {
         const masterKey = await encryption.importKey(masterKeyStr);
         onAuthenticated(masterKey, selectedProfile.id);
       } else {
-        setError('Autenticazione biometrica fallita o annullata.');
+        setError('Impossibile recuperare la chiave di sicurezza.');
       }
     } catch (err: any) {
       console.error('[LockScreen] Biometric login error:', err);
