@@ -111,6 +111,8 @@ export const LockScreen = ({ isVisible, onAuthenticated, onStartScan, onOpenTool
       const updatedProfiles = [...profiles, newConfig];
       storage.saveProfiles(updatedProfiles);
       
+      const key = await encryption.deriveKey(password, salt);
+      
       // REGISTER BIOMETRICS IF REQUESTED
       if (isBioRequested && isBioSupported) {
         try {
