@@ -29,6 +29,8 @@ interface ProfileScreenProps {
   onUpdateWidgets: (catIds: string[], toolIds: string[]) => void;
   isSandboxMode: boolean;
   onToggleSandbox: (val: boolean) => void;
+  theme: 'light' | 'dark';
+  onToggleTheme: () => void;
 }
 
 export function ProfileScreen({
@@ -51,7 +53,9 @@ export function ProfileScreen({
   pinnedToolIds,
   onUpdateWidgets,
   isSandboxMode,
-  onToggleSandbox
+  onToggleSandbox,
+  theme,
+  onToggleTheme
 }: ProfileScreenProps) {
   const [activeTab, setActiveTab] = useState<'profile' | 'security' | 'widgets'>('profile');
   
@@ -187,7 +191,15 @@ export function ProfileScreen({
         className="bg-[var(--card-bg)] w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden border border-[var(--border)] max-h-[90vh] flex flex-col"
       >
         <header className="p-6 border-b border-[var(--border)] flex items-center justify-between bg-[var(--card-bg)] sticky top-0 z-10">
-          <h2 className="text-2xl font-bold text-[var(--text-main)]">Il Tuo Profilo</h2>
+          <div className="flex items-center gap-4">
+            <h2 className="text-2xl font-bold text-[var(--text-main)]">Il Tuo Profilo</h2>
+            <button 
+              onClick={onToggleTheme}
+              className="p-2 text-[var(--text-muted)] hover:text-[var(--accent)] bg-[var(--bg)] rounded-xl transition-all border border-[var(--border)]"
+            >
+              {theme === 'light' ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5 text-[var(--accent)]" />}
+            </button>
+          </div>
           <button onClick={onClose} className="p-2 hover:bg-[var(--bg)] rounded-xl transition-colors text-[var(--text-muted)]">
             <X className="w-6 h-6" />
           </button>
@@ -563,7 +575,7 @@ export function ProfileScreen({
         <div className="p-6 border-t border-[var(--border)] mt-auto bg-[var(--card-bg)]">
           <button
             onClick={onLogout}
-            className="w-full py-5 bg-[var(--text-main)] hover:bg-black text-white rounded-2xl font-bold transition-all flex items-center justify-center gap-3 shadow-xl"
+            className="w-full py-5 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white rounded-2xl font-bold transition-all flex items-center justify-center gap-3 shadow-xl"
           >
             <Lock className="w-5 h-5" />
             Blocca App e Disconnetti

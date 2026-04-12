@@ -925,15 +925,8 @@ export default function App() {
                   </h1>
                 </div>
 
-                {/* Right side: Theme and Avatar (Lock moved to Profile) */}
+                {/* Right side: Avatar (Lock and Theme moved to Profile) */}
                 <div className="flex items-center gap-6">
-                  <button 
-                    onClick={toggleTheme} 
-                    className="p-3 text-[var(--text-muted)] hover:text-[var(--accent)] bg-[var(--card-bg)] shadow-sm hover:shadow-md rounded-2xl transition-all border border-[var(--border)]"
-                    title={theme === 'light' ? 'Passa alla modalità notte' : 'Passa alla modalità giorno'}
-                  >
-                    {theme === 'light' ? <Moon className="w-6 h-6" /> : <Sun className="w-6 h-6 text-[var(--accent)]" />}
-                  </button>
                   <button onClick={() => setIsProfileOpen(true)} className="w-12 h-12 lg:w-14 lg:h-14 rounded-2xl shadow-lg overflow-hidden border-[3px] border-[var(--card-bg)] focus:outline-none hidden md:block hover:scale-105 transition-transform">
                     <img src={avatar || `https://ui-avatars.com/api/?name=${username}&background=FFFBEB&color=B45309`} alt="Profile" className="w-full h-full object-cover" />
                   </button>
@@ -966,6 +959,8 @@ export default function App() {
                 onUpdateWidgets={handleUpdateWidgets}
                 isSandboxMode={isSandboxMode}
                 onToggleSandbox={setIsSandboxMode}
+                theme={theme}
+                onToggleTheme={toggleTheme}
               />
             ) : isToolsOpen ? (
               <ToolsScreen 
