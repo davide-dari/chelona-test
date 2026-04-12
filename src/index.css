@@ -70,6 +70,11 @@ body {
   padding-top: Math.max(1rem, env(safe-area-inset-top));
 }
 
+.safe-area-header {
+  padding-top: env(safe-area-inset-top);
+  min-height: calc(env(safe-area-inset-top) + 4rem); /* Header + Safe Area */
+}
+
 .glass-card {
   background: var(--card-bg);
   backdrop-filter: blur(12px);

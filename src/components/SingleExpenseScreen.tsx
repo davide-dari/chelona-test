@@ -68,7 +68,7 @@ export const SingleExpenseScreen = ({ module, onClose, onSave, onSaveToSandbox }
   return (
     <div className="fixed inset-0 z-[150] bg-[var(--bg)] flex flex-col h-full font-sans transition-colors duration-300">
       {/* Header */}
-      <header className="h-20 border-b border-[var(--border)] bg-[var(--header-bg)] backdrop-blur-2xl px-6 flex items-center justify-between shrink-0 sticky top-0 z-20">
+      <header className="min-h-20 border-b border-[var(--border)] bg-[var(--header-bg)] backdrop-blur-2xl px-6 flex items-center justify-between shrink-0 sticky top-0 z-20 safe-area-header">
         <div className="flex items-center gap-4">
           <button onClick={onClose} className="p-3 bg-[var(--card-bg)] border border-[var(--border)] hover:bg-[var(--border)] rounded-2xl transition-all shadow-sm">
             <ArrowLeft className="w-6 h-6 text-[var(--text-main)]" />

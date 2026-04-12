@@ -809,7 +809,7 @@ export default function App() {
 
   const SidebarContent = () => (
     <>
-      <div className="p-6 flex items-center justify-between">
+      <div className="p-6 flex items-center justify-between safe-area-header">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 bg-amber-500 rounded-xl flex items-center justify-center text-white shadow-sm">
             <BookOpen className="w-5 h-5" />
@@ -879,7 +879,7 @@ export default function App() {
 
       {isPublicToolsOpen && !encryptionKey && (
         <div className="h-screen bg-[var(--bg)] flex flex-col relative w-full overflow-hidden" style={{ position: 'absolute', inset: 0, zIndex: 99999 }}>
-           <header className="h-16 lg:h-20 bg-[var(--header-bg)] backdrop-blur-2xl border-b border-[var(--border)] px-4 lg:px-8 flex items-center justify-between sticky top-0 z-10 shadow-sm">
+           <header className="min-h-16 lg:min-h-20 bg-[var(--header-bg)] backdrop-blur-2xl border-b border-[var(--border)] px-4 lg:px-8 flex items-center justify-between sticky top-0 z-10 shadow-sm safe-area-header">
              <div className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-emerald-500 rounded-xl flex items-center justify-center shadow-lg shadow-emerald-500/20">
                    <Wrench className="w-6 h-6 text-white" />
@@ -916,7 +916,7 @@ export default function App() {
             </aside>
 
             <main className="flex-1 flex flex-col overflow-hidden w-full relative">
-              <header className="h-20 lg:h-28 bg-[var(--header-bg)] backdrop-blur-2xl border-b border-[var(--border)] px-6 lg:px-12 flex items-center justify-between sticky top-0 z-10 shadow-[0_4px_20px_rgba(0,0,0,0.03)]">
+              <header className="min-h-20 lg:min-h-28 bg-[var(--header-bg)] backdrop-blur-2xl border-b border-[var(--border)] px-6 lg:px-12 flex items-center justify-between sticky top-0 z-10 shadow-[0_4px_20px_rgba(0,0,0,0.03)] safe-area-header">
                 {/* Left side: Contextual Title */}
                 <div className="flex items-center gap-3">
                   {(isToolsOpen || selectedType) && (

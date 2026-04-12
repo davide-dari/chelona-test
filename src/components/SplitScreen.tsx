@@ -182,7 +182,7 @@ export const SplitScreen = ({ module, onClose, onSave, onSaveToSandbox }: SplitS
     <div className="fixed inset-0 z-[150] bg-[var(--bg)] flex flex-col h-full font-sans transition-colors duration-300">
       
       {/* Header */}
-      <header className="h-16 lg:h-20 border-b border-[var(--border)] bg-[var(--header-bg)] backdrop-blur-2xl px-4 flex items-center justify-between shrink-0 sticky top-0 z-20">
+      <header className="min-h-16 lg:min-h-20 border-b border-[var(--border)] bg-[var(--header-bg)] backdrop-blur-2xl px-4 flex items-center justify-between shrink-0 sticky top-0 z-20 safe-area-header">
         <div className="flex items-center gap-3">
           <button onClick={() => { handleSaveAll(); onClose(); }} className="p-2.5 bg-[var(--card-bg)] border border-[var(--border)] hover:bg-[var(--border)] rounded-xl transition-all">
             <ArrowLeft className="w-5 h-5 text-[var(--text-main)]" />
