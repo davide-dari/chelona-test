@@ -330,29 +330,44 @@ export function ProfileScreen({
                 </form>
               </div>
 
-              <div className="bg-[var(--card-bg)] rounded-3xl p-6 lg:p-8 border border-[var(--border)] shadow-sm space-y-6">
+              <div className="bg-[var(--card-bg)] rounded-3xl p-6 lg:p-8 border border-[var(--border)] shadow-sm space-y-6 relative overflow-hidden">
+                {!isBioSupported && (
+                  <div className="absolute inset-0 bg-[var(--card-bg)]/60 backdrop-blur-[2px] z-10 flex items-center justify-center p-6 text-center">
+                    <div className="max-w-xs">
+                      <Fingerprint className="w-12 h-12 text-[var(--text-muted)] mx-auto mb-3 opacity-20" />
+                      <p className="text-sm font-bold text-[var(--text-muted)] leading-relaxed">
+                        Biometria non disponibile su questo browser. Usa l'app nativa o Chrome/Safari su HTTPS per sbloccare questa funzione.
+                      </p>
+                    </div>
+                  </div>
+                )}
                 <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 bg-[var(--accent-hover)]/10 rounded-2xl flex items-center justify-center text-[var(--accent)]">
-                    <Fingerprint className="w-6 h-6" />
+                  <div className="w-14 h-14 bg-amber-500/10 rounded-2xl flex items-center justify-center text-amber-600 shadow-inner">
+                    <Fingerprint className="w-7 h-7" />
                   </div>
                   <div className="flex-1">
-                    <h3 className="text-lg font-bold text-[var(--text-main)]">Accesso Biometrico</h3>
-                    <p className="text-sm text-[var(--text-muted)]">Usa l'impronta o il Face ID per accedere velocemente</p>
+                    <h3 className="text-lg font-bold text-[var(--text-main)]">Sblocco Biometrico</h3>
+                    <p className="text-xs text-[var(--text-muted)] font-medium leading-relaxed">Configura l'impronta digitale per non dover inserire ogni volta la password master.</p>
                   </div>
-                  {isBioSupported ? (
+                  {isBioSupported && (
                     <button
                       onClick={isBioEnabled ? undefined : onEnableBiometrics}
                       disabled={isBioEnabled}
-                      className={`px-6 py-3 rounded-xl font-bold transition-all ${isBioEnabled ? 'bg-[var(--success-bg)] text-[var(--success)] cursor-default' : 'bg-[var(--accent)] text-white hover:bg-[var(--accent-hover)] shadow-lg shadow-amber-500/20'}`}
+                      className={`px-6 py-3.5 rounded-2xl font-black text-xs uppercase tracking-widest transition-all ${isBioEnabled ? 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 cursor-default' : 'bg-amber-500 text-white hover:bg-amber-600 shadow-lg shadow-amber-500/20 active:scale-95'}`}
                     >
                       {isBioEnabled ? 'Attivo' : 'Attiva'}
                     </button>
-                  ) : (
-                    <span className="text-sm font-medium text-[var(--text-muted)] bg-[var(--bg)] px-4 py-2 rounded-xl">Non disp.</span>
                   )}
                 </div>
+                {isBioEnabled && (
+                  <div className="mt-4 p-4 bg-emerald-500/5 rounded-2xl border border-emerald-500/10 flex items-center gap-3">
+                    <ShieldCheck className="w-5 h-5 text-emerald-500" />
+                    <span className="text-xs font-bold text-emerald-700">Autocompilazione Master Key attiva tramite impronta.</span>
+                  </div>
+                )}
                 {bioError && (
-                  <div className="p-4 bg-red-50 dark:bg-red-900/20 text-red-600 text-sm font-medium rounded-2xl">
+                  <div className="p-4 bg-red-500/5 text-red-600 text-[11px] font-bold rounded-2xl border border-red-500/10 flex items-center gap-2">
+                    <AlertCircle className="w-4 h-4" />
                     {bioError}
                   </div>
                 )}

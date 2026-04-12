@@ -870,10 +870,10 @@ export default function App() {
                   {(isToolsOpen || selectedType) && (
                     <button 
                       onClick={() => { setIsToolsOpen(false); setSelectedType(null); setActiveToolId(null); }}
-                      className="p-2 -ml-2 hover:bg-[var(--accent-bg)] rounded-xl text-[var(--accent)] transition-all flex items-center gap-1 group"
+                      className="p-3 -ml-2 hover:bg-[var(--accent-bg)] rounded-xl text-[var(--accent)] transition-all flex items-center gap-1 group"
                       title="Torna alla Dashboard"
                     >
-                      <ArrowLeft className="w-6 h-6 group-hover:-translate-x-1 transition-transform" />
+                      <ArrowLeft className="w-7 h-7 group-hover:-translate-x-1 transition-transform" />
                     </button>
                   )}
                   {!selectedType && !isToolsOpen ? (

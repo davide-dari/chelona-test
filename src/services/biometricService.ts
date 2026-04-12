@@ -5,24 +5,25 @@
 export const biometricService = {
   // Check if WebAuthn is supported
   async isSupported(): Promise<boolean> {
-    const isBasicSupported = window.PublicKeyCredential !== undefined &&
-           typeof window.PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable === 'function';
+    const isBasicSupported = window.PublicKeyCredential !== undefined;
     
     if (!isBasicSupported) {
-      console.warn('[BiometricService] WebAuthn PublicKeyCredential not found or method missing.');
+      console.warn('[BiometricService] WebAuthn PublicKeyCredential not found.');
       return false;
     }
 
     try {
-      const isUVPAAvailable = await window.PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
-      console.log(`[BiometricService] isUserVerifyingPlatformAuthenticatorAvailable: ${isUVPAAvailable}`);
+      // Some WebViews return false even if biometric hardware is present until enrollment is attempted
+      const isUVPAAvailable = typeof window.PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable === 'function' 
+        ? await window.PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable()
+        : false;
       
-      // We return true if basic API exists, even if isUVPAAvailable is false, 
-      // to avoid false negatives in some WebViews. Actual enrollment will confirm availability.
+      console.log(`[BiometricService] UVPA Available: ${isUVPAAvailable}`);
+      // Return true if API exists, let the enrollment attempt decide the final outcome
       return true;
     } catch (e) {
-      console.error('[BiometricService] Error checking UVPA availability', e);
-      return false;
+      console.error('[BiometricService] UVPA check error', e);
+      return true; // Fallback to true to allow enrollment attempt
     }
   },
 

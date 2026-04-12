@@ -584,30 +584,31 @@ export const SplitScreen = ({ module, onClose, onSave, onSaveToSandbox }: SplitS
                   </div>
 
                   <div className="p-5 overflow-y-auto custom-scrollbar flex-1 space-y-5">
-                      {/* Tipo Spesa: Gruppo o Personale */}
-                      <div className="flex bg-[var(--bg)] p-1 rounded-2xl border border-[var(--border)]">
-                        <button 
-                          onClick={() => setExpIsPersonal(false)}
-                          className={`flex-1 py-2.5 text-[10px] font-bold uppercase tracking-widest rounded-xl transition-all ${!expIsPersonal ? 'bg-[var(--card-bg)] text-amber-500 shadow-sm border border-[var(--border)]' : 'text-[var(--text-muted)]'}`}
-                        >
-                          <div className="flex items-center justify-center gap-2">
-                            <Users className="w-3.5 h-3.5" />
-                            Spesa di Gruppo
-                          </div>
-                        </button>
-                        <button 
-                          onClick={() => {
-                            setExpIsPersonal(true);
-                            // Se personale, il pagatore è il primo partecipante (di solito l'utente)
-                            if (!expPaidBy && participants.length > 0) setExpPaidBy(participants[0].id);
-                          }}
-                          className={`flex-1 py-2.5 text-[10px] font-bold uppercase tracking-widest rounded-xl transition-all ${expIsPersonal ? 'bg-[var(--card-bg)] text-amber-500 shadow-sm border border-[var(--border)]' : 'text-[var(--text-muted)]'}`}
-                        >
-                          <div className="flex items-center justify-center gap-2">
-                            <User className="w-3.5 h-3.5" />
-                            Spesa Personale
-                          </div>
-                        </button>
+                      <div className="bg-[var(--bg)] p-1.5 rounded-2xl border border-[var(--border)] shadow-sm">
+                        <p className="text-[9px] font-black text-[var(--accent)] uppercase tracking-[0.2em] mb-2 px-2">Configurazione Spesa</p>
+                        <div className="flex gap-1">
+                          <button 
+                            onClick={() => setExpIsPersonal(false)}
+                            className={`flex-1 py-3 text-[10px] font-bold uppercase tracking-widest rounded-xl transition-all ${!expIsPersonal ? 'bg-[var(--card-bg)] text-amber-500 shadow-md border border-[var(--border)]' : 'text-[var(--text-muted)] hover:bg-[var(--card-bg)]/50'}`}
+                          >
+                            <div className="flex items-center justify-center gap-2">
+                              <Users className="w-4 h-4" />
+                              Gruppo
+                            </div>
+                          </button>
+                          <button 
+                            onClick={() => {
+                              setExpIsPersonal(true);
+                              if (!expPaidBy && participants.length > 0) setExpPaidBy(participants[0].id);
+                            }}
+                            className={`flex-1 py-3 text-[10px] font-bold uppercase tracking-widest rounded-xl transition-all ${expIsPersonal ? 'bg-[var(--card-bg)] text-amber-500 shadow-md border border-[var(--border)]' : 'text-[var(--text-muted)] hover:bg-[var(--card-bg)]/50'}`}
+                          >
+                            <div className="flex items-center justify-center gap-2">
+                              <Wallet className="w-4 h-4" />
+                              Personale
+                            </div>
+                          </button>
+                        </div>
                       </div>
 
                       {/* Descrizione / Importo */}
@@ -646,13 +647,34 @@ export const SplitScreen = ({ module, onClose, onSave, onSaveToSandbox }: SplitS
                             </button>
                           </div>
                         ) : (
-                          <button
-                            onClick={() => setShowReceiptScanner(true)}
-                            className="w-full flex items-center justify-center gap-3 py-3 bg-[var(--bg)] border-2 border-dashed border-[var(--border)] hover:border-amber-500/50 rounded-xl text-[var(--text-muted)] hover:text-amber-500 font-bold transition-all"
-                          >
-                            <Camera className="w-5 h-5" />
-                            <span className="text-xs uppercase tracking-wider">Scansiona Scontrino</span>
-                          </button>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => setShowReceiptScanner(true)}
+                              className="flex-1 flex items-center justify-center gap-3 py-3 bg-[var(--bg)] border-2 border-dashed border-[var(--border)] hover:border-amber-500/50 rounded-xl text-[var(--text-muted)] hover:text-amber-500 font-bold transition-all"
+                            >
+                              <Camera className="w-5 h-5" />
+                              <span className="text-[10px] uppercase tracking-wider">Scansiona</span>
+                            </button>
+                            <label className="flex-1 flex items-center justify-center gap-3 py-3 bg-[var(--bg)] border-2 border-dashed border-[var(--border)] hover:border-amber-500/50 rounded-xl text-[var(--text-muted)] hover:text-amber-500 font-bold transition-all cursor-pointer">
+                              <Paperclip className="w-5 h-5" />
+                              <span className="text-[10px] uppercase tracking-wider">Allega</span>
+                              <input 
+                                type="file" 
+                                accept="image/*,application/pdf" 
+                                className="hidden" 
+                                onChange={async (e) => {
+                                  const file = e.target.files?.[0];
+                                  if (file) {
+                                    const reader = new FileReader();
+                                    reader.onload = (ev) => {
+                                      setExpReceipt(ev.target?.result as string);
+                                    };
+                                    reader.readAsDataURL(file);
+                                  }
+                                }}
+                              />
+                            </label>
+                          </div>
                         )}
 
                         {expReceipt && (
