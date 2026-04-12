@@ -39,11 +39,11 @@ jobs:
       - name: Capacitor Sync
         run: npm exec cap sync android
 
-      - name: Build Debug APK
+      - name: Build Release APK
         run: |
           cd android
           chmod +x gradlew
-          ./gradlew assembleDebug
+          ./gradlew assembleRelease
 
       - name: Extract Release Notes
         id: release_notes
@@ -57,7 +57,7 @@ jobs:
           tag_name: ${{ github.ref_name }}
           name: Release ${{ github.ref_name }}
           body: "Aggiornamento automatico APK."
-          files: android/app/build/outputs/apk/debug/app-debug.apk
+          files: android/app/build/outputs/apk/release/app-release.apk
           draft: false
           prerelease: false
         env:

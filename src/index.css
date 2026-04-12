@@ -8,26 +8,26 @@
 
 :root {
   color-scheme: light;
-  --bg: #F7F9F6; /* Soft cream/sage white */
+  --bg: #F8F9FA; /* Neutral Ardesia White */
   --card-bg: #FFFFFF;
-  --accent: #2D6A4F; /* Forest Green */
-  --accent-hover: #1B4332;
-  --accent-bg: rgba(45, 106, 79, 0.1);
-  --text-main: #081C15; /* Deep Jungle Green */
-  --text-muted: #52796F; /* Muted Sage Blue/Green */
-  --border: #D8E2DC; /* Soft earthy border */
-  --header-bg: rgba(247, 249, 246, 0.8);
-  --sidebar-bg: rgba(255, 255, 255, 0.9);
+  --accent: #1B4D3E; /* Sophisticated British Racing Green */
+  --accent-hover: #143D31;
+  --accent-bg: rgba(27, 77, 62, 0.08);
+  --text-main: #1A202C; /* Deep Slate / Charcoal for better legibility */
+  --text-muted: #718096; /* Elegant Cool Gray */
+  --border: #E2E8F0; /* Clean Slate Border */
+  --header-bg: rgba(248, 249, 250, 0.85);
+  --sidebar-bg: rgba(255, 255, 255, 0.95);
   
-  /* Semantic Colors - Chelona Light */
-  --danger: #9B2226;
-  --danger-bg: #FEEAEA;
-  --success: #40916C;
-  --success-bg: #ECFDF5;
-  --warning: #D97706;
+  /* Semantic Colors - Chelona Oasis */
+  --danger: #BC4749;
+  --danger-bg: #FFF5F5;
+  --success: #52B788;
+  --success-bg: #F0FDF4;
+  --warning: #F59E0B;
   --warning-bg: #FFFBEB;
-  --info: #2B6777;
-  --info-bg: #F2F2F2;
+  --info: #3E5C76;
+  --info-bg: #F1F5F9;
 
   --safe-top: max(env(safe-area-inset-top), 24px);
 }
