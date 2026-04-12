@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Lock, Fingerprint, ArrowRight, KeyRound, AlertCircle, User, Loader2, Plus, ArrowLeft, QrCode, Wrench, FileDown } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { storage } from '../services/storage';
@@ -29,6 +29,7 @@ export const LockScreen = ({ isVisible, onAuthenticated, onStartScan, onOpenTool
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [isBioSupported, setIsBioSupported] = useState(false);
   const [onboardingStep, setOnboardingStep] = useState(0); // 0: Welcome, 1: Privacy, 2: Setup
+  const autoBioTriggered = useRef<string | null>(null);
 
   useEffect(() => {
     if (isVisible) {
@@ -59,6 +60,18 @@ export const LockScreen = ({ isVisible, onAuthenticated, onStartScan, onOpenTool
 
     return () => window.removeEventListener('chelona_profiles_updated', refreshProfiles);
   }, []);
+
+  // Automatic biometric trigger when entering login view
+  useEffect(() => {
+    if (view === 'login' && selectedProfile?.isBiometricEnabled && autoBioTriggered.current !== selectedProfile.id) {
+      console.log('[LockScreen] Auto-triggering biometrics for:', selectedProfile.username);
+      autoBioTriggered.current = selectedProfile.id;
+      handleBiometricLogin();
+    } else if (view !== 'login') {
+      // Reset trigger tracker when leaving login view
+      autoBioTriggered.current = null;
+    }
+  }, [view, selectedProfile]);
 
   const handleSetup = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -479,14 +492,23 @@ export const LockScreen = ({ isVisible, onAuthenticated, onStartScan, onOpenTool
               {view === 'login' && (
                 <div className="mt-6 sm:mt-8 pt-6 sm:pt-8 border-t border-[var(--border)] flex flex-col items-center gap-4">
                   {isBioSupported && selectedProfile?.isBiometricEnabled && (
-                    <button
-                      onClick={handleBiometricLogin}
-                      disabled={isLoading}
-                      className="flex items-center gap-2 text-gray-400 hover:text-amber-500 transition-colors disabled:opacity-50"
-                    >
-                      <Fingerprint className="w-6 h-6" />
-                      <span className="text-sm font-medium">Usa Impronta Digitale</span>
-                    </button>
+                    <div className="flex flex-col items-center gap-4">
+                      <div className="flex items-center gap-3 w-full">
+                        <div className="flex-1 h-[1px] bg-[var(--border)]" />
+                        <span className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider">Metodo Consigliato</span>
+                        <div className="flex-1 h-[1px] bg-[var(--border)]" />
+                      </div>
+                      <button
+                        onClick={handleBiometricLogin}
+                        disabled={isLoading}
+                        className="flex flex-col items-center gap-2 group transition-all active:scale-95 disabled:opacity-50"
+                      >
+                        <div className="w-16 h-16 rounded-full bg-[var(--accent-bg)] flex items-center justify-center text-[var(--accent)] group-hover:bg-[var(--accent)] group-hover:text-white transition-all shadow-md">
+                          <Fingerprint className="w-8 h-8" />
+                        </div>
+                        <span className="text-sm font-bold text-[var(--accent)]">Riprova Impronta</span>
+                      </button>
+                    </div>
                   )}
                 </div>
               )}
