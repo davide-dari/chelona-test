@@ -126,30 +126,25 @@ export const LockScreen = ({ isVisible, onAuthenticated, onStartScan, onOpenTool
   };
 
   const handleBiometricLogin = async () => {
-    if (!selectedProfile?.isBiometricEnabled || !selectedProfile.credentialId || !selectedProfile.encryptedMasterKey) {
-      setError('Biometria non configurata.');
+    if (!selectedProfile?.isBiometricEnabled) {
+      setError('Biometria non abilitata per questo profilo.');
       return;
     }
     
     setIsLoading(true);
     try {
-      const signature = await biometricService.authenticate(selectedProfile.credentialId);
-      if (signature) {
-        const bioSalt = selectedProfile.bioSalt || 'default_bio_salt';
-        const signatureStr = btoa(String.fromCharCode(...signature));
-        const bioKey = await encryption.deriveKey(signatureStr, bioSalt, 10000);
-        
-        const masterKeyStr = await encryption.decrypt(selectedProfile.encryptedMasterKey, bioKey);
-        if (masterKeyStr) {
-          const masterKey = await encryption.importKey(masterKeyStr);
-          onAuthenticated(masterKey, selectedProfile.id);
-        } else {
-          setError('Autenticazione biometrica fallita.');
-        }
+      const m = await import('../services/biometricService');
+      const masterKeyStr = await m.biometricService.getMasterKey(selectedProfile.id);
+      
+      if (masterKeyStr) {
+        const masterKey = await encryption.importKey(masterKeyStr);
+        onAuthenticated(masterKey, selectedProfile.id);
+      } else {
+        setError('Autenticazione biometrica fallita o annullata.');
       }
     } catch (err: any) {
-      console.error(err);
-      setError(err.message || "Errore durante l'autenticazione biometrica.");
+      console.error('[LockScreen] Biometric login error:', err);
+      setError(err.message || "Errore durante l'accesso biometrico.");
     } finally {
       setIsLoading(false);
     }

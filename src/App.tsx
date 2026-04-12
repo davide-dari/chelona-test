@@ -20,6 +20,7 @@ import { notificationService } from './services/notificationService';
 import { motion, AnimatePresence } from 'motion/react';
 import JSZip from 'jszip';
 import { updateService, UpdateInfo } from './services/updateService';
+import { App } from '@capacitor/app';
 // UI Libraries removed as per request (CSS Grid migration)
 
 // ResponsiveGridLayout removed (DnD disabled)
@@ -157,6 +158,29 @@ export default function App() {
   const [moduleToDelete, setModuleToDelete] = useState<Module | null>(null);
   const [autoFormStep, setAutoFormStep] = useState(0);
   const [pendingImportModule, setPendingImportModule] = useState<Module | null>(null);
+
+  // Banking-Style Auto-Lock: listen for app background/minimize events
+  useEffect(() => {
+    console.log('[App] Initializing Lifecycle Listener');
+    const listener = App.addListener('appStateChange', ({ isActive }) => {
+      console.log('[App] State changed, isActive:', isActive);
+      if (!isActive) {
+        console.log('[App] Backgrounding: Locking application for security.');
+        // Wipe sensitive data from memory
+        setEncryptionKey(null);
+        // Reset navigation to prevent UI flickers when returning
+        setIsProfileOpen(false);
+        setIsSettingsOpen(false);
+        setIsAdding(false);
+        setIsToolsOpen(false);
+        setSelectedType(null);
+      }
+    });
+
+    return () => {
+      listener.then(l => l.remove());
+    };
+  }, []);
   const [availableUpdate, setAvailableUpdate] = useState<UpdateInfo | null>(null);
   const [updateProgress, setUpdateProgress] = useState<number | null>(null);
   const [spesaSubMenu, setSpesaSubMenu] = useState(false);
@@ -510,44 +534,34 @@ export default function App() {
       const m = await import('./services/biometricService');
       const supported = await m.biometricService.isSupported();
       
-      console.log('[App] Attempting biometric registration...');
-      const result = await m.biometricService.register(username);
-      
-      if (!result) {
-        setBioError('Il sensore biometrico non ha risposto o l\'operazione è stata annullata.');
+      if (!supported) {
+        setBioError('Il tuo dispositivo non supporta o non ha configurato l\'accesso biometrico.');
         return;
       }
 
+      console.log('[App] Exporting master key for secure storage...');
+      const masterKeyStr = await encryption.exportKey(encryptionKey);
+      
+      // Save it natively (will prompt for biometric)
+      await m.biometricService.saveMasterKey(currentProfileId, masterKeyStr);
+      
       const profiles = storage.loadProfiles();
       const profile = profiles.find(p => p.id === currentProfileId);
       if (profile) {
-        const bioSalt = encryption.generateSalt();
-        const masterKeyStr = await encryption.exportKey(encryptionKey);
-        const signature = await m.biometricService.authenticate(result.credentialId);
+        const updatedProfile = {
+          ...profile,
+          isBiometricEnabled: true,
+          // We no longer need these WebAuthn specific fields, but keeping for compatibility if needed
+          credentialId: 'native-v2' 
+        };
         
-        if (signature) {
-          const signatureStr = btoa(String.fromCharCode(...signature));
-          const bioKey = await encryption.deriveKey(signatureStr, bioSalt, 10000);
-          const encryptedMasterKey = await encryption.encrypt(masterKeyStr, bioKey);
-
-          const updatedProfile = {
-            ...profile,
-            isBiometricEnabled: true,
-            credentialId: result.credentialId,
-            encryptedMasterKey,
-            bioSalt
-          };
-          
-          storage.saveProfiles(profiles.map(p => p.id === currentProfileId ? updatedProfile : p));
-          setIsBioEnabled(true);
-          showToast('Biometria abilitata con successo!', 'success');
-        } else {
-          setBioError('Impossibile verificare l\'impronta appena registrata.');
-        }
+        storage.saveProfiles(profiles.map(p => p.id === currentProfileId ? updatedProfile : p));
+        setIsBioEnabled(true);
+        showToast('Accesso biometrico configurato con successo!', 'success');
       }
     } catch (e: any) {
       console.error('[App] Biometric activation error', e);
-      setBioError(e.message || 'Errore durante la registrazione biometrica. Assicurati di avere almeno un\'impronta registrata sul sistema.');
+      setBioError(e.message || 'Errore durante la registrazione biometrica.');
     }
   };
 

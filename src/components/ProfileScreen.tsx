@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, User, Lock, Fingerprint, LogOut, Camera, Check, AlertCircle, Share2, Download, Copy, ShieldCheck, QrCode, SunDim, RefreshCw } from 'lucide-react';
+import { X, User, Lock, Fingerprint, LogOut, Camera, Check, AlertCircle, Share2, Download, Copy, ShieldCheck, QrCode, SunDim, RefreshCw, LayoutDashboard } from 'lucide-react';
 import { storage } from '../services/storage';
 import { encryption } from '../services/encryption';
 import { updateService } from '../services/updateService';
@@ -336,7 +336,7 @@ export function ProfileScreen({
                     <div className="max-w-xs">
                       <Fingerprint className="w-12 h-12 text-[var(--text-muted)] mx-auto mb-3 opacity-20" />
                       <p className="text-sm font-bold text-[var(--text-muted)] leading-relaxed">
-                        Biometria non disponibile su questo browser. Usa l'app nativa o Chrome/Safari su HTTPS per sbloccare questa funzione.
+                        Biometria non disponibile. Assicurati che il tuo dispositivo supporti l'impronta digitale o il FaceID e che sia configurata nelle impostazioni di sistema.
                       </p>
                     </div>
                   </div>
