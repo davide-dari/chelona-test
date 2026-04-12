@@ -63,47 +63,28 @@ class UpdateService {
   async downloadAndInstall(updateInfo: UpdateInfo, onProgress?: (p: number) => void) {
     try {
       console.log(`[UpdateService] Downloading update from: ${updateInfo.downloadUrl}`);
-      // 1. Download the file
-      const fileName = `update_${updateInfo.latestVersion}.apk`;
       
-      const response = await fetch(updateInfo.downloadUrl);
-      if (!response.ok) {
-        throw new Error(`Download failed: ${response.status} ${response.statusText}`);
-      }
-
-      const reader = response.body?.getReader();
-      const contentLength = +(response.headers.get('Content-Length') || 0);
-      console.log(`[UpdateService] Content-Length: ${contentLength}`);
+      const fileName = `chelona_v${updateInfo.latestVersion}.apk`;
       
-      let receivedLength = 0;
-      const chunks: Uint8Array[] = [];
-      
-      if (reader) {
-        while(true) {
-          const {done, value} = await reader.read();
-          if (done) break;
-          chunks.push(value);
-          receivedLength += value.length;
-          if (onProgress && contentLength) {
-            onProgress(Math.round((receivedLength / contentLength) * 100));
-          }
-        }
-      }
+      if (onProgress) onProgress(0);
 
-      const blob = new Blob(chunks);
-      const base64 = await this.blobToBase64(blob);
-
-      const savedFile = await Filesystem.writeFile({
+      // Use native downloadFile for stability and performance
+      const downloadResult = await Filesystem.downloadFile({
+        url: updateInfo.downloadUrl,
         path: fileName,
-        data: base64,
-        directory: Directory.External,
+        directory: Directory.Cache,
+        progress: true
       });
 
+      if (onProgress) onProgress(100);
+      
+      console.log(`[UpdateService] Download finished: ${downloadResult.path}`);
+
       // 2. Install the APK
-      await ApkInstaller.installApk({ filePath: savedFile.uri });
+      await ApkInstaller.installApk({ filePath: downloadResult.path });
 
     } catch (error) {
-      console.error('Error during update installation:', error);
+      console.error('[UpdateService] Error during update installation:', error);
       throw error;
     }
   }
@@ -112,22 +93,12 @@ class UpdateService {
     const parts1 = v1.split('.').map(Number);
     const parts2 = v2.split('.').map(Number);
     for (let i = 0; i < 3; i++) {
-      if (parts1[i] > parts2[i]) return 1;
-      if (parts1[i] < parts2[i]) return -1;
+        const p1 = parts1[i] || 0;
+        const p2 = parts2[i] || 0;
+      if (p1 > p2) return 1;
+      if (p1 < p2) return -1;
     }
     return 0;
-  }
-
-  private blobToBase64(blob: Blob): Promise<string> {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const base64String = (reader.result as string).split(',')[1];
-        resolve(base64String);
-      };
-      reader.onerror = reject;
-      reader.readAsDataURL(blob);
-    });
   }
 }
 
