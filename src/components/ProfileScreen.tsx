@@ -27,6 +27,8 @@ interface ProfileScreenProps {
   pinnedCategoryIds: string[];
   pinnedToolIds: string[];
   onUpdateWidgets: (catIds: string[], toolIds: string[]) => void;
+  isSandboxMode: boolean;
+  onToggleSandbox: (val: boolean) => void;
 }
 
 export function ProfileScreen({
@@ -47,7 +49,9 @@ export function ProfileScreen({
   showToast,
   pinnedCategoryIds,
   pinnedToolIds,
-  onUpdateWidgets
+  onUpdateWidgets,
+  isSandboxMode,
+  onToggleSandbox
 }: ProfileScreenProps) {
   const [activeTab, setActiveTab] = useState<'profile' | 'security' | 'widgets'>('profile');
   
@@ -332,17 +336,7 @@ export function ProfileScreen({
               </div>
 
               <div className="bg-[var(--card-bg)] rounded-3xl p-6 lg:p-8 border border-[var(--border)] shadow-sm space-y-6 relative overflow-hidden">
-                {!isBioSupported && (
-                  <div className="absolute inset-0 bg-[var(--card-bg)]/60 backdrop-blur-[2px] z-10 flex items-center justify-center p-6 text-center">
-                    <div className="max-w-xs">
-                      <Fingerprint className="w-12 h-12 text-[var(--text-muted)] mx-auto mb-3 opacity-20" />
-                      <p className="text-sm font-bold text-[var(--text-muted)] leading-relaxed">
-                        Biometria non disponibile. Assicurati che il tuo dispositivo supporti l'impronta digitale o il FaceID e che sia configurata nelle impostazioni di sistema.
-                      </p>
-                    </div>
-                  </div>
-                )}
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-4 border-b border-[var(--border)] pb-6 mb-2">
                   <div className="w-14 h-14 bg-amber-500/10 rounded-2xl flex items-center justify-center text-amber-600 shadow-inner">
                     <Fingerprint className="w-7 h-7" />
                   </div>
@@ -359,6 +353,23 @@ export function ProfileScreen({
                       {isBioEnabled ? 'Attivo' : 'Attiva'}
                     </button>
                   )}
+                </div>
+
+                {/* MODALITÀ SCUSA (SANDBOX) */}
+                <div className="flex items-center gap-4 pt-4">
+                  <div className="w-14 h-14 bg-indigo-500/10 rounded-2xl flex items-center justify-center text-indigo-600 shadow-inner">
+                    <ShieldCheck className="w-7 h-7" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-lg font-bold text-[var(--text-main)] text-indigo-600">Modalità Scusa</h3>
+                    <p className="text-xs text-[var(--text-muted)] font-medium leading-relaxed">Aggiunge un secondo livello di dati "finti" per quando devi mostrare l'app.</p>
+                  </div>
+                  <button
+                    onClick={() => onToggleSandbox(!isSandboxMode)}
+                    className={`w-14 h-8 rounded-full relative transition-all duration-300 ${isSandboxMode ? 'bg-indigo-600' : 'bg-[var(--border)]'}`}
+                  >
+                    <div className={`absolute top-1 w-6 h-6 rounded-full bg-white shadow-sm transition-all duration-300 ${isSandboxMode ? 'right-1' : 'left-1'}`} />
+                  </button>
                 </div>
                 {isBioEnabled && (
                   <div className="mt-4 p-4 bg-emerald-500/5 rounded-2xl border border-emerald-500/10 flex items-center gap-3">
@@ -552,10 +563,10 @@ export function ProfileScreen({
         <div className="p-6 border-t border-[var(--border)] mt-auto bg-[var(--card-bg)]">
           <button
             onClick={onLogout}
-            className="w-full py-4 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 text-red-600 dark:text-red-400 rounded-2xl font-bold transition-all flex items-center justify-center gap-3"
+            className="w-full py-5 bg-[var(--text-main)] hover:bg-black text-white rounded-2xl font-bold transition-all flex items-center justify-center gap-3 shadow-xl"
           >
-            <LogOut className="w-5 h-5" />
-            Disconnettiti e Chiudi App
+            <Lock className="w-5 h-5" />
+            Blocca App e Disconnetti
           </button>  
         </div>
       </motion.div>

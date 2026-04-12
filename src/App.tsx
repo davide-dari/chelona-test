@@ -807,13 +807,7 @@ export default function App() {
       </div>
 
       <nav className="flex-1 px-4 space-y-1 overflow-y-auto">
-        <button
-          onClick={() => { setIsSandboxMode(true); setIsSettingsOpen(false); setIsSidebarOpen(false); }}
-          className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all ${isSandboxMode && !isSettingsOpen ? 'bg-[var(--accent-bg)] text-[var(--accent)]' : 'text-[var(--text-muted)] hover:bg-[var(--bg)]'}`}
-        >
-          <Grid2X2 className="w-5 h-5" />
-          Sandbox Mode
-        </button>
+        {/* Sandbox Mode removed from sidebar - Moved to Profile */}
         <button
           onClick={() => { setIsScanning(true); setIsSidebarOpen(false); }}
           className="w-full flex items-center gap-3 px-4 py-3 text-[var(--text-muted)] hover:bg-[var(--bg)] rounded-xl transition-all"
@@ -907,16 +901,16 @@ export default function App() {
             </aside>
 
             <main className="flex-1 flex flex-col overflow-hidden w-full relative">
-              <header className="h-16 lg:h-20 bg-[var(--header-bg)] backdrop-blur-2xl border-b border-[var(--border)] px-4 lg:px-8 flex items-center justify-between sticky top-0 z-10 shadow-[0_2px_10px_rgba(0,0,0,0.02)]">
+              <header className="h-20 lg:h-28 bg-[var(--header-bg)] backdrop-blur-2xl border-b border-[var(--border)] px-6 lg:px-12 flex items-center justify-between sticky top-0 z-10 shadow-[0_4px_20px_rgba(0,0,0,0.03)]">
                 {/* Left side: Contextual Title */}
                 <div className="flex items-center gap-3">
                   {(isToolsOpen || selectedType) && (
                     <button 
                       onClick={() => { setIsToolsOpen(false); setSelectedType(null); setActiveToolId(null); }}
-                      className="p-3 -ml-2 hover:bg-[var(--accent-bg)] rounded-xl text-[var(--accent)] transition-all flex items-center gap-1 group"
+                      className="p-4 -ml-4 hover:bg-[var(--accent-bg)] rounded-2xl text-[var(--accent)] transition-all flex items-center gap-2 group"
                       title="Torna alla Dashboard"
                     >
-                      <ArrowLeft className="w-7 h-7 group-hover:-translate-x-1 transition-transform" />
+                      <ArrowLeft className="w-8 h-8 group-hover:-translate-x-1 transition-transform" />
                     </button>
                   )}
                   {!selectedType && !isToolsOpen ? (
@@ -926,24 +920,21 @@ export default function App() {
                   ) : selectedType && TEMPLATES[selectedType] ? (
                     React.createElement(TEMPLATES[selectedType].icon, { className: "w-6 h-6 text-[var(--accent)]" })
                   ) : null}
-                  <h1 className="text-xl lg:text-2xl font-extrabold text-[var(--text-main)] tracking-tight">
+                  <h1 className="text-2xl lg:text-4xl font-black text-[var(--text-main)] tracking-tight">
                     {isToolsOpen ? 'Strumenti' : selectedType ? TEMPLATES[selectedType].title : 'Dashboard'}
                   </h1>
                 </div>
 
-                {/* Right side: Lock, Theme and Avatar */}
-                <div className="flex items-center gap-4">
+                {/* Right side: Theme and Avatar (Lock moved to Profile) */}
+                <div className="flex items-center gap-6">
                   <button 
                     onClick={toggleTheme} 
-                    className="p-2 text-[var(--text-muted)] hover:text-[var(--accent)] bg-[var(--card-bg)] shadow-sm hover:shadow-md rounded-full transition-all border border-[var(--border)]"
+                    className="p-3 text-[var(--text-muted)] hover:text-[var(--accent)] bg-[var(--card-bg)] shadow-sm hover:shadow-md rounded-2xl transition-all border border-[var(--border)]"
                     title={theme === 'light' ? 'Passa alla modalità notte' : 'Passa alla modalità giorno'}
                   >
-                    {theme === 'light' ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5 text-[var(--accent)]" />}
+                    {theme === 'light' ? <Moon className="w-6 h-6" /> : <Sun className="w-6 h-6 text-[var(--accent)]" />}
                   </button>
-                  <button onClick={handleLogout} className="p-2 text-[var(--text-muted)] hover:text-red-500 bg-[var(--card-bg)] shadow-sm hover:shadow-md rounded-full transition-all border border-[var(--border)]">
-                    <Lock className="w-5 h-5" />
-                  </button>
-                  <button onClick={() => setIsProfileOpen(true)} className="w-10 h-10 rounded-full shadow-md overflow-hidden border-[3px] border-[var(--card-bg)] focus:outline-none hidden md:block hover:scale-105 transition-transform">
+                  <button onClick={() => setIsProfileOpen(true)} className="w-12 h-12 lg:w-14 lg:h-14 rounded-2xl shadow-lg overflow-hidden border-[3px] border-[var(--card-bg)] focus:outline-none hidden md:block hover:scale-105 transition-transform">
                     <img src={avatar || `https://ui-avatars.com/api/?name=${username}&background=FFFBEB&color=B45309`} alt="Profile" className="w-full h-full object-cover" />
                   </button>
                 </div>
@@ -973,6 +964,8 @@ export default function App() {
                 pinnedCategoryIds={pinnedCategoryIds}
                 pinnedToolIds={pinnedToolIds}
                 onUpdateWidgets={handleUpdateWidgets}
+                isSandboxMode={isSandboxMode}
+                onToggleSandbox={setIsSandboxMode}
               />
             ) : isToolsOpen ? (
               <ToolsScreen 
