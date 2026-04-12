@@ -632,7 +632,7 @@ export const DocumentScanner = ({ onCapture, onClose, downloadOnly = false }: Do
             <RotateCcw className="w-4 h-4" /> Indietro
           </button>
           <span className="text-white font-black text-xs tracking-widest uppercase">Scanner Documenti</span>
-          <button onClick={handleConfirm} className="flex items-center gap-2 text-amber-500 font-black uppercase text-xs">
+          <button onClick={handleConfirm} className="flex items-center gap-2 text-[var(--accent)] font-black uppercase text-xs">
             Avanti <ChevronRight className="w-4 h-4" />
           </button>
         </div>
@@ -649,7 +649,7 @@ export const DocumentScanner = ({ onCapture, onClose, downloadOnly = false }: Do
                   ${points.bottomRightCorner.x * scale + offsetX},${points.bottomRightCorner.y * scale + offsetY} 
                   ${points.bottomLeftCorner.x * scale + offsetX},${points.bottomLeftCorner.y * scale + offsetY}
                 `}
-                className="fill-amber-500/10 stroke-amber-500 stroke-[3px]"
+                className="fill-[var(--success)]/10 stroke-[var(--success)] stroke-[3px]"
               />
             </svg>
           )}
@@ -676,7 +676,7 @@ export const DocumentScanner = ({ onCapture, onClose, downloadOnly = false }: Do
   return (
     <div className="fixed inset-0 z-[300] bg-black flex flex-col font-sans overflow-hidden select-none">
       {/* Top Bar - Minimalist */}
-      <div className="absolute top-0 left-0 right-0 z-[310] flex items-center justify-between px-6 py-8">
+      <div className="absolute top-0 left-0 right-0 z-[310] flex items-center justify-between px-6 pt-[var(--safe-top)] pb-8 transition-all">
         <button
           onClick={onClose}
           className="w-10 h-10 flex items-center justify-center bg-black/40 hover:bg-black/60 rounded-full backdrop-blur-xl border border-white/10 transition-all active:scale-95 text-white"
@@ -688,7 +688,7 @@ export const DocumentScanner = ({ onCapture, onClose, downloadOnly = false }: Do
           onClick={toggleTorch}
           className="w-10 h-10 flex items-center justify-center bg-black/20 hover:bg-black/40 rounded-full backdrop-blur-md transition-all active:scale-95 text-white"
         >
-          {torch ? <Zap className="w-5 h-5 text-amber-400 fill-amber-400" /> : <ZapOff className="w-5 h-5 text-white/50" />}
+          {torch ? <Zap className="w-5 h-5 text-[var(--accent)] fill-[var(--accent)]" /> : <ZapOff className="w-5 h-5 text-white/50" />}
         </button>
 
         <div className="flex items-center gap-2 bg-black/40 border border-white/10 px-3 py-1.5 rounded-full backdrop-blur-xl">
@@ -755,10 +755,10 @@ export const DocumentScanner = ({ onCapture, onClose, downloadOnly = false }: Do
                 style={{ left: focusPoint.x, top: focusPoint.y, translateX: '-50%', translateY: '-50%' }}
                 className="absolute w-16 h-16 pointer-events-none"
               >
-                <div className="w-full h-full rounded-full border-2 border-amber-400" />
+                <div className="w-full h-full rounded-full border-2 border-[var(--accent)]" />
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="w-1 h-4 bg-amber-400" style={{ position: 'absolute' }} />
-                  <div className="w-4 h-1 bg-amber-400" style={{ position: 'absolute' }} />
+                  <div className="w-1 h-4 bg-[var(--accent)]" style={{ position: 'absolute' }} />
+                  <div className="w-4 h-1 bg-[var(--accent)]" style={{ position: 'absolute' }} />
                 </div>
               </motion.div>
             )}
@@ -767,10 +767,10 @@ export const DocumentScanner = ({ onCapture, onClose, downloadOnly = false }: Do
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none p-4">
             <div className="w-full h-full relative">
               {/* Viewfinder Corners */}
-              <div className={`absolute top-0 left-0 w-8 h-8 border-t-2 border-l-2 rounded-tl-xl transition-colors duration-300 ${isDetected ? 'border-amber-400' : 'border-white/20'}`} />
-              <div className={`absolute top-0 right-0 w-8 h-8 border-t-2 border-r-2 rounded-tr-xl transition-colors duration-300 ${isDetected ? 'border-amber-400' : 'border-white/20'}`} />
-              <div className={`absolute bottom-0 left-0 w-8 h-8 border-b-2 border-l-2 rounded-bl-xl transition-colors duration-300 ${isDetected ? 'border-amber-400' : 'border-white/20'}`} />
-              <div className={`absolute bottom-0 right-0 w-8 h-8 border-b-2 border-r-2 rounded-br-xl transition-colors duration-300 ${isDetected ? 'border-amber-400' : 'border-white/20'}`} />
+              <div className={`absolute top-0 left-0 w-8 h-8 border-t-2 border-l-2 rounded-tl-xl transition-colors duration-300 ${isDetected ? 'border-[var(--accent)]' : 'border-white/20'}`} />
+              <div className={`absolute top-0 right-0 w-8 h-8 border-t-2 border-r-2 rounded-tr-xl transition-colors duration-300 ${isDetected ? 'border-[var(--accent)]' : 'border-white/20'}`} />
+              <div className={`absolute bottom-0 left-0 w-8 h-8 border-b-2 border-l-2 rounded-bl-xl transition-colors duration-300 ${isDetected ? 'border-[var(--accent)]' : 'border-white/20'}`} />
+              <div className={`absolute bottom-0 right-0 w-8 h-8 border-b-2 border-r-2 rounded-br-xl transition-colors duration-300 ${isDetected ? 'border-[var(--accent)]' : 'border-white/20'}`} />
             </div>
           </div>
           
@@ -812,7 +812,7 @@ export const DocumentScanner = ({ onCapture, onClose, downloadOnly = false }: Do
                  }}
                  className={`shrink-0 px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest border transition-all ${
                    activeFilter === f.id
-                     ? 'bg-amber-500 border-amber-500 text-white shadow-lg shadow-amber-500/30'
+                     ? 'bg-[var(--accent)] border-[var(--accent)] text-white shadow-lg shadow-[var(--accent)]/30'
                      : 'bg-white/5 border-white/10 text-white/50 hover:bg-white/10'
                  }`}
                >
@@ -832,7 +832,7 @@ export const DocumentScanner = ({ onCapture, onClose, downloadOnly = false }: Do
                 />
               ) : (
                 <div className="flex flex-col items-center gap-4">
-                  <RefreshCw className="w-8 h-8 text-amber-500 animate-spin" />
+                  <RefreshCw className="w-8 h-8 text-[var(--accent)] animate-spin" />
                   <p className="text-white/40 text-xs font-bold uppercase tracking-widest">Generazione Anteprima...</p>
                 </div>
               )}
@@ -886,7 +886,7 @@ export const DocumentScanner = ({ onCapture, onClose, downloadOnly = false }: Do
                   }
                 }}
                 disabled={!previewUrl || isProcessing}
-                className="flex-[2] flex flex-col items-center justify-center gap-1.5 py-3 bg-amber-500 hover:bg-amber-600 rounded-2xl shadow-lg shadow-amber-500/30 transition-all active:scale-95 text-white disabled:opacity-50"
+                className="flex-[2] flex flex-col items-center justify-center gap-1.5 py-3 bg-[var(--accent)] hover:bg-amber-600 rounded-2xl shadow-lg shadow-[var(--accent)]/30 transition-all active:scale-95 text-white disabled:opacity-50"
               >
                 {isProcessing
                   ? <RefreshCw className="w-5 h-5 animate-spin" />
@@ -910,7 +910,7 @@ export const DocumentScanner = ({ onCapture, onClose, downloadOnly = false }: Do
             disabled={isProcessing}
             className={`relative w-20 h-20 flex items-center justify-center transition-all duration-300 ${isProcessing ? 'opacity-50' : 'opacity-100'} active:scale-90`}
           >
-            <div className={`absolute inset-0 rounded-full border-[3px] transition-colors ${isDetected ? 'border-amber-400' : 'border-white'}`} />
+            <div className={`absolute inset-0 rounded-full border-[3px] transition-colors ${isDetected ? 'border-[var(--accent)]' : 'border-white'}`} />
             <div className="w-16 h-16 rounded-full bg-white flex items-center justify-center transition-transform group-active:scale-95" />
           </button>
         </div>

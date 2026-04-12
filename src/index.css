@@ -8,50 +8,52 @@
 
 :root {
   color-scheme: light;
-  --bg: #F8F9FA;
+  --bg: #F7F9F6; /* Soft cream/sage white */
   --card-bg: #FFFFFF;
-  --accent: #F59E0B; /* Amber 500 */
-  --accent-hover: #D97706; /* Amber 600 */
-  --accent-bg: rgba(245, 158, 11, 0.1);
-  --text-main: #111827; /* Gray 900 */
-  --text-muted: #6B7280; /* Gray 500 */
-  --border: #E5E7EB; /* Gray 200 */
-  --header-bg: rgba(248, 249, 250, 0.7);
-  --sidebar-bg: rgba(255, 255, 255, 0.8);
+  --accent: #2D6A4F; /* Forest Green */
+  --accent-hover: #1B4332;
+  --accent-bg: rgba(45, 106, 79, 0.1);
+  --text-main: #081C15; /* Deep Jungle Green */
+  --text-muted: #52796F; /* Muted Sage Blue/Green */
+  --border: #D8E2DC; /* Soft earthy border */
+  --header-bg: rgba(247, 249, 246, 0.8);
+  --sidebar-bg: rgba(255, 255, 255, 0.9);
   
-  /* Semantic Colors - Light */
-  --danger: #EF4444;
-  --danger-bg: #FEF2F2;
-  --success: #10B981;
+  /* Semantic Colors - Chelona Light */
+  --danger: #9B2226;
+  --danger-bg: #FEEAEA;
+  --success: #40916C;
   --success-bg: #ECFDF5;
-  --warning: #F59E0B;
+  --warning: #D97706;
   --warning-bg: #FFFBEB;
-  --info: #3B82F6;
-  --info-bg: #EFF6FF;
+  --info: #2B6777;
+  --info-bg: #F2F2F2;
+
+  --safe-top: max(env(safe-area-inset-top), 24px);
 }
 
 [data-theme="dark"] {
   color-scheme: dark;
-  --bg: #030712; /* Very deep slate/black */
-  --card-bg: #0F172A; /* Deep slate card */
-  --accent: #FBBF24; /* Amber 400 - brighter for dark */
-  --accent-hover: #F59E0B; /* Amber 500 */
-  --accent-bg: rgba(251, 191, 36, 0.1);
-  --text-main: #F9FAFB; /* Gray 50 */
-  --text-muted: #94A3B8; /* Slate 400 */
-  --border: #1E293B; /* Slate 800 */
-  --header-bg: rgba(3, 7, 18, 0.7);
-  --sidebar-bg: rgba(15, 23, 42, 0.9);
+  --bg: #081C15; /* Deep Forest/Turtle Green */
+  --card-bg: #1B4332; /* Rich Emerald Card */
+  --accent: #74C69D; /* Soft Mint / Sage Accent */
+  --accent-hover: #95D5B2;
+  --accent-bg: rgba(116, 198, 157, 0.15);
+  --text-main: #F7F9F6;
+  --text-muted: #95D5B2;
+  --border: #2D6A4F;
+  --header-bg: rgba(8, 28, 21, 0.85);
+  --sidebar-bg: rgba(27, 67, 50, 0.95);
 
-  /* Semantic Colors - Dark */
-  --danger: #F87171;
-  --danger-bg: rgba(127, 29, 29, 0.2);
-  --success: #34D399;
-  --success-bg: rgba(6, 78, 59, 0.2);
+  /* Semantic Colors - Chelona Dark */
+  --danger: #E5383B;
+  --danger-bg: rgba(229, 56, 59, 0.1);
+  --success: #74C69D;
+  --success-bg: rgba(116, 198, 157, 0.1);
   --warning: #FB7185;
-  --warning-bg: rgba(159, 18, 57, 0.2);
-  --info: #60A5FA;
-  --info-bg: rgba(30, 58, 138, 0.2);
+  --warning-bg: rgba(159, 18, 57, 0.1);
+  --info: #52B2CF;
+  --info-bg: rgba(82, 178, 207, 0.1);
 }
 
 body {
@@ -60,44 +62,62 @@ body {
   font-family: var(--font-sans);
   min-height: 100vh;
   min-height: 100dvh;
-  padding-top: env(safe-area-inset-top);
+  margin: 0;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.shell-container {
+  padding-top: var(--safe-top);
   padding-bottom: env(safe-area-inset-bottom);
   padding-left: env(safe-area-inset-left);
   padding-right: env(safe-area-inset-right);
-}
-
-.safe-area-pt {
-  padding-top: Math.max(1rem, env(safe-area-inset-top));
-}
-
-.safe-area-header {
-  padding-top: env(safe-area-inset-top);
-  min-height: calc(env(safe-area-inset-top) + 4rem); /* Header + Safe Area */
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  min-height: 100dvh;
 }
 
 .glass-card {
   background: var(--card-bg);
-  backdrop-filter: blur(12px);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   border: 1px solid var(--border);
+  box-shadow: 0 8px 32px -4px rgba(0, 0, 0, 0.08);
 }
 
 .module-card {
   background-color: var(--card-bg);
   color: var(--text-main);
-  border-radius: 1rem;
+  border-radius: 2.5rem; /* More rounded shell feel */
   border: 1px solid var(--border);
-  padding: 1.25rem;
-  transition: all 0.2s;
+  padding: 1.5rem;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 20px -5px rgba(0, 0, 0, 0.05);
 }
+
 .module-card:hover {
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  transform: translateY(-4px);
+  box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.1);
+  border-color: var(--accent);
 }
 
 .hide-scrollbar {
-  -ms-overflow-style: none;  /* IE and Edge */
-  scrollbar-width: none;  /* Firefox */
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 .hide-scrollbar::-webkit-scrollbar {
   display: none;
+}
+
+/* Turtle specific animations */
+@keyframes float {
+  0% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+  100% { transform: translateY(0px); }
+}
+
+.turtle-float {
+  animation: float 4s ease-in-out infinite;
 }
 

@@ -813,12 +813,15 @@ export default function App() {
 
   const SidebarContent = () => (
     <>
-      <div className="p-6 flex items-center justify-between safe-area-header">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-amber-500 rounded-xl flex items-center justify-center text-white shadow-sm">
-            <BookOpen className="w-5 h-5" />
+      <div className="p-6 flex items-center justify-between safe-area-header transition-all duration-500">
+        <div className="flex items-center gap-3 group">
+          <div className="w-10 h-10 bg-gradient-to-br from-[var(--accent)] to-[var(--success)] rounded-2xl flex items-center justify-center text-white shadow-lg shadow-[var(--accent)]/20 rotate-3 group-hover:rotate-0 transition-all turtle-float">
+            <Grid2X2 className="w-6 h-6" />
           </div>
-          <h1 className="text-xl font-bold tracking-tight text-[var(--text-main)]">Chelona</h1>
+          <div>
+            <h1 className="text-xl font-black tracking-tight text-[var(--text-main)]">Chelona</h1>
+            <p className="text-[10px] font-bold text-[var(--accent)] uppercase tracking-widest">{isSandboxMode ? 'Sandbox' : 'v1.4.0'}</p>
+          </div>
         </div>
         <button onClick={() => setIsSidebarOpen(false)} className="lg:hidden p-2 text-[var(--text-muted)] hover:bg-[var(--bg)] rounded-lg">
           <X className="w-5 h-5" />
@@ -858,7 +861,7 @@ export default function App() {
   );
 
   return (
-    <>
+    <div className="shell-container">
       {/* Password Managers on Mobile (Safari/Chrome AutoFill) inject extra DOM nodes into the password <input>. 
           If React tries to unmount the LockScreen, it violently crashes with a DOMException (removeChild). 
           To completely bypass this, we NEVER unmount the LockScreen, we just hide it visually. */}
@@ -947,7 +950,7 @@ export default function App() {
                 {/* Right side: Avatar (Lock and Theme moved to Profile) */}
                 <div className="flex items-center gap-6">
                   <button onClick={() => setIsProfileOpen(true)} className="w-12 h-12 lg:w-14 lg:h-14 rounded-2xl shadow-lg overflow-hidden border-[3px] border-[var(--card-bg)] focus:outline-none hidden md:block hover:scale-105 transition-transform">
-                    <img src={avatar || `https://ui-avatars.com/api/?name=${username}&background=FFFBEB&color=B45309`} alt="Profile" className="w-full h-full object-cover" />
+                    <img src={avatar || `https://ui-avatars.com/api/?name=${username}&background=F7F9F6&color=2D6A4F`} alt="Profile" className="w-full h-full object-cover" />
                   </button>
                 </div>
               </header>
@@ -1676,7 +1679,7 @@ export default function App() {
                         </button>
                       </div>
                     )}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 3xl:grid-cols-6 gap-6 stagger-fade-in px-4 lg:px-8 pb-32 md:pb-8">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6 3xl:grid-cols-8 gap-6 stagger-fade-in px-4 lg:px-8 pb-32 md:pb-8">
                     {filteredModules.map((module) => (
                       <div key={module.id} className="w-full">
                         {module.type === 'auto' ? (
@@ -1909,6 +1912,6 @@ export default function App() {
           />
         )}
       </AnimatePresence>
-    </>
+    </div>
   );
 }

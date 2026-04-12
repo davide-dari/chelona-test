@@ -12,18 +12,18 @@ import { motion, AnimatePresence } from 'motion/react';
 
 export const TOOLS_PDF = [
   { id: 'merge', title: 'Unisci PDF', desc: 'Unisci più documenti in uno.', icon: Layers, color: 'text-rose-500', bg: 'bg-rose-500/10', category: 'pdf' },
-  { id: 'img2pdf', title: 'JPG in PDF', desc: 'Converti immagini in PDF.', icon: ImageIcon, color: 'text-amber-500', bg: 'bg-amber-500/10', category: 'pdf' },
+  { id: 'img2pdf', title: 'JPG in PDF', desc: 'Converti immagini in PDF.', icon: ImageIcon, color: 'text-[var(--accent)]', bg: 'bg-[var(--accent)]/10', category: 'pdf' },
   { id: 'rotate', title: 'Ruota PDF', desc: 'Cambia orientamento alle pagine.', icon: RotateCw, color: 'text-blue-500', bg: 'bg-blue-500/10', category: 'pdf' },
 ];
 
 export const TOOLS_UTILITY = [
-  { id: 'scanner', title: 'Scanner', desc: 'Scansiona e crea PDF.', icon: Scan, color: 'text-emerald-500', bg: 'bg-emerald-500/10', category: 'utility' },
+  { id: 'scanner', title: 'Scanner', desc: 'Scansiona e crea PDF.', icon: Scan, color: 'text-[var(--success)]', bg: 'bg-[var(--success)]/10', category: 'utility' },
   { id: 'percent', title: 'Percentuale', desc: 'Sconti e variazioni.', icon: Percent, color: 'text-indigo-500', bg: 'bg-indigo-500/10', category: 'utility' }
 ];
 
-export const TOOLS = [...TOOLS_PDF, ...TOOLS_UTILITY, { id: 'archive', title: 'Archivio', desc: 'I tuoi documenti salvati.', icon: Book, color: 'text-orange-500', bg: 'bg-orange-500/10', category: 'archive' }];
+export const TOOLS = [...TOOLS_PDF, ...TOOLS_UTILITY];
 
-type ToolCategory = 'all' | 'pdf' | 'utility' | 'archive';
+type ToolCategory = 'all' | 'pdf' | 'utility';
 
 export const ToolsScreen = ({ showToast, onSaveToSandbox, initialToolId, onReset, modules = [] }: { 
   showToast: (m: string, t?: 'success'|'error'|'info') => void, 
