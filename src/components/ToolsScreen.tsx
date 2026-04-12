@@ -16,7 +16,6 @@ export const TOOLS_PDF = [
 
 export const TOOLS_UTILITY = [
   { id: 'scanner', title: 'Scanner Documenti', desc: 'Scansiona documenti con la fotocamera e trasforma in PDF.', icon: Scan, color: 'var(--accent)', bg: 'rgba(245, 158, 11, 0.1)' },
-  { id: 'archive', title: 'Archivio Documenti', desc: 'Sfoglia e visualizza tutti i PDF salvati nella tua sandbox.', icon: Book, color: 'var(--info)', bg: 'var(--info-bg)' },
   { id: 'percent', title: 'Calcolo Percentuale', desc: 'Calcola facilmente sconti, ricarichi e proporzioni percentuali.', icon: Percent, color: 'var(--success)', bg: 'var(--success-bg)' }
 ];
 

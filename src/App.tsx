@@ -15,6 +15,7 @@ import { ProfileScreen } from './components/ProfileScreen';
 import { ToolsScreen, TOOLS } from './components/ToolsScreen';
 import { AutoEditScreen } from './components/AutoEditScreen';
 import { SplitScreen } from './components/SplitScreen';
+import { DocumentArchive } from './components/DocumentArchive';
 import { notificationService } from './services/notificationService';
 import { motion, AnimatePresence } from 'motion/react';
 import JSZip from 'jszip';
@@ -156,6 +157,7 @@ export default function App() {
   const [availableUpdate, setAvailableUpdate] = useState<UpdateInfo | null>(null);
   const [updateProgress, setUpdateProgress] = useState<number | null>(null);
   const [spesaSubMenu, setSpesaSubMenu] = useState(false);
+  const [isArchiveOpen, setIsArchiveOpen] = useState(false);
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     const saved = localStorage.getItem('lifemod_theme');
     return (saved as 'light' | 'dark') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
@@ -1357,6 +1359,18 @@ export default function App() {
                     <div className="mt-3 flex items-center justify-center gap-2">
                        <span className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest px-2">Filtro attivo: {TEMPLATES[selectedType].title}</span>
                        <button onClick={() => setSelectedType(null)} className="text-[10px] font-bold text-[var(--accent)] hover:underline uppercase tracking-widest">Rimuovi</button>
+                       {selectedType === 'document' && (
+                         <>
+                           <span className="w-1 h-1 bg-[var(--border)] rounded-full mx-1" />
+                           <button 
+                             onClick={() => setIsArchiveOpen(true)}
+                             className="text-[10px] font-bold text-amber-500 hover:text-amber-600 uppercase tracking-widest flex items-center gap-1.5 transition-colors"
+                           >
+                             <BookOpen className="w-3 h-3" />
+                             Archivio Documenti
+                           </button>
+                         </>
+                       )}
                     </div>
                   )}
                 </div>
@@ -1594,16 +1608,18 @@ export default function App() {
                 </div>
               ) : (
                 <div className="flex gap-3">
-                  <button
-                    onClick={async () => {
-                      try {
-                        setUpdateProgress(0);
-                        await updateService.downloadAndInstall(availableUpdate, (p) => setUpdateProgress(p));
-                      } catch (e: any) {
-                        setUpdateProgress(null);
-                        showToast(e.message || 'Errore durante l\'aggiornamento', 'error');
-                      }
-                    }}
+                    <button
+                      onClick={async () => {
+                        try {
+                          setUpdateProgress(0);
+                          await updateService.downloadAndInstall(availableUpdate, (p) => setUpdateProgress(p));
+                        } catch (e: any) {
+                          setUpdateProgress(null);
+                          const errorMessage = e.message || JSON.stringify(e);
+                          showToast(`Errore: ${errorMessage}`, 'error');
+                          console.error('[App] Download update failed:', e);
+                        }
+                      }}
                     className="flex-1 py-4 bg-[var(--accent)] text-white rounded-2xl font-bold hover:bg-[var(--accent-hover)] transition-all shadow-lg shadow-amber-500/20"
                   >
                     Scarica e Installa APK
@@ -1619,6 +1635,16 @@ export default function App() {
             </div>
             </motion.div>
           </div>
+        )}
+      </AnimatePresence>
+
+      {/* Document Archive View */}
+      <AnimatePresence>
+        {isArchiveOpen && (
+          <DocumentArchive 
+            modules={modules} 
+            onClose={() => setIsArchiveOpen(false)} 
+          />
         )}
       </AnimatePresence>
     </>

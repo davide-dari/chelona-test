@@ -21,14 +21,25 @@ class UpdateService {
   async checkForUpdates(): Promise<UpdateInfo | null> {
     console.log(`[UpdateService] Checking for updates... Current version: ${this.currentVersion}`);
     try {
-      const response = await fetch(`https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/releases/latest`);
+      const response = await fetch(`https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/releases/latest`, {
+        headers: {
+          'Accept': 'application/vnd.github.v3+json',
+          'User-Agent': 'Chelona-App-Updater'
+        }
+      });
       
       if (!response.ok) {
-        console.log(`[UpdateService] GitHub API error: ${response.status} ${response.statusText}`);
+        const errorText = await response.text().catch(() => 'No error body');
+        console.error(`[UpdateService] GitHub API error: ${response.status} ${response.statusText} - ${errorText}`);
         return null;
       }
 
       const data = await response.json();
+      if (!data || !data.tag_name) {
+        console.error('[UpdateService] Unexpected GitHub API response format (no tag_name)');
+        return null;
+      }
+
       const latestVersion = data.tag_name.replace('v', '');
       console.log(`[UpdateService] Latest version available on GitHub: ${latestVersion}`);
       
@@ -37,7 +48,7 @@ class UpdateService {
 
       if (comparison > 0) {
         // Find APK in assets
-        const apkAsset = data.assets.find((asset: any) => asset.name.endsWith('.apk'));
+        const apkAsset = data.assets?.find((asset: any) => asset.name.endsWith('.apk'));
         if (!apkAsset) {
           console.warn('[UpdateService] Update available but no APK found in release assets.');
           return null;
@@ -48,42 +59,56 @@ class UpdateService {
           available: true,
           currentVersion: this.currentVersion,
           latestVersion: latestVersion,
-          releaseNotes: data.body,
+          releaseNotes: data.body || '',
           downloadUrl: apkAsset.browser_download_url
         };
       } else {
         console.log('[UpdateService] App is up to date.');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('[UpdateService] Error checking for updates:', error);
+      // Optional: re-throw if you want the UI to handle it, but usually check is silent
     }
     return null;
   }
 
   async downloadAndInstall(updateInfo: UpdateInfo, onProgress?: (p: number) => void) {
     try {
+      if (!updateInfo.downloadUrl) {
+        throw new Error("L'URL di download non è valido.");
+      }
+
       console.log(`[UpdateService] Downloading update from: ${updateInfo.downloadUrl}`);
       
       const fileName = `chelona_v${updateInfo.latestVersion}.apk`;
       
       if (onProgress) onProgress(0);
 
-      // Use native downloadFile for stability and performance
-      const downloadResult = await Filesystem.downloadFile({
-        url: updateInfo.downloadUrl,
-        path: fileName,
-        directory: Directory.Cache,
-        progress: true
-      });
+      try {
+        // 1. Download the APK
+        const downloadResult = await Filesystem.downloadFile({
+          url: updateInfo.downloadUrl,
+          path: fileName,
+          directory: Directory.Cache,
+          progress: true
+        });
 
-      if (onProgress) onProgress(100);
-      
-      console.log(`[UpdateService] Download finished: ${downloadResult.path}`);
+        if (onProgress) onProgress(100);
+        console.log(`[UpdateService] Download finished: ${downloadResult.path}`);
 
-      // 2. Install the APK
-      await ApkInstaller.installApk({ filePath: downloadResult.path });
+        // 2. Install the APK
+        console.log('[UpdateService] Starting installation...');
+        await ApkInstaller.installApk({ filePath: downloadResult.path });
+      } catch (innerError: any) {
+        console.error('[UpdateService] Native download/install failed:', innerError);
+        
+        // If it's a fetch-related error on Android, it might be due to CapacitorHttp interference.
+        // We throw a more descriptive error for the UI.
+        const msg = innerError.message || JSON.stringify(innerError);
+        throw new Error(`Errore durante il download: ${msg}`);
+      }
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('[UpdateService] Error during update installation:', error);
       throw error;
     }
