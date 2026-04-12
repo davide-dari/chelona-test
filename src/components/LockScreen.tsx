@@ -32,10 +32,28 @@ export const LockScreen = ({ isVisible, onAuthenticated, onStartScan, onOpenTool
   const [onboardingStep, setOnboardingStep] = useState(0); // 0: Welcome, 1: Privacy, 2: Setup
   const autoBioTriggered = useRef<string | null>(null);
 
+  const refreshProfiles = (currentView?: string) => {
+    const loadedProfiles = storage.loadProfiles();
+    setProfiles(loadedProfiles);
+    
+    // SAFETY: If profiles exist, skip onboarding sequences
+    if (loadedProfiles.length > 0) {
+      const activeView = currentView || view;
+      if (activeView === 'setup') {
+        setView('selector');
+      } else if (activeView === 'selector' && loadedProfiles.length === 1) {
+        // If only 1 profile exists, go straight to login for it
+        setSelectedProfile(loadedProfiles[0]);
+        setView('login');
+      }
+    }
+  };
+
   useEffect(() => {
     if (isVisible) {
       setPassword('');
       setError('');
+      refreshProfiles();
     }
   }, [isVisible]);
 
@@ -43,30 +61,15 @@ export const LockScreen = ({ isVisible, onAuthenticated, onStartScan, onOpenTool
     if (!window.crypto || !window.crypto.subtle) {
       setError('Errore critico: Browser non sicuro (devi usare localhost o HTTPS per la crittografia).');
     }
-    const refreshProfiles = () => {
-      const loadedProfiles = storage.loadProfiles();
-      setProfiles(loadedProfiles);
-      
-      // SAFETY: If profiles exist, skip onboarding sequences
-      if (loadedProfiles.length > 0) {
-        if (view === 'setup') {
-          setView('selector');
-        } else if (view === 'selector' && loadedProfiles.length === 1) {
-          // If only 1 profile exists, go straight to login for it
-          setSelectedProfile(loadedProfiles[0]);
-          setView('login');
-        }
-      }
-    };
-
+    
     refreshProfiles();
-    window.addEventListener('chelona_profiles_updated', refreshProfiles);
+    window.addEventListener('chelona_profiles_updated', () => refreshProfiles());
     biometricService.isSupported().then(setIsBioSupported);
     
     // Controllo aggiornamenti all'arrivo nel login
     if (onCheckUpdate) onCheckUpdate();
 
-    return () => window.removeEventListener('chelona_profiles_updated', refreshProfiles);
+    return () => window.removeEventListener('chelona_profiles_updated', () => refreshProfiles());
   }, []);
 
   // Automatic biometric trigger when entering login view
