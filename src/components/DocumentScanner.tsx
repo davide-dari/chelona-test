@@ -721,7 +721,6 @@ export const DocumentScanner = ({ onCapture, onClose, downloadOnly = false }: Do
             muted 
             className="absolute inset-0 w-full h-full object-cover" 
             style={{ 
-              WebkitMediaControls: 'none',
               background: 'black',
               pointerEvents: 'none' // Prevent interactions that might trigger play buttons
             }}

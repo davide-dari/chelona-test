@@ -12,7 +12,7 @@ import { GenericCard, AutoCard, DocumentCard, SplitCard, SingleExpenseCard } fro
 import { LockScreen } from './components/LockScreen';
 import { QrScanner } from './components/QrScanner';
 import { ProfileScreen } from './components/ProfileScreen';
-import { ToolsScreen, TOOLS } from './components/ToolsScreen';
+import { ToolsScreen, TOOLS, TOOLS_UTILITY } from './components/ToolsScreen';
 import { AutoEditScreen } from './components/AutoEditScreen';
 import { SplitScreen } from './components/SplitScreen';
 import { DocumentArchive } from './components/DocumentArchive';
@@ -21,7 +21,7 @@ import { notificationService } from './services/notificationService';
 import { motion, AnimatePresence } from 'motion/react';
 import JSZip from 'jszip';
 import { updateService, UpdateInfo } from './services/updateService';
-import { App } from '@capacitor/app';
+import { App as CapApp } from '@capacitor/app';
 import { generateUUID } from './utils/uuid';
 // UI Libraries removed as per request (CSS Grid migration)
 
@@ -171,11 +171,11 @@ export default function App() {
   // Banking-Style Auto-Lock: listen for app background/minimize events
   useEffect(() => {
     console.log('[App] Initializing Lifecycle Listener');
-    let listenerPromise: Promise<import('@capacitor/app').AppRestoredResult & { remove: () => void }> | null = null;
+    let listenerPromise: Promise<any | { remove: () => void }> | null = null;
     
     // Check if App plugin is available and has the required methods
-    if (App && typeof App.addListener === 'function') {
-      const listener = App.addListener('appStateChange', ({ isActive }) => {
+    if (CapApp && typeof CapApp.addListener === 'function') {
+      const listener = CapApp.addListener('appStateChange', ({ isActive }) => {
         console.log('[App] State changed, isActive:', isActive);
         if (!isActive) {
           console.log('[App] Backgrounding: Locking application for security.');
@@ -254,7 +254,7 @@ export default function App() {
 
   const handleCheckUpdate = React.useCallback(async (silent = true) => {
     // Controllo aggiornamenti
-    if (window.Capacitor || (window.location.search.includes('debug_update=1'))) {
+    if ((window as any).Capacitor || (window.location.search.includes('debug_update=1'))) {
       try {
         const info = await updateService.checkForUpdates();
         if (info && info.available) {
