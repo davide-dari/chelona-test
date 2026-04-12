@@ -24,6 +24,7 @@ export const LockScreen = ({ isVisible, onAuthenticated, onStartScan, onOpenTool
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [isBioRequested, setIsBioRequested] = useState(true);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
@@ -45,9 +46,16 @@ export const LockScreen = ({ isVisible, onAuthenticated, onStartScan, onOpenTool
     const refreshProfiles = () => {
       const loadedProfiles = storage.loadProfiles();
       setProfiles(loadedProfiles);
-      // Don't auto-jump to setup anymore, stay in selector to show tools
-      if (loadedProfiles.length > 0 && view === 'setup') {
-        setView('selector');
+      
+      // SAFETY: If profiles exist, skip onboarding sequences
+      if (loadedProfiles.length > 0) {
+        if (view === 'setup') {
+          setView('selector');
+        } else if (view === 'selector' && loadedProfiles.length === 1) {
+          // If only 1 profile exists, go straight to login for it
+          setSelectedProfile(loadedProfiles[0]);
+          setView('login');
+        }
       }
     };
 
@@ -103,9 +111,28 @@ export const LockScreen = ({ isVisible, onAuthenticated, onStartScan, onOpenTool
       const updatedProfiles = [...profiles, newConfig];
       storage.saveProfiles(updatedProfiles);
       
-      const key = await encryption.deriveKey(password, salt);
+      // REGISTER BIOMETRICS IF REQUESTED
+      if (isBioRequested && isBioSupported) {
+        try {
+          const m = await import('../services/biometricService');
+          // Physical verification before saving
+          const verified = await m.biometricService.verifyIdentity('Registra l\'impronta per il tuo nuovo profilo.');
+          if (verified) {
+            const masterKeyStr = await encryption.exportKey(key);
+            await m.biometricService.saveMasterKey(newConfig.id, masterKeyStr);
+            // Update the profile to indicate biometrics are enabled
+            newConfig.isBiometricEnabled = true;
+            storage.saveProfiles(updatedProfiles);
+          }
+        } catch (bioErr) {
+          console.error('[LockScreen] Biometric registration failed during setup:', bioErr);
+          // Non-blocking error, profile is still created
+        }
+      }
+
       setPassword('');
       setConfirmPassword('');
+      setUsername('');
       onAuthenticated(key, newConfig.id);
     } catch (err: any) {
       console.error(err);
@@ -467,6 +494,38 @@ export const LockScreen = ({ isVisible, onAuthenticated, onStartScan, onOpenTool
                       className="w-full pl-12 pr-4 py-3.5 sm:py-4 bg-[var(--bg)] border border-[var(--border)] rounded-2xl outline-none focus:border-amber-500 transition-all text-sm sm:text-base text-[var(--text-main)]"
                       disabled={isLoading}
                     />
+                  </motion.div>
+
+
+                )}
+
+                {view === 'setup' && isBioSupported && (
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="p-4 bg-[var(--accent-bg)] rounded-2xl border border-[var(--accent)]/20 shadow-sm"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-[var(--accent)] text-white flex items-center justify-center shadow-md shadow-amber-500/20">
+                          <Fingerprint className="w-6 h-6" />
+                        </div>
+                        <div>
+                          <h4 className="text-sm font-black text-[var(--accent)] leading-tight uppercase tracking-tight">Accesso Biometrico</h4>
+                          <p className="text-[10px] font-medium text-[var(--text-muted)]">Usa l'impronta fisica</p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setIsBioRequested(!isBioRequested)}
+                        className={`w-12 h-6 rounded-full transition-all relative ${isBioRequested ? 'bg-amber-500 shadow-lg shadow-amber-500/30' : 'bg-gray-300'}`}
+                      >
+                        <motion.div 
+                          animate={{ x: isBioRequested ? 26 : 2 }}
+                          className="absolute top-1 w-4 h-4 bg-white rounded-full transition-all" 
+                        />
+                      </button>
+                    </div>
                   </motion.div>
                 )}
 
