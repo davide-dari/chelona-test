@@ -582,6 +582,16 @@ export default function App() {
     });
   }, [modules, selectedFolderId, selectedType, searchQuery]);
 
+  const recentModules = useMemo(() => {
+    return [...modules]
+      .sort((a, b) => {
+        const dateA = new Date(a.updatedAt || a.createdAt || 0).getTime();
+        const dateB = new Date(b.updatedAt || b.createdAt || 0).getTime();
+        return dateB - dateA;
+      })
+      .slice(0, 4);
+  }, [modules]);
+
   const filteredTools = useMemo(() => {
     if (!searchQuery.trim() || isToolsOpen) return [];
     const query = searchQuery.toLowerCase();
@@ -751,26 +761,6 @@ export default function App() {
           Strumenti
         </button>
 
-        <div className="pt-6 pb-2 px-4">
-          <p className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest">Categorie</p>
-        </div>
-        <button
-          onClick={() => { setSelectedType(null); setIsToolsOpen(false); setIsSidebarOpen(false); }}
-          className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all ${(!selectedType && !isToolsOpen) ? 'bg-[var(--accent-bg)] text-[var(--accent)]' : 'text-[var(--text-muted)] hover:bg-[var(--bg)]'}`}
-        >
-          <LayoutDashboard className="w-5 h-5" />
-          Tutte le Sandbox
-        </button>
-        {Object.entries(TEMPLATES).map(([key, t]) => (
-          <button
-            key={key}
-            onClick={() => { setSelectedType(key as ModuleType); setIsToolsOpen(false); setIsSidebarOpen(false); }}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all ${selectedType === key ? 'bg-[var(--accent-bg)] text-[var(--accent)]' : 'text-[var(--text-muted)] hover:bg-[var(--bg)]'}`}
-          >
-            <t.icon className={`w-5 h-5 ${selectedType === key ? t.color : 'text-[var(--text-muted)]'}`} />
-            {t.title}
-          </button>
-        ))}
       </nav>
 
       <div className="pb-4 mt-auto"></div>
@@ -861,11 +851,11 @@ export default function App() {
               <header className="h-16 lg:h-20 bg-[var(--header-bg)] backdrop-blur-2xl border-b border-[var(--border)] px-4 lg:px-8 flex items-center justify-between sticky top-0 z-10 shadow-[0_2px_10px_rgba(0,0,0,0.02)]">
                 {/* Left side: Contextual Title */}
                 <div className="flex items-center gap-3">
-                  {isToolsOpen && (
+                  {(isToolsOpen || selectedType) && (
                     <button 
-                      onClick={() => { setIsToolsOpen(false); setActiveToolId(null); }}
-                      className="p-2 -ml-2 hover:bg-[var(--bg)] rounded-xl text-[var(--accent)] transition-all flex items-center gap-1 group"
-                      title="Torna alla Bacheca"
+                      onClick={() => { setIsToolsOpen(false); setSelectedType(null); setActiveToolId(null); }}
+                      className="p-2 -ml-2 hover:bg-[var(--accent-bg)] rounded-xl text-[var(--accent)] transition-all flex items-center gap-1 group"
+                      title="Torna alla Dashboard"
                     >
                       <ArrowLeft className="w-6 h-6 group-hover:-translate-x-1 transition-transform" />
                     </button>
@@ -877,8 +867,8 @@ export default function App() {
                   ) : selectedType && TEMPLATES[selectedType] ? (
                     React.createElement(TEMPLATES[selectedType].icon, { className: "w-6 h-6 text-[var(--accent)]" })
                   ) : null}
-                  <h1 className="text-xl lg:text-2xl font-bold text-[var(--text-main)] tracking-tight">
-                    {isToolsOpen ? 'Strumenti' : selectedType ? TEMPLATES[selectedType].title : 'Bacheca'}
+                  <h1 className="text-xl lg:text-2xl font-extrabold text-[var(--text-main)] tracking-tight">
+                    {isToolsOpen ? 'Strumenti' : selectedType ? TEMPLATES[selectedType].title : 'Dashboard'}
                   </h1>
                 </div>
 
@@ -900,27 +890,7 @@ export default function App() {
                 </div>
               </header>
 
-              {/* Mobile Category Chips (Scrollable horizontally) */}
-              {!isToolsOpen && (
-                <div className="md:hidden w-full bg-[var(--header-bg)] backdrop-blur-xl border-b border-[var(--border)] px-4 py-3 overflow-x-auto custom-scrollbar flex items-center gap-2 z-10 sticky top-16">
-                  <button
-                    onClick={() => { setSelectedType(null); setIsToolsOpen(false); }}
-                    className={`shrink-0 px-5 py-2 rounded-full font-bold text-sm transition-all shadow-sm ${!selectedType && !isToolsOpen ? 'bg-[var(--accent)] text-white' : 'bg-[var(--card-bg)] text-[var(--text-muted)] border border-[var(--border)] hover:bg-[var(--bg)]'}`}
-                  >
-                    Tutte
-                  </button>
-                  {Object.entries(TEMPLATES).map(([key, t]) => (
-                    <button
-                      key={key}
-                      onClick={() => { setSelectedType(key as ModuleType); setIsToolsOpen(false); }}
-                      className={`shrink-0 px-5 py-2 rounded-full font-bold text-sm transition-all shadow-sm flex items-center gap-2 ${selectedType === key ? 'bg-[var(--accent)] text-white' : 'bg-[var(--card-bg)] text-[var(--text-muted)] border border-[var(--border)] hover:bg-[var(--bg)]'}`}
-                    >
-                      <t.icon className="w-4 h-4" />
-                      {t.title}
-                    </button>
-                  ))}
-                </div>
-              )}
+
 
               <div className="w-full h-full">
 
@@ -1401,7 +1371,143 @@ export default function App() {
                   </div>
                 )}
 
-                {filteredModules.length === 0 ? (
+                {!selectedType && !searchQuery.trim() ? (
+                  <div className="px-4 lg:px-8 pb-32">
+                    {/* Hero Dashboard Section */}
+                    <div className="mb-12">
+                      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
+                        <div>
+                          <h2 className="text-3xl lg:text-4xl font-extrabold text-[var(--text-main)] tracking-tight">
+                            Ciao, <span className="text-[var(--accent)]">{username}</span>
+                          </h2>
+                          <p className="text-[var(--text-muted)] font-bold uppercase tracking-[0.2em] text-xs mt-2">Centro di Controllo Sandbox</p>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <button 
+                            onClick={() => setIsAdding(true)}
+                            className="flex-1 md:flex-none px-6 py-4 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white rounded-2xl font-bold transition-all shadow-xl shadow-amber-500/20 flex items-center justify-center gap-2 group"
+                          >
+                            <Plus className="w-5 h-5 group-hover:rotate-90 transition-transform" />
+                            Nuovo Appunto
+                          </button>
+                          <button 
+                            onClick={() => setIsScanning(true)}
+                            className="px-6 py-4 bg-[var(--card-bg)] text-[var(--text-main)] border border-[var(--border)] rounded-2xl font-bold transition-all hover:bg-[var(--bg)] shadow-sm flex items-center justify-center gap-2"
+                          >
+                            <QrCode className="w-5 h-5" />
+                            Scanner
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                        {/* Stats / Quick Summary Card */}
+                        <div className="bg-[var(--card-bg)] p-8 rounded-[2.5rem] border border-[var(--border)] shadow-sm relative overflow-hidden group">
+                          <div className="absolute top-0 right-0 w-32 h-32 bg-[var(--accent)]/5 rounded-full -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-700" />
+                          <div className="relative z-10">
+                            <h3 className="text-lg font-bold text-[var(--text-main)] mb-6 flex items-center gap-2">
+                              <LayoutDashboard className="w-5 h-5 text-[var(--accent)]" />
+                              Panoramica
+                            </h3>
+                            <div className="grid grid-cols-2 gap-4">
+                              <div className="bg-[var(--bg)] p-5 rounded-3xl border border-[var(--border)]">
+                                <p className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest mb-1">Totali</p>
+                                <p className="text-3xl font-extrabold text-[var(--text-main)]">{modules.length}</p>
+                              </div>
+                              <div className="bg-[var(--bg)] p-5 rounded-3xl border border-[var(--border)]">
+                                <p className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest mb-1">Recenti</p>
+                                <p className="text-3xl font-extrabold text-[var(--accent)]">{recentModules.length}</p>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Quick Utility Grid */}
+                        <div className="grid grid-cols-2 gap-4">
+                          <button 
+                            onClick={() => { setIsToolsOpen(true); setActiveToolId('scanner'); }}
+                            className="bg-[var(--card-bg)] p-6 rounded-[2rem] border border-[var(--border)] shadow-sm hover:border-amber-500/50 hover:shadow-md transition-all text-left flex flex-col justify-between group"
+                          >
+                            <div className="w-10 h-10 bg-amber-500/10 rounded-xl flex items-center justify-center text-amber-500 mb-4 group-hover:scale-110 transition-transform">
+                              <Wrench className="w-5 h-5" />
+                            </div>
+                            <div>
+                              <p className="font-bold text-[var(--text-main)] text-sm">Scanner PDF</p>
+                              <p className="text-[10px] text-[var(--text-muted)] font-medium mt-0.5">Crea documenti</p>
+                            </div>
+                          </button>
+                          <button 
+                            onClick={() => setIsArchiveOpen(true)}
+                            className="bg-[var(--card-bg)] p-6 rounded-[2rem] border border-[var(--border)] shadow-sm hover:border-emerald-500/50 hover:shadow-md transition-all text-left flex flex-col justify-between group"
+                          >
+                            <div className="w-10 h-10 bg-emerald-500/10 rounded-xl flex items-center justify-center text-emerald-500 mb-4 group-hover:scale-110 transition-transform">
+                              <BookOpen className="w-5 h-5" />
+                            </div>
+                            <div>
+                              <p className="font-bold text-[var(--text-main)] text-sm">Archivio</p>
+                              <p className="text-[10px] text-[var(--text-muted)] font-medium mt-0.5">Sfoglia tutti i PDF</p>
+                            </div>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Categories Grid */}
+                    <div className="mb-12">
+                      <h3 className="text-xl font-bold text-[var(--text-main)] mb-6 px-2 flex items-center gap-2">
+                        <Grid2X2 className="w-5 h-5 text-[var(--accent)]" />
+                        Esplora Categorie
+                      </h3>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+                        {Object.entries(TEMPLATES).map(([key, t]) => (
+                          <button
+                            key={key}
+                            onClick={() => setSelectedType(key as ModuleType)}
+                            className="bg-[var(--card-bg)] p-6 rounded-[2rem] border border-[var(--border)] shadow-sm hover:border-[var(--accent)] hover:shadow-lg hover:-translate-y-1 transition-all group flex flex-col items-center text-center gap-4"
+                          >
+                            <div className={`w-14 h-14 bg-[var(--bg)] rounded-3xl flex items-center justify-center ${t.color} group-hover:bg-[var(--accent-bg)] transition-colors shadow-inner`}>
+                              <t.icon className="w-7 h-7" />
+                            </div>
+                            <div>
+                              <p className="font-bold text-[var(--text-main)] text-sm">{t.title}</p>
+                              <p className="text-[10px] text-[var(--text-muted)] font-bold uppercase tracking-widest mt-1">
+                                {modules.filter(m => m.type === key).length} Moduli
+                              </p>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Recent Activities */}
+                    {recentModules.length > 0 && (
+                      <div className="mb-12">
+                        <h3 className="text-xl font-bold text-[var(--text-main)] mb-6 px-2 flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <StickyNote className="w-5 h-5 text-[var(--accent)]" />
+                            Recenti
+                          </div>
+                          <button onClick={() => setSearchQuery(' ')} className="text-[10px] font-bold text-[var(--accent)] hover:underline uppercase tracking-widest">Vedi Tutti</button>
+                        </h3>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                          {recentModules.map(module => (
+                            <div key={module.id} className="w-full">
+                              {module.type === 'auto' ? (
+                                <AutoCard module={module} onDelete={requestDelete} onEdit={openEditModal} onDirectUpdate={updateModuleDirect} onShare={setSharingModule} />
+                              ) : module.type === 'document' ? (
+                                <DocumentCard module={module} onDelete={requestDelete} onEdit={openEditModal} onShare={setSharingModule} />
+                              ) : module.type === 'split' ? (
+                                <SplitCard module={module as any} onDelete={requestDelete} onEdit={openEditModal} onShare={setSharingModule} />
+                              ) : (
+                                <GenericCard module={module as any} onDelete={requestDelete} onEdit={openEditModal} onShare={setSharingModule} />
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ) : filteredModules.length === 0 ? (
                   <div className="py-20 flex flex-col items-center justify-center text-center px-4">
                     <div className="w-200 h-20 bg-[var(--bg)] border border-[var(--border)] rounded-full flex items-center justify-center mb-6">
                       <LayoutDashboard className="w-10 h-10 text-[var(--text-muted)] opacity-50" />
