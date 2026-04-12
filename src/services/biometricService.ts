@@ -71,6 +71,23 @@ export const biometricService = {
     }
   },
 
+  // Verify identity using biometrics (shows native prompt)
+  async verifyIdentity(reason: string = 'Verifica la tua identità'): Promise<boolean> {
+    try {
+      if (!NativeBiometric || typeof NativeBiometric.verifyIdentity !== 'function') return false;
+      await NativeBiometric.verifyIdentity({
+        reason,
+        title: 'Autenticazione Biometrica',
+        subtitle: 'Usa l\'impronta o il volto per continuare',
+        description: 'Verifica la tua identità per accedere alle funzioni di sicurezza.',
+      });
+      return true;
+    } catch (e) {
+      console.error('[BiometricService] verifyIdentity error:', e);
+      return false;
+    }
+  },
+
   // Delete credentials
   async deleteCredentials(profileId: string): Promise<void> {
     if (!NativeBiometric || typeof NativeBiometric.deleteCredentials !== 'function') return;

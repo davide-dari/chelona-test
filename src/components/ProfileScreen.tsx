@@ -6,6 +6,7 @@ import { encryption } from '../services/encryption';
 import { updateService } from '../services/updateService';
 import { Module, Folder } from '../types';
 import { QRCodeSVG } from 'qrcode.react';
+import packageJson from '../../package.json';
 
 interface ProfileScreenProps {
   onClose: () => void;
@@ -416,7 +417,7 @@ export function ProfileScreen({
                 </div>
 
                 <div className="mt-4 pt-6 border-t border-[var(--border)] text-center">
-                   <p className="text-[10px] text-[var(--text-muted)] font-bold uppercase tracking-[0.2em]">Versione Chelona: 1.1.0</p>
+                   <p className="text-[10px] text-[var(--text-muted)] font-bold uppercase tracking-[0.2em]">Versione Chelona: {packageJson.version}</p>
                 </div>
               </div>
             </div>

@@ -547,7 +547,14 @@ export default function App() {
       console.log('[App] Exporting master key for secure storage...');
       const masterKeyStr = await encryption.exportKey(encryptionKey);
       
-      // Save it natively (will prompt for biometric)
+      // Verify hardware identity first to "register" the real fingerprint
+      const verified = await m.biometricService.verifyIdentity('Conferma la tua identità per attivare lo sblocco con impronta.');
+      if (!verified) {
+        showToast('Verifica biometrica fallita o annullata.', 'error');
+        return;
+      }
+
+      // Save it natively (will prompt for biometric store access on some platforms)
       await m.biometricService.saveMasterKey(currentProfileId, masterKeyStr);
       
       const profiles = storage.loadProfiles();
