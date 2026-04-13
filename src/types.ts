@@ -1,4 +1,4 @@
-export type ModuleType = 'generic' | 'auto' | 'document' | 'split' | 'single-expense';
+export type ModuleType = 'generic' | 'auto' | 'document' | 'split' | 'single-expense' | 'wallet';
 export type FuelType = 'benzina' | 'diesel' | 'gpl' | 'metano' | 'ibrida' | 'elettrica';
 
 export interface Folder {
@@ -113,7 +113,23 @@ export interface SingleExpenseModule extends BaseModule {
   currency: string;
 }
 
-export type Module = GenericModule | AutoModule | DocumentModule | SplitModule | SingleExpenseModule;
+export interface ScheduledPayment {
+  id: string;
+  name: string;
+  totalAmount: number;
+  dueDate: string; // ISO date YYYY-MM-DD
+  category?: string;
+  isPaid?: boolean;
+}
+
+export interface WalletModule extends BaseModule {
+  type: 'wallet';
+  balance: number;
+  currency: string;
+  payments: ScheduledPayment[];
+}
+
+export type Module = GenericModule | AutoModule | DocumentModule | SplitModule | SingleExpenseModule | WalletModule;
 
 export interface DashboardState {
   modules: Module[];

@@ -8,7 +8,7 @@ import { Sun, Moon, Wrench, Plus, LayoutDashboard, Settings, User, LogOut, Searc
 import { Module, ModuleType, Folder, DocumentModule } from './types';
 import { storage, AppState } from './services/storage';
 import { encryption } from './services/encryption';
-import { GenericCard, AutoCard, DocumentCard, SplitCard, SingleExpenseCard } from './components/Modules';
+import { GenericCard, AutoCard, DocumentCard, SplitCard, SingleExpenseCard, WalletCard } from './components/Modules';
 import { LockScreen } from './components/LockScreen';
 import { QrScanner } from './components/QrScanner';
 import { ProfileScreen } from './components/ProfileScreen';
@@ -17,6 +17,7 @@ import { AutoEditScreen } from './components/AutoEditScreen';
 import { SplitScreen } from './components/SplitScreen';
 import { DocumentArchive } from './components/DocumentArchive';
 import { SingleExpenseScreen } from './components/SingleExpenseScreen';
+import { WalletScreen } from './components/WalletScreen';
 import { notificationService } from './services/notificationService';
 import { motion, AnimatePresence } from 'motion/react';
 import JSZip from 'jszip';
@@ -96,9 +97,10 @@ const TEMPLATES = {
   },
   expense: {
     title: 'Portafoglio',
-    content: 'Portafoglio: Risparmi\nSaldo: 0\nValuta: EUR\nNote: ',
+    content: '',
     icon: Wallet,
-    color: 'text-purple-500'
+    color: 'text-purple-500',
+    type: 'wallet'
   },
   'single-expense': {
     title: 'Spesa Singola',
@@ -128,6 +130,7 @@ export default function App() {
   const [editingAutoModule, setEditingAutoModule] = useState<import('./types').AutoModule | null>(null);
   const [editingSplitModule, setEditingSplitModule] = useState<import('./types').SplitModule | null>(null);
   const [editingSingleExpenseModule, setEditingSingleExpenseModule] = useState<import('./types').SingleExpenseModule | null>(null);
+  const [editingWalletModule, setEditingWalletModule] = useState<import('./types').WalletModule | null>(null);
   const [sharingModule, setSharingModule] = useState<Module | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedType, setSelectedType] = useState<ModuleType | null>(null);
@@ -456,6 +459,22 @@ export default function App() {
     }
     if (module.type === 'single-expense') {
       setEditingSingleExpenseModule(module as import('./types').SingleExpenseModule);
+      return;
+    }
+    if (module.type === 'wallet') {
+      setEditingWalletModule(module as import('./types').WalletModule);
+      return;
+    }
+    // Migration for old expense template
+    if (module.type === 'generic' && (module as import('./types').GenericModule).template === 'expense') {
+      const wallet: import('./types').WalletModule = {
+        ...module,
+        type: 'wallet',
+        balance: 0,
+        currency: 'EUR',
+        payments: []
+      };
+      setEditingWalletModule(wallet);
       return;
     }
     setEditingModuleId(module.id);
@@ -1056,6 +1075,12 @@ export default function App() {
                 onClose={() => setEditingSplitModule(null)}
                 onSaveToSandbox={handleSaveToSandbox}
               />
+            ) : editingWalletModule ? (
+              <WalletScreen
+                module={editingWalletModule}
+                onSave={(mod) => { updateModuleDirect(mod); setEditingWalletModule(null); }}
+                onClose={() => setEditingWalletModule(null)}
+              />
             ) : isAdding ? (
               <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="max-w-3xl mx-auto h-full flex flex-col w-full">
                 <div className="flex items-center gap-4 mb-8">
@@ -1078,6 +1103,17 @@ export default function App() {
                             onClick={() => {
                               if (key === 'split') {
                                 setSpesaSubMenu(true);
+                              } else if (key === 'expense') {
+                                setEditingWalletModule({
+                                  id: generateUUID(),
+                                  type: 'wallet',
+                                  title: 'Portafoglio',
+                                  balance: 0,
+                                  currency: 'EUR',
+                                  payments: [],
+                                  x: 0, y: 0, w: 2, h: 2
+                                });
+                                setIsAdding(false);
                               } else {
                                 setFormData({ ...formData, template: key, title: t.title, content: t.content });
                                 setAutoFormStep(0);
@@ -1696,6 +1732,8 @@ export default function App() {
                           <DocumentCard module={module} onDelete={requestDelete} onEdit={openEditModal} onShare={setSharingModule} />
                         ) : module.type === 'split' ? (
                           <SplitCard module={module as import('./types').SplitModule} onDelete={requestDelete} onEdit={openEditModal} onShare={setSharingModule} />
+                        ) : module.type === 'wallet' ? (
+                          <WalletCard module={module as import('./types').WalletModule} onDelete={requestDelete} onEdit={openEditModal} onShare={setSharingModule} />
                         ) : (
                           <GenericCard module={module as import('./types').GenericModule} onDelete={requestDelete} onEdit={openEditModal} onShare={setSharingModule} />
                         )}

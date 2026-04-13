@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { CreditCard, ShieldCheck, Wallet, Fingerprint, Plus, Trash2, Calendar, DollarSign, Pencil, StickyNote, Copy, Check, GripVertical, Car, Wrench, AlertCircle, FileText, QrCode, FileDown, X, Clock, Eye, Lock, ChevronRight, Bell, BellOff, Gauge, Users } from 'lucide-react';
-import { Module, GenericModule, AutoModule, DocumentModule, SplitModule, SingleExpenseModule } from '../types';
+import { Module, GenericModule, AutoModule, DocumentModule, SplitModule, SingleExpenseModule, WalletModule } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
 import { CAR_BRANDS } from '../utils/carBrands';
 import JSZip from 'jszip';
@@ -323,6 +323,62 @@ export const GenericCard = ({ module, onDelete, onEdit, onShare, dragHandleProps
         type={viewerData?.type}
       />
     </>
+  );
+};
+
+
+export const WalletCard = ({ module, onDelete, onEdit, onShare, dragHandleProps }: { module: WalletModule; onDelete: (id: string) => void; onEdit: (m: Module) => void; onShare: (m: Module) => void; dragHandleProps?: any }) => {
+  const currentMonthRate = React.useMemo(() => {
+    const today = new Date();
+    const currentYear = today.getFullYear();
+    const currentMonth = today.getMonth();
+    
+    return module.payments.reduce((acc, p) => {
+      const due = new Date(p.dueDate);
+      const monthsDiff = (due.getFullYear() - currentYear) * 12 + (due.getMonth() - currentMonth);
+      const installments = Math.max(1, monthsDiff + 1);
+      return acc + (p.totalAmount / installments);
+    }, 0);
+  }, [module.payments]);
+
+  return (
+    <ModuleWrapper module={module} onDelete={onDelete} onEdit={onEdit} dragHandleProps={dragHandleProps}>
+      <div 
+        className="h-full flex flex-col cursor-pointer hover:bg-[var(--bg)] transition-colors p-3 -m-3 rounded-2xl active:scale-[0.98]"
+        onClick={() => onEdit(module)}
+      >
+        <div className="flex items-center justify-between mb-4">
+          <div className="p-2.5 bg-purple-500/10 rounded-2xl border border-purple-500/20 text-purple-600">
+            <Wallet className="w-5 h-5" />
+          </div>
+          <div className="text-right">
+            <p className="text-[9px] font-black uppercase tracking-widest text-[var(--text-muted)]">Saldo</p>
+            <p className="text-xl font-black text-[var(--text-main)] tracking-tight">€ {module.balance.toLocaleString('it-IT')}</p>
+          </div>
+        </div>
+
+        <div className="bg-[var(--card-bg)] border border-[var(--border)] rounded-2xl p-4 flex flex-col gap-1 shadow-inner">
+          <p className="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-wider">Quota Mensile</p>
+          <div className="flex items-baseline justify-between">
+            <p className="text-lg font-black text-emerald-600 tracking-tight">€ {currentMonthRate.toLocaleString('it-IT', { maximumFractionDigits: 0 })}</p>
+            <p className="text-[9px] font-bold text-emerald-600/60 uppercase">Pianificata</p>
+          </div>
+        </div>
+
+        <div className="mt-auto pt-3 flex items-center justify-between border-t border-[var(--border)] mt-3">
+          <div className="flex items-center gap-1.5 text-[9px] font-bold uppercase text-[var(--text-muted)]">
+            <Calendar className="w-3 h-3" />
+            <span>{module.payments.length} Pagamenti</span>
+          </div>
+          <button
+            onClick={(e) => { e.stopPropagation(); onShare(module); }}
+            className="p-1.5 bg-[var(--info-bg)] hover:bg-[var(--info)]/20 text-[var(--info)] border border-[var(--info)]/30 rounded-lg transition-colors"
+          >
+            <QrCode className="w-3 h-3" />
+          </button>
+        </div>
+      </div>
+    </ModuleWrapper>
   );
 };
 
