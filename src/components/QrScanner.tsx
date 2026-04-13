@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { Html5Qrcode } from 'html5-qrcode';
 import { X, Camera, Zap, ZapOff, Minus, Plus, Maximize } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
