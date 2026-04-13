@@ -364,7 +364,7 @@ export const WalletScreen = ({ module, onSave, onClose }: WalletScreenProps) => 
                                   onContextMenu={(e) => e.stopPropagation()}
                                   onChange={(e) => handleUpdateAllocationManual(p.id, e.target.value)}
                                   onFocus={(e) => e.target.select()}
-                                  className={`w-full pl-8 pr-4 py-3.5 bg-[var(--bg)] border ${hasChanges ? 'border-amber-500/50 outline outline-4 outline-amber-500/5' : freeBalance < 0 ? 'border-red-500/50' : 'border-[var(--border)]'} rounded-2xl text-sm font-black text-[var(--text-main)] outline-none focus:border-[var(--accent)] focus:ring-4 focus:ring-[var(--accent)]/5 transition-all`}
+                                  className={`w-full pl-12 pr-4 py-3.5 bg-[var(--bg)] border ${hasChanges ? 'border-amber-500/50 outline outline-4 outline-amber-500/5' : freeBalance < 0 ? 'border-red-500/50' : 'border-[var(--border)]'} rounded-2xl text-sm font-black text-[var(--text-main)] outline-none focus:border-[var(--accent)] focus:ring-4 focus:ring-[var(--accent)]/5 transition-all`}
                                 />
                               </div>
                               
