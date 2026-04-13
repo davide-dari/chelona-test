@@ -1,7 +1,5 @@
-import React, { useRef, useState, useEffect, useCallback } from 'react';
-import { X, Camera, RefreshCw, Check, Zap, ZapOff, Home, ChevronRight, RotateCcw, RotateCw } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
 import { PDFDocument, degrees } from 'pdf-lib';
+import { loadExternalScript } from '../utils/loader';
 
 interface Point {
   x: number;
@@ -28,6 +26,7 @@ export const DocumentScanner = ({ onCapture, onClose, downloadOnly = false }: Do
   const [isDetected, setIsDetected] = useState(false);
   const [torch, setTorch] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isLibsLoading, setIsLibsLoading] = useState(true);
 
   const [mode, setMode] = useState<'scanning' | 'editing' | 'preview'>('scanning');
   const [captureData, setCaptureData] = useState<{
@@ -53,21 +52,43 @@ export const DocumentScanner = ({ onCapture, onClose, downloadOnly = false }: Do
   const lastDetectionTimeRef = useRef<number>(0);
 
   useEffect(() => {
-    let checkCount = 0;
-    const checkLibs = setInterval(() => {
-      const cv = (window as any).cv;
-      const JScanify = (window as any).jscanify;
+    let mounted = true;
+    const loadLibs = async () => {
+      try {
+        setIsLibsLoading(true);
+        // Load OpenCV first (needed by jscanify)
+        await loadExternalScript('https://docs.opencv.org/4.7.0/opencv.js', 'opencv-script');
+        
+        // Wait for OpenCV runtime if not ready
+        if (!(window as any).cvReady) {
+          await new Promise<void>((resolve) => {
+            window.addEventListener('opencv_ready', () => resolve(), { once: true });
+            // Fail-safe timeout
+            setTimeout(resolve, 10000);
+          });
+        }
 
-      if (cv && JScanify && (window as any).cvReady) {
-        scannerRef.current = new JScanify();
-        setIsReady(true);
-        clearInterval(checkLibs);
+        // Load Jscanify
+        await loadExternalScript('https://cdn.jsdelivr.net/gh/puffinsoft/jscanify@master/src/jscanify.js', 'jscanify-script');
+
+        if (mounted) {
+          const cv = (window as any).cv;
+          const JScanify = (window as any).jscanify;
+          if (cv && JScanify) {
+            scannerRef.current = new JScanify();
+            setIsReady(true);
+          }
+        }
+      } catch (err) {
+        console.error('[DocumentScanner] Lib loading failed:', err);
+        setError('Errore nel caricamento dei moduli AI per la scansione. Verifica la tua connessione.');
+      } finally {
+        if (mounted) setIsLibsLoading(false);
       }
+    };
 
-      checkCount++;
-      if (checkCount > 20) clearInterval(checkLibs);
-    }, 500);
-    return () => clearInterval(checkLibs);
+    loadLibs();
+    return () => { mounted = false; };
   }, []);
 
   // Detection runs OpenCV on a tiny canvas every ~100ms; rendering interpolates at 60fps
@@ -708,7 +729,19 @@ export const DocumentScanner = ({ onCapture, onClose, downloadOnly = false }: Do
         )}
       </AnimatePresence>
 
-      {mode === 'scanning' ? (
+      {isLibsLoading ? (
+        <div className="flex-1 flex flex-col items-center justify-center text-center px-8 bg-black">
+          <motion.div
+            animate={{ rotate: 360 }}
+            transition={{ repeat: Infinity, duration: 1.5, ease: "linear" }}
+            className="w-12 h-12 border-4 border-white/10 border-t-[var(--accent)] rounded-full mb-6"
+          />
+          <h2 className="text-white font-bold mb-2">Caricamento AI</h2>
+          <p className="text-white/40 text-xs leading-relaxed">
+            Sto preparando lo scanner intelligente...<br/>Potrebbe volerci un momento la prima volta.
+          </p>
+        </div>
+      ) : mode === 'scanning' ? (
         <div
           className="flex-1 relative bg-black"
           onClick={handleTapFocus}

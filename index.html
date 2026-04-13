@@ -5,6 +5,24 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>Chelona</title>
     <script type="text/javascript">
+      // 🕵️ STARTUP WATCHDOG: If app fails to render within 8s, show rescue screen
+      setTimeout(() => {
+        const root = document.getElementById('root');
+        if (root && !root.hasChildNodes()) {
+          console.error('[Startup] App failed to render in 8s. Showing rescue screen.');
+          document.body.innerHTML = `
+            <div style="height:100dvh; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:2rem; text-align:center; font-family:system-ui, -apple-system, sans-serif; background:#F8F9FA; color:#1F1F1F;">
+              <div style="width:80px; height:80px; background:#E6F4EA; border-radius:30px; display:flex; align-items:center; justify-content:center; margin-bottom:1.5rem;">
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#1E8E3E" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+              </div>
+              <h1 style="font-size:1.5rem; font-weight:800; margin-bottom:0.5rem;">Problema di Caricamento</h1>
+              <p style="color:#5E5E5E; margin-bottom:2rem; font-size:0.9rem; line-height:1.5;">L'applicazione sta impiegando troppo tempo ad avviarsi. Prova a ricaricare.</p>
+              <button onclick="window.location.reload()" style="padding:1rem 2rem; background:#1E8E3E; color:white; border:none; border-radius:18px; font-weight:bold; font-size:1rem; cursor:pointer; box-shadow:0 4px 12px rgba(30,142,62,0.25);">Ricarica Ora</button>
+            </div>
+          `;
+        }
+      }, 8000);
+
       // Fix for "TrustedHTML" violation errors caused by external libraries like OpenCV/Jscanify
       if (window.trustedTypes && window.trustedTypes.createPolicy) {
         if (!window.trustedTypes.defaultPolicy) {
@@ -18,12 +36,12 @@
 
       var Module = {
         onRuntimeInitialized: function() {
+          console.log('[OpenCV] Runtime Initialized');
           window.cvReady = true;
+          window.dispatchEvent(new CustomEvent('opencv_ready'));
         }
       };
     </script>
-    <script src="https://docs.opencv.org/4.7.0/opencv.js" type="text/javascript"></script>
-    <script src="https://cdn.jsdelivr.net/gh/puffinsoft/jscanify@master/src/jscanify.js" type="text/javascript"></script>
   </head>
   <body>
     <div id="root"></div>
