@@ -1,3 +1,6 @@
+import React, { useRef, useState, useEffect, useCallback } from 'react';
+import { X, Camera, RefreshCw, Check, Zap, ZapOff, Home, ChevronRight, RotateCcw, RotateCw } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 import { PDFDocument, degrees } from 'pdf-lib';
 import { loadExternalScript } from '../utils/loader';
 
