@@ -1089,14 +1089,6 @@ export default function App() {
                             <span className="font-bold text-xs uppercase tracking-wider">{t.title}</span>
                           </button>
                         ))}
-                        <button
-                          onClick={() => { setIsArchiveOpen(true); setIsAdding(false); }}
-                          className="flex flex-col items-center justify-center gap-4 p-8 rounded-2xl border-2 border-dashed border-amber-500/30 hover:border-amber-500 hover:bg-amber-500/10 transition-all group text-center h-full text-[var(--text-main)] overflow-hidden relative"
-                        >
-                          <div className="absolute top-0 right-0 bg-amber-500 text-white text-[8px] font-black px-2 py-0.5 rounded-bl-lg uppercase tracking-widest shadow-sm">PDF</div>
-                          <BookOpen className="w-8 h-8 text-amber-500 group-hover:scale-110 transition-transform" />
-                          <span className="font-bold text-xs uppercase tracking-wider text-amber-600">Archivio</span>
-                        </button>
                       </div>
                     </div>
                   )}
