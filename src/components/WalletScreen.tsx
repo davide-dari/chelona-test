@@ -11,21 +11,22 @@ interface WalletScreenProps {
 }
 
 export const WalletScreen = ({ module, onSave, onClose }: WalletScreenProps) => {
-  const [balance, setBalance] = useState(module.balance || 0);
+  const [balance, setBalance] = useState(Number(module.balance) || 0);
   const [payments, setPayments] = useState<ScheduledPayment[]>(module.payments || []);
   const [isAddingPayment, setIsAddingPayment] = useState(false);
+  const [longPressId, setLongPressId] = useState<string | null>(null);
   
   // Form per nuovo pagamento
   const [newName, setNewName] = useState('');
   const [newAmount, setNewAmount] = useState('');
   const [newDate, setNewDate] = useState('');
 
-  // Calcolo allocazione
+  // Calcolo allocazione con sicurezza numerica
   const allocatedBalance = useMemo(() => {
-    return payments.reduce((acc, p) => acc + (p.savedAmount || 0), 0);
+    return payments.reduce((acc, p) => acc + (Number(p.savedAmount) || 0), 0);
   }, [payments]);
 
-  const freeBalance = Math.max(0, balance - allocatedBalance);
+  const freeBalance = Math.max(0, Number(balance) - allocatedBalance);
 
   // Logica calcolo rate mensili
   const monthlyRates = useMemo(() => {
@@ -39,7 +40,7 @@ export const WalletScreen = ({ module, onSave, onClose }: WalletScreenProps) => 
       const monthsDiff = (due.getFullYear() - currentYear) * 12 + (due.getMonth() - currentMonth);
       
       const installments = Math.max(1, monthsDiff + 1);
-      const remainingToSave = Math.max(0, p.totalAmount - (p.savedAmount || 0));
+      const remainingToSave = Math.max(0, Number(p.totalAmount) - (Number(p.savedAmount) || 0));
       const monthlyAmount = remainingToSave / installments;
 
       for (let i = 0; i < installments; i++) {
@@ -72,14 +73,17 @@ export const WalletScreen = ({ module, onSave, onClose }: WalletScreenProps) => 
   };
 
   const handleUpdateAllocation = (id: string, amount: number) => {
+    const numAmount = Number(amount);
+    const currentFree = Number(freeBalance);
+    
     // Non possiamo allocare più del saldo libero (a meno che non stiamo togliendo soldi)
-    if (amount > 0 && freeBalance < amount) return;
+    if (numAmount > 0 && currentFree < numAmount) return;
     
     setPayments(payments.map(p => {
       if (p.id === id) {
-        const currentSaved = p.savedAmount || 0;
-        const newSaved = Math.max(0, Math.min(p.totalAmount, currentSaved + amount));
-        // Se stiamo togliendo più di quanto c'è, newSaved sarà 0
+        const currentSaved = Number(p.savedAmount) || 0;
+        const total = Number(p.totalAmount);
+        const newSaved = Math.max(0, Math.min(total, currentSaved + numAmount));
         return { ...p, savedAmount: newSaved };
       }
       return p;
@@ -97,16 +101,16 @@ export const WalletScreen = ({ module, onSave, onClose }: WalletScreenProps) => 
       const due = new Date(p.dueDate);
       const monthsDiff = (due.getFullYear() - currentYear) * 12 + (due.getMonth() - currentMonth);
       const installments = Math.max(1, monthsDiff + 1);
-      const remainingToSave = Math.max(0, p.totalAmount - (p.savedAmount || 0));
+      const remainingToSave = Math.max(0, Number(p.totalAmount) - (Number(p.savedAmount) || 0));
       const monthlyQuote = Math.min(remainingToSave, remainingToSave / installments);
       
       if (tempBalance >= monthlyQuote) {
         tempBalance -= monthlyQuote;
-        return { ...p, savedAmount: (p.savedAmount || 0) + monthlyQuote };
+        return { ...p, savedAmount: (Number(p.savedAmount) || 0) + monthlyQuote };
       } else if (tempBalance > 0) {
         const partial = tempBalance;
         tempBalance = 0;
-        return { ...p, savedAmount: (p.savedAmount || 0) + partial };
+        return { ...p, savedAmount: (Number(p.savedAmount) || 0) + partial };
       }
       return p;
     });
@@ -116,12 +120,13 @@ export const WalletScreen = ({ module, onSave, onClose }: WalletScreenProps) => 
 
   const handleRemovePayment = (id: string) => {
     setPayments(payments.filter(p => p.id !== id));
+    setLongPressId(null);
   };
 
   const handleSave = () => {
     onSave({
       ...module,
-      balance,
+      balance: Number(balance),
       payments,
       updatedAt: new Date().toISOString()
     });
@@ -135,6 +140,7 @@ export const WalletScreen = ({ module, onSave, onClose }: WalletScreenProps) => 
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: 40 }}
       className="fixed inset-0 z-[150] bg-[var(--bg)] flex flex-col overflow-hidden pt-[var(--safe-top)]"
+      onClick={() => setLongPressId(null)}
     >
       {/* Header */}
       <header className="flex items-center gap-4 px-6 py-5 border-b border-[var(--border)] bg-[var(--header-bg)] backdrop-blur-3xl shrink-0">
@@ -182,11 +188,11 @@ export const WalletScreen = ({ module, onSave, onClose }: WalletScreenProps) => 
               <div className="grid grid-cols-2 gap-4">
                 <div className="p-4 bg-[var(--bg)] border border-[var(--border)] rounded-3xl">
                   <p className="text-[9px] font-black uppercase tracking-widest text-[var(--text-muted)] mb-1">Libero</p>
-                  <p className="text-xl font-black text-[var(--text-main)]">€ {freeBalance.toLocaleString('it-IT')}</p>
+                  <p className="text-xl font-black text-[var(--text-main)]">€ {Number(freeBalance).toLocaleString('it-IT')}</p>
                 </div>
                 <div className="p-4 bg-emerald-500/5 border border-emerald-500/20 rounded-3xl">
                   <p className="text-[9px] font-black uppercase tracking-widest text-emerald-600/70 mb-1">Allocato</p>
-                  <p className="text-xl font-black text-emerald-600">€ {allocatedBalance.toLocaleString('it-IT')}</p>
+                  <p className="text-xl font-black text-emerald-600">€ {Number(allocatedBalance).toLocaleString('it-IT')}</p>
                 </div>
               </div>
             </div>
@@ -200,7 +206,7 @@ export const WalletScreen = ({ module, onSave, onClose }: WalletScreenProps) => 
                 Mini-Portafogli
               </h3>
               <button
-                onClick={() => setIsAddingPayment(true)}
+                onClick={(e) => { e.stopPropagation(); setIsAddingPayment(true); }}
                 className="p-2 bg-[var(--accent-bg)] text-[var(--accent)] border border-[var(--accent)]/30 rounded-xl hover:scale-110 transition-transform"
               >
                 <Plus className="w-5 h-5" />
@@ -210,19 +216,61 @@ export const WalletScreen = ({ module, onSave, onClose }: WalletScreenProps) => 
             <div className="grid grid-cols-1 gap-4">
               <AnimatePresence>
                 {payments.map(p => {
-                  const progress = Math.min(100, ((p.savedAmount || 0) / p.totalAmount) * 100);
+                  const saved = Number(p.savedAmount) || 0;
+                  const total = Number(p.totalAmount);
+                  const progress = Math.min(100, (saved / total) * 100);
                   const isCompleted = progress >= 100;
+                  const isLongPressed = longPressId === p.id;
 
                   return (
                     <motion.div
                       key={p.id}
                       initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
+                      animate={{ 
+                        opacity: 1, 
+                        y: 0,
+                        scale: isLongPressed ? 1.02 : 1,
+                        x: isLongPressed ? [0, -2, 2, -2, 2, 0] : 0
+                      }}
+                       transition={isLongPressed ? {
+                        x: { repeat: Infinity, duration: 0.15 },
+                        scale: { duration: 0.2 }
+                      } : { duration: 0.2 }}
                       exit={{ opacity: 0, scale: 0.95 }}
-                      className={`bg-[var(--card-bg)] border ${isCompleted ? 'border-emerald-500/50 shadow-lg shadow-emerald-500/5' : 'border-[var(--border)]'} rounded-[2rem] p-6 relative group overflow-hidden`}
+                      onContextMenu={(e) => {
+                        e.preventDefault();
+                        setLongPressId(p.id);
+                        if (window.navigator.vibrate) window.navigator.vibrate(50);
+                      }}
+                      className={`bg-[var(--card-bg)] border ${isCompleted ? 'border-emerald-500/50 shadow-lg shadow-emerald-500/5' : 'border-[var(--border)]'} rounded-[2rem] p-6 relative group overflow-hidden select-none touch-none`}
                     >
+                      {/* Overlay Cestino per cancellazione */}
+                      <AnimatePresence>
+                        {isLongPressed && (
+                          <motion.div
+                            initial={{ opacity: 0, scale: 0.5 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.5 }}
+                            className="absolute inset-0 z-20 bg-red-500/90 flex items-center justify-center backdrop-blur-sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (window.confirm(`Eliminare "${p.name}"?`)) {
+                                handleRemovePayment(p.id);
+                              } else {
+                                setLongPressId(null);
+                              }
+                            }}
+                          >
+                            <div className="flex flex-col items-center gap-2 text-white">
+                              <Trash2 className="w-10 h-10" />
+                              <span className="font-black text-xs uppercase tracking-widest">Tocca per eliminare</span>
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+
                       {/* Sub-bg per completato */}
-                      {isCompleted && <div className="absolute inset-0 bg-emerald-500/5 pointer-events-none" />}
+                      {isCompleted && !isLongPressed && <div className="absolute inset-0 bg-emerald-500/5 pointer-events-none" />}
 
                       <div className="relative z-10 space-y-5">
                         <div className="flex justify-between items-start">
@@ -230,19 +278,13 @@ export const WalletScreen = ({ module, onSave, onClose }: WalletScreenProps) => 
                             <h4 className="font-bold text-[var(--text-main)] text-lg leading-tight">{p.name}</h4>
                             <p className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest mt-1">Scade: {new Date(p.dueDate).toLocaleDateString('it-IT')}</p>
                           </div>
-                          <button
-                            onClick={() => handleRemovePayment(p.id)}
-                            className="p-2 text-[var(--text-muted)] hover:text-red-500 transition-all opacity-0 group-hover:opacity-100"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
                         </div>
 
                         {/* Progress Bar Container */}
                         <div className="space-y-2">
                           <div className="flex justify-between items-end">
                             <span className={`text-[10px] font-black uppercase tracking-widest ${isCompleted ? 'text-emerald-600' : 'text-[var(--text-muted)]'}`}>
-                              {isCompleted ? 'Obiettivo Raggiunto' : `Risparmiato: € ${(p.savedAmount || 0).toLocaleString('it-IT')}`}
+                              {isCompleted ? 'Obiettivo Raggiunto' : `Risparmiato: € ${saved.toLocaleString('it-IT')}`}
                             </span>
                             <span className={`text-xs font-bold ${isCompleted ? 'text-emerald-600' : 'text-[var(--text-main)]'}`}>
                               {progress.toFixed(0)}%
@@ -257,27 +299,27 @@ export const WalletScreen = ({ module, onSave, onClose }: WalletScreenProps) => 
                           </div>
                           <div className="flex justify-between items-center text-[10px] font-bold text-[var(--text-muted)] px-1">
                             <span>€ 0</span>
-                            <span className="text-[var(--text-main)]">Target: € {p.totalAmount.toLocaleString('it-IT')}</span>
+                            <span className="text-[var(--text-main)]">Target: € {total.toLocaleString('it-IT')}</span>
                           </div>
                         </div>
 
                         {/* Controlli Allocazione */}
                         <div className="flex items-center gap-3 pt-2">
                            <button 
-                             onClick={() => handleUpdateAllocation(p.id, -10)}
+                             onClick={(e) => { e.stopPropagation(); handleUpdateAllocation(p.id, -10); }}
                              className="w-10 h-10 bg-[var(--bg)] border border-[var(--border)] rounded-xl flex items-center justify-center font-bold text-[var(--text-muted)] hover:border-red-500/30 hover:text-red-500 transition-all"
                            >
                              -10
                            </button>
                            <button 
-                             onClick={() => handleUpdateAllocation(p.id, 10)}
+                             onClick={(e) => { e.stopPropagation(); handleUpdateAllocation(p.id, 10); }}
                              disabled={freeBalance < 10 || isCompleted}
                              className={`flex-1 h-10 rounded-xl font-bold text-xs uppercase tracking-widest transition-all ${isCompleted ? 'bg-emerald-500/10 text-emerald-600 cursor-not-allowed' : 'bg-[var(--accent)] text-white shadow-lg shadow-[var(--accent)]/10 active:scale-95'}`}
                            >
                               {isCompleted ? 'Completato' : `+ €10`}
                            </button>
                            <button 
-                             onClick={() => handleUpdateAllocation(p.id, 50)}
+                             onClick={(e) => { e.stopPropagation(); handleUpdateAllocation(p.id, 50); }}
                              disabled={freeBalance < 50 || isCompleted}
                              className="w-14 h-10 bg-[var(--bg)] border border-[var(--border)] rounded-xl flex items-center justify-center font-bold text-[var(--text-main)] text-xs hover:border-[var(--accent)] transition-all disabled:opacity-50"
                            >
@@ -292,7 +334,7 @@ export const WalletScreen = ({ module, onSave, onClose }: WalletScreenProps) => 
               {payments.length === 0 && !isAddingPayment && (
                 <div className="py-12 text-center border-2 border-dashed border-[var(--border)] rounded-[2.5rem]">
                   <p className="text-sm text-[var(--text-muted)] font-medium">Crea un mini-portafoglio per iniziare</p>
-                  <button onClick={() => setIsAddingPayment(true)} className="mt-3 text-[var(--accent)] font-bold text-xs uppercase tracking-widest">Aggiungi</button>
+                  <button onClick={(e) => { e.stopPropagation(); setIsAddingPayment(true); }} className="mt-3 text-[var(--accent)] font-bold text-xs uppercase tracking-widest">Aggiungi</button>
                 </div>
               )}
             </div>
