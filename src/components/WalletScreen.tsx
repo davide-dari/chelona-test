@@ -55,45 +55,46 @@ export const WalletScreen = ({ module, onSave, onClose }: WalletScreenProps) => 
       .slice(0, 12);
   }, [payments]);
 
-  const handleAddPayment = () => {
-    if (!newName || !newAmount || !newDate) return;
-    const payment: ScheduledPayment = {
-      id: generateUUID(),
-      name: newName,
-      totalAmount: parseFloat(newAmount),
-      dueDate: newDate,
-      isPaid: false,
-      savedAmount: 0
-    };
-    setPayments([...payments, payment]);
-    setIsAddingPayment(false);
-    setNewName('');
-    setNewAmount('');
-    setNewDate('');
+  const [tempAmounts, setTempAmounts] = useState<Record<string, string>>({});
+
+  const handleApplySaving = (id: string) => {
+    const value = tempAmounts[id];
+    if (value === undefined) return;
+    
+    let numValue = parseFloat(value) || 0;
+    numValue = Math.max(0, numValue);
+    
+    setPayments(prev => {
+      const updated = prev.map(p => {
+        if (p.id === id) {
+          const total = Number(p.totalAmount);
+          return { ...p, savedAmount: Math.min(total, numValue) };
+        }
+        return p;
+      });
+      
+      // Auto-save dopo la conferma
+      onSave({
+        ...module,
+        balance: Number(balance),
+        payments: updated,
+        updatedAt: new Date().toISOString()
+      });
+      
+      return updated;
+    });
+    
+    // Rimuoviamo il valore temporaneo dopo l'applicazione
+    setTempAmounts(prev => {
+      const { [id]: _, ...rest } = prev;
+      return rest;
+    });
+    
+    if (window.navigator.vibrate) window.navigator.vibrate(20);
   };
 
   const handleUpdateAllocationManual = (id: string, value: string) => {
-    // Permettiamo la stringa vuota per facilitare la cancellazione e riscrittura
-    if (value === '') {
-      setPayments(prev => prev.map(p => p.id === id ? { ...p, savedAmount: 0 } : p));
-      return;
-    }
-
-    const numValue = parseFloat(value);
-    if (isNaN(numValue)) return;
-    
-    setPayments(prev => prev.map(p => {
-      if (p.id === id) {
-        const currentSaved = Number(p.savedAmount) || 0;
-        const total = Number(p.totalAmount);
-        
-        // Non cappiamo forzatamente durante la digitazione per evitare "salti" del cursore
-        // Ma limitiamo al totale dell'obiettivo
-        const finalValue = Math.max(0, Math.min(total, numValue));
-        return { ...p, savedAmount: finalValue };
-      }
-      return p;
-    }));
+    setTempAmounts(prev => ({ ...prev, [id]: value }));
   };
 
   // Funzione per accantonare automaticamente le quote del mese
@@ -122,18 +123,53 @@ export const WalletScreen = ({ module, onSave, onClose }: WalletScreenProps) => 
     });
     
     setPayments(updatedPayments);
-  };
-
-  const handleRemovePayment = (id: string) => {
-    setPayments(payments.filter(p => p.id !== id));
-    setLongPressId(null);
-  };
-
-  const handleSave = () => {
+    
+    // Auto-save
     onSave({
       ...module,
       balance: Number(balance),
-      payments,
+      payments: updatedPayments,
+      updatedAt: new Date().toISOString()
+    });
+  };
+
+  const handleRemovePayment = (id: string) => {
+    const updated = payments.filter(p => p.id !== id);
+    setPayments(updated);
+    setLongPressId(null);
+    
+    // Auto-save
+    onSave({
+      ...module,
+      balance: Number(balance),
+      payments: updated,
+      updatedAt: new Date().toISOString()
+    });
+  };
+
+  const handleAddPayment = () => {
+    if (!newName || !newAmount || !newDate) return;
+    const payment: ScheduledPayment = {
+      id: generateUUID(),
+      name: newName,
+      totalAmount: parseFloat(newAmount),
+      dueDate: newDate,
+      isPaid: false,
+      savedAmount: 0
+    };
+    
+    const updated = [...payments, payment];
+    setPayments(updated);
+    setIsAddingPayment(false);
+    setNewName('');
+    setNewAmount('');
+    setNewDate('');
+    
+    // Auto-save immediato dopo la creazione
+    onSave({
+      ...module,
+      balance: Number(balance),
+      payments: updated,
       updatedAt: new Date().toISOString()
     });
   };
@@ -157,12 +193,10 @@ export const WalletScreen = ({ module, onSave, onClose }: WalletScreenProps) => 
           <h2 className="text-xl font-bold text-[var(--text-main)]">Gestione Portafoglio</h2>
           <p className="text-[10px] text-[var(--text-muted)] font-black uppercase tracking-widest">{module.title}</p>
         </div>
-        <button
-          onClick={handleSave}
-          className="px-6 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-2xl font-bold text-sm transition-all shadow-lg shadow-emerald-500/20"
-        >
-          Salva
-        </button>
+        <div className="flex items-center gap-2 px-3 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded-full">
+           <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
+           <span className="text-[9px] font-black uppercase tracking-widest text-emerald-600">Auto-Save</span>
+        </div>
       </header>
 
       <div className="flex-1 overflow-y-auto custom-scrollbar">
@@ -186,6 +220,14 @@ export const WalletScreen = ({ module, onSave, onClose }: WalletScreenProps) => 
                          placeholder="0"
                          onChange={e => setBalance(parseFloat(e.target.value) || 0)}
                          onFocus={(e) => e.target.select()}
+                         onBlur={() => {
+                           onSave({
+                             ...module,
+                             balance: Number(balance),
+                             payments,
+                             updatedAt: new Date().toISOString()
+                           });
+                         }}
                          className="bg-transparent border-none text-4xl font-black text-[var(--text-main)] outline-none w-full tracking-tight"
                        />
                     </div>
@@ -229,6 +271,11 @@ export const WalletScreen = ({ module, onSave, onClose }: WalletScreenProps) => 
                   const progress = Math.min(100, (saved / total) * 100);
                   const isCompleted = progress >= 100;
                   const isLongPressed = longPressId === p.id;
+                  
+                  const hasChanges = tempAmounts[p.id] !== undefined;
+                  const displayValue = tempAmounts[p.id] !== undefined 
+                    ? tempAmounts[p.id] 
+                    : (p.savedAmount === 0 ? '' : p.savedAmount);
 
                   return (
                     <motion.div
@@ -303,18 +350,34 @@ export const WalletScreen = ({ module, onSave, onClose }: WalletScreenProps) => 
                         {/* Input Manuale Allocazione */}
                         <div className="flex flex-col gap-2 pt-1">
                            <label className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)]">Cifra Risparmiata</label>
-                           <div className="relative group/input">
-                              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-bold text-[var(--text-muted)] group-focus-within/input:text-[var(--accent)] transition-colors">€</span>
-                              <input
-                                type="number"
-                                value={p.savedAmount === 0 ? '' : p.savedAmount}
-                                placeholder="0"
-                                onPointerDown={(e) => e.stopPropagation()}
-                                onContextMenu={(e) => e.stopPropagation()}
-                                onChange={(e) => handleUpdateAllocationManual(p.id, e.target.value)}
-                                onFocus={(e) => e.target.select()}
-                                className={`w-full pl-8 pr-4 py-3.5 bg-[var(--bg)] border ${freeBalance < 0 ? 'border-red-500/50' : 'border-[var(--border)]'} rounded-2xl text-sm font-black text-[var(--text-main)] outline-none focus:border-[var(--accent)] focus:ring-4 focus:ring-[var(--accent)]/5 transition-all`}
-                              />
+                           <div className="relative group/input flex items-center gap-3">
+                              <div className="relative flex-1">
+                                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-bold text-[var(--text-muted)] group-focus-within/input:text-[var(--accent)] transition-colors">€</span>
+                                <input
+                                  type="number"
+                                  value={displayValue}
+                                  placeholder="0"
+                                  onPointerDown={(e) => e.stopPropagation()}
+                                  onContextMenu={(e) => e.stopPropagation()}
+                                  onChange={(e) => handleUpdateAllocationManual(p.id, e.target.value)}
+                                  onFocus={(e) => e.target.select()}
+                                  className={`w-full pl-8 pr-4 py-3.5 bg-[var(--bg)] border ${hasChanges ? 'border-amber-500/50 outline outline-4 outline-amber-500/5' : freeBalance < 0 ? 'border-red-500/50' : 'border-[var(--border)]'} rounded-2xl text-sm font-black text-[var(--text-main)] outline-none focus:border-[var(--accent)] focus:ring-4 focus:ring-[var(--accent)]/5 transition-all`}
+                                />
+                              </div>
+                              
+                              <AnimatePresence>
+                                {hasChanges && (
+                                  <motion.button
+                                    initial={{ opacity: 0, scale: 0.5, x: 20 }}
+                                    animate={{ opacity: 1, scale: 1, x: 0 }}
+                                    exit={{ opacity: 0, scale: 0.5, x: 20 }}
+                                    onClick={() => handleApplySaving(p.id)}
+                                    className="p-3.5 bg-emerald-500 text-white rounded-2xl shadow-lg shadow-emerald-500/20 active:scale-90 transition-all"
+                                  >
+                                    <TrendingUp className="w-5 h-5" />
+                                  </motion.button>
+                                )}
+                              </AnimatePresence>
                            </div>
                         </div>
                       </div>

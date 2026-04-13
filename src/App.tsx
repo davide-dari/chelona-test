@@ -1078,7 +1078,7 @@ export default function App() {
             ) : editingWalletModule ? (
               <WalletScreen
                 module={editingWalletModule}
-                onSave={(mod) => { updateModuleDirect(mod); setEditingWalletModule(null); }}
+                onSave={(mod) => { updateModuleDirect(mod); }}
                 onClose={() => setEditingWalletModule(null)}
               />
             ) : isAdding ? (
