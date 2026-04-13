@@ -358,13 +358,41 @@ export const WalletCard = ({ module, onDelete, onEdit, onShare, dragHandleProps 
           </div>
         </div>
 
-        <div className="bg-[var(--card-bg)] border border-[var(--border)] rounded-2xl p-4 flex flex-col gap-1 shadow-inner">
+        <div className="bg-[var(--card-bg)] border border-[var(--border)] rounded-2xl p-4 flex flex-col gap-1 shadow-inner mb-3">
           <p className="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-wider">Quota Mensile</p>
           <div className="flex items-baseline justify-between">
             <p className="text-lg font-black text-emerald-600 tracking-tight">€ {currentMonthRate.toLocaleString('it-IT', { maximumFractionDigits: 0 })}</p>
             <p className="text-[9px] font-bold text-emerald-600/60 uppercase">Pianificata</p>
           </div>
         </div>
+
+        {/* Mini-Portafogli Preview */}
+        {module.payments.length > 0 && (
+          <div className="space-y-2 mb-4 px-1">
+            {module.payments.slice(0, 2).map(p => {
+              const prog = Math.min(100, ((p.savedAmount || 0) / p.totalAmount) * 100);
+              return (
+                <div key={p.id} className="space-y-1">
+                  <div className="flex justify-between items-center text-[8px] font-black uppercase text-[var(--text-muted)] tracking-tighter">
+                    <span className="truncate max-w-[60px]">{p.name}</span>
+                    <span className="text-[var(--text-main)]">{prog.toFixed(0)}%</span>
+                  </div>
+                  <div className="h-1 bg-[var(--surface-variant)] rounded-full overflow-hidden">
+                    <div 
+                      className="h-full bg-[var(--accent)] rounded-full" 
+                      style={{ width: `${prog}%` }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+            {module.payments.length > 2 && (
+              <p className="text-[8px] font-bold text-[var(--text-muted)] italic text-center">
+                + Altri {module.payments.length - 2} Obiettivi
+              </p>
+            )}
+          </div>
+        )}
 
         <div className="mt-auto pt-3 flex items-center justify-between border-t border-[var(--border)] mt-3">
           <div className="flex items-center gap-1.5 text-[9px] font-bold uppercase text-[var(--text-muted)]">

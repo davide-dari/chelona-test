@@ -68,7 +68,10 @@ export const WalletScreen = ({ module, onSave, onClose }: WalletScreenProps) => 
       const updated = prev.map(p => {
         if (p.id === id) {
           const total = Number(p.totalAmount);
-          return { ...p, savedAmount: Math.min(total, numValue) };
+          const currentSaved = Number(p.savedAmount) || 0;
+          // Sommiamo il nuovo valore a quello esistente
+          const newSaved = Math.min(total, currentSaved + numValue);
+          return { ...p, savedAmount: newSaved };
         }
         return p;
       });
@@ -347,12 +350,12 @@ export const WalletScreen = ({ module, onSave, onClose }: WalletScreenProps) => 
                           </div>
                         </div>
 
-                        {/* Input Manuale Allocazione */}
+                        {/* Input Manuale Allocazione (Somma) */}
                         <div className="flex flex-col gap-2 pt-1">
-                           <label className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)]">Cifra Risparmiata</label>
+                           <label className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)]">Aggiungi Risparmio</label>
                            <div className="relative group/input flex items-center gap-3">
                               <div className="relative flex-1">
-                                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-bold text-[var(--text-muted)] group-focus-within/input:text-[var(--accent)] transition-colors">€</span>
+                                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-bold text-[var(--text-muted)] group-focus-within/input:text-[var(--accent)] transition-colors">+ €</span>
                                 <input
                                   type="number"
                                   value={displayValue}
