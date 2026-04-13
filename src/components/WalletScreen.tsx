@@ -73,23 +73,24 @@ export const WalletScreen = ({ module, onSave, onClose }: WalletScreenProps) => 
   };
 
   const handleUpdateAllocationManual = (id: string, value: string) => {
-    const rawValue = parseFloat(value) || 0;
-    const numValue = Math.max(0, rawValue);
+    // Permettiamo la stringa vuota per facilitare la cancellazione e riscrittura
+    if (value === '') {
+      setPayments(prev => prev.map(p => p.id === id ? { ...p, savedAmount: 0 } : p));
+      return;
+    }
+
+    const numValue = parseFloat(value);
+    if (isNaN(numValue)) return;
     
-    // Calcoliamo quanto stiamo cercando di aggiungere RISPETTO a quanto già salvato
     setPayments(prev => prev.map(p => {
       if (p.id === id) {
         const currentSaved = Number(p.savedAmount) || 0;
-        const diff = numValue - currentSaved;
+        const total = Number(p.totalAmount);
         
-        // Se stiamo aumentando l'allocazione, verifichiamo il saldo libero
-        if (diff > 0 && freeBalance < diff) {
-          // Cap al massimo possibile
-          const cappedValue = currentSaved + freeBalance;
-          return { ...p, savedAmount: Math.min(Number(p.totalAmount), cappedValue) };
-        }
-        
-        return { ...p, savedAmount: Math.min(Number(p.totalAmount), numValue) };
+        // Non cappiamo forzatamente durante la digitazione per evitare "salti" del cursore
+        // Ma limitiamo al totale dell'obiettivo
+        const finalValue = Math.max(0, Math.min(total, numValue));
+        return { ...p, savedAmount: finalValue };
       }
       return p;
     }));
@@ -181,8 +182,10 @@ export const WalletScreen = ({ module, onSave, onClose }: WalletScreenProps) => 
                        <span className="text-4xl font-black text-[var(--text-main)] tracking-tight">€</span>
                        <input
                          type="number"
-                         value={balance}
+                         value={balance === 0 ? '' : balance}
+                         placeholder="0"
                          onChange={e => setBalance(parseFloat(e.target.value) || 0)}
+                         onFocus={(e) => e.target.select()}
                          className="bg-transparent border-none text-4xl font-black text-[var(--text-main)] outline-none w-full tracking-tight"
                        />
                     </div>
@@ -193,7 +196,7 @@ export const WalletScreen = ({ module, onSave, onClose }: WalletScreenProps) => 
               <div className="grid grid-cols-2 gap-4">
                 <div className="p-4 bg-[var(--bg)] border border-[var(--border)] rounded-3xl">
                   <p className="text-[9px] font-black uppercase tracking-widest text-[var(--text-muted)] mb-1">Libero</p>
-                  <p className="text-xl font-black text-[var(--text-main)]">€ {Number(freeBalance).toLocaleString('it-IT')}</p>
+                  <p className={`text-xl font-black transition-colors ${freeBalance < 0 ? 'text-red-500' : 'text-[var(--text-main)]'}`}>€ {Number(freeBalance).toLocaleString('it-IT')}</p>
                 </div>
                 <div className="p-4 bg-emerald-500/5 border border-emerald-500/20 rounded-3xl">
                   <p className="text-[9px] font-black uppercase tracking-widest text-emerald-600/70 mb-1">Allocato</p>
@@ -304,10 +307,13 @@ export const WalletScreen = ({ module, onSave, onClose }: WalletScreenProps) => 
                               <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-bold text-[var(--text-muted)] group-focus-within/input:text-[var(--accent)] transition-colors">€</span>
                               <input
                                 type="number"
-                                value={p.savedAmount || ''}
-                                placeholder="Inserisci importo..."
+                                value={p.savedAmount === 0 ? '' : p.savedAmount}
+                                placeholder="0"
+                                onPointerDown={(e) => e.stopPropagation()}
+                                onContextMenu={(e) => e.stopPropagation()}
                                 onChange={(e) => handleUpdateAllocationManual(p.id, e.target.value)}
-                                className="w-full pl-8 pr-4 py-3.5 bg-[var(--bg)] border border-[var(--border)] rounded-2xl text-sm font-black text-[var(--text-main)] outline-none focus:border-[var(--accent)] focus:ring-4 focus:ring-[var(--accent)]/5 transition-all"
+                                onFocus={(e) => e.target.select()}
+                                className={`w-full pl-8 pr-4 py-3.5 bg-[var(--bg)] border ${freeBalance < 0 ? 'border-red-500/50' : 'border-[var(--border)]'} rounded-2xl text-sm font-black text-[var(--text-main)] outline-none focus:border-[var(--accent)] focus:ring-4 focus:ring-[var(--accent)]/5 transition-all`}
                               />
                            </div>
                         </div>
