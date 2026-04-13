@@ -337,7 +337,8 @@ export const WalletCard = ({ module, onDelete, onEdit, onShare, dragHandleProps 
       const due = new Date(p.dueDate);
       const monthsDiff = (due.getFullYear() - currentYear) * 12 + (due.getMonth() - currentMonth);
       const installments = Math.max(1, monthsDiff + 1);
-      return acc + (p.totalAmount / installments);
+      const remainingToSave = Math.max(0, p.totalAmount - (p.savedAmount || 0));
+      return acc + (remainingToSave / installments);
     }, 0);
   }, [module.payments]);
 

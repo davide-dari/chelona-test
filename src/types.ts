@@ -120,6 +120,7 @@ export interface ScheduledPayment {
   dueDate: string; // ISO date YYYY-MM-DD
   category?: string;
   isPaid?: boolean;
+  savedAmount?: number;
 }
 
 export interface WalletModule extends BaseModule {
