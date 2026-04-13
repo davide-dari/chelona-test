@@ -214,9 +214,9 @@ export const LockScreen = ({ isVisible, onAuthenticated, onStartScan, onOpenTool
   return (
     <div className="fixed inset-0 bg-[var(--bg)] flex items-center justify-center p-4 z-[100] overflow-y-auto transition-colors duration-300">
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className={`bg-[var(--card-bg)] rounded-[2rem] shadow-2xl p-6 sm:p-10 w-full ${view === 'selector' ? 'max-w-2xl' : 'max-w-md'} border border-[var(--border)] my-auto transition-all`}
+        initial={{ opacity: 0, scale: 0.98 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className={`bg-[var(--card-bg)] rounded-[var(--radius-lg)] shadow-2xl p-6 sm:p-10 w-full ${view === 'selector' ? 'max-w-2xl' : 'max-w-md'} border border-[var(--border)] my-auto transition-all`}
       >
         <AnimatePresence mode="wait">
           {showResetConfirm ? (
@@ -272,24 +272,24 @@ export const LockScreen = ({ isVisible, onAuthenticated, onStartScan, onOpenTool
                   <button
                     key={p.id}
                     onClick={() => { setSelectedProfile(p); setError(''); setPassword(''); setView('login'); }}
-                    className="flex flex-col items-center p-6 bg-[var(--card-bg)] rounded-3xl border border-[var(--border)] hover:border-[var(--accent)] hover:shadow-lg transition-all group shadow-sm bg-gradient-to-b from-[var(--card-bg)] to-[var(--bg)]"
+                    className="flex flex-col items-center p-6 bg-[var(--surface-variant)] rounded-[var(--radius-lg)] border border-[var(--border)] transition-all group hover:scale-[1.02] shadow-sm"
                   >
-                    <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-[var(--accent-hover)]/10 overflow-hidden mb-4 group-hover:scale-105 transition-transform border-4 border-[var(--card-bg)] shadow-sm flex items-center justify-center">
+                    <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-[var(--bg)] overflow-hidden mb-4 group-hover:shadow-md transition-all border-2 border-[var(--border)] flex items-center justify-center">
                       {p.avatar ? (
                         <img src={p.avatar} alt={p.username} className="w-full h-full object-cover" />
                       ) : (
                         <User className="w-10 h-10 text-[var(--accent)]" />
                       )}
                     </div>
-                    <span className="font-bold text-[var(--text-main)] group-hover:text-[var(--accent)] transition-colors text-base sm:text-lg truncate w-full text-center">{p.username}</span>
+                    <span className="font-bold text-[var(--text-main)] transition-colors text-base sm:text-lg truncate w-full text-center">{p.username}</span>
                   </button>
                 ))}
 
                 <button
                   onClick={() => { setError(''); setUsername(''); setPassword(''); setConfirmPassword(''); setView('setup'); }}
-                  className="flex flex-col items-center p-6 bg-[var(--bg)]/50 rounded-3xl border border-[var(--border)] hover:bg-[var(--bg)] transition-all group border-dashed"
+                  className="flex flex-col items-center p-6 bg-transparent rounded-[var(--radius-lg)] border-2 border-dashed border-[var(--border)] hover:bg-[var(--surface-variant)] transition-all group"
                 >
-                  <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-[var(--card-bg)] flex items-center justify-center mb-4 group-hover:scale-105 transition-transform shadow-sm border border-[var(--border)]">
+                  <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-[var(--surface-variant)] flex items-center justify-center mb-4 group-hover:scale-105 transition-transform shadow-sm">
                     <Plus className="w-10 h-10 text-[var(--text-muted)]" />
                   </div>
                   <span className="font-bold text-[var(--text-muted)] text-base sm:text-lg">Nuovo Profilo</span>
@@ -367,12 +367,7 @@ export const LockScreen = ({ isVisible, onAuthenticated, onStartScan, onOpenTool
                         exit={{ opacity: 0, scale: 1.1 }}
                         className="flex flex-col items-center text-center"
                       >
-                        <div className="w-24 h-24 bg-amber-500 rounded-[2.5rem] flex items-center justify-center text-white shadow-2xl shadow-amber-500/40 mb-10 relative">
-                            <motion.div 
-                                animate={{ scale: [1, 1.2, 1] }} 
-                                transition={{ repeat: Infinity, duration: 3 }}
-                                className="absolute inset-0 bg-amber-500 rounded-[2.5rem] blur-2xl opacity-20" 
-                            />
+                        <div className="w-24 h-24 bg-[var(--accent)] rounded-[2.5rem] flex items-center justify-center text-white shadow-2xl shadow-[var(--accent)]/30 mb-8 relative">
                             <Lock className="w-12 h-12 relative z-10" />
                         </div>
                         <h1 className="text-3xl font-black text-[var(--text-main)] mb-4 tracking-tight">Chelona</h1>

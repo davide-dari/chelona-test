@@ -184,11 +184,11 @@ export function ProfileScreen({
   const profileAvatar = avatar || `https://ui-avatars.com/api/?name=${username}&background=FFFBEB&color=B45309&size=200`;
 
   return (
-    <div className="fixed inset-0 bg-[var(--bg)]/80 backdrop-blur-sm flex items-center justify-center p-4 z-[100] transition-colors duration-300 h-[100dvh] overflow-hidden">
+    <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center p-4 z-[100] transition-colors duration-300 h-[100dvh] overflow-hidden">
       <motion.div
-        initial={{ opacity: 0, scale: 0.9 }}
+        initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="bg-[var(--card-bg)] w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden border border-[var(--border)] h-full max-h-[90vh] flex flex-col"
+        className="bg-[var(--bg)] w-full max-w-2xl rounded-[var(--radius-lg)] shadow-2xl overflow-hidden border border-[var(--border)] h-full max-h-[90vh] flex flex-col"
       >
         <header className="p-6 border-b border-[var(--border)] flex items-center justify-between bg-[var(--card-bg)] shrink-0 z-10">
           <div className="flex items-center gap-4">
@@ -205,30 +205,25 @@ export function ProfileScreen({
           </button>
         </header>
 
-        <div className="flex bg-[var(--bg)] p-1 rounded-2xl mb-8 mx-6 mt-6">
-          <button
-            onClick={() => setActiveTab('profile')}
-            className={`flex-1 py-3 text-sm font-bold rounded-xl transition-all ${activeTab === 'profile' ? 'bg-[var(--card-bg)] shadow-sm text-[var(--accent)] border border-[var(--border)]' : 'text-[var(--text-muted)]'}`}
-          >
-            Informazioni
-          </button>
-          <button
-            onClick={() => setActiveTab('security')}
-            className={`flex-1 py-3 text-sm font-bold rounded-xl transition-all ${activeTab === 'security' ? 'bg-[var(--card-bg)] shadow-sm text-[var(--accent)] border border-[var(--border)]' : 'text-[var(--text-muted)]'}`}
-          >
-            Sicurezza
-          </button>
-          <button
-            onClick={() => setActiveTab('widgets')}
-            className={`flex-1 py-3 text-sm font-bold rounded-xl transition-all ${activeTab === 'widgets' ? 'bg-[var(--card-bg)] shadow-sm text-[var(--accent)] border border-[var(--border)]' : 'text-[var(--text-muted)]'}`}
-          >
-            Widget
-          </button>
+        <div className="flex bg-[var(--surface-variant)] p-1 rounded-full mb-6 mx-6 mt-6 border border-[var(--border)]/30">
+          {[
+            { id: 'profile', label: 'Informazioni' },
+            { id: 'security', label: 'Sicurezza' },
+            { id: 'widgets', label: 'Personalizza' }
+          ].map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id as any)}
+              className={`flex-1 py-2.5 text-sm font-bold rounded-full transition-all duration-300 ${activeTab === tab.id ? 'bg-[var(--accent-container)] text-[var(--accent-on-container)] shadow-sm' : 'text-[var(--text-muted)] hover:bg-[var(--bg)]/50'}`}
+            >
+              {tab.label}
+            </button>
+          ))}
         </div>
 
-        <div className="flex-1 overflow-y-auto pb-40 space-y-6 px-6">
+        <div className="flex-1 overflow-y-auto pb-40 space-y-6 px-6 custom-scrollbar">
           {activeTab === 'profile' ? (
-            <div className="bg-[var(--card-bg)] rounded-3xl p-6 lg:p-8 border border-[var(--border)] shadow-sm space-y-8">
+            <div className="bg-[var(--surface-variant)]/50 rounded-[var(--radius-lg)] p-6 lg:p-8 border border-[var(--border)] shadow-sm space-y-8">
               <div className="flex flex-col items-center">
                 <div 
                   onClick={handleAvatarClick}

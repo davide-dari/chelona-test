@@ -8,52 +8,58 @@
 
 :root {
   color-scheme: light;
-  --bg: #F8F9FA; /* Neutral Ardesia White */
+  --bg: #FFFFFF;
+  --surface-variant: #F0F3F8; /* Google-style surface */
   --card-bg: #FFFFFF;
-  --accent: #1B4D3E; /* Sophisticated British Racing Green */
-  --accent-hover: #143D31;
-  --accent-bg: rgba(27, 77, 62, 0.08);
-  --text-main: #1A202C; /* Deep Slate / Charcoal for better legibility */
-  --text-muted: #718096; /* Elegant Cool Gray */
-  --border: #E2E8F0; /* Clean Slate Border */
-  --header-bg: rgba(248, 249, 250, 0.85);
-  --sidebar-bg: rgba(255, 255, 255, 0.95);
+  --accent: #1E8E3E; /* Google Green */
+  --accent-on: #FFFFFF;
+  --accent-container: #C4EED0;
+  --accent-on-container: #07210C;
+  --text-main: #1F1F1F; /* Google Deep Gray */
+  --text-muted: #5E5E5E;
+  --border: #DEE2E6;
+  --header-bg: rgba(255, 255, 255, 0.9);
+  --sidebar-bg: #F8F9FA;
   
-  /* Semantic Colors - Chelona Oasis */
-  --danger: #BC4749;
-  --danger-bg: #FFF5F5;
-  --success: #52B788;
-  --success-bg: #F0FDF4;
-  --warning: #F59E0B;
-  --warning-bg: #FFFBEB;
-  --info: #3E5C76;
-  --info-bg: #F1F5F9;
+  --radius-lg: 28px; /* Material 3 large radius */
+  --radius-md: 16px;
+  
+  /* Semantic Colors - Google Palette */
+  --danger: #D93025;
+  --danger-bg: #FCE8E6;
+  --success: #1E8E3E;
+  --success-bg: #E6F4EA;
+  --warning: #FBBC04;
+  --warning-bg: #FFF8E1;
+  --info: #1A73E8;
+  --info-bg: #E8F0FE;
 
   --safe-top: max(env(safe-area-inset-top), 24px);
 }
 
 [data-theme="dark"] {
   color-scheme: dark;
-  --bg: #081C15; /* Deep Forest/Turtle Green */
-  --card-bg: #1B4332; /* Rich Emerald Card */
-  --accent: #74C69D; /* Soft Mint / Sage Accent */
-  --accent-hover: #95D5B2;
-  --accent-bg: rgba(116, 198, 157, 0.15);
-  --text-main: #F7F9F6;
-  --text-muted: #95D5B2;
-  --border: #2D6A4F;
-  --header-bg: rgba(8, 28, 21, 0.85);
-  --sidebar-bg: rgba(27, 67, 50, 0.95);
+  --bg: #1F1F1F;
+  --surface-variant: #2D2F31;
+  --card-bg: #2D2F31;
+  --accent: #6EDC8B; /* Soft Google Green for Dark */
+  --accent-on: #003916;
+  --accent-container: #005221;
+  --accent-on-container: #C4EED0;
+  --text-main: #E3E3E3;
+  --text-muted: #C7C7C7;
+  --border: #444746;
+  --header-bg: rgba(31, 31, 31, 0.9);
+  --sidebar-bg: #1F1F1F;
 
-  /* Semantic Colors - Chelona Dark */
-  --danger: #E5383B;
-  --danger-bg: rgba(229, 56, 59, 0.1);
-  --success: #74C69D;
-  --success-bg: rgba(116, 198, 157, 0.1);
-  --warning: #FB7185;
-  --warning-bg: rgba(159, 18, 57, 0.1);
-  --info: #52B2CF;
-  --info-bg: rgba(82, 178, 207, 0.1);
+  --danger: #F28B82;
+  --danger-bg: rgba(217, 48, 37, 0.1);
+  --success: #81C995;
+  --success-bg: rgba(30, 142, 62, 0.1);
+  --warning: #FDD663;
+  --warning-bg: rgba(251, 188, 4, 0.1);
+  --info: #8AB4F8;
+  --info-bg: rgba(26, 115, 232, 0.1);
 }
 
 html,
@@ -97,23 +103,24 @@ body {
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   border: 1px solid var(--border);
-  box-shadow: 0 8px 32px -4px rgba(0, 0, 0, 0.08);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
 }
 
 .module-card {
   background-color: var(--card-bg);
   color: var(--text-main);
-  border-radius: 2.5rem; /* More rounded shell feel */
+  border-radius: var(--radius-lg);
   border: 1px solid var(--border);
   padding: 1.5rem;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 4px 20px -5px rgba(0, 0, 0, 0.05);
+  transition: all 0.2s ease-in-out;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
 .module-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.1);
-  border-color: var(--accent);
+  background-color: var(--surface-variant);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.08);
+  border-color: transparent;
 }
 
 .hide-scrollbar {

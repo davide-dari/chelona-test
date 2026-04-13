@@ -38,8 +38,16 @@ npx cap sync android || { echo "❌ Sync failed"; exit 1; }
 
 # 3. Build Android APK
 echo "🤖 Building Android APK..."
-cd android && ./gradlew assembleDebug && cd ..
-APK_PATH="android/app/build/outputs/apk/debug/app-debug.apk"
+cd android && ./gradlew assembleRelease && cd ..
+# Check for both signed and unsigned outputs
+if [ -f "android/app/build/outputs/apk/release/app-release.apk" ]; then
+    APK_PATH="android/app/build/outputs/apk/release/app-release.apk"
+elif [ -f "android/app/build/outputs/apk/release/app-release-unsigned.apk" ]; then
+    APK_PATH="android/app/build/outputs/apk/release/app-release-unsigned.apk"
+else
+    echo "❌ APK release not found"
+    exit 1
+fi
 
 if [ ! -f "$APK_PATH" ]; then
     echo "❌ APK not found at $APK_PATH"

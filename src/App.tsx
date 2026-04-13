@@ -82,17 +82,11 @@ class ErrorBoundary extends React.Component<
 }
 
 const TEMPLATES = {
-  document: {
-    title: 'Documento',
-    content: '',
-    icon: Fingerprint,
-    color: 'text-amber-500'
-  },
   auto: {
     title: 'Auto',
     content: '',
     icon: Car,
-    color: 'text-red-500'
+    color: 'text-rose-500'
   },
   split: {
     title: 'Spese',
@@ -765,29 +759,44 @@ export default function App() {
     e.target.value = '';
   };
 
+  const recognitionRef = useRef<any>(null);
   const handleVoiceSearch = () => {
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SpeechRecognition) {
       showToast('La ricerca vocale non è supportata su questo browser.', 'error');
       return;
     }
+
+    if (recognitionRef.current) {
+      try { recognitionRef.current.stop(); } catch(e) {}
+    }
+
     const recognition = new SpeechRecognition();
+    recognitionRef.current = recognition;
     recognition.lang = 'it-IT';
     recognition.continuous = false;
     recognition.interimResults = false;
 
+    let timeoutId: any;
+
     recognition.onstart = () => {
       setIsListening(true);
       if (navigator.vibrate) navigator.vibrate(50);
+      timeoutId = setTimeout(() => {
+         recognition.stop();
+         setIsListening(false);
+      }, 5000); // 5s timeout if no speech detected
     };
 
     recognition.onresult = (event: any) => {
+      clearTimeout(timeoutId);
       const transcript = event.results[0][0].transcript;
       setSearchQuery(transcript);
       if (navigator.vibrate) navigator.vibrate([30, 30]);
     };
 
     recognition.onerror = (event: any) => {
+      clearTimeout(timeoutId);
       console.error('Speech recognition error', event.error);
       if (event.error === 'not-allowed') {
         showToast('Permesso microfono negato.', 'error');
@@ -798,7 +807,9 @@ export default function App() {
     };
 
     recognition.onend = () => {
+      clearTimeout(timeoutId);
       setIsListening(false);
+      recognitionRef.current = null;
     };
 
     try {
@@ -820,7 +831,7 @@ export default function App() {
           </div>
           <div>
             <h1 className="text-xl font-black tracking-tight text-[var(--text-main)]">Chelona</h1>
-            <p className="text-[10px] font-bold text-[var(--accent)] uppercase tracking-widest">{isSandboxMode ? 'Sandbox' : 'v1.5.1'}</p>
+            <p className="text-[10px] font-bold text-[var(--accent)] uppercase tracking-widest">{isSandboxMode ? 'Sandbox' : 'v1.6.0'}</p>
           </div>
         </div>
         <button onClick={() => setIsSidebarOpen(false)} className="lg:hidden p-2 text-[var(--text-muted)] hover:bg-[var(--bg)] rounded-lg">
@@ -923,34 +934,30 @@ export default function App() {
             </aside>
 
             <main className="flex-1 flex flex-col overflow-hidden w-full relative">
-              <header className="h-20 lg:h-28 bg-[var(--header-bg)] backdrop-blur-2xl border-b border-[var(--border)] px-6 lg:px-12 flex items-center justify-between shrink-0 z-10 shadow-[0_4px_20px_rgba(0,0,0,0.03)] safe-area-header">
+              <header className="h-16 lg:h-20 bg-[var(--bg)] px-6 lg:px-12 flex items-center justify-between shrink-0 z-10 safe-area-header transition-all">
                 {/* Left side: Contextual Title */}
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-4">
                   {(isToolsOpen || selectedType) && (
                     <button 
                       onClick={() => { setIsToolsOpen(false); setSelectedType(null); setActiveToolId(null); }}
-                      className="p-4 -ml-4 hover:bg-[var(--accent-bg)] rounded-2xl text-[var(--accent)] transition-all flex items-center gap-2 group"
+                      className="p-2 hover:bg-[var(--surface-variant)] rounded-full text-[var(--text-muted)] transition-all flex items-center justify-center"
                       title="Torna alla Dashboard"
                     >
-                      <ArrowLeft className="w-8 h-8 group-hover:-translate-x-1 transition-transform" />
+                      <ArrowLeft className="w-6 h-6" />
                     </button>
                   )}
-                  {!selectedType && !isToolsOpen ? (
-                    <LayoutDashboard className="w-6 h-6 text-[var(--accent)]" />
-                  ) : isToolsOpen ? (
-                    <Wrench className="w-6 h-6 text-[var(--accent)]" />
-                  ) : selectedType && TEMPLATES[selectedType] ? (
-                    React.createElement(TEMPLATES[selectedType].icon, { className: "w-6 h-6 text-[var(--accent)]" })
-                  ) : null}
-                  <h1 className="text-2xl lg:text-4xl font-black text-[var(--text-main)] tracking-tight">
+                  <h1 className="text-xl lg:text-2xl font-bold text-[var(--text-main)] tracking-tight">
                     {isToolsOpen ? 'Strumenti' : selectedType ? TEMPLATES[selectedType].title : 'Dashboard'}
                   </h1>
                 </div>
 
                 {/* Right side: Avatar (Lock and Theme moved to Profile) */}
-                <div className="flex items-center gap-6">
-                  <button onClick={() => setIsProfileOpen(true)} className="w-12 h-12 lg:w-14 lg:h-14 rounded-2xl shadow-lg overflow-hidden border-[3px] border-[var(--card-bg)] focus:outline-none hidden md:block hover:scale-105 transition-transform">
-                    <img src={avatar || `https://ui-avatars.com/api/?name=${username}&background=F7F9F6&color=2D6A4F`} alt="Profile" className="w-full h-full object-cover" />
+                <div className="flex items-center gap-4">
+                  <button 
+                    onClick={() => setIsProfileOpen(true)} 
+                    className="w-10 h-10 lg:w-11 lg:h-11 rounded-full overflow-hidden border border-[var(--border)] focus:outline-none hover:opacity-80 transition-all bg-[var(--surface-variant)]"
+                  >
+                    <img src={avatar || `https://ui-avatars.com/api/?name=${username}&background=E3E3E3&color=5E5E5E`} alt="Profile" className="w-full h-full object-cover" />
                   </button>
                 </div>
               </header>
@@ -1448,19 +1455,19 @@ export default function App() {
               <div className="h-full">
                 <div className="mb-6 lg:mb-10 w-full px-4 lg:px-8">
                   <div className="relative group max-w-2xl mx-auto">
-                    <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--text-muted)] group-focus-within:text-[var(--accent)] transition-colors" />
+                    <Search className="absolute left-6 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--text-muted)] group-focus-within:text-[var(--accent)] transition-colors" />
                     <input 
                       type="text" 
                       placeholder={`Cerca ${selectedType ? TEMPLATES[selectedType].title : 'nelle tue Sandbox'}...`}
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      className="w-full pl-14 pr-14 py-4 bg-[var(--card-bg)] border border-[var(--border)] rounded-2xl shadow-sm outline-none focus:border-[var(--accent)] focus:ring-4 focus:ring-[var(--accent)]/5 transition-all text-base lg:text-lg font-medium text-[var(--text-main)]"
+                      className="w-full pl-14 pr-14 py-4.5 bg-[var(--surface-variant)] border-transparent rounded-[var(--radius-lg)] shadow-none outline-none focus:bg-[var(--bg)] focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)] transition-all text-base lg:text-lg font-medium text-[var(--text-main)] placeholder:text-[var(--text-muted)]"
                     />
                     <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1">
                       {searchQuery && (
                         <button 
                           onClick={() => setSearchQuery('')}
-                          className="p-2 hover:bg-[var(--bg)] rounded-xl text-[var(--text-muted)] transition-all"
+                          className="p-2 hover:bg-[var(--bg)] rounded-full text-[var(--text-muted)] transition-all"
                         >
                           <X className="w-5 h-5" />
                         </button>
@@ -1468,9 +1475,18 @@ export default function App() {
                       <button 
                         onClick={handleVoiceSearch}
                         title="Ricerca Vocale"
-                        className="p-2.5 hover:bg-[var(--accent-bg)] rounded-xl text-[var(--text-muted)] hover:text-[var(--accent)] transition-all"
+                        className={`relative p-3 rounded-full transition-all ${isListening ? 'text-[var(--accent)]' : 'text-[var(--text-muted)] hover:text-[var(--accent)] hover:bg-[var(--bg)]'}`}
                       >
-                        <Mic className="w-5 h-5 lg:w-6 h-6" />
+                        {isListening && (
+                          <motion.div
+                            layoutId="voice-ripple"
+                            initial={{ scale: 0.8, opacity: 0.5 }}
+                            animate={{ scale: 1.5, opacity: 0 }}
+                            transition={{ repeat: Infinity, duration: 1.5 }}
+                            className="absolute inset-0 bg-[var(--accent)] rounded-full"
+                          />
+                        )}
+                        <Mic className={`w-5 h-5 lg:w-6 lg:h-6 relative z-10 ${isListening ? 'animate-pulse' : ''}`} />
                       </button>
                     </div>
                   </div>
@@ -1701,45 +1717,46 @@ export default function App() {
           </div>
           
           {/* Mobile Bottom Navigation Bar - Hidden during full-screen edit/modals */}
+          {/* Mobile Bottom Navigation (M3 Style) */}
           {!isAdding && !isScanning && !editingModuleId && !isProfileOpen && !isToolsOpen && !isArchiveOpen && (
-            <nav className="md:hidden fixed bottom-6 left-6 right-6 bg-[var(--sidebar-bg)] backdrop-blur-3xl rounded-[2.5rem] shadow-[0_20px_50px_-10px_rgba(0,0,0,0.15)] border border-[var(--border)] flex items-center justify-around px-2 py-3 z-50">
-              {/* 1. Dashboard / Home */}
-              <button 
-                onClick={() => { setSelectedType(null); setIsToolsOpen(false); setIsProfileOpen(false); setSearchQuery(''); }} 
-                className={`relative p-3 flex flex-col items-center gap-1 transition-all ${!selectedType && !isToolsOpen && !isProfileOpen ? 'text-[var(--accent)]' : 'text-[var(--text-muted)] font-medium'}`}
-              >
-                {!selectedType && !isToolsOpen && !isProfileOpen && <motion.div layoutId="nav-pill" className="absolute inset-0 bg-[var(--accent-bg)] rounded-2xl -z-10" />}
-                <LayoutDashboard size={24} strokeWidth={!selectedType && !isToolsOpen && !isProfileOpen ? 2.5 : 2} />
-              </button>
-              
-              {/* 2. Strumenti */}
-              <button 
-                onClick={() => { setIsToolsOpen(true); setIsProfileOpen(false); setSelectedType(null); }} 
-                className={`relative p-3 flex flex-col items-center gap-1 transition-all ${isToolsOpen ? 'text-[var(--accent)]' : 'text-[var(--text-muted)] font-medium'}`}
-              >
-                {isToolsOpen && <motion.div layoutId="nav-pill" className="absolute inset-0 bg-amber-500/10 rounded-2xl -z-10" />}
-                <Wrench size={24} strokeWidth={isToolsOpen ? 2.5 : 2} />
-              </button>
-              
-              {/* 3. Nuovo (+) */}
-              <button onClick={() => setIsAdding(true)} className="flex items-center justify-center w-[58px] h-[58px] bg-gradient-to-tr from-amber-500 to-amber-400 rounded-[1.4rem] text-white shadow-xl shadow-amber-500/30 -mt-12 hover:scale-105 active:scale-95 transition-all border-4 border-[var(--bg)]">
-                <Plus size={32} strokeWidth={3} />
-              </button>
-              
-              {/* 4. Scanner */}
-              <button onClick={() => { setIsScanning(true); setIsProfileOpen(false); setIsToolsOpen(false); }} className="relative p-3 flex flex-col items-center gap-1 text-[var(--text-muted)] hover:text-[var(--accent)] transition-all font-medium">
-                <QrCode size={24} strokeWidth={2} />
-              </button>
-              
-              {/* 5. Profilo */}
-              <button 
-                onClick={() => { setIsProfileOpen(true); setIsToolsOpen(false); setSelectedType(null); }} 
-                className={`relative p-3 flex flex-col items-center gap-1 transition-all ${isProfileOpen ? 'text-[var(--accent)]' : 'text-[var(--text-muted)] font-medium'}`}
-              >
-                {isProfileOpen && <motion.div layoutId="nav-pill" className="absolute inset-0 bg-amber-500/10 rounded-2xl -z-10" />}
-                <User size={24} strokeWidth={isProfileOpen ? 2.5 : 2} />
-              </button>
+            <nav className="md:hidden fixed bottom-0 left-0 right-0 h-20 bg-[var(--bg)] border-t border-[var(--border)] z-50 px-4 flex items-center justify-around safe-area-inset-bottom shadow-[0_-4px_12px_rgba(0,0,0,0.03)]">
+              {[
+                { id: 'dashboard', icon: LayoutDashboard, label: 'Dashboard', action: () => { setIsToolsOpen(false); setSelectedType(null); setIsProfileOpen(false); } },
+                { id: 'tools', icon: Wrench, label: 'Strumenti', action: () => { setIsToolsOpen(true); setIsProfileOpen(false); } },
+                { id: 'profile', icon: User, label: 'Profilo', action: () => { setIsProfileOpen(true); setIsToolsOpen(false); } }
+              ].map(item => {
+                const isActive = item.id === 'dashboard' ? (!isToolsOpen && !selectedType && !isProfileOpen) : 
+                                 item.id === 'tools' ? isToolsOpen : 
+                                 item.id === 'profile' ? isProfileOpen : false;
+                return (
+                  <button 
+                    key={item.id}
+                    onClick={item.action}
+                    className="flex flex-col items-center gap-1 group flex-1 pb-1"
+                  >
+                    <div className={`px-5 py-1.5 rounded-full transition-all duration-300 ${isActive ? 'bg-[var(--accent-container)] text-[var(--accent-on-container)]' : 'text-[var(--text-muted)] group-hover:bg-[var(--surface-variant)]'}`}>
+                      <item.icon size={22} strokeWidth={isActive ? 2.5 : 2} />
+                    </div>
+                    <span className={`text-[10px] font-bold tracking-tight transition-colors ${isActive ? 'text-[var(--text-main)]' : 'text-[var(--text-muted)]'}`}>
+                      {item.label}
+                    </span>
+                  </button>
+                );
+              })}
             </nav>
+          )}
+
+          {/* Floating Action Button (FAB) */}
+          {!isAdding && !isScanning && !editingModuleId && !isProfileOpen && !isToolsOpen && (
+            <motion.button
+              initial={{ scale: 0, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              whileTap={{ scale: 0.9 }}
+              onClick={() => setIsAdding(true)}
+              className="fixed bottom-24 right-6 md:bottom-10 md:right-10 w-14 h-14 bg-[var(--accent-container)] text-[var(--accent-on-container)] rounded-2xl flex items-center justify-center shadow-lg hover:shadow-xl transition-all z-[60] group border border-[var(--accent)]/10"
+            >
+              <Plus className="w-8 h-8 group-hover:rotate-90 transition-transform duration-300" />
+            </motion.button>
           )}
 
 

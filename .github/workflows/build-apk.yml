@@ -44,6 +44,9 @@ jobs:
           cd android
           chmod +x gradlew
           ./gradlew assembleRelease
+          cd ..
+          VERSION=$(node -p "require('./package.json').version")
+          cp android/app/build/outputs/apk/release/app-release-unsigned.apk "Chelona_v$VERSION.apk" || cp android/app/build/outputs/apk/release/app-release.apk "Chelona_v$VERSION.apk"
 
       - name: Extract Release Notes
         id: release_notes
@@ -57,7 +60,7 @@ jobs:
           tag_name: ${{ github.ref_name }}
           name: Release ${{ github.ref_name }}
           body: "Aggiornamento automatico APK."
-          files: android/app/build/outputs/apk/release/app-release.apk
+          files: Chelona_*.apk
           draft: false
           prerelease: false
         env:
