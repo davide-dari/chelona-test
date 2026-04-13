@@ -184,13 +184,13 @@ export function ProfileScreen({
   const profileAvatar = avatar || `https://ui-avatars.com/api/?name=${username}&background=FFFBEB&color=B45309&size=200`;
 
   return (
-    <div className="fixed inset-0 bg-[var(--bg)]/80 backdrop-blur-sm flex items-center justify-center p-4 z-[100] transition-colors duration-300">
+    <div className="fixed inset-0 bg-[var(--bg)]/80 backdrop-blur-sm flex items-center justify-center p-4 z-[100] transition-colors duration-300 h-[100dvh] overflow-hidden">
       <motion.div
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="bg-[var(--card-bg)] w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden border border-[var(--border)] max-h-[90vh] flex flex-col"
+        className="bg-[var(--card-bg)] w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden border border-[var(--border)] h-full max-h-[90vh] flex flex-col"
       >
-        <header className="p-6 border-b border-[var(--border)] flex items-center justify-between bg-[var(--card-bg)] sticky top-0 z-10">
+        <header className="p-6 border-b border-[var(--border)] flex items-center justify-between bg-[var(--card-bg)] shrink-0 z-10">
           <div className="flex items-center gap-4">
             <h2 className="text-2xl font-bold text-[var(--text-main)]">Il Tuo Profilo</h2>
             <button 
@@ -572,7 +572,7 @@ export function ProfileScreen({
           )}
         </AnimatePresence>
 
-        <div className="p-6 border-t border-[var(--border)] mt-auto bg-[var(--card-bg)]">
+        <div className="p-6 border-t border-[var(--border)] mt-auto bg-[var(--card-bg)] shrink-0">
           <button
             onClick={onLogout}
             className="w-full py-5 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white rounded-2xl font-bold transition-all flex items-center justify-center gap-3 shadow-xl"

@@ -26,7 +26,7 @@ export const DocumentArchive = ({ modules, onClose }: DocumentArchiveProps) => {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: 20 }}
-      className="fixed inset-0 z-[100001] bg-[var(--bg)]/95 backdrop-blur-xl flex flex-col p-4 lg:p-10"
+      className="fixed inset-0 z-[100001] bg-[var(--bg)]/95 backdrop-blur-xl flex flex-col p-4 lg:p-10 h-[100dvh] overflow-hidden"
     >
       <div className="max-w-[1200px] mx-auto w-full flex-1 flex flex-col">
         <div className="flex items-center justify-between mb-10">

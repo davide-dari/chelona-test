@@ -126,7 +126,7 @@ export const QrScanner: React.FC<QrScannerProps> = ({ onScan, onClose }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-[100001] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+    <div className="fixed inset-0 z-[100001] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm h-[100dvh] w-full overflow-hidden">
       <div className="relative bg-[var(--card-bg)] rounded-[2.5rem] overflow-hidden w-full max-w-md shadow-2xl border border-[var(--border)]">
         <div className="flex items-center justify-between p-6 border-b border-[var(--border)] bg-[var(--header-bg)]">
             <h3 className="font-bold text-[var(--text-main)] translate-x-1">Scansiona QR Code</h3>

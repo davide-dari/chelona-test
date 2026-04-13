@@ -56,15 +56,28 @@
   --info-bg: rgba(82, 178, 207, 0.1);
 }
 
+html,
+body {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  position: fixed; /* Extra precaution for mobile browsers to prevent pull-to-refresh and bounce */
+}
+
 body {
   background-color: var(--bg);
   color: var(--text-main);
   font-family: var(--font-sans);
-  min-height: 100vh;
-  min-height: 100dvh;
+  height: 100dvh;
   margin: 0;
   padding: 0;
   -webkit-tap-highlight-color: transparent;
+}
+
+#root {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
 }
 
 .shell-container {
@@ -74,8 +87,9 @@ body {
   padding-right: env(safe-area-inset-right);
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
-  min-height: 100dvh;
+  height: 100dvh;
+  width: 100%;
+  overflow: hidden;
 }
 
 .glass-card {

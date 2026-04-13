@@ -820,7 +820,7 @@ export default function App() {
           </div>
           <div>
             <h1 className="text-xl font-black tracking-tight text-[var(--text-main)]">Chelona</h1>
-            <p className="text-[10px] font-bold text-[var(--accent)] uppercase tracking-widest">{isSandboxMode ? 'Sandbox' : 'v1.4.0'}</p>
+            <p className="text-[10px] font-bold text-[var(--accent)] uppercase tracking-widest">{isSandboxMode ? 'Sandbox' : 'v1.5.1'}</p>
           </div>
         </div>
         <button onClick={() => setIsSidebarOpen(false)} className="lg:hidden p-2 text-[var(--text-muted)] hover:bg-[var(--bg)] rounded-lg">
@@ -885,8 +885,8 @@ export default function App() {
       </div>
 
       {isPublicToolsOpen && !encryptionKey && (
-        <div className="h-screen bg-[var(--bg)] flex flex-col relative w-full overflow-hidden" style={{ position: 'absolute', inset: 0, zIndex: 99999 }}>
-           <header className="min-h-16 lg:min-h-20 bg-[var(--header-bg)] backdrop-blur-2xl border-b border-[var(--border)] px-4 lg:px-8 flex items-center justify-between sticky top-0 z-10 shadow-sm safe-area-header">
+        <div className="h-[100dvh] bg-[var(--bg)] flex flex-col relative w-full overflow-hidden" style={{ position: 'absolute', inset: 0, zIndex: 99999 }}>
+           <header className="h-20 lg:h-24 bg-[var(--header-bg)] backdrop-blur-2xl border-b border-[var(--border)] px-4 lg:px-8 flex items-center justify-between shrink-0 z-10 shadow-sm safe-area-header">
              <div className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-emerald-500 rounded-xl flex items-center justify-center shadow-lg shadow-emerald-500/20">
                    <Wrench className="w-6 h-6 text-white" />
@@ -915,7 +915,7 @@ export default function App() {
 
       {encryptionKey && currentProfileId && (
         <ErrorBoundary>
-          <div className="flex h-screen bg-[var(--bg)] overflow-hidden relative font-sans transition-colors duration-300">
+          <div className="flex h-full w-full bg-[var(--bg)] overflow-hidden relative font-sans transition-colors duration-300">
             
             {/* Desktop Sidebar */}
             <aside className="hidden md:flex flex-col w-72 bg-[var(--sidebar-bg)] backdrop-blur-3xl border-r border-[var(--border)] z-50 shadow-[4px_0_24px_rgba(0,0,0,0.02)]">
@@ -923,7 +923,7 @@ export default function App() {
             </aside>
 
             <main className="flex-1 flex flex-col overflow-hidden w-full relative">
-              <header className="min-h-20 lg:min-h-28 bg-[var(--header-bg)] backdrop-blur-2xl border-b border-[var(--border)] px-6 lg:px-12 flex items-center justify-between sticky top-0 z-10 shadow-[0_4px_20px_rgba(0,0,0,0.03)] safe-area-header">
+              <header className="h-20 lg:h-28 bg-[var(--header-bg)] backdrop-blur-2xl border-b border-[var(--border)] px-6 lg:px-12 flex items-center justify-between shrink-0 z-10 shadow-[0_4px_20px_rgba(0,0,0,0.03)] safe-area-header">
                 {/* Left side: Contextual Title */}
                 <div className="flex items-center gap-3">
                   {(isToolsOpen || selectedType) && (
@@ -957,7 +957,7 @@ export default function App() {
 
 
 
-              <div className="w-full h-full">
+              <div className="flex-1 overflow-y-auto w-full custom-scrollbar">
 
                   {isProfileOpen ? (
               <ProfileScreen
