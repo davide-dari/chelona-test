@@ -72,19 +72,24 @@ export const WalletScreen = ({ module, onSave, onClose }: WalletScreenProps) => 
     setNewDate('');
   };
 
-  const handleUpdateAllocation = (id: string, amount: number) => {
-    const numAmount = Number(amount);
-    const currentFree = Number(freeBalance);
+  const handleUpdateAllocationManual = (id: string, value: string) => {
+    const rawValue = parseFloat(value) || 0;
+    const numValue = Math.max(0, rawValue);
     
-    // Non possiamo allocare più del saldo libero (a meno che non stiamo togliendo soldi)
-    if (numAmount > 0 && currentFree < numAmount) return;
-    
-    setPayments(payments.map(p => {
+    // Calcoliamo quanto stiamo cercando di aggiungere RISPETTO a quanto già salvato
+    setPayments(prev => prev.map(p => {
       if (p.id === id) {
         const currentSaved = Number(p.savedAmount) || 0;
-        const total = Number(p.totalAmount);
-        const newSaved = Math.max(0, Math.min(total, currentSaved + numAmount));
-        return { ...p, savedAmount: newSaved };
+        const diff = numValue - currentSaved;
+        
+        // Se stiamo aumentando l'allocazione, verifichiamo il saldo libero
+        if (diff > 0 && freeBalance < diff) {
+          // Cap al massimo possibile
+          const cappedValue = currentSaved + freeBalance;
+          return { ...p, savedAmount: Math.min(Number(p.totalAmount), cappedValue) };
+        }
+        
+        return { ...p, savedAmount: Math.min(Number(p.totalAmount), numValue) };
       }
       return p;
     }));
@@ -229,48 +234,37 @@ export const WalletScreen = ({ module, onSave, onClose }: WalletScreenProps) => 
                       animate={{ 
                         opacity: 1, 
                         y: 0,
-                        scale: isLongPressed ? 1.02 : 1,
-                        x: isLongPressed ? [0, -2, 2, -2, 2, 0] : 0
+                        scale: isLongPressed ? 1.02 : 1
                       }}
-                       transition={isLongPressed ? {
-                        x: { repeat: Infinity, duration: 0.15 },
-                        scale: { duration: 0.2 }
-                      } : { duration: 0.2 }}
+                      transition={{ duration: 0.2 }}
                       exit={{ opacity: 0, scale: 0.95 }}
                       onContextMenu={(e) => {
                         e.preventDefault();
                         setLongPressId(p.id);
-                        if (window.navigator.vibrate) window.navigator.vibrate(50);
+                        if (window.navigator.vibrate) window.navigator.vibrate(30);
                       }}
                       className={`bg-[var(--card-bg)] border ${isCompleted ? 'border-emerald-500/50 shadow-lg shadow-emerald-500/5' : 'border-[var(--border)]'} rounded-[2rem] p-6 relative group overflow-hidden select-none touch-none`}
                     >
-                      {/* Overlay Cestino per cancellazione */}
+                      {/* Tasto Cancella discreto che appare col long-press */}
                       <AnimatePresence>
                         {isLongPressed && (
-                          <motion.div
-                            initial={{ opacity: 0, scale: 0.5 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            exit={{ opacity: 0, scale: 0.5 }}
-                            className="absolute inset-0 z-20 bg-red-500/90 flex items-center justify-center backdrop-blur-sm"
+                          <motion.button
+                            initial={{ opacity: 0, scale: 0.8, x: 20 }}
+                            animate={{ opacity: 1, scale: 1, x: 0 }}
+                            exit={{ opacity: 0, scale: 0.8, x: 20 }}
                             onClick={(e) => {
                               e.stopPropagation();
-                              if (window.confirm(`Eliminare "${p.name}"?`)) {
+                              if (window.confirm(`Svuotare ed eliminare "${p.name}"?`)) {
                                 handleRemovePayment(p.id);
-                              } else {
-                                setLongPressId(null);
                               }
                             }}
+                            className="absolute top-4 right-4 z-20 p-4 bg-red-500 text-white rounded-2xl shadow-xl shadow-red-500/30 flex items-center gap-2 hover:bg-red-600 transition-colors"
                           >
-                            <div className="flex flex-col items-center gap-2 text-white">
-                              <Trash2 className="w-10 h-10" />
-                              <span className="font-black text-xs uppercase tracking-widest">Tocca per eliminare</span>
-                            </div>
-                          </motion.div>
+                            <Trash2 className="w-5 h-5" />
+                            <span className="text-[10px] font-black uppercase tracking-widest">Elimina</span>
+                          </motion.button>
                         )}
                       </AnimatePresence>
-
-                      {/* Sub-bg per completato */}
-                      {isCompleted && !isLongPressed && <div className="absolute inset-0 bg-emerald-500/5 pointer-events-none" />}
 
                       <div className="relative z-10 space-y-5">
                         <div className="flex justify-between items-start">
@@ -284,17 +278,17 @@ export const WalletScreen = ({ module, onSave, onClose }: WalletScreenProps) => 
                         <div className="space-y-2">
                           <div className="flex justify-between items-end">
                             <span className={`text-[10px] font-black uppercase tracking-widest ${isCompleted ? 'text-emerald-600' : 'text-[var(--text-muted)]'}`}>
-                              {isCompleted ? 'Obiettivo Raggiunto' : `Risparmiato: € ${saved.toLocaleString('it-IT')}`}
+                              {isCompleted ? 'Obiettivo Raggiunto' : `Progressi Risparmio`}
                             </span>
                             <span className={`text-xs font-bold ${isCompleted ? 'text-emerald-600' : 'text-[var(--text-main)]'}`}>
                               {progress.toFixed(0)}%
                             </span>
                           </div>
-                          <div className="h-3 bg-[var(--surface-variant)] rounded-full overflow-hidden shadow-inner">
+                          <div className="h-2.5 bg-[var(--surface-variant)] rounded-full overflow-hidden shadow-inner">
                             <motion.div 
                               initial={{ width: 0 }}
                               animate={{ width: `${progress}%` }}
-                              className={`h-full rounded-full ${isCompleted ? 'bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.5)]' : 'bg-[var(--accent)]'}`}
+                              className={`h-full rounded-full ${isCompleted ? 'bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.3)]' : 'bg-[var(--accent)]'}`}
                             />
                           </div>
                           <div className="flex justify-between items-center text-[10px] font-bold text-[var(--text-muted)] px-1">
@@ -303,28 +297,19 @@ export const WalletScreen = ({ module, onSave, onClose }: WalletScreenProps) => 
                           </div>
                         </div>
 
-                        {/* Controlli Allocazione */}
-                        <div className="flex items-center gap-3 pt-2">
-                           <button 
-                             onClick={(e) => { e.stopPropagation(); handleUpdateAllocation(p.id, -10); }}
-                             className="w-10 h-10 bg-[var(--bg)] border border-[var(--border)] rounded-xl flex items-center justify-center font-bold text-[var(--text-muted)] hover:border-red-500/30 hover:text-red-500 transition-all"
-                           >
-                             -10
-                           </button>
-                           <button 
-                             onClick={(e) => { e.stopPropagation(); handleUpdateAllocation(p.id, 10); }}
-                             disabled={freeBalance < 10 || isCompleted}
-                             className={`flex-1 h-10 rounded-xl font-bold text-xs uppercase tracking-widest transition-all ${isCompleted ? 'bg-emerald-500/10 text-emerald-600 cursor-not-allowed' : 'bg-[var(--accent)] text-white shadow-lg shadow-[var(--accent)]/10 active:scale-95'}`}
-                           >
-                              {isCompleted ? 'Completato' : `+ €10`}
-                           </button>
-                           <button 
-                             onClick={(e) => { e.stopPropagation(); handleUpdateAllocation(p.id, 50); }}
-                             disabled={freeBalance < 50 || isCompleted}
-                             className="w-14 h-10 bg-[var(--bg)] border border-[var(--border)] rounded-xl flex items-center justify-center font-bold text-[var(--text-main)] text-xs hover:border-[var(--accent)] transition-all disabled:opacity-50"
-                           >
-                             +50
-                           </button>
+                        {/* Input Manuale Allocazione */}
+                        <div className="flex flex-col gap-2 pt-1">
+                           <label className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)]">Cifra Risparmiata</label>
+                           <div className="relative group/input">
+                              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-bold text-[var(--text-muted)] group-focus-within/input:text-[var(--accent)] transition-colors">€</span>
+                              <input
+                                type="number"
+                                value={p.savedAmount || ''}
+                                placeholder="Inserisci importo..."
+                                onChange={(e) => handleUpdateAllocationManual(p.id, e.target.value)}
+                                className="w-full pl-8 pr-4 py-3.5 bg-[var(--bg)] border border-[var(--border)] rounded-2xl text-sm font-black text-[var(--text-main)] outline-none focus:border-[var(--accent)] focus:ring-4 focus:ring-[var(--accent)]/5 transition-all"
+                              />
+                           </div>
                         </div>
                       </div>
                     </motion.div>
