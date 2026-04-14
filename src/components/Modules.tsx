@@ -222,6 +222,7 @@ export const DocumentCard = ({ module, onDelete, onEdit, onShare, dragHandleProp
 export const GenericCard = ({ module, onDelete, onEdit, onShare, dragHandleProps }: { module: GenericModule; onDelete: (id: string) => void; onEdit: (m: Module) => void; onShare: (m: Module) => void; dragHandleProps?: any }) => {
   const [copied, setCopied] = React.useState(false);
   const [showFullNote, setShowFullNote] = useState(false);
+  const [viewerData, setViewerData] = useState<{ title: string; data: string; type: 'pdf' | 'image' } | null>(null);
 
   const handleCopy = (e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
@@ -1087,7 +1088,8 @@ export const SingleExpenseCard = ({ module, onDelete, onEdit, onShare, dragHandl
       <AnimatePresence>
         {viewingAttachment && (
           <DocumentViewer 
-            pdfBase64={viewingAttachment}
+            isOpen={!!viewingAttachment}
+            data={viewingAttachment}
             title={module.description || 'Scontrino'}
             onClose={() => setViewingAttachment(null)}
           />
