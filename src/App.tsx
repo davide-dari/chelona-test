@@ -1887,64 +1887,81 @@ export default function App() {
               initial={{ scale: 0.9, opacity: 0, y: 20 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.9, opacity: 0, y: 20 }}
-              className="relative w-full max-w-sm bg-[var(--card-bg)] rounded-[2.5rem] p-8 shadow-2xl border border-[var(--border)] text-center overflow-hidden"
+              className="relative w-full max-w-md bg-[var(--card-bg)] rounded-[2.5rem] shadow-2xl border border-[var(--border)] overflow-hidden flex flex-col max-h-[85vh]"
             >
-              <div className="flex flex-col gap-4">
-              <div className="flex items-start gap-4">
-                <div className="w-12 h-12 bg-[var(--accent)]/10 rounded-2xl flex items-center justify-center text-[var(--accent)] shrink-0">
-                  <Download className="w-6 h-6" />
+              {/* Header */}
+              <div className="bg-[var(--surface-variant)] p-8 text-center border-b border-[var(--border)] shrink-0">
+                <div className="w-16 h-16 bg-[var(--accent-container)] rounded-3xl flex items-center justify-center text-[var(--accent)] shadow-inner mx-auto mb-4">
+                  <Download className="w-8 h-8" />
                 </div>
-                <div className="flex-1">
-                  <h3 className="text-lg font-bold text-[var(--text-main)]">Aggiornamento Disponibile</h3>
-                  <p className="text-sm text-[var(--text-muted)] mt-1">
-                    È disponibile una nuova versione: <span className="text-[var(--accent)] font-bold">v{availableUpdate.latestVersion}</span>
-                  </p>
-                </div>
+                <h3 className="text-2xl font-black text-[var(--text-main)] tracking-tight">Novità in Chelona</h3>
+                <p className="text-sm font-medium text-[var(--text-muted)] mt-1">
+                  Versione <span className="text-[var(--accent)] font-black uppercase tracking-wider bg-[var(--accent)]/10 px-2 py-0.5 rounded-lg">v{availableUpdate.latestVersion}</span>
+                </p>
               </div>
               
-              <div className="bg-[var(--bg)] p-4 rounded-2xl border border-[var(--border)]">
-                <p className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest mb-2">Note di Rilascio</p>
-                <p className="text-xs text-[var(--text-main)] whitespace-pre-wrap">{availableUpdate.releaseNotes || 'Nessuna nota di rilascio disponibile.'}</p>
+              {/* Scrollable Changelog */}
+              <div className="flex-1 overflow-y-auto p-8 custom-scrollbar bg-[var(--bg)]">
+                <p className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest mb-4">Note di Rilascio</p>
+                <div className="space-y-3">
+                  {(availableUpdate.releaseNotes || 'Aggiornamenti di sicurezza e stabilità.').split('\n').map((line, i) => {
+                    const cleanLine = line.replace(/^- /, '').trim();
+                    if (!cleanLine) return null;
+                    return (
+                      <div key={i} className="flex items-start gap-3 bg-[var(--card-bg)] p-3 rounded-2xl border border-[var(--border)] shadow-sm">
+                        <div className="w-6 h-6 rounded-full bg-[var(--accent-container)] flex items-center justify-center shrink-0 mt-0.5">
+                          <Check className="w-3.5 h-3.5 text-[var(--accent)]" />
+                        </div>
+                        <p className="text-sm font-medium text-[var(--text-main)] leading-relaxed">{cleanLine}</p>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
 
-              {updateProgress !== null ? (
-                <div className="space-y-2">
-                  <div className="h-2 w-full bg-[var(--bg)] rounded-full overflow-hidden">
-                    <motion.div 
-                      initial={{ width: 0 }}
-                      animate={{ width: `${updateProgress}%` }}
-                      className="h-full bg-[var(--accent)]"
-                    />
+              {/* Footer / Actions */}
+              <div className="p-6 bg-[var(--card-bg)] border-t border-[var(--border)] shrink-0">
+                {updateProgress !== null ? (
+                  <div className="space-y-3 bg-[var(--surface-variant)] p-4 rounded-2xl">
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="text-[10px] font-bold text-[var(--text-main)] uppercase tracking-widest">Download in corso</span>
+                      <span className="text-[10px] font-black text-[var(--accent)]">{updateProgress}%</span>
+                    </div>
+                    <div className="h-2 w-full bg-[var(--bg)] rounded-full overflow-hidden border border-[var(--border)]">
+                      <motion.div 
+                        initial={{ width: 0 }}
+                        animate={{ width: `${updateProgress}%` }}
+                        className="h-full bg-[var(--accent)] shadow-[0_0_10px_var(--accent)]"
+                      />
+                    </div>
                   </div>
-                  <p className="text-[10px] font-bold text-center text-[var(--text-muted)] uppercase tracking-widest">Download in corso: {updateProgress}%</p>
-                </div>
-              ) : (
-                <div className="flex gap-3">
+                ) : (
+                  <div className="flex gap-3">
+                      <button
+                        onClick={async () => {
+                          try {
+                            setUpdateProgress(0);
+                            await updateService.downloadAndInstall(availableUpdate, (p) => setUpdateProgress(p));
+                          } catch (e: any) {
+                            setUpdateProgress(null);
+                            const errorMessage = e.message || JSON.stringify(e);
+                            showToast(`Errore: ${errorMessage}`, 'error');
+                            console.error('[App] Download update failed:', e);
+                          }
+                        }}
+                      className="flex-[2] py-4 bg-[var(--accent)] text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:brightness-110 transition-all shadow-lg shadow-[var(--accent)]/30 active:scale-95 text-center"
+                    >
+                      Installa Ora
+                    </button>
                     <button
-                      onClick={async () => {
-                        try {
-                          setUpdateProgress(0);
-                          await updateService.downloadAndInstall(availableUpdate, (p) => setUpdateProgress(p));
-                        } catch (e: any) {
-                          setUpdateProgress(null);
-                          const errorMessage = e.message || JSON.stringify(e);
-                          showToast(`Errore: ${errorMessage}`, 'error');
-                          console.error('[App] Download update failed:', e);
-                        }
-                      }}
-                    className="flex-1 py-4 bg-[var(--accent)] text-white rounded-2xl font-bold hover:bg-[var(--accent-hover)] transition-all shadow-lg shadow-amber-500/20"
-                  >
-                    Scarica e Installa APK
-                  </button>
-                  <button
-                    onClick={() => setAvailableUpdate(null)}
-                    className="px-6 py-4 bg-[var(--bg)] text-[var(--text-muted)] rounded-2xl font-bold hover:bg-[var(--border)] transition-all border border-[var(--border)]"
-                  >
-                    Dopo
-                  </button>
-                </div>
-              )}
-            </div>
+                      onClick={() => setAvailableUpdate(null)}
+                      className="flex-1 px-4 py-4 bg-[var(--surface-variant)] text-[var(--text-muted)] rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-[var(--border)] transition-all"
+                    >
+                      Dopo
+                    </button>
+                  </div>
+                )}
+              </div>
             </motion.div>
           </div>
         )}

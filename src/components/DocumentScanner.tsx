@@ -100,6 +100,11 @@ export const DocumentScanner = ({ onCapture, onClose, downloadOnly = false }: Do
   const targetCornersRef = useRef<{ x: number; y: number }[] | null>(null);
   const detectCanvasRef = useRef<HTMLCanvasElement>(document.createElement('canvas'));
 
+  // Auto-Capture tracking
+  const stableStartTimeRef = useRef<number | null>(null);
+  const lastStableCornersRef = useRef<{ x: number; y: number }[] | null>(null);
+  const handleCaptureRef = useRef<(() => void) | null>(null);
+
   const runDetection = useCallback(() => {
     if (!scannerRef.current || !videoRef.current || !canvasRef.current || isProcessing || mode !== 'scanning') {
       rafRef.current = requestAnimationFrame(runDetection);
@@ -191,6 +196,41 @@ export const DocumentScanner = ({ onCapture, onClose, downloadOnly = false }: Do
     // ── Smooth rendering at 60fps ──
     const target = targetCornersRef.current;
     if (target) {
+      // ── Auto-Capture Logic ──
+      const nowTs = performance.now();
+      let isStable = false;
+      if (!lastStableCornersRef.current) {
+        lastStableCornersRef.current = target.map(p => ({ ...p }));
+        stableStartTimeRef.current = nowTs;
+      } else {
+        let maxDist = 0;
+        for (let i = 0; i < 4; i++) {
+          const dx = target[i].x - lastStableCornersRef.current[i].x;
+          const dy = target[i].y - lastStableCornersRef.current[i].y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist > maxDist) maxDist = dist;
+        }
+
+        if (maxDist > 20) { // 20 pixels tolerance
+          lastStableCornersRef.current = target.map(p => ({ ...p }));
+          stableStartTimeRef.current = nowTs;
+        } else {
+          isStable = true;
+        }
+      }
+
+      let progress = 0;
+      if (isStable && stableStartTimeRef.current) {
+        progress = Math.min(1, (nowTs - stableStartTimeRef.current) / 1500); // 1.5s
+        if (progress >= 1 && handleCaptureRef.current && !isProcessing) {
+          stableStartTimeRef.current = null; // Reset
+          lastDetectTimeRef.current = nowTs + 5000; // Pause detection temporarily
+          handleCaptureRef.current();
+        }
+      } else if (!isStable) {
+        progress = 0;
+      }
+
       // Lerp smoothCorners toward target for fluid motion
       const lerp = 0.35;
       if (!smoothCornersRef.current) {
@@ -204,6 +244,12 @@ export const DocumentScanner = ({ onCapture, onClose, downloadOnly = false }: Do
 
       const points = smoothCornersRef.current;
 
+      // Color lerp: amber (#fbbf24 = 251, 191, 36) -> emerald (#10b981 = 16, 185, 129)
+      const r = Math.round(251 + (16 - 251) * progress);
+      const g = Math.round(191 + (185 - 191) * progress);
+      const b = Math.round(36 + (129 - 36) * progress);
+      const colorHex = `rgb(${r}, ${g}, ${b})`;
+
       // Draw glowing polygon
       ctx.beginPath();
       ctx.moveTo(points[0].x, points[0].y);
@@ -211,12 +257,12 @@ export const DocumentScanner = ({ onCapture, onClose, downloadOnly = false }: Do
       ctx.closePath();
 
       ctx.shadowBlur = 15;
-      ctx.shadowColor = '#fbbf24';
-      ctx.strokeStyle = '#fbbf24';
-      ctx.lineWidth = 3;
+      ctx.shadowColor = colorHex;
+      ctx.strokeStyle = colorHex;
+      ctx.lineWidth = 3 + (progress * 2); // Thicker line as it gets ready
       ctx.stroke();
 
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.04)';
+      ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${0.04 + progress * 0.1})`;
       ctx.shadowBlur = 0;
       ctx.fill();
 
@@ -400,6 +446,10 @@ export const DocumentScanner = ({ onCapture, onClose, downloadOnly = false }: Do
     }
   };
 
+  useEffect(() => {
+    handleCaptureRef.current = handleCapture;
+  });
+
   // ─── Image filter helper ─────────────────────────────────────────────────
   const applyFilterToDataUrl = (dataUrl: string, filter: typeof activeFilter): Promise<string> =>
     new Promise((resolve) => {
@@ -429,15 +479,13 @@ export const DocumentScanner = ({ onCapture, onClose, downloadOnly = false }: Do
             d[i + 1] = Math.min(255, Math.max(0, factor * (g - 128) + 128));
             d[i + 2] = Math.min(255, Math.max(0, factor * (b - 128) + 128));
           } else if (filter === 'document') {
-            // Grayscale + strong threshold + warm white
+            // True Whiteboard (Adobe Scan style)
             const gray = 0.299 * r + 0.587 * g + 0.114 * b;
-            if (gray > 160) {
-              d[i] = 255; d[i + 1] = 252; d[i + 2] = 245; // warm white
-            } else if (gray > 90) {
-              const v = Math.round(gray * 0.6);
-              d[i] = d[i + 1] = d[i + 2] = v;
+            if (gray > 135) {
+              d[i] = d[i + 1] = d[i + 2] = 255; // Pure white background
             } else {
-              d[i] = 20; d[i + 1] = 18; d[i + 2] = 15; // deep black
+              const val = Math.max(0, gray - 60); // High contrast black text
+              d[i] = d[i + 1] = d[i + 2] = val;
             }
           }
         }

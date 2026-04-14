@@ -71,7 +71,7 @@ RELEASE_JSON=$(curl -s -X POST \
   -d "{
     \"tag_name\": \"$TAG\",
     \"name\": \"Chelona $TAG\",
-    \"body\": \"Release $TAG: Automated publication by Chelona Deploy Script.\",
+    \"body\": \"🚀 **Chelona v$VERSION - Oasis Edition**\n\n### ✨ Novità principali:\n- **🎨 Oasis Aesthetics**: Interfaccia ridisegnata con una nuova palette 'Oasis' (verde smeraldo e blu oceano) e un look & feel premium ispirato a iOS/Material You.\n- **📸 AI Auto-Capture Scanner**: Lo scanner ora cattura automaticamente i documenti rilevando la stabilità dello scatto (stile Adobe Scan).\n- **📑 Whiteboard Effect**: Filtro documenti potenziato per una nitidezza estrema e rimozione ombre.\n- **🆕 What's New UI**: Nuova schermata di aggiornamento in-app con changelog dettagliato.\n- **🐢 Nuovo Logo**: Chelona ha finalmente la sua icona ufficiale.\n\n*Rilasciato con ❤️ dal Chelona Deploy Script.*\",
     \"draft\": false,
     \"prerelease\": false
   }")
