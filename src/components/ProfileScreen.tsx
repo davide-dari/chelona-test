@@ -221,13 +221,13 @@ export function ProfileScreen({
 
         <div className="flex-1 overflow-y-auto pb-40 space-y-6 px-6 custom-scrollbar">
           {activeTab === 'profile' ? (
-            <div className="bg-[var(--surface-variant)]/50 rounded-[var(--radius-lg)] p-6 lg:p-8 border border-[var(--border)] shadow-sm space-y-8">
+            <div className="bg-[var(--surface-variant)]/50 rounded-[var(--radius-lg)] p-5 lg:p-6 border border-[var(--border)] shadow-sm space-y-5">
               <div className="flex flex-col items-center">
                 <div 
                   onClick={handleAvatarClick}
                   className="relative group cursor-pointer"
                 >
-                  <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-[var(--bg)] shadow-lg bg-[var(--accent-bg)]">
+                  <div className="w-24 h-24 rounded-full overflow-hidden border-4 border-[var(--bg)] shadow-lg bg-[var(--accent-bg)]">
                     {avatar ? (
                       <img src={avatar} alt="Avatar" className="w-full h-full object-cover" />
                     ) : (
@@ -274,15 +274,15 @@ export function ProfileScreen({
               </div>
             </div>
           ) : activeTab === 'security' ? (
-            <div className="space-y-6">
-              <div className="bg-[var(--card-bg)] rounded-3xl p-6 lg:p-8 border border-[var(--border)] shadow-sm space-y-6">
-                <div className="flex items-center gap-4 border-b border-[var(--border)] pb-6 mb-2">
-                  <div className="w-12 h-12 bg-[var(--accent-hover)]/10 rounded-2xl flex items-center justify-center text-[var(--accent)]">
-                    <Lock className="w-6 h-6" />
+            <div className="space-y-4">
+              <div className="bg-[var(--card-bg)] rounded-3xl p-5 lg:p-6 border border-[var(--border)] shadow-sm space-y-4">
+                <div className="flex items-center gap-3 border-b border-[var(--border)] pb-4 mb-2">
+                  <div className="w-10 h-10 bg-[var(--accent-hover)]/10 rounded-2xl flex items-center justify-center text-[var(--accent)] shrink-0">
+                    <Lock className="w-5 h-5" />
                   </div>
                   <div>
-                    <h3 className="text-lg font-bold text-[var(--text-main)]">Cambia Password</h3>
-                    <p className="text-sm text-[var(--text-muted)]">Aggiorna la tua chiave maestra (disabiliterà la biometria se attiva)</p>
+                    <h3 className="text-base font-bold text-[var(--text-main)] leading-tight">Cambia Password</h3>
+                    <p className="text-xs text-[var(--text-muted)]">Aggiorna la chiave (disabiliterà la biometria)</p>
                   </div>
                 </div>
 
@@ -340,14 +340,14 @@ export function ProfileScreen({
                 </form>
               </div>
 
-              <div className="bg-[var(--card-bg)] rounded-3xl p-6 lg:p-8 border border-[var(--border)] shadow-sm space-y-6 relative overflow-hidden">
-                <div className="flex items-center gap-4 border-b border-[var(--border)] pb-6 mb-2">
-                  <div className="w-14 h-14 bg-amber-500/10 rounded-2xl flex items-center justify-center text-amber-600 shadow-inner">
-                    <Fingerprint className="w-7 h-7" />
+              <div className="bg-[var(--card-bg)] rounded-3xl p-5 lg:p-6 border border-[var(--border)] shadow-sm space-y-4 relative overflow-hidden">
+                <div className="flex items-center gap-3 border-b border-[var(--border)] pb-4 mb-2">
+                  <div className="w-10 h-10 bg-amber-500/10 rounded-2xl flex items-center justify-center text-amber-600 shadow-inner shrink-0">
+                    <Fingerprint className="w-5 h-5" />
                   </div>
                   <div className="flex-1">
-                    <h3 className="text-lg font-bold text-[var(--text-main)]">Sblocco Biometrico</h3>
-                    <p className="text-xs text-[var(--text-muted)] font-medium leading-relaxed">Configura l'impronta digitale per non dover inserire ogni volta la password master.</p>
+                    <h3 className="text-base font-bold text-[var(--text-main)] leading-tight">Sblocco Biometrico</h3>
+                    <p className="text-[10px] text-[var(--text-muted)] font-medium leading-relaxed mt-0.5">Configura l'impronta digitale per accesso rapido.</p>
                   </div>
                   {isBioSupported && (
                     <button
@@ -361,13 +361,13 @@ export function ProfileScreen({
                 </div>
 
                 {/* MODALITÀ SCUSA (SANDBOX) */}
-                <div className="flex items-center gap-4 pt-4">
-                  <div className="w-14 h-14 bg-indigo-500/10 rounded-2xl flex items-center justify-center text-indigo-600 shadow-inner">
-                    <ShieldCheck className="w-7 h-7" />
+                <div className="flex items-center gap-3 pt-2">
+                  <div className="w-10 h-10 bg-indigo-500/10 rounded-2xl flex items-center justify-center text-indigo-600 shadow-inner shrink-0">
+                    <ShieldCheck className="w-5 h-5" />
                   </div>
                   <div className="flex-1">
-                    <h3 className="text-lg font-bold text-[var(--text-main)] text-indigo-600">Modalità Scusa</h3>
-                    <p className="text-xs text-[var(--text-muted)] font-medium leading-relaxed">Aggiunge un secondo livello di dati "finti" per quando devi mostrare l'app.</p>
+                    <h3 className="text-base font-bold text-[var(--text-main)] text-indigo-600 leading-tight">Modalità Scusa</h3>
+                    <p className="text-[10px] text-[var(--text-muted)] font-medium leading-relaxed mt-0.5">Livello di dati finti per privacy in pubblico.</p>
                   </div>
                   <button
                     onClick={() => onToggleSandbox(!isSandboxMode)}
@@ -390,14 +390,16 @@ export function ProfileScreen({
                 )}
               </div>
 
-              <div className="bg-[var(--card-bg)] rounded-3xl p-6 lg:p-8 border border-[var(--border)] shadow-sm space-y-6">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 bg-[var(--accent-hover)]/10 rounded-2xl flex items-center justify-center text-[var(--accent)]">
-                    <Share2 className="w-6 h-6" />
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="text-lg font-bold text-[var(--text-main)]">Backup e Aggiornamenti</h3>
-                    <p className="text-sm text-[var(--text-muted)]">Gestisci i trasferimenti e cerca nuove versioni dell'app</p>
+              <div className="bg-[var(--card-bg)] rounded-3xl p-5 lg:p-6 border border-[var(--border)] shadow-sm space-y-4">
+                <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+                  <div className="flex items-center gap-3 flex-1">
+                    <div className="w-10 h-10 bg-[var(--accent-hover)]/10 rounded-2xl flex items-center justify-center text-[var(--accent)] shrink-0">
+                      <Share2 className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h3 className="text-base font-bold text-[var(--text-main)] leading-tight">Backup e Aggiornamenti</h3>
+                      <p className="text-[10px] text-[var(--text-muted)] mt-0.5">Trasferimenti e nuove versioni</p>
+                    </div>
                   </div>
                   <div className="flex flex-col sm:flex-row gap-3">
                     <button
@@ -565,7 +567,7 @@ export function ProfileScreen({
           )}
         </AnimatePresence>
 
-        <div className="p-6 border-t border-[var(--border)] mt-auto bg-[var(--card-bg)] shrink-0">
+        <div className="p-6 pb-32 border-t border-[var(--border)] mt-auto bg-[var(--card-bg)] shrink-0">
           <button
             onClick={onLogout}
             className="w-full py-5 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white rounded-2xl font-bold transition-all flex items-center justify-center gap-3 shadow-xl"

@@ -470,14 +470,17 @@ export const DocumentScanner = ({ onCapture, onClose, downloadOnly = false }: Do
 
           if (filter === 'bw') {
             const gray = 0.299 * r + 0.587 * g + 0.114 * b;
-            const val = gray > 128 ? 255 : 0;
+            // Smooth high-contrast grayscale instead of harsh 1-bit threshold
+            const contrast = 1.5;
+            const val = Math.min(255, Math.max(0, contrast * (gray - 128) + 128));
             d[i] = d[i + 1] = d[i + 2] = val;
           } else if (filter === 'enhance') {
-            // Boost contrast aggressively
-            const factor = 2.2;
-            d[i]     = Math.min(255, Math.max(0, factor * (r - 128) + 128));
-            d[i + 1] = Math.min(255, Math.max(0, factor * (g - 128) + 128));
-            d[i + 2] = Math.min(255, Math.max(0, factor * (b - 128) + 128));
+            // Vibrant: Gentle saturation and contrast boost
+            const gray = 0.299 * r + 0.587 * g + 0.114 * b;
+            const satBoost = 1.4;
+            d[i]     = Math.min(255, Math.max(0, gray + (r - gray) * satBoost));
+            d[i + 1] = Math.min(255, Math.max(0, gray + (g - gray) * satBoost));
+            d[i + 2] = Math.min(255, Math.max(0, gray + (b - gray) * satBoost));
           } else if (filter === 'document') {
             // True Whiteboard (Adobe Scan style)
             const gray = 0.299 * r + 0.587 * g + 0.114 * b;
@@ -620,37 +623,21 @@ export const DocumentScanner = ({ onCapture, onClose, downloadOnly = false }: Do
           }
         }
 
-        // Pass 2: normalize each pixel → eliminate shadows from wrinkles
+        // Pass 2: normalize each pixel → preserve color but remove shadows
         for (let y = 0; y < H; y++) {
           for (let x = 0; x < W; x++) {
             const i = (y * W + x) * 4;
             const bx = Math.min(Math.floor(x / BLK), cols - 1);
             const by = Math.min(Math.floor(y / BLK), rows - 1);
             const ref = localMax[by * cols + bx];
-            const lum = 0.299 * sd[i] + 0.587 * sd[i+1] + 0.114 * sd[i+2];
-            // Normalized luminance: brings all local whites to 1.0
-            const norm = Math.min(1, lum / ref);
-
-            // Map to scanner-style output curve
-            let out: number;
-            if (norm > 0.82) {
-              // Paper white zone
-              out = 253;
-              sd[i] = 253; sd[i+1] = 251; sd[i+2] = 247;
-              continue;
-            } else if (norm > 0.5) {
-              // Mid-tone: push toward white (wrinkle shadows)
-              const t = (norm - 0.5) / 0.32;
-              out = Math.round(160 + t * 90);
-              sd[i] = sd[i+1] = sd[i+2] = out;
-            } else if (norm > 0.22) {
-              // Text and lines zone
-              out = Math.round(norm * 100);
-              sd[i] = sd[i+1] = sd[i+2] = out;
-            } else {
-              // Deep black
-              sd[i] = sd[i+1] = sd[i+2] = 10;
-            }
+            
+            // Gain factor: 255 / local max luminance
+            // This pulls the local "white" up to pure white (255)
+            const gain = 255 / Math.max(10, ref);
+            
+            sd[i]     = Math.min(255, sd[i] * gain);
+            sd[i+1] = Math.min(255, sd[i+1] * gain);
+            sd[i+2] = Math.min(255, sd[i+2] * gain);
           }
         }
         scanCtx.putImageData(scanId, 0, 0);
@@ -763,10 +750,6 @@ export const DocumentScanner = ({ onCapture, onClose, downloadOnly = false }: Do
           {torch ? <Zap className="w-5 h-5 text-[var(--accent)] fill-[var(--accent)]" /> : <ZapOff className="w-5 h-5 text-white/50" />}
         </button>
 
-        <div className="flex items-center gap-2 bg-black/40 border border-white/10 px-3 py-1.5 rounded-full backdrop-blur-xl">
-          <div className={`w-1.5 h-1.5 rounded-full ${isReady ? 'bg-emerald-500 animate-pulse' : 'bg-red-500'}`} />
-          <span className="text-[9px] font-bold text-white/80 uppercase tracking-widest">{isReady ? 'Smart AI ON' : 'Loading AI...'}</span>
-        </div>
       </div>
 
       <AnimatePresence>

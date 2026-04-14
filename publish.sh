@@ -71,7 +71,7 @@ RELEASE_JSON=$(curl -s -X POST \
   -d "{
     \"tag_name\": \"$TAG\",
     \"name\": \"Chelona $TAG\",
-    \"body\": \"🚀 **Chelona v$VERSION - Oasis Edition**\n\n### ✨ Novità principali:\n- **🎨 Oasis Aesthetics**: Interfaccia ridisegnata con una nuova palette 'Oasis' (verde smeraldo e blu oceano) e un look & feel premium ispirato a iOS/Material You.\n- **📸 AI Auto-Capture Scanner**: Lo scanner ora cattura automaticamente i documenti rilevando la stabilità dello scatto (stile Adobe Scan).\n- **📑 Whiteboard Effect**: Filtro documenti potenziato per una nitidezza estrema e rimozione ombre.\n- **🆕 What's New UI**: Nuova schermata di aggiornamento in-app con changelog dettagliato.\n- **🐢 Nuovo Logo**: Chelona ha finalmente la sua icona ufficiale.\n\n*Rilasciato con ❤️ dal Chelona Deploy Script.*\",
+    \"body\": \"🚀 **Chelona v$VERSION** - Bugfixes & Miglioramenti\n\n### ✨ Novità in questa release:\n- **🎤 Ricerca Vocale Risolta**: Ripristinato il permesso di registrazione audio per l'API di riconoscimento vocale Web su Android.\n- **🎨 UI del Profilo Compattata**: La schermata Profilo è ora più pulita e compatta. Risolto un bug di sovrapposizione in cui il pulsante *Blocca App* spariva dietro la barra di navigazione inferiore.\n- **📸 Colori dello Scanner Perfetti**: La normalizzazione adattiva dell'AI ora conserva fedelmente lo spettro cromatico originale durante la rimozione automatica delle ombre. I filtri *Nitidezza* e *Originale* sono incredibilmente più naturali.\n\n*Rilasciato con ❤️ dal Chelona Deploy Script.*\",
     \"draft\": false,
     \"prerelease\": false
   }")
