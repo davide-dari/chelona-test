@@ -184,11 +184,9 @@ export function ProfileScreen({
   const profileAvatar = avatar || `https://ui-avatars.com/api/?name=${username}&background=FFFBEB&color=B45309&size=200`;
 
   return (
-    <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center p-4 z-[100] transition-colors duration-300 h-[100dvh] overflow-hidden">
-      <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        className="bg-[var(--bg)] w-full max-w-2xl rounded-[var(--radius-lg)] shadow-2xl overflow-hidden border border-[var(--border)] h-full max-h-[90vh] flex flex-col"
+    <div className="h-full flex flex-col overflow-hidden bg-[var(--bg)]">
+      <div 
+        className="w-full max-w-2xl mx-auto flex-1 flex flex-col overflow-hidden"
       >
         <header className="p-6 border-b border-[var(--border)] flex items-center justify-between bg-[var(--card-bg)] shrink-0 z-10">
           <div className="flex items-center gap-4">
@@ -576,7 +574,7 @@ export function ProfileScreen({
             Blocca App e Disconnetti
           </button>  
         </div>
-      </motion.div>
+      </div>
     </div>
   );
 }

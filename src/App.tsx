@@ -1748,7 +1748,7 @@ export default function App() {
           
           {/* Mobile Bottom Navigation Bar - Hidden during full-screen edit/modals */}
           {/* Mobile Bottom Navigation (M3 Style) */}
-          {!isAdding && !isScanning && !editingModuleId && !isProfileOpen && !isToolsOpen && !isArchiveOpen && (
+          {!isAdding && !isScanning && !editingModuleId && !isArchiveOpen && (
             <nav className="md:hidden fixed bottom-0 left-0 right-0 h-20 bg-[var(--bg)] border-t border-[var(--border)] z-50 px-4 flex items-center justify-around safe-area-inset-bottom shadow-[0_-4px_12px_rgba(0,0,0,0.03)]">
               {[
                 { id: 'dashboard', icon: LayoutDashboard, label: 'Dashboard', action: () => { setIsToolsOpen(false); setSelectedType(null); setIsProfileOpen(false); } },
