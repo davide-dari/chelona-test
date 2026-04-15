@@ -71,7 +71,7 @@ RELEASE_JSON=$(curl -s -X POST \
   -d "{
     \"tag_name\": \"$TAG\",
     \"name\": \"Chelona $TAG\",
-    \"body\": \"🚀 **Chelona v$VERSION** - New Tools & Quick Actions\n\n### ✨ Novità in questa release:\n- **📄 Word to PDF**: Aggiunto un convertitore offline da .docx a PDF negli strumenti.\n- **➕ Quick Add Buttons**: Aggiunti pulsanti rapidi in Dashboard e nelle categorie per creare nuovi moduli con un solo click.\n- **🎨 UI Refinement**: Migliorato il layout delle card Spese con più spazi bianchi e una gerarchia visiva più chiara.\n\n*Rilasciato con ❤️ dal Chelona Deploy Script.*\",
+    \"body\": \"🚀 **Chelona v$VERSION** - UI Restructuring & Expense Sync\n\n### ✨ Novità in questa release:\n- **📄 Word to PDF**: Convertitore offline da .docx a PDF integrato negli strumenti.\n- **⚡ UI Streamlining**: Rimosse le scorciatoie dalla Dashboard per un design più pulito. Le azioni di aggiunta sono ora localizzate nelle rispettive categorie.\n- **🎯 Contextual Actions**: Nuovo tasto 'Aggiungi' dinamico filtrato per categoria e pulsante FAB intelligente.\n- **🎨 Spese Sync**: Sincronizzato il design della lista spese con lo stile premium delle card 'Recenti'.\n\n*Rilasciato con ❤️ dal Chelona Deploy Script.*\",
     \"draft\": false,
     \"prerelease\": false
   }")

@@ -941,7 +941,7 @@ export default function App() {
           </div>
           <div>
             <h1 className="text-xl font-black tracking-tight text-[var(--text-main)]">Chelona</h1>
-            <p className="text-[10px] font-bold text-[var(--accent)] uppercase tracking-widest">v1.7.12</p>
+            <p className="text-[10px] font-bold text-[var(--accent)] uppercase tracking-widest">v1.8.0</p>
           </div>
         </div>
         <button onClick={() => setIsSidebarOpen(false)} className="lg:hidden p-2 text-[var(--text-muted)] hover:bg-[var(--bg)] rounded-lg">
@@ -1595,36 +1595,21 @@ export default function App() {
                     </div>
                   </div>
                   {selectedType && (
-                    <div className="mt-3 flex flex-col items-center gap-4">
-                      <div className="flex items-center justify-center gap-2">
-                         <span className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest px-2">Filtro attivo: {TEMPLATES[selectedType].title}</span>
-                         <button onClick={() => setSelectedType(null)} className="text-[10px] font-bold text-[var(--accent)] hover:underline uppercase tracking-widest">Rimuovi</button>
-                         {selectedType === 'document' && (
-                           <>
-                             <span className="w-1 h-1 bg-[var(--border)] rounded-full mx-1" />
-                             <button 
-                               onClick={() => setIsArchiveOpen(true)}
-                               className="text-[10px] font-bold text-amber-500 hover:text-amber-600 uppercase tracking-widest flex items-center gap-1.5 transition-colors"
-                             >
-                               <BookOpen className="w-3 h-3" />
-                               Archivio Documenti
-                             </button>
-                           </>
-                         )}
-                      </div>
-                      
-                      {/* Specific Add Button for Category */}
-                      <button
-                        onClick={() => {
-                          setFormData({ template: selectedType });
-                          setIsAdding(true);
-                          setAutoFormStep(0);
-                        }}
-                        className="flex items-center gap-2 px-6 py-3 bg-[var(--accent)] text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg shadow-[var(--accent)]/20 hover:scale-[1.02] active:scale-[0.98] transition-all"
-                      >
-                        <Plus className="w-4 h-4" />
-                        Aggiungi {TEMPLATES[selectedType].title}
-                      </button>
+                    <div className="mt-3 flex items-center justify-center gap-2">
+                       <span className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest px-2">Filtro attivo: {TEMPLATES[selectedType].title}</span>
+                       <button onClick={() => setSelectedType(null)} className="text-[10px] font-bold text-[var(--accent)] hover:underline uppercase tracking-widest">Rimuovi</button>
+                       {selectedType === 'document' && (
+                         <>
+                           <span className="w-1 h-1 bg-[var(--border)] rounded-full mx-1" />
+                           <button 
+                             onClick={() => setIsArchiveOpen(true)}
+                             className="text-[10px] font-bold text-amber-500 hover:text-amber-600 uppercase tracking-widest flex items-center gap-1.5 transition-colors"
+                           >
+                             <BookOpen className="w-3 h-3" />
+                             Archivio Documenti
+                           </button>
+                         </>
+                       )}
                     </div>
                   )}
                 </div>
@@ -1665,26 +1650,6 @@ export default function App() {
                             Ciao, <span className="text-[var(--accent)]">{username}</span>
                           </h2>
                           <p className="text-[var(--text-muted)] font-bold uppercase tracking-[0.2em] text-[10px] mt-2">Sandbox Dashboard</p>
-                        </div>
-                        
-                        {/* Quick Add Actions */}
-                        <div className="flex items-center gap-3 overflow-x-auto pb-2 scrollbar-none">
-                          {Object.entries(TEMPLATES).filter(([key]) => key !== 'none').map(([key, t]) => (
-                            <button
-                              key={`quick-add-${key}`}
-                              onClick={() => {
-                                setFormData({ template: key });
-                                setIsAdding(true);
-                                setAutoFormStep(0);
-                              }}
-                              className="flex items-center gap-2 px-4 py-2.5 bg-[var(--card-bg)] border border-[var(--border)] rounded-2xl hover:border-[var(--accent)] transition-all whitespace-nowrap shadow-sm active:scale-95 group"
-                            >
-                              <div className={`p-1.5 rounded-lg bg-[var(--bg)] ${t.color} group-hover:scale-110 transition-transform`}>
-                                <t.icon className="w-4 h-4" />
-                              </div>
-                              <span className="text-xs font-black text-[var(--text-main)]">Aggiungi {t.title}</span>
-                            </button>
-                          ))}
                         </div>
                       </div>
                     </div>
@@ -1806,11 +1771,17 @@ export default function App() {
                       {modules.length === 0 ? 'Inizia ad organizzare i tuoi dati aggiungendo il primo modulo.' : 'Prova a cercare un termine diverso o cambiare filtro di categoria.'}
                     </p>
                     <button
-                      onClick={() => setIsAdding(true)}
-                      className="flex items-center justify-center gap-3 bg-amber-500 hover:bg-amber-600 text-white px-8 py-4 rounded-2xl font-bold transition-all shadow-lg shadow-amber-500/20"
+                      onClick={() => {
+                        if (selectedType) {
+                          setFormData({ template: selectedType });
+                        }
+                        setIsAdding(true);
+                        setAutoFormStep(0);
+                      }}
+                      className="flex items-center justify-center gap-3 bg-amber-500 hover:bg-amber-600 text-white px-8 py-4 rounded-2xl font-bold transition-all shadow-lg shadow-amber-500/20 active:scale-95"
                     >
                       <Plus className="w-6 h-6" />
-                      <span>Aggiungi Modulo</span>
+                      <span>{selectedType ? `Aggiungi ${TEMPLATES[selectedType].title}` : 'Aggiungi Modulo'}</span>
                     </button>
                   </div>
                 ) : (
@@ -1835,6 +1806,23 @@ export default function App() {
                       </div>
                     )}
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6 3xl:grid-cols-8 gap-6 stagger-fade-in px-4 lg:px-8 pb-32 md:pb-8">
+                    {/* Template-Specific Add Card Button (Only when a category is selected and list not empty) */}
+                    {selectedType && filteredModules.length > 0 && (
+                      <button
+                        onClick={() => {
+                          setFormData({ template: selectedType });
+                          setIsAdding(true);
+                          setAutoFormStep(0);
+                        }}
+                        className="w-full flex flex-col items-center justify-center bg-[var(--card-bg)] backdrop-blur-3xl rounded-[2.5rem] border-2 border-dashed border-amber-500/30 hover:border-amber-500 hover:bg-amber-500/5 transition-all p-8 gap-3 min-h-[220px] group"
+                      >
+                        <div className="w-14 h-14 bg-amber-500/10 rounded-2xl flex items-center justify-center text-amber-500 group-hover:scale-110 transition-transform">
+                          <Plus className="w-8 h-8" />
+                        </div>
+                        <span className="text-sm font-black text-amber-600 uppercase tracking-widest text-center leading-tight">Nuovo {TEMPLATES[selectedType].title}</span>
+                      </button>
+                    )}
+                    
                     {filteredModules.map((module) => (
                       <div key={module.id} className="w-full">
                         {module.type === 'auto' ? (
@@ -1953,9 +1941,15 @@ export default function App() {
       {/* Floating Action Button */}
       {modules.length > 0 && (
         <button
-          onClick={() => setIsAdding(true)}
-          className="hidden md:flex fixed bottom-10 right-10 w-16 h-16 bg-amber-500 hover:bg-amber-600 text-white rounded-full items-center justify-center shadow-2xl shadow-amber-500/40 transition-transform hover:scale-110 z-30"
-          aria-label="Aggiungi Modulo"
+          onClick={() => {
+            if (selectedType) {
+              setFormData({ template: selectedType });
+            }
+            setIsAdding(true);
+            setAutoFormStep(0);
+          }}
+          className="hidden md:flex fixed bottom-10 right-10 w-16 h-16 bg-amber-500 hover:bg-amber-600 text-white rounded-full items-center justify-center shadow-2xl shadow-amber-500/40 transition-transform hover:scale-110 z-30 active:scale-95"
+          aria-label={selectedType ? `Aggiungi ${TEMPLATES[selectedType].title}` : "Aggiungi Modulo"}
         >
           <Plus className="w-8 h-8" />
         </button>

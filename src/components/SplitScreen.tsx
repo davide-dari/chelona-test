@@ -11,6 +11,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, 
   Tooltip, Legend, LineChart, Line 
 } from 'recharts';
+import { EXPENSE_CATEGORIES } from '../constants/expenses';
 
 interface SplitScreenProps {
   module: SplitModule;
@@ -284,43 +285,67 @@ export const SplitScreen = ({ module, onClose, onSave, onSaveToSandbox }: SplitS
                 <h3 className="text-sm font-bold text-[var(--text-main)] uppercase tracking-wider">Lista Spese ({expenses.length})</h3>
             </div>
             {expenses.length === 0 ? (
-                <div className="text-center py-10 bg-[var(--card-bg)] rounded-3xl border border-[var(--border)] border-dashed">
-                    <Receipt className="w-10 h-10 text-[var(--text-muted)] mx-auto mb-3 opacity-50" />
+                <div className="text-center py-20 bg-[var(--card-bg)] rounded-[2.5rem] border border-dashed border-[var(--border)]">
                     <p className="text-sm text-[var(--text-muted)] font-bold">Nessuna spesa inserita</p>
                 </div>
             ) : (
-                expenses.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map(exp => {
+                [...expenses].sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map(exp => {
                     const payer = participants.find(p => p.id === exp.paidById);
+                    const category = EXPENSE_CATEGORIES.find(c => c.id === (exp as any).categoryId);
+                    
                     return (
-                        <div key={exp.id} onClick={() => openEditExpense(exp)} className="flex items-center justify-between p-4 bg-[var(--card-bg)] border border-[var(--border)] rounded-2xl shadow-sm cursor-pointer hover:border-amber-400/50 transition-all active:scale-[0.99] group">
-                            <div className="flex items-center gap-4">
-                                <div className="hidden sm:flex w-12 h-12 rounded-xl bg-purple-500/10 border border-purple-500/20 items-center justify-center">
-                                    <Receipt className="w-6 h-6 text-purple-500" />
+                        <div key={exp.id} className="group relative flex flex-col bg-[var(--card-bg)] backdrop-blur-3xl rounded-[2.5rem] border border-[var(--border)] shadow-sm hover:shadow-md transition-all p-5 sm:p-6 overflow-hidden animate-fade-in mb-3">
+                            <div className="flex items-center justify-between mb-4 shrink-0">
+                                <div className="flex items-center gap-3">
+                                    <div className={`w-10 h-10 ${category?.bg || 'bg-[var(--accent)]/10'} rounded-xl flex items-center justify-center border ${category?.border || 'border-[var(--accent)]/20'} shrink-0`}>
+                                        {category ? <category.icon className={`w-5 h-5 ${category.color}`} /> : <Receipt className="w-5 h-5 text-amber-500" />}
+                                    </div>
+                                    <div className="min-w-0">
+                                        <h4 className="font-bold text-[14px] text-[var(--text-main)] leading-tight truncate">{exp.title}</h4>
+                                        <p className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider">
+                                            Pagato da <span className="text-[var(--text-main)]">{payer?.name || 'Sconosciuto'}</span> • {new Date(exp.date).toLocaleDateString()}
+                                        </p>
+                                    </div>
                                 </div>
-                                <div className="flex flex-col">
-                                    <span className="font-bold text-[var(--text-main)] text-base leading-tight mb-1 flex items-center gap-2">
-                                      {exp.title}
-                                      {exp.receiptAttachment && (
-                                        <button
-                                          onClick={(e) => { e.stopPropagation(); setViewingReceipt(exp.receiptAttachment!); }}
-                                          className="inline-flex items-center gap-1 text-[9px] font-bold uppercase bg-amber-500/10 text-amber-600 px-2 py-0.5 rounded-full border border-amber-500/20 hover:bg-amber-500/20 transition-colors"
-                                        >
-                                          <Paperclip className="w-3 h-3" /> Scontrino
-                                        </button>
-                                      )}
-                                    </span>
-                                    <span className="text-[10px] uppercase font-bold text-[var(--text-muted)] tracking-wider">
-                                        Pagato da <span className="text-[var(--text-main)]">{payer?.name || 'Sconosciuto'}</span> • {new Date(exp.date).toLocaleDateString()}
-                                    </span>
+                                <div className="flex items-center gap-1.5 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all shrink-0">
+                                    <button
+                                        onClick={() => openEditExpense(exp)}
+                                        className="p-2 hover:bg-[var(--bg)] text-[var(--text-muted)] hover:text-amber-500 rounded-lg transition-all"
+                                    >
+                                        <Edit2 className="w-4 h-4" />
+                                    </button>
+                                    <button
+                                        onClick={(e) => handleDeleteExpense(exp.id, e)}
+                                        className="p-2 hover:bg-rose-500/10 text-[var(--text-muted)] hover:text-rose-500 rounded-lg transition-all"
+                                    >
+                                        <Trash2 className="w-4 h-4" />
+                                    </button>
                                 </div>
                             </div>
-                            <div className="flex items-center gap-3">
-                                <div className="text-right">
-                                    <span className="font-black text-lg text-[var(--text-main)]">{formatCurrency(exp.amount)}</span>
+
+                            <div className="flex items-center justify-between gap-4">
+                                <div className="flex-1 flex flex-col justify-center bg-[var(--bg)]/40 p-4 rounded-2xl border border-[var(--border)]/50">
+                                    <div className="flex items-center justify-between mb-1.5">
+                                        <p className="text-[8px] uppercase font-black text-amber-500/80 tracking-[0.15em]">Costo Spesa</p>
+                                        <div className="px-2 py-0.5 bg-[var(--surface-variant)] border border-[var(--border)] rounded-md text-[8px] font-black text-[var(--text-muted)] uppercase">
+                                            {category?.label || 'Generica'}
+                                        </div>
+                                    </div>
+                                    <div className="text-2xl font-black text-[var(--text-main)] tracking-tight flex items-baseline gap-1">
+                                        <span className="text-[10px] font-bold text-[var(--text-muted)]">{currency}</span>
+                                        <span>{exp.amount.toLocaleString('it-IT', { minimumFractionDigits: 2 })}</span>
+                                    </div>
                                 </div>
-                                <button onClick={(e) => handleDeleteExpense(exp.id, e)} className="p-2 w-8 h-8 flex items-center justify-center opacity-0 group-hover:opacity-100 bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white rounded-lg transition-all shrink-0">
-                                    <Trash2 className="w-4 h-4" />
-                                </button>
+
+                                {exp.receiptAttachment && (
+                                    <button 
+                                        onClick={(e) => { e.stopPropagation(); setViewingReceipt(exp.receiptAttachment!); }}
+                                        className="w-12 h-12 bg-emerald-500/10 text-emerald-500 rounded-2xl border border-emerald-500/20 hover:bg-emerald-500/20 transition-all flex items-center justify-center shadow-sm shrink-0"
+                                        title="Vedi Scontrino"
+                                    >
+                                        <Paperclip className="w-5 h-5" />
+                                    </button>
+                                )}
                             </div>
                         </div>
                     );
