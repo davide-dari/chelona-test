@@ -165,6 +165,16 @@ export default function App() {
   const [autoFormStep, setAutoFormStep] = useState(0);
   const [pendingImportModule, setPendingImportModule] = useState<Module | null>(null);
 
+
+  const [availableUpdate, setAvailableUpdate] = useState<UpdateInfo | null>(null);
+  const [updateProgress, setUpdateProgress] = useState<number | null>(null);
+  const [spesaSubMenu, setSpesaSubMenu] = useState(false);
+  const [isArchiveOpen, setIsArchiveOpen] = useState(false);
+  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+    const saved = localStorage.getItem('lifemod_theme');
+    return (saved as 'light' | 'dark') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+  });
+
   // Banking-Style Auto-Lock: listen for app background/minimize events
   useEffect(() => {
     console.log('[App] Initializing Lifecycle Listener');
@@ -230,7 +240,10 @@ export default function App() {
 
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
-  }, []);
+  }, [
+    // no specific dependencies here as we only want to listen once, 
+    // but the interior functions need the setters which are stable
+  ]);
 
   // Helper to push state to history when a view opens
   const syncHistory = React.useCallback(() => {
@@ -266,7 +279,6 @@ export default function App() {
         window.history.pushState(currentState, '');
       } else if (historyState) {
         // If everything is closed and we have a state, we might want to stay at root
-        // But popstate usually handles going back to null.
       }
     }
   }, [
@@ -278,14 +290,6 @@ export default function App() {
   useEffect(() => {
     syncHistory();
   }, [syncHistory]);
-  const [availableUpdate, setAvailableUpdate] = useState<UpdateInfo | null>(null);
-  const [updateProgress, setUpdateProgress] = useState<number | null>(null);
-  const [spesaSubMenu, setSpesaSubMenu] = useState(false);
-  const [isArchiveOpen, setIsArchiveOpen] = useState(false);
-  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
-    const saved = localStorage.getItem('lifemod_theme');
-    return (saved as 'light' | 'dark') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
-  });
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
