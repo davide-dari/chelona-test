@@ -149,7 +149,8 @@ export default function App() {
   const [isBioSupported, setIsBioSupported] = useState(false);
   const [isBioEnabled, setIsBioEnabled] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [isSandboxMode, setIsSandboxMode] = useState(true);
+  // isSandboxMode removed as per user request
+
   const [bioError, setBioError] = useState<string | null>(null);
   const [isScanning, setIsScanning] = useState(false);
   const [isToolsOpen, setIsToolsOpen] = useState(false);
@@ -940,7 +941,7 @@ export default function App() {
           </div>
           <div>
             <h1 className="text-xl font-black tracking-tight text-[var(--text-main)]">Chelona</h1>
-            <p className="text-[10px] font-bold text-[var(--accent)] uppercase tracking-widest">{isSandboxMode ? 'Sandbox' : 'v1.6.0'}</p>
+            <p className="text-[10px] font-bold text-[var(--accent)] uppercase tracking-widest">v1.7.12</p>
           </div>
         </div>
         <button onClick={() => setIsSidebarOpen(false)} className="lg:hidden p-2 text-[var(--text-muted)] hover:bg-[var(--bg)] rounded-lg">
@@ -1095,8 +1096,8 @@ export default function App() {
                 pinnedCategoryIds={pinnedCategoryIds}
                 pinnedToolIds={pinnedToolIds}
                 onUpdateWidgets={handleUpdateWidgets}
-                isSandboxMode={isSandboxMode}
-                onToggleSandbox={setIsSandboxMode}
+                // isSandboxMode removed
+
                 theme={theme}
                 onToggleTheme={toggleTheme}
               />

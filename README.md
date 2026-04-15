@@ -23,7 +23,8 @@ Il design di Chelona si basa sulla nuova estetica **"Oasis"**: calma, pulita e p
 - **Crittografia Locale**: Ogni spesa, nota o PDF è crittografato *prima* di essere salvato sul dispositivo.
 - **Biometria Integrata**: Sblocco rapido tramite impronta digitale o FaceID senza sacrificare la chiave AES Master.
 - **Auto-Lock Intelligente**: Chiusura ermetica dell'app dopo inattività o alla chiusura.
-- **Modalità "Scusa" (Sandbox)**: Un profilo finto attivabile al volo per quando devi mostrare l'app a qualcuno in pubblico.
+- **Navigazione con Gesture**: Supporto completo alle gesture native di Android (indietro/avanti) integrate con lo storico dell'app.
+
 
 ### 💸 Gestione Spese Avanzata
 - **Dashboard Analitica**: Grafici dell'andamento mensile e gestione dei budget.

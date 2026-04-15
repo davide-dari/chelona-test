@@ -234,33 +234,42 @@ export const GenericCard = ({ module, onDelete, onEdit, onShare, dragHandleProps
   return (
     <>
       <ModuleWrapper module={module} onDelete={onDelete} onEdit={onEdit} dragHandleProps={dragHandleProps}>
-        <div className="flex flex-col gap-3">
-          <div 
-            className="bg-[var(--bg)] p-3 rounded-2xl border border-[var(--border)] overflow-hidden relative group/content shadow-inner cursor-pointer hover:border-[var(--accent)]/50 transition-all active:scale-[0.98]"
-            onClick={() => setShowFullNote(true)}
-            title="Clicca per leggere tutto"
-          >
-            <p className="text-[13px] text-[var(--text-main)] whitespace-pre-wrap leading-relaxed font-medium line-clamp-3 relative z-10">{module.content}</p>
-            <div className="absolute bottom-0 left-0 right-0 h-6 bg-gradient-to-t from-[var(--bg)] to-transparent pointer-events-none" />
+        <div 
+          className="flex flex-col gap-3 cursor-pointer group/card hover:bg-[var(--surface-variant)] transition-all p-4 -m-4 rounded-[2rem] active:scale-[0.98] h-full"
+          onClick={() => setShowFullNote(true)}
+        >
+          <div className="flex items-start justify-between">
+            <div className="p-2.5 bg-amber-500/10 rounded-2xl border border-amber-500/20 text-amber-600 shrink-0">
+              <StickyNote className="w-5 h-5" />
+            </div>
+            <button
+              onClick={(e) => { e.stopPropagation(); onShare(module); }}
+              className="p-2 hover:bg-[var(--bg)] text-[var(--text-muted)] hover:text-[var(--info)] rounded-xl transition-all"
+            >
+              <QrCode className="w-4 h-4" />
+            </button>
+          </div>
+
+          <div className="flex-1 min-h-[60px] flex flex-col justify-center">
+            <p className="text-[14px] text-[var(--text-main)] font-semibold line-clamp-3 leading-relaxed">
+              {module.content || <span className="text-[var(--text-muted)] italic font-normal text-xs">Nessun contenuto</span>}
+            </p>
           </div>
           
-          <div className="pt-2 border-t border-[var(--border)] flex items-center justify-between">
+          <div className="pt-3 border-t border-[var(--border)] flex items-center justify-between">
             {module.date ? (
-              <div className="flex items-center gap-1.5 text-[9px] font-bold uppercase text-[var(--danger)]">
+              <div className="flex items-center gap-1.5 text-[9px] font-black uppercase text-[var(--danger)] bg-[var(--danger-bg)]/20 px-2 py-1 rounded-lg">
                 <Clock className="w-3 h-3" />
                 <span>{module.date}</span>
               </div>
             ) : (
-              <div className="text-[9px] font-bold uppercase text-[var(--text-muted)]">
-                Nota Libera
+              <div className="text-[9px] font-black uppercase text-[var(--text-muted)] tracking-widest px-1">
+                Appunto
               </div>
             )}
-            <button
-              onClick={() => onShare(module)}
-              className="p-2 bg-[var(--info-bg)] hover:bg-[var(--info)]/20 text-[var(--info)] border border-[var(--info)]/30 rounded-lg transition-colors"
-            >
-              <QrCode className="w-3.5 h-3.5" />
-            </button>
+            <div className="text-[var(--text-muted)] group-hover/card:text-[var(--accent)] transition-colors">
+              <ChevronRight className="w-4 h-4" />
+            </div>
           </div>
         </div>
       </ModuleWrapper>

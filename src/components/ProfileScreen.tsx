@@ -27,8 +27,6 @@ interface ProfileScreenProps {
   pinnedCategoryIds: string[];
   pinnedToolIds: string[];
   onUpdateWidgets: (catIds: string[], toolIds: string[]) => void;
-  isSandboxMode: boolean;
-  onToggleSandbox: (val: boolean) => void;
   theme: 'light' | 'dark';
   onToggleTheme: () => void;
 }
@@ -52,8 +50,6 @@ export function ProfileScreen({
   pinnedCategoryIds,
   pinnedToolIds,
   onUpdateWidgets,
-  isSandboxMode,
-  onToggleSandbox,
   theme,
   onToggleTheme
 }: ProfileScreenProps) {
@@ -360,22 +356,7 @@ export function ProfileScreen({
                   )}
                 </div>
 
-                {/* MODALITÀ SCUSA (SANDBOX) */}
-                <div className="flex items-center gap-3 pt-2">
-                  <div className="w-10 h-10 bg-indigo-500/10 rounded-2xl flex items-center justify-center text-indigo-600 shadow-inner shrink-0">
-                    <ShieldCheck className="w-5 h-5" />
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="text-base font-bold text-[var(--text-main)] text-indigo-600 leading-tight">Modalità Scusa</h3>
-                    <p className="text-[10px] text-[var(--text-muted)] font-medium leading-relaxed mt-0.5">Livello di dati finti per privacy in pubblico.</p>
-                  </div>
-                  <button
-                    onClick={() => onToggleSandbox(!isSandboxMode)}
-                    className={`w-14 h-8 rounded-full relative transition-all duration-300 ${isSandboxMode ? 'bg-indigo-600' : 'bg-[var(--border)]'}`}
-                  >
-                    <div className={`absolute top-1 w-6 h-6 rounded-full bg-white shadow-sm transition-all duration-300 ${isSandboxMode ? 'right-1' : 'left-1'}`} />
-                  </button>
-                </div>
+                {/* MODALITÀ SCUSA RIMOUSA */}
                 {isBioEnabled && (
                   <div className="mt-4 p-4 bg-emerald-500/5 rounded-2xl border border-emerald-500/10 flex items-center gap-3">
                     <ShieldCheck className="w-5 h-5 text-emerald-500" />
