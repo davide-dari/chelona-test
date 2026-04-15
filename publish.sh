@@ -71,7 +71,7 @@ RELEASE_JSON=$(curl -s -X POST \
   -d "{
     \"tag_name\": \"$TAG\",
     \"name\": \"Chelona $TAG\",
-    \"body\": \"🚀 **Chelona v$VERSION** - Bugfixes & Miglioramenti\n\n### ✨ Novità in questa release:\n- **🎤 Ricerca Vocale Risolta**: Ripristinato il permesso di registrazione audio per l'API di riconoscimento vocale Web su Android.\n- **🎨 UI del Profilo Compattata**: La schermata Profilo è ora più pulita e compatta. Risolto un bug di sovrapposizione in cui il pulsante *Blocca App* spariva dietro la barra di navigazione inferiore.\n- **📸 Colori dello Scanner Perfetti**: La normalizzazione adattiva dell'AI ora conserva fedelmente lo spettro cromatico originale durante la rimozione automatica delle ombre. I filtri *Nitidezza* e *Originale* sono incredibilmente più naturali.\n\n*Rilasciato con ❤️ dal Chelona Deploy Script.*\",
+    \"body\": \"🚀 **Chelona v$VERSION** - Nuove Gesture e Navigazione\n\n### ✨ Novità in questa release:\n- **🔙 Gesture Android Native**: Implementato il supporto completo alle gesture di sistema (indietro/avanti). Ora puoi scorrere dai bordi per chiudere i modali e navigare tra le viste.\n- **🔄 Sincronizzazione Cronologia**: Integrazione con la History API per una navigazione fluida e intuitiva.\n- **🎨 Miglioramenti UI**: Ottimizzazione della gestione dei modali e dei sub-menu.\n\n*Rilasciato con ❤️ dal Chelona Deploy Script.*\",
     \"draft\": false,
     \"prerelease\": false
   }")

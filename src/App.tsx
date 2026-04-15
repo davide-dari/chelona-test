@@ -168,11 +168,10 @@ export default function App() {
   // Banking-Style Auto-Lock: listen for app background/minimize events
   useEffect(() => {
     console.log('[App] Initializing Lifecycle Listener');
-    let listenerPromise: Promise<any | { remove: () => void }> | null = null;
     
     // Check if App plugin is available and has the required methods
     if (CapApp && typeof CapApp.addListener === 'function') {
-      const listener = CapApp.addListener('appStateChange', ({ isActive }) => {
+      const stateListener = CapApp.addListener('appStateChange', ({ isActive }) => {
         console.log('[App] State changed, isActive:', isActive);
         if (!isActive) {
           console.log('[App] Backgrounding: Locking application for security.');
@@ -185,13 +184,100 @@ export default function App() {
         }
       });
       
+      // Android Back Button / Gesture handling
+      const backListener = CapApp.addListener('backButton', ({ canGoBack }) => {
+        console.log('[App] Back button pressed, canGoBack history:', canGoBack);
+        if (window.history.length > 1) {
+          window.history.back();
+        } else {
+          // Default behavior (exit app) if we are at the root
+          CapApp.exitApp();
+        }
+      });
+      
       return () => {
-        listener.then(l => l.remove());
+        stateListener.then(l => l.remove());
+        backListener.then(l => l.remove());
       };
     } else {
       console.warn('[App] Capacitor App plugin not available or addListener missing.');
     }
   }, []);
+
+  // History API Sync (Back/Forward Gestures)
+  useEffect(() => {
+    const handlePopState = (event: PopStateEvent) => {
+      console.log('[App] popstate event:', event.state);
+      const state = event.state || {};
+      
+      // Update React states based on history state
+      setIsToolsOpen(!!state.tools);
+      setActiveToolId(state.toolId || null);
+      setIsAdding(!!state.adding);
+      setEditingModuleId(state.editingId || null);
+      setIsProfileOpen(!!state.profile);
+      setIsArchiveOpen(!!state.archive);
+      setSelectedType(state.type || null);
+      setSelectedFolderId(state.folderId || null);
+      setIsSidebarOpen(!!state.sidebar);
+      setEditingAutoModule(state.autoEdit || null);
+      setEditingSplitModule(state.splitEdit || null);
+      setEditingSingleExpenseModule(state.singleExpenseEdit || null);
+      setEditingWalletModule(state.walletEdit || null);
+      setModuleToDelete(state.deleteConfirm || null);
+      if (!state.adding) setFormData({});
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  // Helper to push state to history when a view opens
+  const syncHistory = React.useCallback(() => {
+    const currentState = {
+      tools: isToolsOpen,
+      toolId: activeToolId,
+      adding: isAdding,
+      editingId: editingModuleId,
+      profile: isProfileOpen,
+      archive: isArchiveOpen,
+      type: selectedType,
+      folderId: selectedFolderId,
+      sidebar: isSidebarOpen,
+      autoEdit: editingAutoModule,
+      splitEdit: editingSplitModule,
+      singleExpenseEdit: editingSingleExpenseModule,
+      walletEdit: editingWalletModule,
+      deleteConfirm: moduleToDelete
+    };
+
+    // Check if current history state matches to avoid redundant pushes
+    const historyState = window.history.state;
+    const hasChanges = !historyState || JSON.stringify(historyState) !== JSON.stringify(currentState);
+    
+    const isAnyOpen = isToolsOpen || activeToolId || isAdding || editingModuleId || isProfileOpen || 
+                      isArchiveOpen || selectedType || selectedFolderId || isSidebarOpen || 
+                      editingAutoModule || editingSplitModule || editingSingleExpenseModule || 
+                      editingWalletModule || moduleToDelete;
+
+    if (hasChanges) {
+      if (isAnyOpen) {
+        console.log('[App] Pushing history state');
+        window.history.pushState(currentState, '');
+      } else if (historyState) {
+        // If everything is closed and we have a state, we might want to stay at root
+        // But popstate usually handles going back to null.
+      }
+    }
+  }, [
+    isToolsOpen, activeToolId, isAdding, editingModuleId, isProfileOpen, isArchiveOpen, 
+    selectedType, selectedFolderId, isSidebarOpen, editingAutoModule, editingSplitModule, 
+    editingSingleExpenseModule, editingWalletModule, moduleToDelete
+  ]);
+
+  useEffect(() => {
+    syncHistory();
+  }, [syncHistory]);
   const [availableUpdate, setAvailableUpdate] = useState<UpdateInfo | null>(null);
   const [updateProgress, setUpdateProgress] = useState<number | null>(null);
   const [spesaSubMenu, setSpesaSubMenu] = useState(false);
