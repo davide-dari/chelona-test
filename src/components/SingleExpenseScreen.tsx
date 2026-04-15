@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Wallet, Receipt, Calendar, Tag, FileText, Camera, Paperclip, Check, X, Trash2, Eye, RefreshCw } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { SingleExpenseModule } from '../types';
+import { EXPENSE_CATEGORIES, CURRENCIES } from '../constants/expenses';
 import { DocumentScanner } from './DocumentScanner';
 import { DocumentViewer } from './DocumentViewer';
 
@@ -12,17 +13,7 @@ interface SingleExpenseScreenProps {
   onSaveToSandbox?: (title: string, base64: string) => Promise<void>;
 }
 
-const CATEGORIES = [
-  { id: 'food', label: 'Alimentari', icon: '🛒', color: 'bg-orange-500' },
-  { id: 'transport', label: 'Trasporti', icon: '🚗', color: 'bg-blue-500' },
-  { id: 'housing', label: 'Casa', icon: '🏠', color: 'bg-emerald-500' },
-  { id: 'health', label: 'Salute', icon: '🏥', color: 'bg-red-500' },
-  { id: 'entertainment', label: 'Svago', icon: '🎬', color: 'bg-purple-500' },
-  { id: 'shopping', label: 'Shopping', icon: '🛍️', color: 'bg-pink-500' },
-  { id: 'other', label: 'Altro', icon: '✨', color: 'bg-gray-500' },
-];
 
-const CURRENCIES = ['EUR', 'USD', 'GBP', 'CHF'];
 
 export const SingleExpenseScreen = ({ module, onClose, onSave, onSaveToSandbox }: SingleExpenseScreenProps) => {
   const [formData, setFormData] = useState<SingleExpenseModule>({
@@ -140,7 +131,7 @@ export const SingleExpenseScreen = ({ module, onClose, onSave, onSaveToSandbox }
                 onChange={e => setFormData(prev => ({ ...prev, category: e.target.value }))}
                 className="w-full p-5 bg-[var(--card-bg)] border border-[var(--border)] rounded-3xl outline-none focus:border-[var(--accent)] transition-all font-bold text-[var(--text-main)] appearance-none"
               >
-                {CATEGORIES.map(c => (
+                {EXPENSE_CATEGORIES.map(c => (
                   <option key={c.id} value={c.id}>{c.icon} {c.label}</option>
                 ))}
               </select>

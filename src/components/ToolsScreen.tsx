@@ -182,7 +182,7 @@ export const ToolsScreen = ({ showToast, onSaveToSandbox, initialToolId, onReset
     }
   };
 
-  const CATEGORIES = [
+  const TOOL_CATEGORIES = [
     { id: 'all', label: 'Tutti', icon: ClipboardList },
     { id: 'pdf', label: 'PDF', icon: FileDown },
     { id: 'utility', label: 'Vario', icon: Settings2 },
@@ -202,7 +202,7 @@ export const ToolsScreen = ({ showToast, onSaveToSandbox, initialToolId, onReset
             {/* Category Pills - Sticky */}
             <div className="px-4 mb-6 sticky top-0 z-20 bg-[var(--bg)] pb-2 overflow-x-auto scrollbar-none">
               <div className="flex bg-[var(--card-bg)] p-1 rounded-2xl border border-[var(--border)] shadow-sm min-w-max">
-                {CATEGORIES.map(cat => (
+                {TOOL_CATEGORIES.map(cat => (
                   <button
                     key={cat.id}
                     onClick={() => setCategory(cat.id as ToolCategory)}

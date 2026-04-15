@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { CreditCard, ShieldCheck, Wallet, Fingerprint, Plus, Trash2, Calendar, DollarSign, Pencil, StickyNote, Copy, Check, GripVertical, Car, Wrench, AlertCircle, FileText, QrCode, FileDown, X, Clock, Eye, Lock, ChevronRight, Bell, BellOff, Gauge, Users, Paperclip } from 'lucide-react';
 import { Module, GenericModule, AutoModule, DocumentModule, SplitModule, SingleExpenseModule, WalletModule } from '../types';
+import { EXPENSE_CATEGORIES } from '../constants/expenses';
 import { motion, AnimatePresence } from 'motion/react';
 import { CAR_BRANDS } from '../utils/carBrands';
 import JSZip from 'jszip';
@@ -1098,7 +1099,7 @@ export const SingleExpenseCard = ({ module, onDelete, onEdit, onShare, dragHandl
             <div className="flex items-center justify-between mb-1">
               <p className="text-[9px] uppercase font-black text-amber-500/80 tracking-[0.15em]">Costo Spesa</p>
               <div className="px-2 py-0.5 bg-[var(--surface-variant)] border border-[var(--border)] rounded-md text-[8px] font-black text-[var(--text-muted)] uppercase">
-                {CATEGORIES.find(c => c.id === module.category)?.label || 'Altro'}
+                {EXPENSE_CATEGORIES.find(c => c.id === module.category)?.label || 'Altro'}
               </div>
             </div>
             <div className="text-2xl font-black text-[var(--text-main)] tracking-tight flex items-baseline gap-1">

@@ -71,7 +71,7 @@ RELEASE_JSON=$(curl -s -X POST \
   -d "{
     \"tag_name\": \"$TAG\",
     \"name\": \"Chelona $TAG\",
-    \"body\": \"🚀 **Chelona v$VERSION** - Nuove Gesture e Navigazione\n\n### ✨ Novità in questa release:\n- **🔙 Gesture Android Native**: Implementato il supporto completo alle gesture di sistema (indietro/avanti). Ora puoi scorrere dai bordi per chiudere i modali e navigare tra le viste.\n- **🔄 Sincronizzazione Cronologia**: Integrazione con la History API per una navigazione fluida e intuitiva.\n- **🎨 Miglioramenti UI**: Ottimizzazione della gestione dei modali e dei sub-menu.\n\n*Rilasciato con ❤️ dal Chelona Deploy Script.*\",
+    \"body\": \"🚀 **Chelona v$VERSION** - Stability & Bug Fixes\n\n### ✨ Novità in questa release:\n- **🩹 Fix Startup Crash**: Risolto un errore critico di rendering (ReferenceError: CATEGORIES) all'apertura dell'app.\n- **📱 Safe Area Optimization**: Corretta la sovrapposizione della status bar su Android per una UI più pulita.\n- **💰 Expense Details Fix**: Risolto il bug della schermata bianca durante la visualizzazione dei dettagli spesa.\n- **🧹 Sandbox Cleanup**: Rimossa definitivamente la modalità Sandbox legacy per una navigazione semplificata.\n\n*Rilasciato con ❤️ dal Chelona Deploy Script.*\",
     \"draft\": false,
     \"prerelease\": false
   }")
