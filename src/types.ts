@@ -107,6 +107,7 @@ export interface SingleExpenseModule extends BaseModule {
   type: 'single-expense';
   amount: number;
   date: string;
+  expiryDate?: string; // Optional expiry/due date
   category: string;
   description: string;
   attachment?: string; // base64 PDF/Image

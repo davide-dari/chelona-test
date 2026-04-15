@@ -129,7 +129,7 @@ export const SingleExpenseScreen = ({ module, onClose, onSave, onSaveToSandbox }
             />
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {/* Category */}
             <div className="space-y-2">
               <label className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] ml-1">
@@ -149,13 +149,26 @@ export const SingleExpenseScreen = ({ module, onClose, onSave, onSaveToSandbox }
             {/* Date */}
             <div className="space-y-2">
               <label className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] ml-1">
-                <Calendar className="w-3.5 h-3.5" /> Data
+                <Calendar className="w-3.5 h-3.5" /> Data Spesa
               </label>
               <input 
                 type="date"
                 value={formData.date}
                 onChange={e => setFormData(prev => ({ ...prev, date: e.target.value }))}
                 className="w-full p-5 bg-[var(--card-bg)] border border-[var(--border)] rounded-3xl outline-none focus:border-[var(--accent)] transition-all font-bold text-[var(--text-main)]"
+              />
+            </div>
+
+            {/* Expiry Date */}
+            <div className="space-y-2">
+              <label className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-amber-500 ml-1">
+                <Calendar className="w-3.5 h-3.5" /> Scadenza (Opz.)
+              </label>
+              <input 
+                type="date"
+                value={formData.expiryDate || ''}
+                onChange={e => setFormData(prev => ({ ...prev, expiryDate: e.target.value }))}
+                className="w-full p-5 bg-[var(--card-bg)] border border-[var(--border)] rounded-3xl outline-none focus:border-amber-500 transition-all font-bold text-[var(--text-main)]"
               />
             </div>
           </div>

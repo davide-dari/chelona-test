@@ -1063,11 +1063,21 @@ export const SingleExpenseCard = ({ module, onDelete, onEdit, onShare, dragHandl
                 <h4 className="font-bold text-[15px] text-[var(--text-main)] leading-snug truncate pr-2">
                   {module.description || 'Spesa'}
                 </h4>
-                <div className="flex items-center gap-1.5 mt-0.5">
-                  <Calendar className="w-3 h-3 text-[var(--text-muted)]" />
-                  <p className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-tight">
-                    {new Date(module.date).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' })}
-                  </p>
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-0.5">
+                  <div className="flex items-center gap-1">
+                    <Calendar className="w-3 h-3 text-[var(--text-muted)]" />
+                    <p className="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-tight">
+                      {new Date(module.date).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                    </p>
+                  </div>
+                  {module.expiryDate && (
+                    <div className="flex items-center gap-1 bg-amber-500/10 px-1.5 py-0.5 rounded-lg border border-amber-500/20">
+                      <Clock className="w-2.5 h-2.5 text-amber-600" />
+                      <p className="text-[9px] font-black text-amber-600 uppercase tracking-tighter">
+                        Scade: {new Date(module.expiryDate).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' })}
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -1085,7 +1095,12 @@ export const SingleExpenseCard = ({ module, onDelete, onEdit, onShare, dragHandl
           </div>
 
           <div className="flex-1 flex flex-col justify-center my-3 bg-[var(--bg)]/40 p-3 rounded-2xl border border-[var(--border)]/50">
-            <p className="text-[9px] uppercase font-black text-amber-500/80 tracking-[0.15em] mb-1">Importo Totale</p>
+            <div className="flex items-center justify-between mb-1">
+              <p className="text-[9px] uppercase font-black text-amber-500/80 tracking-[0.15em]">Costo Spesa</p>
+              <div className="px-2 py-0.5 bg-[var(--surface-variant)] border border-[var(--border)] rounded-md text-[8px] font-black text-[var(--text-muted)] uppercase">
+                {CATEGORIES.find(c => c.id === module.category)?.label || 'Altro'}
+              </div>
+            </div>
             <div className="text-2xl font-black text-[var(--text-main)] tracking-tight flex items-baseline gap-1">
               <span className="text-sm font-bold text-[var(--text-muted)]">{module.currency || 'EUR'}</span>
               <span>{module.amount.toLocaleString('it-IT', { minimumFractionDigits: 2 })}</span>
