@@ -9,11 +9,14 @@ import { DocumentScanner } from './DocumentScanner';
 import { PDFDocument, rgb, degrees } from 'pdf-lib';
 import { Module } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
+import mammoth from 'mammoth';
+import { jsPDF } from 'jspdf';
 
 export const TOOLS_PDF = [
   { id: 'merge', title: 'Unisci PDF', desc: 'Unisci più documenti in uno.', icon: Layers, color: 'text-rose-500', bg: 'bg-rose-500/10', category: 'pdf' },
   { id: 'img2pdf', title: 'JPG in PDF', desc: 'Converti immagini in PDF.', icon: ImageIcon, color: 'text-[var(--accent)]', bg: 'bg-[var(--accent)]/10', category: 'pdf' },
   { id: 'rotate', title: 'Ruota PDF', desc: 'Cambia orientamento alle pagine.', icon: RotateCw, color: 'text-blue-500', bg: 'bg-blue-500/10', category: 'pdf' },
+  { id: 'docx2pdf', title: 'Word in PDF', desc: 'Converti documenti .docx in PDF.', icon: FileDown, color: 'text-blue-600', bg: 'bg-blue-600/10', category: 'pdf' },
 ];
 
 export const TOOLS_UTILITY = [
@@ -153,6 +156,45 @@ export const ToolsScreen = ({ showToast, onSaveToSandbox, initialToolId, onReset
     setIsProcessing(false);
   };
 
+  const processWord2Pdf = async (saveToSandbox: boolean) => {
+    if (files.length === 0) return showToast("Seleziona un file .docx.", 'error');
+    setIsProcessing(true);
+    try {
+      const arrayBuffer = await files[0].arrayBuffer();
+      const result = await mammoth.convertToHtml({ arrayBuffer });
+      const html = result.value;
+
+      const doc = new jsPDF();
+      
+      // Basic text extraction if html translation is too complex for jspdf without extra plugins
+      // For a better experience, we use a hidden div to render and then capture, 
+      // but here we'll try a simpler approach first or use doc.text with stripped tags
+      const tempDiv = document.createElement('div');
+      tempDiv.innerHTML = html;
+      const text = tempDiv.innerText || tempDiv.textContent || "";
+
+      const margin = 10;
+      const pageHeight = doc.internal.pageSize.height;
+      const splitText = doc.splitTextToSize(text, 180);
+      doc.text(splitText, margin, 20);
+
+      const pdfOutput = doc.output('arraybuffer');
+      const uint8Array = new Uint8Array(pdfOutput);
+
+      if (saveToSandbox && onSaveToSandbox) {
+        onSaveToSandbox('Word in PDF', `data:application/pdf;base64,${bytesToBase64(uint8Array)}`);
+      } else {
+        downloadFile(uint8Array, 'documento.pdf', 'application/pdf');
+        showToast('PDF scaricato con successo!');
+      }
+      reset();
+    } catch (e) {
+      console.error(e);
+      showToast("Errore durante la conversione del file Word.", 'error');
+    }
+    setIsProcessing(false);
+  };
+
   const downloadFile = (bytes: Uint8Array, filename: string, type: string) => {
     const blob = new Blob([bytes as BlobPart], { type });
     const url = URL.createObjectURL(blob);
@@ -173,12 +215,13 @@ export const ToolsScreen = ({ showToast, onSaveToSandbox, initialToolId, onReset
     if (onReset) onReset();
   };
 
-  const executeTool = (saveToSandbox: boolean = false) => {
-    switch(activeTool) {
-      case 'merge': return processMerge(saveToSandbox);
-      case 'img2pdf': return processImg2Pdf(saveToSandbox);
-      case 'rotate': return processRotate(saveToSandbox);
-      default: return showToast('Questo strumento è in fase di sviluppo (offline).', 'info');
+  const executeTool = (saveToSandbox: boolean) => {
+    switch (activeTool) {
+      case 'merge': processMerge(saveToSandbox); break;
+      case 'img2pdf': processImg2Pdf(saveToSandbox); break;
+      case 'rotate': processRotate(saveToSandbox); break;
+      case 'docx2pdf': processWord2Pdf(saveToSandbox); break;
+      default: showToast('Questo strumento è in fase di sviluppo (offline).', 'info'); break;
     }
   };
 
@@ -312,7 +355,7 @@ export const ToolsScreen = ({ showToast, onSaveToSandbox, initialToolId, onReset
                         <input
                           type="file"
                           multiple
-                          accept={activeTool === 'img2pdf' ? 'image/jpeg, image/png' : 'application/pdf'}
+                          accept={activeTool === 'img2pdf' ? 'image/jpeg, image/png' : activeTool === 'docx2pdf' ? '.docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document' : 'application/pdf'}
                           onChange={handleFileChange}
                           className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                         />

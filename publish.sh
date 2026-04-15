@@ -71,7 +71,7 @@ RELEASE_JSON=$(curl -s -X POST \
   -d "{
     \"tag_name\": \"$TAG\",
     \"name\": \"Chelona $TAG\",
-    \"body\": \"🚀 **Chelona v$VERSION** - Stability & Bug Fixes\n\n### ✨ Novità in questa release:\n- **🩹 Fix Startup Crash**: Risolto un errore critico di rendering (ReferenceError: CATEGORIES) all'apertura dell'app.\n- **📱 Safe Area Optimization**: Corretta la sovrapposizione della status bar su Android per una UI più pulita.\n- **💰 Expense Details Fix**: Risolto il bug della schermata bianca durante la visualizzazione dei dettagli spesa.\n- **🧹 Sandbox Cleanup**: Rimossa definitivamente la modalità Sandbox legacy per una navigazione semplificata.\n\n*Rilasciato con ❤️ dal Chelona Deploy Script.*\",
+    \"body\": \"🚀 **Chelona v$VERSION** - New Tools & Quick Actions\n\n### ✨ Novità in questa release:\n- **📄 Word to PDF**: Aggiunto un convertitore offline da .docx a PDF negli strumenti.\n- **➕ Quick Add Buttons**: Aggiunti pulsanti rapidi in Dashboard e nelle categorie per creare nuovi moduli con un solo click.\n- **🎨 UI Refinement**: Migliorato il layout delle card Spese con più spazi bianchi e una gerarchia visiva più chiara.\n\n*Rilasciato con ❤️ dal Chelona Deploy Script.*\",
     \"draft\": false,
     \"prerelease\": false
   }")

@@ -1095,25 +1095,25 @@ export const SingleExpenseCard = ({ module, onDelete, onEdit, onShare, dragHandl
             )}
           </div>
 
-          <div className="flex-1 flex flex-col justify-center my-3 bg-[var(--bg)]/40 p-3 rounded-2xl border border-[var(--border)]/50">
-            <div className="flex items-center justify-between mb-1">
+          <div className="flex-1 flex flex-col justify-center my-5 bg-[var(--bg)]/40 p-5 rounded-3xl border border-[var(--border)]/50">
+            <div className="flex items-center justify-between mb-2.5">
               <p className="text-[9px] uppercase font-black text-amber-500/80 tracking-[0.15em]">Costo Spesa</p>
-              <div className="px-2 py-0.5 bg-[var(--surface-variant)] border border-[var(--border)] rounded-md text-[8px] font-black text-[var(--text-muted)] uppercase">
+              <div className="px-2.5 py-1 bg-[var(--surface-variant)] border border-[var(--border)] rounded-lg text-[8px] font-black text-[var(--text-muted)] uppercase">
                 {EXPENSE_CATEGORIES.find(c => c.id === module.category)?.label || 'Altro'}
               </div>
             </div>
-            <div className="text-2xl font-black text-[var(--text-main)] tracking-tight flex items-baseline gap-1">
+            <div className="text-3xl font-black text-[var(--text-main)] tracking-tight flex items-baseline gap-1.5">
               <span className="text-sm font-bold text-[var(--text-muted)]">{module.currency || 'EUR'}</span>
               <span>{module.amount.toLocaleString('it-IT', { minimumFractionDigits: 2 })}</span>
             </div>
           </div>
 
-          <div className="mt-2 pt-3 border-t border-[var(--border)] shrink-0" onClick={e => e.stopPropagation()}>
+          <div className="mt-4 pt-4 border-t border-[var(--border)] shrink-0" onClick={e => e.stopPropagation()}>
             <button
               onClick={() => onShare(module)}
-              className="w-full flex items-center justify-center gap-2 py-3 bg-[var(--surface-variant)] hover:bg-[var(--accent)] hover:text-white border border-[var(--border)] rounded-2xl text-[10px] font-bold transition-all shadow-sm"
+              className="w-full flex items-center justify-center gap-2 py-4 bg-[var(--surface-variant)] hover:bg-[var(--accent)] hover:text-white border border-[var(--border)] rounded-2xl text-[10px] font-bold transition-all shadow-sm active:scale-95"
             >
-              <QrCode className="w-4 h-4" />
+              <QrCode className="w-5 h-5 transition-transform group-hover:scale-110" />
               Condividi Spesa
             </button>
           </div>

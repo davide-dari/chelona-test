@@ -1595,21 +1595,36 @@ export default function App() {
                     </div>
                   </div>
                   {selectedType && (
-                    <div className="mt-3 flex items-center justify-center gap-2">
-                       <span className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest px-2">Filtro attivo: {TEMPLATES[selectedType].title}</span>
-                       <button onClick={() => setSelectedType(null)} className="text-[10px] font-bold text-[var(--accent)] hover:underline uppercase tracking-widest">Rimuovi</button>
-                       {selectedType === 'document' && (
-                         <>
-                           <span className="w-1 h-1 bg-[var(--border)] rounded-full mx-1" />
-                           <button 
-                             onClick={() => setIsArchiveOpen(true)}
-                             className="text-[10px] font-bold text-amber-500 hover:text-amber-600 uppercase tracking-widest flex items-center gap-1.5 transition-colors"
-                           >
-                             <BookOpen className="w-3 h-3" />
-                             Archivio Documenti
-                           </button>
-                         </>
-                       )}
+                    <div className="mt-3 flex flex-col items-center gap-4">
+                      <div className="flex items-center justify-center gap-2">
+                         <span className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest px-2">Filtro attivo: {TEMPLATES[selectedType].title}</span>
+                         <button onClick={() => setSelectedType(null)} className="text-[10px] font-bold text-[var(--accent)] hover:underline uppercase tracking-widest">Rimuovi</button>
+                         {selectedType === 'document' && (
+                           <>
+                             <span className="w-1 h-1 bg-[var(--border)] rounded-full mx-1" />
+                             <button 
+                               onClick={() => setIsArchiveOpen(true)}
+                               className="text-[10px] font-bold text-amber-500 hover:text-amber-600 uppercase tracking-widest flex items-center gap-1.5 transition-colors"
+                             >
+                               <BookOpen className="w-3 h-3" />
+                               Archivio Documenti
+                             </button>
+                           </>
+                         )}
+                      </div>
+                      
+                      {/* Specific Add Button for Category */}
+                      <button
+                        onClick={() => {
+                          setFormData({ template: selectedType });
+                          setIsAdding(true);
+                          setAutoFormStep(0);
+                        }}
+                        className="flex items-center gap-2 px-6 py-3 bg-[var(--accent)] text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg shadow-[var(--accent)]/20 hover:scale-[1.02] active:scale-[0.98] transition-all"
+                      >
+                        <Plus className="w-4 h-4" />
+                        Aggiungi {TEMPLATES[selectedType].title}
+                      </button>
                     </div>
                   )}
                 </div>
@@ -1650,6 +1665,26 @@ export default function App() {
                             Ciao, <span className="text-[var(--accent)]">{username}</span>
                           </h2>
                           <p className="text-[var(--text-muted)] font-bold uppercase tracking-[0.2em] text-[10px] mt-2">Sandbox Dashboard</p>
+                        </div>
+                        
+                        {/* Quick Add Actions */}
+                        <div className="flex items-center gap-3 overflow-x-auto pb-2 scrollbar-none">
+                          {Object.entries(TEMPLATES).filter(([key]) => key !== 'none').map(([key, t]) => (
+                            <button
+                              key={`quick-add-${key}`}
+                              onClick={() => {
+                                setFormData({ template: key });
+                                setIsAdding(true);
+                                setAutoFormStep(0);
+                              }}
+                              className="flex items-center gap-2 px-4 py-2.5 bg-[var(--card-bg)] border border-[var(--border)] rounded-2xl hover:border-[var(--accent)] transition-all whitespace-nowrap shadow-sm active:scale-95 group"
+                            >
+                              <div className={`p-1.5 rounded-lg bg-[var(--bg)] ${t.color} group-hover:scale-110 transition-transform`}>
+                                <t.icon className="w-4 h-4" />
+                              </div>
+                              <span className="text-xs font-black text-[var(--text-main)]">Aggiungi {t.title}</span>
+                            </button>
+                          ))}
                         </div>
                       </div>
                     </div>
