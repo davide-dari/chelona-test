@@ -98,6 +98,20 @@ body {
   overflow: hidden;
 }
 
+/* Gestione testate per Safe Area Android/iOS */
+.safe-area-header {
+  padding-top: var(--safe-top) !important;
+  height: auto !important;
+  min-height: calc(5rem + var(--safe-top)) !important;
+  display: flex;
+  align-items: center;
+}
+
+/* Quando un modale è fullscreen, deve comunque rispettare la safe area */
+.fixed.inset-0, .absolute.inset-0 {
+  padding-top: var(--safe-top);
+}
+
 .glass-card {
   background: var(--card-bg);
   backdrop-filter: blur(16px);

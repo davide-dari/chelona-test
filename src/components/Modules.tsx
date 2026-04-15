@@ -1042,44 +1042,54 @@ export const SingleExpenseCard = ({ module, onDelete, onEdit, onShare, dragHandl
     <>
       <ModuleWrapper module={module} onDelete={onDelete} onEdit={onEdit} dragHandleProps={dragHandleProps}>
         <div 
-          className="flex flex-col cursor-pointer group/card hover:bg-[var(--bg)] transition-colors p-3 -m-3 rounded-2xl active:scale-[0.98] h-full"
+          className="flex flex-col cursor-pointer group/card hover:bg-[var(--surface-variant)] transition-all p-4 -m-4 rounded-[2rem] active:scale-[0.98] h-full"
           onClick={() => onEdit(module)}
         >
-          <div className="flex items-center justify-between mb-3 shrink-0">
-            <div className="flex items-center gap-3">
-              <div className={`w-10 h-10 ${theme.bg} rounded-xl flex items-center justify-center border border-[var(--border)] shrink-0`}>
-                <span className="text-lg">{theme.icon}</span>
+          <div className="flex items-start justify-between mb-4 shrink-0">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className={`w-11 h-11 ${theme.bg} rounded-2xl flex items-center justify-center border border-[var(--border)] shrink-0 shadow-sm`}>
+                <span className="text-xl">{theme.icon}</span>
               </div>
               <div className="min-w-0">
-                <h4 className="font-bold text-[14px] text-[var(--text-main)] leading-tight truncate">{module.description || 'Spesa'}</h4>
-                <p className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider">{new Date(module.date).toLocaleDateString()}</p>
+                <h4 className="font-bold text-[15px] text-[var(--text-main)] leading-snug truncate pr-2">
+                  {module.description || 'Spesa'}
+                </h4>
+                <div className="flex items-center gap-1.5 mt-0.5">
+                  <Calendar className="w-3 h-3 text-[var(--text-muted)]" />
+                  <p className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-tight">
+                    {new Date(module.date).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                  </p>
+                </div>
               </div>
             </div>
             {module.attachment && (
-              <button 
-                onClick={(e) => { e.stopPropagation(); setViewingAttachment(module.attachment!); }}
-                className="p-1 px-1.5 bg-emerald-500/10 text-emerald-500 rounded-md border border-emerald-500/20 hover:bg-emerald-500/20 transition-colors"
-                title="Vedi Allegato"
-              >
-                <Paperclip className="w-3.5 h-3.5" />
-              </button>
+              <div className="flex gap-2">
+                <button 
+                  onClick={(e) => { e.stopPropagation(); setViewingAttachment(module.attachment!); }}
+                  className="p-2 bg-emerald-500/10 text-emerald-500 rounded-xl border border-emerald-500/20 hover:bg-emerald-500/20 transition-colors shadow-sm"
+                  title="Vedi Allegato"
+                >
+                  <Paperclip className="w-4 h-4" />
+                </button>
+              </div>
             )}
           </div>
 
-          <div className="flex-1 flex flex-col justify-end mt-2">
-            <p className="text-[10px] uppercase font-black text-amber-500 tracking-[0.1em] mb-1">Importo</p>
-            <div className="text-2xl font-black text-[var(--text-main)] tracking-tight">
-              {formattedAmount}
+          <div className="flex-1 flex flex-col justify-center my-3 bg-[var(--bg)]/40 p-3 rounded-2xl border border-[var(--border)]/50">
+            <p className="text-[9px] uppercase font-black text-amber-500/80 tracking-[0.15em] mb-1">Importo Totale</p>
+            <div className="text-2xl font-black text-[var(--text-main)] tracking-tight flex items-baseline gap-1">
+              <span className="text-sm font-bold text-[var(--text-muted)]">{module.currency || 'EUR'}</span>
+              <span>{module.amount.toLocaleString('it-IT', { minimumFractionDigits: 2 })}</span>
             </div>
           </div>
 
-          <div className="mt-4 pt-3 border-t border-[var(--border)] shrink-0" onClick={e => e.stopPropagation()}>
+          <div className="mt-2 pt-3 border-t border-[var(--border)] shrink-0" onClick={e => e.stopPropagation()}>
             <button
               onClick={() => onShare(module)}
-              className="w-full flex items-center justify-center gap-2 py-2.5 bg-[var(--info-bg)] hover:bg-[var(--info)]/20 text-[var(--info)] border border-[var(--info)]/30 rounded-xl text-[10px] font-bold transition-all shadow-sm"
+              className="w-full flex items-center justify-center gap-2 py-3 bg-[var(--surface-variant)] hover:bg-[var(--accent)] hover:text-white border border-[var(--border)] rounded-2xl text-[10px] font-bold transition-all shadow-sm"
             >
-              <QrCode className="w-3.5 h-3.5" />
-              Condividi
+              <QrCode className="w-4 h-4" />
+              Condividi Spesa
             </button>
           </div>
         </div>

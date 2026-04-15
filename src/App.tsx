@@ -1171,6 +1171,41 @@ export default function App() {
                 onSave={(mod) => { updateModuleDirect(mod); }}
                 onClose={() => setEditingWalletModule(null)}
               />
+            ) : editingSingleExpenseModule || formData.template === 'single-expense' ? (
+              <SingleExpenseScreen
+                module={editingSingleExpenseModule || {
+                  id: generateUUID(),
+                  type: 'single-expense',
+                  title: 'Spesa Singola',
+                  description: '',
+                  amount: 0,
+                  date: new Date().toISOString().substring(0, 10),
+                  category: 'other',
+                  currency: 'EUR',
+                  x: 0, y: 0, w: 2, h: 2
+                }}
+                onClose={() => {
+                  setEditingSingleExpenseModule(null);
+                  setFormData({});
+                  setIsAdding(false);
+                }}
+                onSave={async (updated) => {
+                  if (editingSingleExpenseModule) {
+                    const updatedModules = modules.map(m => m.id === updated.id ? updated : m);
+                    setModules(updatedModules);
+                    await saveAppState(updatedModules, folders);
+                  } else {
+                    const updatedModules = [...modules, updated];
+                    setModules(updatedModules);
+                    await saveAppState(updatedModules, folders);
+                  }
+                  setEditingSingleExpenseModule(null);
+                  setFormData({});
+                  setIsAdding(false);
+                  showToast(editingSingleExpenseModule ? 'Spesa aggiornata!' : 'Spesa creata!', 'success');
+                }}
+                onSaveToSandbox={handleSaveToSandbox}
+              />
             ) : isAdding ? (
               <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="max-w-3xl mx-auto h-full flex flex-col w-full">
                 <div className="flex items-center gap-4 mb-8">
@@ -1219,58 +1254,8 @@ export default function App() {
                     </div>
                   )}
 
-                  {/* Single Expense Screen (Edit/Create) */}
-                  {(editingSingleExpenseModule || formData.template === 'single-expense') && (
-                    <SingleExpenseScreen
-                      module={editingSingleExpenseModule || {
-                        id: generateUUID(),
-                        type: 'single-expense',
-                        title: 'Spesa Singola',
-                        description: '',
-                        amount: 0,
-                        date: new Date().toISOString().substring(0, 10),
-                        category: 'other',
-                        currency: 'EUR',
-                        x: 0, y: 0, w: 2, h: 2
-                      }}
-                      onClose={() => {
-                        setEditingSingleExpenseModule(null);
-                        setFormData({});
-                        setIsAdding(false);
-                      }}
-                      onSave={async (updated) => {
-                        if (editingSingleExpenseModule) {
-                          const updatedModules = modules.map(m => m.id === updated.id ? updated : m);
-                          setModules(updatedModules);
-                          await saveAppState(updatedModules, folders);
-                        } else {
-                          const updatedModules = [...modules, updated];
-                          setModules(updatedModules);
-                          await saveAppState(updatedModules, folders);
-                        }
-                        setEditingSingleExpenseModule(null);
-                        setFormData({});
-                        setIsAdding(false);
-                        showToast(editingSingleExpenseModule ? 'Spesa aggiornata!' : 'Spesa creata!', 'success');
-                      }}
-                      onSaveToSandbox={async (title, base64) => {
-                        const doc: DocumentModule = {
-                           id: generateUUID(),
-                           type: 'document',
-                           title,
-                           documentType: 'generic',
-                           pdfAttachment: base64,
-                           createdAt: new Date().toISOString(),
-                           updatedAt: new Date().toISOString(),
-                           x: 0, y: 0, w: 2, h: 2
-                        };
-                        const updatedModules = [...modules, doc];
-                        setModules(updatedModules);
-                        await saveAppState(updatedModules, folders);
-                        showToast("Allegato salvato nell'archivio documenti");
-                      }}
-                    />
-                  )}
+                  {/* Single Expense Screen (Edit/Create) - Spostato sopra isAdding per accessibilità globale */}
+
 
                   {/* Sub-menu Spese */}
                   {!editingModuleId && !formData.template && spesaSubMenu && (
