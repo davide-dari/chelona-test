@@ -666,13 +666,6 @@ export default function App() {
       console.log('[App] Exporting master key for secure storage...');
       const masterKeyStr = await encryption.exportKey(encryptionKey);
       
-      // Verify hardware identity first to "register" the real fingerprint
-      const verified = await m.biometricService.verifyIdentity('Conferma la tua identità per attivare lo sblocco con impronta.');
-      if (!verified) {
-        showToast('Verifica biometrica fallita o annullata.', 'error');
-        return;
-      }
-
       // Save it natively (will prompt for biometric store access on some platforms)
       await m.biometricService.saveMasterKey(currentProfileId, masterKeyStr);
       
@@ -772,7 +765,7 @@ export default function App() {
   const handleSaveToSandbox = async (title: string, base64: string) => {
     if (!encryptionKey || !currentProfileId) return;
     const newModule: DocumentModule = {
-      id: crypto.randomUUID(),
+      id: generateUUID(),
       type: 'document',
       title,
       documentType: 'Risultato Strumento',
@@ -818,7 +811,7 @@ export default function App() {
             const decryptedModule = await encryption.decrypt(parsedZip.encryptedPayload, key);
             
             if (decryptedModule) {
-              const newModule = { ...decryptedModule, id: crypto.randomUUID() };
+              const newModule = { ...decryptedModule, id: generateUUID() };
               
               if (encryptionKey && currentProfileId) {
                 const newModules = [newModule, ...modules];
@@ -840,7 +833,7 @@ export default function App() {
           const parsed = JSON.parse(content);
           
           if (parsed.type?.startsWith('shared_') && parsed.data) {
-             const newModule = { ...parsed.data, id: crypto.randomUUID() };
+             const newModule = { ...parsed.data, id: generateUUID() };
              
              if (encryptionKey && currentProfileId) {
                const newModules = [newModule, ...modules];
@@ -941,7 +934,7 @@ export default function App() {
           </div>
           <div>
             <h1 className="text-xl font-black tracking-tight text-[var(--text-main)]">Chelona</h1>
-            <p className="text-[10px] font-bold text-[var(--accent)] uppercase tracking-widest">v1.8.6</p>
+            <p className="text-[10px] font-bold text-[var(--accent)] uppercase tracking-widest">v1.8.7</p>
           </div>
         </div>
         <button onClick={() => setIsSidebarOpen(false)} className="lg:hidden p-2 text-[var(--text-muted)] hover:bg-[var(--bg)] rounded-lg">

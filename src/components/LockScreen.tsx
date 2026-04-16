@@ -120,9 +120,7 @@ export const LockScreen = ({ isVisible, onAuthenticated, onStartScan, onOpenTool
       if (isBioRequested && isBioSupported) {
         try {
           const m = await import('../services/biometricService');
-          // Physical verification before saving
-          const verified = await m.biometricService.verifyIdentity('Registra l\'impronta per il tuo nuovo profilo.');
-          if (verified) {
+          if (true) { // Proceed directly to setCredentials
             const masterKeyStr = await encryption.exportKey(key);
             await m.biometricService.saveMasterKey(newConfig.id, masterKeyStr);
             // Update the profile to indicate biometrics are enabled
