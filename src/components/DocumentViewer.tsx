@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Download, Share2, ZoomIn, ZoomOut, FileText, RefreshCw, Eye } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Filesystem, Directory } from '@capacitor/filesystem';
@@ -18,20 +18,9 @@ export const DocumentViewer = ({ isOpen, onClose, title, data, type = 'auto', on
   const [zoom, setZoom] = useState(1);
   const [rotation, setRotation] = useState(0);
   const [isOpeningNative, setIsOpeningNative] = useState(false);
-  
-  if (!isOpen) return null;
 
   const isPdf = data.startsWith('data:application/pdf') || (!data.startsWith('data:image') && type === 'pdf');
   const isImage = data.startsWith('data:image') || (type === 'image');
-
-  const handleDownload = () => {
-    const link = document.createElement('a');
-    link.href = data;
-    link.download = `${title.replace(/\s+/g, '_')}_${new Date().getTime()}.${isPdf ? 'pdf' : 'jpg'}`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
 
   const handleViewNative = async () => {
     if (!isPdf) return;
@@ -55,6 +44,15 @@ export const DocumentViewer = ({ isOpen, onClose, title, data, type = 'auto', on
       setIsOpeningNative(false);
     }
   };
+
+  // Automatically open native PDF reader on mount if on mobile
+  useEffect(() => {
+    if (isOpen && isPdf && Capacitor.isNativePlatform()) {
+      handleViewNative();
+    }
+  }, [isOpen, isPdf]);
+
+  if (!isOpen) return null;
 
   const handleShare = async () => {
     try {
