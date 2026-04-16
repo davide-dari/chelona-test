@@ -667,9 +667,11 @@ export default function App() {
       const masterKeyStr = await encryption.exportKey(encryptionKey);
       
       // Verify hardware identity first to "register" the real fingerprint
-      // In modern versions of Capacitor Biometrics, setCredentials/saveMasterKey already triggers the enroll prompt.
-      // Explicitly calling verifyIdentity before might cause conflicts or double prompts.
-      // We'll proceed directly to saving the key.
+      const verified = await m.biometricService.verifyIdentity('Conferma la tua identità per attivare lo sblocco con impronta.');
+      if (!verified) {
+        showToast('Verifica biometrica fallita o annullata.', 'error');
+        return;
+      }
 
       // Save it natively (will prompt for biometric store access on some platforms)
       await m.biometricService.saveMasterKey(currentProfileId, masterKeyStr);
@@ -939,7 +941,7 @@ export default function App() {
           </div>
           <div>
             <h1 className="text-xl font-black tracking-tight text-[var(--text-main)]">Chelona</h1>
-            <p className="text-[10px] font-bold text-[var(--accent)] uppercase tracking-widest">v1.8.2</p>
+            <p className="text-[10px] font-bold text-[var(--accent)] uppercase tracking-widest">v1.8.3</p>
           </div>
         </div>
         <button onClick={() => setIsSidebarOpen(false)} className="lg:hidden p-2 text-[var(--text-muted)] hover:bg-[var(--bg)] rounded-lg">
@@ -1947,44 +1949,6 @@ export default function App() {
             </nav>
           )}
 
-          {/* Floating Action Button (FAB) */}
-          {!isAdding && !isScanning && !editingModuleId && !isProfileOpen && !isToolsOpen && (
-            <motion.button
-              initial={{ scale: 0, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              whileTap={{ scale: 0.9 }}
-              onClick={() => {
-                if (selectedType === 'split') {
-                  setFormData({});
-                  setSpesaSubMenu(true);
-                  setIsAdding(true);
-                } else if (selectedType === 'expense') {
-                  setEditingWalletModule({
-                    id: generateUUID(),
-                    type: 'wallet',
-                    title: 'Portafoglio',
-                    balance: 0,
-                    currency: 'EUR',
-                    payments: [],
-                    x: 0, y: 0, w: 2, h: 2
-                  });
-                } else if (selectedType) {
-                  const t = TEMPLATES[selectedType as keyof typeof TEMPLATES];
-                  setFormData({ template: selectedType, title: t ? t.title : '', content: t ? t.content : '' });
-                  setIsAdding(true);
-                  setAutoFormStep(0);
-                } else {
-                  setFormData({});
-                  setSpesaSubMenu(false);
-                  setAutoFormStep(0);
-                  setIsAdding(true);
-                }
-              }}
-              className="fixed bottom-24 right-6 md:bottom-10 md:right-10 w-14 h-14 bg-[var(--accent-container)] text-[var(--accent-on-container)] rounded-2xl flex items-center justify-center shadow-lg hover:shadow-xl transition-all z-[60] group border border-[var(--accent)]/10"
-            >
-              <Plus className="w-8 h-8 group-hover:rotate-90 transition-transform duration-300" />
-            </motion.button>
-          )}
 
 
 
@@ -2036,42 +2000,6 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      {/* Floating Action Button */}
-      {modules.length > 0 && (
-        <button
-          onClick={() => {
-            if (selectedType === 'split') {
-              setFormData({});
-              setSpesaSubMenu(true);
-              setIsAdding(true);
-            } else if (selectedType === 'expense') {
-              setEditingWalletModule({
-                id: generateUUID(),
-                type: 'wallet',
-                title: 'Portafoglio',
-                balance: 0,
-                currency: 'EUR',
-                payments: [],
-                x: 0, y: 0, w: 2, h: 2
-              });
-            } else if (selectedType) {
-              const t = TEMPLATES[selectedType as keyof typeof TEMPLATES];
-              setFormData({ template: selectedType, title: t ? t.title : '', content: t ? t.content : '' });
-              setIsAdding(true);
-              setAutoFormStep(0);
-            } else {
-              setFormData({});
-              setSpesaSubMenu(false);
-              setAutoFormStep(0);
-              setIsAdding(true);
-            }
-          }}
-          className="hidden md:flex fixed bottom-10 right-10 w-16 h-16 bg-amber-500 hover:bg-amber-600 text-white rounded-full items-center justify-center shadow-2xl shadow-amber-500/40 transition-transform hover:scale-110 z-30 active:scale-95"
-          aria-label={selectedType ? `Aggiungi ${TEMPLATES[selectedType].title}` : "Aggiungi Modulo"}
-        >
-          <Plus className="w-8 h-8" />
-        </button>
-      )}
           </main>
         </div>
       </ErrorBoundary>
