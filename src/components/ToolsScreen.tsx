@@ -58,10 +58,11 @@ export const ToolsScreen = ({ showToast, onSaveToSandbox, initialToolId, onReset
   }, [category]);
 
   const bytesToBase64 = (bytes: Uint8Array): string => {
+    const CHUNK_SIZE = 0x8000; // 32KB per volta per evitare stack overflow
     let binary = '';
-    const len = bytes.byteLength;
-    for (let i = 0; i < len; i++) {
-        binary += String.fromCharCode(bytes[i]);
+    for (let i = 0; i < bytes.length; i += CHUNK_SIZE) {
+      const chunk = bytes.subarray(i, i + CHUNK_SIZE);
+      binary += String.fromCharCode.apply(null, chunk as any);
     }
     return window.btoa(binary);
   };
