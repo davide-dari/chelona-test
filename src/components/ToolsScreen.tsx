@@ -379,14 +379,16 @@ export const ToolsScreen = ({ showToast, onSaveToSandbox, initialToolId, onReset
                             ))}
                           </div>
                           
-                          <div className="grid grid-cols-2 gap-3 pt-2">
-                            <button onClick={() => executeTool(false)} disabled={isProcessing} className="py-4 bg-[var(--card-bg)] border-2 border-amber-500 text-amber-600 rounded-2xl font-black text-xs uppercase tracking-widest shadow-sm">
-                              {isProcessing ? '...' : 'Scarica'}
-                            </button>
-                            <button onClick={() => executeTool(true)} disabled={isProcessing} className="py-4 bg-amber-500 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg shadow-amber-500/20">
-                              {isProcessing ? '...' : 'Salva Appunto'}
-                            </button>
-                          </div>
+                            <div className={`grid ${onSaveToSandbox ? 'grid-cols-2' : 'grid-cols-1'} gap-3 pt-2`}>
+                              <button onClick={() => executeTool(false)} disabled={isProcessing} className="py-4 bg-[var(--card-bg)] border-2 border-amber-500 text-amber-600 rounded-2xl font-black text-xs uppercase tracking-widest shadow-sm">
+                                {isProcessing ? '...' : 'Scarica'}
+                              </button>
+                              {onSaveToSandbox && (
+                                <button onClick={() => executeTool(true)} disabled={isProcessing} className="py-4 bg-amber-500 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg shadow-amber-500/20">
+                                  {isProcessing ? '...' : 'Salva Appunto'}
+                                </button>
+                              )}
+                            </div>
                         </div>
                       )}
                     </div>

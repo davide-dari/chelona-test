@@ -667,11 +667,9 @@ export default function App() {
       const masterKeyStr = await encryption.exportKey(encryptionKey);
       
       // Verify hardware identity first to "register" the real fingerprint
-      const verified = await m.biometricService.verifyIdentity('Conferma la tua identità per attivare lo sblocco con impronta.');
-      if (!verified) {
-        showToast('Verifica biometrica fallita o annullata.', 'error');
-        return;
-      }
+      // In modern versions of Capacitor Biometrics, setCredentials/saveMasterKey already triggers the enroll prompt.
+      // Explicitly calling verifyIdentity before might cause conflicts or double prompts.
+      // We'll proceed directly to saving the key.
 
       // Save it natively (will prompt for biometric store access on some platforms)
       await m.biometricService.saveMasterKey(currentProfileId, masterKeyStr);
@@ -941,7 +939,7 @@ export default function App() {
           </div>
           <div>
             <h1 className="text-xl font-black tracking-tight text-[var(--text-main)]">Chelona</h1>
-            <p className="text-[10px] font-bold text-[var(--accent)] uppercase tracking-widest">v1.8.1</p>
+            <p className="text-[10px] font-bold text-[var(--accent)] uppercase tracking-widest">v1.8.2</p>
           </div>
         </div>
         <button onClick={() => setIsSidebarOpen(false)} className="lg:hidden p-2 text-[var(--text-muted)] hover:bg-[var(--bg)] rounded-lg">
@@ -1020,7 +1018,7 @@ export default function App() {
              </button>
            </header>
            <main className="flex-1 overflow-y-auto w-full h-full max-w-[1200px] mx-auto">
-             <ToolsScreen showToast={showToast} onSaveToSandbox={handleSaveToSandbox} modules={modules} />
+             <ToolsScreen showToast={showToast} onSaveToSandbox={undefined} modules={modules} />
            </main>
         </div>
       )}
@@ -1262,12 +1260,6 @@ export default function App() {
                   {!editingModuleId && !formData.template && spesaSubMenu && (
                     <div className="bg-[var(--card-bg)]/80 backdrop-blur-3xl rounded-[2.5rem] border border-[var(--border)] p-6 lg:p-10 shadow-[0_8px_40px_rgba(0,0,0,0.06)]">
                       <div className="flex items-center gap-3 mb-8">
-                        <button
-                          onClick={() => setSpesaSubMenu(false)}
-                          className="p-2 hover:bg-[var(--bg)] rounded-xl text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors"
-                        >
-                          <ArrowLeft className="w-5 h-5" />
-                        </button>
                         <h3 className="text-lg font-bold text-[var(--text-main)] uppercase tracking-widest">Spese</h3>
                       </div>
                       <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
@@ -1825,6 +1817,49 @@ export default function App() {
                         </button>
                       </div>
                     )}
+                    {/* Total Balance Hero Summary - Only for Wallet Category */}
+                    {selectedType === 'wallet' && (
+                       <div className="mb-10 animate-fade-in px-4 lg:px-8">
+                         <div className="bg-gradient-to-br from-purple-600 to-indigo-600 rounded-[2.5rem] p-8 lg:p-10 shadow-xl shadow-purple-500/20 relative overflow-hidden group">
+                           <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -mr-20 -mt-20 blur-3xl" />
+                           <div className="absolute bottom-0 left-0 w-40 h-40 bg-black/10 rounded-full -ml-10 -mb-10 blur-2xl" />
+                           
+                           <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-8">
+                             <div>
+                               <div className="flex items-center gap-2 text-purple-100/80 mb-2">
+                                 <Wallet className="w-4 h-4" />
+                                 <span className="text-[10px] font-black uppercase tracking-[0.2em]">Patrimonio Totale</span>
+                               </div>
+                               <div className="flex items-baseline gap-2">
+                                 <span className="text-2xl font-bold text-white/70">€</span>
+                                 <span className="text-5xl lg:text-6xl font-black text-white tracking-tighter">
+                                   {modules
+                                     .filter(m => m.type === 'wallet')
+                                     .reduce((acc, m) => acc + (Number((m as any).balance) || 0), 0)
+                                     .toLocaleString('it-IT')}
+                                 </span>
+                               </div>
+                             </div>
+                             
+                             <div className="flex gap-4">
+                               <div className="bg-white/10 backdrop-blur-md rounded-[1.5rem] p-5 border border-white/10 min-w-[140px]">
+                                 <p className="text-[9px] font-black text-purple-100/50 uppercase tracking-widest mb-1">Portafogli</p>
+                                 <p className="text-2xl font-black text-white">{modules.filter(m => m.type === 'wallet').length}</p>
+                               </div>
+                               <div className="bg-white/10 backdrop-blur-md rounded-[1.5rem] p-5 border border-white/10 min-w-[140px]">
+                                 <p className="text-[9px] font-black text-purple-100/50 uppercase tracking-widest mb-1">Pianificazioni</p>
+                                 <p className="text-2xl font-black text-white">
+                                   {modules
+                                     .filter(m => m.type === 'wallet')
+                                     .reduce((acc, m) => acc + ((m as any).payments?.length || 0), 0)}
+                                 </p>
+                               </div>
+                             </div>
+                           </div>
+                         </div>
+                       </div>
+                    )}
+
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6 3xl:grid-cols-8 gap-6 stagger-fade-in px-4 lg:px-8 pb-32 md:pb-8">
                     {/* Template-Specific Add Card Button (Only when a category is selected and list not empty) */}
                     {selectedType && filteredModules.length > 0 && (
