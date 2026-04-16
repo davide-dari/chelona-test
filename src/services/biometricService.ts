@@ -46,6 +46,17 @@ export const biometricService = {
     if (!NativeBiometric || typeof NativeBiometric.setCredentials !== 'function') {
       throw new Error('Servizio biometrico non disponibile.');
     }
+    
+    // Su Android, se esiste già una chiave per il server, setCredentials può fallire
+    // ("failed to save credentials"). Tentiamo sempre di svuotare lo slot prima.
+    try {
+      if (typeof NativeBiometric.deleteCredentials === 'function') {
+        await NativeBiometric.deleteCredentials({ server: 'chelona.app' });
+      }
+    } catch (e) {
+      console.warn('[BiometricService] fallback deleteCredentials', e);
+    }
+
     await NativeBiometric.setCredentials({
       username: profileId,
       password: masterKeyStr,

@@ -345,8 +345,8 @@ export const WalletScreen = ({ module, onSave, onClose }: WalletScreenProps) => 
                             />
                           </div>
                           <div className="flex justify-between items-center text-[10px] font-bold text-[var(--text-muted)] px-1">
-                            <span>€ 0</span>
-                            <span className="text-[var(--text-main)]">Target: € {total.toLocaleString('it-IT')}</span>
+                            <span className="text-[var(--text-main)]">Totale: € {saved.toLocaleString('it-IT')}</span>
+                            <span>Target: € {total.toLocaleString('it-IT')}</span>
                           </div>
                         </div>
 
