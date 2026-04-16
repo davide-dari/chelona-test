@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
-import { X, Download, Share2, Maximize2, Minimize2, ZoomIn, ZoomOut, FileText, ChevronLeft, ChevronRight, RefreshCw } from 'lucide-react';
+import { X, Download, Share2, ZoomIn, ZoomOut, FileText, RefreshCw, Eye } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { Filesystem, Directory } from '@capacitor/filesystem';
+import { FileOpener } from '@capawesome-team/capacitor-file-opener';
+import { Capacitor } from '@capacitor/core';
 
 interface DocumentViewerProps {
   isOpen: boolean;
@@ -14,6 +17,7 @@ interface DocumentViewerProps {
 export const DocumentViewer = ({ isOpen, onClose, title, data, type = 'auto', onDelete }: DocumentViewerProps) => {
   const [zoom, setZoom] = useState(1);
   const [rotation, setRotation] = useState(0);
+  const [isOpeningNative, setIsOpeningNative] = useState(false);
   
   if (!isOpen) return null;
 
@@ -27,6 +31,29 @@ export const DocumentViewer = ({ isOpen, onClose, title, data, type = 'auto', on
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+  };
+
+  const handleViewNative = async () => {
+    if (!isPdf) return;
+    setIsOpeningNative(true);
+    try {
+      const fileName = `${title.replace(/\s+/g, '_')}_view.pdf`;
+      const base64Data = data.split(',')[1] || data;
+      
+      const savedFile = await Filesystem.writeFile({
+        path: fileName,
+        data: base64Data,
+        directory: Directory.Cache,
+      });
+
+      await FileOpener.openFile({
+        path: savedFile.uri,
+      });
+    } catch (err) {
+      console.error('Error opening native PDF:', err);
+    } finally {
+      setIsOpeningNative(false);
+    }
   };
 
   const handleShare = async () => {
@@ -74,6 +101,16 @@ export const DocumentViewer = ({ isOpen, onClose, title, data, type = 'auto', on
             </div>
 
             <div className="flex items-center gap-2">
+              {isPdf && Capacitor.isNativePlatform() && (
+                <button 
+                  onClick={handleViewNative}
+                  disabled={isOpeningNative}
+                  className="p-2.5 bg-[#f59e0b]/20 hover:bg-[#f59e0b]/30 text-[#f59e0b] rounded-xl transition-all border border-[#f59e0b]/30"
+                  title="Leggi PDF"
+                >
+                  <Eye className={`w-5 h-5 ${isOpeningNative ? 'animate-pulse' : ''}`} />
+                </button>
+              )}
               <button 
                 onClick={handleShare}
                 className="p-2.5 bg-white/5 hover:bg-white/10 text-white rounded-xl transition-all border border-white/10"
@@ -99,7 +136,33 @@ export const DocumentViewer = ({ isOpen, onClose, title, data, type = 'auto', on
               className="w-full h-full flex items-center justify-center"
             >
               {isPdf ? (
-                <div className="w-full h-full max-w-4xl bg-white rounded-2xl overflow-hidden shadow-2xl">
+                <div className="w-full h-full max-w-4xl bg-white rounded-2xl overflow-hidden shadow-2xl relative">
+                  {Capacitor.isNativePlatform() && (
+                    <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-gray-50/90 backdrop-blur-sm p-8 text-center">
+                       <div className="w-20 h-20 bg-amber-500/10 rounded-3xl flex items-center justify-center mb-6">
+                         <FileText className="w-10 h-10 text-amber-600" />
+                       </div>
+                       <h4 className="text-xl font-black text-gray-900 mb-2 uppercase tracking-tight">Pronto per la lettura</h4>
+                       <p className="text-sm text-gray-500 max-w-xs mb-8 font-medium">I file PDF protetti devono essere aperti con il lettore del tuo smartphone per una visione ottimale.</p>
+                       <button 
+                        onClick={handleViewNative}
+                        disabled={isOpeningNative}
+                        className="w-full max-w-xs py-4 bg-amber-500 hover:bg-amber-600 text-white rounded-2xl font-black text-sm uppercase tracking-widest shadow-xl shadow-amber-500/20 transition-all flex items-center justify-center gap-3 active:scale-95"
+                      >
+                        {isOpeningNative ? (
+                          <>
+                            <RefreshCw className="w-5 h-5 animate-spin" />
+                            Apertura...
+                          </>
+                        ) : (
+                          <>
+                            <Eye className="w-5 h-5" />
+                            Apri Documento
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  )}
                   <object
                     data={data}
                     type="application/pdf"
