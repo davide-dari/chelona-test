@@ -1902,6 +1902,8 @@ export default function App() {
                           <DocumentCard module={module} onDelete={requestDelete} onEdit={openEditModal} onShare={setSharingModule} />
                         ) : module.type === 'split' ? (
                           <SplitCard module={module as import('./types').SplitModule} onDelete={requestDelete} onEdit={openEditModal} onShare={setSharingModule} />
+                        ) : module.type === 'single-expense' ? (
+                          <SingleExpenseCard module={module as import('./types').SingleExpenseModule} onDelete={requestDelete} onEdit={openEditModal} onShare={setSharingModule} />
                         ) : module.type === 'wallet' ? (
                           <WalletCard module={module as import('./types').WalletModule} onDelete={requestDelete} onEdit={openEditModal} onShare={setSharingModule} />
                         ) : (

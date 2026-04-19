@@ -71,7 +71,7 @@ RELEASE_JSON=$(curl -s -X POST \
   -d "{
     \"tag_name\": \"$TAG\",
     \"name\": \"Chelona $TAG\",
-    \"body\": \"🚀 **Chelona v$VERSION** - Polished Note Cards\\n\\n### ✨ Novità in questa release:\\n- **📝 Card Appunti Redesign**: Header con titolo e badge Appunto, contenuto in container stilizzato, data formattata e micro-interazione Apri al hover.\\n- **🎨 Coerenza Visiva**: Tutte le card ora seguono lo stesso pattern grafico premium con icone grandi, badge colorati e layout uniforme.\",
+    \"body\": \"🚀 **Chelona v$VERSION** - Expense Card Fix\\n\\n### ✨ Novità in questa release:\\n- **🐛 Fix Rendering Spese**: Le spese singole nella sezione Spese ora mostrano la card corretta invece della card generica.\\n- **🎨 Coerenza Recenti e Spese**: Stessa anteprima premium con icona emoji, importo e badge categoria in entrambe le viste.\",
     \"draft\": false,
     \"prerelease\": false
   }")
