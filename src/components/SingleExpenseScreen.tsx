@@ -96,10 +96,10 @@ export const SingleExpenseScreen = ({ module, onClose, onSave, onSaveToSandbox }
             <input 
               type="number" 
               step="0.01"
-              value={formData.amount || ''}
+              value={formData.amount}
               onChange={e => setFormData(prev => ({ ...prev, amount: Number(e.target.value) }))}
               className="bg-transparent border-none text-5xl font-black text-[var(--text-main)] text-center outline-none w-48 placeholder:text-[var(--text-muted)]"
-              placeholder="0.00"
+              placeholder="0"
             />
           </div>
         </div>

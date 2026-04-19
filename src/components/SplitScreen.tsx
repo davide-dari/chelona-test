@@ -647,7 +647,7 @@ export const SplitScreen = ({ module, onClose, onSave, onSaveToSandbox }: SplitS
                           <div className="flex gap-2 relative">
                               <div className="absolute left-4 top-1/2 -translate-y-1/2 font-black text-amber-500">{currency}</div>
                               <input 
-                                  type="number" placeholder="0.00" min="0" step="0.01"
+                                  type="number" placeholder="0" min="0" step="0.01"
                                   value={expAmount} onChange={e => setExpAmount(e.target.value)}
                                   className="w-full bg-[var(--bg)] border border-[var(--border)] rounded-xl pl-16 pr-4 py-3 text-2xl text-[var(--text-main)] font-black outline-none focus:border-amber-500"
                               />

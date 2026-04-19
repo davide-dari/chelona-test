@@ -71,7 +71,7 @@ RELEASE_JSON=$(curl -s -X POST \
   -d "{
     \"tag_name\": \"$TAG\",
     \"name\": \"Chelona $TAG\",
-    \"body\": \"🚀 **Chelona v$VERSION** - PDF Viewer Fix & Stability\n\n### ✨ Novità in questa release:\n- **📄 Correzione Rendering PDF**: Risolti i glitch visivi e gli errori di visualizzazione dei documenti su dispositivi mobili.\n- **📲 Visualizzatore Integrato**: Fix per l'apertura degli allegati nelle singole spese e scontrini.\n- **📦 Stabilità**: Risolto crash critico relativo alla funzione di download dei documenti.\n- **🗃️ Archivio Unificato**: Standardizzata l'anteprima PDF in tutto l'archivio documenti per un'esperienza coerente.\",
+    \"body\": \"🚀 **Chelona v$VERSION** - UI Improvements & Polishing\n\n### ✨ Novità in questa release:\n- **💰 Formato Importi**: Perfezionata la visualizzazione dell'importo spesa nelle schermate di dettaglio, ora mostrato come '0' invece di '0.00' per una compilazione più rapida.\n- **📄 PDF Viewer Optimization**: Ulteriori ottimizzazioni alla stabilità e al rendering del visualizzatore documenti integrato.\",
     \"draft\": false,
     \"prerelease\": false
   }")
