@@ -45,6 +45,32 @@ export const DocumentViewer = ({ isOpen, onClose, title, data, type = 'auto', on
     }
   };
 
+  const handleDownload = async () => {
+    try {
+      const fileName = `${title.replace(/\s+/g, '_')}.${isPdf ? 'pdf' : 'jpg'}`;
+      
+      if (Capacitor.isNativePlatform()) {
+        // Use native sharing as a form of download on mobile
+        const base64Data = data.split(',')[1] || data;
+        const savedFile = await Filesystem.writeFile({
+          path: fileName,
+          data: base64Data,
+          directory: Directory.Documents,
+        });
+        alert(`Documento salvato in: ${fileName}`);
+      } else {
+        const link = document.createElement('a');
+        link.href = data;
+        link.download = fileName;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
+    } catch (err) {
+      console.error('Error downloading:', err);
+    }
+  };
+
   // Automatically open native PDF reader on mount if on mobile
   useEffect(() => {
     if (isOpen && isPdf && Capacitor.isNativePlatform()) {
@@ -135,7 +161,7 @@ export const DocumentViewer = ({ isOpen, onClose, title, data, type = 'auto', on
             >
               {isPdf ? (
                 <div className="w-full h-full max-w-4xl bg-white rounded-2xl overflow-hidden shadow-2xl relative">
-                  {Capacitor.isNativePlatform() && (
+                  {Capacitor.isNativePlatform() ? (
                     <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-gray-50/90 backdrop-blur-sm p-8 text-center">
                        <div className="w-20 h-20 bg-amber-500/10 rounded-3xl flex items-center justify-center mb-6">
                          <FileText className="w-10 h-10 text-amber-600" />
@@ -160,23 +186,24 @@ export const DocumentViewer = ({ isOpen, onClose, title, data, type = 'auto', on
                         )}
                       </button>
                     </div>
+                  ) : (
+                    <object
+                      data={data}
+                      type="application/pdf"
+                      className="w-full h-full"
+                    >
+                      <div className="p-10 text-center">
+                        <FileText className="w-16 h-16 mx-auto mb-4 text-gray-400" />
+                        <p className="text-gray-600 font-bold mb-4">L'anteprima PDF non è supportata in questo browser.</p>
+                        <button 
+                          onClick={handleDownload}
+                          className="px-6 py-3 bg-emerald-500 text-white rounded-xl font-bold"
+                        >
+                          Scarica per visualizzare
+                        </button>
+                      </div>
+                    </object>
                   )}
-                  <object
-                    data={data}
-                    type="application/pdf"
-                    className="w-full h-full"
-                  >
-                    <div className="p-10 text-center">
-                      <FileText className="w-16 h-16 mx-auto mb-4 text-gray-400" />
-                      <p className="text-gray-600 font-bold mb-4">L'anteprima PDF non è supportata in questo browser.</p>
-                      <button 
-                        onClick={handleDownload}
-                        className="px-6 py-3 bg-emerald-500 text-white rounded-xl font-bold"
-                      >
-                        Scarica per visualizzare
-                      </button>
-                    </div>
-                  </object>
                 </div>
               ) : isImage ? (
                 <div 

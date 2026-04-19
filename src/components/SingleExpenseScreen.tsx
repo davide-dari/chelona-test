@@ -248,7 +248,8 @@ export const SingleExpenseScreen = ({ module, onClose, onSave, onSaveToSandbox }
         )}
         {viewingAttachment && (
           <DocumentViewer 
-            pdfBase64={viewingAttachment}
+            isOpen={!!viewingAttachment}
+            data={viewingAttachment}
             title={formData.description || 'Allegato Spesa'}
             onClose={() => setViewingAttachment(null)}
           />

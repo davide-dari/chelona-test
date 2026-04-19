@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Book, Eye, Search as SearchIcon, FileDown, X } from 'lucide-react';
 import { Module } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
+import { DocumentViewer } from './DocumentViewer';
 
 interface DocumentArchiveProps {
   modules: Module[];
@@ -99,69 +100,13 @@ export const DocumentArchive = ({ modules, onClose }: DocumentArchiveProps) => {
         </div>
       </div>
 
-      {/* Document Preview Modal */}
-      {viewingDoc && (
-        <div className="fixed inset-0 z-[100003] bg-black/80 backdrop-blur-md flex flex-col items-center justify-center p-4">
-          <div className="w-full max-w-lg bg-[var(--card-bg)] border border-[var(--border)] rounded-[2.5rem] overflow-hidden shadow-2xl flex flex-col max-h-[85vh]">
-            <div className="flex items-center justify-between p-6 border-b border-[var(--border)]">
-              <div className="min-w-0">
-                <h3 className="text-sm font-bold text-[var(--text-main)] truncate uppercase tracking-wider">{viewingTitle}</h3>
-                <p className="text-[9px] font-bold text-amber-500 uppercase tracking-widest mt-0.5">Visualizzatore Interno</p>
-              </div>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => {
-                    const base64 = viewingDoc.split(',')[1] || viewingDoc;
-                    const binary = atob(base64);
-                    const bytes = new Uint8Array(binary.length);
-                    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-                    const blob = new Blob([bytes], { type: 'application/pdf' });
-                    const url = URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = `documento_${Date.now()}.pdf`;
-                    a.click();
-                    URL.revokeObjectURL(url);
-                  }}
-                  className="p-2.5 bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 rounded-xl transition-all"
-                  title="Scarica"
-                >
-                  <FileDown className="w-5 h-5" />
-                </button>
-                <button
-                  onClick={() => setViewingDoc(null)}
-                  className="p-2.5 hover:bg-red-500/10 text-[var(--text-muted)] hover:text-red-500 rounded-xl transition-all"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-            </div>
-            <div className="flex-1 flex flex-col items-center justify-center p-10 bg-black/5">
-              <div className="w-24 h-24 mb-6 bg-amber-500/10 rounded-3xl flex items-center justify-center text-amber-500">
-                <Book className="w-12 h-12" />
-              </div>
-              <p className="text-sm font-bold text-[var(--text-main)] text-center mb-8">
-                Documento pronto per la visualizzazione
-              </p>
-              <button
-                onClick={() => {
-                  const base64 = viewingDoc.split(',')[1] || viewingDoc;
-                  const binary = atob(base64);
-                  const bytes = new Uint8Array(binary.length);
-                  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-                  const blob = new Blob([bytes], { type: 'application/pdf' });
-                  const url = URL.createObjectURL(blob);
-                  window.open(url, '_blank');
-                  setTimeout(() => URL.revokeObjectURL(url), 60000);
-                }}
-                className="w-full py-4 bg-amber-500 hover:bg-amber-600 text-white rounded-2xl font-bold flex items-center justify-center gap-2 transition-all shadow-lg"
-              >
-                <Eye className="w-5 h-5" /> Apri PDF Intero
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <DocumentViewer
+        isOpen={!!viewingDoc}
+        onClose={() => setViewingDoc(null)}
+        title={viewingTitle}
+        data={viewingDoc || ''}
+        type="pdf"
+      />
     </motion.div>
   );
 };

@@ -71,7 +71,7 @@ RELEASE_JSON=$(curl -s -X POST \
   -d "{
     \"tag_name\": \"$TAG\",
     \"name\": \"Chelona $TAG\",
-    \"body\": \"🚀 **Chelona v$VERSION** - UI Restructuring & Expense Sync\n\n### ✨ Novità in questa release:\n- **📄 Word to PDF**: Convertitore offline da .docx a PDF integrato negli strumenti.\n- **⚡ UI Streamlining**: Rimosse le scorciatoie dalla Dashboard per un design più pulito. Le azioni di aggiunta sono ora localizzate nelle rispettive categorie.\n- **🎯 Contextual Actions**: Nuovo tasto 'Aggiungi' dinamico filtrato per categoria e pulsante FAB intelligente.\n- **🎨 Spese Sync**: Sincronizzato il design della lista spese con lo stile premium delle card 'Recenti'.\n\n*Rilasciato con ❤️ dal Chelona Deploy Script.*\",
+    \"body\": \"🚀 **Chelona v$VERSION** - PDF Viewer Fix & Stability\n\n### ✨ Novità in questa release:\n- **📄 Correzione Rendering PDF**: Risolti i glitch visivi e gli errori di visualizzazione dei documenti su dispositivi mobili.\n- **📲 Visualizzatore Integrato**: Fix per l'apertura degli allegati nelle singole spese e scontrini.\n- **📦 Stabilità**: Risolto crash critico relativo alla funzione di download dei documenti.\n- **🗃️ Archivio Unificato**: Standardizzata l'anteprima PDF in tutto l'archivio documenti per un'esperienza coerente.\",
     \"draft\": false,
     \"prerelease\": false
   }")
