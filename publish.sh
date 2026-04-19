@@ -71,7 +71,7 @@ RELEASE_JSON=$(curl -s -X POST \
   -d "{
     \"tag_name\": \"$TAG\",
     \"name\": \"Chelona $TAG\",
-    \"body\": \"🚀 **Chelona v$VERSION** - Unified Expense Style\\n\\n### ✨ Novità in questa release:\\n- **🎨 Stile Unificato Spese**: Le anteprime spesa dentro i gruppi ora usano lo stesso stile della sezione Recenti (icone emoji, badge colorati per categoria).\\n- **🧹 Rimossa linea accent**: Eliminata la linea gradient in alto dalle card spesa per un design più pulito.\\n- **📋 Layout Coerente**: Badge data, payer e categoria uniformati in tutta lapp.\",
+    \"body\": \"🚀 **Chelona v$VERSION** - Polished Note Cards\\n\\n### ✨ Novità in questa release:\\n- **📝 Card Appunti Redesign**: Header con titolo e badge Appunto, contenuto in container stilizzato, data formattata e micro-interazione Apri al hover.\\n- **🎨 Coerenza Visiva**: Tutte le card ora seguono lo stesso pattern grafico premium con icone grandi, badge colorati e layout uniforme.\",
     \"draft\": false,
     \"prerelease\": false
   }")

@@ -239,36 +239,56 @@ export const GenericCard = ({ module, onDelete, onEdit, onShare, dragHandleProps
           className="flex flex-col gap-3 cursor-pointer group/card hover:bg-[var(--surface-variant)] transition-all p-4 -m-4 rounded-[2rem] active:scale-[0.98] h-full"
           onClick={() => setShowFullNote(true)}
         >
+          {/* Header with icon, title and actions */}
           <div className="flex items-start justify-between">
-            <div className="p-2.5 bg-amber-500/10 rounded-2xl border border-amber-500/20 text-amber-600 shrink-0">
-              <StickyNote className="w-5 h-5" />
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-12 h-12 bg-gradient-to-br from-amber-500/15 to-orange-500/15 rounded-2xl border border-amber-500/20 flex items-center justify-center shrink-0 group-hover/card:scale-105 transition-transform">
+                <StickyNote className="w-5 h-5 text-amber-500" />
+              </div>
+              <div className="min-w-0">
+                <h4 className="font-bold text-[15px] text-[var(--text-main)] leading-snug truncate">
+                  {module.title || 'Nota'}
+                </h4>
+                <div className="flex items-center gap-2 mt-0.5">
+                  <div className="flex items-center gap-1 bg-amber-500/8 px-2 py-0.5 rounded-md border border-amber-500/15">
+                    <StickyNote className="w-2.5 h-2.5 text-amber-500" />
+                    <span className="text-[9px] font-black text-amber-600 uppercase">Appunto</span>
+                  </div>
+                </div>
+              </div>
             </div>
             <button
               onClick={(e) => { e.stopPropagation(); onShare(module); }}
-              className="p-2 hover:bg-[var(--bg)] text-[var(--text-muted)] hover:text-[var(--info)] rounded-xl transition-all"
+              className="p-2.5 hover:bg-[var(--bg)] text-[var(--text-muted)] hover:text-[var(--info)] rounded-xl transition-all"
             >
               <QrCode className="w-4 h-4" />
             </button>
           </div>
 
-          <div className="flex-1 min-h-[60px] flex flex-col justify-center">
-            <p className="text-[14px] text-[var(--text-main)] font-semibold line-clamp-3 leading-relaxed">
+          {/* Content preview */}
+          <div className="flex-1 min-h-[50px] flex flex-col justify-center bg-[var(--bg)] p-4 rounded-2xl border border-[var(--border)] relative overflow-hidden">
+            <p className="text-[13px] text-[var(--text-main)] font-medium line-clamp-3 leading-relaxed">
               {module.content || <span className="text-[var(--text-muted)] italic font-normal text-xs">Nessun contenuto</span>}
             </p>
           </div>
           
-          <div className="pt-3 border-t border-[var(--border)] flex items-center justify-between">
+          {/* Footer */}
+          <div className="pt-2 border-t border-[var(--border)] flex items-center justify-between">
             {module.date ? (
-              <div className="flex items-center gap-1.5 text-[9px] font-black uppercase text-[var(--danger)] bg-[var(--danger-bg)]/20 px-2 py-1 rounded-lg">
-                <Clock className="w-3 h-3" />
-                <span>{module.date}</span>
+              <div className="flex items-center gap-1.5 bg-[var(--danger-bg)]/20 px-2.5 py-1 rounded-lg border border-[var(--danger)]/15">
+                <Clock className="w-3 h-3 text-[var(--danger)]" />
+                <span className="text-[9px] font-black uppercase text-[var(--danger)]">
+                  {new Date(module.date).toLocaleDateString('it-IT', { day: '2-digit', month: 'short', year: 'numeric' })}
+                </span>
               </div>
             ) : (
-              <div className="text-[9px] font-black uppercase text-[var(--text-muted)] tracking-widest px-1">
-                Appunto
+              <div className="flex items-center gap-1.5 bg-[var(--bg)] px-2.5 py-1 rounded-lg">
+                <Calendar className="w-3 h-3 text-[var(--text-muted)]" />
+                <span className="text-[9px] font-bold text-[var(--text-muted)] uppercase">Senza scadenza</span>
               </div>
             )}
-            <div className="text-[var(--text-muted)] group-hover/card:text-[var(--accent)] transition-colors">
+            <div className="flex items-center gap-1 text-[var(--text-muted)] group-hover/card:text-[var(--accent)] transition-colors">
+              <span className="text-[9px] font-bold uppercase tracking-wide opacity-0 group-hover/card:opacity-100 transition-opacity">Apri</span>
               <ChevronRight className="w-4 h-4" />
             </div>
           </div>
