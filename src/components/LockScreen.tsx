@@ -58,8 +58,8 @@ export const LockScreen = ({ isVisible, onAuthenticated, onStartScan, onOpenTool
   }, [isVisible]);
 
   useEffect(() => {
-    if (!window.crypto || !window.crypto.subtle) {
-      setError('Errore critico: Browser non sicuro (devi usare localhost o HTTPS per la crittografia).');
+    if (!window.crypto || !window.crypto.subtle || !window.isSecureContext) {
+      setError('Errore di Sicurezza: Questa app richiede una connessione sicura (HTTPS o localhost) per far funzionare la crittografia e la fotocamera.');
     }
     
     refreshProfiles();

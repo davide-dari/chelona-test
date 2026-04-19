@@ -528,7 +528,6 @@ export default function App() {
         setIsPublicToolsOpen(false);
         setSelectedType(null);
         setSelectedFolderId(null);
-        setIsSandboxMode(true);
         setIsSidebarOpen(false);
 
         showToast('Modulo importato con successo!');

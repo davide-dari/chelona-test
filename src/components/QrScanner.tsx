@@ -26,6 +26,11 @@ export const QrScanner: React.FC<QrScannerProps> = ({ onScan, onClose }) => {
     const runScanner = () => {
       if (!isMounted) return;
       
+      if (!window.isSecureContext) {
+        setError('Errore di Sicurezza: La fotocamera può essere usata solo su siti sicuri (HTTPS o localhost).');
+        return;
+      }
+
       try {
         html5QrCode = new Html5Qrcode('reader');
         scannerRef.current = html5QrCode;

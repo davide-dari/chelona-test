@@ -25,6 +25,7 @@ export const SingleExpenseScreen = ({ module, onClose, onSave, onSaveToSandbox }
     currency: module.currency || 'EUR',
   });
 
+  const [amountDisplay, setAmountDisplay] = useState(module.amount ? String(module.amount) : '');
   const [showScanner, setShowScanner] = useState(false);
   const [viewingAttachment, setViewingAttachment] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -96,8 +97,12 @@ export const SingleExpenseScreen = ({ module, onClose, onSave, onSaveToSandbox }
             <input 
               type="number" 
               step="0.01"
-              value={formData.amount}
-              onChange={e => setFormData(prev => ({ ...prev, amount: Number(e.target.value) }))}
+              value={amountDisplay}
+              onChange={e => {
+                const val = e.target.value;
+                setAmountDisplay(val);
+                setFormData(prev => ({ ...prev, amount: val === '' ? 0 : Number(val) }));
+              }}
               className="bg-transparent border-none text-5xl font-black text-[var(--text-main)] text-center outline-none w-48 placeholder:text-[var(--text-muted)]"
               placeholder="0"
             />

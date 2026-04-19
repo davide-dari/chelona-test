@@ -71,7 +71,7 @@ RELEASE_JSON=$(curl -s -X POST \
   -d "{
     \"tag_name\": \"$TAG\",
     \"name\": \"Chelona $TAG\",
-    \"body\": \"🚀 **Chelona v$VERSION** - Expense Card Fix\\n\\n### ✨ Novità in questa release:\\n- **🐛 Fix Rendering Spese**: Le spese singole nella sezione Spese ora mostrano la card corretta invece della card generica.\\n- **🎨 Coerenza Recenti e Spese**: Stessa anteprima premium con icona emoji, importo e badge categoria in entrambe le viste.\",
+    \"body\": \"🚀 **Chelona v$VERSION** - Bug Fix & UI Refinement\\n\\n### ✨ Novità in questa release:\\n- **💰 Campo Importo Migliorato**: Il campo importo nella spesa singola ora è vuoto per impostazione predefinita quando si crea una nuova spesa, facilitando l'inserimento.\\n- **🛡️ Messaggi di Sicurezza**: Migliorata la comunicazione degli errori di sicurezza (Secure Context). Adesso l'app spiega chiaramente che HTTPS è necessario per usare la fotocamera e la crittografia su dispositivi mobili.\",
     \"draft\": false,
     \"prerelease\": false
   }")
