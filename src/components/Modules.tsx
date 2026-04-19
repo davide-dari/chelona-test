@@ -1054,11 +1054,8 @@ export const SingleExpenseCard = ({ module, onDelete, onEdit, onShare, dragHandl
           className="flex flex-col cursor-pointer group/card hover:bg-[var(--surface-variant)] transition-all p-4 -m-4 rounded-[2rem] active:scale-[0.98] h-full relative overflow-hidden"
           onClick={() => onEdit(module)}
         >
-          {/* Accent gradient strip */}
-          <div className={`absolute top-0 left-0 right-0 h-1 bg-gradient-to-r ${catTheme.gradient} opacity-60`} />
-
           {/* Header with category icon and description */}
-          <div className="flex items-start justify-between mt-2 mb-3 shrink-0">
+          <div className="flex items-start justify-between mb-3 shrink-0">
             <div className="flex items-center gap-3 min-w-0">
               <div className={`w-12 h-12 ${catTheme.bg} rounded-2xl flex items-center justify-center ${catTheme.border} border shrink-0 shadow-sm group-hover/card:scale-105 transition-transform`}>
                 <span className="text-[22px]">{catTheme.icon}</span>
@@ -1152,11 +1149,8 @@ export const SplitCard = ({ module, onDelete, onEdit, onShare, dragHandleProps }
         className="flex flex-col cursor-pointer group/card hover:bg-[var(--surface-variant)] transition-all p-4 -m-4 rounded-[2rem] active:scale-[0.98] h-full relative overflow-hidden"
         onClick={() => onEdit(module)}
       >
-        {/* Accent gradient strip */}
-        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-purple-500 to-indigo-400 opacity-60" />
-
         {/* Header */}
-        <div className="flex items-center justify-between mt-2 mb-4 shrink-0">
+        <div className="flex items-center justify-between mb-4 shrink-0">
           <div className="flex items-center gap-3 min-w-0">
             <div className="w-12 h-12 bg-gradient-to-br from-purple-500/15 to-indigo-500/15 rounded-2xl flex items-center justify-center border border-purple-500/20 shrink-0 group-hover/card:scale-105 transition-transform">
               <Users className="w-5 h-5 text-purple-500" />

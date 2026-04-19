@@ -71,7 +71,7 @@ RELEASE_JSON=$(curl -s -X POST \
   -d "{
     \"tag_name\": \"$TAG\",
     \"name\": \"Chelona $TAG\",
-    \"body\": \"🚀 **Chelona v$VERSION** - Premium Expense Cards Redesign\\n\\n### ✨ Novità in questa release:\\n- **🎨 Card Spesa Singola**: Redesign completo con gradient accent per categoria, icone più grandi con animazioni, badge data migliorati e bottone condividi a colori.\\n- **👥 Card Gruppo Spese**: Avatar circolari dei partecipanti, badge conteggio spese, sezione importo con effetti gradient decorativi.\\n- **📋 Lista Spese (Split)**: Ogni riga ora mostra un gradient colorato per categoria, layout payer migliorato con chip e date compatte.\\n- **💰 Formato Importi**: Placeholder importo semplificato a 0 per compilazione rapida.\",
+    \"body\": \"🚀 **Chelona v$VERSION** - Unified Expense Style\\n\\n### ✨ Novità in questa release:\\n- **🎨 Stile Unificato Spese**: Le anteprime spesa dentro i gruppi ora usano lo stesso stile della sezione Recenti (icone emoji, badge colorati per categoria).\\n- **🧹 Rimossa linea accent**: Eliminata la linea gradient in alto dalle card spesa per un design più pulito.\\n- **📋 Layout Coerente**: Badge data, payer e categoria uniformati in tutta lapp.\",
     \"draft\": false,
     \"prerelease\": false
   }")
