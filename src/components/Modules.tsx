@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { CreditCard, ShieldCheck, Wallet, Fingerprint, Plus, Trash2, Calendar, DollarSign, Pencil, StickyNote, Copy, Check, GripVertical, Car, Wrench, AlertCircle, FileText, QrCode, FileDown, X, Clock, Eye, Lock, ChevronRight, Bell, BellOff, Gauge, Users, Paperclip } from 'lucide-react';
+import { CreditCard, ShieldCheck, Wallet, Fingerprint, Plus, Trash2, Calendar, DollarSign, Pencil, StickyNote, Copy, Check, GripVertical, Car, Wrench, AlertCircle, FileText, QrCode, FileDown, X, Clock, Eye, Lock, ChevronRight, Bell, BellOff, Gauge, Users, Paperclip, Receipt } from 'lucide-react';
 import { Module, GenericModule, AutoModule, DocumentModule, SplitModule, SingleExpenseModule, WalletModule } from '../types';
 import { EXPENSE_CATEGORIES } from '../constants/expenses';
 import { motion, AnimatePresence } from 'motion/react';
@@ -1035,47 +1035,50 @@ export const SingleExpenseCard = ({ module, onDelete, onEdit, onShare, dragHandl
   
   const getCategoryTheme = (cat: string) => {
     switch (cat) {
-      case 'food':          return { icon: '🛒', color: 'text-orange-500', bg: 'bg-orange-500/10' };
-      case 'transport':     return { icon: '🚗', color: 'text-blue-500', bg: 'bg-blue-500/10' };
-      case 'housing':       return { icon: '🏠', color: 'text-emerald-500', bg: 'bg-emerald-500/10' };
-      case 'health':        return { icon: '🏥', color: 'text-red-500', bg: 'bg-red-500/10' };
-      case 'entertainment': return { icon: '🎬', color: 'text-purple-500', bg: 'bg-purple-500/10' };
-      case 'shopping':      return { icon: '🛍️', color: 'text-pink-500', bg: 'bg-pink-500/10' };
-      default:               return { icon: '✨', color: 'text-gray-500', bg: 'bg-gray-500/10' };
+      case 'food':          return { icon: '🛒', color: 'text-orange-500', bg: 'bg-orange-500/10', gradient: 'from-orange-500 to-amber-400', border: 'border-orange-500/20' };
+      case 'transport':     return { icon: '🚗', color: 'text-blue-500', bg: 'bg-blue-500/10', gradient: 'from-blue-500 to-cyan-400', border: 'border-blue-500/20' };
+      case 'housing':       return { icon: '🏠', color: 'text-emerald-500', bg: 'bg-emerald-500/10', gradient: 'from-emerald-500 to-teal-400', border: 'border-emerald-500/20' };
+      case 'health':        return { icon: '🏥', color: 'text-red-500', bg: 'bg-red-500/10', gradient: 'from-red-500 to-rose-400', border: 'border-red-500/20' };
+      case 'entertainment': return { icon: '🎬', color: 'text-purple-500', bg: 'bg-purple-500/10', gradient: 'from-purple-500 to-violet-400', border: 'border-purple-500/20' };
+      case 'shopping':      return { icon: '🛍️', color: 'text-pink-500', bg: 'bg-pink-500/10', gradient: 'from-pink-500 to-fuchsia-400', border: 'border-pink-500/20' };
+      default:               return { icon: '✨', color: 'text-gray-500', bg: 'bg-gray-500/10', gradient: 'from-amber-500 to-orange-400', border: 'border-gray-500/20' };
     }
   };
 
-  const theme = getCategoryTheme(module.category);
-  const formattedAmount = new Intl.NumberFormat(undefined, { style: 'currency', currency: module.currency || 'EUR' }).format(module.amount);
+  const catTheme = getCategoryTheme(module.category);
 
   return (
     <>
       <ModuleWrapper module={module} onDelete={onDelete} onEdit={onEdit} dragHandleProps={dragHandleProps}>
         <div 
-          className="flex flex-col cursor-pointer group/card hover:bg-[var(--surface-variant)] transition-all p-4 -m-4 rounded-[2rem] active:scale-[0.98] h-full"
+          className="flex flex-col cursor-pointer group/card hover:bg-[var(--surface-variant)] transition-all p-4 -m-4 rounded-[2rem] active:scale-[0.98] h-full relative overflow-hidden"
           onClick={() => onEdit(module)}
         >
-          <div className="flex items-start justify-between mb-4 shrink-0">
+          {/* Accent gradient strip */}
+          <div className={`absolute top-0 left-0 right-0 h-1 bg-gradient-to-r ${catTheme.gradient} opacity-60`} />
+
+          {/* Header with category icon and description */}
+          <div className="flex items-start justify-between mt-2 mb-3 shrink-0">
             <div className="flex items-center gap-3 min-w-0">
-              <div className={`w-11 h-11 ${theme.bg} rounded-2xl flex items-center justify-center border border-[var(--border)] shrink-0 shadow-sm`}>
-                <span className="text-xl">{theme.icon}</span>
+              <div className={`w-12 h-12 ${catTheme.bg} rounded-2xl flex items-center justify-center ${catTheme.border} border shrink-0 shadow-sm group-hover/card:scale-105 transition-transform`}>
+                <span className="text-[22px]">{catTheme.icon}</span>
               </div>
               <div className="min-w-0">
                 <h4 className="font-bold text-[15px] text-[var(--text-main)] leading-snug truncate pr-2">
                   {module.description || 'Spesa'}
                 </h4>
-                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-0.5">
-                  <div className="flex items-center gap-1">
+                <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 mt-1">
+                  <div className="flex items-center gap-1 bg-[var(--bg)] px-1.5 py-0.5 rounded-md">
                     <Calendar className="w-3 h-3 text-[var(--text-muted)]" />
                     <p className="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-tight">
-                      {new Date(module.date).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                      {new Date(module.date).toLocaleDateString('it-IT', { day: '2-digit', month: 'short', year: 'numeric' })}
                     </p>
                   </div>
                   {module.expiryDate && (
-                    <div className="flex items-center gap-1 bg-amber-500/10 px-1.5 py-0.5 rounded-lg border border-amber-500/20">
+                    <div className="flex items-center gap-1 bg-amber-500/10 px-1.5 py-0.5 rounded-md border border-amber-500/20">
                       <Clock className="w-2.5 h-2.5 text-amber-600" />
                       <p className="text-[9px] font-black text-amber-600 uppercase tracking-tighter">
-                        Scade: {new Date(module.expiryDate).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' })}
+                        {new Date(module.expiryDate).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' })}
                       </p>
                     </div>
                   )}
@@ -1083,38 +1086,42 @@ export const SingleExpenseCard = ({ module, onDelete, onEdit, onShare, dragHandl
               </div>
             </div>
             {module.attachment && (
-              <div className="flex gap-2">
-                <button 
-                  onClick={(e) => { e.stopPropagation(); setViewingAttachment(module.attachment!); }}
-                  className="p-2 bg-emerald-500/10 text-emerald-500 rounded-xl border border-emerald-500/20 hover:bg-emerald-500/20 transition-colors shadow-sm"
-                  title="Vedi Allegato"
-                >
-                  <Paperclip className="w-4 h-4" />
-                </button>
-              </div>
+              <button 
+                onClick={(e) => { e.stopPropagation(); setViewingAttachment(module.attachment!); }}
+                className="p-2.5 bg-emerald-500/10 text-emerald-500 rounded-xl border border-emerald-500/20 hover:bg-emerald-500/20 hover:scale-105 transition-all shadow-sm"
+                title="Vedi Allegato"
+              >
+                <Paperclip className="w-4 h-4" />
+              </button>
             )}
           </div>
 
-          <div className="flex-1 flex flex-col justify-center my-5 bg-[var(--bg)]/40 p-5 rounded-3xl border border-[var(--border)]/50">
-            <div className="flex items-center justify-between mb-2.5">
-              <p className="text-[9px] uppercase font-black text-amber-500/80 tracking-[0.15em]">Costo Spesa</p>
-              <div className="px-2.5 py-1 bg-[var(--surface-variant)] border border-[var(--border)] rounded-lg text-[8px] font-black text-[var(--text-muted)] uppercase">
-                {EXPENSE_CATEGORIES.find(c => c.id === module.category)?.label || 'Altro'}
+          {/* Amount hero section */}
+          <div className="flex-1 flex flex-col justify-center my-3 bg-[var(--bg)] p-5 rounded-2xl border border-[var(--border)] relative overflow-hidden">
+            {/* Decorative background circle */}
+            <div className={`absolute -right-6 -bottom-6 w-24 h-24 rounded-full bg-gradient-to-br ${catTheme.gradient} opacity-[0.06]`} />
+            <div className="relative z-10">
+              <div className="flex items-center justify-between mb-3">
+                <p className={`text-[9px] uppercase font-black ${catTheme.color} tracking-[0.15em]`}>Importo</p>
+                <div className={`px-2.5 py-1 ${catTheme.bg} ${catTheme.border} border rounded-lg text-[8px] font-black ${catTheme.color} uppercase`}>
+                  {EXPENSE_CATEGORIES.find(c => c.id === module.category)?.label || 'Altro'}
+                </div>
               </div>
-            </div>
-            <div className="text-3xl font-black text-[var(--text-main)] tracking-tight flex items-baseline gap-1.5">
-              <span className="text-sm font-bold text-[var(--text-muted)]">{module.currency || 'EUR'}</span>
-              <span>{module.amount.toLocaleString('it-IT', { minimumFractionDigits: 2 })}</span>
+              <div className="text-3xl font-black text-[var(--text-main)] tracking-tight flex items-baseline gap-1.5">
+                <span className="text-xs font-bold text-[var(--text-muted)]">{module.currency || 'EUR'}</span>
+                <span>{module.amount.toLocaleString('it-IT', { minimumFractionDigits: 2 })}</span>
+              </div>
             </div>
           </div>
 
-          <div className="mt-4 pt-4 border-t border-[var(--border)] shrink-0" onClick={e => e.stopPropagation()}>
+          {/* Share button */}
+          <div className="pt-3 border-t border-[var(--border)] shrink-0" onClick={e => e.stopPropagation()}>
             <button
               onClick={() => onShare(module)}
-              className="w-full flex items-center justify-center gap-2 py-4 bg-[var(--surface-variant)] hover:bg-[var(--accent)] hover:text-white border border-[var(--border)] rounded-2xl text-[10px] font-bold transition-all shadow-sm active:scale-95"
+              className={`w-full flex items-center justify-center gap-2 py-3 bg-gradient-to-r ${catTheme.gradient} text-white rounded-2xl text-[10px] font-bold transition-all shadow-lg opacity-80 hover:opacity-100 active:scale-95`}
             >
-              <QrCode className="w-5 h-5 transition-transform group-hover:scale-110" />
-              Condividi Spesa
+              <QrCode className="w-4 h-4" />
+              Condividi
             </button>
           </div>
         </div>
@@ -1136,36 +1143,81 @@ export const SingleExpenseCard = ({ module, onDelete, onEdit, onShare, dragHandl
 
 export const SplitCard = ({ module, onDelete, onEdit, onShare, dragHandleProps }: { module: SplitModule; onDelete: (id: string) => void; onEdit: (m: Module) => void; onShare: (m: Module) => void; dragHandleProps?: any }) => {
   const totalAmount = module.expenses.reduce((sum, exp) => sum + exp.amount, 0);
+  const getInitials = (name: string) => name.substring(0, 2).toUpperCase();
+  const AVATAR_COLORS = ['bg-purple-500', 'bg-blue-500', 'bg-emerald-500', 'bg-amber-500', 'bg-pink-500', 'bg-cyan-500'];
   
   return (
     <ModuleWrapper module={module} onDelete={onDelete} onEdit={onEdit} dragHandleProps={dragHandleProps}>
       <div 
-        className="flex flex-col cursor-pointer group/card hover:bg-[var(--bg)] transition-colors p-3 -m-3 rounded-2xl active:scale-[0.98] h-full"
-        onClick={() => onEdit(module)} // Cliccando si apre la schermata specifica
+        className="flex flex-col cursor-pointer group/card hover:bg-[var(--surface-variant)] transition-all p-4 -m-4 rounded-[2rem] active:scale-[0.98] h-full relative overflow-hidden"
+        onClick={() => onEdit(module)}
       >
-        <div className="flex items-center gap-3 mb-3 shrink-0">
-          <div className="w-10 h-10 bg-purple-500/10 rounded-xl flex items-center justify-center border border-purple-500/20 shrink-0">
-            <Users className="w-5 h-5 text-purple-500" />
-          </div>
-          <div className="min-w-0">
-            <h4 className="font-bold text-[14px] text-[var(--text-main)] leading-tight truncate">{module.title || 'Gruppo Spese'}</h4>
-            <p className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider">{module.participants.length} partecipanti</p>
+        {/* Accent gradient strip */}
+        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-purple-500 to-indigo-400 opacity-60" />
+
+        {/* Header */}
+        <div className="flex items-center justify-between mt-2 mb-4 shrink-0">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-12 h-12 bg-gradient-to-br from-purple-500/15 to-indigo-500/15 rounded-2xl flex items-center justify-center border border-purple-500/20 shrink-0 group-hover/card:scale-105 transition-transform">
+              <Users className="w-5 h-5 text-purple-500" />
+            </div>
+            <div className="min-w-0">
+              <h4 className="font-bold text-[15px] text-[var(--text-main)] leading-tight truncate">{module.title || 'Gruppo Spese'}</h4>
+              <div className="flex items-center gap-2 mt-1">
+                <div className="flex items-center gap-1 bg-purple-500/8 px-2 py-0.5 rounded-md border border-purple-500/15">
+                  <Users className="w-2.5 h-2.5 text-purple-500" />
+                  <span className="text-[9px] font-black text-purple-600 uppercase">{module.participants.length}</span>
+                </div>
+                <div className="flex items-center gap-1 bg-[var(--bg)] px-2 py-0.5 rounded-md">
+                  <Receipt className="w-2.5 h-2.5 text-[var(--text-muted)]" />
+                  <span className="text-[9px] font-bold text-[var(--text-muted)] uppercase">{module.expenses.length} spese</span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
-        <div className="flex-1 mt-2">
-          <p className="text-[10px] uppercase font-bold text-[var(--text-muted)] tracking-wider">Spesa Totale</p>
-          <div className="text-xl font-black text-[var(--text-main)] flex items-center">
-             {new Intl.NumberFormat(undefined, { style: 'currency', currency: module.currency || 'EUR' }).format(totalAmount)}
+        {/* Participant avatars row */}
+        {module.participants.length > 0 && (
+          <div className="flex items-center gap-1 mb-4 px-1">
+            <div className="flex -space-x-2">
+              {module.participants.slice(0, 5).map((p, i) => (
+                <div 
+                  key={p.id} 
+                  className={`w-7 h-7 ${AVATAR_COLORS[i % AVATAR_COLORS.length]} rounded-full flex items-center justify-center text-white text-[8px] font-black border-2 border-[var(--card-bg)] shadow-sm`}
+                  title={p.name}
+                >
+                  {getInitials(p.name)}
+                </div>
+              ))}
+              {module.participants.length > 5 && (
+                <div className="w-7 h-7 bg-[var(--surface-variant)] rounded-full flex items-center justify-center text-[8px] font-black text-[var(--text-muted)] border-2 border-[var(--card-bg)]">
+                  +{module.participants.length - 5}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Amount hero section */}
+        <div className="flex-1 flex flex-col justify-center bg-[var(--bg)] p-4 rounded-2xl border border-[var(--border)] mb-3 relative overflow-hidden">
+          <div className="absolute -right-6 -bottom-6 w-24 h-24 rounded-full bg-gradient-to-br from-purple-500 to-indigo-500 opacity-[0.06]" />
+          <div className="relative z-10">
+            <p className="text-[9px] uppercase font-black text-purple-500 tracking-[0.15em] mb-2">Spesa Totale</p>
+            <div className="text-2xl font-black text-[var(--text-main)] tracking-tight flex items-baseline gap-1.5">
+              <span className="text-xs font-bold text-[var(--text-muted)]">{module.currency || 'EUR'}</span>
+              <span>{totalAmount.toLocaleString('it-IT', { minimumFractionDigits: 2 })}</span>
+            </div>
           </div>
         </div>
 
-        <div className="mt-4 pt-3 border-t border-[var(--border)] shrink-0" onClick={e => e.stopPropagation()}>
+        {/* Share button */}
+        <div className="pt-3 border-t border-[var(--border)] shrink-0" onClick={e => e.stopPropagation()}>
           <button
             onClick={() => onShare(module)}
-            className="w-full flex items-center justify-center gap-2 py-2 bg-[var(--info-bg)] hover:bg-[var(--info)]/20 text-[var(--info)] border border-[var(--info)]/30 rounded-xl text-[10px] font-bold transition-all shadow-sm"
+            className="w-full flex items-center justify-center gap-2 py-3 bg-gradient-to-r from-purple-500 to-indigo-500 text-white rounded-2xl text-[10px] font-bold transition-all shadow-lg opacity-80 hover:opacity-100 active:scale-95"
           >
-            <QrCode className="w-3.5 h-3.5" />
+            <QrCode className="w-4 h-4" />
             Condividi
           </button>
         </div>

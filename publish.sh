@@ -71,7 +71,7 @@ RELEASE_JSON=$(curl -s -X POST \
   -d "{
     \"tag_name\": \"$TAG\",
     \"name\": \"Chelona $TAG\",
-    \"body\": \"🚀 **Chelona v$VERSION** - UI Improvements & Polishing\n\n### ✨ Novità in questa release:\n- **💰 Formato Importi**: Perfezionata la visualizzazione dell'importo spesa nelle schermate di dettaglio, ora mostrato come '0' invece di '0.00' per una compilazione più rapida.\n- **📄 PDF Viewer Optimization**: Ulteriori ottimizzazioni alla stabilità e al rendering del visualizzatore documenti integrato.\",
+    \"body\": \"🚀 **Chelona v$VERSION** - Premium Expense Cards Redesign\\n\\n### ✨ Novità in questa release:\\n- **🎨 Card Spesa Singola**: Redesign completo con gradient accent per categoria, icone più grandi con animazioni, badge data migliorati e bottone condividi a colori.\\n- **👥 Card Gruppo Spese**: Avatar circolari dei partecipanti, badge conteggio spese, sezione importo con effetti gradient decorativi.\\n- **📋 Lista Spese (Split)**: Ogni riga ora mostra un gradient colorato per categoria, layout payer migliorato con chip e date compatte.\\n- **💰 Formato Importi**: Placeholder importo semplificato a 0 per compilazione rapida.\",
     \"draft\": false,
     \"prerelease\": false
   }")
