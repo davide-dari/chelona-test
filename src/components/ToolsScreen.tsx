@@ -3,7 +3,7 @@ import {
   FileUp, FileDown, Layers, SplitSquareHorizontal, RotateCw, 
   Image as ImageIcon, Type, X, FileCheck, ArrowRight, Percent, 
   Scan, ArrowLeft, Book, Search as SearchIcon, Eye, Trash2,
-  Wrench, ClipboardList, Settings2
+  Wrench, ClipboardList, Settings2, Minimize
 } from 'lucide-react';
 import { DocumentScanner } from './DocumentScanner';
 import { PDFDocument, rgb, degrees } from 'pdf-lib';
@@ -11,12 +11,16 @@ import { Module } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
 import mammoth from 'mammoth';
 import { jsPDF } from 'jspdf';
+import * as pdfjsLib from 'pdfjs-dist';
+import pdfjsWorker from 'pdfjs-dist/build/pdf.worker.mjs?url';
+pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
 
 export const TOOLS_PDF = [
   { id: 'merge', title: 'Unisci PDF', desc: 'Unisci più documenti in uno.', icon: Layers, color: 'text-rose-500', bg: 'bg-rose-500/10', category: 'pdf' },
   { id: 'img2pdf', title: 'JPG in PDF', desc: 'Converti immagini in PDF.', icon: ImageIcon, color: 'text-[var(--accent)]', bg: 'bg-[var(--accent)]/10', category: 'pdf' },
   { id: 'rotate', title: 'Ruota PDF', desc: 'Cambia orientamento alle pagine.', icon: RotateCw, color: 'text-blue-500', bg: 'bg-blue-500/10', category: 'pdf' },
   { id: 'docx2pdf', title: 'Word in PDF', desc: 'Converti documenti .docx in PDF.', icon: FileDown, color: 'text-blue-600', bg: 'bg-blue-600/10', category: 'pdf' },
+  { id: 'compress', title: 'Comprimi PDF', desc: 'Riduci la dimensione (MB) ottimizzando il PDF.', icon: Minimize, color: 'text-emerald-500', bg: 'bg-emerald-500/10', category: 'pdf' },
 ];
 
 export const TOOLS_UTILITY = [
@@ -208,6 +212,106 @@ export const ToolsScreen = ({ showToast, onSaveToSandbox, initialToolId, onReset
     URL.revokeObjectURL(url);
   };
 
+  const processCompress = async (saveToSandbox: boolean) => {
+    if (files.length === 0) return showToast("Seleziona almeno un PDF da comprimere.", 'error');
+    setIsProcessing(true);
+    showToast("Compressione in corso... Potrebbe richiedere tempo.", "info");
+    
+    try {
+      let doc: jsPDF | null = null;
+      let totalPages = 0;
+      
+      const pdfDocs = [];
+      for (const file of files) {
+        const arrayBuffer = await file.arrayBuffer();
+        const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
+        const pdf = await loadingTask.promise;
+        totalPages += pdf.numPages;
+        pdfDocs.push(pdf);
+      }
+
+      const targetMaxBytes = 950000; // Target prudenziale ~0.95 MB per rimanere sicuri sotto 1MB
+      let accumulatedBytes = 50000;
+      let targetBytesPerPage = Math.max(15000, (targetMaxBytes - accumulatedBytes) / totalPages);
+
+      for (const pdf of pdfDocs) {
+        for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+          const page = await pdf.getPage(pageNum);
+          let currentScale = totalPages > 10 ? 1.0 : 1.5;
+          let viewport = page.getViewport({ scale: currentScale });
+          
+          let canvas = document.createElement('canvas');
+          let context = canvas.getContext('2d');
+          if (!context) continue;
+
+          canvas.height = viewport.height;
+          canvas.width = viewport.width;
+
+          await page.render({ canvasContext: context, viewport }).promise;
+
+          let quality = 0.8;
+          let imgData = canvas.toDataURL('image/jpeg', quality);
+          let imgBytes = imgData.length * 0.75;
+
+          while (imgBytes > targetBytesPerPage && quality > 0.15) {
+            quality -= 0.15;
+            imgData = canvas.toDataURL('image/jpeg', Math.max(0.1, quality));
+            imgBytes = imgData.length * 0.75;
+          }
+
+          if (imgBytes > targetBytesPerPage && quality <= 0.15 && currentScale >= 1.0) {
+            const smallCanvas = document.createElement('canvas');
+            const smallCtx = smallCanvas.getContext('2d');
+            smallCanvas.width = canvas.width * 0.6;
+            smallCanvas.height = canvas.height * 0.6;
+            smallCtx?.drawImage(canvas, 0, 0, smallCanvas.width, smallCanvas.height);
+            
+            quality = 0.5;
+            imgData = smallCanvas.toDataURL('image/jpeg', quality);
+            let smallBytes = imgData.length * 0.75;
+            
+            while (smallBytes > targetBytesPerPage && quality > 0.1) {
+              quality -= 0.1;
+              imgData = smallCanvas.toDataURL('image/jpeg', Math.max(0.1, quality));
+              smallBytes = imgData.length * 0.75;
+            }
+            imgBytes = smallBytes;
+          }
+
+          if (!doc) {
+            doc = new jsPDF({ unit: 'pt', format: [viewport.width, viewport.height] });
+          } else {
+            doc.addPage([viewport.width, viewport.height]);
+          }
+          
+          doc.addImage(imgData, 'JPEG', 0, 0, viewport.width, viewport.height);
+          accumulatedBytes += imgBytes;
+          
+          page.cleanup();
+        }
+      }
+
+      if (!doc) throw new Error("Nessuna pagina processata");
+
+      const pdfOutput = doc.output('arraybuffer');
+      const uint8Array = new Uint8Array(pdfOutput);
+
+      const computedMb = (uint8Array.length / (1024 * 1024)).toFixed(2);
+
+      if (saveToSandbox && onSaveToSandbox) {
+        onSaveToSandbox(`PDF Compresso`, `data:application/pdf;base64,${bytesToBase64(uint8Array)}`);
+      } else {
+        downloadFile(uint8Array, `compresso.pdf`, 'application/pdf');
+        showToast(`PDF compresso con successo!`, 'success');
+      }
+      reset();
+    } catch (e) {
+      console.error(e);
+      showToast("Errore durante la compressione del PDF.", 'error');
+    }
+    setIsProcessing(false);
+  };
+
   const reset = () => {
     setFiles([]);
     setActiveTool(null);
@@ -222,6 +326,7 @@ export const ToolsScreen = ({ showToast, onSaveToSandbox, initialToolId, onReset
       case 'img2pdf': processImg2Pdf(saveToSandbox); break;
       case 'rotate': processRotate(saveToSandbox); break;
       case 'docx2pdf': processWord2Pdf(saveToSandbox); break;
+      case 'compress': processCompress(saveToSandbox); break;
       default: showToast('Questo strumento è in fase di sviluppo (offline).', 'info'); break;
     }
   };

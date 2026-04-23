@@ -71,7 +71,7 @@ RELEASE_JSON=$(curl -s -X POST \
   -d "{
     \"tag_name\": \"$TAG\",
     \"name\": \"Chelona $TAG\",
-    \"body\": \"🚀 **Chelona v$VERSION** - Bug Fix & UI Refinement\\n\\n### ✨ Novità in questa release:\\n- **💰 Campo Importo Migliorato**: Il campo importo nella spesa singola ora è vuoto per impostazione predefinita quando si crea una nuova spesa, facilitando l'inserimento.\\n- **🛡️ Messaggi di Sicurezza**: Migliorata la comunicazione degli errori di sicurezza (Secure Context). Adesso l'app spiega chiaramente che HTTPS è necessario per usare la fotocamera e la crittografia su dispositivi mobili.\",
+    \"body\": \"🚀 **Chelona v$VERSION** - Nuovi Strumenti PDF\\n\\n### ✨ Novità in questa release:\\n- **📉 Nuovissimo Compressore PDF**: introdotto uno strumento avanzato per ridurre le dimensioni dei PDF direttamente sul dispositivo, preservando privacy e sicurezza offline.\\n- **📦 Gestione MB Intelligente**: il compressore riduce drasticamente il peso (target < 1MB) tramite una logica di rasterizzazione adattiva.\\n- **🛠️ UI Strumenti**: Nuova icona dedicata e integrazione fluida con il sistema di salvataggio interno (Sandbox).\",
     \"draft\": false,
     \"prerelease\": false
   }")
