@@ -317,22 +317,9 @@ export const LockScreen = ({ isVisible, onAuthenticated, onStartScan, onOpenTool
                   <span className="font-bold text-base sm:text-lg" style={{ color: 'var(--warning)' }}>Importa File</span>
                 </label>
 
-                {onOpenAddressBook && (
-                  <button
-                    onClick={onOpenAddressBook}
-                    className="flex flex-col items-center p-6 rounded-3xl border transition-all group lg:col-span-1 col-span-2 sm:col-span-1"
-                    style={{ backgroundColor: 'var(--accent-bg)', borderColor: 'rgba(13, 148, 136, 0.2)' }}
-                  >
-                    <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-[var(--card-bg)] flex items-center justify-center mb-4 group-hover:scale-105 transition-transform shadow-sm border border-[var(--border)]">
-                      <MapPin className="w-10 h-10" style={{ color: 'var(--accent)' }} />
-                    </div>
-                    <span className="font-bold text-base sm:text-lg" style={{ color: 'var(--accent)' }}>Rubrica GPS</span>
-                  </button>
-                )}
-
                 <button
                   onClick={onOpenTools}
-                  className="flex flex-col items-center p-6 rounded-3xl border transition-all group lg:col-span-1 col-span-2 sm:col-span-2 shadow-md"
+                  className="flex flex-col items-center p-6 rounded-3xl border transition-all group lg:col-span-1 col-span-2 sm:col-span-3 shadow-md"
                   style={{ backgroundColor: 'var(--success-bg)', borderColor: 'rgba(52, 211, 153, 0.2)' }}
                 >
                   <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-[var(--card-bg)] flex items-center justify-center mb-4 group-hover:scale-105 transition-transform shadow-sm border border-[var(--border)]">

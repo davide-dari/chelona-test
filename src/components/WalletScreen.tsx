@@ -202,8 +202,8 @@ export const WalletScreen = ({ module, onSave, onClose }: WalletScreenProps) => 
         </div>
       </header>
 
-      <div className="flex-1 overflow-y-auto custom-scrollbar">
-        <div className="max-w-3xl mx-auto px-6 py-8 space-y-8 pb-32">
+      <div className="flex-1 overflow-y-auto custom-scrollbar" style={{ overscrollBehavior: 'contain' }}>
+        <div className="max-w-3xl mx-auto px-6 py-8 space-y-8 pb-[calc(10rem+env(safe-area-inset-bottom))]">
           
           {/* Dashboard Portafoglio */}
           <div className="space-y-4">

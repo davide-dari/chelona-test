@@ -71,7 +71,7 @@ RELEASE_JSON=$(curl -s -X POST \
   -d "{
     \"tag_name\": \"$TAG\",
     \"name\": \"Chelona $TAG\",
-    \"body\": \"🚀 **Chelona v$VERSION**\\n\\n### ✨ Novità in questa release:\\n- **📍 Rubrica GPS in Homepage**: aggiunto l'accesso rapido alla rubrica indirizzi direttamente dalla dashboard, accanto al profilo.\\n- **🔧 Precedenti v1.11.0**: Rubrica GPS, Miglioramenti Auto (Targa, Picker, KM), Notifiche Mensili, Fix Scroll e UI Login.\",
+    \"body\": \"🚀 **Chelona v$VERSION**\\n\\n### ✨ Hotfixes e Miglioramenti:\\n- **🚫 Rubrica Nascosta**: Rimosso l'accesso alla rubrica dalla schermata di login per chi cerca un'esperienza puramente privata.\\n- **📜 Fix Scrolling**: Risolto il problema fastidioso dello scorrimento tagliato in fondo alla gestione del **Mini-Portafoglio**.\\n- **📍 Rubrica su Dashboard**: Come prima, l'icona mappa rimane accessibile comodamente dalla Homepage dopo il login in alto a destra!\",
     \"draft\": false,
     \"prerelease\": false
   }")
