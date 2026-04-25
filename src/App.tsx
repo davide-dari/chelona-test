@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Sun, Moon, Wrench, Plus, LayoutDashboard, Settings, User, LogOut, Search, Mic, Bell, CreditCard, Fingerprint, ShieldCheck, Wallet, Lock, Menu, X, StickyNote, Grid2X2, Car, QrCode, Folder as FolderIcon, Check, Edit2, Trash2, BookOpen, ArrowLeft, FileDown, Hourglass, Users, Download, Receipt } from 'lucide-react';
+import { Sun, Moon, Wrench, Plus, LayoutDashboard, Settings, User, LogOut, Search, Mic, Bell, CreditCard, Fingerprint, ShieldCheck, Wallet, Lock, Menu, X, StickyNote, Grid2X2, Car, QrCode, Folder as FolderIcon, Check, Edit2, Trash2, BookOpen, ArrowLeft, FileDown, Hourglass, Users, Download, Receipt, MapPin } from 'lucide-react';
 import { Module, ModuleType, Folder, DocumentModule } from './types';
 import { storage, AppState } from './services/storage';
 import { encryption } from './services/encryption';
@@ -1064,10 +1064,17 @@ export default function App() {
                 </div>
 
                 {/* Right side: Avatar (Lock and Theme moved to Profile) */}
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2 sm:gap-4">
+                  <button 
+                    onClick={() => setIsAddressBookOpen(true)}
+                    className="p-2 sm:p-2.5 bg-[var(--surface-variant)] hover:bg-[var(--border)] rounded-full text-[var(--accent)] transition-all flex items-center justify-center shadow-sm"
+                    title="Rubrica GPS"
+                  >
+                    <MapPin className="w-5 h-5 sm:w-6 sm:h-6" />
+                  </button>
                   <button 
                     onClick={() => setIsProfileOpen(true)} 
-                    className="w-10 h-10 lg:w-11 lg:h-11 rounded-full overflow-hidden border border-[var(--border)] focus:outline-none hover:opacity-80 transition-all bg-[var(--surface-variant)]"
+                    className="w-10 h-10 lg:w-11 lg:h-11 rounded-full overflow-hidden border border-[var(--border)] focus:outline-none hover:opacity-80 transition-all bg-[var(--surface-variant)] shadow-sm"
                   >
                     <img src={avatar || `https://ui-avatars.com/api/?name=${username}&background=E3E3E3&color=5E5E5E`} alt="Profile" className="w-full h-full object-cover" />
                   </button>
