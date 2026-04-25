@@ -71,7 +71,7 @@ RELEASE_JSON=$(curl -s -X POST \
   -d "{
     \"tag_name\": \"$TAG\",
     \"name\": \"Chelona $TAG\",
-    \"body\": \"🚀 **Chelona v$VERSION**\\n\\n### ✨ Hotfixes e Miglioramenti:\\n- **🚗 Brand & Model Picker**: Migliorata drasticamente l'interfaccia di scelta marca e modello auto. Ora la transizione è fluida, supporta meglio la tastiera mobile e permette di inserire testo libero in modo più rapido.\\n- **📜 Fix Scrolling**: Risolto il problema dello scorrimento tagliato in fondo alla gestione del **Mini-Portafoglio**.\\n- **📍 Accessibilità**: Ottimizzazione generale della fluidità dell'interfaccia e dei tempi di caricamento.\",
+    \"body\": \"🚀 **Chelona v$VERSION**\\n\\n### ✨ Hotfixes e Miglioramenti:\\n- **🚗 Addio Tendina Grigia**: Integrato il nuovo Brand & Model Picker premium anche all'interno del wizard per la creazione di nuove auto! L'interfaccia di inserimento è ora più pulita, moderna e senza antiestetici menu di sistema.\\n- **🧭 Wizard Auto Intelligente**: Ora selezionando una marca e un modello, il wizard passa automaticamente allo step successivo, rendendo l'inserimento dell'auto estremamente più veloce.\\n- **📍 Accessibilità**: Ottimizzazione della compatibilità con le tastiere virtuali mobili in tutta l'area dedicata ai veicoli.\",
     \"draft\": false,
     \"prerelease\": false
   }")

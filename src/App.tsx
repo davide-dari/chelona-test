@@ -119,6 +119,7 @@ const TEMPLATES = {
 
 import { CAR_BRANDS } from './utils/carBrands';
 import { CAR_MODELS } from './constants/carModels';
+import { BrandModelPicker } from './components/BrandModelPicker';
 
 export default function App() {
   console.log('App: Rendering component...');
@@ -166,8 +167,8 @@ export default function App() {
   const [moduleToDelete, setModuleToDelete] = useState<Module | null>(null);
   const [isAddressBookOpen, setIsAddressBookOpen] = useState(false);
   const [autoFormStep, setAutoFormStep] = useState(0);
+  const [picker, setPicker] = useState<'brand' | 'model' | null>(null);
   const [pendingImportModule, setPendingImportModule] = useState<Module | null>(null);
-
 
   const [availableUpdate, setAvailableUpdate] = useState<UpdateInfo | null>(null);
   const [updateProgress, setUpdateProgress] = useState<number | null>(null);
@@ -1430,32 +1431,39 @@ export default function App() {
                                       />
                                     ) : (
                                       <div className="w-full max-w-sm relative">
-                                        <input
-                                          type={currentStep.type}
-                                          list={currentStep.list}
-                                          placeholder={currentStep.placeholder}
-                                          required={currentStep.required}
-                                          value={formData[currentStep.id] || ''}
-                                          onChange={e => {
-                                            let val = e.target.value;
-                                            if (currentStep.format === 'uppercase') val = val.toUpperCase();
-                                            setFormData({ ...formData, [currentStep.id]: val });
-                                          }}
-                                          onKeyDown={handleKeyDown}
-                                          className="w-full p-4 text-center bg-[var(--bg)] border border-[var(--border)] rounded-2xl outline-none focus:border-[var(--accent)] hover:border-[var(--accent)]/50 transition-all font-bold text-xl text-[var(--text-main)] shadow-inner placeholder:text-[var(--text-muted)]"
-                                          autoFocus
-                                        />
-                                      {currentStep.list && (
-                                        <datalist id={currentStep.list}>
-                                          {currentStep.list === 'car-brands' && CAR_BRANDS.map(brand => <option key={brand} value={brand} />)}
-                                          {currentStep.list === 'car-models' && formData.brand && (
-                                            (CAR_MODELS[formData.brand] || 
-                                             (Object.keys(CAR_MODELS).find(b => b.toLowerCase() === formData.brand?.toLowerCase()) && CAR_MODELS[Object.keys(CAR_MODELS).find(b => b.toLowerCase() === formData.brand?.toLowerCase())!]) || [])
-                                            .map((model: string) => <option key={model} value={model} />)
-                                          )}
-                                        </datalist>
-                                      )}
-                                    </div>
+                                        {(currentStep.list === 'car-brands' || currentStep.list === 'car-models') ? (
+                                          <button
+                                            type="button"
+                                            onClick={() => setPicker(currentStep.list === 'car-brands' ? 'brand' : 'model')}
+                                            className="w-full p-4 text-center bg-[var(--bg)] border border-[var(--border)] rounded-2xl outline-none focus:border-[var(--accent)] hover:border-[var(--accent)]/50 transition-all font-bold text-xl text-[var(--text-main)] shadow-inner"
+                                          >
+                                            {formData[currentStep.id] || currentStep.placeholder || "Seleziona..."}
+                                          </button>
+                                        ) : (
+                                          <>
+                                            <input
+                                              type={currentStep.type}
+                                              list={currentStep.list}
+                                              placeholder={currentStep.placeholder}
+                                              required={currentStep.required}
+                                              value={formData[currentStep.id] || ''}
+                                              onChange={e => {
+                                                let val = e.target.value;
+                                                if (currentStep.format === 'uppercase') val = val.toUpperCase();
+                                                setFormData({ ...formData, [currentStep.id]: val });
+                                              }}
+                                              onKeyDown={handleKeyDown}
+                                              className="w-full p-4 text-center bg-[var(--bg)] border border-[var(--border)] rounded-2xl outline-none focus:border-[var(--accent)] hover:border-[var(--accent)]/50 transition-all font-bold text-xl text-[var(--text-main)] shadow-inner placeholder:text-[var(--text-muted)]"
+                                              autoFocus
+                                            />
+                                            {currentStep.list && (
+                                              <datalist id={currentStep.list}>
+                                                {/* Fallback for other lists if any */}
+                                              </datalist>
+                                            )}
+                                          </>
+                                        )}
+                                      </div>
                                   )}
                                 </motion.div>
 
@@ -2156,6 +2164,26 @@ export default function App() {
           <DocumentArchive 
             modules={modules} 
             onClose={() => setIsArchiveOpen(false)} 
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {picker && (
+          <BrandModelPicker
+            type={picker}
+            brand={formData.brand}
+            onSelect={(v) => {
+               setFormData(prev => ({ ...prev, [picker]: v }));
+               if (picker === 'brand') {
+                 setPicker('model');
+                 setAutoFormStep(2); // Advance wizard to model step
+               } else {
+                 setPicker(null);
+                 setAutoFormStep(3); // Advance wizard to next step after model
+               }
+            }}
+            onClose={() => setPicker(null)}
           />
         )}
       </AnimatePresence>
