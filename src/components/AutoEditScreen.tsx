@@ -368,9 +368,11 @@ export const AutoEditScreen = ({ module, onSave, onCancel }: AutoEditScreenProps
             brand={data.brand}
             onSelect={(v) => {
                set(picker, v);
-               setPicker(null);
-               // auto open model picker if brand is selected
-               if (picker === 'brand') setTimeout(() => setPicker('model'), 300);
+               if (picker === 'brand') {
+                 setPicker('model');
+               } else {
+                 setPicker(null);
+               }
             }}
             onClose={() => setPicker(null)}
           />

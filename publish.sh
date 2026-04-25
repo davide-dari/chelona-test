@@ -71,7 +71,7 @@ RELEASE_JSON=$(curl -s -X POST \
   -d "{
     \"tag_name\": \"$TAG\",
     \"name\": \"Chelona $TAG\",
-    \"body\": \"🚀 **Chelona v$VERSION**\\n\\n### ✨ Hotfixes e Miglioramenti:\\n- **🚫 Rubrica Nascosta**: Rimosso l'accesso alla rubrica dalla schermata di login per chi cerca un'esperienza puramente privata.\\n- **📜 Fix Scrolling**: Risolto il problema fastidioso dello scorrimento tagliato in fondo alla gestione del **Mini-Portafoglio**.\\n- **📍 Rubrica su Dashboard**: Come prima, l'icona mappa rimane accessibile comodamente dalla Homepage dopo il login in alto a destra!\",
+    \"body\": \"🚀 **Chelona v$VERSION**\\n\\n### ✨ Hotfixes e Miglioramenti:\\n- **🚗 Brand & Model Picker**: Migliorata drasticamente l'interfaccia di scelta marca e modello auto. Ora la transizione è fluida, supporta meglio la tastiera mobile e permette di inserire testo libero in modo più rapido.\\n- **📜 Fix Scrolling**: Risolto il problema dello scorrimento tagliato in fondo alla gestione del **Mini-Portafoglio**.\\n- **📍 Accessibilità**: Ottimizzazione generale della fluidità dell'interfaccia e dei tempi di caricamento.\",
     \"draft\": false,
     \"prerelease\": false
   }")
