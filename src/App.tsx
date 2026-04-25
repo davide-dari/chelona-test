@@ -18,6 +18,7 @@ import { SplitScreen } from './components/SplitScreen';
 import { DocumentArchive } from './components/DocumentArchive';
 import { SingleExpenseScreen } from './components/SingleExpenseScreen';
 import { WalletScreen } from './components/WalletScreen';
+import { AddressBookScreen } from './components/AddressBookScreen';
 import { notificationService } from './services/notificationService';
 import { motion, AnimatePresence } from 'motion/react';
 import JSZip from 'jszip';
@@ -163,6 +164,7 @@ export default function App() {
   const [newFolderName, setNewFolderName] = useState('');
   const [editingFolderId, setEditingFolderId] = useState<string | null>(null);
   const [moduleToDelete, setModuleToDelete] = useState<Module | null>(null);
+  const [isAddressBookOpen, setIsAddressBookOpen] = useState(false);
   const [autoFormStep, setAutoFormStep] = useState(0);
   const [pendingImportModule, setPendingImportModule] = useState<Module | null>(null);
 
@@ -430,6 +432,7 @@ export default function App() {
         w: type === 'auto' ? 4 : type === 'document' ? 3 : 3,
         h: type === 'auto' ? 4 : type === 'document' ? 3 : 2,
         ...processedData,
+        ...(type === 'auto' ? { lastKmUpdatedAt: new Date().toISOString() } : {}),
         ...(type === 'document' && !processedData.documentType ? { documentType: 'generic' } : {}),
         ...(type === 'split' ? { participants: [], expenses: [], currency: 'EUR' } : {}),
         folderId: processedData.folderId !== undefined ? (processedData.folderId || undefined) : (selectedFolderId || undefined)
@@ -588,9 +591,11 @@ export default function App() {
 
   const updateModuleDirect = async (updatedModule: Module) => {
     if (!encryptionKey) return;
-    const updated = modules.map(m => m.id === updatedModule.id ? updatedModule : m);
-    setModules(updated);
-    await saveAppState(updated, folders);
+    setModules(prev => {
+      const updated = prev.map(m => m.id === updatedModule.id ? updatedModule : m);
+      saveAppState(updated, folders).catch(console.error);
+      return updated;
+    });
   };
 
   const deleteModule = async (id: string) => {
@@ -996,6 +1001,7 @@ export default function App() {
           }} 
           onStartScan={() => setIsScanning(true)}
           onOpenTools={() => setIsPublicToolsOpen(true)}
+          onOpenAddressBook={() => setIsAddressBookOpen(true)}
           onImportFile={handleImportFile}
           onCheckUpdate={() => handleCheckUpdate(true)}
         />
@@ -1315,9 +1321,9 @@ export default function App() {
                               { id: 'driverName', title: "Chi è il proprietario dell'auto?", type: 'text', required: true },
                               { id: 'brand', title: "Qual è la Marca?", type: 'text', list: 'car-brands', required: true },
                               { id: 'model', title: "Qual è il Modello?", type: 'text', list: 'car-models', required: true },
-                              { id: 'plate', title: "Inserisci la Targa", type: 'text', required: true },
+                              { id: 'plate', title: "Inserisci la Targa", type: 'text', required: true, format: 'uppercase' },
                               { id: 'registrationYear', title: "Anno di Immatricolazione / Produzione", type: 'number', required: true, placeholder: 'Es. 2021' },
-                              { id: 'currentKm', title: "Quanti Km ha l'auto attualmente?", type: 'number', required: true, placeholder: 'Es. 45000' },
+                              { id: 'currentKm', title: "Quanti Km ha l'auto attualmente?", type: 'number', required: true, placeholder: 'Es. 45000', format: 'km' },
                               { id: 'fuelType', title: "Seleziona l'Alimentazione", type: 'select', required: true, options: [
                                 { value: '', label: 'Seleziona...' },
                                 { value: 'benzina', label: 'Benzina' },
@@ -1330,8 +1336,8 @@ export default function App() {
                               { id: 'lastInsurance', title: "Scadenza Assicurazione", type: 'date' },
                               { id: 'lastTax', title: "Scadenza Prossimo Bollo", type: 'date' },
                               { id: 'lastRevision', title: "Data Ultima Revisione", type: 'date' },
-                              { id: 'lastServiceKm', title: "Km Ultimo Tagliando", type: 'number', placeholder: 'Es. 30000' },
-                              { id: 'tiresKm', title: "Km Ultimo Controllo Gomme", type: 'number', placeholder: 'Es. 40000' },
+                              { id: 'lastServiceKm', title: "Km Ultimo Tagliando", type: 'number', placeholder: 'Es. 30000', format: 'km' },
+                              { id: 'tiresKm', title: "Km Ultimo Controllo Gomme", type: 'number', placeholder: 'Es. 40000', format: 'km' },
                               { id: 'battery12vWarranty', title: "Scadenza Garanzia Batteria 12v", type: 'text', placeholder: 'Es. Garanzia fino al...' }
                             ];
                             
@@ -1394,29 +1400,44 @@ export default function App() {
                                     >
                                       {currentStep.options?.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                                     </select>
-                                  ) : currentStep.type === 'number' ? (
-                                    <input
-                                      type="number"
-                                      placeholder={currentStep.placeholder}
-                                      required={currentStep.required}
-                                      value={formData[currentStep.id] || ''}
-                                      onChange={e => setFormData({ ...formData, [currentStep.id]: e.target.value })}
-                                      onKeyDown={handleKeyDown}
-                                      className="w-full max-w-sm p-4 text-center bg-[var(--bg)] border border-[var(--border)] rounded-2xl outline-none focus:border-[var(--accent)] hover:border-[var(--accent)]/50 transition-all font-bold text-xl text-[var(--text-main)] shadow-inner placeholder:text-[var(--text-muted)]"
-                                    />
-                                  ) : (
-                                    <div className="w-full max-w-sm relative">
+                                    ) : currentStep.type === 'number' ? (
                                       <input
-                                        type={currentStep.type}
-                                        list={currentStep.list}
+                                        type={currentStep.format === 'km' ? 'text' : 'number'}
+                                        inputMode="numeric"
                                         placeholder={currentStep.placeholder}
                                         required={currentStep.required}
-                                        value={formData[currentStep.id] || ''}
-                                        onChange={e => setFormData({ ...formData, [currentStep.id]: e.target.value })}
+                                        value={
+                                          currentStep.format === 'km' && formData[currentStep.id]
+                                            ? Number(String(formData[currentStep.id]).replace(/\\D/g, '')).toLocaleString('it-IT')
+                                            : (formData[currentStep.id] || '')
+                                        }
+                                        onChange={e => {
+                                          let val = e.target.value;
+                                          if (currentStep.format === 'km') {
+                                            val = val.replace(/\\D/g, '');
+                                          }
+                                          setFormData({ ...formData, [currentStep.id]: val });
+                                        }}
                                         onKeyDown={handleKeyDown}
-                                        className="w-full p-4 text-center bg-[var(--bg)] border border-[var(--border)] rounded-2xl outline-none focus:border-[var(--accent)] hover:border-[var(--accent)]/50 transition-all font-bold text-xl text-[var(--text-main)] shadow-inner placeholder:text-[var(--text-muted)]"
-                                        autoFocus
+                                        className="w-full max-w-sm p-4 text-center bg-[var(--bg)] border border-[var(--border)] rounded-2xl outline-none focus:border-[var(--accent)] hover:border-[var(--accent)]/50 transition-all font-bold text-xl text-[var(--text-main)] shadow-inner placeholder:text-[var(--text-muted)]"
                                       />
+                                    ) : (
+                                      <div className="w-full max-w-sm relative">
+                                        <input
+                                          type={currentStep.type}
+                                          list={currentStep.list}
+                                          placeholder={currentStep.placeholder}
+                                          required={currentStep.required}
+                                          value={formData[currentStep.id] || ''}
+                                          onChange={e => {
+                                            let val = e.target.value;
+                                            if (currentStep.format === 'uppercase') val = val.toUpperCase();
+                                            setFormData({ ...formData, [currentStep.id]: val });
+                                          }}
+                                          onKeyDown={handleKeyDown}
+                                          className="w-full p-4 text-center bg-[var(--bg)] border border-[var(--border)] rounded-2xl outline-none focus:border-[var(--accent)] hover:border-[var(--accent)]/50 transition-all font-bold text-xl text-[var(--text-main)] shadow-inner placeholder:text-[var(--text-muted)]"
+                                          autoFocus
+                                        />
                                       {currentStep.list && (
                                         <datalist id={currentStep.list}>
                                           {currentStep.list === 'car-brands' && CAR_BRANDS.map(brand => <option key={brand} value={brand} />)}
@@ -2020,6 +2041,12 @@ export default function App() {
             <span className="font-bold text-sm">{toast.message}</span>
           </motion.div>
         )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+         {isAddressBookOpen && (
+            <AddressBookScreen onClose={() => setIsAddressBookOpen(false)} />
+         )}
       </AnimatePresence>
 
       {/* Update Modal */}

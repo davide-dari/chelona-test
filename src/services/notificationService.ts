@@ -104,59 +104,117 @@ export const notificationService = {
    * Controlla tutti i pref abilitati e notifica quelli scaduti/in scadenza.
    * Chiamare all'avvio dell'app dopo il login.
    */
-  checkAndFire(modules: Array<{ id: string; brand?: string; model?: string; currentKm?: string }>) {
+  checkAndFire(modules: any[]) {
     if (!this.isGranted()) return;
+
+    // Controllo notifiche standard
     const prefs = this.getAll().filter(p => p.enabled);
-    if (!prefs.length) return;
+    if (prefs.length > 0) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const todayStr = today.toISOString().split('T')[0];
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const todayStr = today.toISOString().split('T')[0];
+      const updated = prefs.map(pref => {
+        if (pref.lastFiredDate === todayStr) return pref;
 
-    const updated = prefs.map(pref => {
-      if (pref.lastFiredDate === todayStr) return pref;
+        const mod = modules.find(m => m.id === pref.moduleId);
+        if (!mod) return pref;
+        const carName = `${mod.brand || ''} ${mod.model || ''}`.trim();
 
-      const mod = modules.find(m => m.id === pref.moduleId);
-      if (!mod) return pref;
-      const carName = `${mod.brand || ''} ${mod.model || ''}`.trim();
+        if (pref.type === 'date') {
+          const target = new Date(pref.targetValue);
+          target.setHours(0, 0, 0, 0);
+          const diffDays = Math.ceil((target.getTime() - today.getTime()) / 86400000);
 
-      if (pref.type === 'date') {
-        const target = new Date(pref.targetValue);
-        target.setHours(0, 0, 0, 0);
-        const diffDays = Math.ceil((target.getTime() - today.getTime()) / 86400000);
-
-        if (diffDays < 0) {
-          this.fire(`⚠️ ${pref.label} scaduta`, `Scaduta da ${Math.abs(diffDays)} giorni — ${carName}`);
-          return { ...pref, lastFiredDate: todayStr };
+          if (diffDays < 0) {
+            this.fire(`⚠️ ${pref.label} scaduta`, `Scaduta da ${Math.abs(diffDays)} giorni — ${carName}`);
+            return { ...pref, lastFiredDate: todayStr };
+          }
+          if (diffDays <= pref.reminderOffset) {
+            const when = diffDays === 0 ? 'Scade oggi!' : `Scade tra ${diffDays} giorno${diffDays !== 1 ? 'i' : ''}`;
+            this.fire(`⏰ ${pref.label}`, `${when} — ${carName}`);
+            return { ...pref, lastFiredDate: todayStr };
+          }
         }
-        if (diffDays <= pref.reminderOffset) {
-          const when = diffDays === 0 ? 'Scade oggi!' : `Scade tra ${diffDays} giorno${diffDays !== 1 ? 'i' : ''}`;
-          this.fire(`⏰ ${pref.label}`, `${when} — ${carName}`);
-          return { ...pref, lastFiredDate: todayStr };
+
+        if (pref.type === 'km') {
+          const currentKm = Number(mod.currentKm) || 0;
+          const targetKm = Number(pref.targetValue);
+          const remaining = targetKm - currentKm;
+
+          if (remaining < 0) {
+            this.fire(`⚠️ ${pref.label} in ritardo`, `Superato di ${Math.abs(remaining).toLocaleString('it-IT')} km — ${carName}`);
+            return { ...pref, lastFiredDate: todayStr };
+          }
+          if (remaining <= pref.reminderOffset) {
+            this.fire(`🔧 ${pref.label}`, `Mancano ${remaining.toLocaleString('it-IT')} km — ${carName}`);
+            return { ...pref, lastFiredDate: todayStr };
+          }
         }
-      }
 
-      if (pref.type === 'km') {
-        const currentKm = Number(mod.currentKm) || 0;
-        const targetKm = Number(pref.targetValue);
-        const remaining = targetKm - currentKm;
+        return pref;
+      });
 
-        if (remaining < 0) {
-          this.fire(`⚠️ ${pref.label} in ritardo`, `Superato di ${Math.abs(remaining).toLocaleString('it-IT')} km — ${carName}`);
-          return { ...pref, lastFiredDate: todayStr };
-        }
-        if (remaining <= pref.reminderOffset) {
-          this.fire(`🔧 ${pref.label}`, `Mancano ${remaining.toLocaleString('it-IT')} km — ${carName}`);
-          return { ...pref, lastFiredDate: todayStr };
-        }
-      }
+      const enabledIds = new Set(prefs.map(p => p.id));
+      const rest = this.getAll().filter(p => !enabledIds.has(p.id));
+      this.save([...rest, ...updated]);
+    }
 
-      return pref;
-    });
-
-    // Salva solo i pref abilitati aggiornati; mantieni quelli non abilitati intatti
-    const enabledIds = new Set(prefs.map(p => p.id));
-    const rest = this.getAll().filter(p => !enabledIds.has(p.id));
-    this.save([...rest, ...updated]);
+    // Controlli Custom
+    this.checkMiniWallets(modules);
+    this.checkAutoKmReminders(modules);
   },
+
+  checkMiniWallets(modules: any[]) {
+    const today = new Date();
+    const currentYear = today.getFullYear();
+    const currentMonth = today.getMonth();
+
+    modules.filter(m => m.type === 'wallet').forEach(w => {
+      const payments = w.payments || [];
+      payments.forEach((p: any) => {
+        if (!p.dueDate) return;
+        const due = new Date(p.dueDate);
+        const saved = Number(p.savedAmount) || 0;
+        const total = Number(p.totalAmount) || 0;
+        if (saved >= total) return; // Finito, skip
+
+        const diffMonths = (due.getFullYear() - currentYear) * 12 + (due.getMonth() - currentMonth);
+        // Notifica se entro 1 mese la scadenza, o scaduta
+        if (diffMonths <= 1) {
+          const prefId = `wallet_${p.id}`;
+          const fireKey = `${currentYear}-${currentMonth}`;
+          const lastFired = localStorage.getItem(`notif_fired_${prefId}`);
+          
+          if (lastFired !== fireKey) {
+            this.fire(`💼 Mini-Portafoglio`, `Ricordati di accantonare i fondi per la scadenza imminente: ${p.name}`);
+            localStorage.setItem(`notif_fired_${prefId}`, fireKey);
+          }
+        }
+      });
+    });
+  },
+
+  checkAutoKmReminders(modules: any[]) {
+    const today = new Date();
+    
+    modules.filter(m => m.type === 'auto').forEach(a => {
+      if (a.lastKmUpdatedAt) {
+        const lastUpdate = new Date(a.lastKmUpdatedAt);
+        const daysDiff = (today.getTime() - lastUpdate.getTime()) / (1000 * 3600 * 24);
+        
+        if (daysDiff >= 60) {
+          const prefId = `auto_km_${a.id}`;
+          // Notifica una volta al mese (fireKey basato sul mese corrente)
+          const fireKey = `${today.getFullYear()}-${today.getMonth()}`;
+          const lastFired = localStorage.getItem(`notif_fired_${prefId}`);
+          
+          if (lastFired !== fireKey) {
+            this.fire(`🚗 Aggiorna i Chilometri`, `Sono passati più di 2 mesi. Aggiorna i km della tua ${a.title || 'Auto'}`);
+            localStorage.setItem(`notif_fired_${prefId}`, fireKey);
+          }
+        }
+      }
+    });
+  }
 };

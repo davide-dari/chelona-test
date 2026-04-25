@@ -66,8 +66,7 @@ html,
 body {
   height: 100%;
   width: 100%;
-  overflow: hidden;
-  position: fixed; /* Extra precaution for mobile browsers to prevent pull-to-refresh and bounce */
+  position: relative;
 }
 
 body {
@@ -78,6 +77,9 @@ body {
   margin: 0;
   padding: 0;
   -webkit-tap-highlight-color: transparent;
+  -webkit-user-select: auto;
+  user-select: auto;
+  overscroll-behavior-y: none;
 }
 
 #root {
@@ -143,6 +145,10 @@ body {
 }
 .hide-scrollbar::-webkit-scrollbar {
   display: none;
+}
+
+.custom-scrollbar {
+  -webkit-overflow-scrolling: touch;
 }
 
 /* Turtle specific animations */

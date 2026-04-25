@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Lock, Fingerprint, ArrowRight, KeyRound, AlertCircle, User, Loader2, Plus, ArrowLeft, QrCode, Wrench, FileDown } from 'lucide-react';
+import { Lock, Fingerprint, ArrowRight, KeyRound, AlertCircle, User, Loader2, Plus, ArrowLeft, QrCode, Wrench, FileDown, MapPin, Eye, EyeOff } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { storage } from '../services/storage';
 import { encryption } from '../services/encryption';
@@ -13,16 +13,18 @@ interface LockScreenProps {
   onStartScan: () => void;
   onOpenTools: () => void;
   onImportFile: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onOpenAddressBook?: () => void;
   onCheckUpdate?: () => void;
 }
 
-export const LockScreen = ({ isVisible, onAuthenticated, onStartScan, onOpenTools, onImportFile, onCheckUpdate }: LockScreenProps) => {
+export const LockScreen = ({ isVisible, onAuthenticated, onStartScan, onOpenTools, onImportFile, onOpenAddressBook, onCheckUpdate }: LockScreenProps) => {
   const [profiles, setProfiles] = useState<ProfileConfig[]>([]);
   const [selectedProfile, setSelectedProfile] = useState<ProfileConfig | null>(null);
   const [view, setView] = useState<'selector' | 'login' | 'setup'>('selector');
   
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isBioRequested, setIsBioRequested] = useState(true);
   const [error, setError] = useState('');
@@ -315,9 +317,22 @@ export const LockScreen = ({ isVisible, onAuthenticated, onStartScan, onOpenTool
                   <span className="font-bold text-base sm:text-lg" style={{ color: 'var(--warning)' }}>Importa File</span>
                 </label>
 
+                {onOpenAddressBook && (
+                  <button
+                    onClick={onOpenAddressBook}
+                    className="flex flex-col items-center p-6 rounded-3xl border transition-all group lg:col-span-1 col-span-2 sm:col-span-1"
+                    style={{ backgroundColor: 'var(--accent-bg)', borderColor: 'rgba(13, 148, 136, 0.2)' }}
+                  >
+                    <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-[var(--card-bg)] flex items-center justify-center mb-4 group-hover:scale-105 transition-transform shadow-sm border border-[var(--border)]">
+                      <MapPin className="w-10 h-10" style={{ color: 'var(--accent)' }} />
+                    </div>
+                    <span className="font-bold text-base sm:text-lg" style={{ color: 'var(--accent)' }}>Rubrica GPS</span>
+                  </button>
+                )}
+
                 <button
                   onClick={onOpenTools}
-                  className="flex flex-col items-center p-6 rounded-3xl border transition-all group lg:col-span-1 col-span-2 sm:col-span-3 shadow-md"
+                  className="flex flex-col items-center p-6 rounded-3xl border transition-all group lg:col-span-1 col-span-2 sm:col-span-2 shadow-md"
                   style={{ backgroundColor: 'var(--success-bg)', borderColor: 'rgba(52, 211, 153, 0.2)' }}
                 >
                   <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-[var(--card-bg)] flex items-center justify-center mb-4 group-hover:scale-105 transition-transform shadow-sm border border-[var(--border)]">
@@ -459,6 +474,7 @@ export const LockScreen = ({ isVisible, onAuthenticated, onStartScan, onOpenTool
                       onChange={(e) => { setUsername(e.target.value); setError(''); }}
                       className="w-full pl-12 pr-4 py-3.5 sm:py-4 bg-[var(--bg)] border border-[var(--border)] rounded-2xl outline-none focus:border-amber-500 transition-all text-sm sm:text-base text-[var(--text-main)] placeholder:text-[var(--text-muted)]"
                       disabled={isLoading}
+                      autoFocus={view === 'setup'}
                     />
                   </div>
                 )}
@@ -466,14 +482,21 @@ export const LockScreen = ({ isVisible, onAuthenticated, onStartScan, onOpenTool
                   <div className="relative">
                     <KeyRound className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                     <input
-                      type="password"
+                      type={showPassword ? "text" : "password"}
                       placeholder="Password"
                       value={password}
                       onChange={(e) => { setPassword(e.target.value); setError(''); }}
-                      className="w-full pl-12 pr-4 py-3.5 sm:py-4 bg-[var(--bg)] border border-[var(--border)] rounded-2xl outline-none focus:border-[var(--accent)] transition-all text-sm sm:text-base text-[var(--text-main)]"
-                      autoFocus
+                      className="w-full pl-12 pr-12 py-3.5 sm:py-4 bg-[var(--bg)] border border-[var(--border)] rounded-2xl outline-none focus:border-[var(--accent)] transition-all text-sm sm:text-base text-[var(--text-main)]"
+                      autoFocus={view === 'login'}
                       disabled={isLoading}
                     />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-[var(--text-main)] transition-colors p-1"
+                    >
+                      {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                    </button>
                   </div>
                 </div>
 
@@ -485,7 +508,7 @@ export const LockScreen = ({ isVisible, onAuthenticated, onStartScan, onOpenTool
                   >
                     <KeyRound className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                     <input
-                      type="password"
+                      type={showPassword ? "text" : "password"}
                       placeholder="Conferma Password"
                       value={confirmPassword}
                       onChange={(e) => { setConfirmPassword(e.target.value); setError(''); }}

@@ -4,6 +4,7 @@ import { AutoModule } from '../types';
 import { DocumentScanner } from './DocumentScanner';
 import { CAR_BRANDS } from '../utils/carBrands';
 import { CAR_MODELS } from '../constants/carModels';
+import { BrandModelPicker } from './BrandModelPicker';
 import { motion, AnimatePresence } from 'motion/react';
 
 interface AutoEditScreenProps {
@@ -61,6 +62,7 @@ const SectionTitle = ({ icon: Icon, label }: { icon: React.ElementType; label: s
 export const AutoEditScreen = ({ module, onSave, onCancel }: AutoEditScreenProps) => {
   const [data, setData] = useState<AutoModule>({ ...module });
   const [capturingField, setCapturingField] = useState<{ key: keyof AutoModule; title: string } | null>(null);
+  const [picker, setPicker] = useState<'brand' | 'model' | null>(null);
 
   const set = (key: keyof AutoModule, value: string | undefined) =>
     setData(prev => ({ ...prev, [key]: value }));
@@ -68,7 +70,7 @@ export const AutoEditScreen = ({ module, onSave, onCancel }: AutoEditScreenProps
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const title = `${data.brand || ''} ${data.model || ''}`.trim() || 'Auto';
-    onSave({ ...data, title });
+    onSave({ ...data, title, lastKmUpdatedAt: new Date().toISOString() });
   };
 
   // Car models autocomplete
@@ -138,31 +140,23 @@ export const AutoEditScreen = ({ module, onSave, onCancel }: AutoEditScreenProps
             </Field>
 
             <Field label="Marca">
-              <input
-                type="text"
-                list="edit-car-brands"
-                value={data.brand || ''}
-                onChange={e => set('brand', e.target.value)}
-                placeholder="Es. Toyota"
-                className={inputCls}
-              />
-              <datalist id="edit-car-brands">
-                {CAR_BRANDS.map(b => <option key={b} value={b} />)}
-              </datalist>
+              <button
+                type="button"
+                onClick={() => setPicker('brand')}
+                className={`${inputCls} text-left flex justify-between items-center`}
+              >
+                {data.brand || 'Seleziona...'}
+              </button>
             </Field>
 
             <Field label="Modello">
-              <input
-                type="text"
-                list="edit-car-models"
-                value={data.model || ''}
-                onChange={e => set('model', e.target.value)}
-                placeholder="Es. Yaris"
-                className={inputCls}
-              />
-              <datalist id="edit-car-models">
-                {modelOptions.map(m => <option key={m} value={m} />)}
-              </datalist>
+              <button
+                type="button"
+                onClick={() => setPicker('model')}
+                className={`${inputCls} text-left flex justify-between items-center`}
+              >
+                {data.model || 'Seleziona...'}
+              </button>
             </Field>
 
             <Field label="Targa">
@@ -204,10 +198,11 @@ export const AutoEditScreen = ({ module, onSave, onCancel }: AutoEditScreenProps
 
             <Field label="Km Attuali" colSpan={2}>
               <input
-                type="number"
-                value={data.currentKm || ''}
-                onChange={e => set('currentKm', e.target.value)}
-                placeholder="Es. 45000"
+                type="text"
+                inputMode="numeric"
+                value={data.currentKm ? Number(data.currentKm).toLocaleString('it-IT') : ''}
+                onChange={e => set('currentKm', e.target.value.replace(/\\D/g, ''))}
+                placeholder="Es. 45.000"
                 className={inputCls}
               />
             </Field>
@@ -249,20 +244,22 @@ export const AutoEditScreen = ({ module, onSave, onCancel }: AutoEditScreenProps
           <div className="grid grid-cols-2 gap-4">
             <Field label="Km Ultimo Tagliando" onAttach={() => setCapturingField({ key: 'serviceDoc', title: 'Tagliando' })} hasDoc={!!data.serviceDoc}>
               <input
-                type="number"
-                value={data.lastServiceKm || ''}
-                onChange={e => set('lastServiceKm', e.target.value)}
-                placeholder="Es. 30000"
+                type="text"
+                inputMode="numeric"
+                value={data.lastServiceKm ? Number(data.lastServiceKm).toLocaleString('it-IT') : ''}
+                onChange={e => set('lastServiceKm', e.target.value.replace(/\\D/g, ''))}
+                placeholder="Es. 30.000"
                 className={inputCls}
               />
             </Field>
 
             <Field label="Km Ultimo Controllo Gomme" onAttach={() => setCapturingField({ key: 'tireDoc', title: 'Controllo Gomme' })} hasDoc={!!data.tireDoc}>
               <input
-                type="number"
-                value={data.tiresKm || ''}
-                onChange={e => set('tiresKm', e.target.value)}
-                placeholder="Es. 40000"
+                type="text"
+                inputMode="numeric"
+                value={data.tiresKm ? Number(data.tiresKm).toLocaleString('it-IT') : ''}
+                onChange={e => set('tiresKm', e.target.value.replace(/\\D/g, ''))}
+                placeholder="Es. 40.000"
                 className={inputCls}
               />
             </Field>
@@ -363,6 +360,19 @@ export const AutoEditScreen = ({ module, onSave, onCancel }: AutoEditScreenProps
               setCapturingField(null);
             }}
             onClose={() => setCapturingField(null)}
+          />
+        )}
+        {picker && (
+          <BrandModelPicker
+            type={picker}
+            brand={data.brand}
+            onSelect={(v) => {
+               set(picker, v);
+               setPicker(null);
+               // auto open model picker if brand is selected
+               if (picker === 'brand') setTimeout(() => setPicker('model'), 300);
+            }}
+            onClose={() => setPicker(null)}
           />
         )}
       </AnimatePresence>

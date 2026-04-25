@@ -71,7 +71,7 @@ RELEASE_JSON=$(curl -s -X POST \
   -d "{
     \"tag_name\": \"$TAG\",
     \"name\": \"Chelona $TAG\",
-    \"body\": \"🚀 **Chelona v$VERSION** - Nuovi Strumenti PDF\\n\\n### ✨ Novità in questa release:\\n- **📉 Nuovissimo Compressore PDF**: introdotto uno strumento avanzato per ridurre le dimensioni dei PDF direttamente sul dispositivo, preservando privacy e sicurezza offline.\\n- **📦 Gestione MB Intelligente**: il compressore riduce drasticamente il peso (target < 1MB) tramite una logica di rasterizzazione adattiva.\\n- **🛠️ UI Strumenti**: Nuova icona dedicata e integrazione fluida con il sistema di salvataggio interno (Sandbox).\",
+    \"body\": \"🚀 **Chelona v$VERSION** - Nuova Rubrica, UI & Fixes\\n\\n### ✨ Novità in questa release:\\n- **🗺️ Rubrica Indirizzi GPS**: nuova schermata rapida prima del login per salvare i tuoi indirizzi frequenti e navigare rapidamente!\\n- **🚗 Miglioramenti Sezione Auto**: layout di selezione marca/modello completamente ridisegnato, input chilometri formattati con migliaia e targa forzata sempre in maiuscolo.\\n- **⏰ Notifiche Intelligenti**: aggiunti memo mensili automatici per i Mini-Portafogli in scadenza e memo per ricordarti di aggiornare i km se non lo fai da più di 2 mesi.\\n- **👁️ Login e Password**: adesso puoi vedere in chiaro la tua password al volo durante il setup e focus migliorato.\\n- **🔧 Stabilità**: fix persistenza stato Mini-Portafogli, migliorato handling dello scroll per evitare blocchi e risolto copia/incolla del testo.\",
     \"draft\": false,
     \"prerelease\": false
   }")
