@@ -797,20 +797,52 @@ export default function App() {
     }
 
     if (targetFolderName === 'Galleria') {
-      const newModule: import('./types').GalleryModule = {
+      const existingGallery = modules.find(m => m.type === 'gallery') as import('./types').GalleryModule;
+      
+      const newImage = {
         id: generateUUID(),
-        type: 'gallery',
-        title,
         image: base64,
-        folderId: folderId,
-        x: 0,
-        y: 0,
-        w: 2,
-        h: 2
+        filterName: title.replace('Immagine: ', ''),
+        createdAt: new Date().toISOString()
       };
-      const newModules = [newModule, ...modules];
-      setModules(newModules);
-      await saveAppState(newModules, newFolders);
+
+      if (existingGallery) {
+        // Upgrade legacy module if necessary
+        const existingImages = existingGallery.images || [];
+        if (existingGallery.image && existingImages.length === 0) {
+          existingImages.push({
+            id: generateUUID(),
+            image: existingGallery.image,
+            filterName: existingGallery.filterName,
+            createdAt: new Date().toISOString()
+          });
+        }
+        
+        const updatedModule: import('./types').GalleryModule = {
+          ...existingGallery,
+          images: [newImage, ...existingImages],
+          image: undefined, // Clear legacy
+          filterName: undefined
+        };
+        const newModules = modules.map(m => m.id === existingGallery.id ? updatedModule : m);
+        setModules(newModules);
+        await saveAppState(newModules, newFolders);
+      } else {
+        const newModule: import('./types').GalleryModule = {
+          id: generateUUID(),
+          type: 'gallery',
+          title: 'Galleria',
+          images: [newImage],
+          folderId: folderId,
+          x: 0,
+          y: 0,
+          w: 4,
+          h: 4
+        };
+        const newModules = [newModule, ...modules];
+        setModules(newModules);
+        await saveAppState(newModules, newFolders);
+      }
     } else {
       const newModule: DocumentModule = {
         id: generateUUID(),

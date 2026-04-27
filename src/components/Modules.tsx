@@ -417,26 +417,45 @@ export const WalletCard = ({ module, onDelete, onEdit, onShare, dragHandleProps,
 };
 
 export const GalleryCard = ({ module, onDelete, onEdit, onShare, dragHandleProps }: { module: GalleryModule; onDelete: (id: string) => void; onEdit: (m: Module) => void; onShare: (m: Module) => void; dragHandleProps?: any }) => {
-  const [showFullImage, setShowFullImage] = useState(false);
+  const [showGallery, setShowGallery] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<import('../types').GalleryImage | null>(null);
+
+  const images = module.images || [];
+  // Fallback per legacy
+  if (module.image && images.length === 0) {
+    images.push({
+      id: module.id,
+      image: module.image,
+      filterName: module.filterName,
+      createdAt: new Date().toISOString()
+    });
+  }
+
+  const coverImage = images.length > 0 ? images[0].image : '';
 
   return (
     <>
       <ModuleWrapper module={module} onDelete={onDelete} onEdit={onEdit} dragHandleProps={dragHandleProps}>
         <div 
           className="h-full flex flex-col cursor-pointer group/card hover:bg-[var(--bg)] transition-all p-3 -m-3 rounded-2xl active:scale-[0.98]"
-          onClick={() => setShowFullImage(true)}
+          onClick={() => setShowGallery(true)}
         >
-          <div className="relative aspect-square rounded-xl overflow-hidden border border-[var(--border)] shadow-inner mb-3">
-            <img 
-              src={module.image} 
-              alt={module.title} 
-              className="w-full h-full object-cover group-hover/card:scale-110 transition-transform duration-500" 
-            />
-            <div className="absolute inset-0 bg-black/20 group-hover/card:bg-black/0 transition-all" />
-            {module.filterName && (
-              <div className="absolute bottom-2 left-2 bg-black/60 backdrop-blur-md px-2 py-0.5 rounded-lg border border-white/20">
-                <span className="text-[8px] font-black text-white uppercase tracking-widest">{module.filterName}</span>
-              </div>
+          <div className="relative aspect-square rounded-xl overflow-hidden border border-[var(--border)] shadow-inner mb-3 bg-[var(--surface-variant)] flex items-center justify-center">
+            {coverImage ? (
+              <>
+                <img 
+                  src={coverImage} 
+                  alt={module.title} 
+                  className="w-full h-full object-cover group-hover/card:scale-110 transition-transform duration-500" 
+                />
+                <div className="absolute inset-0 bg-black/20 group-hover/card:bg-black/0 transition-all" />
+                <div className="absolute bottom-2 right-2 bg-black/60 backdrop-blur-md px-2 py-0.5 rounded-lg border border-white/20 flex items-center gap-1">
+                  <ImageIcon className="w-3 h-3 text-white" />
+                  <span className="text-[10px] font-black text-white">{images.length}</span>
+                </div>
+              </>
+            ) : (
+              <ImageIcon className="w-8 h-8 text-[var(--text-muted)] opacity-50" />
             )}
           </div>
           
@@ -446,7 +465,7 @@ export const GalleryCard = ({ module, onDelete, onEdit, onShare, dragHandleProps
                 <ImageIcon className="w-3.5 h-3.5 text-indigo-500" />
               </div>
               <span className="text-[12px] font-bold text-[var(--text-main)] truncate max-w-[100px]">
-                {module.title || 'Foto'}
+                {module.title || 'Galleria'}
               </span>
             </div>
             <button
@@ -460,14 +479,66 @@ export const GalleryCard = ({ module, onDelete, onEdit, onShare, dragHandleProps
       </ModuleWrapper>
 
       <AnimatePresence>
-        {showFullImage && (
+        {showGallery && (
+          <div className="fixed inset-0 z-[150] flex flex-col bg-[var(--bg)]">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 20 }}
+              className="flex-1 flex flex-col h-full"
+            >
+              <div className="flex items-center justify-between p-4 border-b border-[var(--border)] shrink-0 bg-[var(--card-bg)] shadow-sm z-10">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-indigo-500/10 rounded-2xl flex items-center justify-center text-indigo-500">
+                    <ImageIcon className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-bold text-[var(--text-main)] leading-tight">{module.title || 'Galleria'}</h2>
+                    <p className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-widest">{images.length} foto</p>
+                  </div>
+                </div>
+                <button onClick={() => setShowGallery(false)} className="p-3 bg-[var(--surface-variant)] hover:bg-red-500/10 rounded-xl text-[var(--text-main)] hover:text-red-500 transition-colors">
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto p-2 custom-scrollbar">
+                {images.length === 0 ? (
+                  <div className="h-full flex flex-col items-center justify-center text-[var(--text-muted)] opacity-50">
+                    <ImageIcon className="w-16 h-16 mb-4" />
+                    <p className="font-bold">Nessuna foto salvata</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2 auto-rows-max">
+                    {images.map((img) => (
+                      <div 
+                        key={img.id} 
+                        className="aspect-square rounded-xl overflow-hidden cursor-pointer relative group bg-[var(--surface-variant)]"
+                        onClick={() => setSelectedImage(img)}
+                      >
+                        <img 
+                          src={img.image} 
+                          alt="Gallery item" 
+                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" 
+                        />
+                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          </div>
+        )}
+
+        {selectedImage && (
           <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              onClick={() => setShowFullImage(false)}
-              className="absolute inset-0 bg-black/90 backdrop-blur-md"
+              onClick={() => setSelectedImage(null)}
+              className="absolute inset-0 bg-black/95 backdrop-blur-md"
             />
             <motion.div
               initial={{ opacity: 0, scale: 0.9 }}
@@ -476,21 +547,25 @@ export const GalleryCard = ({ module, onDelete, onEdit, onShare, dragHandleProps
               className="relative max-w-[95vw] max-h-[90vh] flex flex-col items-center"
             >
               <button 
-                onClick={() => setShowFullImage(false)}
+                onClick={() => setSelectedImage(null)}
                 className="absolute -top-12 right-0 p-2 text-white/70 hover:text-white transition-colors"
               >
                 <X className="w-8 h-8" />
               </button>
               <img 
-                src={module.image} 
-                alt={module.title} 
+                src={selectedImage.image} 
+                alt="Selected" 
                 className="max-w-full max-h-[80vh] object-contain rounded-2xl shadow-2xl border border-white/10" 
               />
               <div className="mt-6 text-center">
-                <h3 className="text-xl font-bold text-white mb-1">{module.title || 'Foto'}</h3>
-                {module.filterName && (
-                  <p className="text-xs font-black text-white/50 uppercase tracking-[0.2em]">Filtro: {module.filterName}</p>
+                {selectedImage.filterName && (
+                  <p className="text-sm font-black text-white/80 uppercase tracking-[0.2em] bg-white/10 px-4 py-1.5 rounded-full inline-block">
+                    Filtro: {selectedImage.filterName}
+                  </p>
                 )}
+                <p className="text-[10px] text-white/40 mt-2">
+                  {new Date(selectedImage.createdAt).toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                </p>
               </div>
             </motion.div>
           </div>

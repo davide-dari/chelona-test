@@ -160,14 +160,37 @@ export const ImageFilterTool = ({ onClose, onSaveToSandbox }: ImageFilterToolPro
       
       setTimeout(async () => {
         try {
-          const dataUrl = canvasRef.current!.toDataURL('image/jpeg', 0.85);
+          // Scale down for app storage to avoid QuotaExceededError
+          const canvas = canvasRef.current!;
+          const maxDim = 1200;
+          let width = canvas.width;
+          let height = canvas.height;
+          
+          if (width > maxDim || height > maxDim) {
+            if (width > height) {
+              height = Math.round((height * maxDim) / width);
+              width = maxDim;
+            } else {
+              width = Math.round((width * maxDim) / height);
+              height = maxDim;
+            }
+          }
+
+          const tempCanvas = document.createElement('canvas');
+          tempCanvas.width = width;
+          tempCanvas.height = height;
+          const ctx = tempCanvas.getContext('2d');
+          ctx?.drawImage(canvas, 0, 0, width, height);
+
+          const dataUrl = tempCanvas.toDataURL('image/jpeg', 0.75);
+          
           await onSaveToSandbox(`Immagine: ${FILTERS[activeFilterIndex].name}`, dataUrl, 'Galleria');
           
           setSaved(true);
           setTimeout(() => setSaved(false), 2000);
         } catch (err) {
           console.error('Save error:', err);
-          alert('Errore durante il salvataggio dell\'immagine.');
+          alert('Errore durante il salvataggio dell\'immagine (spazio esaurito?).');
         } finally {
           setIsProcessing(false);
         }
@@ -193,10 +216,10 @@ export const ImageFilterTool = ({ onClose, onSaveToSandbox }: ImageFilterToolPro
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: 20 }}
-      className="bg-[var(--card-bg)] border border-[var(--border)] rounded-[2.5rem] p-6 lg:p-8 w-full shadow-xl flex flex-col min-h-[70vh] lg:min-h-[80vh]"
+      className="bg-[var(--card-bg)] border border-[var(--border)] rounded-[2.5rem] p-4 lg:p-6 w-full shadow-xl flex flex-col h-[85vh] max-h-[800px]"
     >
       {/* Header */}
-      <div className="flex items-center justify-between mb-6 shrink-0">
+      <div className="flex items-center justify-between mb-4 shrink-0">
         <div className="flex items-center gap-3">
           <div className="p-2.5 bg-pink-500/10 rounded-2xl border border-pink-500/20 text-pink-500">
             <Camera className="w-6 h-6" />
@@ -231,7 +254,7 @@ export const ImageFilterTool = ({ onClose, onSaveToSandbox }: ImageFilterToolPro
           </button>
         </div>
       ) : (
-        <div className="flex-1 flex flex-col overflow-hidden gap-6">
+        <div className="flex-1 flex flex-col overflow-hidden gap-4">
           
           {/* Main Image Preview Area */}
           <div className="flex-1 min-h-0 bg-[var(--bg)] rounded-[2rem] border border-[var(--border)] overflow-hidden flex items-center justify-center relative p-2">

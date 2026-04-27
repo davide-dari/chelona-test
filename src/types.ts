@@ -131,9 +131,18 @@ export interface WalletModule extends BaseModule {
   savedAmount: number;
 }
 
+export interface GalleryImage {
+  id: string;
+  image: string;
+  filterName?: string;
+  createdAt: string;
+}
+
 export interface GalleryModule extends BaseModule {
   type: 'gallery';
-  image: string; // base64 encoded image
+  images: GalleryImage[];
+  // Legacy support
+  image?: string;
   filterName?: string;
 }
 
