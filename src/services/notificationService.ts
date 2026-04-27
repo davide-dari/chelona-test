@@ -171,27 +171,24 @@ export const notificationService = {
     const currentMonth = today.getMonth();
 
     modules.filter(m => m.type === 'wallet').forEach(w => {
-      const payments = w.payments || [];
-      payments.forEach((p: any) => {
-        if (!p.dueDate) return;
-        const due = new Date(p.dueDate);
-        const saved = Number(p.savedAmount) || 0;
-        const total = Number(p.totalAmount) || 0;
-        if (saved >= total) return; // Finito, skip
+      if (!w.dueDate) return;
+      const due = new Date(w.dueDate);
+      const saved = Number(w.savedAmount) || 0;
+      const total = Number(w.totalAmount) || 0;
+      if (saved >= total) return; // Finito, skip
 
-        const diffMonths = (due.getFullYear() - currentYear) * 12 + (due.getMonth() - currentMonth);
-        // Notifica se entro 1 mese la scadenza, o scaduta
-        if (diffMonths <= 1) {
-          const prefId = `wallet_${p.id}`;
-          const fireKey = `${currentYear}-${currentMonth}`;
-          const lastFired = localStorage.getItem(`notif_fired_${prefId}`);
-          
-          if (lastFired !== fireKey) {
-            this.fire(`💼 Mini-Portafoglio`, `Ricordati di accantonare i fondi per la scadenza imminente: ${p.name}`);
-            localStorage.setItem(`notif_fired_${prefId}`, fireKey);
-          }
+      const diffMonths = (due.getFullYear() - currentYear) * 12 + (due.getMonth() - currentMonth);
+      // Notifica se entro 1 mese la scadenza, o scaduta
+      if (diffMonths <= 1) {
+        const prefId = `wallet_${w.id}`;
+        const fireKey = `${currentYear}-${currentMonth}`;
+        const lastFired = localStorage.getItem(`notif_fired_${prefId}`);
+        
+        if (lastFired !== fireKey) {
+          this.fire(`💼 Portafoglio`, `Ricordati di accantonare i fondi per la scadenza imminente: ${w.title}`);
+          localStorage.setItem(`notif_fired_${prefId}`, fireKey);
         }
-      });
+      }
     });
   },
 

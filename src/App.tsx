@@ -17,7 +17,7 @@ import { AutoEditScreen } from './components/AutoEditScreen';
 import { SplitScreen } from './components/SplitScreen';
 import { DocumentArchive } from './components/DocumentArchive';
 import { SingleExpenseScreen } from './components/SingleExpenseScreen';
-import { WalletScreen } from './components/WalletScreen';
+import { WalletEditScreen } from './components/WalletEditScreen';
 import { AddressBookScreen } from './components/AddressBookScreen';
 import { notificationService } from './services/notificationService';
 import { motion, AnimatePresence } from 'motion/react';
@@ -568,9 +568,9 @@ export default function App() {
       const wallet: import('./types').WalletModule = {
         ...module,
         type: 'wallet',
-        balance: 0,
-        currency: 'EUR',
-        payments: []
+        totalAmount: 0,
+        dueDate: new Date().toISOString().split('T')[0],
+        savedAmount: 0
       };
       setEditingWalletModule(wallet);
       return;
@@ -1177,9 +1177,9 @@ export default function App() {
                 onSaveToSandbox={handleSaveToSandbox}
               />
             ) : editingWalletModule ? (
-              <WalletScreen
+              <WalletEditScreen
                 module={editingWalletModule}
-                onSave={(mod) => { updateModuleDirect(mod); }}
+                onSave={(mod) => { updateModuleDirect(mod); setEditingWalletModule(null); }}
                 onClose={() => setEditingWalletModule(null)}
               />
             ) : editingSingleExpenseModule || formData.template === 'single-expense' ? (

@@ -358,84 +358,58 @@ export const GenericCard = ({ module, onDelete, onEdit, onShare, dragHandleProps
 };
 
 
-export const WalletCard = ({ module, onDelete, onEdit, onShare, dragHandleProps }: { module: WalletModule; onDelete: (id: string) => void; onEdit: (m: Module) => void; onShare: (m: Module) => void; dragHandleProps?: any }) => {
-  const currentMonthRate = React.useMemo(() => {
-    const today = new Date();
-    const currentYear = today.getFullYear();
-    const currentMonth = today.getMonth();
-    
-    return module.payments.reduce((acc, p) => {
-      const due = new Date(p.dueDate);
-      const monthsDiff = (due.getFullYear() - currentYear) * 12 + (due.getMonth() - currentMonth);
-      const installments = Math.max(1, monthsDiff + 1);
-      const remainingToSave = Math.max(0, p.totalAmount - (p.savedAmount || 0));
-      return acc + (remainingToSave / installments);
-    }, 0);
-  }, [module.payments]);
+export const WalletCard = ({ module, onDelete, onEdit, onShare, dragHandleProps, onAddSavings }: { module: WalletModule; onDelete: (id: string) => void; onEdit: (m: Module) => void; onShare: (m: Module) => void; dragHandleProps?: any; onAddSavings?: (m: WalletModule) => void; }) => {
+  const saved = Number(module.savedAmount) || 0;
+  const total = Number(module.totalAmount) || 0;
+  const progress = total > 0 ? Math.min(100, (saved / total) * 100) : 0;
+  const isCompleted = progress >= 100;
 
   return (
     <ModuleWrapper module={module} onDelete={onDelete} onEdit={onEdit} dragHandleProps={dragHandleProps}>
       <div 
-        className="h-full flex flex-col cursor-pointer hover:bg-[var(--bg)] transition-colors p-3 -m-3 rounded-2xl active:scale-[0.98]"
+        className={`h-full flex flex-col cursor-pointer hover:bg-[var(--bg)] transition-colors p-4 -m-4 rounded-2xl active:scale-[0.98] ${isCompleted ? 'border border-emerald-500/30 bg-emerald-500/5' : ''}`}
         onClick={() => onEdit(module)}
       >
         <div className="flex items-center justify-between mb-4">
-          <div className="p-2.5 bg-purple-500/10 rounded-2xl border border-purple-500/20 text-purple-600">
-            <Wallet className="w-5 h-5" />
-          </div>
-          <div className="text-right">
-            <p className="text-[9px] font-black uppercase tracking-widest text-[var(--text-muted)]">Saldo</p>
-            <p className="text-xl font-black text-[var(--text-main)] tracking-tight">€ {module.balance.toLocaleString('it-IT')}</p>
-          </div>
-        </div>
-
-        <div className="bg-[var(--card-bg)] border border-[var(--border)] rounded-2xl p-4 flex flex-col gap-1 shadow-inner mb-3">
-          <p className="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-wider">Quota Mensile</p>
-          <div className="flex items-baseline justify-between">
-            <p className="text-lg font-black text-emerald-600 tracking-tight">€ {currentMonthRate.toLocaleString('it-IT', { maximumFractionDigits: 0 })}</p>
-            <p className="text-[9px] font-bold text-emerald-600/60 uppercase">Pianificata</p>
-          </div>
-        </div>
-
-        {/* Mini-Portafogli Preview */}
-        {module.payments.length > 0 && (
-          <div className="space-y-2 mb-4 px-1">
-            {module.payments.slice(0, 2).map(p => {
-              const prog = Math.min(100, ((p.savedAmount || 0) / p.totalAmount) * 100);
-              return (
-                <div key={p.id} className="space-y-1">
-                  <div className="flex justify-between items-center text-[8px] font-black uppercase text-[var(--text-muted)] tracking-tighter">
-                    <span className="truncate max-w-[60px]">{p.name}</span>
-                    <span className="text-[var(--text-main)]">{prog.toFixed(0)}%</span>
-                  </div>
-                  <div className="h-1 bg-[var(--surface-variant)] rounded-full overflow-hidden">
-                    <div 
-                      className="h-full bg-[var(--accent)] rounded-full" 
-                      style={{ width: `${prog}%` }}
-                    />
-                  </div>
-                </div>
-              );
-            })}
-            {module.payments.length > 2 && (
-              <p className="text-[8px] font-bold text-[var(--text-muted)] italic text-center">
-                + Altri {module.payments.length - 2} Obiettivi
-              </p>
-            )}
-          </div>
-        )}
-
-        <div className="mt-auto pt-3 flex items-center justify-between border-t border-[var(--border)] mt-3">
-          <div className="flex items-center gap-1.5 text-[9px] font-bold uppercase text-[var(--text-muted)]">
-            <Calendar className="w-3 h-3" />
-            <span>{module.payments.length} Pagamenti</span>
+          <div className="flex items-center gap-3">
+            <div className={`p-2.5 rounded-2xl border ${isCompleted ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-600' : 'bg-purple-500/10 border-purple-500/20 text-purple-600'}`}>
+              <Wallet className="w-5 h-5" />
+            </div>
+            <div>
+              <h4 className="font-bold text-[15px] text-[var(--text-main)] leading-tight">{module.title || 'Portafoglio'}</h4>
+              {module.dueDate && (
+                <p className="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-widest mt-0.5">Scade: {new Date(module.dueDate).toLocaleDateString('it-IT')}</p>
+              )}
+            </div>
           </div>
           <button
             onClick={(e) => { e.stopPropagation(); onShare(module); }}
-            className="p-1.5 bg-[var(--info-bg)] hover:bg-[var(--info)]/20 text-[var(--info)] border border-[var(--info)]/30 rounded-lg transition-colors"
+            className="p-1.5 hover:bg-[var(--info-bg)] text-[var(--info)] rounded-lg transition-colors"
           >
-            <QrCode className="w-3 h-3" />
+            <QrCode className="w-4 h-4" />
           </button>
+        </div>
+
+        <div className="space-y-2 mt-auto">
+          <div className="flex justify-between items-end">
+            <span className={`text-[10px] font-black uppercase tracking-widest ${isCompleted ? 'text-emerald-600' : 'text-[var(--text-muted)]'}`}>
+              {isCompleted ? 'Obiettivo Raggiunto' : 'Progressi'}
+            </span>
+            <span className={`text-xs font-bold ${isCompleted ? 'text-emerald-600' : 'text-[var(--text-main)]'}`}>
+              {progress.toFixed(0)}%
+            </span>
+          </div>
+          <div className="h-2 bg-[var(--surface-variant)] rounded-full overflow-hidden shadow-inner">
+            <motion.div 
+              initial={{ width: 0 }}
+              animate={{ width: `${progress}%` }}
+              className={`h-full rounded-full ${isCompleted ? 'bg-emerald-500' : 'bg-[var(--accent)]'}`}
+            />
+          </div>
+          <div className="flex justify-between items-center text-[10px] font-bold text-[var(--text-muted)] px-1">
+            <span className="text-[var(--text-main)]">Totale: € {saved.toLocaleString('it-IT')}</span>
+            <span>Target: € {total.toLocaleString('it-IT')}</span>
+          </div>
         </div>
       </div>
     </ModuleWrapper>

@@ -126,9 +126,9 @@ export interface ScheduledPayment {
 
 export interface WalletModule extends BaseModule {
   type: 'wallet';
-  balance: number;
-  currency: string;
-  payments: ScheduledPayment[];
+  totalAmount: number;
+  dueDate: string; // ISO date YYYY-MM-DD
+  savedAmount: number;
 }
 
 export type Module = GenericModule | AutoModule | DocumentModule | SplitModule | SingleExpenseModule | WalletModule;
