@@ -735,6 +735,8 @@ export default function App() {
       // Type (Category) filter
       if (selectedType === 'split') {
         if (m.type !== 'split' && m.type !== 'single-expense') return false;
+      } else if (selectedType === 'expense') {
+        if (m.type !== 'wallet') return false;
       } else if (selectedType && m.type !== selectedType) {
         return false;
       }
