@@ -2143,6 +2143,14 @@ export default function App() {
                         className="h-full bg-[var(--accent)] shadow-[0_0_10px_var(--accent)]"
                       />
                     </div>
+                    {updateProgress < 10 && (
+                      <button 
+                        onClick={() => window.open(availableUpdate.downloadUrl, '_blank')}
+                        className="w-full mt-2 text-[10px] font-bold text-[var(--accent)] hover:underline uppercase tracking-widest text-center"
+                      >
+                        Problemi col download? Scarica dal browser
+                      </button>
+                    )}
                   </div>
                 ) : (
                   <div className="flex gap-3">

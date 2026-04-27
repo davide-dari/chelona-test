@@ -85,13 +85,37 @@ class UpdateService {
       if (onProgress) onProgress(0);
 
       try {
+        // Pre-delete to avoid "File already exists" or corrupted states
+        try {
+          await Filesystem.deleteFile({
+            path: fileName,
+            directory: Directory.Cache
+          }).catch(() => {});
+        } catch (e) {}
+
         // 1. Download the APK
+        let progressListener: any = null;
+        if (onProgress) {
+          // Note: for Filesystem.downloadFile, the event is indeed 'progress'
+          progressListener = await (Filesystem as any).addListener('progress', (progress: any) => {
+            if (progress.bytes && progress.contentLength) {
+              const p = Math.round((progress.bytes / progress.contentLength) * 100);
+              onProgress(p);
+            }
+          });
+        }
+
+        console.log(`[UpdateService] Starting download from: ${updateInfo.downloadUrl}`);
         const downloadResult = await Filesystem.downloadFile({
           url: updateInfo.downloadUrl,
           path: fileName,
           directory: Directory.Cache,
           progress: true
         });
+
+        if (progressListener) {
+          await progressListener.remove();
+        }
 
         if (onProgress) onProgress(100);
         console.log(`[UpdateService] Download finished: ${downloadResult.path}`);
