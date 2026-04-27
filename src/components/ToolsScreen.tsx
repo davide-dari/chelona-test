@@ -36,7 +36,7 @@ type ToolCategory = 'all' | 'pdf' | 'utility';
 
 export const ToolsScreen = ({ showToast, onSaveToSandbox, initialToolId, onReset, modules = [] }: { 
   showToast: (m: string, t?: 'success'|'error'|'info') => void, 
-  onSaveToSandbox?: (title: string, base64: string) => void, 
+  onSaveToSandbox?: (title: string, base64: string, folderName?: string) => void, 
   initialToolId?: string | null, 
   onReset?: () => void,
   modules?: Module[]

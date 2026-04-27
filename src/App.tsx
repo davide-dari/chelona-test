@@ -773,13 +773,29 @@ export default function App() {
     return TOOLS.filter((t: any) => t.title.toLowerCase().includes(query) || t.desc.toLowerCase().includes(query));
   }, [searchQuery, isToolsOpen]);
 
-  const handleSaveToSandbox = async (title: string, base64: string) => {
+  const handleSaveToSandbox = async (title: string, base64: string, targetFolderName?: string) => {
     if (!encryptionKey || !currentProfileId) return;
+
+    let folderId = undefined;
+    let newFolders = folders;
+
+    if (targetFolderName) {
+      const existingFolder = folders.find(f => f.name.toLowerCase() === targetFolderName.toLowerCase());
+      if (existingFolder) {
+        folderId = existingFolder.id;
+      } else {
+        folderId = Math.random().toString(36).substr(2, 9);
+        newFolders = [...folders, { id: folderId, name: targetFolderName }];
+        setFolders(newFolders);
+      }
+    }
+
     const newModule: DocumentModule = {
       id: generateUUID(),
       type: 'document',
       title,
-      documentType: 'Risultato Strumento',
+      documentType: targetFolderName ? 'Immagine' : 'Risultato Strumento',
+      folderId: folderId,
       x: 0,
       y: 0,
       w: 2,
@@ -788,7 +804,7 @@ export default function App() {
     };
     const newModules = [newModule, ...modules];
     setModules(newModules);
-    await saveAppState(newModules, folders);
+    await saveAppState(newModules, newFolders);
     setIsToolsOpen(false);
     setActiveToolId(null);
     showToast('Documento salvato in Bacheca!');

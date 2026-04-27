@@ -2,14 +2,17 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Camera, Download, X, Save, Image as ImageIcon, Check } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { generateUUID } from '../utils/uuid';
+import { Filesystem, Directory } from '@capacitor/filesystem';
+import { Capacitor } from '@capacitor/core';
 
 interface ImageFilterToolProps {
   onClose: () => void;
-  onSaveToSandbox?: (title: string, data: string) => void;
+  onSaveToSandbox?: (title: string, data: string, folderName?: string) => void;
 }
 
 const FILTERS = [
   { name: 'Normale', css: 'none' },
+  { name: 'Cocco', css: 'sepia(0.3) saturate(1.4) hue-rotate(-10deg) brightness(1.05) contrast(1.1)' },
   { name: 'Chelonas', css: 'contrast(1.35) saturate(1.2) sepia(0.15) hue-rotate(-5deg) brightness(1.05)' },
   { name: 'Clarendon', css: 'contrast(1.2) saturate(1.35) brightness(1.1) sepia(0.1)' },
   { name: 'Gingham', css: 'brightness(1.05) hue-rotate(-10deg) saturate(0.8)' },
@@ -110,16 +113,27 @@ export const ImageFilterTool = ({ onClose, onSaveToSandbox }: ImageFilterToolPro
       // Ensure canvas is drawn
       applyFilter(activeFilterIndex);
       
-      // Short timeout to let the browser finalize the canvas
-      setTimeout(() => {
+      setTimeout(async () => {
         try {
           const dataUrl = canvasRef.current!.toDataURL('image/jpeg', 0.9);
-          const link = document.createElement('a');
-          link.href = dataUrl;
-          link.download = `chelona_filter_${generateUUID().substring(0, 6)}.jpg`;
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
+          const fileName = `chelona_filter_${generateUUID().substring(0, 6)}.jpg`;
+          
+          if (Capacitor.isNativePlatform()) {
+            const base64Data = dataUrl.split(',')[1];
+            await Filesystem.writeFile({
+              path: fileName,
+              data: base64Data,
+              directory: Directory.Documents
+            });
+            alert('Immagine salvata nella cartella Documenti del dispositivo!');
+          } else {
+            const link = document.createElement('a');
+            link.href = dataUrl;
+            link.download = fileName;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+          }
           
           setDownloaded(true);
           setTimeout(() => setDownloaded(false), 2000);
@@ -147,7 +161,7 @@ export const ImageFilterTool = ({ onClose, onSaveToSandbox }: ImageFilterToolPro
       setTimeout(async () => {
         try {
           const dataUrl = canvasRef.current!.toDataURL('image/jpeg', 0.85);
-          await onSaveToSandbox(`Immagine: ${FILTERS[activeFilterIndex].name}`, dataUrl);
+          await onSaveToSandbox(`Immagine: ${FILTERS[activeFilterIndex].name}`, dataUrl, 'Galleria');
           
           setSaved(true);
           setTimeout(() => setSaved(false), 2000);
