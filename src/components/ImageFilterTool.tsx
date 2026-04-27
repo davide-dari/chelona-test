@@ -60,12 +60,29 @@ export const ImageFilterTool = ({ onClose, onSaveToSandbox }: ImageFilterToolPro
     const img = originalImageRef.current;
     if (!canvas || !img) return;
 
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
     if (!ctx) return;
 
-    // Set canvas dimensions to match image natively
-    canvas.width = img.width;
-    canvas.height = img.height;
+    // Limit resolution for performance and to avoid mobile browser canvas limits
+    const MAX_SIZE = 2500;
+    let width = img.width;
+    let height = img.height;
+
+    if (width > MAX_SIZE || height > MAX_SIZE) {
+      if (width > height) {
+        height = Math.round((height * MAX_SIZE) / width);
+        width = MAX_SIZE;
+      } else {
+        width = Math.round((width * MAX_SIZE) / height);
+        height = MAX_SIZE;
+      }
+    }
+
+    // Set canvas dimensions
+    if (canvas.width !== width || canvas.height !== height) {
+      canvas.width = width;
+      canvas.height = height;
+    }
 
     // Clear canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -75,6 +92,7 @@ export const ImageFilterTool = ({ onClose, onSaveToSandbox }: ImageFilterToolPro
 
     // Draw image
     ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    console.log('Filter applied:', FILTERS[filterIndex].name);
   };
 
   // Re-apply filter when index changes or image loads
@@ -85,26 +103,65 @@ export const ImageFilterTool = ({ onClose, onSaveToSandbox }: ImageFilterToolPro
   }, [activeFilterIndex, imageSrc]);
 
   const handleDownload = () => {
-    if (!canvasRef.current) return;
-    const dataUrl = canvasRef.current.toDataURL('image/jpeg', 0.9);
-    const link = document.createElement('a');
-    link.href = dataUrl;
-    link.download = `chelona_filter_${generateUUID().substring(0, 6)}.jpg`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    
-    setDownloaded(true);
-    setTimeout(() => setDownloaded(false), 2000);
+    try {
+      if (!canvasRef.current) return;
+      setIsProcessing(true);
+      
+      // Ensure canvas is drawn
+      applyFilter(activeFilterIndex);
+      
+      // Short timeout to let the browser finalize the canvas
+      setTimeout(() => {
+        try {
+          const dataUrl = canvasRef.current!.toDataURL('image/jpeg', 0.9);
+          const link = document.createElement('a');
+          link.href = dataUrl;
+          link.download = `chelona_filter_${generateUUID().substring(0, 6)}.jpg`;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          
+          setDownloaded(true);
+          setTimeout(() => setDownloaded(false), 2000);
+        } catch (err) {
+          console.error('Download error:', err);
+          alert('Errore durante il download dell\'immagine.');
+        } finally {
+          setIsProcessing(false);
+        }
+      }, 100);
+    } catch (err) {
+      console.error('Download error outer:', err);
+      setIsProcessing(false);
+    }
   };
 
   const handleSaveToApp = () => {
-    if (!canvasRef.current || !onSaveToSandbox) return;
-    const dataUrl = canvasRef.current.toDataURL('image/jpeg', 0.85);
-    onSaveToSandbox(`Immagine: ${FILTERS[activeFilterIndex].name}`, dataUrl);
-    
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+    try {
+      if (!canvasRef.current || !onSaveToSandbox) return;
+      setIsProcessing(true);
+      
+      // Ensure canvas is drawn
+      applyFilter(activeFilterIndex);
+      
+      setTimeout(async () => {
+        try {
+          const dataUrl = canvasRef.current!.toDataURL('image/jpeg', 0.85);
+          await onSaveToSandbox(`Immagine: ${FILTERS[activeFilterIndex].name}`, dataUrl);
+          
+          setSaved(true);
+          setTimeout(() => setSaved(false), 2000);
+        } catch (err) {
+          console.error('Save error:', err);
+          alert('Errore durante il salvataggio dell\'immagine.');
+        } finally {
+          setIsProcessing(false);
+        }
+      }, 100);
+    } catch (err) {
+      console.error('Save error outer:', err);
+      setIsProcessing(false);
+    }
   };
 
   const triggerFileInput = () => {
@@ -211,18 +268,32 @@ export const ImageFilterTool = ({ onClose, onSaveToSandbox }: ImageFilterToolPro
           <div className="grid grid-cols-2 gap-3 shrink-0">
             <button
               onClick={handleDownload}
-              className="flex items-center justify-center gap-2 py-4 bg-[var(--bg)] border border-[var(--border)] hover:bg-[var(--surface-variant)] text-[var(--text-main)] rounded-2xl font-bold transition-all"
+              disabled={isProcessing}
+              className={`flex items-center justify-center gap-2 py-4 bg-[var(--bg)] border border-[var(--border)] hover:bg-[var(--surface-variant)] text-[var(--text-main)] rounded-2xl font-bold transition-all ${isProcessing ? 'opacity-50 cursor-wait' : ''}`}
             >
-              {downloaded ? <Check className="w-5 h-5 text-emerald-500" /> : <Download className="w-5 h-5" />}
-              {downloaded ? 'Scaricato' : 'Scarica'}
+              {isProcessing ? (
+                <div className="w-5 h-5 border-2 border-[var(--accent)] border-t-transparent rounded-full animate-spin" />
+              ) : downloaded ? (
+                <Check className="w-5 h-5 text-emerald-500" />
+              ) : (
+                <Download className="w-5 h-5" />
+              )}
+              {isProcessing ? 'Elaborazione...' : downloaded ? 'Scaricato' : 'Scarica'}
             </button>
             {onSaveToSandbox ? (
               <button
                 onClick={handleSaveToApp}
-                className="flex items-center justify-center gap-2 py-4 bg-[var(--accent)] hover:brightness-110 text-white rounded-2xl font-bold transition-all shadow-lg shadow-[var(--accent)]/20"
+                disabled={isProcessing}
+                className={`flex items-center justify-center gap-2 py-4 bg-[var(--accent)] hover:brightness-110 text-white rounded-2xl font-bold transition-all shadow-lg shadow-[var(--accent)]/20 ${isProcessing ? 'opacity-50 cursor-wait' : ''}`}
               >
-                {saved ? <Check className="w-5 h-5" /> : <Save className="w-5 h-5" />}
-                {saved ? 'Salvato' : 'Salva in App'}
+                {isProcessing ? (
+                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                ) : saved ? (
+                  <Check className="w-5 h-5" />
+                ) : (
+                  <Save className="w-5 h-5" />
+                )}
+                {isProcessing ? 'Salvataggio...' : saved ? 'Salvato' : 'Salva in App'}
               </button>
             ) : (
               <div className="flex items-center justify-center gap-2 py-4 bg-[var(--bg)] border border-[var(--border)] opacity-50 rounded-2xl font-bold text-[var(--text-muted)] cursor-not-allowed" title="Effettua il login per salvare in app">
