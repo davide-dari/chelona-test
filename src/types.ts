@@ -1,4 +1,4 @@
-export type ModuleType = 'generic' | 'auto' | 'document' | 'split' | 'single-expense' | 'wallet';
+export type ModuleType = 'generic' | 'auto' | 'document' | 'split' | 'single-expense' | 'wallet' | 'gallery';
 export type FuelType = 'benzina' | 'diesel' | 'gpl' | 'metano' | 'ibrida' | 'elettrica';
 
 export interface Folder {
@@ -131,7 +131,13 @@ export interface WalletModule extends BaseModule {
   savedAmount: number;
 }
 
-export type Module = GenericModule | AutoModule | DocumentModule | SplitModule | SingleExpenseModule | WalletModule;
+export interface GalleryModule extends BaseModule {
+  type: 'gallery';
+  image: string; // base64 encoded image
+  filterName?: string;
+}
+
+export type Module = GenericModule | AutoModule | DocumentModule | SplitModule | SingleExpenseModule | WalletModule | GalleryModule;
 
 export interface DashboardState {
   modules: Module[];

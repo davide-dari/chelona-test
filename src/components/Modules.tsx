@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { CreditCard, ShieldCheck, Wallet, Fingerprint, Plus, Trash2, Calendar, DollarSign, Pencil, StickyNote, Copy, Check, GripVertical, Car, Wrench, AlertCircle, FileText, QrCode, FileDown, X, Clock, Eye, Lock, ChevronRight, Bell, BellOff, Gauge, Users, Paperclip, Receipt } from 'lucide-react';
-import { Module, GenericModule, AutoModule, DocumentModule, SplitModule, SingleExpenseModule, WalletModule } from '../types';
+import { CreditCard, ShieldCheck, Wallet, Fingerprint, Plus, Trash2, Calendar, DollarSign, Pencil, StickyNote, Copy, Check, GripVertical, Car, Wrench, AlertCircle, FileText, QrCode, FileDown, X, Clock, Eye, Lock, ChevronRight, Bell, BellOff, Gauge, Users, Paperclip, Receipt, Image as ImageIcon } from 'lucide-react';
+import { Module, GenericModule, AutoModule, DocumentModule, SplitModule, SingleExpenseModule, WalletModule, GalleryModule } from '../types';
 import { EXPENSE_CATEGORIES } from '../constants/expenses';
 import { motion, AnimatePresence } from 'motion/react';
 import { CAR_BRANDS } from '../utils/carBrands';
@@ -415,6 +415,91 @@ export const WalletCard = ({ module, onDelete, onEdit, onShare, dragHandleProps,
     </ModuleWrapper>
   );
 };
+
+export const GalleryCard = ({ module, onDelete, onEdit, onShare, dragHandleProps }: { module: GalleryModule; onDelete: (id: string) => void; onEdit: (m: Module) => void; onShare: (m: Module) => void; dragHandleProps?: any }) => {
+  const [showFullImage, setShowFullImage] = useState(false);
+
+  return (
+    <>
+      <ModuleWrapper module={module} onDelete={onDelete} onEdit={onEdit} dragHandleProps={dragHandleProps}>
+        <div 
+          className="h-full flex flex-col cursor-pointer group/card hover:bg-[var(--bg)] transition-all p-3 -m-3 rounded-2xl active:scale-[0.98]"
+          onClick={() => setShowFullImage(true)}
+        >
+          <div className="relative aspect-square rounded-xl overflow-hidden border border-[var(--border)] shadow-inner mb-3">
+            <img 
+              src={module.image} 
+              alt={module.title} 
+              className="w-full h-full object-cover group-hover/card:scale-110 transition-transform duration-500" 
+            />
+            <div className="absolute inset-0 bg-black/20 group-hover/card:bg-black/0 transition-all" />
+            {module.filterName && (
+              <div className="absolute bottom-2 left-2 bg-black/60 backdrop-blur-md px-2 py-0.5 rounded-lg border border-white/20">
+                <span className="text-[8px] font-black text-white uppercase tracking-widest">{module.filterName}</span>
+              </div>
+            )}
+          </div>
+          
+          <div className="mt-auto flex items-center justify-between">
+            <div className="flex items-center gap-2 min-w-0">
+              <div className="w-7 h-7 bg-indigo-500/10 rounded-lg flex items-center justify-center shrink-0 border border-indigo-500/20">
+                <ImageIcon className="w-3.5 h-3.5 text-indigo-500" />
+              </div>
+              <span className="text-[12px] font-bold text-[var(--text-main)] truncate max-w-[100px]">
+                {module.title || 'Foto'}
+              </span>
+            </div>
+            <button
+              onClick={(e) => { e.stopPropagation(); onShare(module); }}
+              className="p-1.5 hover:bg-indigo-500/10 text-indigo-500 rounded-lg transition-colors"
+            >
+              <QrCode className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+      </ModuleWrapper>
+
+      <AnimatePresence>
+        {showFullImage && (
+          <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowFullImage(false)}
+              className="absolute inset-0 bg-black/90 backdrop-blur-md"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              className="relative max-w-[95vw] max-h-[90vh] flex flex-col items-center"
+            >
+              <button 
+                onClick={() => setShowFullImage(false)}
+                className="absolute -top-12 right-0 p-2 text-white/70 hover:text-white transition-colors"
+              >
+                <X className="w-8 h-8" />
+              </button>
+              <img 
+                src={module.image} 
+                alt={module.title} 
+                className="max-w-full max-h-[80vh] object-contain rounded-2xl shadow-2xl border border-white/10" 
+              />
+              <div className="mt-6 text-center">
+                <h3 className="text-xl font-bold text-white mb-1">{module.title || 'Foto'}</h3>
+                {module.filterName && (
+                  <p className="text-xs font-black text-white/50 uppercase tracking-[0.2em]">Filtro: {module.filterName}</p>
+                )}
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+    </>
+  );
+};
+
 
 export const AutoCard = ({ module, onDelete, onEdit, onDirectUpdate, onShare, dragHandleProps }: { module: AutoModule; onDelete: (id: string) => void; onEdit: (m: Module) => void; onDirectUpdate?: (m: Module) => void; onShare: (m: Module) => void; dragHandleProps?: any }) => {
   const [showFullData, setShowFullData] = useState(false);

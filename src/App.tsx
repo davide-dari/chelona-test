@@ -4,11 +4,11 @@
  */
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Sun, Moon, Wrench, Plus, LayoutDashboard, Settings, User, LogOut, Search, Mic, Bell, CreditCard, Fingerprint, ShieldCheck, Wallet, Lock, Menu, X, StickyNote, Grid2X2, Car, QrCode, Folder as FolderIcon, Check, Edit2, Trash2, BookOpen, ArrowLeft, FileDown, Hourglass, Users, Download, Receipt, MapPin } from 'lucide-react';
+import { Sun, Moon, Wrench, Plus, LayoutDashboard, Settings, User, LogOut, Search, Mic, Bell, CreditCard, Fingerprint, ShieldCheck, Wallet, Lock, Menu, X, StickyNote, Grid2X2, Car, QrCode, Folder as FolderIcon, Check, Edit2, Trash2, BookOpen, ArrowLeft, FileDown, Hourglass, Users, Download, Receipt, MapPin, Image as ImageIcon } from 'lucide-react';
 import { Module, ModuleType, Folder, DocumentModule } from './types';
 import { storage, AppState } from './services/storage';
 import { encryption } from './services/encryption';
-import { GenericCard, AutoCard, DocumentCard, SplitCard, SingleExpenseCard, WalletCard } from './components/Modules';
+import { GenericCard, AutoCard, DocumentCard, SplitCard, SingleExpenseCard, WalletCard, GalleryCard } from './components/Modules';
 import { LockScreen } from './components/LockScreen';
 import { QrScanner } from './components/QrScanner';
 import { ProfileScreen } from './components/ProfileScreen';
@@ -108,6 +108,12 @@ const TEMPLATES = {
     content: '',
     icon: Receipt,
     color: 'text-amber-500'
+  },
+  gallery: {
+    title: 'Galleria',
+    content: '',
+    icon: ImageIcon,
+    color: 'text-indigo-500'
   },
   none: {
     title: 'Appunto Libero',
@@ -790,24 +796,42 @@ export default function App() {
       }
     }
 
-    const newModule: DocumentModule = {
-      id: generateUUID(),
-      type: 'document',
-      title,
-      documentType: targetFolderName ? 'Immagine' : 'Risultato Strumento',
-      folderId: folderId,
-      x: 0,
-      y: 0,
-      w: 2,
-      h: 2,
-      pdfAttachment: base64
-    };
-    const newModules = [newModule, ...modules];
-    setModules(newModules);
-    await saveAppState(newModules, newFolders);
+    if (targetFolderName === 'Galleria') {
+      const newModule: import('./types').GalleryModule = {
+        id: generateUUID(),
+        type: 'gallery',
+        title,
+        image: base64,
+        folderId: folderId,
+        x: 0,
+        y: 0,
+        w: 2,
+        h: 2
+      };
+      const newModules = [newModule, ...modules];
+      setModules(newModules);
+      await saveAppState(newModules, newFolders);
+    } else {
+      const newModule: DocumentModule = {
+        id: generateUUID(),
+        type: 'document',
+        title,
+        documentType: targetFolderName ? 'Immagine' : 'Risultato Strumento',
+        folderId: folderId,
+        x: 0,
+        y: 0,
+        w: 2,
+        h: 2,
+        pdfAttachment: base64
+      };
+      const newModules = [newModule, ...modules];
+      setModules(newModules);
+      await saveAppState(newModules, newFolders);
+    }
+    
     setIsToolsOpen(false);
     setActiveToolId(null);
-    showToast('Documento salvato in Bacheca!');
+    showToast('Salvato dentro Chelona', 'success');
   };
 
   const handleImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1959,6 +1983,8 @@ export default function App() {
                           <SingleExpenseCard module={module as import('./types').SingleExpenseModule} onDelete={requestDelete} onEdit={openEditModal} onShare={setSharingModule} />
                         ) : module.type === 'wallet' ? (
                           <WalletCard module={module as import('./types').WalletModule} onDelete={requestDelete} onEdit={openEditModal} onShare={setSharingModule} />
+                        ) : module.type === 'gallery' ? (
+                          <GalleryCard module={module as import('./types').GalleryModule} onDelete={requestDelete} onEdit={openEditModal} onShare={setSharingModule} />
                         ) : (
                           <GenericCard module={module as import('./types').GenericModule} onDelete={requestDelete} onEdit={openEditModal} onShare={setSharingModule} />
                         )}
