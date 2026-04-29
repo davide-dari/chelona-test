@@ -71,7 +71,7 @@ RELEASE_JSON=$(curl -s -X POST \
   -d "{
     \"tag_name\": \"$TAG\",
     \"name\": \"Chelona $TAG\",
-    \"body\": \"🚀 **Chelona v$VERSION**\\n\\n### 🐛 Bugfix:\\n- **🔧 Fix Crash Galleria**: Risolto errore fatale all'apertura della galleria dopo il salvataggio di una foto (causato da mutazione diretta dell'array immagini).\\n- **✨ Viewer Galleria Migliorato**: Il viewer singola foto ora mostra un pulsante download diretto.\\n- **🖼️ Toast migliorati**: I messaggi di conferma per galleria e download sono sempre visibili.\",
+    \"body\": \"🚀 **Chelona v$VERSION**\\n\\n### 🐛 Hotfix Critico:\\n- **🔧 Fix Crash Fatale Galleria**: Risolto errore fatale che si verificava cliccando sulla galleria. Causa: il modulo galleria veniva renderizzato come appunto generico nella sezione Recenti, causando un accesso a proprietà non esistenti.\\n- **✅ Recenti**: Il modulo galleria è ora escluso dalla sezione Recenti (è un contenitore di sistema, non un appunto).\",
     \"draft\": false,
     \"prerelease\": false
   }")

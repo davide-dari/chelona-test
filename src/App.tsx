@@ -759,6 +759,7 @@ export default function App() {
 
   const recentModules = useMemo(() => {
     return [...modules]
+      .filter(m => m.type !== 'gallery') // Gallery is a system container, not a recent activity
       .sort((a, b) => {
         const dateA = new Date(a.updatedAt || a.createdAt || 0).getTime();
         const dateB = new Date(b.updatedAt || b.createdAt || 0).getTime();
@@ -1933,6 +1934,8 @@ export default function App() {
                                 <SplitCard module={module as any} onDelete={requestDelete} onEdit={openEditModal} onShare={setSharingModule} />
                               ) : module.type === 'single-expense' ? (
                                 <SingleExpenseCard module={module as any} onDelete={requestDelete} onEdit={openEditModal} onShare={setSharingModule} />
+                              ) : module.type === 'gallery' ? (
+                                <GalleryCard module={module as import('./types').GalleryModule} />
                               ) : (
                                 <GenericCard module={module as any} onDelete={requestDelete} onEdit={openEditModal} onShare={setSharingModule} />
                               )}
