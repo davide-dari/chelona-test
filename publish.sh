@@ -71,7 +71,7 @@ RELEASE_JSON=$(curl -s -X POST \
   -d "{
     \"tag_name\": \"$TAG\",
     \"name\": \"Chelona $TAG\",
-    \"body\": \"🚀 **Chelona v$VERSION**\\n\\n### 🐛 Hotfix Critico:\\n- **🔧 Fix Crash Fatale Galleria**: Risolto errore fatale che si verificava cliccando sulla galleria. Causa: il modulo galleria veniva renderizzato come appunto generico nella sezione Recenti, causando un accesso a proprietà non esistenti.\\n- **✅ Recenti**: Il modulo galleria è ora escluso dalla sezione Recenti (è un contenitore di sistema, non un appunto).\",
+    \"body\": \"🚀 **Chelona v$VERSION**\\n\\n### 🐛 Hotfix Critico:\\n- **🔧 Fix Crash Fatale Galleria**: Risolto definitivamente il crash che avveniva cliccando sulla Galleria. Causa reale: il template 'gallery' era stato rimosso dai TEMPLATES, ma il codice dello stato vuoto accedeva ancora a TEMPLATES[selectedType].title senza protezione.\\n- **🖼️ Empty State Galleria**: Quando la galleria non contiene foto, ora mostra un messaggio dedicato con un pulsante per aprire direttamente Filtri Immagine.\",
     \"draft\": false,
     \"prerelease\": false
   }")

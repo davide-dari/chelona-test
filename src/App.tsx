@@ -1946,6 +1946,22 @@ export default function App() {
                     )}
                   </div>
                 ) : filteredModules.length === 0 ? (
+                  selectedType === 'gallery' ? (
+                    <div className="py-20 flex flex-col items-center justify-center text-center px-4">
+                      <div className="w-20 h-20 bg-indigo-500/10 rounded-full flex items-center justify-center mb-6">
+                        <ImageIcon className="w-10 h-10 text-indigo-500 opacity-70" />
+                      </div>
+                      <h3 className="text-2xl font-bold text-[var(--text-main)] mb-2">Nessuna foto in galleria</h3>
+                      <p className="text-[var(--text-muted)] mb-8 max-w-sm mx-auto">Usa lo strumento Filtri Immagine per salvare le tue foto qui.</p>
+                      <button
+                        onClick={() => { setSelectedType(null); setIsToolsOpen(true); setActiveToolId('image-filter'); }}
+                        className="flex items-center justify-center gap-3 bg-indigo-500 hover:bg-indigo-600 text-white px-8 py-4 rounded-2xl font-bold transition-all shadow-lg shadow-indigo-500/20 active:scale-95"
+                      >
+                        <ImageIcon className="w-6 h-6" />
+                        <span>Apri Filtri Immagine</span>
+                      </button>
+                    </div>
+                  ) : (
                   <div className="py-20 flex flex-col items-center justify-center text-center px-4">
                     <div className="w-200 h-20 bg-[var(--bg)] border border-[var(--border)] rounded-full flex items-center justify-center mb-6">
                       <LayoutDashboard className="w-10 h-10 text-[var(--text-muted)] opacity-50" />
@@ -1987,9 +2003,10 @@ export default function App() {
                       className="flex items-center justify-center gap-3 bg-amber-500 hover:bg-amber-600 text-white px-8 py-4 rounded-2xl font-bold transition-all shadow-lg shadow-amber-500/20 active:scale-95"
                     >
                       <Plus className="w-6 h-6" />
-                      <span>{selectedType ? `Aggiungi ${TEMPLATES[selectedType].title}` : 'Aggiungi Modulo'}</span>
+                      <span>{selectedType ? `Aggiungi ${TEMPLATES[selectedType as keyof typeof TEMPLATES]?.title || 'Modulo'}` : 'Aggiungi Modulo'}</span>
                     </button>
                   </div>
+                  )
                 ) : (
                   <>
                     {selectedType === 'document' && (
