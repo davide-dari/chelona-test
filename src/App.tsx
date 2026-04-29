@@ -855,6 +855,11 @@ export default function App() {
       await saveAppState(newModules, newFolders);
     }
     
+    if (targetFolderName === 'Galleria') {
+      // Don't close the tool - the toast in ImageFilterTool handles UX feedback
+      return;
+    }
+    
     setIsToolsOpen(false);
     setActiveToolId(null);
     showToast('Salvato dentro Chelona', 'success');
@@ -1823,6 +1828,90 @@ export default function App() {
                       })}
                     </div>
 
+                    {/* Gallery Section */}
+                    {(() => {
+                      const galleryModule = modules.find(m => m.type === 'gallery') as import('./types').GalleryModule | undefined;
+                      const galleryImages = galleryModule?.images || [];
+                      return (
+                        <div className="mb-10">
+                          <h3 className="text-lg font-bold text-[var(--text-main)] mb-5 flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <ImageIcon className="w-5 h-5 text-indigo-500" />
+                              <span>Galleria Foto</span>
+                            </div>
+                            {galleryImages.length > 0 && (
+                              <button
+                                onClick={() => galleryModule && setSelectedType('gallery' as any)}
+                                className="text-[10px] font-bold text-indigo-500 hover:underline uppercase tracking-widest"
+                              >
+                                {galleryImages.length} foto
+                              </button>
+                            )}
+                          </h3>
+
+                          {galleryImages.length === 0 ? (
+                            <button
+                              onClick={() => { setIsToolsOpen(true); setActiveToolId('image-filter'); }}
+                              className="w-full bg-[var(--card-bg)] border-2 border-dashed border-indigo-500/30 hover:border-indigo-500 rounded-[2.5rem] p-8 flex flex-col items-center gap-4 transition-all group"
+                            >
+                              <div className="w-16 h-16 bg-indigo-500/10 rounded-3xl flex items-center justify-center text-indigo-500 group-hover:scale-110 transition-transform">
+                                <ImageIcon className="w-8 h-8" />
+                              </div>
+                              <div className="text-center">
+                                <p className="font-black text-[var(--text-main)] text-sm">Nessuna foto in galleria</p>
+                                <p className="text-xs text-[var(--text-muted)] mt-1">Usa Filtri Immagine per salvare le tue foto qui</p>
+                              </div>
+                              <span className="px-5 py-2 bg-indigo-500 text-white rounded-xl text-xs font-bold shadow-lg shadow-indigo-500/20">
+                                Apri Filtri Immagine
+                              </span>
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => {
+                                if (galleryModule) {
+                                  // trigger gallery view via selectedType
+                                  setSelectedType('gallery' as any);
+                                }
+                              }}
+                              className="w-full bg-[var(--card-bg)] border border-[var(--border)] rounded-[2.5rem] overflow-hidden hover:border-indigo-500/50 hover:shadow-xl transition-all group"
+                            >
+                              {/* Cover grid */}
+                              <div className="grid grid-cols-4 sm:grid-cols-6 gap-0.5 max-h-[140px] overflow-hidden">
+                                {galleryImages.slice(0, 8).map((img, i) => (
+                                  <div
+                                    key={img.id}
+                                    className={`aspect-square overflow-hidden ${i === 0 ? 'col-span-2 row-span-2' : ''}`}
+                                    style={{ display: i === 0 ? 'block' : 'block' }}
+                                  >
+                                    <img
+                                      src={img.image}
+                                      alt=""
+                                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                                    />
+                                  </div>
+                                ))}
+                              </div>
+                              {/* Footer */}
+                              <div className="flex items-center justify-between px-5 py-4">
+                                <div className="flex items-center gap-3">
+                                  <div className="w-9 h-9 bg-indigo-500/10 rounded-xl flex items-center justify-center text-indigo-500">
+                                    <ImageIcon className="w-4 h-4" />
+                                  </div>
+                                  <div className="text-left">
+                                    <p className="font-black text-[var(--text-main)] text-sm">Galleria</p>
+                                    <p className="text-[10px] text-[var(--text-muted)] font-bold uppercase tracking-widest">{galleryImages.length} foto salvate</p>
+                                  </div>
+                                </div>
+                                <div className="text-indigo-500 group-hover:translate-x-1 transition-transform">
+                                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                                </div>
+                              </div>
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })()}
+
                     {/* Recent Activities */}
                     {recentModules.length > 0 && (
                       <div>
@@ -1963,8 +2052,8 @@ export default function App() {
                     )}
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6 3xl:grid-cols-8 gap-6 stagger-fade-in px-4 lg:px-8 pb-32 md:pb-8">
-                    {/* Template-Specific Add Card Button (Only when a category is selected and list not empty) */}
-                    {selectedType && filteredModules.length > 0 && (
+                    {/* Template-Specific Add Card Button (Only when a category is selected and list not empty, and not gallery) */}
+                    {selectedType && selectedType !== 'gallery' && filteredModules.length > 0 && (
                       <button
                         onClick={() => {
                           if (selectedType === 'split') {

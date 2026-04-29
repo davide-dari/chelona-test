@@ -71,7 +71,7 @@ RELEASE_JSON=$(curl -s -X POST \
   -d "{
     \"tag_name\": \"$TAG\",
     \"name\": \"Chelona $TAG\",
-    \"body\": \"🚀 **Chelona v$VERSION**\\n\\n### ✨ Novità e Miglioramenti:\\n- **🖼️ Ristrutturazione Galleria**: La Galleria è stata trasformata in un contenitore dedicato per le foto salvate dallo strumento filtri, semplificando l'interfaccia e rimuovendo i riferimenti ai moduli standard.\\n- **🥥 Filtro Cocco**: Perfezionato il filtro Cocco con grana fotografica dinamica e parametri di luce ottimizzati.\\n- **🧹 Pulizia UI**: Rimossi pulsanti ridondanti e ottimizzata la gestione delle Sandbox.\",
+    \"body\": \"🚀 **Chelona v$VERSION**\\n\\n### ✨ Novità:\\n- **🖼️ Galleria in Homepage**: La Galleria è ora visibile nella dashboard con anteprima foto e link diretto.\\n- **✨ Toast Animato**: Salvare in galleria mostra ora un toast animato invece di un alert.\\n- **⬇️ Download Fix**: Il download salva le foto nella cartella Download del dispositivo.\",
     \"draft\": false,
     \"prerelease\": false
   }")
