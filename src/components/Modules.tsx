@@ -11,8 +11,8 @@ import { DocumentViewer } from './DocumentViewer';
 
 interface ModuleWrapperProps {
   module: Module;
-  onDelete: (id: string) => void;
-  onEdit: (module: Module) => void;
+  onDelete?: (id: string) => void;
+  onEdit?: (module: Module) => void;
   children: React.ReactNode;
   dragHandleProps?: any;
 }
@@ -21,20 +21,24 @@ const ModuleWrapper = ({ module, onDelete, onEdit, children }: ModuleWrapperProp
   <div className="module-card relative group flex flex-col bg-[var(--card-bg)] backdrop-blur-3xl rounded-[2.5rem] border border-[var(--border)] shadow-[0_8px_30px_rgba(0,0,0,0.04)] hover:shadow-[0_20px_50px_rgba(0,0,0,0.12)] transition-all p-5 sm:p-6 overflow-hidden">
     <div className="flex items-center justify-end mb-3 shrink-0">
       <div className="flex items-center gap-1.5 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all shrink-0">
-        <button
-          onClick={() => onEdit(module)}
-          className="p-2 sm:p-1.5 hover:bg-[var(--bg)] text-[var(--text-muted)] hover:text-[var(--accent)] rounded-lg transition-all"
-          title="Modifica"
-        >
-          <Pencil className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
-        </button>
-        <button
-          onClick={() => onDelete(module.id)}
-          className="p-2 sm:p-1.5 hover:bg-red-500/10 text-[var(--text-muted)] hover:text-red-500 rounded-lg transition-all"
-          title="Elimina"
-        >
-          <Trash2 className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
-        </button>
+        {onEdit && (
+          <button
+            onClick={() => onEdit(module)}
+            className="p-2 sm:p-1.5 hover:bg-[var(--bg)] text-[var(--text-muted)] hover:text-[var(--accent)] rounded-lg transition-all"
+            title="Modifica"
+          >
+            <Pencil className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
+          </button>
+        )}
+        {onDelete && (
+          <button
+            onClick={() => onDelete(module.id)}
+            className="p-2 sm:p-1.5 hover:bg-red-500/10 text-[var(--text-muted)] hover:text-red-500 rounded-lg transition-all"
+            title="Elimina"
+          >
+            <Trash2 className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
+          </button>
+        )}
       </div>
     </div>
     <div className="flex-1 min-h-0">

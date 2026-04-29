@@ -109,12 +109,6 @@ const TEMPLATES = {
     icon: Receipt,
     color: 'text-amber-500'
   },
-  gallery: {
-    title: 'Galleria',
-    content: '',
-    icon: ImageIcon,
-    color: 'text-indigo-500'
-  },
   none: {
     title: 'Appunto Libero',
     content: '',
@@ -1134,7 +1128,7 @@ export default function App() {
                     </button>
                   )}
                   <h1 className="text-xl lg:text-2xl font-bold text-[var(--text-main)] tracking-tight">
-                    {isToolsOpen ? 'Strumenti' : selectedType ? TEMPLATES[selectedType].title : 'Dashboard'}
+                    {isToolsOpen ? 'Strumenti' : selectedType ? (TEMPLATES[selectedType as keyof typeof TEMPLATES]?.title || 'Sandbox') : 'Dashboard'}
                   </h1>
                 </div>
 
@@ -1662,7 +1656,7 @@ export default function App() {
                     <Search className="absolute left-6 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--text-muted)] group-focus-within:text-[var(--accent)] transition-colors" />
                     <input 
                       type="text" 
-                      placeholder={`Cerca ${selectedType ? TEMPLATES[selectedType].title : 'nelle tue Sandbox'}...`}
+                      placeholder={`Cerca ${selectedType ? (TEMPLATES[selectedType as keyof typeof TEMPLATES]?.title || 'nelle tue Sandbox') : 'nelle tue Sandbox'}...`}
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       className="w-full pl-14 pr-14 py-4.5 bg-[var(--surface-variant)] border-transparent rounded-[var(--radius-lg)] shadow-none outline-none focus:bg-[var(--bg)] focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)] transition-all text-base lg:text-lg font-medium text-[var(--text-main)] placeholder:text-[var(--text-muted)]"
@@ -1696,7 +1690,7 @@ export default function App() {
                   </div>
                   {selectedType && (
                     <div className="mt-3 flex items-center justify-center gap-2">
-                       <span className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest px-2">Filtro attivo: {TEMPLATES[selectedType].title}</span>
+                       <span className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest px-2">Filtro attivo: {TEMPLATES[selectedType as keyof typeof TEMPLATES]?.title || 'Sandbox'}</span>
                        <button onClick={() => setSelectedType(null)} className="text-[10px] font-bold text-[var(--accent)] hover:underline uppercase tracking-widest">Rimuovi</button>
                        {selectedType === 'document' && (
                          <>
@@ -1999,7 +1993,7 @@ export default function App() {
                         <div className="w-14 h-14 bg-amber-500/10 rounded-2xl flex items-center justify-center text-amber-500 group-hover:scale-110 transition-transform">
                           <Plus className="w-8 h-8" />
                         </div>
-                        <span className="text-sm font-black text-amber-600 uppercase tracking-widest text-center leading-tight">Nuovo {TEMPLATES[selectedType].title}</span>
+                        <span className="text-sm font-black text-amber-600 uppercase tracking-widest text-center leading-tight">Nuovo {TEMPLATES[selectedType as keyof typeof TEMPLATES]?.title || 'Appunto'}</span>
                       </button>
                     )}
                     
@@ -2016,7 +2010,7 @@ export default function App() {
                         ) : module.type === 'wallet' ? (
                           <WalletCard module={module as import('./types').WalletModule} onDelete={requestDelete} onEdit={openEditModal} onShare={setSharingModule} />
                         ) : module.type === 'gallery' ? (
-                          <GalleryCard module={module as import('./types').GalleryModule} onDelete={requestDelete} onEdit={openEditModal} onShare={setSharingModule} />
+                          <GalleryCard module={module as import('./types').GalleryModule} onShare={setSharingModule} />
                         ) : (
                           <GenericCard module={module as import('./types').GenericModule} onDelete={requestDelete} onEdit={openEditModal} onShare={setSharingModule} />
                         )}

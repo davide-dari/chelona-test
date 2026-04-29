@@ -71,7 +71,7 @@ RELEASE_JSON=$(curl -s -X POST \
   -d "{
     \"tag_name\": \"$TAG\",
     \"name\": \"Chelona $TAG\",
-    \"body\": \"🚀 **Chelona v$VERSION**\\n\\n### ✨ Hotfixes e Miglioramenti:\\n- **🥥 Filtro Cocco**: Aggiornato il filtro Cocco con impostazioni professionali di luce e colore, inclusa una nuova grana fotografica dinamica.\\n- **✨ Ottimizzazioni**: Migliorata la resa visiva e la fluidità dell'editor immagini.\",
+    \"body\": \"🚀 **Chelona v$VERSION**\\n\\n### ✨ Novità e Miglioramenti:\\n- **🖼️ Ristrutturazione Galleria**: La Galleria è stata trasformata in un contenitore dedicato per le foto salvate dallo strumento filtri, semplificando l'interfaccia e rimuovendo i riferimenti ai moduli standard.\\n- **🥥 Filtro Cocco**: Perfezionato il filtro Cocco con grana fotografica dinamica e parametri di luce ottimizzati.\\n- **🧹 Pulizia UI**: Rimossi pulsanti ridondanti e ottimizzata la gestione delle Sandbox.\",
     \"draft\": false,
     \"prerelease\": false
   }")
