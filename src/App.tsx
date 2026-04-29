@@ -2461,8 +2461,23 @@ export default function App() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[200] flex flex-col bg-black"
+            className="fixed inset-0 z-[200] flex flex-col"
+            style={{ backgroundColor: 'black' }}
           >
+            {/* Draggable container */}
+            <motion.div
+              className="flex-1 flex flex-col h-full"
+              drag="y"
+              dragConstraints={{ top: 0, bottom: 0 }}
+              dragElastic={0.7}
+              onDragEnd={(_e, info) => {
+                // If dragged down more than 100px or velocity is high, dismiss
+                if (info.offset.y > 100 || info.velocity.y > 500) {
+                  setGallerySelectedImage(null);
+                }
+              }}
+              style={{ touchAction: 'none' }}
+            >
             <div className="flex items-center justify-between p-4 shrink-0">
               <button
                 onClick={() => setGallerySelectedImage(null)}
@@ -2498,14 +2513,17 @@ export default function App() {
                 animate={{ scale: 1, opacity: 1 }}
                 src={gallerySelectedImage.image}
                 alt="Foto selezionata"
-                className="max-w-full max-h-full object-contain rounded-2xl shadow-2xl"
+                className="max-w-full max-h-full object-contain rounded-2xl shadow-2xl pointer-events-none select-none"
+                draggable={false}
               />
             </div>
             <div className="p-4 text-center shrink-0">
               <p className="text-[11px] text-white/40 font-medium">
                 {new Date(gallerySelectedImage.createdAt).toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
               </p>
+              <p className="text-[10px] text-white/20 mt-1 uppercase tracking-widest font-bold">Scorri in basso per tornare</p>
             </div>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
