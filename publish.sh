@@ -71,7 +71,7 @@ RELEASE_JSON=$(curl -s -X POST \
   -d "{
     \"tag_name\": \"$TAG\",
     \"name\": \"Chelona $TAG\",
-    \"body\": \"🚀 **Chelona v$VERSION**\\n\\n### ✨ Hotfixes e Miglioramenti:\\n- **🚗 Addio Tendina Grigia**: Integrato il nuovo Brand & Model Picker premium anche all'interno del wizard per la creazione di nuove auto! L'interfaccia di inserimento è ora più pulita, moderna e senza antiestetici menu di sistema.\\n- **🧭 Wizard Auto Intelligente**: Ora selezionando una marca e un modello, il wizard passa automaticamente allo step successivo, rendendo l'inserimento dell'auto estremamente più veloce.\\n- **📍 Accessibilità**: Ottimizzazione della compatibilità con le tastiere virtuali mobili in tutta l'area dedicata ai veicoli.\",
+    \"body\": \"🚀 **Chelona v$VERSION**\\n\\n### ✨ Hotfixes e Miglioramenti:\\n- **🥥 Filtro Cocco**: Aggiornato il filtro Cocco con impostazioni professionali di luce e colore, inclusa una nuova grana fotografica dinamica.\\n- **✨ Ottimizzazioni**: Migliorata la resa visiva e la fluidità dell'editor immagini.\",
     \"draft\": false,
     \"prerelease\": false
   }")

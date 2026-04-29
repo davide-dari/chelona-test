@@ -12,7 +12,11 @@ interface ImageFilterToolProps {
 
 const FILTERS = [
   { name: 'Normale', css: 'none' },
-  { name: 'Cocco', css: 'sepia(0.3) saturate(1.4) hue-rotate(-10deg) brightness(1.05) contrast(1.1)' },
+  { 
+    name: 'Cocco', 
+    css: 'brightness(0.82) contrast(0.88) saturate(0.95) sepia(0.18) hue-rotate(6deg) blur(0.25px)',
+    hasGrain: true 
+  },
   { name: 'Chelonas', css: 'contrast(1.35) saturate(1.2) sepia(0.15) hue-rotate(-5deg) brightness(1.05)' },
   { name: 'Clarendon', css: 'contrast(1.2) saturate(1.35) brightness(1.1) sepia(0.1)' },
   { name: 'Gingham', css: 'brightness(1.05) hue-rotate(-10deg) saturate(0.8)' },
@@ -40,6 +44,33 @@ export const ImageFilterTool = ({ onClose, onSaveToSandbox }: ImageFilterToolPro
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const originalImageRef = useRef<HTMLImageElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const addGrain = (ctx: CanvasRenderingContext2D, width: number, height: number, amount: number) => {
+    const grainCanvas = document.createElement('canvas');
+    grainCanvas.width = 128;
+    grainCanvas.height = 128;
+    const gCtx = grainCanvas.getContext('2d');
+    if (!gCtx) return;
+    
+    const gData = gCtx.createImageData(128, 128);
+    for (let i = 0; i < gData.data.length; i += 4) {
+      const val = Math.random() * 255;
+      gData.data[i] = val;
+      gData.data[i+1] = val;
+      gData.data[i+2] = val;
+      gData.data[i+3] = amount * 255; // Alpha/Strength
+    }
+    gCtx.putImageData(gData, 0, 0);
+    
+    const pattern = ctx.createPattern(grainCanvas, 'repeat');
+    if (pattern) {
+      ctx.save();
+      ctx.globalCompositeOperation = 'overlay';
+      ctx.fillStyle = pattern;
+      ctx.fillRect(0, 0, width, height);
+      ctx.restore();
+    }
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -95,6 +126,12 @@ export const ImageFilterTool = ({ onClose, onSaveToSandbox }: ImageFilterToolPro
 
     // Draw image
     ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+    // Add grain if specified
+    if ((FILTERS[filterIndex] as any).hasGrain) {
+      addGrain(ctx, canvas.width, canvas.height, 0.12);
+    }
+
     console.log('Filter applied:', FILTERS[filterIndex].name);
   };
 
