@@ -71,7 +71,7 @@ RELEASE_JSON=$(curl -s -X POST \
   -d "{
     \"tag_name\": \"$TAG\",
     \"name\": \"Chelona $TAG\",
-    \"body\": \"🚀 **Chelona v$VERSION**\\n\\n### ✨ Novità:\\n- **🖼️ Galleria Foto Standalone**: Cliccando sulla galleria in homepage si apre ora un viewer a schermo intero con griglia foto, senza passare dalla schermata Sandbox.\\n- **🔍 Viewer Singola Foto**: Cliccando su una foto nella galleria si apre un viewer dedicato con sfondo nero, nome filtro e pulsante download.\\n- **🧹 Pulizia UI**: Rimosso il redirect alla Sandbox quando si accede alla galleria.\",
+    \"body\": \"🚀 **Chelona v$VERSION**\\n\\n### ✨ Novità:\\n- **🔙 Gesture Indietro Android**: L'uso del tasto indietro o della gesture ora chiude correttamente i visualizzatori di immagini e la galleria invece di chiudere l'app.\\n- **🗑️ Elimina Foto**: Tenendo premuta una foto nella galleria (long-press), apparirà l'icona del cestino per eliminarla definitivamente.\",
     \"draft\": false,
     \"prerelease\": false
   }")

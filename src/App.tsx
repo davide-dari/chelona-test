@@ -171,6 +171,7 @@ export default function App() {
   const [pendingImportModule, setPendingImportModule] = useState<Module | null>(null);
   const [showGalleryViewer, setShowGalleryViewer] = useState(false);
   const [gallerySelectedImage, setGallerySelectedImage] = useState<import('./types').GalleryImage | null>(null);
+  const [galleryDeletingId, setGalleryDeletingId] = useState<string | null>(null);
 
   const [availableUpdate, setAvailableUpdate] = useState<UpdateInfo | null>(null);
   const [updateProgress, setUpdateProgress] = useState<number | null>(null);
@@ -245,6 +246,8 @@ export default function App() {
       setEditingSingleExpenseModule(state.singleExpenseEdit || null);
       setEditingWalletModule(state.walletEdit || null);
       setModuleToDelete(state.deleteConfirm || null);
+      setShowGalleryViewer(!!state.showGallery);
+      setGallerySelectedImage(state.selectedImage || null);
       if (!state.adding) setFormData({});
     };
 
@@ -271,7 +274,9 @@ export default function App() {
       splitEdit: editingSplitModule,
       singleExpenseEdit: editingSingleExpenseModule,
       walletEdit: editingWalletModule,
-      deleteConfirm: moduleToDelete
+      deleteConfirm: moduleToDelete,
+      showGallery: showGalleryViewer,
+      selectedImage: gallerySelectedImage
     };
 
     // Check if current history state matches to avoid redundant pushes
@@ -281,7 +286,7 @@ export default function App() {
     const isAnyOpen = isToolsOpen || activeToolId || isAdding || editingModuleId || isProfileOpen || 
                       isArchiveOpen || selectedType || selectedFolderId || isSidebarOpen || 
                       editingAutoModule || editingSplitModule || editingSingleExpenseModule || 
-                      editingWalletModule || moduleToDelete;
+                      editingWalletModule || moduleToDelete || showGalleryViewer || gallerySelectedImage;
 
     if (hasChanges) {
       if (isAnyOpen) {
@@ -294,7 +299,7 @@ export default function App() {
   }, [
     isToolsOpen, activeToolId, isAdding, editingModuleId, isProfileOpen, isArchiveOpen, 
     selectedType, selectedFolderId, isSidebarOpen, editingAutoModule, editingSplitModule, 
-    editingSingleExpenseModule, editingWalletModule, moduleToDelete
+    editingSingleExpenseModule, editingWalletModule, moduleToDelete, showGalleryViewer, gallerySelectedImage
   ]);
 
   useEffect(() => {
@@ -2408,46 +2413,89 @@ export default function App() {
                 </button>
               </div>
 
-              {/* Grid */}
-              <div className="flex-1 overflow-y-auto p-3 custom-scrollbar">
-                {gImages.length === 0 ? (
-                  <div className="h-full flex flex-col items-center justify-center text-[var(--text-muted)]">
-                    <ImageIcon className="w-16 h-16 mb-4 opacity-30" />
-                    <p className="font-bold text-lg mb-2">Nessuna foto</p>
-                    <p className="text-sm opacity-70 mb-6">Usa Filtri Immagine per salvare foto qui</p>
-                    <button
-                      onClick={() => { setShowGalleryViewer(false); setIsToolsOpen(true); setActiveToolId('image-filter'); }}
-                      className="px-6 py-3 bg-indigo-500 text-white rounded-2xl font-bold shadow-lg shadow-indigo-500/20 active:scale-95 transition-all"
-                    >
-                      Apri Filtri Immagine
-                    </button>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2 auto-rows-max">
-                    {gImages.map((img) => (
-                      <div
-                        key={img.id}
-                        className="aspect-square rounded-xl overflow-hidden cursor-pointer relative group bg-[var(--surface-variant)]"
-                        onClick={() => setGallerySelectedImage(img)}
-                      >
-                        <img
-                          src={img.image}
-                          alt={img.filterName || 'Foto'}
-                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
-                        />
-                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors" />
-                        {img.filterName && (
-                          <div className="absolute bottom-1 left-1 right-1 text-center opacity-0 group-hover:opacity-100 transition-opacity">
-                            <span className="text-[8px] font-black text-white bg-black/60 px-1.5 py-0.5 rounded-md uppercase tracking-wider">
-                              {img.filterName}
-                            </span>
-                          </div>
-                        )}
+              {/* Grid content */}
+              {(() => {
+                const handleDeleteImage = (imgId: string) => {
+                  const gMod = modules.find(m => m.type === 'gallery') as import('./types').GalleryModule | undefined;
+                  if (!gMod) return;
+                  
+                  const updatedImages = gMod.images.filter(img => img.id !== imgId);
+                  const updatedModule = { ...gMod, images: updatedImages };
+                  
+                  // Update modules state
+                  setModules(prev => prev.map(m => m.id === gMod.id ? updatedModule : m));
+                };
+
+                return (
+                  <div className="flex-1 overflow-y-auto p-3 custom-scrollbar">
+                    {gImages.length === 0 ? (
+                      <div className="h-full flex flex-col items-center justify-center text-[var(--text-muted)]">
+                        <ImageIcon className="w-16 h-16 mb-4 opacity-30" />
+                        <p className="font-bold text-lg mb-2">Nessuna foto</p>
+                        <p className="text-sm opacity-70 mb-6">Usa Filtri Immagine per salvare foto qui</p>
+                        <button
+                          onClick={() => { setShowGalleryViewer(false); setIsToolsOpen(true); setActiveToolId('image-filter'); }}
+                          className="px-6 py-3 bg-indigo-500 text-white rounded-2xl font-bold shadow-lg shadow-indigo-500/20 active:scale-95 transition-all"
+                        >
+                          Apri Filtri Immagine
+                        </button>
                       </div>
-                    ))}
+                    ) : (
+                      <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2 auto-rows-max">
+                        {gImages.map((img) => (
+                          <div
+                            key={img.id}
+                            className="aspect-square rounded-xl overflow-hidden cursor-pointer relative group bg-[var(--surface-variant)]"
+                            onClick={() => !galleryDeletingId && setGallerySelectedImage(img)}
+                            onContextMenu={(e) => {
+                              e.preventDefault();
+                              setGalleryDeletingId(galleryDeletingId === img.id ? null : img.id);
+                            }}
+                          >
+                            <img
+                              src={img.image}
+                              alt={img.filterName || 'Foto'}
+                              className={`w-full h-full object-cover transition-all duration-300 ${galleryDeletingId === img.id ? 'scale-90 blur-sm brightness-50' : 'group-hover:scale-110'}`}
+                            />
+                            
+                            <AnimatePresence>
+                              {galleryDeletingId === img.id && (
+                                <motion.div
+                                  initial={{ opacity: 0, scale: 0.5 }}
+                                  animate={{ opacity: 1, scale: 1 }}
+                                  exit={{ opacity: 0, scale: 0.5 }}
+                                  className="absolute inset-0 flex items-center justify-center bg-black/40 z-10"
+                                >
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleDeleteImage(img.id);
+                                      setGalleryDeletingId(null);
+                                    }}
+                                    className="w-12 h-12 bg-red-500 text-white rounded-full flex items-center justify-center shadow-lg active:scale-90 transition-transform"
+                                  >
+                                    <Trash2 className="w-6 h-6" />
+                                  </button>
+                                </motion.div>
+                              )}
+                            </AnimatePresence>
+
+                            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
+                            
+                            {!galleryDeletingId && img.filterName && (
+                              <div className="absolute bottom-1 left-1 right-1 text-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                <span className="text-[8px] font-black text-white bg-black/60 px-1.5 py-0.5 rounded-md uppercase tracking-wider">
+                                  {img.filterName}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
+                );
+              })()}
             </motion.div>
           );
         })()}
