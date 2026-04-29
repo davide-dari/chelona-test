@@ -71,7 +71,7 @@ RELEASE_JSON=$(curl -s -X POST \
   -d "{
     \"tag_name\": \"$TAG\",
     \"name\": \"Chelona $TAG\",
-    \"body\": \"🚀 **Chelona v$VERSION**\\n\\n### ✨ Novità:\\n- **🐢 Nuova Icona App**: Abbiamo aggiornato l'icona dell'applicazione con un design più moderno e professionale. Ora raffigura il guscio di una tartaruga all'interno di un quadrato stondato (squircle) con un gradiente ambra premium, seguendo gli standard estetici più recenti.\",
+    \"body\": \"🚀 **Chelona v$VERSION**\\n\\n### ✨ Novità:\\n- **📱 Icone e Splash Screen**: Sostituite tutte le icone di avvio (launcher) e le schermate di caricamento (splash screen) con il nuovo design premium.\\n- **📅 Correzione Form Batteria**: Allineato il selettore data della batteria 12v a quello della revisione, garantendo coerenza in tutto il modulo auto.\",
     \"draft\": false,
     \"prerelease\": false
   }")
