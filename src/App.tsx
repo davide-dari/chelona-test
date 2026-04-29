@@ -169,6 +169,8 @@ export default function App() {
   const [autoFormStep, setAutoFormStep] = useState(0);
   const [picker, setPicker] = useState<'brand' | 'model' | null>(null);
   const [pendingImportModule, setPendingImportModule] = useState<Module | null>(null);
+  const [showGalleryViewer, setShowGalleryViewer] = useState(false);
+  const [gallerySelectedImage, setGallerySelectedImage] = useState<import('./types').GalleryImage | null>(null);
 
   const [availableUpdate, setAvailableUpdate] = useState<UpdateInfo | null>(null);
   const [updateProgress, setUpdateProgress] = useState<number | null>(null);
@@ -1842,7 +1844,7 @@ export default function App() {
                             </div>
                             {galleryImages.length > 0 && (
                               <button
-                                onClick={() => galleryModule && setSelectedType('gallery' as any)}
+                                onClick={() => setShowGalleryViewer(true)}
                                 className="text-[10px] font-bold text-indigo-500 hover:underline uppercase tracking-widest"
                               >
                                 {galleryImages.length} foto
@@ -1868,12 +1870,7 @@ export default function App() {
                             </button>
                           ) : (
                             <button
-                              onClick={() => {
-                                if (galleryModule) {
-                                  // trigger gallery view via selectedType
-                                  setSelectedType('gallery' as any);
-                                }
-                              }}
+                              onClick={() => setShowGalleryViewer(true)}
                               className="w-full bg-[var(--card-bg)] border border-[var(--border)] rounded-[2.5rem] overflow-hidden hover:border-indigo-500/50 hover:shadow-xl transition-all group"
                             >
                               {/* Cover grid */}
@@ -2374,6 +2371,145 @@ export default function App() {
           />
         )}
       </AnimatePresence>
+      {/* Standalone Gallery Viewer */}
+      <AnimatePresence>
+        {showGalleryViewer && (() => {
+          const gMod = modules.find(m => m.type === 'gallery') as import('./types').GalleryModule | undefined;
+          const gImages: import('./types').GalleryImage[] = [];
+          if (gMod?.images && gMod.images.length > 0) {
+            gImages.push(...gMod.images);
+          } else if (gMod?.image) {
+            gImages.push({ id: gMod.id, image: gMod.image, filterName: gMod.filterName, createdAt: new Date().toISOString() });
+          }
+          return (
+            <motion.div
+              key="gallery-viewer"
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 30 }}
+              className="fixed inset-0 z-[150] flex flex-col bg-[var(--bg)]"
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between p-4 border-b border-[var(--border)] shrink-0 bg-[var(--card-bg)] shadow-sm">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-indigo-500/10 rounded-2xl flex items-center justify-center text-indigo-500">
+                    <ImageIcon className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-bold text-[var(--text-main)] leading-tight">Galleria</h2>
+                    <p className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-widest">{gImages.length} foto</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => { setShowGalleryViewer(false); setGallerySelectedImage(null); }}
+                  className="p-3 bg-[var(--surface-variant)] hover:bg-red-500/10 rounded-xl text-[var(--text-main)] hover:text-red-500 transition-colors"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+
+              {/* Grid */}
+              <div className="flex-1 overflow-y-auto p-3 custom-scrollbar">
+                {gImages.length === 0 ? (
+                  <div className="h-full flex flex-col items-center justify-center text-[var(--text-muted)]">
+                    <ImageIcon className="w-16 h-16 mb-4 opacity-30" />
+                    <p className="font-bold text-lg mb-2">Nessuna foto</p>
+                    <p className="text-sm opacity-70 mb-6">Usa Filtri Immagine per salvare foto qui</p>
+                    <button
+                      onClick={() => { setShowGalleryViewer(false); setIsToolsOpen(true); setActiveToolId('image-filter'); }}
+                      className="px-6 py-3 bg-indigo-500 text-white rounded-2xl font-bold shadow-lg shadow-indigo-500/20 active:scale-95 transition-all"
+                    >
+                      Apri Filtri Immagine
+                    </button>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2 auto-rows-max">
+                    {gImages.map((img) => (
+                      <div
+                        key={img.id}
+                        className="aspect-square rounded-xl overflow-hidden cursor-pointer relative group bg-[var(--surface-variant)]"
+                        onClick={() => setGallerySelectedImage(img)}
+                      >
+                        <img
+                          src={img.image}
+                          alt={img.filterName || 'Foto'}
+                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                        />
+                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors" />
+                        {img.filterName && (
+                          <div className="absolute bottom-1 left-1 right-1 text-center opacity-0 group-hover:opacity-100 transition-opacity">
+                            <span className="text-[8px] font-black text-white bg-black/60 px-1.5 py-0.5 rounded-md uppercase tracking-wider">
+                              {img.filterName}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          );
+        })()}
+      </AnimatePresence>
+
+      {/* Gallery Single Image Viewer */}
+      <AnimatePresence>
+        {gallerySelectedImage && (
+          <motion.div
+            key="gallery-image-viewer"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[200] flex flex-col bg-black"
+          >
+            <div className="flex items-center justify-between p-4 shrink-0">
+              <button
+                onClick={() => setGallerySelectedImage(null)}
+                className="p-2 bg-white/10 hover:bg-white/20 rounded-xl text-white transition-colors"
+              >
+                <X className="w-6 h-6" />
+              </button>
+              <div className="flex items-center gap-2">
+                {gallerySelectedImage.filterName && (
+                  <span className="text-[10px] font-black text-white/60 bg-white/10 px-3 py-1 rounded-full uppercase tracking-wider">
+                    {gallerySelectedImage.filterName}
+                  </span>
+                )}
+                <button
+                  onClick={() => {
+                    const link = document.createElement('a');
+                    link.href = gallerySelectedImage.image;
+                    link.download = `chelona_${gallerySelectedImage.filterName || 'foto'}_${gallerySelectedImage.id.substring(0, 6)}.jpg`;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                  }}
+                  className="p-2 bg-white/10 hover:bg-white/20 rounded-xl text-white transition-colors"
+                  title="Scarica"
+                >
+                  <Download className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+            <div className="flex-1 flex items-center justify-center p-4">
+              <motion.img
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                src={gallerySelectedImage.image}
+                alt="Foto selezionata"
+                className="max-w-full max-h-full object-contain rounded-2xl shadow-2xl"
+              />
+            </div>
+            <div className="p-4 text-center shrink-0">
+              <p className="text-[11px] text-white/40 font-medium">
+                {new Date(gallerySelectedImage.createdAt).toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+              </p>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
     </div>
   );
 }

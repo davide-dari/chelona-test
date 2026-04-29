@@ -71,7 +71,7 @@ RELEASE_JSON=$(curl -s -X POST \
   -d "{
     \"tag_name\": \"$TAG\",
     \"name\": \"Chelona $TAG\",
-    \"body\": \"🚀 **Chelona v$VERSION**\\n\\n### 🐛 Hotfix Critico:\\n- **🔧 Fix Crash Fatale Galleria**: Risolto definitivamente il crash che avveniva cliccando sulla Galleria. Causa reale: il template 'gallery' era stato rimosso dai TEMPLATES, ma il codice dello stato vuoto accedeva ancora a TEMPLATES[selectedType].title senza protezione.\\n- **🖼️ Empty State Galleria**: Quando la galleria non contiene foto, ora mostra un messaggio dedicato con un pulsante per aprire direttamente Filtri Immagine.\",
+    \"body\": \"🚀 **Chelona v$VERSION**\\n\\n### ✨ Novità:\\n- **🖼️ Galleria Foto Standalone**: Cliccando sulla galleria in homepage si apre ora un viewer a schermo intero con griglia foto, senza passare dalla schermata Sandbox.\\n- **🔍 Viewer Singola Foto**: Cliccando su una foto nella galleria si apre un viewer dedicato con sfondo nero, nome filtro e pulsante download.\\n- **🧹 Pulizia UI**: Rimosso il redirect alla Sandbox quando si accede alla galleria.\",
     \"draft\": false,
     \"prerelease\": false
   }")
