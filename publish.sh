@@ -71,7 +71,7 @@ RELEASE_JSON=$(curl -s -X POST \
   -d "{
     \"tag_name\": \"$TAG\",
     \"name\": \"Chelona $TAG\",
-    \"body\": \"🚀 **Chelona v$VERSION**\\n\\n### ✨ Novità:\\n- **🔙 Gesture Indietro Android**: L'uso del tasto indietro o della gesture ora chiude correttamente i visualizzatori di immagini e la galleria invece di chiudere l'app.\\n- **🗑️ Elimina Foto**: Tenendo premuta una foto nella galleria (long-press), apparirà l'icona del cestino per eliminarla definitivamente.\",
+    \"body\": \"🚀 **Chelona v$VERSION**\\n\\n### ✨ Novità:\\n- **📅 Form Data Batteria**: Le scadenze della garanzia batteria (12V e Ibrida/Elettrica) ora utilizzano un selettore di data (calendario) invece del campo di testo manuale.\",
     \"draft\": false,
     \"prerelease\": false
   }")

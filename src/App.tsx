@@ -1427,11 +1427,11 @@ export default function App() {
                               { id: 'lastRevision', title: "Data Ultima Revisione", type: 'date' },
                               { id: 'lastServiceKm', title: "Km Ultimo Tagliando", type: 'number', placeholder: 'Es. 30000', format: 'km' },
                               { id: 'tiresKm', title: "Km Ultimo Controllo Gomme", type: 'number', placeholder: 'Es. 40000', format: 'km' },
-                              { id: 'battery12vWarranty', title: "Scadenza Garanzia Batteria 12v", type: 'text', placeholder: 'Es. Garanzia fino al...' }
+                              { id: 'battery12vWarranty', title: "Scadenza Garanzia Batteria 12v", type: 'date' }
                             ];
                             
                             if (formData.fuelType === 'ibrida' || formData.fuelType === 'elettrica') {
-                              steps.push({ id: 'hybridBatteryWarranty', title: "Garanzia Batteria I/E", type: 'text', placeholder: 'Es. Ogni 15000km o ogni anno' });
+                              steps.push({ id: 'hybridBatteryWarranty', title: "Garanzia Batteria I/E", type: 'date' });
                             }
                             if (formData.fuelType === 'gpl') {
                               steps.push({ id: 'lastGplCylinder', title: "Data Installazione Bombola GPL", type: 'date' });
