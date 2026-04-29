@@ -71,7 +71,7 @@ RELEASE_JSON=$(curl -s -X POST \
   -d "{
     \"tag_name\": \"$TAG\",
     \"name\": \"Chelona $TAG\",
-    \"body\": \"🚀 **Chelona v$VERSION**\\n\\n### ✨ Novità:\\n- **📅 Form Data Batteria**: Le scadenze della garanzia batteria (12V e Ibrida/Elettrica) ora utilizzano un selettore di data (calendario) invece del campo di testo manuale.\",
+    \"body\": \"🚀 **Chelona v$VERSION**\\n\\n### ✨ Novità:\\n- **🐢 Nuova Icona App**: Abbiamo aggiornato l'icona dell'applicazione con un design più moderno e professionale. Ora raffigura il guscio di una tartaruga all'interno di un quadrato stondato (squircle) con un gradiente ambra premium, seguendo gli standard estetici più recenti.\",
     \"draft\": false,
     \"prerelease\": false
   }")
