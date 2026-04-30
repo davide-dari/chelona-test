@@ -25,6 +25,9 @@ import JSZip from 'jszip';
 import { updateService, UpdateInfo } from './services/updateService';
 import { App as CapApp } from '@capacitor/app';
 import { generateUUID } from './utils/uuid';
+import { ShareScreen } from './components/ShareScreen';
+import { SpeechRecognition } from '@capacitor-community/speech-recognition';
+import { Device } from '@capacitor/device';
 // UI Libraries removed as per request (CSS Grid migration)
 
 // ResponsiveGridLayout removed (DnD disabled)
@@ -953,9 +956,59 @@ export default function App() {
   };
 
   const recognitionRef = useRef<any>(null);
-  const handleVoiceSearch = () => {
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SpeechRecognition) {
+  const handleVoiceSearch = async () => {
+    // Check if running on Capacitor (Android/iOS)
+    const { platform } = await Device.getInfo();
+    
+    if (platform === 'android' || platform === 'ios') {
+      try {
+        const { available } = await SpeechRecognition.available();
+        if (!available) {
+          showToast('La ricerca vocale non è disponibile su questo dispositivo.', 'error');
+          return;
+        }
+
+        const { speech } = await SpeechRecognition.checkPermissions();
+        if (speech !== 'granted') {
+          const { speech: newStatus } = await SpeechRecognition.requestPermissions();
+          if (newStatus !== 'granted') {
+            showToast('Permesso microfono negato.', 'error');
+            return;
+          }
+        }
+
+        setIsListening(true);
+        if (navigator.vibrate) navigator.vibrate(50);
+
+        SpeechRecognition.start({
+          language: 'it-IT',
+          maxResults: 1,
+          prompt: 'Parla ora...',
+          partialResults: false,
+          popup: true,
+        }).then((result) => {
+          if (result.matches && result.matches.length > 0) {
+            setSearchQuery(result.matches[0]);
+            if (navigator.vibrate) navigator.vibrate([30, 30]);
+          }
+        }).catch((err) => {
+          console.error('Speech recognition error:', err);
+          showToast('Errore durante la ricerca vocale.', 'error');
+        }).finally(() => {
+          setIsListening(false);
+        });
+
+      } catch (e) {
+        console.error('Capacitor Speech Recognition error:', e);
+        showToast('Errore durante l\'inizializzazione della ricerca vocale.', 'error');
+        setIsListening(false);
+      }
+      return;
+    }
+
+    // Web Fallback
+    const SpeechRecognitionWeb = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognitionWeb) {
       showToast('La ricerca vocale non è supportata su questo browser.', 'error');
       return;
     }
@@ -964,7 +1017,7 @@ export default function App() {
       try { recognitionRef.current.stop(); } catch(e) {}
     }
 
-    const recognition = new SpeechRecognition();
+    const recognition = new SpeechRecognitionWeb();
     recognitionRef.current = recognition;
     recognition.lang = 'it-IT';
     recognition.continuous = false;
@@ -986,6 +1039,7 @@ export default function App() {
       const transcript = event.results[0][0].transcript;
       setSearchQuery(transcript);
       if (navigator.vibrate) navigator.vibrate([30, 30]);
+      setIsListening(false);
     };
 
     recognition.onerror = (event: any) => {

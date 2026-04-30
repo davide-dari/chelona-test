@@ -1,7 +1,7 @@
 {
   "name": "chelona",
   "private": true,
-  "version": "1.12.22",
+  "version": "1.12.23",
   "type": "module",
   "scripts": {
     "dev": "vite --port=3000 --host=0.0.0.0",
@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@bixbyte/capacitor-apk-installer": "^1.0.1",
+    "@capacitor-community/speech-recognition": "^7.0.1",
     "@capacitor/android": "^8.3.0",
     "@capacitor/app": "^8.1.0",
     "@capacitor/core": "^8.3.0",
