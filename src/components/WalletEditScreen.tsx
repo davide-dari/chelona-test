@@ -15,6 +15,28 @@ export const WalletEditScreen = ({ module, onSave, onClose }: WalletEditScreenPr
   const [dueDate, setDueDate] = useState(module.dueDate || '');
   const [addSavings, setAddSavings] = useState('');
 
+  const calculateMonthlyAmount = () => {
+    if (!totalAmount || !dueDate) return 0;
+    const total = parseFloat(totalAmount);
+    if (isNaN(total) || total <= 0) return 0;
+    
+    const remaining = Math.max(0, total - (module.savedAmount || 0));
+    if (remaining === 0) return 0;
+
+    const today = new Date();
+    const targetDate = new Date(dueDate);
+    
+    let months = (targetDate.getFullYear() - today.getFullYear()) * 12 + targetDate.getMonth() - today.getMonth();
+    if (targetDate.getDate() > today.getDate() && months === 0) {
+       months = 1;
+    }
+    months = Math.max(1, months);
+
+    return remaining / months;
+  };
+
+  const monthlyAmount = calculateMonthlyAmount();
+
   const handleSave = () => {
     if (!title || !totalAmount || !dueDate) return;
     const addedAmount = parseFloat(addSavings) || 0;
@@ -46,7 +68,7 @@ export const WalletEditScreen = ({ module, onSave, onClose }: WalletEditScreenPr
         className="relative bg-[var(--card-bg)] border border-[var(--border)] rounded-[2.5rem] p-7 shadow-2xl w-full max-w-md"
       >
         <h3 className="text-xl font-bold text-[var(--text-main)] mb-6">
-          {module.title ? 'Modifica Rata' : 'Nuova Rata'}
+          {module.title ? 'Modifica Rate' : 'Nuova Rate'}
         </h3>
         <div className="space-y-4">
           <div>
@@ -96,6 +118,19 @@ export const WalletEditScreen = ({ module, onSave, onClose }: WalletEditScreenPr
               />
             </div>
           </div>
+          {monthlyAmount > 0 && (
+            <div className="bg-[var(--info-bg)] border border-[var(--info)]/20 p-4 rounded-2xl flex items-start gap-3 mt-2">
+              <div className="p-2 bg-[var(--info)]/10 rounded-xl text-[var(--info)] shrink-0">
+                <Calendar className="w-5 h-5" />
+              </div>
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-widest text-[var(--info)] mb-0.5">Da mettere da parte</p>
+                <p className="text-sm font-bold text-[var(--text-main)]">
+                  € {monthlyAmount.toFixed(2)} <span className="text-xs font-normal text-[var(--text-muted)]">al mese</span>
+                </p>
+              </div>
+            </div>
+          )}
 
           <div className="flex gap-3 pt-4">
             <button

@@ -368,6 +368,21 @@ export const WalletCard = ({ module, onDelete, onEdit, onShare, dragHandleProps,
   const progress = total > 0 ? Math.min(100, (saved / total) * 100) : 0;
   const isCompleted = progress >= 100;
 
+  let monthlyAmount = 0;
+  if (!isCompleted && module.dueDate && total > 0) {
+    const remaining = Math.max(0, total - saved);
+    if (remaining > 0) {
+      const today = new Date();
+      const targetDate = new Date(module.dueDate);
+      let months = (targetDate.getFullYear() - today.getFullYear()) * 12 + targetDate.getMonth() - today.getMonth();
+      if (targetDate.getDate() > today.getDate() && months === 0) {
+         months = 1;
+      }
+      months = Math.max(1, months);
+      monthlyAmount = remaining / months;
+    }
+  }
+
   return (
     <ModuleWrapper module={module} onDelete={onDelete} onEdit={onEdit} dragHandleProps={dragHandleProps}>
       <div 
@@ -380,7 +395,7 @@ export const WalletCard = ({ module, onDelete, onEdit, onShare, dragHandleProps,
               <Wallet className="w-5 h-5" />
             </div>
             <div>
-              <h4 className="font-bold text-[15px] text-[var(--text-main)] leading-tight">{module.title || 'Rata'}</h4>
+              <h4 className="font-bold text-[15px] text-[var(--text-main)] leading-tight">{module.title || 'Rate'}</h4>
               {module.dueDate && (
                 <p className="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-widest mt-0.5">Scade: {new Date(module.dueDate).toLocaleDateString('it-IT')}</p>
               )}
@@ -422,6 +437,12 @@ export const WalletCard = ({ module, onDelete, onEdit, onShare, dragHandleProps,
             <span className="text-[var(--text-main)]">Totale: € {saved.toLocaleString('it-IT')}</span>
             <span>Target: € {total.toLocaleString('it-IT')}</span>
           </div>
+          {monthlyAmount > 0 && (
+            <div className="mt-2 flex items-center justify-between bg-purple-500/10 border border-purple-500/20 p-2 rounded-xl">
+              <span className="text-[9px] font-black uppercase tracking-widest text-purple-600">Da accantonare</span>
+              <span className="text-[11px] font-bold text-[var(--text-main)]">€ {monthlyAmount.toFixed(0)} <span className="text-[9px] font-normal text-[var(--text-muted)]">/ mese</span></span>
+            </div>
+          )}
         </div>
       </div>
     </ModuleWrapper>

@@ -100,7 +100,7 @@ const TEMPLATES = {
     color: 'text-purple-500'
   },
   expense: {
-    title: 'Rata',
+    title: 'Rate',
     content: '',
     icon: Wallet,
     color: 'text-purple-500',
@@ -1381,7 +1381,7 @@ export default function App() {
                                 setEditingWalletModule({
                                   id: generateUUID(),
                                   type: 'wallet',
-                                  title: 'Rata',
+                                  title: 'Rate',
                                   balance: 0,
                                   currency: 'EUR',
                                   payments: [],
@@ -2042,7 +2042,7 @@ export default function App() {
                           setEditingWalletModule({
                             id: generateUUID(),
                             type: 'wallet',
-                            title: 'Rata',
+                            title: 'Rate',
                             balance: 0,
                             currency: 'EUR',
                             payments: [],
@@ -2167,7 +2167,7 @@ export default function App() {
                             setEditingWalletModule({
                               id: generateUUID(),
                               type: 'wallet',
-                              title: 'Rata',
+                              title: 'Rate',
                               balance: 0,
                               currency: 'EUR',
                               payments: [],
