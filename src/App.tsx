@@ -757,13 +757,15 @@ export default function App() {
       const folderMatch = (selectedType === 'gallery') || (!selectedFolderId ? !m.folderId : m.folderId === selectedFolderId);
       if (!folderMatch) return false;
 
-      // Type (Category) filter
-      if (selectedType === 'split') {
-        if (m.type !== 'split' && m.type !== 'single-expense') return false;
-      } else if (selectedType === 'expense') {
-        if (m.type !== 'wallet') return false;
-      } else if (selectedType && m.type !== selectedType) {
-        return false;
+      // Type (Category) filter - Disabled when a folder/group is selected
+      if (!selectedFolderId && selectedType) {
+        if (selectedType === 'split') {
+          if (m.type !== 'split' && m.type !== 'single-expense') return false;
+        } else if (selectedType === 'expense') {
+          if (m.type !== 'wallet') return false;
+        } else if (m.type !== selectedType) {
+          return false;
+        }
       }
 
       // Search filter
@@ -1085,7 +1087,7 @@ export default function App() {
           </div>
           <div>
             <h1 className="text-xl font-black tracking-tight text-[var(--text-main)]">Chelona</h1>
-            <p className="text-[10px] font-bold text-[var(--accent)] uppercase tracking-widest">v1.12.40</p>
+            <p className="text-[10px] font-bold text-[var(--accent)] uppercase tracking-widest">v1.12.41</p>
           </div>
         </div>
         <button onClick={() => setIsSidebarOpen(false)} className="lg:hidden p-2 text-[var(--text-muted)] hover:bg-[var(--bg)] rounded-lg">
@@ -1974,19 +1976,19 @@ export default function App() {
                     {selectedType === 'document' && (
                       <div className="px-4 lg:px-8 mb-8 stagger-fade-in">
                         <button
-                          onClick={() => setIsArchiveOpen(true)}
-                          className="w-full bg-gradient-to-r from-amber-500 to-amber-400 p-6 rounded-[2.2rem] flex items-center justify-between group shadow-xl shadow-amber-500/20 active:scale-[0.98] transition-all"
+                          onClick={() => { setCapturingField({ key: 'pdfAttachment', title: 'Documento' }); }}
+                          className="w-full bg-gradient-to-r from-indigo-500 to-blue-500 p-6 rounded-[2.2rem] flex items-center justify-between group shadow-xl shadow-indigo-500/20 active:scale-[0.98] transition-all"
                         >
                           <div className="flex items-center gap-4">
                             <div className="w-14 h-14 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center text-white">
-                               <BookOpen className="w-7 h-7" />
+                               <Camera className="w-7 h-7" />
                             </div>
                             <div className="text-left">
-                               <h3 className="text-lg font-black text-white leading-tight">Archivio Documenti PDF</h3>
-                               <p className="text-xs font-bold text-white/80 uppercase tracking-widest mt-0.5">Sfoglia tutti i file salvati</p>
+                               <h3 className="text-lg font-black text-white leading-tight">Scatta Foto Documento</h3>
+                               <p className="text-xs font-bold text-white/80 uppercase tracking-widest mt-0.5">Scansiona e salva un nuovo file</p>
                             </div>
                           </div>
-                          <ArrowLeft className="w-6 h-6 text-white rotate-180 group-hover:translate-x-1 transition-transform" />
+                          <ArrowRight className="w-6 h-6 text-white group-hover:translate-x-1 transition-transform" />
                         </button>
                       </div>
                     )}

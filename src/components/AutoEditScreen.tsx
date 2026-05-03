@@ -200,8 +200,8 @@ export const AutoEditScreen = ({ module, onSave, onCancel }: AutoEditScreenProps
               <input
                 type="text"
                 inputMode="numeric"
-                value={data.currentKm ? Number(data.currentKm).toLocaleString('it-IT') : ''}
-                onChange={e => set('currentKm', e.target.value.replace(/\\D/g, ''))}
+                value={data.currentKm || ''}
+                onChange={e => set('currentKm', e.target.value.replace(/\D/g, ''))}
                 placeholder="Es. 45.000"
                 className={inputCls}
               />
@@ -246,8 +246,8 @@ export const AutoEditScreen = ({ module, onSave, onCancel }: AutoEditScreenProps
               <input
                 type="text"
                 inputMode="numeric"
-                value={data.lastServiceKm ? Number(data.lastServiceKm).toLocaleString('it-IT') : ''}
-                onChange={e => set('lastServiceKm', e.target.value.replace(/\\D/g, ''))}
+                value={data.lastServiceKm || ''}
+                onChange={e => set('lastServiceKm', e.target.value.replace(/\D/g, ''))}
                 placeholder="Es. 30.000"
                 className={inputCls}
               />
@@ -257,8 +257,8 @@ export const AutoEditScreen = ({ module, onSave, onCancel }: AutoEditScreenProps
               <input
                 type="text"
                 inputMode="numeric"
-                value={data.tiresKm ? Number(data.tiresKm).toLocaleString('it-IT') : ''}
-                onChange={e => set('tiresKm', e.target.value.replace(/\\D/g, ''))}
+                value={data.tiresKm || ''}
+                onChange={e => set('tiresKm', e.target.value.replace(/\D/g, ''))}
                 placeholder="Es. 40.000"
                 className={inputCls}
               />

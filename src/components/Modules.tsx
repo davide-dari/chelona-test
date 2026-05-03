@@ -905,7 +905,7 @@ export const AutoCard = ({ module, onDelete, onEdit, onDirectUpdate, onShare }: 
                       {module.currentKm && (
                         <div className="bg-[var(--bg)] border border-[var(--border)] rounded-2xl px-4 py-3">
                           <p className="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-wider mb-1">Km Attuali</p>
-                          <p className="text-sm font-bold text-[var(--text-main)]">{Number(module.currentKm).toLocaleString('it-IT')} km</p>
+                          <p className="text-sm font-bold text-[var(--text-main)]">{(Number(module.currentKm) || 0).toLocaleString('it-IT')} km</p>
                         </div>
                       )}
                       {module.lastServiceKm && (
@@ -927,7 +927,7 @@ export const AutoCard = ({ module, onDelete, onEdit, onDirectUpdate, onShare }: 
                                 </button>
                               </div>
                           </div>
-                          <p className="text-sm font-bold text-[var(--accent)]">~ {Number(module.lastServiceKm) + 15000} km</p>
+                          <p className="text-sm font-bold text-[var(--accent)]">~ {(Number(module.lastServiceKm) || 0) + 15000} km</p>
                         </div>
                       )}
                       {module.tiresKm && (
