@@ -28,7 +28,6 @@ import { generateUUID } from './utils/uuid';
 import { ShareScreen } from './components/ShareScreen';
 import { SpeechRecognition } from '@capacitor-community/speech-recognition';
 import { Device } from '@capacitor/device';
-import packageJson from '../package.json';
 // UI Libraries removed as per request (CSS Grid migration)
 
 // ResponsiveGridLayout removed (DnD disabled)
@@ -1085,7 +1084,7 @@ export default function App() {
           </div>
           <div>
             <h1 className="text-xl font-black tracking-tight text-[var(--text-main)]">Chelona</h1>
-            <p className="text-[10px] font-bold text-[var(--accent)] uppercase tracking-widest">v{packageJson.version}</p>
+            <p className="text-[10px] font-bold text-[var(--accent)] uppercase tracking-widest">v1.12.34</p>
           </div>
         </div>
         <button onClick={() => setIsSidebarOpen(false)} className="lg:hidden p-2 text-[var(--text-muted)] hover:bg-[var(--bg)] rounded-lg">
