@@ -380,7 +380,7 @@ export const WalletCard = ({ module, onDelete, onEdit, onShare, dragHandleProps,
               <Wallet className="w-5 h-5" />
             </div>
             <div>
-              <h4 className="font-bold text-[15px] text-[var(--text-main)] leading-tight">{module.title || 'Portafoglio'}</h4>
+              <h4 className="font-bold text-[15px] text-[var(--text-main)] leading-tight">{module.title || 'Rata'}</h4>
               {module.dueDate && (
                 <p className="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-widest mt-0.5">Scade: {new Date(module.dueDate).toLocaleDateString('it-IT')}</p>
               )}
@@ -399,9 +399,17 @@ export const WalletCard = ({ module, onDelete, onEdit, onShare, dragHandleProps,
             <span className={`text-[10px] font-black uppercase tracking-widest ${isCompleted ? 'text-emerald-600' : 'text-[var(--text-muted)]'}`}>
               {isCompleted ? 'Obiettivo Raggiunto' : 'Progressi'}
             </span>
-            <span className={`text-xs font-bold ${isCompleted ? 'text-emerald-600' : 'text-[var(--text-main)]'}`}>
-              {progress.toFixed(0)}%
-            </span>
+            <div className="flex items-center gap-1.5">
+              <div className="w-4 h-4 rounded-full relative bg-[var(--surface-variant)] overflow-hidden flex items-center justify-center">
+                <svg className="w-4 h-4 -rotate-90 transform" viewBox="0 0 36 36">
+                  <path className="text-[var(--border)]" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" strokeWidth="4" />
+                  <path className={isCompleted ? "text-emerald-500" : "text-[var(--accent)]"} strokeDasharray={`${progress}, 100`} d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" strokeWidth="4" />
+                </svg>
+              </div>
+              <span className={`text-xs font-bold ${isCompleted ? 'text-emerald-600' : 'text-[var(--text-main)]'}`}>
+                {progress.toFixed(0)}%
+              </span>
+            </div>
           </div>
           <div className="h-2 bg-[var(--surface-variant)] rounded-full overflow-hidden shadow-inner">
             <motion.div 

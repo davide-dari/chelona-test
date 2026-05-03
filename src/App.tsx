@@ -100,7 +100,7 @@ const TEMPLATES = {
     color: 'text-purple-500'
   },
   expense: {
-    title: 'Portafoglio',
+    title: 'Rata',
     content: '',
     icon: Wallet,
     color: 'text-purple-500',
@@ -1381,7 +1381,7 @@ export default function App() {
                                 setEditingWalletModule({
                                   id: generateUUID(),
                                   type: 'wallet',
-                                  title: 'Portafoglio',
+                                  title: 'Rata',
                                   balance: 0,
                                   currency: 'EUR',
                                   payments: [],
@@ -2042,7 +2042,7 @@ export default function App() {
                           setEditingWalletModule({
                             id: generateUUID(),
                             type: 'wallet',
-                            title: 'Portafoglio',
+                            title: 'Rata',
                             balance: 0,
                             currency: 'EUR',
                             payments: [],
@@ -2115,7 +2115,7 @@ export default function App() {
                              
                              <div className="flex gap-4">
                                <div className="bg-white/10 backdrop-blur-md rounded-[1.5rem] p-5 border border-white/10 min-w-[140px]">
-                                 <p className="text-[9px] font-black text-purple-100/50 uppercase tracking-widest mb-1">Portafogli</p>
+                                 <p className="text-[9px] font-black text-purple-100/50 uppercase tracking-widest mb-1">Rate</p>
                                  <p className="text-2xl font-black text-white">{modules.filter(m => m.type === 'wallet').length}</p>
                                </div>
                                <div className="bg-white/10 backdrop-blur-md rounded-[1.5rem] p-5 border border-white/10 min-w-[140px]">
@@ -2145,7 +2145,7 @@ export default function App() {
                             setEditingWalletModule({
                               id: generateUUID(),
                               type: 'wallet',
-                              title: 'Portafoglio',
+                              title: 'Rata',
                               balance: 0,
                               currency: 'EUR',
                               payments: [],
