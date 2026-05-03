@@ -28,6 +28,7 @@ import { generateUUID } from './utils/uuid';
 import { ShareScreen } from './components/ShareScreen';
 import { SpeechRecognition } from '@capacitor-community/speech-recognition';
 import { Device } from '@capacitor/device';
+import packageJson from '../package.json';
 // UI Libraries removed as per request (CSS Grid migration)
 
 // ResponsiveGridLayout removed (DnD disabled)
@@ -111,6 +112,18 @@ const TEMPLATES = {
     content: '',
     icon: Receipt,
     color: 'text-amber-500'
+  },
+  document: {
+    title: 'Documenti',
+    content: '',
+    icon: FileText,
+    color: 'text-blue-500'
+  },
+  gallery: {
+    title: 'Galleria',
+    content: '',
+    icon: ImageIcon,
+    color: 'text-indigo-500'
   },
   none: {
     title: 'Appunto Libero',
@@ -1903,11 +1916,13 @@ export default function App() {
                     {/* All Categories Grid (Main Entry Point) */}
                     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 pb-12">
                       {Object.entries(TEMPLATES)
-                        .filter(([key]) => key !== 'single-expense')
+                        .filter(([key]) => key !== 'single-expense' && key !== 'gallery')
                         .map(([key, t]) => {
                         const count = key === 'split' 
                           ? modules.filter(m => m.type === 'split' || m.type === 'single-expense').length
-                          : modules.filter(m => m.type === key).length;
+                          : key === 'expense'
+                            ? modules.filter(m => m.type === 'wallet').length
+                            : modules.filter(m => m.type === key).length;
                         
                         return (
                           <button
@@ -2028,7 +2043,7 @@ export default function App() {
                     </div>
                   ) : (
                   <div className="py-20 flex flex-col items-center justify-center text-center px-4">
-                    <div className="w-200 h-20 bg-[var(--bg)] border border-[var(--border)] rounded-full flex items-center justify-center mb-6">
+                    <div className="w-20 h-20 bg-[var(--bg)] border border-[var(--border)] rounded-full flex items-center justify-center mb-6">
                       <LayoutDashboard className="w-10 h-10 text-[var(--text-muted)] opacity-50" />
                     </div>
                     <h3 className="text-2xl font-bold text-[var(--text-main)] mb-2">
@@ -2048,9 +2063,9 @@ export default function App() {
                             id: generateUUID(),
                             type: 'wallet',
                             title: 'Rate',
-                            balance: 0,
-                            currency: 'EUR',
-                            payments: [],
+                            totalAmount: 0,
+                            savedAmount: 0,
+                            dueDate: new Date().toISOString().split('T')[0],
                             x: 0, y: 0, w: 2, h: 2,
                             folderId: selectedFolderId || undefined
                           });
@@ -2189,10 +2204,10 @@ export default function App() {
                             setEditingWalletModule({
                               id: generateUUID(),
                               type: 'wallet',
-                              title: 'Rate',
-                              balance: 0,
-                              currency: 'EUR',
-                              payments: [],
+                              title: 'Nuova Rata',
+                              totalAmount: 0,
+                              savedAmount: 0,
+                              dueDate: new Date().toISOString().split('T')[0],
                               x: 0, y: 0, w: 2, h: 2,
                               folderId: selectedFolderId || undefined
                             });
