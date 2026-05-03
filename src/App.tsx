@@ -1082,7 +1082,7 @@ export default function App() {
           </div>
           <div>
             <h1 className="text-xl font-black tracking-tight text-[var(--text-main)]">Chelona</h1>
-            <p className="text-[10px] font-bold text-[var(--accent)] uppercase tracking-widest">v1.12.45</p>
+            <p className="text-[10px] font-bold text-[var(--accent)] uppercase tracking-widest">v1.12.46</p>
           </div>
         </div>
         <button onClick={() => setIsSidebarOpen(false)} className="lg:hidden p-2 text-[var(--text-muted)] hover:bg-[var(--bg)] rounded-lg">
@@ -1433,34 +1433,56 @@ export default function App() {
                         <h3 className="text-lg font-bold text-[var(--text-main)] uppercase tracking-widest">Spese</h3>
                       </div>
                       <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-                        <button
-                          onClick={() => {
-                            setSpesaSubMenu(false);
-                            setFormData({ ...formData, template: 'split', title: 'Gruppo Spese', content: '' });
-                            setAutoFormStep(0);
-                          }}
-                          className="flex flex-col items-center justify-center gap-4 p-8 rounded-2xl border border-[var(--border)] hover:border-purple-500/60 hover:bg-purple-500/10 transition-all group text-center h-full text-[var(--text-main)]"
-                        >
-                          <Users className="w-8 h-8 text-purple-500 group-hover:scale-110 transition-transform" />
-                          <div className="text-center">
-                            <span className="font-bold text-xs uppercase tracking-wider block">Gruppo Spese</span>
-                            <span className="text-[10px] text-[var(--text-muted)] mt-1 block">Dividi le spese con altri</span>
-                          </div>
-                        </button>
-                        <button
-                          onClick={() => {
-                            setSpesaSubMenu(false);
-                            setFormData({ ...formData, template: 'single-expense', title: 'Spesa Singola', content: '' });
-                            setAutoFormStep(0);
-                          }}
-                          className="flex flex-col items-center justify-center gap-4 p-8 rounded-2xl border border-[var(--border)] hover:border-emerald-500/60 hover:bg-emerald-500/10 transition-all group text-center h-full text-[var(--text-main)]"
-                        >
-                          <CreditCard className="w-8 h-8 text-emerald-500 group-hover:scale-110 transition-transform" />
-                          <div className="text-center">
-                            <span className="font-bold text-xs uppercase tracking-wider block">Spesa Singola</span>
-                            <span className="text-[10px] text-[var(--text-muted)] mt-1 block">Traccia una spesa</span>
-                          </div>
-                        </button>
+                         <button
+                           onClick={() => {
+                             setSpesaSubMenu(false);
+                             setEditingWalletModule({
+                               id: generateUUID(),
+                               type: 'wallet',
+                               title: 'Nuova Rata',
+                               totalAmount: 0,
+                               savedAmount: 0,
+                               dueDate: new Date().toISOString().split('T')[0],
+                               x: 0, y: 0, w: 2, h: 2,
+                               folderId: selectedFolderId || undefined
+                             });
+                           }}
+                           className="flex flex-col items-center justify-center gap-4 p-8 rounded-2xl border border-[var(--border)] hover:border-purple-500/60 hover:bg-purple-500/10 transition-all group text-center h-full text-[var(--text-main)]"
+                         >
+                           <Wallet className="w-8 h-8 text-purple-500 group-hover:scale-110 transition-transform" />
+                           <div className="text-center">
+                             <span className="font-bold text-xs uppercase tracking-wider block">Nuova Rata</span>
+                             <span className="text-[10px] text-[var(--text-muted)] mt-1 block">Crea un accantonamento</span>
+                           </div>
+                         </button>
+                         <button
+                           onClick={() => {
+                             setSpesaSubMenu(false);
+                             setFormData({ ...formData, template: 'split', title: 'Gruppo Spese', content: '' });
+                             setAutoFormStep(0);
+                           }}
+                           className="flex flex-col items-center justify-center gap-4 p-8 rounded-2xl border border-[var(--border)] hover:border-indigo-500/60 hover:bg-indigo-500/10 transition-all group text-center h-full text-[var(--text-main)]"
+                         >
+                           <Users className="w-8 h-8 text-indigo-500 group-hover:scale-110 transition-transform" />
+                           <div className="text-center">
+                             <span className="font-bold text-xs uppercase tracking-wider block">Gruppo Spese</span>
+                             <span className="text-[10px] text-[var(--text-muted)] mt-1 block">Dividi le spese con altri</span>
+                           </div>
+                         </button>
+                         <button
+                           onClick={() => {
+                             setSpesaSubMenu(false);
+                             setFormData({ ...formData, template: 'single-expense', title: 'Spesa Singola', content: '' });
+                             setAutoFormStep(0);
+                           }}
+                           className="flex flex-col items-center justify-center gap-4 p-8 rounded-2xl border border-[var(--border)] hover:border-emerald-500/60 hover:bg-emerald-500/10 transition-all group text-center h-full text-[var(--text-main)]"
+                         >
+                           <CreditCard className="w-8 h-8 text-emerald-500 group-hover:scale-110 transition-transform" />
+                           <div className="text-center">
+                             <span className="font-bold text-xs uppercase tracking-wider block">Spesa Singola</span>
+                             <span className="text-[10px] text-[var(--text-muted)] mt-1 block">Traccia una spesa</span>
+                           </div>
+                         </button>
                       </div>
                     </div>
                   )}
@@ -2078,50 +2100,13 @@ export default function App() {
           )}
 
           {selectedType && selectedType !== 'gallery' && !isAdding && !editingModuleId && !isArchiveOpen && (
-            <div className="fixed bottom-24 right-6 flex flex-col items-end gap-3 z-[100] md:bottom-10">
-              {selectedType === 'split' && (
-                <AnimatePresence>
-                  <motion.div 
-                    initial={{ opacity: 0, scale: 0.5, y: 20 }}
-                    animate={{ opacity: 1, scale: 1, y: 0 }}
-                    className="flex flex-col items-end gap-2 mb-2"
-                  >
-                    <button
-                      onClick={() => {
-                        setEditingWalletModule({
-                          id: generateUUID(),
-                          type: 'wallet',
-                          title: 'Nuova Rata',
-                          totalAmount: 0,
-                          savedAmount: 0,
-                          dueDate: new Date().toISOString().split('T')[0],
-                          x: 0, y: 0, w: 2, h: 2,
-                          folderId: selectedFolderId || undefined
-                        });
-                      }}
-                      className="bg-purple-500 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-lg shadow-purple-500/20 flex items-center gap-2 active:scale-95 transition-transform"
-                    >
-                      <Wallet className="w-4 h-4" />
-                      Nuova Rata
-                    </button>
-                    <button
-                      onClick={() => {
-                        setFormData({});
-                        setSpesaSubMenu(true);
-                        setIsAdding(true);
-                      }}
-                      className="bg-indigo-500 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-lg shadow-indigo-500/20 flex items-center gap-2 active:scale-95 transition-transform"
-                    >
-                      <Receipt className="w-4 h-4" />
-                      Nuova Spesa
-                    </button>
-                  </motion.div>
-                </AnimatePresence>
-              )}
+            <div className="fixed bottom-24 right-6 z-[100] md:bottom-10">
               <button
                 onClick={() => {
                   if (selectedType === 'split') {
-                    // Just toggle the menu if needed, but here we just show both buttons above
+                    setFormData({});
+                    setSpesaSubMenu(true);
+                    setIsAdding(true);
                     return;
                   }
                   const t = TEMPLATES[selectedType as keyof typeof TEMPLATES];
@@ -2129,7 +2114,7 @@ export default function App() {
                   setIsAdding(true);
                   setAutoFormStep(0);
                 }}
-                className={`w-14 h-14 bg-indigo-500 hover:bg-indigo-600 text-white rounded-full flex items-center justify-center shadow-xl shadow-indigo-500/30 active:scale-95 transition-all ${selectedType === 'split' ? 'bg-indigo-600 rotate-45' : ''}`}
+                className="w-14 h-14 bg-indigo-500 hover:bg-indigo-600 text-white rounded-full flex items-center justify-center shadow-xl shadow-indigo-500/30 active:scale-95 transition-all"
               >
                 <Plus className="w-8 h-8" />
               </button>
@@ -2293,7 +2278,7 @@ export default function App() {
                 {updateProgress !== null ? (
                   <div className="space-y-3 bg-[var(--surface-variant)] p-4 rounded-2xl">
                     <div className="flex justify-between items-center mb-1">
-                      <span className="text-[10px] font-bold text-[var(--text-muted)]">Versione 1.12.45</span>
+                      <span className="text-[10px] font-bold text-[var(--text-muted)]">Versione 1.12.46</span>
                       <span className="text-[10px] font-black text-[var(--accent)]">{updateProgress}%</span>
                     </div>
                     <div className="h-2 w-full bg-[var(--bg)] rounded-full overflow-hidden border border-[var(--border)]">
