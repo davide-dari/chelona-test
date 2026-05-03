@@ -603,7 +603,10 @@ export default function App() {
   const updateModuleDirect = async (updatedModule: Module) => {
     if (!encryptionKey) return;
     setModules(prev => {
-      const updated = prev.map(m => m.id === updatedModule.id ? updatedModule : m);
+      const exists = prev.some(m => m.id === updatedModule.id);
+      const updated = exists
+        ? prev.map(m => m.id === updatedModule.id ? updatedModule : m)
+        : [updatedModule, ...prev];
       saveAppState(updated, folders).catch(console.error);
       return updated;
     });
@@ -1382,7 +1385,8 @@ export default function App() {
                                   balance: 0,
                                   currency: 'EUR',
                                   payments: [],
-                                  x: 0, y: 0, w: 2, h: 2
+                                  x: 0, y: 0, w: 2, h: 2,
+                                  folderId: selectedFolderId || undefined
                                 });
                                 setIsAdding(false);
                               } else {
@@ -2042,7 +2046,8 @@ export default function App() {
                             balance: 0,
                             currency: 'EUR',
                             payments: [],
-                            x: 0, y: 0, w: 2, h: 2
+                            x: 0, y: 0, w: 2, h: 2,
+                            folderId: selectedFolderId || undefined
                           });
                         } else if (selectedType) {
                           const t = TEMPLATES[selectedType as keyof typeof TEMPLATES];
@@ -2144,7 +2149,8 @@ export default function App() {
                               balance: 0,
                               currency: 'EUR',
                               payments: [],
-                              x: 0, y: 0, w: 2, h: 2
+                              x: 0, y: 0, w: 2, h: 2,
+                              folderId: selectedFolderId || undefined
                             });
                           } else {
                             const t = TEMPLATES[selectedType as keyof typeof TEMPLATES];
