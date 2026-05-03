@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Sun, Moon, Wrench, Plus, LayoutDashboard, Settings, User, LogOut, Search, Mic, Bell, CreditCard, Fingerprint, ShieldCheck, Wallet, Lock, Menu, X, StickyNote, FileText, Grid2X2, Car, QrCode, Folder as FolderIcon, Check, Edit2, Trash2, BookOpen, ArrowLeft, FileDown, Hourglass, Users, Download, Receipt, MapPin, Image as ImageIcon, Lightbulb } from 'lucide-react';
+import { Sun, Moon, Wrench, Plus, LayoutDashboard, Settings, User, LogOut, Search, Mic, Bell, CreditCard, Fingerprint, ShieldCheck, Wallet, Lock, Menu, X, StickyNote, FileText, Grid2X2, Car, QrCode, Folder as FolderIcon, Check, Edit2, Trash2, BookOpen, ArrowLeft, ArrowRight, Camera, FileDown, Hourglass, Users, Download, Receipt, MapPin, Image as ImageIcon, Lightbulb } from 'lucide-react';
 import { Module, ModuleType, Folder, DocumentModule } from './types';
 import { storage, AppState } from './services/storage';
 import { encryption } from './services/encryption';
@@ -541,7 +541,7 @@ export default function App() {
           folderId: selectedFolderId || undefined
         };
 
-        const currentVersion = '1.12.47';
+        const currentVersion = '1.12.48';
         const updatedSelection = [...modules, newModule];
         setModules(updatedSelection);
         await saveAppState(updatedSelection, folders);
@@ -1082,7 +1082,7 @@ export default function App() {
           </div>
           <div>
             <h1 className="text-xl font-black tracking-tight text-[var(--text-main)]">Chelona</h1>
-            <p className="text-[10px] font-bold text-[var(--accent)] uppercase tracking-widest">v1.12.47</p>
+            <p className="text-[10px] font-bold text-[var(--accent)] uppercase tracking-widest">v1.12.48</p>
           </div>
         </div>
         <button onClick={() => setIsSidebarOpen(false)} className="lg:hidden p-2 text-[var(--text-muted)] hover:bg-[var(--bg)] rounded-lg">
@@ -2278,7 +2278,7 @@ export default function App() {
                 {updateProgress !== null ? (
                   <div className="space-y-3 bg-[var(--surface-variant)] p-4 rounded-2xl">
                     <div className="flex justify-between items-center mb-1">
-                      <span className="text-[10px] font-bold text-[var(--text-muted)]">Versione 1.12.47</span>
+                      <span className="text-[10px] font-bold text-[var(--text-muted)]">Versione 1.12.48</span>
                       <span className="text-[10px] font-black text-[var(--accent)]">{updateProgress}%</span>
                     </div>
                     <div className="h-2 w-full bg-[var(--bg)] rounded-full overflow-hidden border border-[var(--border)]">
