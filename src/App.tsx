@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Sun, Moon, Wrench, Plus, LayoutDashboard, Settings, User, LogOut, Search, Mic, Bell, CreditCard, Fingerprint, ShieldCheck, Wallet, Lock, Menu, X, StickyNote, Grid2X2, Car, QrCode, Folder as FolderIcon, Check, Edit2, Trash2, BookOpen, ArrowLeft, FileDown, Hourglass, Users, Download, Receipt, MapPin, Image as ImageIcon } from 'lucide-react';
+import { Sun, Moon, Wrench, Plus, LayoutDashboard, Settings, User, LogOut, Search, Mic, Bell, CreditCard, Fingerprint, ShieldCheck, Wallet, Lock, Menu, X, StickyNote, Grid2X2, Car, QrCode, Folder as FolderIcon, Check, Edit2, Trash2, BookOpen, ArrowLeft, FileDown, Hourglass, Users, Download, Receipt, MapPin, Image as ImageIcon, Lightbulb } from 'lucide-react';
 import { Module, ModuleType, Folder, DocumentModule } from './types';
 import { storage, AppState } from './services/storage';
 import { encryption } from './services/encryption';
@@ -2152,6 +2152,20 @@ export default function App() {
                                </div>
                              </div>
                            </div>
+
+                           {totalMonthlyAmount > 0 && (
+                             <div className="relative z-10 mt-6 bg-white/10 backdrop-blur-md rounded-[1.5rem] p-5 border border-emerald-500/30 flex items-start gap-4 shadow-lg shadow-emerald-500/10">
+                               <div className="p-3 bg-emerald-500/20 text-emerald-300 rounded-xl shrink-0">
+                                 <Lightbulb className="w-6 h-6" />
+                               </div>
+                               <div>
+                                 <h4 className="font-black text-white text-xs uppercase tracking-wider mb-1">Il Nostro Consiglio</h4>
+                                 <p className="text-white/80 text-[11px] font-medium leading-relaxed">
+                                   Per gestire le scadenze senza stress, ti consigliamo di accantonare <strong className="text-white bg-emerald-500/20 border border-emerald-500/30 px-1.5 py-0.5 rounded-md mx-1">€ {totalMonthlyAmount.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong> al mese. Questo coprirà in tempo tutte le tue {walletModules.length} rate attive.
+                                 </p>
+                               </div>
+                             </div>
+                           )}
                          </div>
                        </div>
                       );
