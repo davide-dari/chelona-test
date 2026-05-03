@@ -2128,14 +2128,17 @@ export default function App() {
                              <div>
                                <div className="flex items-center gap-2 text-purple-100/80 mb-2">
                                  <Wallet className="w-4 h-4" />
-                                 <span className="text-[10px] font-black uppercase tracking-[0.2em]">Da mettere da parte (Mensile)</span>
+                                 <span className="text-[10px] font-black uppercase tracking-[0.2em]">Accantonamento Mensile</span>
                                </div>
                                <div className="flex items-baseline gap-2">
                                  <span className="text-2xl font-bold text-white/70">€</span>
                                  <span className="text-5xl lg:text-6xl font-black text-white tracking-tighter">
-                                   {totalMonthlyAmount.toFixed(0)}
+                                   {totalMonthlyAmount.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                  </span>
                                </div>
+                               <p className="text-xs font-bold text-white/60 mt-2">
+                                 Totale da mettere da parte ogni mese per {walletModules.length} rate attive
+                               </p>
                              </div>
                              
                              <div className="flex gap-4">
