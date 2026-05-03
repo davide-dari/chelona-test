@@ -541,7 +541,7 @@ export default function App() {
           folderId: selectedFolderId || undefined
         };
 
-        const currentVersion = '1.12.45';
+        const currentVersion = '1.12.47';
         const updatedSelection = [...modules, newModule];
         setModules(updatedSelection);
         await saveAppState(updatedSelection, folders);
@@ -1082,7 +1082,7 @@ export default function App() {
           </div>
           <div>
             <h1 className="text-xl font-black tracking-tight text-[var(--text-main)]">Chelona</h1>
-            <p className="text-[10px] font-bold text-[var(--accent)] uppercase tracking-widest">v1.12.46</p>
+            <p className="text-[10px] font-bold text-[var(--accent)] uppercase tracking-widest">v1.12.47</p>
           </div>
         </div>
         <button onClick={() => setIsSidebarOpen(false)} className="lg:hidden p-2 text-[var(--text-muted)] hover:bg-[var(--bg)] rounded-lg">
@@ -2130,9 +2130,9 @@ export default function App() {
                     const newDoc: DocumentModule = {
                       id: generateUUID(),
                       type: 'document',
-                      title: `Documento ${new Date().toLocaleDateString()}`,
-                      content: '',
-                      data: pdf,
+                      title: `Documento ${new Date().toLocaleDateString('it-IT')}`,
+                      documentType: 'generic',
+                      pdfAttachment: pdf,
                       x: 0, y: 0, w: 2, h: 2,
                       folderId: selectedFolderId || undefined
                     };
@@ -2278,7 +2278,7 @@ export default function App() {
                 {updateProgress !== null ? (
                   <div className="space-y-3 bg-[var(--surface-variant)] p-4 rounded-2xl">
                     <div className="flex justify-between items-center mb-1">
-                      <span className="text-[10px] font-bold text-[var(--text-muted)]">Versione 1.12.46</span>
+                      <span className="text-[10px] font-bold text-[var(--text-muted)]">Versione 1.12.47</span>
                       <span className="text-[10px] font-black text-[var(--accent)]">{updateProgress}%</span>
                     </div>
                     <div className="h-2 w-full bg-[var(--bg)] rounded-full overflow-hidden border border-[var(--border)]">
