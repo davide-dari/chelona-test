@@ -1085,7 +1085,7 @@ export default function App() {
           </div>
           <div>
             <h1 className="text-xl font-black tracking-tight text-[var(--text-main)]">Chelona</h1>
-            <p className="text-[10px] font-bold text-[var(--accent)] uppercase tracking-widest">v1.12.38</p>
+            <p className="text-[10px] font-bold text-[var(--accent)] uppercase tracking-widest">v1.12.40</p>
           </div>
         </div>
         <button onClick={() => setIsSidebarOpen(false)} className="lg:hidden p-2 text-[var(--text-muted)] hover:bg-[var(--bg)] rounded-lg">
@@ -2140,8 +2140,7 @@ export default function App() {
             <nav className="md:hidden fixed bottom-0 left-0 right-0 h-20 bg-[var(--bg)] border-t border-[var(--border)] z-50 px-4 flex items-center justify-around safe-area-inset-bottom shadow-[0_-4px_12px_rgba(0,0,0,0.03)]">
               {[
                 { id: 'tools', icon: Wrench, label: 'Strumenti', action: () => { setIsToolsOpen(true); setIsProfileOpen(false); } },
-                { id: 'dashboard', icon: LayoutDashboard, label: 'Dashboard', action: () => { setIsToolsOpen(false); setSelectedType(null); setIsProfileOpen(false); } },
-                { id: 'profile', icon: User, label: 'Profilo', action: () => { setIsProfileOpen(true); setIsToolsOpen(false); } }
+                { id: 'dashboard', icon: LayoutDashboard, label: 'Dashboard', action: () => { setIsToolsOpen(false); setSelectedType(null); setIsProfileOpen(false); } }
               ].map(item => {
                 const isActive = item.id === 'dashboard' ? (!isToolsOpen && !selectedType && !isProfileOpen) : 
                                  item.id === 'tools' ? isToolsOpen : 
