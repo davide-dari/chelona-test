@@ -1082,7 +1082,7 @@ export default function App() {
           </div>
           <div>
             <h1 className="text-xl font-black tracking-tight text-[var(--text-main)]">Chelona</h1>
-            <p className="text-[10px] font-bold text-[var(--accent)] uppercase tracking-widest">v1.12.48</p>
+            <p className="text-[10px] font-bold text-[var(--accent)] uppercase tracking-widest">v1.12.49</p>
           </div>
         </div>
         <button onClick={() => setIsSidebarOpen(false)} className="lg:hidden p-2 text-[var(--text-muted)] hover:bg-[var(--bg)] rounded-lg">
@@ -1940,25 +1940,7 @@ export default function App() {
                   )
                 ) : (
                   <>
-                    {selectedType === 'document' && (
-                      <div className="px-4 lg:px-8 mb-8 stagger-fade-in">
-                        <button
-                          onClick={() => { setCapturingField({ key: 'document', title: 'Documento' }); }}
-                          className="w-full bg-gradient-to-r from-indigo-500 to-blue-500 p-6 rounded-[2.2rem] flex items-center justify-between group shadow-xl shadow-indigo-500/20 active:scale-[0.98] transition-all"
-                        >
-                          <div className="flex items-center gap-4">
-                            <div className="w-14 h-14 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center text-white">
-                               <Camera className="w-7 h-7" />
-                            </div>
-                            <div className="text-left">
-                               <h3 className="text-lg font-black text-white leading-tight">Scatta Foto Documento</h3>
-                               <p className="text-xs font-bold text-white/80 uppercase tracking-widest mt-0.5">Scansiona e salva un nuovo file</p>
-                            </div>
-                          </div>
-                          <ArrowRight className="w-6 h-6 text-white group-hover:translate-x-1 transition-transform" />
-                        </button>
-                      </div>
-                    )}
+
                     {/* Total Balance Hero Summary - Only for Wallet Category */}
                     {selectedType === 'wallet' && (() => {
                       const walletModules = modules.filter(m => m.type === 'wallet') as import('./types').WalletModule[];
@@ -2278,7 +2260,7 @@ export default function App() {
                 {updateProgress !== null ? (
                   <div className="space-y-3 bg-[var(--surface-variant)] p-4 rounded-2xl">
                     <div className="flex justify-between items-center mb-1">
-                      <span className="text-[10px] font-bold text-[var(--text-muted)]">Versione 1.12.48</span>
+                      <span className="text-[10px] font-bold text-[var(--text-muted)]">Versione 1.12.49</span>
                       <span className="text-[10px] font-black text-[var(--accent)]">{updateProgress}%</span>
                     </div>
                     <div className="h-2 w-full bg-[var(--bg)] rounded-full overflow-hidden border border-[var(--border)]">
