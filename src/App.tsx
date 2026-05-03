@@ -2090,7 +2090,35 @@ export default function App() {
                       </div>
                     )}
                     {/* Total Balance Hero Summary - Only for Wallet Category */}
-                    {selectedType === 'wallet' && (
+                    {selectedType === 'wallet' && (() => {
+                      const walletModules = modules.filter(m => m.type === 'wallet') as import('./types').WalletModule[];
+                      const totalMonthlyAmount = walletModules.reduce((acc, module) => {
+                        if (!module.totalAmount || !module.dueDate) return acc;
+                        const total = Number(module.totalAmount);
+                        if (isNaN(total) || total <= 0) return acc;
+                        
+                        const remaining = Math.max(0, total - (module.savedAmount || 0));
+                        if (remaining === 0) return acc;
+
+                        const today = new Date();
+                        const targetDate = new Date(module.dueDate);
+                        
+                        let months = (targetDate.getFullYear() - today.getFullYear()) * 12 + targetDate.getMonth() - today.getMonth();
+                        if (targetDate.getDate() > today.getDate() && months === 0) {
+                           months = 1;
+                        }
+                        months = Math.max(1, months);
+
+                        return acc + (remaining / months);
+                      }, 0);
+
+                      const totalRemaining = walletModules.reduce((acc, module) => {
+                         const total = Number(module.totalAmount) || 0;
+                         const saved = Number(module.savedAmount) || 0;
+                         return acc + Math.max(0, total - saved);
+                      }, 0);
+
+                      return (
                        <div className="mb-10 animate-fade-in px-4 lg:px-8">
                          <div className="bg-gradient-to-br from-purple-600 to-indigo-600 rounded-[2.5rem] p-8 lg:p-10 shadow-xl shadow-purple-500/20 relative overflow-hidden group">
                            <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -mr-20 -mt-20 blur-3xl" />
@@ -2100,37 +2128,31 @@ export default function App() {
                              <div>
                                <div className="flex items-center gap-2 text-purple-100/80 mb-2">
                                  <Wallet className="w-4 h-4" />
-                                 <span className="text-[10px] font-black uppercase tracking-[0.2em]">Patrimonio Totale</span>
+                                 <span className="text-[10px] font-black uppercase tracking-[0.2em]">Da mettere da parte (Mensile)</span>
                                </div>
                                <div className="flex items-baseline gap-2">
                                  <span className="text-2xl font-bold text-white/70">€</span>
                                  <span className="text-5xl lg:text-6xl font-black text-white tracking-tighter">
-                                   {modules
-                                     .filter(m => m.type === 'wallet')
-                                     .reduce((acc, m) => acc + (Number((m as any).balance) || 0), 0)
-                                     .toLocaleString('it-IT')}
+                                   {totalMonthlyAmount.toFixed(0)}
                                  </span>
                                </div>
                              </div>
                              
                              <div className="flex gap-4">
                                <div className="bg-white/10 backdrop-blur-md rounded-[1.5rem] p-5 border border-white/10 min-w-[140px]">
-                                 <p className="text-[9px] font-black text-purple-100/50 uppercase tracking-widest mb-1">Rate</p>
-                                 <p className="text-2xl font-black text-white">{modules.filter(m => m.type === 'wallet').length}</p>
+                                 <p className="text-[9px] font-black text-purple-100/50 uppercase tracking-widest mb-1">Rate Attive</p>
+                                 <p className="text-2xl font-black text-white">{walletModules.length}</p>
                                </div>
                                <div className="bg-white/10 backdrop-blur-md rounded-[1.5rem] p-5 border border-white/10 min-w-[140px]">
-                                 <p className="text-[9px] font-black text-purple-100/50 uppercase tracking-widest mb-1">Pianificazioni</p>
-                                 <p className="text-2xl font-black text-white">
-                                   {modules
-                                     .filter(m => m.type === 'wallet')
-                                     .reduce((acc, m) => acc + ((m as any).payments?.length || 0), 0)}
-                                 </p>
+                                 <p className="text-[9px] font-black text-purple-100/50 uppercase tracking-widest mb-1">Residuo Totale</p>
+                                 <p className="text-2xl font-black text-white">€ {totalRemaining.toLocaleString('it-IT', { maximumFractionDigits: 0 })}</p>
                                </div>
                              </div>
                            </div>
                          </div>
                        </div>
-                    )}
+                      );
+                    })()}
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6 3xl:grid-cols-8 gap-6 stagger-fade-in px-4 lg:px-8 pb-32 md:pb-8">
                     {/* Template-Specific Add Card Button (Only when a category is selected and list not empty, and not gallery) */}
