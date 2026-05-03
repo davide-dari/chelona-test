@@ -1087,7 +1087,7 @@ export default function App() {
           </div>
           <div>
             <h1 className="text-xl font-black tracking-tight text-[var(--text-main)]">Chelona</h1>
-            <p className="text-[10px] font-bold text-[var(--accent)] uppercase tracking-widest">v1.12.41</p>
+            <p className="text-[10px] font-bold text-[var(--accent)] uppercase tracking-widest">v1.12.42</p>
           </div>
         </div>
         <button onClick={() => setIsSidebarOpen(false)} className="lg:hidden p-2 text-[var(--text-muted)] hover:bg-[var(--bg)] rounded-lg">
@@ -1783,24 +1783,7 @@ export default function App() {
                       </button>
                     </div>
                   </div>
-                  {selectedType && (
-                    <div className="mt-3 flex items-center justify-center gap-2">
-                       <span className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest px-2">Filtro attivo: {TEMPLATES[selectedType as keyof typeof TEMPLATES]?.title || 'Sandbox'}</span>
-                       <button onClick={() => setSelectedType(null)} className="text-[10px] font-bold text-[var(--accent)] hover:underline uppercase tracking-widest">Rimuovi</button>
-                       {selectedType === 'document' && (
-                         <>
-                           <span className="w-1 h-1 bg-[var(--border)] rounded-full mx-1" />
-                           <button 
-                             onClick={() => setIsArchiveOpen(true)}
-                             className="text-[10px] font-bold text-amber-500 hover:text-amber-600 uppercase tracking-widest flex items-center gap-1.5 transition-colors"
-                           >
-                             <BookOpen className="w-3 h-3" />
-                             Archivio Documenti
-                           </button>
-                         </>
-                       )}
-                    </div>
-                  )}
+
                 </div>
 
                 {searchQuery.trim() && filteredTools.length > 0 && (
@@ -2075,40 +2058,7 @@ export default function App() {
                     })()}
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6 3xl:grid-cols-8 gap-6 stagger-fade-in px-4 lg:px-8 pb-32 md:pb-8">
-                    {/* Template-Specific Add Card Button (Only when a category is selected and list not empty, and not gallery) */}
-                    {selectedType && selectedType !== 'gallery' && filteredModules.length > 0 && (
-                      <button
-                        onClick={() => {
-                          if (selectedType === 'split') {
-                            setFormData({});
-                            setSpesaSubMenu(true);
-                            setIsAdding(true);
-                          } else if (selectedType === 'expense') {
-                            setEditingWalletModule({
-                              id: generateUUID(),
-                              type: 'wallet',
-                              title: 'Nuova Rata',
-                              totalAmount: 0,
-                              savedAmount: 0,
-                              dueDate: new Date().toISOString().split('T')[0],
-                              x: 0, y: 0, w: 2, h: 2,
-                              folderId: selectedFolderId || undefined
-                            });
-                          } else {
-                            const t = TEMPLATES[selectedType as keyof typeof TEMPLATES];
-                            setFormData({ template: selectedType, title: t ? t.title : '', content: t ? t.content : '' });
-                            setIsAdding(true);
-                            setAutoFormStep(0);
-                          }
-                        }}
-                        className="w-full flex flex-col items-center justify-center bg-[var(--card-bg)] backdrop-blur-3xl rounded-[2.5rem] border-2 border-dashed border-amber-500/30 hover:border-amber-500 hover:bg-amber-500/5 transition-all p-8 gap-3 min-h-[220px] group"
-                      >
-                        <div className="w-14 h-14 bg-amber-500/10 rounded-2xl flex items-center justify-center text-amber-500 group-hover:scale-110 transition-transform">
-                          <Plus className="w-8 h-8" />
-                        </div>
-                        <span className="text-sm font-black text-amber-600 uppercase tracking-widest text-center leading-tight">Nuovo {TEMPLATES[selectedType as keyof typeof TEMPLATES]?.title || 'Appunto'}</span>
-                      </button>
-                    )}
+
                     
                     {filteredModules.map((module) => (
                       <div key={module.id} className="w-full">
@@ -2163,6 +2113,38 @@ export default function App() {
                 );
               })}
             </nav>
+          )}
+
+          {/* Floating Action Button (FAB) for adding new items */}
+          {selectedType && selectedType !== 'gallery' && !isAdding && !editingModuleId && !isArchiveOpen && (
+            <button
+              onClick={() => {
+                if (selectedType === 'split') {
+                  setFormData({});
+                  setSpesaSubMenu(true);
+                  setIsAdding(true);
+                } else if (selectedType === 'expense') {
+                  setEditingWalletModule({
+                    id: generateUUID(),
+                    type: 'wallet',
+                    title: 'Nuova Rata',
+                    totalAmount: 0,
+                    savedAmount: 0,
+                    dueDate: new Date().toISOString().split('T')[0],
+                    x: 0, y: 0, w: 2, h: 2,
+                    folderId: selectedFolderId || undefined
+                  });
+                } else {
+                  const t = TEMPLATES[selectedType as keyof typeof TEMPLATES];
+                  setFormData({ template: selectedType, title: t ? t.title : '', content: t ? t.content : '' });
+                  setIsAdding(true);
+                  setAutoFormStep(0);
+                }
+              }}
+              className="fixed bottom-24 right-6 w-14 h-14 bg-indigo-500 hover:bg-indigo-600 text-white rounded-full flex items-center justify-center shadow-xl shadow-indigo-500/30 active:scale-95 transition-all z-[100] md:bottom-10"
+            >
+              <Plus className="w-8 h-8" />
+            </button>
           )}
 
 
