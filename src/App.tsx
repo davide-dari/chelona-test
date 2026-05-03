@@ -1118,6 +1118,24 @@ export default function App() {
           Strumenti
         </button>
 
+        {folders.length > 0 && (
+          <>
+            <div className="pt-6 pb-2 px-4">
+              <p className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest">I Tuoi Gruppi</p>
+            </div>
+            {folders.map(folder => (
+              <button
+                key={`side-folder-${folder.id}`}
+                onClick={() => { setSelectedFolderId(folder.id); setSelectedType(null); setIsSidebarOpen(false); }}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all ${selectedFolderId === folder.id ? 'bg-amber-500/10 text-amber-600' : 'text-[var(--text-muted)] hover:bg-[var(--bg)]'}`}
+              >
+                <FolderIcon className="w-5 h-5 text-amber-500" />
+                <span className="truncate">{folder.name}</span>
+              </button>
+            ))}
+          </>
+        )}
+
       </nav>
 
       <div className="pb-4 mt-auto"></div>
@@ -1811,60 +1829,7 @@ export default function App() {
                 {!selectedType && !selectedFolderId && !searchQuery.trim() && !isListening ? (
                   <div className="px-4 lg:px-8 pb-40">
 
-                    {/* Cartelle / Gruppi Section */}
-                    <div className="mb-10">
-                      <div className="flex items-center justify-between mb-5">
-                        <h3 className="text-lg font-bold text-[var(--text-main)] flex items-center gap-2">
-                          <FolderIcon className="w-5 h-5 text-amber-500" />
-                          I Tuoi Gruppi
-                        </h3>
-                        <button 
-                          onClick={() => setIsAddingFolder(true)}
-                          className="p-2 bg-amber-500/10 text-amber-600 rounded-xl hover:bg-amber-500 hover:text-white transition-all shadow-sm"
-                          title="Nuovo Gruppo"
-                        >
-                          <Plus className="w-4 h-4" />
-                        </button>
-                      </div>
 
-                      {folders.length === 0 ? (
-                        <button 
-                          onClick={() => setIsAddingFolder(true)}
-                          className="w-full p-8 border-2 border-dashed border-[var(--border)] rounded-[2.5rem] flex flex-col items-center gap-3 text-[var(--text-muted)] hover:border-amber-500/50 hover:bg-amber-500/5 transition-all group"
-                        >
-                          <FolderIcon className="w-8 h-8 opacity-20 group-hover:opacity-100 transition-opacity" />
-                          <span className="text-xs font-bold uppercase tracking-widest">Crea il tuo primo gruppo</span>
-                        </button>
-                      ) : (
-                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-                          {folders.map(folder => (
-                            <div key={folder.id} className="relative group">
-                              <button
-                                onClick={() => setSelectedFolderId(folder.id)}
-                                className={`w-full p-5 rounded-3xl border transition-all flex flex-col items-start gap-3 shadow-sm ${selectedFolderId === folder.id ? 'bg-amber-500 border-amber-500 text-white shadow-lg shadow-amber-500/20' : 'bg-[var(--card-bg)] border-[var(--border)] hover:border-amber-500 text-[var(--text-main)]'}`}
-                              >
-                                <FolderIcon className={`w-6 h-6 ${selectedFolderId === folder.id ? 'text-white' : 'text-amber-500'}`} />
-                                <span className="font-bold text-sm line-clamp-1">{folder.name}</span>
-                              </button>
-                              <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <button 
-                                  onClick={(e) => { e.stopPropagation(); setEditingFolderId(folder.id); setNewFolderName(folder.name); setIsAddingFolder(true); }}
-                                  className="p-1.5 bg-white/20 backdrop-blur-md rounded-lg text-white hover:bg-white/40"
-                                >
-                                  <Edit2 className="w-3 h-3" />
-                                </button>
-                                <button 
-                                  onClick={(e) => handleDeleteFolder(folder.id, e)}
-                                  className="p-1.5 bg-red-500/20 backdrop-blur-md rounded-lg text-red-100 hover:bg-red-500/40"
-                                >
-                                  <Trash2 className="w-3 h-3" />
-                                </button>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
 
                     {/* Widgets Section (Shortcuts) */}
                     {(pinnedToolIds.length > 0 || pinnedCategoryIds.length > 0) && (
@@ -1915,7 +1880,7 @@ export default function App() {
                     {/* All Categories Grid (Main Entry Point) */}
                     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 pb-12">
                       {Object.entries(TEMPLATES)
-                        .filter(([key]) => key !== 'single-expense' && key !== 'gallery')
+                        .filter(([key]) => key !== 'single-expense')
                         .map(([key, t]) => {
                         const count = key === 'split' 
                           ? modules.filter(m => m.type === 'split' || m.type === 'single-expense').length
@@ -1943,84 +1908,7 @@ export default function App() {
                       })}
                     </div>
 
-                    {/* Gallery Section */}
-                    {(() => {
-                      const galleryModule = modules.find(m => m.type === 'gallery') as import('./types').GalleryModule | undefined;
-                      const galleryImages = galleryModule?.images || [];
-                      return (
-                        <div className="mb-10">
-                          <h3 className="text-lg font-bold text-[var(--text-main)] mb-5 flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <ImageIcon className="w-5 h-5 text-indigo-500" />
-                              <span>Galleria Foto</span>
-                            </div>
-                            {galleryImages.length > 0 && (
-                              <button
-                                onClick={() => setShowGalleryViewer(true)}
-                                className="text-[10px] font-bold text-indigo-500 hover:underline uppercase tracking-widest"
-                              >
-                                {galleryImages.length} foto
-                              </button>
-                            )}
-                          </h3>
 
-                          {galleryImages.length === 0 ? (
-                            <button
-                              onClick={() => { setIsToolsOpen(true); setActiveToolId('image-filter'); }}
-                              className="w-full bg-[var(--card-bg)] border-2 border-dashed border-indigo-500/30 hover:border-indigo-500 rounded-[2.5rem] p-8 flex flex-col items-center gap-4 transition-all group"
-                            >
-                              <div className="w-16 h-16 bg-indigo-500/10 rounded-3xl flex items-center justify-center text-indigo-500 group-hover:scale-110 transition-transform">
-                                <ImageIcon className="w-8 h-8" />
-                              </div>
-                              <div className="text-center">
-                                <p className="font-black text-[var(--text-main)] text-sm">Nessuna foto in galleria</p>
-                                <p className="text-xs text-[var(--text-muted)] mt-1">Usa Filtri Immagine per salvare le tue foto qui</p>
-                              </div>
-                              <span className="px-5 py-2 bg-indigo-500 text-white rounded-xl text-xs font-bold shadow-lg shadow-indigo-500/20">
-                                Apri Filtri Immagine
-                              </span>
-                            </button>
-                          ) : (
-                            <button
-                              onClick={() => setShowGalleryViewer(true)}
-                              className="w-full bg-[var(--card-bg)] border border-[var(--border)] rounded-[2.5rem] overflow-hidden hover:border-indigo-500/50 hover:shadow-xl transition-all group"
-                            >
-                              {/* Cover grid */}
-                              <div className="grid grid-cols-4 sm:grid-cols-6 gap-0.5 max-h-[140px] overflow-hidden">
-                                {galleryImages.slice(0, 8).map((img, i) => (
-                                  <div
-                                    key={img.id}
-                                    className={`aspect-square overflow-hidden ${i === 0 ? 'col-span-2 row-span-2' : ''}`}
-                                    style={{ display: i === 0 ? 'block' : 'block' }}
-                                  >
-                                    <img
-                                      src={img.image}
-                                      alt=""
-                                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                                    />
-                                  </div>
-                                ))}
-                              </div>
-                              {/* Footer */}
-                              <div className="flex items-center justify-between px-5 py-4">
-                                <div className="flex items-center gap-3">
-                                  <div className="w-9 h-9 bg-indigo-500/10 rounded-xl flex items-center justify-center text-indigo-500">
-                                    <ImageIcon className="w-4 h-4" />
-                                  </div>
-                                  <div className="text-left">
-                                    <p className="font-black text-[var(--text-main)] text-sm">Galleria</p>
-                                    <p className="text-[10px] text-[var(--text-muted)] font-bold uppercase tracking-widest">{galleryImages.length} foto salvate</p>
-                                  </div>
-                                </div>
-                                <div className="text-indigo-500 group-hover:translate-x-1 transition-transform">
-                                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
-                                </div>
-                              </div>
-                            </button>
-                          )}
-                        </div>
-                      );
-                    })()}
 
 
                   </div>
