@@ -17,6 +17,13 @@ const FILTERS = [
     css: 'brightness(0.82) contrast(0.88) saturate(0.95) sepia(0.18) hue-rotate(6deg) blur(0.25px)',
     hasGrain: true 
   },
+  {
+    name: 'Flash',
+    css: 'contrast(1.4) brightness(1.15) saturate(0.7) sepia(0.15)',
+    hasGrain: true,
+    grainAmount: 0.25,
+    hasFlash: true
+  },
   { name: 'Chelonas', css: 'contrast(1.35) saturate(1.2) sepia(0.15) hue-rotate(-5deg) brightness(1.05)' },
   { name: 'Clarendon', css: 'contrast(1.2) saturate(1.35) brightness(1.1) sepia(0.1)' },
   { name: 'Gingham', css: 'brightness(1.05) hue-rotate(-10deg) saturate(0.8)' },
@@ -70,6 +77,38 @@ export const ImageFilterTool = ({ onClose, onSaveToSandbox }: ImageFilterToolPro
     }
   };
 
+  const addFlashEffect = (ctx: CanvasRenderingContext2D, width: number, height: number) => {
+    // 1. Sfondo scuro/vignettatura per contrasto forte
+    const vignette = ctx.createRadialGradient(
+      width / 2, height / 2, 0,
+      width / 2, height / 2, Math.max(width, height) / 1.2
+    );
+    vignette.addColorStop(0, 'rgba(0,0,0,0)');
+    vignette.addColorStop(0.5, 'rgba(0,0,0,0.3)');
+    vignette.addColorStop(1, 'rgba(0,0,0,0.9)');
+    
+    ctx.save();
+    ctx.globalCompositeOperation = 'multiply';
+    ctx.fillStyle = vignette;
+    ctx.fillRect(0, 0, width, height);
+    ctx.restore();
+
+    // 2. Flash centrale duro (highlights)
+    const flash = ctx.createRadialGradient(
+      width / 2, height / 2, 0,
+      width / 2, height / 2, Math.max(width, height) / 2.5
+    );
+    flash.addColorStop(0, 'rgba(255,255,255,0.35)');
+    flash.addColorStop(0.4, 'rgba(255,255,255,0.1)');
+    flash.addColorStop(1, 'rgba(255,255,255,0)');
+    
+    ctx.save();
+    ctx.globalCompositeOperation = 'screen';
+    ctx.fillStyle = flash;
+    ctx.fillRect(0, 0, width, height);
+    ctx.restore();
+  };
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -107,8 +146,14 @@ export const ImageFilterTool = ({ onClose, onSaveToSandbox }: ImageFilterToolPro
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.filter = FILTERS[filterIndex].css;
     ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    
+    if ((FILTERS[filterIndex] as any).hasFlash) {
+      addFlashEffect(ctx, canvas.width, canvas.height);
+    }
+    
     if ((FILTERS[filterIndex] as any).hasGrain) {
-      addGrain(ctx, canvas.width, canvas.height, 0.12);
+      const grainAmt = (FILTERS[filterIndex] as any).grainAmount || 0.12;
+      addGrain(ctx, canvas.width, canvas.height, grainAmt);
     }
   };
 
