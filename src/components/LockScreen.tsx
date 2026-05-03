@@ -5,7 +5,6 @@ import { storage } from '../services/storage';
 import { encryption } from '../services/encryption';
 import { biometricService } from '../services/biometricService';
 import { ProfileConfig } from '../types';
-import packageJson from '../../package.json';
 
 interface LockScreenProps {
   isVisible?: boolean;
@@ -338,7 +337,7 @@ export const LockScreen = ({ isVisible, onAuthenticated, onStartScan, onOpenTool
                 </button>
                 
                 <div className="flex items-center gap-2 px-3 py-1.5 bg-[var(--bg)] rounded-full border border-[var(--border)] shadow-sm">
-                   <span className="text-[10px] font-bold text-[var(--text-muted)]">Versione {packageJson.version}</span>
+                   <span className="text-[10px] font-bold text-[var(--text-muted)]">Versione 1.12.36</span>
                    <div className="w-1 h-1 rounded-full bg-[var(--border)]" />
                    <button 
                     onClick={() => onCheckUpdate?.()}

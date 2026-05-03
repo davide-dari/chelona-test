@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Sun, Moon, Wrench, Plus, LayoutDashboard, Settings, User, LogOut, Search, Mic, Bell, CreditCard, Fingerprint, ShieldCheck, Wallet, Lock, Menu, X, StickyNote, Grid2X2, Car, QrCode, Folder as FolderIcon, Check, Edit2, Trash2, BookOpen, ArrowLeft, FileDown, Hourglass, Users, Download, Receipt, MapPin, Image as ImageIcon, Lightbulb } from 'lucide-react';
+import { Sun, Moon, Wrench, Plus, LayoutDashboard, Settings, User, LogOut, Search, Mic, Bell, CreditCard, Fingerprint, ShieldCheck, Wallet, Lock, Menu, X, StickyNote, FileText, Grid2X2, Car, QrCode, Folder as FolderIcon, Check, Edit2, Trash2, BookOpen, ArrowLeft, FileDown, Hourglass, Users, Download, Receipt, MapPin, Image as ImageIcon, Lightbulb } from 'lucide-react';
 import { Module, ModuleType, Folder, DocumentModule } from './types';
 import { storage, AppState } from './services/storage';
 import { encryption } from './services/encryption';
