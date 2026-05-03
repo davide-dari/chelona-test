@@ -15,7 +15,7 @@ export interface UpdateInfo {
 }
 
 class UpdateService {
-  private currentVersion = '1.12.36';
+  private currentVersion = '1.12.38';
 
   async checkForUpdates(): Promise<UpdateInfo | null> {
     console.log(`[UpdateService] Checking for updates... Current version: ${this.currentVersion}`);

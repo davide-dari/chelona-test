@@ -753,8 +753,8 @@ export default function App() {
 
   const filteredModules = useMemo(() => {
     return modules.filter(m => {
-      // Folder filter
-      const folderMatch = !selectedFolderId ? !m.folderId : m.folderId === selectedFolderId;
+      // Folder filter - Gallery is global, ignore folder if selectedType is gallery
+      const folderMatch = (selectedType === 'gallery') || (!selectedFolderId ? !m.folderId : m.folderId === selectedFolderId);
       if (!folderMatch) return false;
 
       // Type (Category) filter
@@ -1084,7 +1084,7 @@ export default function App() {
           </div>
           <div>
             <h1 className="text-xl font-black tracking-tight text-[var(--text-main)]">Chelona</h1>
-            <p className="text-[10px] font-bold text-[var(--accent)] uppercase tracking-widest">v1.12.34</p>
+            <p className="text-[10px] font-bold text-[var(--accent)] uppercase tracking-widest">v1.12.38</p>
           </div>
         </div>
         <button onClick={() => setIsSidebarOpen(false)} className="lg:hidden p-2 text-[var(--text-muted)] hover:bg-[var(--bg)] rounded-lg">

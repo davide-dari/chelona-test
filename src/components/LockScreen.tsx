@@ -337,7 +337,7 @@ export const LockScreen = ({ isVisible, onAuthenticated, onStartScan, onOpenTool
                 </button>
                 
                 <div className="flex items-center gap-2 px-3 py-1.5 bg-[var(--bg)] rounded-full border border-[var(--border)] shadow-sm">
-                   <span className="text-[10px] font-bold text-[var(--text-muted)]">Versione 1.12.36</span>
+                   <span className="text-[10px] font-bold text-[var(--text-muted)]">Versione 1.12.38</span>
                    <div className="w-1 h-1 rounded-full bg-[var(--border)]" />
                    <button 
                     onClick={() => onCheckUpdate?.()}
