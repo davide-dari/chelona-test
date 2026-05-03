@@ -11,6 +11,7 @@ import { encryption } from './services/encryption';
 import { GenericCard, AutoCard, DocumentCard, SplitCard, SingleExpenseCard, WalletCard, GalleryCard } from './components/Modules';
 import { LockScreen } from './components/LockScreen';
 import { QrScanner } from './components/QrScanner';
+import { DocumentScanner } from './components/DocumentScanner';
 import { ProfileScreen } from './components/ProfileScreen';
 import { ToolsScreen, TOOLS, TOOLS_UTILITY } from './components/ToolsScreen';
 import { AutoEditScreen } from './components/AutoEditScreen';
@@ -187,6 +188,7 @@ export default function App() {
   const [showGalleryViewer, setShowGalleryViewer] = useState(false);
   const [gallerySelectedImage, setGallerySelectedImage] = useState<import('./types').GalleryImage | null>(null);
   const [galleryDeletingId, setGalleryDeletingId] = useState<string | null>(null);
+  const [capturingField, setCapturingField] = useState<{ key: string; title: string } | null>(null);
 
   const [availableUpdate, setAvailableUpdate] = useState<UpdateInfo | null>(null);
   const [updateProgress, setUpdateProgress] = useState<number | null>(null);
@@ -545,6 +547,7 @@ export default function App() {
           folderId: selectedFolderId || undefined
         };
 
+        const currentVersion = '1.12.44';
         const updatedSelection = [...modules, newModule];
         setModules(updatedSelection);
         await saveAppState(updatedSelection, folders);
@@ -1087,7 +1090,7 @@ export default function App() {
           </div>
           <div>
             <h1 className="text-xl font-black tracking-tight text-[var(--text-main)]">Chelona</h1>
-            <p className="text-[10px] font-bold text-[var(--accent)] uppercase tracking-widest">v1.12.43</p>
+            <p className="text-[10px] font-bold text-[var(--accent)] uppercase tracking-widest">v1.12.44</p>
           </div>
         </div>
         <button onClick={() => setIsSidebarOpen(false)} className="lg:hidden p-2 text-[var(--text-muted)] hover:bg-[var(--bg)] rounded-lg">
@@ -1579,13 +1582,13 @@ export default function App() {
                                         required={currentStep.required}
                                         value={
                                           currentStep.format === 'km' && formData[currentStep.id]
-                                            ? Number(String(formData[currentStep.id]).replace(/\\D/g, '')).toLocaleString('it-IT')
+                                            ? Number(String(formData[currentStep.id]).replace(/\D/g, '')).toLocaleString('it-IT')
                                             : (formData[currentStep.id] || '')
                                         }
                                         onChange={e => {
                                           let val = e.target.value;
                                           if (currentStep.format === 'km') {
-                                            val = val.replace(/\\D/g, '');
+                                            val = val.replace(/\D/g, '');
                                           }
                                           setFormData({ ...formData, [currentStep.id]: val });
                                         }}
@@ -1918,40 +1921,7 @@ export default function App() {
                     <p className="text-[var(--text-muted)] mb-8 max-w-sm mx-auto">
                       {modules.length === 0 ? 'Inizia ad organizzare i tuoi dati aggiungendo la prima voce.' : 'Prova a cercare un termine diverso o cambiare filtro di categoria.'}
                     </p>
-                    <button
-                      onClick={() => {
-                        if (selectedType === 'split') {
-                          setFormData({});
-                          setSpesaSubMenu(true);
-                          setIsAdding(true);
-                        } else if (selectedType === 'expense') {
-                          setEditingWalletModule({
-                            id: generateUUID(),
-                            type: 'wallet',
-                            title: 'Rate',
-                            totalAmount: 0,
-                            savedAmount: 0,
-                            dueDate: new Date().toISOString().split('T')[0],
-                            x: 0, y: 0, w: 2, h: 2,
-                            folderId: selectedFolderId || undefined
-                          });
-                        } else if (selectedType) {
-                          const t = TEMPLATES[selectedType as keyof typeof TEMPLATES];
-                          setFormData({ template: selectedType, title: t ? t.title : '', content: t ? t.content : '' });
-                          setIsAdding(true);
-                          setAutoFormStep(0);
-                        } else {
-                          setFormData({});
-                          setSpesaSubMenu(false);
-                          setAutoFormStep(0);
-                          setIsAdding(true);
-                        }
-                      }}
-                      className="flex items-center justify-center gap-3 bg-amber-500 hover:bg-amber-600 text-white px-8 py-4 rounded-2xl font-bold transition-all shadow-lg shadow-amber-500/20 active:scale-95"
-                    >
-                      <Plus className="w-6 h-6" />
-                      <span>{selectedType ? `Aggiungi ${TEMPLATES[selectedType as keyof typeof TEMPLATES]?.title || 'Elemento'}` : 'Aggiungi Voce'}</span>
-                    </button>
+
                   </div>
                   )
                 ) : (
@@ -2115,7 +2085,6 @@ export default function App() {
             </nav>
           )}
 
-          {/* Floating Action Button (FAB) for adding new items */}
           {selectedType && selectedType !== 'gallery' && !isAdding && !editingModuleId && !isArchiveOpen && (
             <button
               onClick={() => {
@@ -2146,6 +2115,31 @@ export default function App() {
               <Plus className="w-8 h-8" />
             </button>
           )}
+
+          <AnimatePresence>
+            {capturingField && (
+              <DocumentScanner
+                onCapture={(pdf) => {
+                  if (selectedType === 'document') {
+                    // Create a new document module with this PDF
+                    const newDoc: DocumentModule = {
+                      id: generateUUID(),
+                      type: 'document',
+                      title: `Documento ${new Date().toLocaleDateString()}`,
+                      content: '',
+                      data: pdf,
+                      x: 0, y: 0, w: 2, h: 2,
+                      folderId: selectedFolderId || undefined
+                    };
+                    setModules(prev => [...prev, newDoc]);
+                    showToast('Documento salvato con successo', 'success');
+                  }
+                  setCapturingField(null);
+                }}
+                onClose={() => setCapturingField(null)}
+              />
+            )}
+          </AnimatePresence>
 
 
 
@@ -2279,7 +2273,7 @@ export default function App() {
                 {updateProgress !== null ? (
                   <div className="space-y-3 bg-[var(--surface-variant)] p-4 rounded-2xl">
                     <div className="flex justify-between items-center mb-1">
-                      <span className="text-[10px] font-bold text-[var(--text-main)] uppercase tracking-widest">Download in corso</span>
+                      <span className="text-[10px] font-bold text-[var(--text-muted)]">Versione 1.12.44</span>
                       <span className="text-[10px] font-black text-[var(--accent)]">{updateProgress}%</span>
                     </div>
                     <div className="h-2 w-full bg-[var(--bg)] rounded-full overflow-hidden border border-[var(--border)]">
