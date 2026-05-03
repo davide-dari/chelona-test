@@ -14,7 +14,7 @@ interface ModuleWrapperProps {
   onDelete?: (id: string) => void;
   onEdit?: (module: Module) => void;
   children: React.ReactNode;
-  dragHandleProps?: any;
+ 
 }
 
 const ModuleWrapper = ({ module, onDelete, onEdit, children }: ModuleWrapperProps) => (
@@ -49,7 +49,7 @@ const ModuleWrapper = ({ module, onDelete, onEdit, children }: ModuleWrapperProp
 
 
 
-export const DocumentCard = ({ module, onDelete, onEdit, onShare, dragHandleProps }: { module: DocumentModule; onDelete: (id: string) => void; onEdit: (m: Module) => void; onShare: (m: Module) => void; dragHandleProps?: any }) => {
+export const DocumentCard = ({ module, onDelete, onEdit, onShare }: { module: DocumentModule; onDelete: (id: string) => void; onEdit: (m: Module) => void; onShare: (m: Module) => void; dragHandleProps?: any }) => {
   const [showFullDoc, setShowFullDoc] = useState(false);
 
   const getDocTypeLabel = (type: string) => {
@@ -86,7 +86,7 @@ export const DocumentCard = ({ module, onDelete, onEdit, onShare, dragHandleProp
 
   return (
     <>
-      <ModuleWrapper module={module} onDelete={onDelete} onEdit={onEdit} dragHandleProps={dragHandleProps}>
+      <ModuleWrapper module={module} onDelete={onDelete} onEdit={onEdit}>
         <div className="h-full flex flex-col">
           <div 
             className="flex-1 min-h-[90px] flex flex-col cursor-pointer group/card hover:bg-[var(--bg)] transition-colors p-3 -m-3 rounded-2xl"
@@ -224,7 +224,7 @@ export const DocumentCard = ({ module, onDelete, onEdit, onShare, dragHandleProp
   );
 };
 
-export const GenericCard = ({ module, onDelete, onEdit, onShare, dragHandleProps }: { module: GenericModule; onDelete: (id: string) => void; onEdit: (m: Module) => void; onShare: (m: Module) => void; dragHandleProps?: any }) => {
+export const GenericCard = ({ module, onDelete, onEdit, onShare }: { module: GenericModule; onDelete: (id: string) => void; onEdit: (m: Module) => void; onShare: (m: Module) => void; dragHandleProps?: any }) => {
   const [copied, setCopied] = React.useState(false);
   const [showFullNote, setShowFullNote] = useState(false);
   const [viewerData, setViewerData] = useState<{ title: string; data: string; type: 'pdf' | 'image' } | null>(null);
@@ -238,7 +238,7 @@ export const GenericCard = ({ module, onDelete, onEdit, onShare, dragHandleProps
 
   return (
     <>
-      <ModuleWrapper module={module} onDelete={onDelete} onEdit={onEdit} dragHandleProps={dragHandleProps}>
+      <ModuleWrapper module={module} onDelete={onDelete} onEdit={onEdit}>
         <div 
           className="flex flex-col gap-3 cursor-pointer group/card hover:bg-[var(--surface-variant)] transition-all p-4 -m-4 rounded-[2rem] active:scale-[0.98] h-full"
           onClick={() => setShowFullNote(true)}
@@ -362,7 +362,7 @@ export const GenericCard = ({ module, onDelete, onEdit, onShare, dragHandleProps
 };
 
 
-export const WalletCard = ({ module, onDelete, onEdit, onShare, dragHandleProps, onAddSavings }: { module: WalletModule; onDelete: (id: string) => void; onEdit: (m: Module) => void; onShare: (m: Module) => void; dragHandleProps?: any; onAddSavings?: (m: WalletModule) => void; }) => {
+export const WalletCard = ({ module, onDelete, onEdit, onShare, onAddSavings }: { module: WalletModule; onDelete: (id: string) => void; onEdit: (m: Module) => void; onShare: (m: Module) => void; onAddSavings?: (m: WalletModule) => void; }) => {
   const saved = Number(module.savedAmount) || 0;
   const total = Number(module.totalAmount) || 0;
   const progress = total > 0 ? Math.min(100, (saved / total) * 100) : 0;
@@ -384,7 +384,7 @@ export const WalletCard = ({ module, onDelete, onEdit, onShare, dragHandleProps,
   }
 
   return (
-    <ModuleWrapper module={module} onDelete={onDelete} onEdit={onEdit} dragHandleProps={dragHandleProps}>
+    <ModuleWrapper module={module} onDelete={onDelete} onEdit={onEdit}>
       <div 
         className={`h-full flex flex-col cursor-pointer hover:bg-[var(--bg)] transition-colors p-4 -m-4 rounded-2xl active:scale-[0.98] ${isCompleted ? 'border border-emerald-500/30 bg-emerald-500/5' : ''}`}
         onClick={() => onEdit(module)}
@@ -449,7 +449,7 @@ export const WalletCard = ({ module, onDelete, onEdit, onShare, dragHandleProps,
   );
 };
 
-export const GalleryCard = ({ module, onShare, dragHandleProps }: { module: GalleryModule; onDelete?: (id: string) => void; onEdit?: (m: Module) => void; onShare?: (m: Module) => void; dragHandleProps?: any }) => {
+export const GalleryCard = ({ module, onShare }: { module: GalleryModule; onDelete?: (id: string) => void; onEdit?: (m: Module) => void; onShare?: (m: Module) => void; dragHandleProps?: any }) => {
   const [showGallery, setShowGallery] = useState(false);
   const [selectedImage, setSelectedImage] = useState<import('../types').GalleryImage | null>(null);
 
@@ -481,7 +481,7 @@ export const GalleryCard = ({ module, onShare, dragHandleProps }: { module: Gall
 
   return (
     <>
-      <ModuleWrapper module={module} dragHandleProps={dragHandleProps}>
+      <ModuleWrapper module={module}>
         <div
           className="h-full flex flex-col cursor-pointer group/card hover:bg-[var(--bg)] transition-all p-3 -m-3 rounded-2xl active:scale-[0.98]"
           onClick={() => setShowGallery(true)}
@@ -648,7 +648,7 @@ export const GalleryCard = ({ module, onShare, dragHandleProps }: { module: Gall
   );
 };
 
-export const AutoCard = ({ module, onDelete, onEdit, onDirectUpdate, onShare, dragHandleProps }: { module: AutoModule; onDelete: (id: string) => void; onEdit: (m: Module) => void; onDirectUpdate?: (m: Module) => void; onShare: (m: Module) => void; dragHandleProps?: any }) => {
+export const AutoCard = ({ module, onDelete, onEdit, onDirectUpdate, onShare }: { module: AutoModule; onDelete: (id: string) => void; onEdit: (m: Module) => void; onDirectUpdate?: (m: Module) => void; onShare: (m: Module) => void; dragHandleProps?: any }) => {
   const [showFullData, setShowFullData] = useState(false);
   const [showTireSnooze, setShowTireSnooze] = useState(false);
   const [tireSnoozeKm, setTireSnoozeKm] = useState('5000');
@@ -750,7 +750,7 @@ export const AutoCard = ({ module, onDelete, onEdit, onDirectUpdate, onShare, dr
 
   return (
     <>
-      <ModuleWrapper module={module} onDelete={onDelete} onEdit={onEdit} dragHandleProps={dragHandleProps}>
+      <ModuleWrapper module={module} onDelete={onDelete} onEdit={onEdit}>
         <div className="flex flex-col gap-3">
           <div 
             className="flex flex-col cursor-pointer group/card hover:bg-[var(--bg)] transition-colors p-3 -m-3 rounded-2xl active:scale-[0.98]"
@@ -1256,7 +1256,7 @@ export const AutoCard = ({ module, onDelete, onEdit, onDirectUpdate, onShare, dr
   );
 };
 
-export const SingleExpenseCard = ({ module, onDelete, onEdit, onShare, dragHandleProps }: { module: SingleExpenseModule; onDelete: (id: string) => void; onEdit: (m: Module) => void; onShare: (m: Module) => void; dragHandleProps?: any }) => {
+export const SingleExpenseCard = ({ module, onDelete, onEdit, onShare }: { module: SingleExpenseModule; onDelete: (id: string) => void; onEdit: (m: Module) => void; onShare: (m: Module) => void; dragHandleProps?: any }) => {
   const [viewingAttachment, setViewingAttachment] = useState<string | null>(null);
   
   const getCategoryTheme = (cat: string) => {
@@ -1275,7 +1275,7 @@ export const SingleExpenseCard = ({ module, onDelete, onEdit, onShare, dragHandl
 
   return (
     <>
-      <ModuleWrapper module={module} onDelete={onDelete} onEdit={onEdit} dragHandleProps={dragHandleProps}>
+      <ModuleWrapper module={module} onDelete={onDelete} onEdit={onEdit}>
         <div 
           className="flex flex-col cursor-pointer group/card hover:bg-[var(--surface-variant)] transition-all p-4 -m-4 rounded-[2rem] active:scale-[0.98] h-full relative overflow-hidden"
           onClick={() => onEdit(module)}
@@ -1364,13 +1364,13 @@ export const SingleExpenseCard = ({ module, onDelete, onEdit, onShare, dragHandl
   );
 };
 
-export const SplitCard = ({ module, onDelete, onEdit, onShare, dragHandleProps }: { module: SplitModule; onDelete: (id: string) => void; onEdit: (m: Module) => void; onShare: (m: Module) => void; dragHandleProps?: any }) => {
+export const SplitCard = ({ module, onDelete, onEdit, onShare }: { module: SplitModule; onDelete: (id: string) => void; onEdit: (m: Module) => void; onShare: (m: Module) => void; dragHandleProps?: any }) => {
   const totalAmount = module.expenses.reduce((sum, exp) => sum + exp.amount, 0);
   const getInitials = (name: string) => name.substring(0, 2).toUpperCase();
   const AVATAR_COLORS = ['bg-purple-500', 'bg-blue-500', 'bg-emerald-500', 'bg-amber-500', 'bg-pink-500', 'bg-cyan-500'];
   
   return (
-    <ModuleWrapper module={module} onDelete={onDelete} onEdit={onEdit} dragHandleProps={dragHandleProps}>
+    <ModuleWrapper module={module} onDelete={onDelete} onEdit={onEdit}>
       <div 
         className="flex flex-col cursor-pointer group/card hover:bg-[var(--surface-variant)] transition-all p-4 -m-4 rounded-[2rem] active:scale-[0.98] h-full relative overflow-hidden"
         onClick={() => onEdit(module)}

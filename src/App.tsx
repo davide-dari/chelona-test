@@ -618,7 +618,7 @@ export default function App() {
     setModules(updated);
     await saveAppState(updated, folders);
     setModuleToDelete(null);
-    showToast('Modulo eliminato correttamente', 'info');
+    showToast('Elemento eliminato correttamente', 'info');
   };
 
   const requestDelete = (id: string) => {
@@ -770,16 +770,7 @@ export default function App() {
     });
   }, [modules, selectedFolderId, selectedType, searchQuery]);
 
-  const recentModules = useMemo(() => {
-    return [...modules]
-      .filter(m => m.type !== 'gallery') // Gallery is a system container, not a recent activity
-      .sort((a, b) => {
-        const dateA = new Date(a.updatedAt || a.createdAt || 0).getTime();
-        const dateB = new Date(b.updatedAt || b.createdAt || 0).getTime();
-        return dateB - dateA;
-      })
-      .slice(0, 4);
-  }, [modules]);
+
 
   const filteredTools = useMemo(() => {
     if (!searchQuery.trim() || isToolsOpen) return [];
@@ -1081,7 +1072,7 @@ export default function App() {
           </div>
           <div>
             <h1 className="text-xl font-black tracking-tight text-[var(--text-main)]">Chelona</h1>
-            <p className="text-[10px] font-bold text-[var(--accent)] uppercase tracking-widest">v1.9.1</p>
+            <p className="text-[10px] font-bold text-[var(--accent)] uppercase tracking-widest">v{packageJson.version}</p>
           </div>
         </div>
         <button onClick={() => setIsSidebarOpen(false)} className="lg:hidden p-2 text-[var(--text-muted)] hover:bg-[var(--bg)] rounded-lg">
@@ -1188,9 +1179,9 @@ export default function App() {
               <header className="h-16 lg:h-20 bg-[var(--bg)] px-6 lg:px-12 flex items-center justify-between shrink-0 z-10 safe-area-header transition-all">
                 {/* Left side: Contextual Title */}
                 <div className="flex items-center gap-4">
-                  {(isToolsOpen || selectedType) && (
+                  {(isToolsOpen || selectedType || selectedFolderId) && (
                     <button 
-                      onClick={() => { setIsToolsOpen(false); setSelectedType(null); setActiveToolId(null); }}
+                      onClick={() => { setIsToolsOpen(false); setSelectedType(null); setSelectedFolderId(null); setActiveToolId(null); }}
                       className="p-2 hover:bg-[var(--surface-variant)] rounded-full text-[var(--text-muted)] transition-all flex items-center justify-center"
                       title="Torna alla Dashboard"
                     >
@@ -1198,7 +1189,7 @@ export default function App() {
                     </button>
                   )}
                   <h1 className="text-xl lg:text-2xl font-bold text-[var(--text-main)] tracking-tight">
-                    {isToolsOpen ? 'Strumenti' : selectedType ? (TEMPLATES[selectedType as keyof typeof TEMPLATES]?.title || 'Sandbox') : 'Dashboard'}
+                    {isToolsOpen ? 'Strumenti' : selectedFolderId ? (folders.find(f => f.id === selectedFolderId)?.name || 'Cartella') : selectedType ? (TEMPLATES[selectedType as keyof typeof TEMPLATES]?.title || 'Sandbox') : 'Dashboard'}
                   </h1>
                 </div>
 
@@ -1805,26 +1796,70 @@ export default function App() {
                   </div>
                 )}
 
-                {!selectedType && !searchQuery.trim() && !isListening ? (
+                {!selectedType && !selectedFolderId && !searchQuery.trim() && !isListening ? (
                   <div className="px-4 lg:px-8 pb-40">
-                    {/* Hero Dashboard Section - Minimalist */}
-                    <div className="mb-8 pt-4">
-                      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-                        <div>
-                          <h2 className="text-3xl lg:text-4xl font-extrabold text-[var(--text-main)] tracking-tight">
-                            Ciao, <span className="text-[var(--accent)]">{username}</span>
-                          </h2>
-                          <p className="text-[var(--text-muted)] font-bold uppercase tracking-[0.2em] text-[10px] mt-2">Sandbox Dashboard</p>
-                        </div>
+
+                    {/* Cartelle / Gruppi Section */}
+                    <div className="mb-10">
+                      <div className="flex items-center justify-between mb-5">
+                        <h3 className="text-lg font-bold text-[var(--text-main)] flex items-center gap-2">
+                          <FolderIcon className="w-5 h-5 text-amber-500" />
+                          I Tuoi Gruppi
+                        </h3>
+                        <button 
+                          onClick={() => setIsAddingFolder(true)}
+                          className="p-2 bg-amber-500/10 text-amber-600 rounded-xl hover:bg-amber-500 hover:text-white transition-all shadow-sm"
+                          title="Nuovo Gruppo"
+                        >
+                          <Plus className="w-4 h-4" />
+                        </button>
                       </div>
+
+                      {folders.length === 0 ? (
+                        <button 
+                          onClick={() => setIsAddingFolder(true)}
+                          className="w-full p-8 border-2 border-dashed border-[var(--border)] rounded-[2.5rem] flex flex-col items-center gap-3 text-[var(--text-muted)] hover:border-amber-500/50 hover:bg-amber-500/5 transition-all group"
+                        >
+                          <FolderIcon className="w-8 h-8 opacity-20 group-hover:opacity-100 transition-opacity" />
+                          <span className="text-xs font-bold uppercase tracking-widest">Crea il tuo primo gruppo</span>
+                        </button>
+                      ) : (
+                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+                          {folders.map(folder => (
+                            <div key={folder.id} className="relative group">
+                              <button
+                                onClick={() => setSelectedFolderId(folder.id)}
+                                className={`w-full p-5 rounded-3xl border transition-all flex flex-col items-start gap-3 shadow-sm ${selectedFolderId === folder.id ? 'bg-amber-500 border-amber-500 text-white shadow-lg shadow-amber-500/20' : 'bg-[var(--card-bg)] border-[var(--border)] hover:border-amber-500 text-[var(--text-main)]'}`}
+                              >
+                                <FolderIcon className={`w-6 h-6 ${selectedFolderId === folder.id ? 'text-white' : 'text-amber-500'}`} />
+                                <span className="font-bold text-sm line-clamp-1">{folder.name}</span>
+                              </button>
+                              <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <button 
+                                  onClick={(e) => { e.stopPropagation(); setEditingFolderId(folder.id); setNewFolderName(folder.name); setIsAddingFolder(true); }}
+                                  className="p-1.5 bg-white/20 backdrop-blur-md rounded-lg text-white hover:bg-white/40"
+                                >
+                                  <Edit2 className="w-3 h-3" />
+                                </button>
+                                <button 
+                                  onClick={(e) => handleDeleteFolder(folder.id, e)}
+                                  className="p-1.5 bg-red-500/20 backdrop-blur-md rounded-lg text-red-100 hover:bg-red-500/40"
+                                >
+                                  <Trash2 className="w-3 h-3" />
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
 
                     {/* Widgets Section (Shortcuts) */}
                     {(pinnedToolIds.length > 0 || pinnedCategoryIds.length > 0) && (
                       <div className="mb-10">
                         <h3 className="text-lg font-bold text-[var(--text-main)] mb-5 flex items-center gap-2">
-                          <LayoutDashboard className="w-5 h-5 text-[var(--accent)]" />
-                          I Tuoi Widget
+                          <LayoutDashboard className="w-5 h-5 text-indigo-500" />
+                          Accesso Rapido
                         </h3>
                         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
                           {/* Categories Pinned */}
@@ -1886,7 +1921,7 @@ export default function App() {
                             <div>
                               <p className="font-black text-[var(--text-main)] text-sm">{t.title}</p>
                               <p className="text-[10px] text-[var(--text-muted)] font-bold uppercase tracking-widest mt-1">
-                                {count} Moduli
+                                {count} {count === 1 ? 'Elemento' : 'Elementi'}
                               </p>
                             </div>
                           </button>
@@ -1973,37 +2008,7 @@ export default function App() {
                       );
                     })()}
 
-                    {/* Recent Activities */}
-                    {recentModules.length > 0 && (
-                      <div>
-                        <h3 className="text-lg font-bold text-[var(--text-main)] mb-6 flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <StickyNote className="w-5 h-5 text-[var(--accent)]" />
-                            Recenti
-                          </div>
-                          <button onClick={() => setSearchQuery(' ')} className="text-[10px] font-bold text-[var(--accent)] hover:underline uppercase tracking-widest">Vedi Tutti</button>
-                        </h3>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                          {recentModules.map(module => (
-                            <div key={module.id} className="w-full">
-                              {module.type === 'auto' ? (
-                                <AutoCard module={module} onDelete={requestDelete} onEdit={openEditModal} onDirectUpdate={updateModuleDirect} onShare={setSharingModule} />
-                              ) : module.type === 'document' ? (
-                                <DocumentCard module={module} onDelete={requestDelete} onEdit={openEditModal} onShare={setSharingModule} />
-                              ) : module.type === 'split' ? (
-                                <SplitCard module={module as any} onDelete={requestDelete} onEdit={openEditModal} onShare={setSharingModule} />
-                              ) : module.type === 'single-expense' ? (
-                                <SingleExpenseCard module={module as any} onDelete={requestDelete} onEdit={openEditModal} onShare={setSharingModule} />
-                              ) : module.type === 'gallery' ? (
-                                <GalleryCard module={module as import('./types').GalleryModule} />
-                              ) : (
-                                <GenericCard module={module as any} onDelete={requestDelete} onEdit={openEditModal} onShare={setSharingModule} />
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
+
                   </div>
                 ) : filteredModules.length === 0 ? (
                   selectedType === 'gallery' ? (
@@ -2027,10 +2032,10 @@ export default function App() {
                       <LayoutDashboard className="w-10 h-10 text-[var(--text-muted)] opacity-50" />
                     </div>
                     <h3 className="text-2xl font-bold text-[var(--text-main)] mb-2">
-                      {modules.length === 0 ? 'Nessun modulo' : 'Nessun risultato trovato'}
+                      {modules.length === 0 ? 'Nessun contenuto' : 'Nessun risultato trovato'}
                     </h3>
                     <p className="text-[var(--text-muted)] mb-8 max-w-sm mx-auto">
-                      {modules.length === 0 ? 'Inizia ad organizzare i tuoi dati aggiungendo il primo modulo.' : 'Prova a cercare un termine diverso o cambiare filtro di categoria.'}
+                      {modules.length === 0 ? 'Inizia ad organizzare i tuoi dati aggiungendo la prima voce.' : 'Prova a cercare un termine diverso o cambiare filtro di categoria.'}
                     </p>
                     <button
                       onClick={() => {
@@ -2064,7 +2069,7 @@ export default function App() {
                       className="flex items-center justify-center gap-3 bg-amber-500 hover:bg-amber-600 text-white px-8 py-4 rounded-2xl font-bold transition-all shadow-lg shadow-amber-500/20 active:scale-95"
                     >
                       <Plus className="w-6 h-6" />
-                      <span>{selectedType ? `Aggiungi ${TEMPLATES[selectedType as keyof typeof TEMPLATES]?.title || 'Modulo'}` : 'Aggiungi Modulo'}</span>
+                      <span>{selectedType ? `Aggiungi ${TEMPLATES[selectedType as keyof typeof TEMPLATES]?.title || 'Elemento'}` : 'Aggiungi Voce'}</span>
                     </button>
                   </div>
                   )
@@ -2289,9 +2294,9 @@ export default function App() {
               <div className="w-16 h-16 bg-red-500/10 rounded-2xl flex items-center justify-center text-red-500 mx-auto mb-6">
                 <Trash2 className="w-8 h-8" />
               </div>
-              <h3 className="text-xl font-bold text-[var(--text-main)] mb-2">Elimina Modulo</h3>
+              <h3 className="text-xl font-bold text-[var(--text-main)] mb-2">Elimina Elemento</h3>
               <p className="text-[var(--text-muted)] text-sm mb-8">
-                Sei sicuro di voler eliminare <span className="text-[var(--text-main)] font-bold">"{moduleToDelete.title || 'questo modulo'}"</span>? 
+                Sei sicuro di voler eliminare <span className="text-[var(--text-main)] font-bold">"{moduleToDelete.title || 'questo elemento'}"</span>? 
                 Questa azione è irreversibile e i dati verranno rimossi permanentemente.
               </p>
               
@@ -2672,6 +2677,65 @@ export default function App() {
             </div>
             </motion.div>
           </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Folder Management Modal */}
+      <AnimatePresence>
+        {isAddingFolder && (
+          <div className="fixed inset-0 z-[1000] flex items-center justify-center p-6">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => { setIsAddingFolder(false); setEditingFolderId(null); setNewFolderName(''); }}
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              className="relative w-full max-w-sm bg-[var(--card-bg)] rounded-[2.5rem] p-8 shadow-2xl border border-[var(--border)]"
+            >
+              <div className="w-16 h-16 bg-amber-500/10 rounded-2xl flex items-center justify-center text-amber-500 mx-auto mb-6">
+                <FolderIcon className="w-8 h-8" />
+              </div>
+              
+              <h3 className="text-2xl font-bold text-[var(--text-main)] text-center mb-2">
+                {editingFolderId ? 'Modifica Gruppo' : 'Nuovo Gruppo'}
+              </h3>
+              <p className="text-center text-[var(--text-muted)] text-sm mb-8">
+                Crea un contenitore per organizzare i tuoi elementi.
+              </p>
+
+              <form onSubmit={handleAddFolder} className="space-y-4">
+                <input
+                  autoFocus
+                  type="text"
+                  value={newFolderName}
+                  onChange={(e) => setNewFolderName(e.target.value)}
+                  placeholder="Nome del gruppo (es: Casa, Lavoro...)"
+                  className="w-full px-5 py-4 bg-[var(--bg)] border border-[var(--border)] rounded-2xl outline-none focus:border-amber-500 transition-all text-lg font-bold"
+                />
+                
+                <div className="flex gap-3 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => { setIsAddingFolder(false); setEditingFolderId(null); setNewFolderName(''); }}
+                    className="flex-1 py-4 bg-[var(--surface-variant)] text-[var(--text-main)] rounded-2xl font-bold hover:bg-[var(--border)] transition-all"
+                  >
+                    Annulla
+                  </button>
+                  <button
+                    type="submit"
+                    className="flex-1 py-4 bg-amber-500 text-white rounded-2xl font-bold hover:bg-amber-600 transition-all shadow-lg shadow-amber-500/20"
+                  >
+                    {editingFolderId ? 'Salva' : 'Crea'}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
         )}
       </AnimatePresence>
 
