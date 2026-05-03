@@ -100,13 +100,7 @@ const TEMPLATES = {
     icon: Users,
     color: 'text-purple-500'
   },
-  expense: {
-    title: 'Rate',
-    content: '',
-    icon: Wallet,
-    color: 'text-purple-500',
-    type: 'wallet'
-  },
+
   'single-expense': {
     title: 'Spesa Singola',
     content: '',
@@ -547,7 +541,7 @@ export default function App() {
           folderId: selectedFolderId || undefined
         };
 
-        const currentVersion = '1.12.44';
+        const currentVersion = '1.12.45';
         const updatedSelection = [...modules, newModule];
         setModules(updatedSelection);
         await saveAppState(updatedSelection, folders);
@@ -763,9 +757,7 @@ export default function App() {
       // Type (Category) filter - Disabled when a folder/group is selected
       if (!selectedFolderId && selectedType) {
         if (selectedType === 'split') {
-          if (m.type !== 'split' && m.type !== 'single-expense') return false;
-        } else if (selectedType === 'expense') {
-          if (m.type !== 'wallet') return false;
+          if (m.type !== 'split' && m.type !== 'single-expense' && m.type !== 'wallet') return false;
         } else if (m.type !== selectedType) {
           return false;
         }
@@ -1090,7 +1082,7 @@ export default function App() {
           </div>
           <div>
             <h1 className="text-xl font-black tracking-tight text-[var(--text-main)]">Chelona</h1>
-            <p className="text-[10px] font-bold text-[var(--accent)] uppercase tracking-widest">v1.12.44</p>
+            <p className="text-[10px] font-bold text-[var(--accent)] uppercase tracking-widest">v1.12.45</p>
           </div>
         </div>
         <button onClick={() => setIsSidebarOpen(false)} className="lg:hidden p-2 text-[var(--text-muted)] hover:bg-[var(--bg)] rounded-lg">
@@ -1929,7 +1921,7 @@ export default function App() {
                     {selectedType === 'document' && (
                       <div className="px-4 lg:px-8 mb-8 stagger-fade-in">
                         <button
-                          onClick={() => { setCapturingField({ key: 'pdfAttachment', title: 'Documento' }); }}
+                          onClick={() => { setCapturingField({ key: 'document', title: 'Documento' }); }}
                           className="w-full bg-gradient-to-r from-indigo-500 to-blue-500 p-6 rounded-[2.2rem] flex items-center justify-between group shadow-xl shadow-indigo-500/20 active:scale-[0.98] transition-all"
                         >
                           <div className="flex items-center gap-4">
@@ -2086,34 +2078,62 @@ export default function App() {
           )}
 
           {selectedType && selectedType !== 'gallery' && !isAdding && !editingModuleId && !isArchiveOpen && (
-            <button
-              onClick={() => {
-                if (selectedType === 'split') {
-                  setFormData({});
-                  setSpesaSubMenu(true);
-                  setIsAdding(true);
-                } else if (selectedType === 'expense') {
-                  setEditingWalletModule({
-                    id: generateUUID(),
-                    type: 'wallet',
-                    title: 'Nuova Rata',
-                    totalAmount: 0,
-                    savedAmount: 0,
-                    dueDate: new Date().toISOString().split('T')[0],
-                    x: 0, y: 0, w: 2, h: 2,
-                    folderId: selectedFolderId || undefined
-                  });
-                } else {
+            <div className="fixed bottom-24 right-6 flex flex-col items-end gap-3 z-[100] md:bottom-10">
+              {selectedType === 'split' && (
+                <AnimatePresence>
+                  <motion.div 
+                    initial={{ opacity: 0, scale: 0.5, y: 20 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    className="flex flex-col items-end gap-2 mb-2"
+                  >
+                    <button
+                      onClick={() => {
+                        setEditingWalletModule({
+                          id: generateUUID(),
+                          type: 'wallet',
+                          title: 'Nuova Rata',
+                          totalAmount: 0,
+                          savedAmount: 0,
+                          dueDate: new Date().toISOString().split('T')[0],
+                          x: 0, y: 0, w: 2, h: 2,
+                          folderId: selectedFolderId || undefined
+                        });
+                      }}
+                      className="bg-purple-500 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-lg shadow-purple-500/20 flex items-center gap-2 active:scale-95 transition-transform"
+                    >
+                      <Wallet className="w-4 h-4" />
+                      Nuova Rata
+                    </button>
+                    <button
+                      onClick={() => {
+                        setFormData({});
+                        setSpesaSubMenu(true);
+                        setIsAdding(true);
+                      }}
+                      className="bg-indigo-500 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-lg shadow-indigo-500/20 flex items-center gap-2 active:scale-95 transition-transform"
+                    >
+                      <Receipt className="w-4 h-4" />
+                      Nuova Spesa
+                    </button>
+                  </motion.div>
+                </AnimatePresence>
+              )}
+              <button
+                onClick={() => {
+                  if (selectedType === 'split') {
+                    // Just toggle the menu if needed, but here we just show both buttons above
+                    return;
+                  }
                   const t = TEMPLATES[selectedType as keyof typeof TEMPLATES];
                   setFormData({ template: selectedType, title: t ? t.title : '', content: t ? t.content : '' });
                   setIsAdding(true);
                   setAutoFormStep(0);
-                }
-              }}
-              className="fixed bottom-24 right-6 w-14 h-14 bg-indigo-500 hover:bg-indigo-600 text-white rounded-full flex items-center justify-center shadow-xl shadow-indigo-500/30 active:scale-95 transition-all z-[100] md:bottom-10"
-            >
-              <Plus className="w-8 h-8" />
-            </button>
+                }}
+                className={`w-14 h-14 bg-indigo-500 hover:bg-indigo-600 text-white rounded-full flex items-center justify-center shadow-xl shadow-indigo-500/30 active:scale-95 transition-all ${selectedType === 'split' ? 'bg-indigo-600 rotate-45' : ''}`}
+              >
+                <Plus className="w-8 h-8" />
+              </button>
+            </div>
           )}
 
           <AnimatePresence>
@@ -2273,7 +2293,7 @@ export default function App() {
                 {updateProgress !== null ? (
                   <div className="space-y-3 bg-[var(--surface-variant)] p-4 rounded-2xl">
                     <div className="flex justify-between items-center mb-1">
-                      <span className="text-[10px] font-bold text-[var(--text-muted)]">Versione 1.12.44</span>
+                      <span className="text-[10px] font-bold text-[var(--text-muted)]">Versione 1.12.45</span>
                       <span className="text-[10px] font-black text-[var(--accent)]">{updateProgress}%</span>
                     </div>
                     <div className="h-2 w-full bg-[var(--bg)] rounded-full overflow-hidden border border-[var(--border)]">

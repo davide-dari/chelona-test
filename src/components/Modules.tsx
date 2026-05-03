@@ -395,7 +395,10 @@ export const WalletCard = ({ module, onDelete, onEdit, onShare, onAddSavings }: 
               <Wallet className="w-5 h-5" />
             </div>
             <div>
-              <h4 className="font-bold text-[15px] text-[var(--text-main)] leading-tight">{module.title || 'Rate'}</h4>
+              <h4 className="font-bold text-[15px] text-[var(--text-main)] leading-tight flex items-center gap-2">
+                {module.title || 'Rate'}
+                <span className="text-[8px] font-black bg-purple-500/10 text-purple-600 border border-purple-500/20 px-1.5 py-0.5 rounded-full uppercase tracking-widest">Rata</span>
+              </h4>
               {module.dueDate && (
                 <p className="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-widest mt-0.5">Scade: {new Date(module.dueDate).toLocaleDateString('it-IT')}</p>
               )}
