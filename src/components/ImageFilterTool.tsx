@@ -19,9 +19,9 @@ const FILTERS = [
   },
   {
     name: 'Flash',
-    css: 'contrast(1.4) brightness(1.15) saturate(0.7) sepia(0.15)',
+    css: 'contrast(1.35) brightness(1.1) saturate(1.6) sepia(0.05)',
     hasGrain: true,
-    grainAmount: 0.25,
+    grainAmount: 0.22,
     hasFlash: true
   },
   { name: 'Chelonas', css: 'contrast(1.35) saturate(1.2) sepia(0.15) hue-rotate(-5deg) brightness(1.05)' },
@@ -78,14 +78,15 @@ export const ImageFilterTool = ({ onClose, onSaveToSandbox }: ImageFilterToolPro
   };
 
   const addFlashEffect = (ctx: CanvasRenderingContext2D, width: number, height: number) => {
-    // 1. Sfondo scuro/vignettatura per contrasto forte
+    // 1. Sfondo scuro/vignettatura per contrasto forte (flash falloff)
     const vignette = ctx.createRadialGradient(
       width / 2, height / 2, 0,
-      width / 2, height / 2, Math.max(width, height) / 1.2
+      width / 2, height / 2, Math.max(width, height) / 1.5
     );
     vignette.addColorStop(0, 'rgba(0,0,0,0)');
-    vignette.addColorStop(0.5, 'rgba(0,0,0,0.3)');
-    vignette.addColorStop(1, 'rgba(0,0,0,0.9)');
+    vignette.addColorStop(0.4, 'rgba(0,0,0,0.1)');
+    vignette.addColorStop(0.8, 'rgba(0,0,0,0.6)');
+    vignette.addColorStop(1, 'rgba(0,0,0,0.95)');
     
     ctx.save();
     ctx.globalCompositeOperation = 'multiply';
@@ -93,17 +94,17 @@ export const ImageFilterTool = ({ onClose, onSaveToSandbox }: ImageFilterToolPro
     ctx.fillRect(0, 0, width, height);
     ctx.restore();
 
-    // 2. Flash centrale duro (highlights)
+    // 2. Flash centrale duro (highlights brillanti ma con colori saturi)
     const flash = ctx.createRadialGradient(
       width / 2, height / 2, 0,
-      width / 2, height / 2, Math.max(width, height) / 2.5
+      width / 2, height / 2, Math.max(width, height) / 3
     );
-    flash.addColorStop(0, 'rgba(255,255,255,0.35)');
-    flash.addColorStop(0.4, 'rgba(255,255,255,0.1)');
+    flash.addColorStop(0, 'rgba(255,255,255,0.4)');
+    flash.addColorStop(0.3, 'rgba(255,255,255,0.15)');
     flash.addColorStop(1, 'rgba(255,255,255,0)');
     
     ctx.save();
-    ctx.globalCompositeOperation = 'screen';
+    ctx.globalCompositeOperation = 'overlay'; // Overlay mantiene la saturazione più alta rispetto a screen
     ctx.fillStyle = flash;
     ctx.fillRect(0, 0, width, height);
     ctx.restore();
