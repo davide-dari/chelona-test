@@ -48,9 +48,10 @@ export const ImageFilterTool = ({ onClose, onSaveToSandbox }: ImageFilterToolPro
   const [showGalleryToast, setShowGalleryToast] = useState(false);
   const [showDownloadToast, setShowDownloadToast] = useState(false);
 
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const originalImageRef = useRef<HTMLImageElement | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const addGrain = (ctx: CanvasRenderingContext2D, width: number, height: number, amount: number) => {
     const grainCanvas = document.createElement('canvas');
@@ -322,9 +323,23 @@ export const ImageFilterTool = ({ onClose, onSaveToSandbox }: ImageFilterToolPro
           </div>
           <h4 className="text-xl font-bold text-[var(--text-main)] mb-2 text-center">Seleziona un'immagine</h4>
           <p className="text-sm text-[var(--text-muted)] text-center font-medium max-w-xs">Carica una foto dalla tua galleria per applicare filtri di alta qualità.</p>
-          <button className="mt-8 px-8 py-3.5 bg-[var(--accent)] text-white rounded-2xl font-bold shadow-lg shadow-[var(--accent)]/20 active:scale-95 transition-all">
-            Scegli Foto
-          </button>
+          <div className="flex flex-col sm:flex-row gap-4 w-full max-w-sm mt-8">
+            <button 
+              onClick={() => cameraInputRef.current?.click()}
+              className="flex-1 flex items-center justify-center gap-3 px-8 py-4 bg-pink-500 text-white rounded-2xl font-bold shadow-lg shadow-pink-500/20 active:scale-95 transition-all"
+            >
+              <Camera className="w-5 h-5" />
+              Scatta Foto
+            </button>
+            <button 
+              onClick={() => fileInputRef.current?.click()}
+              className="flex-1 flex items-center justify-center gap-3 px-8 py-4 bg-[var(--accent)] text-white rounded-2xl font-bold shadow-lg shadow-[var(--accent)]/20 active:scale-95 transition-all"
+            >
+              <ImageIcon className="w-5 h-5" />
+              Scegli Foto
+            </button>
+          </div>
+          <input type="file" ref={cameraInputRef} onChange={handleFileChange} accept="image/*" capture="environment" className="hidden" />
         </div>
       ) : (
         <div className="flex-1 flex flex-col overflow-hidden gap-4">

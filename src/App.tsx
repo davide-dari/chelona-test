@@ -961,6 +961,7 @@ export default function App() {
     e.target.value = '';
   };
 
+
   const recognitionRef = useRef<any>(null);
   const handleVoiceSearch = async () => {
     // Check if running on Capacitor (Android/iOS)
@@ -1882,11 +1883,6 @@ export default function App() {
                       {Object.entries(TEMPLATES)
                         .filter(([key]) => key !== 'single-expense')
                         .map(([key, t]) => {
-                        const count = key === 'split' 
-                          ? modules.filter(m => m.type === 'split' || m.type === 'single-expense').length
-                          : key === 'expense'
-                            ? modules.filter(m => m.type === 'wallet').length
-                            : modules.filter(m => m.type === key).length;
                         
                         return (
                           <button
@@ -1899,9 +1895,7 @@ export default function App() {
                             </div>
                             <div>
                               <p className="font-black text-[var(--text-main)] text-sm">{t.title}</p>
-                              <p className="text-[10px] text-[var(--text-muted)] font-bold uppercase tracking-widest mt-1">
-                                {count} {count === 1 ? 'Elemento' : 'Elementi'}
-                              </p>
+
                             </div>
                           </button>
                         );
@@ -2145,8 +2139,8 @@ export default function App() {
           {!isAdding && !isScanning && !editingModuleId && !isArchiveOpen && (
             <nav className="md:hidden fixed bottom-0 left-0 right-0 h-20 bg-[var(--bg)] border-t border-[var(--border)] z-50 px-4 flex items-center justify-around safe-area-inset-bottom shadow-[0_-4px_12px_rgba(0,0,0,0.03)]">
               {[
-                { id: 'dashboard', icon: LayoutDashboard, label: 'Dashboard', action: () => { setIsToolsOpen(false); setSelectedType(null); setIsProfileOpen(false); } },
                 { id: 'tools', icon: Wrench, label: 'Strumenti', action: () => { setIsToolsOpen(true); setIsProfileOpen(false); } },
+                { id: 'dashboard', icon: LayoutDashboard, label: 'Dashboard', action: () => { setIsToolsOpen(false); setSelectedType(null); setIsProfileOpen(false); } },
                 { id: 'profile', icon: User, label: 'Profilo', action: () => { setIsProfileOpen(true); setIsToolsOpen(false); } }
               ].map(item => {
                 const isActive = item.id === 'dashboard' ? (!isToolsOpen && !selectedType && !isProfileOpen) : 
