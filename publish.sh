@@ -71,7 +71,7 @@ RELEASE_JSON=$(curl -s -X POST \
   -d "{
     \"tag_name\": \"$TAG\",
     \"name\": \"Chelona $TAG\",
-    \"body\": \"🚀 **Chelona v$VERSION**\\n\\n### ✨ Novità e Fix:\\n- **🛠️ Fix Mappamondo 3D**: Risolto il problema che impediva la visualizzazione del mappamondo su alcuni dispositivi Android.\\n- **🛠️ Fix Crash**: Risolto un bug che causava la chiusura della schermata durante l'aggiunta di un nuovo itinerario.\",
+    \"body\": \"🚀 **Chelona v$VERSION**\\n\\n### ✨ Novità e Fix:\\n- **🛠️ Fix Mappamondo 3D**: Risolto il problema 'Globe is not defined' che causava il blocco della dashboard.\\n- **🛠️ Fix Crash**: Risolto un bug che causava la chiusura della schermata durante l'aggiunta di un nuovo itinerario.\",
     \"draft\": false,
     \"prerelease\": false
   }")
