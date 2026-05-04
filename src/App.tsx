@@ -4,11 +4,11 @@
  */
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Sun, Moon, Wrench, Plus, LayoutDashboard, Settings, User, LogOut, Search, Mic, Bell, CreditCard, Fingerprint, ShieldCheck, Wallet, Lock, Menu, X, StickyNote, FileText, Grid2X2, Car, QrCode, Folder as FolderIcon, Check, Edit2, Trash2, BookOpen, ArrowLeft, ArrowRight, Camera, FileDown, Hourglass, Users, Download, Receipt, MapPin, Image as ImageIcon, Lightbulb } from 'lucide-react';
+import { Sun, Moon, Wrench, Plus, LayoutDashboard, Settings, User, LogOut, Search, Mic, Bell, CreditCard, Fingerprint, ShieldCheck, Wallet, Lock, Menu, X, StickyNote, FileText, Grid2X2, Car, QrCode, Folder as FolderIcon, Check, Edit2, Trash2, BookOpen, ArrowLeft, ArrowRight, Camera, FileDown, Hourglass, Users, Download, Receipt, MapPin, Image as ImageIcon, Lightbulb, Globe } from 'lucide-react';
 import { Module, ModuleType, Folder, DocumentModule } from './types';
 import { storage, AppState } from './services/storage';
 import { encryption } from './services/encryption';
-import { GenericCard, AutoCard, DocumentCard, SplitCard, SingleExpenseCard, WalletCard, GalleryCard } from './components/Modules';
+import { GenericCard, AutoCard, DocumentCard, SplitCard, SingleExpenseCard, WalletCard, GalleryCard, TravelCard } from './components/Modules';
 import { LockScreen } from './components/LockScreen';
 import { QrScanner } from './components/QrScanner';
 import { DocumentScanner } from './components/DocumentScanner';
@@ -20,6 +20,7 @@ import { DocumentArchive } from './components/DocumentArchive';
 import { SingleExpenseScreen } from './components/SingleExpenseScreen';
 import { WalletEditScreen } from './components/WalletEditScreen';
 import { AddressBookScreen } from './components/AddressBookScreen';
+import { TravelScreen } from './components/TravelScreen';
 import { notificationService } from './services/notificationService';
 import { motion, AnimatePresence } from 'motion/react';
 import JSZip from 'jszip';
@@ -119,6 +120,12 @@ const TEMPLATES = {
     icon: ImageIcon,
     color: 'text-indigo-500'
   },
+  travel: {
+    title: 'Viaggi',
+    content: '',
+    icon: Globe,
+    color: 'text-emerald-500'
+  },
   none: {
     title: 'Appunto Libero',
     content: '',
@@ -143,6 +150,7 @@ export default function App() {
   const [editingSplitModule, setEditingSplitModule] = useState<import('./types').SplitModule | null>(null);
   const [editingSingleExpenseModule, setEditingSingleExpenseModule] = useState<import('./types').SingleExpenseModule | null>(null);
   const [editingWalletModule, setEditingWalletModule] = useState<import('./types').WalletModule | null>(null);
+  const [editingTravelModule, setEditingTravelModule] = useState<import('./types').TravelModule | null>(null);
   const [sharingModule, setSharingModule] = useState<Module | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedType, setSelectedType] = useState<ModuleType | null>(null);
@@ -259,6 +267,7 @@ export default function App() {
       setModuleToDelete(state.deleteConfirm || null);
       setShowGalleryViewer(!!state.showGallery);
       setGallerySelectedImage(state.selectedImage || null);
+      setEditingTravelModule(state.travelEdit || null);
       if (!state.adding) setFormData({});
     };
 
@@ -287,7 +296,8 @@ export default function App() {
       walletEdit: editingWalletModule,
       deleteConfirm: moduleToDelete,
       showGallery: showGalleryViewer,
-      selectedImage: gallerySelectedImage
+      selectedImage: gallerySelectedImage,
+      travelEdit: editingTravelModule
     };
 
     // Check if current history state matches to avoid redundant pushes
@@ -295,9 +305,7 @@ export default function App() {
     const hasChanges = !historyState || JSON.stringify(historyState) !== JSON.stringify(currentState);
     
     const isAnyOpen = isToolsOpen || activeToolId || isAdding || editingModuleId || isProfileOpen || 
-                      isArchiveOpen || selectedType || selectedFolderId || isSidebarOpen || 
-                      editingAutoModule || editingSplitModule || editingSingleExpenseModule || 
-                      editingWalletModule || moduleToDelete || showGalleryViewer || gallerySelectedImage;
+                      editingWalletModule || moduleToDelete || showGalleryViewer || gallerySelectedImage || editingTravelModule;
 
     if (hasChanges) {
       if (isAnyOpen) {
@@ -310,7 +318,7 @@ export default function App() {
   }, [
     isToolsOpen, activeToolId, isAdding, editingModuleId, isProfileOpen, isArchiveOpen, 
     selectedType, selectedFolderId, isSidebarOpen, editingAutoModule, editingSplitModule, 
-    editingSingleExpenseModule, editingWalletModule, moduleToDelete, showGalleryViewer, gallerySelectedImage
+    editingSingleExpenseModule, editingWalletModule, moduleToDelete, showGalleryViewer, gallerySelectedImage, editingTravelModule
   ]);
 
   useEffect(() => {
@@ -442,18 +450,19 @@ export default function App() {
       updated = modules.map(m => m.id === editingModuleId ? { ...m, ...processedData, folderId: processedData.folderId || undefined } : m);
     } else {
       const id = Math.random().toString(36).substr(2, 9);
-      const type = processedData.template === 'auto' ? 'auto' : processedData.template === 'document' ? 'document' : processedData.template === 'split' ? 'split' : 'generic';
+      const type = processedData.template === 'auto' ? 'auto' : processedData.template === 'document' ? 'document' : processedData.template === 'split' ? 'split' : processedData.template === 'travel' ? 'travel' : 'generic';
       const newModule: Module = {
         id,
         type,
         x: (modules.length * 2) % 12,
         y: Infinity, // puts it at the bottom
-        w: type === 'auto' ? 4 : type === 'document' ? 3 : 3,
-        h: type === 'auto' ? 4 : type === 'document' ? 3 : 2,
+        w: type === 'auto' ? 4 : type === 'document' ? 3 : type === 'travel' ? 4 : 3,
+        h: type === 'auto' ? 4 : type === 'document' ? 3 : type === 'travel' ? 4 : 2,
         ...processedData,
         ...(type === 'auto' ? { lastKmUpdatedAt: new Date().toISOString() } : {}),
         ...(type === 'document' && !processedData.documentType ? { documentType: 'generic' } : {}),
         ...(type === 'split' ? { participants: [], expenses: [], currency: 'EUR' } : {}),
+        ...(type === 'travel' ? { itineraries: [] } : {}),
         folderId: processedData.folderId !== undefined ? (processedData.folderId || undefined) : (selectedFolderId || undefined)
       };
       updated = [...modules, newModule];
@@ -580,6 +589,10 @@ export default function App() {
     }
     if (module.type === 'wallet') {
       setEditingWalletModule(module as import('./types').WalletModule);
+      return;
+    }
+    if (module.type === 'travel') {
+      setEditingTravelModule(module as import('./types').TravelModule);
       return;
     }
     // Migration for old expense template
@@ -1333,6 +1346,12 @@ export default function App() {
                 onClose={() => setEditingSplitModule(null)}
                 onSaveToSandbox={handleSaveToSandbox}
               />
+            ) : editingTravelModule ? (
+              <TravelScreen
+                module={editingTravelModule}
+                onClose={() => setEditingTravelModule(null)}
+                onUpdate={(mod) => { updateModuleDirect(mod); setEditingTravelModule(null); }}
+              />
             ) : editingWalletModule ? (
               <WalletEditScreen
                 module={editingWalletModule}
@@ -2040,6 +2059,8 @@ export default function App() {
                           <WalletCard module={module as import('./types').WalletModule} onDelete={requestDelete} onEdit={openEditModal} onShare={setSharingModule} />
                         ) : module.type === 'gallery' ? (
                           <GalleryCard module={module as import('./types').GalleryModule} onShare={setSharingModule} />
+                        ) : module.type === 'travel' ? (
+                          <TravelCard module={module as import('./types').TravelModule} onDelete={requestDelete} onEdit={openEditModal} onShare={setSharingModule} />
                         ) : (
                           <GenericCard module={module as import('./types').GenericModule} onDelete={requestDelete} onEdit={openEditModal} onShare={setSharingModule} />
                         )}

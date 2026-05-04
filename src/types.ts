@@ -1,4 +1,4 @@
-export type ModuleType = 'generic' | 'auto' | 'document' | 'split' | 'single-expense' | 'wallet' | 'gallery';
+export type ModuleType = 'generic' | 'auto' | 'document' | 'split' | 'single-expense' | 'wallet' | 'gallery' | 'travel';
 export type FuelType = 'benzina' | 'diesel' | 'gpl' | 'metano' | 'ibrida' | 'elettrica';
 
 export interface Folder {
@@ -146,7 +146,24 @@ export interface GalleryModule extends BaseModule {
   filterName?: string;
 }
 
-export type Module = GenericModule | AutoModule | DocumentModule | SplitModule | SingleExpenseModule | WalletModule | GalleryModule;
+export interface Itinerary {
+  id: string;
+  name: string;
+  placeName: string;
+  city: string;
+  country: string;
+  lat: number;
+  lng: number;
+  date: string;
+  notes?: string;
+}
+
+export interface TravelModule extends BaseModule {
+  type: 'travel';
+  itineraries: Itinerary[];
+}
+
+export type Module = GenericModule | AutoModule | DocumentModule | SplitModule | SingleExpenseModule | WalletModule | GalleryModule | TravelModule;
 
 export interface DashboardState {
   modules: Module[];

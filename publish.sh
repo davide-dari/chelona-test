@@ -71,7 +71,7 @@ RELEASE_JSON=$(curl -s -X POST \
   -d "{
     \"tag_name\": \"$TAG\",
     \"name\": \"Chelona $TAG\",
-    \"body\": \"🚀 **Chelona v$VERSION**\\n\\n### ✨ Novità:\\n- **📱 Fix QR Code**: Risolto il bug che impediva la condivisione tramite QR Code.\\n- **🎙️ Ricerca Vocale**: Implementata la ricerca vocale nativa per Android per una migliore precisione e velocità.\",
+    \"body\": \"🚀 **Chelona v$VERSION**\\n\\n### ✨ Novità:\\n- **🌍 Modulo Viaggi**: Aggiunto il nuovo gruppo Viaggi con mappamondo 3D rotante.\\n- **📍 Itinerari**: Segna le tue mete nel mondo e visualizzale sulla mappa.\\n- **🏙️ Database Località**: Oltre 200 città e capitali pre-caricate per una selezione rapida.\",
     \"draft\": false,
     \"prerelease\": false
   }")

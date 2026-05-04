@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { CreditCard, ShieldCheck, Wallet, Fingerprint, Plus, Trash2, Calendar, DollarSign, Pencil, StickyNote, Copy, Check, GripVertical, Car, Wrench, AlertCircle, FileText, QrCode, FileDown, X, Clock, Eye, Lock, ChevronRight, Bell, BellOff, Gauge, Users, Paperclip, Receipt, Image as ImageIcon } from 'lucide-react';
-import { Module, GenericModule, AutoModule, DocumentModule, SplitModule, SingleExpenseModule, WalletModule, GalleryModule } from '../types';
+import { Module, GenericModule, AutoModule, DocumentModule, SplitModule, SingleExpenseModule, WalletModule, GalleryModule, TravelModule } from '../types';
 import { EXPENSE_CATEGORIES } from '../constants/expenses';
 import { motion, AnimatePresence } from 'motion/react';
 import { CAR_BRANDS } from '../utils/carBrands';
@@ -648,6 +648,60 @@ export const GalleryCard = ({ module, onShare }: { module: GalleryModule; onDele
         )}
       </AnimatePresence>
     </>
+  );
+};
+
+export const TravelCard = ({ module, onDelete, onEdit, onShare }: { module: TravelModule; onDelete: (id: string) => void; onEdit: (m: Module) => void; onShare: (m: Module) => void; }) => {
+  const destinationCount = module.itineraries?.length || 0;
+
+  return (
+    <ModuleWrapper module={module} onDelete={onDelete} onEdit={onEdit}>
+      <div 
+        className="h-full flex flex-col cursor-pointer group/card hover:bg-[var(--bg)] transition-all p-4 -m-4 rounded-2xl active:scale-[0.98]"
+        onClick={() => onEdit(module)}
+      >
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 bg-emerald-500/10 rounded-2xl border border-emerald-500/20 flex items-center justify-center text-emerald-600 group-hover/card:scale-110 transition-transform">
+              <Globe className="w-6 h-6" />
+            </div>
+            <div>
+              <h4 className="font-bold text-[15px] text-[var(--text-main)] leading-tight flex items-center gap-2">
+                {module.title || 'I Miei Viaggi'}
+                <span className="text-[8px] font-black bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 px-1.5 py-0.5 rounded-full uppercase tracking-widest">Viaggio</span>
+              </h4>
+              <p className="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-widest mt-0.5">Destinazioni salvate</p>
+            </div>
+          </div>
+          <button
+            onClick={(e) => { e.stopPropagation(); onShare(module); }}
+            className="p-1.5 hover:bg-emerald-500/10 text-emerald-600 rounded-lg transition-colors"
+          >
+            <QrCode className="w-4 h-4" />
+          </button>
+        </div>
+
+        <div className="mt-auto">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[10px] font-black uppercase text-[var(--text-muted)] tracking-widest">Esplorazione</span>
+            <span className="text-xs font-black text-emerald-600">{destinationCount}</span>
+          </div>
+          <div className="h-1.5 bg-[var(--surface-variant)] rounded-full overflow-hidden">
+            <motion.div 
+              initial={{ width: 0 }}
+              animate={{ width: `${Math.min(100, destinationCount * 10)}%` }}
+              className="h-full bg-emerald-500 rounded-full"
+            />
+          </div>
+          <div className="mt-4 flex items-center gap-1.5">
+            <MapPin className="w-3.5 h-3.5 text-[var(--text-muted)]" />
+            <span className="text-[10px] font-bold text-[var(--text-muted)] truncate">
+              {destinationCount > 0 ? `Ultima: ${module.itineraries[module.itineraries.length - 1].city}` : 'Nessuna meta ancora'}
+            </span>
+          </div>
+        </div>
+      </div>
+    </ModuleWrapper>
   );
 };
 
