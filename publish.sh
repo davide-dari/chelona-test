@@ -71,7 +71,7 @@ RELEASE_JSON=$(curl -s -X POST \
   -d "{
     \"tag_name\": \"$TAG\",
     \"name\": \"Chelona $TAG\",
-    \"body\": \"🚀 **Chelona v$VERSION**\\n\\n### ✨ Novità e Fix:\\n- **🛠️ Fix Nesting UI**: Corretta la struttura della schermata Viaggi per assicurare che il tasto '+' sia sempre visibile e cliccabile.\\n- **🌍 Globe loading**: Aggiunto un indicatore di caricamento esplicito per il mappamondo.\\n- **🎨 Stabilità**: Migliorato il rendering degli elementi fissi sui dispositivi mobili.\",
+    \"body\": \"🚀 **Chelona v$VERSION**\\n\\n### ✨ Novità e Fix:\\n- **🤖 Fix Installazione**: Aggiornato il numero di build interno per risolvere l'errore 'App non installata' su Android.\\n- **🛠️ UI Fix**: Consolidate le correzioni per la visualizzazione del mappamondo e del tasto '+' nella sezione Viaggi.\",
     \"draft\": false,
     \"prerelease\": false
   }")
