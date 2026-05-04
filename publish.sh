@@ -71,7 +71,7 @@ RELEASE_JSON=$(curl -s -X POST \
   -d "{
     \"tag_name\": \"$TAG\",
     \"name\": \"Chelona $TAG\",
-    \"body\": \"🚀 **Chelona v$VERSION**\\n\\n### ✨ Novità e Fix:\\n- **🛠️ Fix Aggiornamenti**: Risolto il problema che impediva lo scaricamento automatico delle nuove versioni e aggiustato il link di fallback per scaricare tramite browser.\",
+    \"body\": \"🚀 **Chelona v$VERSION**\\n\\n### ✨ Novità e Fix:\\n- **🌍 Fix Mappamondo**: Ottimizzato il caricamento delle texture per una maggiore compatibilità.\\n- **🎨 Layout Viaggi**: Sistemato il posizionamento del mappamondo e del tasto '+' per evitare che vengano tagliati fuori dallo schermo.\\n- **🛠️ Stabilità**: Migliorata la gestione delle aree sicure sui dispositivi mobili.\",
     \"draft\": false,
     \"prerelease\": false
   }")

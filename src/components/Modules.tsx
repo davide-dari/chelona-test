@@ -682,8 +682,8 @@ export const TravelCard = ({ module, onDelete, onEdit, onShare }: { module: Trav
           </button>
         </div>
 
-        <div className="flex-1 relative mt-2 mb-2 rounded-xl overflow-hidden pointer-events-none group-hover/card:pointer-events-auto transition-all">
-          <Globe3D itineraries={module.itineraries || []} />
+        <div className="flex-1 relative mt-2 mb-2 rounded-xl overflow-hidden pointer-events-none group-hover/card:pointer-events-auto transition-all min-h-[100px]">
+          <Globe3D itineraries={module.itineraries || []} className="absolute inset-0 w-full h-full cursor-grab active:cursor-grabbing" />
         </div>
 
         <div className="mt-auto">

@@ -35,9 +35,11 @@ const Marker = ({ lat, lng, label }: MarkerProps) => {
   );
 };
 
+import earthTextureUrl from '../assets/earth-texture.jpg';
+
 const Globe = ({ itineraries }: { itineraries: any[] }) => {
   const globeRef = useRef<THREE.Group>(null);
-  const colorMap = useLoader(THREE.TextureLoader, '/earth-texture.jpg');
+  const colorMap = useLoader(THREE.TextureLoader, earthTextureUrl);
 
   useFrame((state, delta) => {
     if (globeRef.current) {
@@ -87,15 +89,20 @@ const Globe = ({ itineraries }: { itineraries: any[] }) => {
   );
 };
 
-export const Globe3D = ({ itineraries }: { itineraries: any[] }) => {
+export const Globe3D = ({ itineraries, className }: { itineraries: any[], className?: string }) => {
   return (
-    <div className="w-full h-[300px] sm:h-[400px] relative cursor-grab active:cursor-grabbing">
+    <div className={className || "w-full h-[300px] sm:h-[400px] relative cursor-grab active:cursor-grabbing"}>
       <Canvas camera={{ position: [0, 0, 6], fov: 45 }} dpr={[1, 2]}>
         <ambientLight intensity={0.5} />
         <pointLight position={[10, 10, 10]} intensity={1.5} color="#3b82f6" />
         <pointLight position={[-10, -10, -10]} intensity={0.5} color="#6366f1" />
         
-        <Suspense fallback={null}>
+        <Suspense fallback={
+          <mesh>
+            <sphereGeometry args={[2, 32, 32]} />
+            <meshStandardMaterial color="#1e293b" />
+          </mesh>
+        }>
           <Globe itineraries={itineraries} />
         </Suspense>
         
