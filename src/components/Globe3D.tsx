@@ -1,6 +1,6 @@
 import React, { useRef, useMemo } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
-import { Sphere, MeshDistortMaterial, OrbitControls, Float, Text, Stars } from '@react-three/drei';
+import { OrbitControls } from '@react-three/drei';
 import * as THREE from 'three';
 
 interface MarkerProps {
@@ -47,17 +47,19 @@ const Globe = ({ itineraries }: { itineraries: any[] }) => {
   return (
     <group ref={globeRef}>
       {/* Atmosphere Glow */}
-      <Sphere args={[2.1, 64, 64]}>
+      <mesh>
+        <sphereGeometry args={[2.1, 32, 32]} />
         <meshStandardMaterial
           color="#3b82f6"
           transparent
           opacity={0.1}
           side={THREE.BackSide}
         />
-      </Sphere>
+      </mesh>
 
       {/* Main Globe */}
-      <Sphere args={[2, 64, 64]}>
+      <mesh>
+        <sphereGeometry args={[2, 32, 32]} />
         <meshStandardMaterial
           color="#1e293b"
           roughness={0.7}
@@ -65,17 +67,18 @@ const Globe = ({ itineraries }: { itineraries: any[] }) => {
           emissive="#0f172a"
           emissiveIntensity={0.5}
         />
-      </Sphere>
+      </mesh>
 
       {/* Grid/Wireframe for a technical look */}
-      <Sphere args={[2.01, 32, 32]}>
+      <mesh>
+        <sphereGeometry args={[2.01, 16, 16]} />
         <meshStandardMaterial
           color="#3b82f6"
           wireframe
           transparent
           opacity={0.1}
         />
-      </Sphere>
+      </mesh>
 
       {/* Itinerary Markers */}
       {itineraries.map((it) => (
@@ -93,11 +96,7 @@ export const Globe3D = ({ itineraries }: { itineraries: any[] }) => {
         <pointLight position={[10, 10, 10]} intensity={1.5} color="#3b82f6" />
         <pointLight position={[-10, -10, -10]} intensity={0.5} color="#6366f1" />
         
-        <Stars radius={100} depth={50} count={5000} factor={4} saturation={0} fade speed={1} />
-        
-        <Float speed={1.5} rotationIntensity={0.5} floatIntensity={0.5}>
-          <Globe itineraries={itineraries} />
-        </Float>
+        <Globe itineraries={itineraries} />
         
         <OrbitControls 
           enableZoom={false} 

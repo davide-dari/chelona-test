@@ -1350,7 +1350,7 @@ export default function App() {
               <TravelScreen
                 module={editingTravelModule}
                 onClose={() => setEditingTravelModule(null)}
-                onUpdate={(mod) => { updateModuleDirect(mod); setEditingTravelModule(null); }}
+                onUpdate={(mod) => { updateModuleDirect(mod); setEditingTravelModule(mod as import('./types').TravelModule); }}
               />
             ) : editingWalletModule ? (
               <WalletEditScreen
