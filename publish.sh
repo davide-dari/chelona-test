@@ -71,7 +71,7 @@ RELEASE_JSON=$(curl -s -X POST \
   -d "{
     \"tag_name\": \"$TAG\",
     \"name\": \"Chelona $TAG\",
-    \"body\": \"🚀 **Chelona v$VERSION**\\n\\n### ✨ Novità e Fix:\\n- **🌍 Mappamondo Realistico**: Aggiunta una texture ad alta definizione del pianeta Terra per una resa grafica spettacolare.\\n- **🎨 Nuova Card Viaggio**: Il mappamondo 3D ruota direttamente sulla tua dashboard! Inoltre, il tasto verde '+' per aggiungere nuove destinazioni è stato integrato direttamente nella card.\\n- **🧹 Pulizia UI**: Rimozione del bottone blu principale per un'interfaccia più pulita.\",
+    \"body\": \"🚀 **Chelona v$VERSION**\\n\\n### ✨ Novità e Fix:\\n- **🛠️ Fix Aggiornamenti**: Risolto il problema che impediva lo scaricamento automatico delle nuove versioni e aggiustato il link di fallback per scaricare tramite browser.\",
     \"draft\": false,
     \"prerelease\": false
   }")

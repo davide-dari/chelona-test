@@ -2273,7 +2273,7 @@ export default function App() {
                     </div>
                     {updateProgress < 10 && (
                       <button 
-                        onClick={() => window.open(availableUpdate.downloadUrl, '_blank')}
+                        onClick={() => CapApp.openUrl({ url: availableUpdate.downloadUrl })}
                         className="w-full mt-2 text-[10px] font-bold text-[var(--accent)] hover:underline uppercase tracking-widest text-center"
                       >
                         Problemi col download? Scarica dal browser
