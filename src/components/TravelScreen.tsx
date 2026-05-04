@@ -64,7 +64,8 @@ export const TravelScreen = ({ module, onClose, onUpdate }: TravelScreenProps) =
   };
 
   return (
-    <div className="fixed inset-0 z-[100] bg-[var(--bg)] flex flex-col pb-[safe-area-inset-bottom]">
+    <>
+      <div className="fixed inset-0 z-[100] bg-[var(--bg)] flex flex-col pb-[safe-area-inset-bottom]">
       {/* Header */}
       <div className="flex items-center justify-between p-4 sm:p-6 border-b border-[var(--border)] bg-[var(--card-bg)]/80 backdrop-blur-xl shrink-0">
         <div className="flex items-center gap-4">
@@ -160,6 +161,8 @@ export const TravelScreen = ({ module, onClose, onUpdate }: TravelScreenProps) =
         </div>
       </div>
 
+      </div>
+      
       {/* FAB */}
       <div className="fixed bottom-8 right-8 z-[110]">
         <button 
@@ -309,6 +312,6 @@ export const TravelScreen = ({ module, onClose, onUpdate }: TravelScreenProps) =
           </div>
         )}
       </AnimatePresence>
-    </div>
+    </>
   );
 };

@@ -1,6 +1,7 @@
 import React, { useRef, useMemo, Suspense } from 'react';
 import { Canvas, useFrame, useLoader } from '@react-three/fiber';
-import { OrbitControls } from '@react-three/drei';
+import { OrbitControls, Html } from '@react-three/drei';
+import { RefreshCw } from 'lucide-react';
 import * as THREE from 'three';
 
 interface MarkerProps {
@@ -98,10 +99,12 @@ export const Globe3D = ({ itineraries, className }: { itineraries: any[], classN
         <pointLight position={[-10, -10, -10]} intensity={0.5} color="#6366f1" />
         
         <Suspense fallback={
-          <mesh>
-            <sphereGeometry args={[2, 32, 32]} />
-            <meshStandardMaterial color="#1e293b" />
-          </mesh>
+          <Html center>
+            <div className="flex flex-col items-center gap-2">
+              <RefreshCw className="w-8 h-8 text-emerald-500 animate-spin" />
+              <p className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">Caricamento...</p>
+            </div>
+          </Html>
         }>
           <Globe itineraries={itineraries} />
         </Suspense>
