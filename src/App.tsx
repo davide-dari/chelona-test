@@ -2102,27 +2102,7 @@ export default function App() {
             </nav>
           )}
 
-          {selectedType && selectedType !== 'gallery' && !isAdding && !editingModuleId && !isArchiveOpen && (
-            <div className="fixed bottom-24 right-6 z-[100] md:bottom-10">
-              <button
-                onClick={() => {
-                  if (selectedType === 'split') {
-                    setFormData({});
-                    setSpesaSubMenu(true);
-                    setIsAdding(true);
-                    return;
-                  }
-                  const t = TEMPLATES[selectedType as keyof typeof TEMPLATES];
-                  setFormData({ template: selectedType, title: t ? t.title : '', content: t ? t.content : '' });
-                  setIsAdding(true);
-                  setAutoFormStep(0);
-                }}
-                className="w-14 h-14 bg-indigo-500 hover:bg-indigo-600 text-white rounded-full flex items-center justify-center shadow-xl shadow-indigo-500/30 active:scale-95 transition-all"
-              >
-                <Plus className="w-8 h-8" />
-              </button>
-            </div>
-          )}
+
 
           <AnimatePresence>
             {capturingField && (

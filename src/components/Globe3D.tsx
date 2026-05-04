@@ -1,5 +1,5 @@
-import React, { useRef, useMemo } from 'react';
-import { Canvas, useFrame } from '@react-three/fiber';
+import React, { useRef, useMemo, Suspense } from 'react';
+import { Canvas, useFrame, useLoader } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
 import * as THREE from 'three';
 
@@ -37,6 +37,7 @@ const Marker = ({ lat, lng, label }: MarkerProps) => {
 
 const Globe = ({ itineraries }: { itineraries: any[] }) => {
   const globeRef = useRef<THREE.Group>(null);
+  const colorMap = useLoader(THREE.TextureLoader, '/earth-texture.jpg');
 
   useFrame((state, delta) => {
     if (globeRef.current) {
@@ -59,13 +60,11 @@ const Globe = ({ itineraries }: { itineraries: any[] }) => {
 
       {/* Main Globe */}
       <mesh>
-        <sphereGeometry args={[2, 32, 32]} />
+        <sphereGeometry args={[2, 64, 64]} />
         <meshStandardMaterial
-          color="#1e293b"
-          roughness={0.7}
-          metalness={0.2}
-          emissive="#0f172a"
-          emissiveIntensity={0.5}
+          map={colorMap}
+          roughness={0.8}
+          metalness={0.1}
         />
       </mesh>
 
@@ -96,7 +95,9 @@ export const Globe3D = ({ itineraries }: { itineraries: any[] }) => {
         <pointLight position={[10, 10, 10]} intensity={1.5} color="#3b82f6" />
         <pointLight position={[-10, -10, -10]} intensity={0.5} color="#6366f1" />
         
-        <Globe itineraries={itineraries} />
+        <Suspense fallback={null}>
+          <Globe itineraries={itineraries} />
+        </Suspense>
         
         <OrbitControls 
           enableZoom={false} 

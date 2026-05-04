@@ -8,6 +8,7 @@ import JSZip from 'jszip';
 import { encryption } from '../services/encryption';
 import { notificationService } from '../services/notificationService';
 import { DocumentViewer } from './DocumentViewer';
+import { Globe3D } from './Globe3D';
 
 interface ModuleWrapperProps {
   module: Module;
@@ -681,6 +682,10 @@ export const TravelCard = ({ module, onDelete, onEdit, onShare }: { module: Trav
           </button>
         </div>
 
+        <div className="flex-1 relative mt-2 mb-2 rounded-xl overflow-hidden pointer-events-none group-hover/card:pointer-events-auto transition-all">
+          <Globe3D itineraries={module.itineraries || []} />
+        </div>
+
         <div className="mt-auto">
           <div className="flex items-center justify-between mb-2">
             <span className="text-[10px] font-black uppercase text-[var(--text-muted)] tracking-widest">Esplorazione</span>
@@ -693,11 +698,21 @@ export const TravelCard = ({ module, onDelete, onEdit, onShare }: { module: Trav
               className="h-full bg-emerald-500 rounded-full"
             />
           </div>
-          <div className="mt-4 flex items-center gap-1.5">
-            <MapPin className="w-3.5 h-3.5 text-[var(--text-muted)]" />
-            <span className="text-[10px] font-bold text-[var(--text-muted)] truncate">
-              {destinationCount > 0 ? `Ultima: ${module.itineraries[module.itineraries.length - 1].city}` : 'Nessuna meta ancora'}
-            </span>
+          <div className="mt-4 flex items-center justify-between">
+            <div className="flex items-center gap-1.5 max-w-[70%]">
+              <MapPin className="w-3.5 h-3.5 text-[var(--text-muted)] shrink-0" />
+              <span className="text-[10px] font-bold text-[var(--text-muted)] truncate">
+                {destinationCount > 0 ? `Ultima: ${module.itineraries[module.itineraries.length - 1].city}` : 'Nessuna meta ancora'}
+              </span>
+            </div>
+            
+            {/* Green + Button */}
+            <button 
+              onClick={(e) => { e.stopPropagation(); onEdit(module); }}
+              className="w-8 h-8 bg-gradient-to-tr from-emerald-500 to-emerald-400 text-white rounded-full shadow-lg shadow-emerald-500/40 flex items-center justify-center hover:scale-110 active:scale-95 transition-all"
+            >
+              <Plus className="w-5 h-5" />
+            </button>
           </div>
         </div>
       </div>
