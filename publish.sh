@@ -71,7 +71,7 @@ RELEASE_JSON=$(curl -s -X POST \
   -d "{
     \"tag_name\": \"$TAG\",
     \"name\": \"Chelona $TAG\",
-    \"body\": \"🚀 **Chelona v$VERSION**\\n\\n### ✨ Novità e Fix:\\n- **🤖 Fix Installazione**: Aggiornato il numero di build interno per risolvere l'errore 'App non installata' su Android.\\n- **🛠️ UI Fix**: Consolidate le correzioni per la visualizzazione del mappamondo e del tasto '+' nella sezione Viaggi.\",
+    \"body\": \"🚀 **Chelona v$VERSION**\\n\\n### ✨ Novità e Fix:\\n- **🌍 Mappamondo 3D**: Integrazione di un mappamondo interattivo premium nel modulo Viaggi.\\n- **🔍 Ricerca Viaggi**: Aggiunta barra di ricerca e tasto + integrato per una gestione più rapida degli itinerari.\\n- **🏙️ Database Località**: Espansione massiccia del database delle città mondiali.\",
     \"draft\": false,
     \"prerelease\": false
   }")

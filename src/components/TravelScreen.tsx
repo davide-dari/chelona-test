@@ -15,6 +15,7 @@ interface TravelScreenProps {
 export const TravelScreen = ({ module, onClose, onUpdate }: TravelScreenProps) => {
   const [isAdding, setIsAdding] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [itinerarySearch, setItinerarySearch] = useState('');
   const [formData, setFormData] = useState<Partial<Itinerary>>({
     date: new Date().toISOString().split('T')[0]
   });
@@ -27,6 +28,16 @@ export const TravelScreen = ({ module, onClose, onUpdate }: TravelScreenProps) =
       c.country.toLowerCase().includes(query)
     ).slice(0, 5);
   }, [searchQuery]);
+
+  const displayedItineraries = useMemo(() => {
+    if (!itinerarySearch.trim()) return module.itineraries || [];
+    const query = itinerarySearch.toLowerCase();
+    return (module.itineraries || []).filter(it => 
+      it.name.toLowerCase().includes(query) || 
+      it.city.toLowerCase().includes(query) || 
+      it.country.toLowerCase().includes(query)
+    );
+  }, [module.itineraries, itinerarySearch]);
 
   const handleAddItinerary = (e: React.FormEvent) => {
     e.preventDefault();
@@ -93,30 +104,55 @@ export const TravelScreen = ({ module, onClose, onUpdate }: TravelScreenProps) =
       {/* Content */}
       <div className="flex-1 overflow-y-auto custom-scrollbar flex flex-col">
         {/* Globe Section */}
-        <div className="bg-gradient-to-b from-[var(--card-bg)] to-transparent pt-4 overflow-hidden shrink-0">
+        <div className="bg-gradient-to-b from-[var(--card-bg)] to-transparent pt-4 overflow-hidden shrink-0 relative">
           <Globe3D itineraries={module.itineraries || []} />
         </div>
 
+        {/* Search & Add Section */}
+        <div className="px-4 mt-6 mb-8 max-w-2xl mx-auto w-full flex items-center gap-3 relative z-20">
+          <div className="relative flex-1 group">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-muted)] group-focus-within:text-[var(--accent)] transition-colors" />
+            <input 
+              type="text"
+              placeholder="Cerca tra i tuoi viaggi..."
+              className="w-full pl-11 pr-4 py-4 bg-[var(--card-bg)] border border-[var(--border)] rounded-[2rem] outline-none focus:border-[var(--accent)] transition-all font-bold text-[var(--text-main)] shadow-xl shadow-black/5"
+              value={itinerarySearch}
+              onChange={e => setItinerarySearch(e.target.value)}
+            />
+          </div>
+          <button 
+            onClick={() => setIsAdding(true)}
+            className="p-4 bg-gradient-to-tr from-emerald-600 to-emerald-400 text-white rounded-[1.5rem] shadow-xl shadow-emerald-500/20 hover:scale-105 active:scale-95 transition-all"
+            title="Nuovo Itinerario"
+          >
+            <Plus className="w-6 h-6" />
+          </button>
+        </div>
+
         {/* Itineraries List */}
-        <div className="px-4 pb-32 max-w-2xl mx-auto w-full -mt-8 relative z-10">
+        <div className="px-4 pb-32 max-w-2xl mx-auto w-full relative z-10">
           <div className="flex items-center justify-between mb-6">
-            <h3 className="text-sm font-black text-[var(--text-main)] uppercase tracking-[0.2em] flex items-center gap-2">
-              <Navigation className="w-4 h-4 text-[var(--accent)]" />
-              I Tuoi Itinerari
+            <h3 className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-[0.2em] flex items-center gap-2">
+              <Navigation className="w-4 h-4 text-emerald-500" />
+              I Tuoi Itinerari {itinerarySearch && `(${displayedItineraries.length})`}
             </h3>
           </div>
 
           <div className="space-y-4">
-            {(!module.itineraries || module.itineraries.length === 0) ? (
-              <div className="py-12 text-center bg-[var(--card-bg)]/50 rounded-[2rem] border border-dashed border-[var(--border)]">
-                <div className="w-16 h-16 bg-[var(--bg)] rounded-full flex items-center justify-center mx-auto mb-4">
+            {displayedItineraries.length === 0 ? (
+              <div className="py-12 text-center bg-[var(--card-bg)]/50 rounded-[2.5rem] border border-dashed border-[var(--border)]">
+                <div className="w-16 h-16 bg-[var(--bg)] rounded-full flex items-center justify-center mx-auto mb-4 shadow-inner">
                   <MapPin className="w-8 h-8 text-[var(--text-muted)] opacity-30" />
                 </div>
-                <p className="text-[var(--text-muted)] font-bold text-sm">Nessun itinerario aggiunto.</p>
-                <p className="text-[var(--text-muted)] text-[10px] mt-1 uppercase tracking-widest">Inizia cliccando il tasto +</p>
+                <p className="text-[var(--text-muted)] font-bold text-sm">
+                  {itinerarySearch ? 'Nessun risultato trovato.' : 'Nessun itinerario aggiunto.'}
+                </p>
+                <p className="text-[var(--text-muted)] text-[10px] mt-1 uppercase tracking-widest">
+                  {itinerarySearch ? 'Prova a cambiare ricerca' : 'Inizia cliccando il tasto +'}
+                </p>
               </div>
             ) : (
-              module.itineraries.map((it) => (
+              displayedItineraries.map((it) => (
                 <motion.div 
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -160,19 +196,8 @@ export const TravelScreen = ({ module, onClose, onUpdate }: TravelScreenProps) =
           </div>
         </div>
       </div>
-
-      </div>
+    </div>
       
-      {/* FAB */}
-      <div className="fixed bottom-8 right-8 z-[110]">
-        <button 
-          onClick={() => setIsAdding(true)}
-          className="w-16 h-16 bg-gradient-to-tr from-[var(--accent)] to-[var(--accent)]/80 text-white rounded-full shadow-2xl shadow-[var(--accent)]/40 flex items-center justify-center hover:scale-110 active:scale-95 transition-all group"
-        >
-          <Plus className="w-8 h-8 group-hover:rotate-90 transition-transform duration-300" />
-        </button>
-      </div>
-
       {/* Add Itinerary Modal */}
       <AnimatePresence>
         {isAdding && (
