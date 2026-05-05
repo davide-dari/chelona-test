@@ -366,8 +366,8 @@ export const LockScreen = ({ isVisible, onAuthenticated, onStartScan, onOpenTool
                         exit={{ opacity: 0, scale: 1.1 }}
                         className="flex flex-col items-center text-center"
                       >
-                        <div className="w-24 h-24 bg-white/80 backdrop-blur-md rounded-[2.5rem] flex items-center justify-center shadow-2xl shadow-[var(--accent)]/10 mb-8 relative border border-white/20 overflow-hidden">
-                            <img src="/chelona_logo.png" alt="Chelona Logo" className="w-full h-full object-contain p-2" />
+                        <div className="w-24 h-24 flex items-center justify-center mb-8 relative overflow-hidden">
+                            <img src="/chelona_logo.png" alt="Chelona Logo" className="w-full h-full object-contain" />
                         </div>
                         <h1 className="text-3xl font-black text-[var(--text-main)] mb-4 tracking-tight">Chelona</h1>
                         <p className="text-[var(--text-muted)] text-base font-medium px-4 leading-relaxed mb-12">
@@ -437,8 +437,8 @@ export const LockScreen = ({ isVisible, onAuthenticated, onStartScan, onOpenTool
                     )}
                   </div>
                 ) : (
-                  <div className="w-14 h-14 sm:w-16 sm:h-16 bg-white/80 backdrop-blur-md rounded-2xl flex items-center justify-center shadow-lg shadow-amber-500/10 mb-4 border border-white/20 overflow-hidden">
-                    <img src="/chelona_logo.png" alt="Chelona Logo" className="w-full h-full object-contain p-1" />
+                  <div className="w-14 h-14 sm:w-16 sm:h-16 flex items-center justify-center mb-4 overflow-hidden">
+                    <img src="/chelona_logo.png" alt="Chelona Logo" className="w-full h-full object-contain" />
                   </div>
                 )}
                 <h1 className="text-xl sm:text-2xl font-bold text-[var(--text-main)]">

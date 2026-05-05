@@ -1041,6 +1041,11 @@ export default function App() {
       try { recognitionRef.current.stop(); } catch(e) {}
     }
 
+    if (!SpeechRecognitionWeb) {
+      showToast('La ricerca vocale non è supportata su questo browser.', 'error');
+      return;
+    }
+
     const recognition = new SpeechRecognitionWeb();
     recognitionRef.current = recognition;
     recognition.lang = 'it-IT';
@@ -1201,27 +1206,19 @@ export default function App() {
               transition={{ delay: 0.2, duration: 0.8, ease: "backOut" }}
               className="relative"
             >
-              <div className="w-32 h-32 md:w-40 md:h-40 bg-white/80 backdrop-blur-xl rounded-[3rem] flex items-center justify-center shadow-2xl shadow-emerald-500/10 border border-white/20 overflow-hidden">
-                <img src="/chelona_logo.png" alt="Chelona Logo" className="w-full h-full object-contain p-4" />
+              <div className="w-32 h-32 md:w-40 md:h-40 flex items-center justify-center overflow-hidden">
+                <img src="/chelona_logo.png" alt="Chelona Logo" className="w-full h-full object-contain" />
               </div>
-              <motion.div
-                animate={{ 
-                  scale: [1, 1.2, 1],
-                  opacity: [0.3, 0.6, 0.3]
-                }}
-                transition={{ repeat: Infinity, duration: 2 }}
-                className="absolute inset-0 bg-emerald-500/20 blur-3xl rounded-full -z-10"
-              />
             </motion.div>
             
             <motion.div
               initial={{ y: 20, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
-              transition={{ delay: 0.5 }}
+              transition={{ delay: 0.4 }}
               className="mt-8 text-center"
             >
               <h1 className="text-3xl font-black text-[var(--text-main)] tracking-tighter uppercase mb-1">Chelona</h1>
-              <p className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-[0.3em] ml-1">Secure Vault</p>
+              <p className="text-[10px] font-black text-[var(--accent)] uppercase tracking-[0.3em] ml-1">Secure Vault</p>
             </motion.div>
 
             <div className="absolute bottom-12 flex flex-col items-center gap-4">
@@ -1233,12 +1230,11 @@ export default function App() {
                       scale: [1, 1.5, 1],
                       backgroundColor: ['var(--border)', 'var(--accent)', 'var(--border)']
                     }}
-                    transition={{ repeat: Infinity, duration: 1, delay: i * 0.2 }}
+                    transition={{ repeat: Infinity, duration: 1.5, delay: i * 0.2 }}
                     className="w-1.5 h-1.5 rounded-full"
                   />
                 ))}
               </div>
-              <p className="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-widest opacity-50">Inizializzazione Crittografia...</p>
             </div>
           </motion.div>
         )}
