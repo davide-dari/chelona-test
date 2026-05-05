@@ -308,7 +308,7 @@ export default function App() {
     const hasChanges = !historyState || JSON.stringify(historyState) !== JSON.stringify(currentState);
     
     const isAnyOpen = isToolsOpen || activeToolId || isAdding || editingModuleId || isProfileOpen || 
-                      editingWalletModule || moduleToDelete || showGalleryViewer || gallerySelectedImage || editingTravelModule;
+                      editingWalletModule || moduleToDelete || showGalleryViewer || gallerySelectedImage;
 
     if (hasChanges) {
       if (isAnyOpen) {
@@ -321,7 +321,7 @@ export default function App() {
   }, [
     isToolsOpen, activeToolId, isAdding, editingModuleId, isProfileOpen, isArchiveOpen, 
     selectedType, selectedFolderId, isSidebarOpen, editingAutoModule, editingSplitModule, 
-    editingSingleExpenseModule, editingWalletModule, moduleToDelete, showGalleryViewer, gallerySelectedImage, editingTravelModule
+    editingSingleExpenseModule, editingWalletModule, moduleToDelete, showGalleryViewer, gallerySelectedImage
   ]);
 
   useEffect(() => {
@@ -1424,12 +1424,6 @@ export default function App() {
                 onSave={(mod) => { updateModuleDirect(mod); setEditingSplitModule(null); }}
                 onClose={() => setEditingSplitModule(null)}
                 onSaveToSandbox={handleSaveToSandbox}
-              />
-            ) : editingTravelModule ? (
-              <TravelScreen
-                module={editingTravelModule}
-                onClose={() => setEditingTravelModule(null)}
-                onUpdate={(mod) => { updateModuleDirect(mod); setEditingTravelModule(mod as import('./types').TravelModule); }}
               />
             ) : editingWalletModule ? (
               <WalletEditScreen
