@@ -575,7 +575,6 @@ export default function App() {
     }
   };
 
-  // onLayoutChange removed (DnD disabled)
 
   const openEditModal = (module: Module) => {
     if (module.type === 'auto') {
@@ -600,6 +599,11 @@ export default function App() {
     }
     if (module.type === 'generic') {
       setEditingGenericModule(module as import('./types').GenericModule);
+      return;
+    }
+    if (module.type === 'gallery') {
+      setGallerySelectedImage(null);
+      setShowGalleryViewer(true);
       return;
     }
     // Migration for old expense template
@@ -1413,10 +1417,11 @@ export default function App() {
                 onClose={() => setSharingModule(null)} 
               />
             ) : editingAutoModule ? (
-              <AutoEditScreen
+              <AutoManagementScreen
                 module={editingAutoModule}
                 onSave={handleSaveAutoEdit}
                 onCancel={() => setEditingAutoModule(null)}
+                onDelete={deleteModule}
               />
             ) : editingSplitModule ? (
               <SplitScreen
@@ -1426,10 +1431,11 @@ export default function App() {
                 onSaveToSandbox={handleSaveToSandbox}
               />
             ) : editingWalletModule ? (
-              <WalletEditScreen
+              <WalletManagementScreen
                 module={editingWalletModule}
                 onSave={(mod) => { updateModuleDirect(mod); setEditingWalletModule(null); }}
-                onClose={() => setEditingWalletModule(null)}
+                onCancel={() => setEditingWalletModule(null)}
+                onDelete={deleteModule}
               />
             ) : editingSingleExpenseModule || formData.template === 'single-expense' ? (
               <SingleExpenseScreen
@@ -2153,7 +2159,7 @@ export default function App() {
                         ) : module.type === 'wallet' ? (
                           <WalletCard module={module as import('./types').WalletModule} onDelete={requestDelete} onEdit={openEditModal} />
                         ) : module.type === 'gallery' ? (
-                          <GalleryCard module={module as import('./types').GalleryModule} />
+                          <GalleryCard module={module as import('./types').GalleryModule} onEdit={openEditModal} />
                         ) : (
                           <GenericCard module={module as import('./types').GenericModule} onDelete={requestDelete} onEdit={openEditModal} />
                         )}

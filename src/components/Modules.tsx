@@ -285,7 +285,7 @@ export const SplitCard = ({ module, onDelete, onEdit }: { module: SplitModule; o
   );
 };
 
-export const GalleryCard = ({ module }: { module: GalleryModule }) => {
+export const GalleryCard = ({ module, onEdit }: { module: GalleryModule; onEdit?: (m: Module) => void; }) => {
   const images: any[] = [];
   if (module.images && module.images.length > 0) {
     images.push(...module.images);
@@ -296,8 +296,11 @@ export const GalleryCard = ({ module }: { module: GalleryModule }) => {
   const coverImage = images.length > 0 ? images[0].image : '';
 
   return (
-    <ModuleWrapper module={module}>
-      <div className="h-full flex flex-col p-2 -m-2 rounded-2xl transition-all">
+    <ModuleWrapper module={module} onEdit={onEdit}>
+      <div 
+        className="h-full flex flex-col p-2 -m-2 rounded-2xl transition-all cursor-pointer"
+        onClick={() => onEdit?.(module)}
+      >
         <div className="relative aspect-square rounded-2xl overflow-hidden border border-[var(--border)] shadow-inner mb-3 bg-[var(--surface-variant)] flex items-center justify-center">
           {coverImage ? (
             <>
