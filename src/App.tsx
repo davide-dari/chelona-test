@@ -2042,6 +2042,51 @@ export default function App() {
                       );
                     })()}
 
+                    {/* Category Header with Back and Add buttons */}
+                    {selectedType && (
+                      <div className="flex items-center justify-between px-4 lg:px-8 mb-8 mt-2">
+                        <div className="flex items-center gap-4">
+                          <button 
+                            onClick={() => setSelectedType(null)}
+                            className="p-3 bg-[var(--card-bg)] border border-[var(--border)] rounded-2xl text-[var(--text-muted)] hover:text-[var(--text-main)] transition-all shadow-sm"
+                          >
+                            <ChevronLeft className="w-6 h-6" />
+                          </button>
+                          <div>
+                            <h2 className="text-2xl font-black text-[var(--text-main)] uppercase tracking-tight leading-none">
+                              {TEMPLATES[selectedType as ModuleType]?.title || selectedType}
+                            </h2>
+                            <p className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-[0.2em] mt-2">
+                              {filteredModules.length} Elementi Trovati
+                            </p>
+                          </div>
+                        </div>
+                        
+                        {/* Section specific + button */}
+                        <button 
+                          onClick={() => {
+                            if (selectedType === 'travel') {
+                              // If travel, it has its own screen, but we might want to trigger its add flow?
+                              // Actually, the user wants a + button here too if they are in the section.
+                              const travelMod = modules.find(m => m.type === 'travel');
+                              if (travelMod) {
+                                setEditingTravelModule(travelMod as import('./types').TravelModule);
+                                // We might need a way to tell TravelScreen to open the "Add" modal immediately.
+                                // For now, let's just open the screen.
+                              }
+                            } else {
+                              setFormData({ template: selectedType });
+                              setAutoFormStep(0);
+                              setIsAdding(true);
+                            }
+                          }}
+                          className="p-4 bg-gradient-to-tr from-[var(--accent)] to-[var(--accent-on-container)] text-white rounded-[1.5rem] shadow-xl shadow-[var(--accent)]/20 hover:scale-105 active:scale-95 transition-all"
+                        >
+                          <Plus className="w-7 h-7" />
+                        </button>
+                      </div>
+                    )}
+
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6 3xl:grid-cols-8 gap-6 stagger-fade-in px-4 lg:px-8 pb-32 md:pb-8">
 
                     
@@ -2073,6 +2118,24 @@ export default function App() {
             )}
           </div>
           
+          {/* Global FAB (Only on main dashboard) */}
+          {!selectedType && !isAdding && !editingModuleId && !isArchiveOpen && !isToolsOpen && !editingTravelModule && !editingAutoModule && !editingSplitModule && !editingSingleExpenseModule && !editingWalletModule && (
+            <motion.button
+              initial={{ scale: 0, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => {
+                setFormData({});
+                setAutoFormStep(0);
+                setIsAdding(true);
+              }}
+              className="fixed bottom-24 right-6 md:bottom-10 md:right-10 z-[60] w-16 h-16 bg-gradient-to-tr from-blue-600 to-indigo-600 text-white rounded-[1.5rem] shadow-2xl shadow-blue-500/40 flex items-center justify-center border border-white/20"
+            >
+              <Plus className="w-8 h-8" />
+            </motion.button>
+          )}
+
           {/* Mobile Bottom Navigation Bar - Hidden during full-screen edit/modals */}
           {/* Mobile Bottom Navigation (M3 Style) */}
           {!isAdding && !isScanning && !editingModuleId && !isArchiveOpen && (

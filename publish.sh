@@ -71,7 +71,7 @@ RELEASE_JSON=$(curl -s -X POST \
   -d "{
     \"tag_name\": \"$TAG\",
     \"name\": \"Chelona $TAG\",
-    \"body\": \"🚀 **Chelona v$VERSION**\\n\\n### ✨ Novità e Fix:\\n- **🌍 Rebuild Totale Viaggi**: Riscritto da zero il modulo Viaggi per garantire massima stabilità.\\n- **🎨 Layout Ottimizzato**: Mappamondo in alto, barra di ricerca e tasto + subito sotto.\\n- **🛡️ High Priority Fix**: Risolti i problemi di visibilità e caricamento riscontrati nelle versioni precedenti.\",
+    \"body\": \"🚀 **Chelona v$VERSION**\\n\\n### ✨ Novità e Fix:\\n- **➕ Ripristino Tasti Aggiungi**: Ripristinato il tasto + globale nella dashboard e aggiunti tasti + specifici in ogni categoria (Auto, Spese, Documenti, ecc.).\\n- **📐 Layout Ottimizzato**: Nuova intestazione di sezione con pulsante di aggiunta contestuale.\\n- **⚡ Accessibilità**: Accesso più rapido alla creazione di nuovi contenuti da qualsiasi schermata.\",
     \"draft\": false,
     \"prerelease\": false
   }")
