@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from 'react';
-import { Plus, X, MapPin, Calendar, Trash2, Search, Globe, ChevronLeft, Navigation, Flag, Info } from 'lucide-react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { Plus, X, MapPin, Calendar, Trash2, Search, Globe, ChevronLeft, Navigation, Flag } from 'lucide-react';
 import { TravelModule, Itinerary, Module } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
 import { Globe3D } from './Globe3D';
@@ -20,31 +20,33 @@ export const TravelScreen = ({ module, onClose, onUpdate }: TravelScreenProps) =
     date: new Date().toISOString().split('T')[0]
   });
 
+  // Filter cities for the search menu
   const filteredCities = useMemo(() => {
-    if (!searchQuery.trim()) return [];
+    if (!searchQuery.trim() || searchQuery.length < 2) return [];
     const query = searchQuery.toLowerCase();
     return WORLD_CITIES.filter(c => 
       c.name.toLowerCase().includes(query) || 
       c.country.toLowerCase().includes(query)
-    ).slice(0, 5);
+    ).slice(0, 6);
   }, [searchQuery]);
 
+  // Filter displayed itineraries based on search
   const displayedItineraries = useMemo(() => {
-    const itineraries = module.itineraries || [];
-    if (!itinerarySearch.trim()) return itineraries;
-    const query = itinerarySearch.toLowerCase();
-    return itineraries.filter(it => 
-      it.name.toLowerCase().includes(query) || 
-      it.city.toLowerCase().includes(query) || 
-      it.country.toLowerCase().includes(query)
+    const list = module.itineraries || [];
+    if (!itinerarySearch.trim()) return list;
+    const q = itinerarySearch.toLowerCase();
+    return list.filter(it => 
+      it.name.toLowerCase().includes(q) || 
+      it.city.toLowerCase().includes(q) || 
+      it.country.toLowerCase().includes(q)
     );
   }, [module.itineraries, itinerarySearch]);
 
-  const handleAddItinerary = (e: React.FormEvent) => {
+  const handleAdd = (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.name || !formData.city) return;
 
-    const newItinerary: Itinerary = {
+    const newItem: Itinerary = {
       id: generateUUID(),
       name: formData.name,
       placeName: formData.placeName || '',
@@ -56,269 +58,216 @@ export const TravelScreen = ({ module, onClose, onUpdate }: TravelScreenProps) =
       notes: formData.notes
     };
 
-    const updatedModule: TravelModule = {
+    const updated = {
       ...module,
-      itineraries: [...(module.itineraries || []), newItinerary]
+      itineraries: [...(module.itineraries || []), newItem]
     };
 
-    onUpdate(updatedModule);
+    onUpdate(updated);
     setIsAdding(false);
     setFormData({ date: new Date().toISOString().split('T')[0] });
     setSearchQuery('');
   };
 
-  const handleDeleteItinerary = (id: string) => {
-    const updatedModule: TravelModule = {
+  const handleDelete = (id: string) => {
+    const updated = {
       ...module,
       itineraries: (module.itineraries || []).filter(it => it.id !== id)
     };
-    onUpdate(updatedModule);
+    onUpdate(updated);
   };
 
   return (
-    <div className="fixed inset-0 z-[9999] bg-[var(--bg)] flex flex-col overflow-hidden">
-      {/* Header */}
-      <div className="flex items-center justify-between p-4 sm:p-6 border-b border-[var(--border)] bg-[var(--card-bg)] shrink-0 relative z-[101]">
-        <div className="flex items-center gap-4">
+    <div className="fixed inset-0 z-[9999] bg-[var(--bg)] flex flex-col animate-in fade-in duration-300">
+      {/* 1. HEADER (STAY AT TOP) */}
+      <div className="bg-[var(--card-bg)] border-b border-[var(--border)] p-4 flex items-center justify-between z-[101]">
+        <div className="flex items-center gap-3">
           <button 
             onClick={onClose}
-            className="p-2.5 hover:bg-[var(--surface-variant)] rounded-2xl text-[var(--text-muted)] transition-colors"
+            className="p-2 hover:bg-[var(--surface-variant)] rounded-xl text-[var(--text-muted)] active:scale-90 transition-all"
           >
             <ChevronLeft className="w-6 h-6" />
           </button>
           <div>
-            <h2 className="text-xl font-black text-[var(--text-main)] tracking-tight">{module.title || 'Viaggi'}</h2>
-            <div className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              <p className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest">
-                {module.itineraries?.length || 0} Destinazioni
-              </p>
-            </div>
+            <h2 className="text-lg font-black text-[var(--text-main)] leading-none">{module.title || 'I Miei Viaggi'}</h2>
+            <p className="text-[10px] font-black text-emerald-500 uppercase tracking-widest mt-1">
+              {module.itineraries?.length || 0} Tappe Esplorate
+            </p>
           </div>
         </div>
-        <div className="p-3 bg-emerald-500/10 rounded-2xl border border-emerald-500/20">
-          <Globe className="w-6 h-6 text-emerald-500" />
+        <div className="w-10 h-10 bg-emerald-500/10 rounded-xl flex items-center justify-center border border-emerald-500/20">
+          <Globe className="w-5 h-5 text-emerald-500" />
         </div>
       </div>
 
-      {/* Main Content Area */}
-      <div className="flex-1 overflow-y-auto custom-scrollbar flex flex-col relative">
-        {/* Globe Section */}
-        <div className="bg-gradient-to-b from-[var(--card-bg)] to-transparent pt-4 overflow-hidden shrink-0 relative min-h-[300px]">
-          <Globe3D itineraries={module.itineraries || []} />
+      {/* 2. SCROLLABLE CONTENT */}
+      <div className="flex-1 overflow-y-auto custom-scrollbar flex flex-col">
+        
+        {/* GLOBE SECTION (Sopra la barra cerca viaggi) */}
+        <div className="w-full h-[320px] bg-[var(--card-bg)] relative shrink-0">
+          <Globe3D itineraries={module.itineraries || []} className="w-full h-full" />
         </div>
 
-        {/* Search & Add Section */}
-        <div className="px-4 mt-6 mb-8 max-w-2xl mx-auto w-full flex items-center gap-3 relative z-20">
-          <div className="relative flex-1 group">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-muted)] group-focus-within:text-emerald-500 transition-colors" />
-            <input 
-              type="text"
-              placeholder="Cerca tra i tuoi viaggi..."
-              className="w-full pl-11 pr-4 py-4 bg-[var(--card-bg)] border border-[var(--border)] rounded-[2rem] outline-none focus:border-emerald-500 transition-all font-bold text-[var(--text-main)] shadow-xl shadow-black/5"
-              value={itinerarySearch}
-              onChange={e => setItinerarySearch(e.target.value)}
-            />
+        {/* SEARCH & ADD SECTION */}
+        <div className="p-4 pt-6 max-w-2xl mx-auto w-full sticky top-0 bg-[var(--bg)] z-50">
+          <div className="flex items-center gap-3">
+            <div className="relative flex-1">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-muted)]" />
+              <input 
+                type="text"
+                placeholder="Cerca viaggi..."
+                className="w-full pl-11 pr-4 py-4 bg-[var(--card-bg)] border border-[var(--border)] rounded-2xl outline-none focus:border-emerald-500 transition-all font-bold text-[var(--text-main)] shadow-sm"
+                value={itinerarySearch}
+                onChange={e => setItinerarySearch(e.target.value)}
+              />
+            </div>
+            <button 
+              onClick={() => setIsAdding(true)}
+              className="p-4 bg-emerald-500 text-white rounded-2xl shadow-lg shadow-emerald-500/20 hover:scale-105 active:scale-95 transition-all"
+            >
+              <Plus className="w-6 h-6" />
+            </button>
           </div>
-          <button 
-            onClick={() => setIsAdding(true)}
-            className="p-4 bg-gradient-to-tr from-emerald-600 to-emerald-400 text-white rounded-[1.5rem] shadow-xl shadow-emerald-500/20 hover:scale-105 active:scale-95 transition-all shrink-0"
-          >
-            <Plus className="w-6 h-6" />
-          </button>
         </div>
 
-        {/* Itineraries List */}
-        <div className="px-4 pb-32 max-w-2xl mx-auto w-full relative z-10">
-          <div className="flex items-center justify-between mb-6">
-            <h3 className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-[0.2em] flex items-center gap-2">
-              <Navigation className="w-4 h-4 text-emerald-500" />
-              I Tuoi Itinerari {itinerarySearch && `(${displayedItineraries.length})`}
-            </h3>
-          </div>
-
+        {/* ITINERARIES LIST */}
+        <div className="px-4 pb-20 max-w-2xl mx-auto w-full">
           <div className="space-y-4">
             {displayedItineraries.length === 0 ? (
-              <div className="py-12 text-center bg-[var(--card-bg)]/50 rounded-[2.5rem] border border-dashed border-[var(--border)]">
-                <div className="w-16 h-16 bg-[var(--bg)] rounded-full flex items-center justify-center mx-auto mb-4 shadow-inner">
-                  <MapPin className="w-8 h-8 text-[var(--text-muted)] opacity-30" />
-                </div>
-                <p className="text-[var(--text-muted)] font-bold text-sm">
-                  {itinerarySearch ? 'Nessun risultato trovato.' : 'Nessun itinerario aggiunto.'}
-                </p>
-                <p className="text-[var(--text-muted)] text-[10px] mt-1 uppercase tracking-widest">
-                  {itinerarySearch ? 'Prova a cambiare ricerca' : 'Inizia cliccando il tasto +'}
+              <div className="py-20 text-center opacity-50">
+                <MapPin className="w-12 h-12 mx-auto mb-4 text-[var(--text-muted)]" />
+                <p className="font-bold text-sm text-[var(--text-muted)] uppercase tracking-widest">
+                  {itinerarySearch ? 'Nessun risultato' : 'Inizia la tua avventura'}
                 </p>
               </div>
             ) : (
               displayedItineraries.map((it) => (
-                <motion.div 
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
+                <div 
                   key={it.id}
-                  className="bg-[var(--card-bg)] p-5 rounded-[2rem] border border-[var(--border)] shadow-sm hover:shadow-md transition-all group"
+                  className="bg-[var(--card-bg)] p-5 rounded-3xl border border-[var(--border)] flex items-center justify-between group shadow-sm"
                 >
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex gap-4">
-                      <div className="w-12 h-12 bg-emerald-500/5 rounded-2xl flex items-center justify-center shrink-0 border border-emerald-500/10">
-                        <Flag className="w-6 h-6 text-emerald-500" />
-                      </div>
-                      <div>
-                        <h4 className="font-bold text-[var(--text-main)] leading-tight">{it.name}</h4>
-                        <div className="flex items-center gap-2 mt-1.5">
-                          <div className="flex items-center gap-1 text-[10px] font-bold text-[var(--text-muted)] uppercase bg-[var(--bg)] px-2 py-0.5 rounded-lg border border-[var(--border)]">
-                            <MapPin className="w-3 h-3" />
-                            {it.city}, {it.country}
-                          </div>
-                          <div className="flex items-center gap-1 text-[10px] font-bold text-[var(--text-muted)] uppercase bg-[var(--bg)] px-2 py-0.5 rounded-lg border border-[var(--border)]">
-                            <Calendar className="w-3 h-3" />
-                            {new Date(it.date).toLocaleDateString('it-IT', { day: '2-digit', month: 'short' })}
-                          </div>
-                        </div>
-                        {it.notes && (
-                          <p className="mt-3 text-xs text-[var(--text-muted)] leading-relaxed italic bg-[var(--bg)]/30 p-3 rounded-xl border border-[var(--border)]">
-                            {it.notes}
-                          </p>
-                        )}
-                      </div>
+                  <div className="flex gap-4">
+                    <div className="w-12 h-12 bg-emerald-500/10 rounded-2xl flex items-center justify-center border border-emerald-500/20">
+                      <Flag className="w-6 h-6 text-emerald-500" />
                     </div>
-                    <button 
-                      onClick={() => handleDeleteItinerary(it.id)}
-                      className="p-2 text-[var(--text-muted)] hover:text-red-500 hover:bg-red-50 rounded-xl transition-all opacity-0 group-hover:opacity-100"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    <div>
+                      <h4 className="font-bold text-[var(--text-main)]">{it.name}</h4>
+                      <div className="flex items-center gap-3 mt-1">
+                        <span className="flex items-center gap-1 text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-tighter">
+                          <MapPin className="w-3 h-3" /> {it.city}
+                        </span>
+                        <span className="flex items-center gap-1 text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-tighter">
+                          <Calendar className="w-3 h-3" /> {new Date(it.date).toLocaleDateString('it-IT')}
+                        </span>
+                      </div>
+                      {it.notes && (
+                        <p className="text-[11px] text-[var(--text-muted)] mt-2 italic leading-tight">{it.notes}</p>
+                      )}
+                    </div>
                   </div>
-                </motion.div>
+                  <button 
+                    onClick={() => handleDelete(it.id)}
+                    className="p-2 text-zinc-400 hover:text-red-500 transition-colors"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
               ))
             )}
           </div>
         </div>
       </div>
 
-      {/* Add Itinerary Modal - Moved inside the main stacking context */}
+      {/* CREATE MODAL (FULL SCREEN OVERLAY) */}
       <AnimatePresence>
         {isAdding && (
-          <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-[10000] bg-black/80 backdrop-blur-md flex flex-col p-4 sm:p-10">
             <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setIsAdding(false)}
-              className="absolute inset-0 bg-black/60 backdrop-blur-md"
-            />
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="relative w-full max-w-lg bg-[var(--card-bg)] border border-[var(--border)] rounded-[2.5rem] shadow-2xl overflow-hidden"
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              className="w-full max-w-lg mx-auto bg-[var(--card-bg)] rounded-[2.5rem] overflow-hidden border border-[var(--border)] shadow-2xl flex flex-col max-h-full"
             >
-              <div className="p-6 border-b border-[var(--border)] flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="p-2.5 bg-emerald-500/10 rounded-2xl border border-emerald-500/20">
-                    <Navigation className="w-6 h-6 text-emerald-500" />
-                  </div>
-                  <h3 className="text-xl font-black text-[var(--text-main)]">Nuovo Itinerario</h3>
-                </div>
-                <button 
-                  onClick={() => setIsAdding(false)}
-                  className="p-2 hover:bg-red-500/10 rounded-xl text-[var(--text-muted)] hover:text-red-500 transition-colors"
-                >
-                  <X className="w-5 h-5" />
+              <div className="p-6 border-b border-[var(--border)] flex items-center justify-between bg-zinc-900/10">
+                <h3 className="text-xl font-black text-[var(--text-main)] uppercase tracking-tighter">Nuovo Itinerario</h3>
+                <button onClick={() => setIsAdding(false)} className="p-2 bg-zinc-100 dark:bg-zinc-800 rounded-full active:scale-90 transition-all">
+                  <X className="w-5 h-5 text-[var(--text-muted)]" />
                 </button>
               </div>
 
-              <form onSubmit={handleAddItinerary} className="p-6 space-y-5">
-                <div>
-                  <label className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest mb-1.5 block">Nome Esperienza / Posto</label>
+              <form onSubmit={handleAdd} className="p-6 space-y-5 overflow-y-auto custom-scrollbar">
+                {/* 1. Name */}
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest px-2">Esperienza / Luogo</label>
                   <input 
-                    type="text" 
-                    required
-                    placeholder="es. Cena romantica, Visita Museo..."
-                    className="w-full p-4 bg-[var(--bg)] border border-[var(--border)] rounded-2xl outline-none focus:border-emerald-500 transition-all font-bold text-[var(--text-main)] shadow-inner"
+                    type="text" required placeholder="es. Giro in Barca, Museo..."
+                    className="w-full p-4 bg-[var(--bg)] border border-[var(--border)] rounded-2xl font-bold text-[var(--text-main)] outline-none focus:border-emerald-500"
                     value={formData.name || ''}
                     onChange={e => setFormData({ ...formData, name: e.target.value })}
                   />
                 </div>
 
-                <div className="relative">
-                  <label className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest mb-1.5 block">Città / Località</label>
+                {/* 2. City Search */}
+                <div className="space-y-2 relative">
+                  <label className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest px-2">Città / Località</label>
                   <div className="relative">
                     <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-muted)]" />
                     <input 
-                      type="text" 
-                      required
-                      placeholder="Cerca città nel mondo..."
-                      className="w-full pl-11 pr-4 py-4 bg-[var(--bg)] border border-[var(--border)] rounded-2xl outline-none focus:border-emerald-500 transition-all font-bold text-[var(--text-main)] shadow-inner"
+                      type="text" required placeholder="Cerca città nel mondo..."
+                      className="w-full pl-11 pr-4 py-4 bg-[var(--bg)] border border-[var(--border)] rounded-2xl font-bold text-[var(--text-main)] outline-none focus:border-emerald-500"
                       value={searchQuery}
                       onChange={e => setSearchQuery(e.target.value)}
                     />
                   </div>
                   
-                  <AnimatePresence>
-                    {filteredCities.length > 0 && (
-                      <motion.div 
-                        initial={{ opacity: 0, y: -10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -10 }}
-                        className="absolute top-full left-0 right-0 mt-2 bg-[var(--card-bg)] border border-[var(--border)] rounded-2xl shadow-xl z-[10001] overflow-hidden"
-                      >
-                        {filteredCities.map(city => (
-                          <button
-                            key={`${city.name}-${city.country}`}
-                            type="button"
-                            onClick={() => {
-                              setFormData({ 
-                                ...formData, 
-                                city: city.name, 
-                                country: city.country,
-                                lat: city.lat,
-                                lng: city.lng
-                              });
-                              setSearchQuery(`${city.name}, ${city.country}`);
-                            }}
-                            className="w-full p-4 text-left hover:bg-[var(--bg)] flex items-center justify-between group transition-colors"
-                          >
-                            <div>
-                              <p className="font-bold text-[var(--text-main)]">{city.name}</p>
-                              <p className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest">{city.country}</p>
-                            </div>
-                            <MapPin className="w-4 h-4 text-[var(--text-muted)] group-hover:text-emerald-500" />
-                          </button>
-                        ))}
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
+                  {filteredCities.length > 0 && (
+                    <div className="absolute top-full left-0 right-0 mt-1 bg-[var(--card-bg)] border border-[var(--border)] rounded-2xl shadow-2xl z-[10001] overflow-hidden">
+                      {filteredCities.map(city => (
+                        <button
+                          key={`${city.name}-${city.country}`} type="button"
+                          onClick={() => {
+                            setFormData({ ...formData, city: city.name, country: city.country, lat: city.lat, lng: city.lng });
+                            setSearchQuery(`${city.name}, ${city.country}`);
+                          }}
+                          className="w-full p-4 text-left hover:bg-emerald-500/10 border-b border-[var(--border)] last:border-0 flex items-center justify-between group"
+                        >
+                          <div>
+                            <p className="font-bold text-[var(--text-main)]">{city.name}</p>
+                            <p className="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-widest">{city.country}</p>
+                          </div>
+                          <MapPin className="w-4 h-4 text-[var(--text-muted)] group-hover:text-emerald-500" />
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest mb-1.5 block">Data</label>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest px-2">Data</label>
                     <input 
-                      type="date" 
-                      required
-                      className="w-full p-4 bg-[var(--bg)] border border-[var(--border)] rounded-2xl outline-none focus:border-emerald-500 transition-all font-bold text-[var(--text-main)] shadow-inner"
+                      type="date" required
+                      className="w-full p-4 bg-[var(--bg)] border border-[var(--border)] rounded-2xl font-bold text-[var(--text-main)] outline-none"
                       value={formData.date}
                       onChange={e => setFormData({ ...formData, date: e.target.value })}
                     />
                   </div>
-                  <div>
-                    <label className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest mb-1.5 block">Attrazione (Opzionale)</label>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest px-2">Attrazione (Opz)</label>
                     <input 
-                      type="text" 
-                      placeholder="es. Colosseo"
-                      className="w-full p-4 bg-[var(--bg)] border border-[var(--border)] rounded-2xl outline-none focus:border-emerald-500 transition-all font-bold text-[var(--text-main)] shadow-inner"
+                      type="text" placeholder="es. Eiffel Tower"
+                      className="w-full p-4 bg-[var(--bg)] border border-[var(--border)] rounded-2xl font-bold text-[var(--text-main)] outline-none"
                       value={formData.placeName || ''}
                       onChange={e => setFormData({ ...formData, placeName: e.target.value })}
                     />
                   </div>
                 </div>
 
-                <div>
-                  <label className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest mb-1.5 block">Note / Ricordi</label>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest px-2">Note / Ricordi</label>
                   <textarea 
-                    placeholder="Com'è stato il posto?"
-                    className="w-full p-4 bg-[var(--bg)] border border-[var(--border)] rounded-2xl outline-none focus:border-emerald-500 transition-all font-bold text-[var(--text-main)] shadow-inner h-24 resize-none"
+                    placeholder="Com'è stato?"
+                    className="w-full p-4 bg-[var(--bg)] border border-[var(--border)] rounded-2xl font-bold text-[var(--text-main)] outline-none h-24 resize-none"
                     value={formData.notes || ''}
                     onChange={e => setFormData({ ...formData, notes: e.target.value })}
                   />
@@ -326,9 +275,9 @@ export const TravelScreen = ({ module, onClose, onUpdate }: TravelScreenProps) =
 
                 <button 
                   type="submit"
-                  className="w-full py-5 bg-gradient-to-tr from-emerald-600 to-emerald-400 text-white rounded-2xl font-black text-lg shadow-xl shadow-emerald-500/20 hover:scale-[1.02] active:scale-[0.98] transition-all"
+                  className="w-full py-5 bg-gradient-to-tr from-emerald-600 to-emerald-400 text-white rounded-2xl font-black text-lg shadow-xl shadow-emerald-500/20 active:scale-95 transition-all"
                 >
-                  Salva Itinerario
+                  Salva Esperienza
                 </button>
               </form>
             </motion.div>

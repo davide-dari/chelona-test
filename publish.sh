@@ -71,7 +71,7 @@ RELEASE_JSON=$(curl -s -X POST \
   -d "{
     \"tag_name\": \"$TAG\",
     \"name\": \"Chelona $TAG\",
-    \"body\": \"🚀 **Chelona v$VERSION**\\n\\n### ✨ Novità e Fix:\\n- **🛠️ Fix Visibilità**: Corretto il problema di visualizzazione della schermata Viaggi su alcuni dispositivi.\\n- **🛡️ Stabilità Mappamondo**: Aggiunta gestione degli errori e caricamento difensivo per il mappamondo 3D.\\n- **🎨 UI Refinement**: Ottimizzazione del sistema di z-index e dello stacking context.\",
+    \"body\": \"🚀 **Chelona v$VERSION**\\n\\n### ✨ Novità e Fix:\\n- **🌍 Rebuild Totale Viaggi**: Riscritto da zero il modulo Viaggi per garantire massima stabilità.\\n- **🎨 Layout Ottimizzato**: Mappamondo in alto, barra di ricerca e tasto + subito sotto.\\n- **🛡️ High Priority Fix**: Risolti i problemi di visibilità e caricamento riscontrati nelle versioni precedenti.\",
     \"draft\": false,
     \"prerelease\": false
   }")
