@@ -71,7 +71,7 @@ RELEASE_JSON=$(curl -s -X POST \
   -d "{
     \"tag_name\": \"$TAG\",
     \"name\": \"Chelona $TAG\",
-    \"body\": \"🚀 **Chelona v$VERSION**\\n\\n### ✨ Novità e Fix:\\n- **🌍 Mappamondo 3D**: Integrazione di un mappamondo interattivo premium nel modulo Viaggi.\\n- **🔍 Ricerca Viaggi**: Aggiunta barra di ricerca e tasto + integrato per una gestione più rapida degli itinerari.\\n- **🏙️ Database Località**: Espansione massiccia del database delle città mondiali.\",
+    \"body\": \"🚀 **Chelona v$VERSION**\\n\\n### ✨ Novità e Fix:\\n- **🛠️ Fix Visibilità**: Corretto il problema di visualizzazione della schermata Viaggi su alcuni dispositivi.\\n- **🛡️ Stabilità Mappamondo**: Aggiunta gestione degli errori e caricamento difensivo per il mappamondo 3D.\\n- **🎨 UI Refinement**: Ottimizzazione del sistema di z-index e dello stacking context.\",
     \"draft\": false,
     \"prerelease\": false
   }")

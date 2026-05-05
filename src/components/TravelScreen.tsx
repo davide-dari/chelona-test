@@ -30,9 +30,10 @@ export const TravelScreen = ({ module, onClose, onUpdate }: TravelScreenProps) =
   }, [searchQuery]);
 
   const displayedItineraries = useMemo(() => {
-    if (!itinerarySearch.trim()) return module.itineraries || [];
+    const itineraries = module.itineraries || [];
+    if (!itinerarySearch.trim()) return itineraries;
     const query = itinerarySearch.toLowerCase();
-    return (module.itineraries || []).filter(it => 
+    return itineraries.filter(it => 
       it.name.toLowerCase().includes(query) || 
       it.city.toLowerCase().includes(query) || 
       it.country.toLowerCase().includes(query)
@@ -69,16 +70,15 @@ export const TravelScreen = ({ module, onClose, onUpdate }: TravelScreenProps) =
   const handleDeleteItinerary = (id: string) => {
     const updatedModule: TravelModule = {
       ...module,
-      itineraries: module.itineraries.filter(it => it.id !== id)
+      itineraries: (module.itineraries || []).filter(it => it.id !== id)
     };
     onUpdate(updatedModule);
   };
 
   return (
-    <>
-      <div className="fixed inset-0 z-[100] bg-[var(--bg)] flex flex-col pb-[safe-area-inset-bottom]">
+    <div className="fixed inset-0 z-[9999] bg-[var(--bg)] flex flex-col overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between p-4 sm:p-6 border-b border-[var(--border)] bg-[var(--card-bg)]/80 backdrop-blur-xl shrink-0">
+      <div className="flex items-center justify-between p-4 sm:p-6 border-b border-[var(--border)] bg-[var(--card-bg)] shrink-0 relative z-[101]">
         <div className="flex items-center gap-4">
           <button 
             onClick={onClose}
@@ -96,34 +96,33 @@ export const TravelScreen = ({ module, onClose, onUpdate }: TravelScreenProps) =
             </div>
           </div>
         </div>
-        <div className="p-3 bg-[var(--accent-bg)] rounded-2xl border border-[var(--accent)]/20">
-          <Globe className="w-6 h-6 text-[var(--accent)]" />
+        <div className="p-3 bg-emerald-500/10 rounded-2xl border border-emerald-500/20">
+          <Globe className="w-6 h-6 text-emerald-500" />
         </div>
       </div>
 
-      {/* Content */}
-      <div className="flex-1 overflow-y-auto custom-scrollbar flex flex-col">
+      {/* Main Content Area */}
+      <div className="flex-1 overflow-y-auto custom-scrollbar flex flex-col relative">
         {/* Globe Section */}
-        <div className="bg-gradient-to-b from-[var(--card-bg)] to-transparent pt-4 overflow-hidden shrink-0 relative">
+        <div className="bg-gradient-to-b from-[var(--card-bg)] to-transparent pt-4 overflow-hidden shrink-0 relative min-h-[300px]">
           <Globe3D itineraries={module.itineraries || []} />
         </div>
 
         {/* Search & Add Section */}
         <div className="px-4 mt-6 mb-8 max-w-2xl mx-auto w-full flex items-center gap-3 relative z-20">
           <div className="relative flex-1 group">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-muted)] group-focus-within:text-[var(--accent)] transition-colors" />
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-muted)] group-focus-within:text-emerald-500 transition-colors" />
             <input 
               type="text"
               placeholder="Cerca tra i tuoi viaggi..."
-              className="w-full pl-11 pr-4 py-4 bg-[var(--card-bg)] border border-[var(--border)] rounded-[2rem] outline-none focus:border-[var(--accent)] transition-all font-bold text-[var(--text-main)] shadow-xl shadow-black/5"
+              className="w-full pl-11 pr-4 py-4 bg-[var(--card-bg)] border border-[var(--border)] rounded-[2rem] outline-none focus:border-emerald-500 transition-all font-bold text-[var(--text-main)] shadow-xl shadow-black/5"
               value={itinerarySearch}
               onChange={e => setItinerarySearch(e.target.value)}
             />
           </div>
           <button 
             onClick={() => setIsAdding(true)}
-            className="p-4 bg-gradient-to-tr from-emerald-600 to-emerald-400 text-white rounded-[1.5rem] shadow-xl shadow-emerald-500/20 hover:scale-105 active:scale-95 transition-all"
-            title="Nuovo Itinerario"
+            className="p-4 bg-gradient-to-tr from-emerald-600 to-emerald-400 text-white rounded-[1.5rem] shadow-xl shadow-emerald-500/20 hover:scale-105 active:scale-95 transition-all shrink-0"
           >
             <Plus className="w-6 h-6" />
           </button>
@@ -161,8 +160,8 @@ export const TravelScreen = ({ module, onClose, onUpdate }: TravelScreenProps) =
                 >
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex gap-4">
-                      <div className="w-12 h-12 bg-[var(--accent-bg)] rounded-2xl flex items-center justify-center shrink-0 border border-[var(--accent)]/20">
-                        <Flag className="w-6 h-6 text-[var(--accent)]" />
+                      <div className="w-12 h-12 bg-emerald-500/5 rounded-2xl flex items-center justify-center shrink-0 border border-emerald-500/10">
+                        <Flag className="w-6 h-6 text-emerald-500" />
                       </div>
                       <div>
                         <h4 className="font-bold text-[var(--text-main)] leading-tight">{it.name}</h4>
@@ -177,7 +176,7 @@ export const TravelScreen = ({ module, onClose, onUpdate }: TravelScreenProps) =
                           </div>
                         </div>
                         {it.notes && (
-                          <p className="mt-3 text-xs text-[var(--text-muted)] leading-relaxed italic bg-[var(--bg)]/50 p-2.5 rounded-xl border border-[var(--border)]">
+                          <p className="mt-3 text-xs text-[var(--text-muted)] leading-relaxed italic bg-[var(--bg)]/30 p-3 rounded-xl border border-[var(--border)]">
                             {it.notes}
                           </p>
                         )}
@@ -196,12 +195,11 @@ export const TravelScreen = ({ module, onClose, onUpdate }: TravelScreenProps) =
           </div>
         </div>
       </div>
-    </div>
-      
-      {/* Add Itinerary Modal */}
+
+      {/* Add Itinerary Modal - Moved inside the main stacking context */}
       <AnimatePresence>
         {isAdding && (
-          <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4">
             <motion.div 
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -237,7 +235,7 @@ export const TravelScreen = ({ module, onClose, onUpdate }: TravelScreenProps) =
                     type="text" 
                     required
                     placeholder="es. Cena romantica, Visita Museo..."
-                    className="w-full p-4 bg-[var(--bg)] border border-[var(--border)] rounded-2xl outline-none focus:border-[var(--accent)] transition-all font-bold text-[var(--text-main)] shadow-inner"
+                    className="w-full p-4 bg-[var(--bg)] border border-[var(--border)] rounded-2xl outline-none focus:border-emerald-500 transition-all font-bold text-[var(--text-main)] shadow-inner"
                     value={formData.name || ''}
                     onChange={e => setFormData({ ...formData, name: e.target.value })}
                   />
@@ -251,7 +249,7 @@ export const TravelScreen = ({ module, onClose, onUpdate }: TravelScreenProps) =
                       type="text" 
                       required
                       placeholder="Cerca città nel mondo..."
-                      className="w-full pl-11 pr-4 py-4 bg-[var(--bg)] border border-[var(--border)] rounded-2xl outline-none focus:border-[var(--accent)] transition-all font-bold text-[var(--text-main)] shadow-inner"
+                      className="w-full pl-11 pr-4 py-4 bg-[var(--bg)] border border-[var(--border)] rounded-2xl outline-none focus:border-emerald-500 transition-all font-bold text-[var(--text-main)] shadow-inner"
                       value={searchQuery}
                       onChange={e => setSearchQuery(e.target.value)}
                     />
@@ -263,7 +261,7 @@ export const TravelScreen = ({ module, onClose, onUpdate }: TravelScreenProps) =
                         initial={{ opacity: 0, y: -10 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -10 }}
-                        className="absolute top-full left-0 right-0 mt-2 bg-[var(--card-bg)] border border-[var(--border)] rounded-2xl shadow-xl z-50 overflow-hidden"
+                        className="absolute top-full left-0 right-0 mt-2 bg-[var(--card-bg)] border border-[var(--border)] rounded-2xl shadow-xl z-[10001] overflow-hidden"
                       >
                         {filteredCities.map(city => (
                           <button
@@ -285,7 +283,7 @@ export const TravelScreen = ({ module, onClose, onUpdate }: TravelScreenProps) =
                               <p className="font-bold text-[var(--text-main)]">{city.name}</p>
                               <p className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest">{city.country}</p>
                             </div>
-                            <MapPin className="w-4 h-4 text-[var(--text-muted)] group-hover:text-[var(--accent)]" />
+                            <MapPin className="w-4 h-4 text-[var(--text-muted)] group-hover:text-emerald-500" />
                           </button>
                         ))}
                       </motion.div>
@@ -299,7 +297,7 @@ export const TravelScreen = ({ module, onClose, onUpdate }: TravelScreenProps) =
                     <input 
                       type="date" 
                       required
-                      className="w-full p-4 bg-[var(--bg)] border border-[var(--border)] rounded-2xl outline-none focus:border-[var(--accent)] transition-all font-bold text-[var(--text-main)] shadow-inner"
+                      className="w-full p-4 bg-[var(--bg)] border border-[var(--border)] rounded-2xl outline-none focus:border-emerald-500 transition-all font-bold text-[var(--text-main)] shadow-inner"
                       value={formData.date}
                       onChange={e => setFormData({ ...formData, date: e.target.value })}
                     />
@@ -309,7 +307,7 @@ export const TravelScreen = ({ module, onClose, onUpdate }: TravelScreenProps) =
                     <input 
                       type="text" 
                       placeholder="es. Colosseo"
-                      className="w-full p-4 bg-[var(--bg)] border border-[var(--border)] rounded-2xl outline-none focus:border-[var(--accent)] transition-all font-bold text-[var(--text-main)] shadow-inner"
+                      className="w-full p-4 bg-[var(--bg)] border border-[var(--border)] rounded-2xl outline-none focus:border-emerald-500 transition-all font-bold text-[var(--text-main)] shadow-inner"
                       value={formData.placeName || ''}
                       onChange={e => setFormData({ ...formData, placeName: e.target.value })}
                     />
@@ -320,7 +318,7 @@ export const TravelScreen = ({ module, onClose, onUpdate }: TravelScreenProps) =
                   <label className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest mb-1.5 block">Note / Ricordi</label>
                   <textarea 
                     placeholder="Com'è stato il posto?"
-                    className="w-full p-4 bg-[var(--bg)] border border-[var(--border)] rounded-2xl outline-none focus:border-[var(--accent)] transition-all font-bold text-[var(--text-main)] shadow-inner h-24 resize-none"
+                    className="w-full p-4 bg-[var(--bg)] border border-[var(--border)] rounded-2xl outline-none focus:border-emerald-500 transition-all font-bold text-[var(--text-main)] shadow-inner h-24 resize-none"
                     value={formData.notes || ''}
                     onChange={e => setFormData({ ...formData, notes: e.target.value })}
                   />
@@ -328,7 +326,7 @@ export const TravelScreen = ({ module, onClose, onUpdate }: TravelScreenProps) =
 
                 <button 
                   type="submit"
-                  className="w-full py-5 bg-gradient-to-tr from-[var(--accent)] to-[var(--accent)]/80 text-white rounded-2xl font-black text-lg shadow-xl shadow-[var(--accent)]/20 hover:scale-[1.02] active:scale-[0.98] transition-all"
+                  className="w-full py-5 bg-gradient-to-tr from-emerald-600 to-emerald-400 text-white rounded-2xl font-black text-lg shadow-xl shadow-emerald-500/20 hover:scale-[1.02] active:scale-[0.98] transition-all"
                 >
                   Salva Itinerario
                 </button>
@@ -337,6 +335,6 @@ export const TravelScreen = ({ module, onClose, onUpdate }: TravelScreenProps) =
           </div>
         )}
       </AnimatePresence>
-    </>
+    </div>
   );
 };
