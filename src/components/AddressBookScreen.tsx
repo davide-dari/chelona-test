@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Anchor, ArrowLeft, MapPin, Plus, Navigation, Trash2, Map } from 'lucide-react';
+import { Anchor, ArrowLeft, MapPin, Plus, Navigation, Trash2, Map, Edit2, X, MoreVertical } from 'lucide-react';
 import { generateUUID } from '../utils/uuid';
 
 interface Address {
@@ -18,9 +18,13 @@ const STORAGE_KEY = 'chelona_address_book';
 export const AddressBookScreen = ({ onClose }: AddressBookScreenProps) => {
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [isAdding, setIsAdding] = useState(false);
+  const [editingAddr, setEditingAddr] = useState<Address | null>(null);
   const [newTitle, setNewTitle] = useState('');
   const [newQuery, setNewQuery] = useState('');
   
+  const [contextMenuId, setContextMenuId] = useState<string | null>(null);
+  const pressTimer = useRef<any>(null);
+
   useEffect(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
@@ -33,15 +37,22 @@ export const AddressBookScreen = ({ onClose }: AddressBookScreenProps) => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
   };
 
-  const handleAdd = (e: React.FormEvent) => {
+  const handleAddOrEdit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTitle.trim() || !newQuery.trim()) return;
 
-    const updated = [
-      { id: generateUUID(), title: newTitle.trim(), query: newQuery.trim() },
-      ...addresses
-    ];
-    saveAddresses(updated);
+    if (editingAddr) {
+      const updated = addresses.map(a => a.id === editingAddr.id ? { ...a, title: newTitle.trim(), query: newQuery.trim() } : a);
+      saveAddresses(updated);
+      setEditingAddr(null);
+    } else {
+      const updated = [
+        { id: generateUUID(), title: newTitle.trim(), query: newQuery.trim() },
+        ...addresses
+      ];
+      saveAddresses(updated);
+    }
+    
     setIsAdding(false);
     setNewTitle('');
     setNewQuery('');
@@ -50,13 +61,32 @@ export const AddressBookScreen = ({ onClose }: AddressBookScreenProps) => {
   const handleDelete = (id: string) => {
     if (confirm('Vuoi davvero eliminare questo indirizzo?')) {
       saveAddresses(addresses.filter(a => a.id !== id));
+      setContextMenuId(null);
     }
   };
 
   const handleNavigate = (query: string) => {
-    // Apri sul dispositivo
     const mapUrl = `https://maps.google.com/?q=${encodeURIComponent(query)}`;
     window.open(mapUrl, '_blank', 'noopener,noreferrer');
+  };
+
+  const handleStartPress = (id: string) => {
+    pressTimer.current = setTimeout(() => {
+      setContextMenuId(id);
+      if (window.navigator.vibrate) window.navigator.vibrate(50);
+    }, 600);
+  };
+
+  const handleEndPress = () => {
+    clearTimeout(pressTimer.current);
+  };
+
+  const openEdit = (addr: Address) => {
+    setEditingAddr(addr);
+    setNewTitle(addr.title);
+    setNewQuery(addr.query);
+    setIsAdding(true);
+    setContextMenuId(null);
   };
 
   return (
@@ -76,18 +106,18 @@ export const AddressBookScreen = ({ onClose }: AddressBookScreenProps) => {
               <MapPin className="w-5 h-5 text-emerald-500" />
               Rubrica Indirizzi
             </h2>
-            <p className="text-[10px] uppercase font-black tracking-widest text-[var(--text-muted)]">Modalità Pubblica (Non Cifrata)</p>
+            <p className="text-[10px] uppercase font-black tracking-widest text-[var(--text-muted)]">Gestione rapida indirizzi</p>
           </div>
         </div>
         <button
-          onClick={() => setIsAdding(true)}
+          onClick={() => { setEditingAddr(null); setNewTitle(''); setNewQuery(''); setIsAdding(true); }}
           className="p-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-2xl shadow-lg shadow-emerald-500/20 transition-all font-bold"
         >
           <Plus className="w-5 h-5" />
         </button>
       </header>
 
-      <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-6">
+      <div className="flex-1 overflow-y-auto custom-scrollbar p-6">
         {addresses.length === 0 && !isAdding ? (
           <div className="py-20 flex flex-col items-center justify-center text-center">
             <div className="w-24 h-24 bg-[var(--surface-variant)] rounded-full flex items-center justify-center text-[var(--text-muted)] mb-6">
@@ -95,17 +125,11 @@ export const AddressBookScreen = ({ onClose }: AddressBookScreenProps) => {
             </div>
             <h3 className="text-xl font-bold text-[var(--text-main)] mb-2">Nessun Indirizzo</h3>
             <p className="text-[var(--text-muted)] max-w-sm mb-8">
-              Aggiungi qui i tuoi indirizzi principali o di lavoro. Saranno accessibili rapidamente senza dover sbloccare l'applicazione.
+              Tieni premuto su un indirizzo per modificarlo o eliminarlo.
             </p>
-            <button
-               onClick={() => setIsAdding(true)}
-               className="px-8 py-4 bg-[var(--accent)] text-white font-bold rounded-2xl shadow-xl shadow-[var(--accent)]/30"
-            >
-               Aggiungi il primo indirizzo
-            </button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-20">
              <AnimatePresence>
                 {addresses.map(addr => (
                   <motion.div
@@ -113,7 +137,12 @@ export const AddressBookScreen = ({ onClose }: AddressBookScreenProps) => {
                     initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
                     exit={{ opacity: 0, scale: 0.95 }}
-                    className="bg-[var(--card-bg)] border border-[var(--border)] rounded-[2rem] overflow-hidden shadow-sm flex flex-col relative group"
+                    onMouseDown={() => handleStartPress(addr.id)}
+                    onMouseUp={handleEndPress}
+                    onMouseLeave={handleEndPress}
+                    onTouchStart={() => handleStartPress(addr.id)}
+                    onTouchEnd={handleEndPress}
+                    className={`bg-[var(--card-bg)] border ${contextMenuId === addr.id ? 'border-emerald-500 shadow-emerald-500/10' : 'border-[var(--border)]'} rounded-[2rem] overflow-hidden shadow-sm flex flex-col relative group transition-all`}
                   >
                      {/* iFrame Map Preview */}
                      <div className="w-full h-32 bg-[var(--surface-variant)] relative">
@@ -122,24 +151,22 @@ export const AddressBookScreen = ({ onClose }: AddressBookScreenProps) => {
                             height="100%" 
                             frameBorder="0" 
                             scrolling="no" 
-                            marginHeight={0} 
-                            marginWidth={0} 
                             src={`https://maps.google.com/maps?q=${encodeURIComponent(addr.query)}&t=&z=14&ie=UTF8&iwloc=&output=embed`}
                          />
-                         <div className="absolute inset-0 bg-transparent" /> {/* Overlay to prevent iframe scrolling interception */}
+                         <div className="absolute inset-0 bg-transparent" />
                      </div>
                      
                      <div className="p-5 flex-1 flex flex-col">
                         <div className="flex justify-between items-start mb-4">
-                           <div>
-                             <h4 className="font-bold text-lg text-[var(--text-main)] mb-1">{addr.title}</h4>
+                           <div className="min-w-0 pr-8">
+                             <h4 className="font-bold text-lg text-[var(--text-main)] mb-1 truncate">{addr.title}</h4>
                              <p className="text-xs font-semibold text-[var(--text-muted)] line-clamp-2 leading-relaxed">{addr.query}</p>
                            </div>
                            <button 
-                             onClick={() => handleDelete(addr.id)}
-                             className="p-2 text-red-400 hover:text-red-500 hover:bg-red-500/10 rounded-xl transition-all opacity-0 group-hover:opacity-100"
+                             onClick={(e) => { e.stopPropagation(); setContextMenuId(addr.id === contextMenuId ? null : addr.id); }}
+                             className="absolute top-4 right-4 p-2 bg-white/80 backdrop-blur rounded-xl shadow-sm text-[var(--text-muted)] md:opacity-0 group-hover:opacity-100 transition-all"
                            >
-                             <Trash2 className="w-5 h-5" />
+                             <MoreVertical className="w-4 h-4" />
                            </button>
                         </div>
                         
@@ -153,6 +180,37 @@ export const AddressBookScreen = ({ onClose }: AddressBookScreenProps) => {
                            </button>
                         </div>
                      </div>
+
+                     {/* Context Menu Overlay */}
+                     <AnimatePresence>
+                        {contextMenuId === addr.id && (
+                          <motion.div 
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="absolute inset-0 bg-black/40 backdrop-blur-sm z-10 flex items-center justify-center gap-4 p-6"
+                          >
+                             <button 
+                               onClick={() => openEdit(addr)}
+                               className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center text-blue-600 shadow-xl active:scale-90 transition-all"
+                             >
+                                <Edit2 className="w-6 h-6" />
+                             </button>
+                             <button 
+                               onClick={() => handleDelete(addr.id)}
+                               className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center text-red-600 shadow-xl active:scale-90 transition-all"
+                             >
+                                <Trash2 className="w-6 h-6" />
+                             </button>
+                             <button 
+                               onClick={() => setContextMenuId(null)}
+                               className="absolute top-4 right-4 w-10 h-10 bg-black/20 rounded-full flex items-center justify-center text-white"
+                             >
+                                <X className="w-5 h-5" />
+                             </button>
+                          </motion.div>
+                        )}
+                     </AnimatePresence>
                   </motion.div>
                 ))}
              </AnimatePresence>
@@ -176,8 +234,10 @@ export const AddressBookScreen = ({ onClose }: AddressBookScreenProps) => {
               exit={{ y: '100%' }}
               className="relative bg-[var(--card-bg)] border-t border-[var(--border)] rounded-t-[2.5rem] p-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))] shadow-2xl"
             >
-               <h3 className="text-xl font-bold text-[var(--text-main)] mb-6">Nuovo Indirizzo</h3>
-               <form onSubmit={handleAdd} className="space-y-4">
+               <h3 className="text-xl font-bold text-[var(--text-main)] mb-6">
+                 {editingAddr ? 'Modifica Indirizzo' : 'Nuovo Indirizzo'}
+               </h3>
+               <form onSubmit={handleAddOrEdit} className="space-y-4">
                   <div>
                     <label className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] block mb-1.5">Titolo</label>
                     <input
@@ -211,9 +271,9 @@ export const AddressBookScreen = ({ onClose }: AddressBookScreenProps) => {
                     <button
                       type="submit"
                       disabled={!newTitle.trim() || !newQuery.trim()}
-                      className="flex-1 py-4 bg-[var(--accent)] disabled:opacity-50 text-white rounded-2xl font-bold shadow-lg shadow-[var(--accent)]/30"
+                      className="flex-1 py-4 bg-emerald-500 disabled:opacity-50 text-white rounded-2xl font-bold shadow-lg shadow-emerald-500/20"
                     >
-                      Salva Indirizzo
+                      {editingAddr ? 'Aggiorna' : 'Salva Indirizzo'}
                     </button>
                   </div>
                </form>
