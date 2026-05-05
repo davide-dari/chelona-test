@@ -1,21 +1,17 @@
 import React, { useState } from 'react';
-import { CreditCard, ShieldCheck, Wallet, Fingerprint, Plus, Trash2, Calendar, DollarSign, Pencil, StickyNote, Copy, Check, GripVertical, Car, Wrench, AlertCircle, FileText, QrCode, FileDown, X, Clock, Eye, Lock, ChevronRight, Bell, BellOff, Gauge, Users, Paperclip, Receipt, Image as ImageIcon, Globe, MapPin } from 'lucide-react';
-import { Module, GenericModule, AutoModule, DocumentModule, SplitModule, SingleExpenseModule, WalletModule, GalleryModule, TravelModule } from '../types';
+import { CreditCard, ShieldCheck, Wallet, Fingerprint, Plus, Trash2, Calendar, DollarSign, Pencil, StickyNote, Copy, Check, GripVertical, Car, Wrench, AlertCircle, FileText, QrCode, FileDown, X, Clock, Eye, Lock, ChevronRight, Bell, BellOff, Gauge, Users, Paperclip, Receipt, Image as ImageIcon, MapPin, ChevronLeft } from 'lucide-react';
+import { Module, GenericModule, AutoModule, DocumentModule, SplitModule, SingleExpenseModule, WalletModule, GalleryModule } from '../types';
 import { EXPENSE_CATEGORIES } from '../constants/expenses';
 import { motion, AnimatePresence } from 'motion/react';
 import { CAR_BRANDS } from '../utils/carBrands';
-import JSZip from 'jszip';
-import { encryption } from '../services/encryption';
 import { notificationService } from '../services/notificationService';
 import { DocumentViewer } from './DocumentViewer';
-import { Globe3D } from './Globe3D';
 
 interface ModuleWrapperProps {
   module: Module;
   onDelete?: (id: string) => void;
   onEdit?: (module: Module) => void;
   children: React.ReactNode;
- 
 }
 
 const ModuleWrapper = ({ module, onDelete, onEdit, children }: ModuleWrapperProps) => (
@@ -26,7 +22,7 @@ const ModuleWrapper = ({ module, onDelete, onEdit, children }: ModuleWrapperProp
           <button
             onClick={() => onEdit(module)}
             className="p-2 sm:p-1.5 hover:bg-[var(--bg)] text-[var(--text-muted)] hover:text-[var(--accent)] rounded-lg transition-all"
-            title="Modifica"
+            title="Gestisci"
           >
             <Pencil className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
           </button>
@@ -48,11 +44,7 @@ const ModuleWrapper = ({ module, onDelete, onEdit, children }: ModuleWrapperProp
   </div>
 );
 
-
-
-export const DocumentCard = ({ module, onDelete, onEdit, onShare }: { module: DocumentModule; onDelete: (id: string) => void; onEdit: (m: Module) => void; onShare: (m: Module) => void; dragHandleProps?: any }) => {
-  const [showFullDoc, setShowFullDoc] = useState(false);
-
+export const DocumentCard = ({ module, onDelete, onEdit, onShare }: { module: DocumentModule; onDelete: (id: string) => void; onEdit: (m: Module) => void; onShare: (m: Module) => void; }) => {
   const getDocTypeLabel = (type: string) => {
     switch (type) {
       case 'identity': return 'Carta d\'Identità';
@@ -63,331 +55,75 @@ export const DocumentCard = ({ module, onDelete, onEdit, onShare }: { module: Do
     }
   };
 
-  const handleDownloadPdf = () => {
-    if (!module.pdfAttachment) return;
-    const link = document.createElement('a');
-    link.href = module.pdfAttachment;
-    link.download = `${module.title || 'documento'}.pdf`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
-  const [viewerData, setViewerData] = useState<{ title: string; data: string; type: 'pdf' | 'image' } | null>(null);
-
-  const handleViewPdf = () => {
-    if (module.pdfAttachment) {
-      setViewerData({
-        title: module.title || 'Documento',
-        data: module.pdfAttachment,
-        type: 'pdf'
-      });
-    }
-  };
-
   return (
-    <>
-      <ModuleWrapper module={module} onDelete={onDelete} onEdit={onEdit}>
-        <div className="h-full flex flex-col">
-          <div 
-            className="flex-1 min-h-[90px] flex flex-col cursor-pointer group/card hover:bg-[var(--bg)] transition-colors p-3 -m-3 rounded-2xl"
-            onClick={() => setShowFullDoc(true)}
-            title="Clicca per i dettagli"
-          >
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-[13px] font-bold text-[var(--text-main)] truncate max-w-[140px]">
-                {getDocTypeLabel(module.documentType)}
-              </span>
-              {module.pdfAttachment && (
-                <div className="p-1 px-1.5 bg-emerald-500/10 text-emerald-500 rounded-md border border-emerald-500/20">
-                  <FileText className="w-3 h-3" />
-                </div>
-              )}
-            </div>
-
-            {module.number && (
-              <div className="text-[11px] font-mono font-bold text-[var(--text-muted)] bg-[var(--bg)] px-2 py-1 rounded-lg border border-[var(--border)] self-start mb-2">
-                {module.number}
-              </div>
-            )}
-
-            <div className="mt-auto pt-2 border-t border-[var(--border)] flex items-center justify-between">
-              {module.expiryDate ? (
-                <div className="flex items-center gap-1.5 text-[9px] font-extrabold uppercase text-[var(--danger)]">
-                  <Clock className="w-3 h-3" />
-                  <span>Scad: {module.expiryDate}</span>
-                </div>
-              ) : (
-                <div className="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-tight">Vedi dettagli</div>
-              )}
-              <div className="text-[var(--text-muted)] group-hover/card:text-[var(--accent)] transition-colors">
-                <ChevronRight className="w-3.5 h-3.5" />
-              </div>
-            </div>
+    <ModuleWrapper module={module} onDelete={onDelete} onEdit={onEdit}>
+      <div 
+        className="h-full flex flex-col cursor-pointer group/card hover:bg-[var(--bg)] transition-colors p-4 -m-4 rounded-2xl active:scale-[0.98]"
+        onClick={() => onEdit(module)}
+      >
+        <div className="flex items-start justify-between mb-3">
+          <div className="w-12 h-12 bg-indigo-500/10 rounded-2xl flex items-center justify-center text-indigo-500 border border-indigo-500/20">
+            <FileText className="w-6 h-6" />
           </div>
-
-          <div className="mt-3 pt-3 border-t border-[var(--border)] shrink-0">
-            <button
-              onClick={() => onShare(module)}
-              className="w-full flex items-center justify-center gap-2 py-2.5 bg-[var(--info-bg)] hover:bg-[var(--info)]/20 text-[var(--info)] border border-[var(--info)]/30 rounded-xl text-[10px] font-bold transition-all shadow-sm"
-            >
-              <QrCode className="w-3.5 h-3.5" />
-              Condividi
-            </button>
+          <div className="text-right">
+             <h4 className="font-bold text-[14px] text-[var(--text-main)] truncate max-w-[120px]">
+               {module.title || getDocTypeLabel(module.documentType)}
+             </h4>
+             <p className="text-[9px] font-black text-[var(--text-muted)] uppercase tracking-widest mt-1">
+               {getDocTypeLabel(module.documentType)}
+             </p>
           </div>
         </div>
-      </ModuleWrapper>
 
-      <AnimatePresence>
-        {showFullDoc && (
-          <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 sm:p-6">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setShowFullDoc(false)}
-              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-            />
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="relative bg-[var(--card-bg)] border border-[var(--border)] rounded-[2.5rem] shadow-2xl p-6 lg:p-8 w-full max-w-lg flex flex-col h-auto max-h-[90vh]"
-            >
-              <div className="flex items-center justify-between mb-6 shrink-0">
-                <div className="flex items-center gap-3">
-                  <div className="p-2.5 bg-emerald-500/10 rounded-2xl border border-emerald-500/20">
-                    <FileText className="w-6 h-6 text-emerald-500" />
-                  </div>
-                  <div>
-                    <h3 className="text-xl font-bold text-[var(--text-main)] leading-tight">{module.title || getDocTypeLabel(module.documentType)}</h3>
-                    {module.number && <p className="text-xs font-mono font-bold text-[var(--text-muted)] tracking-wider mt-0.5">{module.number}</p>}
-                  </div>
-                </div>
-                <button onClick={() => setShowFullDoc(false)} className="p-2 bg-[var(--bg)] hover:bg-red-500/10 border border-[var(--border)] rounded-xl text-[var(--text-muted)] hover:text-red-500 transition-colors">
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-              
-              <div className="overflow-y-auto custom-scrollbar space-y-4">
-                <div className="grid grid-cols-2 gap-3">
-                  {module.issueDate && (
-                    <div className="bg-[var(--bg)] p-4 rounded-2xl border border-[var(--border)] shadow-sm">
-                      <span className="text-[var(--text-muted)] block mb-1 uppercase tracking-widest text-[9px] font-bold">Rilascio</span>
-                      <span className="font-bold text-[var(--text-main)]">{module.issueDate}</span>
-                    </div>
-                  )}
-                  {module.expiryDate && (
-                    <div className="bg-[var(--bg)] p-4 rounded-2xl border border-[var(--border)] shadow-sm">
-                      <span className="text-[var(--text-muted)] block mb-1 uppercase tracking-widest text-[9px] font-bold">Scadenza</span>
-                      <span className="font-bold text-[var(--text-main)]">{module.expiryDate}</span>
-                    </div>
-                  )}
-                  {module.issuedBy && (
-                    <div className="bg-[var(--bg)] p-4 rounded-2xl border border-[var(--border)] col-span-2 shadow-sm">
-                      <span className="text-[var(--text-muted)] block mb-1 uppercase tracking-widest text-[9px] font-bold">Ente Rilascio</span>
-                      <span className="font-bold text-[var(--text-main)]">{module.issuedBy}</span>
-                    </div>
-                  )}
-                </div>
-
-                {module.pdfAttachment && (
-                  <div className="flex items-center gap-2 pt-2">
-                    <button
-                      onClick={handleViewPdf}
-                      className="flex-1 flex items-center justify-center gap-2 py-3.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 border border-emerald-500/30 rounded-2xl text-xs font-bold transition-all"
-                    >
-                      <Eye className="w-4 h-4" />
-                      Apri PDF
-                    </button>
-                    <button
-                      onClick={handleDownloadPdf}
-                      className="p-3.5 bg-[var(--bg)] hover:bg-[var(--border)] text-[var(--text-main)] rounded-2xl transition-colors border border-[var(--border)]"
-                      title="Scarica PDF"
-                    >
-                      <FileDown className="w-4 h-4" />
-                    </button>
-                  </div>
-                )}
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-      <DocumentViewer
-        isOpen={!!viewerData}
-        onClose={() => setViewerData(null)}
-        title={viewerData?.title || ''}
-        data={viewerData?.data || ''}
-        type={viewerData?.type}
-      />
-    </>
+        <div className="mt-auto pt-4 border-t border-[var(--border)] flex items-center justify-between">
+          <span className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest">Apri per gestire</span>
+          <ChevronRight className="w-4 h-4 text-[var(--text-muted)] group-hover:translate-x-1 transition-transform" />
+        </div>
+      </div>
+    </ModuleWrapper>
   );
 };
 
-export const GenericCard = ({ module, onDelete, onEdit, onShare }: { module: GenericModule; onDelete: (id: string) => void; onEdit: (m: Module) => void; onShare: (m: Module) => void; dragHandleProps?: any }) => {
-  const [copied, setCopied] = React.useState(false);
-  const [showFullNote, setShowFullNote] = useState(false);
-  const [viewerData, setViewerData] = useState<{ title: string; data: string; type: 'pdf' | 'image' } | null>(null);
-
-  const handleCopy = (e?: React.MouseEvent) => {
-    if (e) e.stopPropagation();
-    navigator.clipboard.writeText(module.content);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
+export const GenericCard = ({ module, onDelete, onEdit }: { module: GenericModule; onDelete: (id: string) => void; onEdit: (m: Module) => void; }) => {
   return (
-    <>
-      <ModuleWrapper module={module} onDelete={onDelete} onEdit={onEdit}>
-        <div 
-          className="flex flex-col gap-3 cursor-pointer group/card hover:bg-[var(--surface-variant)] transition-all p-4 -m-4 rounded-[2rem] active:scale-[0.98] h-full"
-          onClick={() => setShowFullNote(true)}
-        >
-          {/* Header with icon, title and actions */}
-          <div className="flex items-start justify-between">
-            <div className="flex items-center gap-3 min-w-0">
-              <div className="w-12 h-12 bg-gradient-to-br from-amber-500/15 to-orange-500/15 rounded-2xl border border-amber-500/20 flex items-center justify-center shrink-0 group-hover/card:scale-105 transition-transform">
-                <StickyNote className="w-5 h-5 text-amber-500" />
-              </div>
-              <div className="min-w-0">
-                <h4 className="font-bold text-[15px] text-[var(--text-main)] leading-snug truncate">
-                  {module.title || 'Nota'}
-                </h4>
-                <div className="flex items-center gap-2 mt-0.5">
-                  <div className="flex items-center gap-1 bg-amber-500/8 px-2 py-0.5 rounded-md border border-amber-500/15">
-                    <StickyNote className="w-2.5 h-2.5 text-amber-500" />
-                    <span className="text-[9px] font-black text-amber-600 uppercase">Appunto</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <button
-              onClick={(e) => { e.stopPropagation(); onShare(module); }}
-              className="p-2.5 hover:bg-[var(--bg)] text-[var(--text-muted)] hover:text-[var(--info)] rounded-xl transition-all"
-            >
-              <QrCode className="w-4 h-4" />
-            </button>
-          </div>
-
-          {/* Content preview */}
-          <div className="flex-1 min-h-[50px] flex flex-col justify-center bg-[var(--bg)] p-4 rounded-2xl border border-[var(--border)] relative overflow-hidden">
-            <p className="text-[13px] text-[var(--text-main)] font-medium line-clamp-3 leading-relaxed">
-              {module.content || <span className="text-[var(--text-muted)] italic font-normal text-xs">Nessun contenuto</span>}
-            </p>
-          </div>
-          
-          {/* Footer */}
-          <div className="pt-2 border-t border-[var(--border)] flex items-center justify-between">
-            {module.date ? (
-              <div className="flex items-center gap-1.5 bg-[var(--danger-bg)]/20 px-2.5 py-1 rounded-lg border border-[var(--danger)]/15">
-                <Clock className="w-3 h-3 text-[var(--danger)]" />
-                <span className="text-[9px] font-black uppercase text-[var(--danger)]">
-                  {new Date(module.date).toLocaleDateString('it-IT', { day: '2-digit', month: 'short', year: 'numeric' })}
-                </span>
-              </div>
-            ) : (
-              <div className="flex items-center gap-1.5 bg-[var(--bg)] px-2.5 py-1 rounded-lg">
-                <Calendar className="w-3 h-3 text-[var(--text-muted)]" />
-                <span className="text-[9px] font-bold text-[var(--text-muted)] uppercase">Senza scadenza</span>
-              </div>
-            )}
-            <div className="flex items-center gap-1 text-[var(--text-muted)] group-hover/card:text-[var(--accent)] transition-colors">
-              <span className="text-[9px] font-bold uppercase tracking-wide opacity-0 group-hover/card:opacity-100 transition-opacity">Apri</span>
-              <ChevronRight className="w-4 h-4" />
-            </div>
-          </div>
+    <ModuleWrapper module={module} onDelete={onDelete} onEdit={onEdit}>
+      <div 
+        className="h-full flex flex-col cursor-pointer group/card hover:bg-[var(--bg)] transition-colors p-4 -m-4 rounded-2xl active:scale-[0.98]"
+        onClick={() => onEdit(module)}
+      >
+        <div className="flex items-start gap-3 mb-3">
+           <div className="w-10 h-10 bg-[var(--accent-bg)] rounded-xl flex items-center justify-center text-[var(--accent)] shrink-0">
+              <StickyNote className="w-5 h-5" />
+           </div>
+           <div className="min-w-0">
+              <h4 className="font-bold text-[14px] text-[var(--text-main)] truncate">
+                {module.title || 'Appunto'}
+              </h4>
+              <p className="text-[10px] font-bold text-[var(--text-muted)] line-clamp-2 mt-1 leading-snug">
+                {module.content}
+              </p>
+           </div>
         </div>
-      </ModuleWrapper>
 
-      <AnimatePresence>
-        {showFullNote && (
-          <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 sm:p-6">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setShowFullNote(false)}
-              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-            />
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="relative bg-[var(--card-bg)] border border-[var(--border)] rounded-[2.5rem] shadow-2xl p-6 lg:p-8 w-full max-w-2xl flex flex-col h-auto max-h-[90vh]"
-            >
-              <div className="flex items-center justify-between mb-5 shrink-0">
-                <h3 className="text-lg font-bold text-[var(--text-main)] flex items-center gap-2.5">
-                  <div className="p-2 bg-[var(--accent-bg)] rounded-xl border border-[var(--accent)]/30">
-                    <StickyNote className="w-5 h-5 text-[var(--accent)]" />
-                  </div>
-                  <span className="truncate max-w-[200px] sm:max-w-xs">{module.title || 'Nota'}</span>
-                </h3>
-                <div className="flex items-center gap-2 shrink-0">
-                  <button
-                    onClick={handleCopy}
-                    className="flex items-center gap-2 px-3 py-2 bg-[var(--bg)] hover:bg-[var(--accent-bg)] border border-[var(--border)] rounded-xl text-xs font-bold text-[var(--text-muted)] hover:text-[var(--accent)] transition-all"
-                  >
-                    {copied ? <><Check className="w-3.5 h-3.5" /> Copiato</> : <><Copy className="w-3.5 h-3.5" /> Copia</>}
-                  </button>
-                  <button onClick={() => setShowFullNote(false)} className="p-2 bg-[var(--bg)] hover:bg-red-500/10 border border-[var(--border)] rounded-xl text-[var(--text-muted)] hover:text-red-500 transition-colors">
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-              
-              <div className="overflow-y-auto custom-scrollbar bg-[var(--bg)] p-5 rounded-2xl border border-[var(--border)] shadow-inner">
-                <p className="text-[15px] text-[var(--text-main)] whitespace-pre-wrap leading-relaxed font-medium">{module.content}</p>
-              </div>
-              
-              {(module.date) && (
-                <div className="mt-5 flex justify-end shrink-0">
-                  <span className="text-xs font-semibold px-3 py-1.5 bg-[var(--danger-bg)] border border-[var(--danger)]/30 text-[var(--danger)] rounded-lg flex items-center gap-1.5">
-                    <Clock className="w-3.5 h-3.5"/> Scadenza: {module.date}
-                  </span>
-                </div>
-              )}
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-      <DocumentViewer
-        isOpen={!!viewerData}
-        onClose={() => setViewerData(null)}
-        title={viewerData?.title || ''}
-        data={viewerData?.data || ''}
-        type={viewerData?.type}
-      />
-    </>
+        <div className="mt-auto pt-4 border-t border-[var(--border)] flex items-center justify-between">
+          <span className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest">Dettagli</span>
+          <ChevronRight className="w-4 h-4 text-[var(--text-muted)]" />
+        </div>
+      </div>
+    </ModuleWrapper>
   );
 };
 
-
-export const WalletCard = ({ module, onDelete, onEdit, onShare, onAddSavings }: { module: WalletModule; onDelete: (id: string) => void; onEdit: (m: Module) => void; onShare: (m: Module) => void; onAddSavings?: (m: WalletModule) => void; }) => {
+export const WalletCard = ({ module, onDelete, onEdit }: { module: WalletModule; onDelete: (id: string) => void; onEdit: (m: Module) => void; }) => {
   const saved = Number(module.savedAmount) || 0;
   const total = Number(module.totalAmount) || 0;
   const progress = total > 0 ? Math.min(100, (saved / total) * 100) : 0;
   const isCompleted = progress >= 100;
 
-  let monthlyAmount = 0;
-  if (!isCompleted && module.dueDate && total > 0) {
-    const remaining = Math.max(0, total - saved);
-    if (remaining > 0) {
-      const today = new Date();
-      const targetDate = new Date(module.dueDate);
-      let months = (targetDate.getFullYear() - today.getFullYear()) * 12 + targetDate.getMonth() - today.getMonth();
-      if (targetDate.getDate() > today.getDate() && months === 0) {
-         months = 1;
-      }
-      months = Math.max(1, months);
-      monthlyAmount = remaining / months;
-    }
-  }
-
   return (
     <ModuleWrapper module={module} onDelete={onDelete} onEdit={onEdit}>
       <div 
-        className={`h-full flex flex-col cursor-pointer hover:bg-[var(--bg)] transition-colors p-4 -m-4 rounded-2xl active:scale-[0.98] ${isCompleted ? 'border border-emerald-500/30 bg-emerald-500/5' : ''}`}
+        className="h-full flex flex-col cursor-pointer group/card hover:bg-[var(--bg)] transition-colors p-4 -m-4 rounded-2xl active:scale-[0.98]"
         onClick={() => onEdit(module)}
       >
         <div className="flex items-center justify-between mb-4">
@@ -396,1122 +132,190 @@ export const WalletCard = ({ module, onDelete, onEdit, onShare, onAddSavings }: 
               <Wallet className="w-5 h-5" />
             </div>
             <div>
-              <h4 className="font-bold text-[15px] text-[var(--text-main)] leading-tight flex items-center gap-2">
-                {module.title || 'Rate'}
-                <span className="text-[8px] font-black bg-purple-500/10 text-purple-600 border border-purple-500/20 px-1.5 py-0.5 rounded-full uppercase tracking-widest">Rata</span>
-              </h4>
-              {module.dueDate && (
-                <p className="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-widest mt-0.5">Scade: {new Date(module.dueDate).toLocaleDateString('it-IT')}</p>
-              )}
+              <h4 className="font-bold text-[14px] text-[var(--text-main)] leading-tight">{module.title || 'Risparmio'}</h4>
+              <p className="text-[9px] font-black text-[var(--text-muted)] uppercase tracking-widest mt-1">Obiettivo: € {total.toLocaleString('it-IT')}</p>
             </div>
           </div>
-          <button
-            onClick={(e) => { e.stopPropagation(); onShare(module); }}
-            className="p-1.5 hover:bg-[var(--info-bg)] text-[var(--info)] rounded-lg transition-colors"
-          >
-            <QrCode className="w-4 h-4" />
-          </button>
         </div>
 
         <div className="space-y-2 mt-auto">
-          <div className="flex justify-between items-end">
-            <span className={`text-[10px] font-black uppercase tracking-widest ${isCompleted ? 'text-emerald-600' : 'text-[var(--text-muted)]'}`}>
-              {isCompleted ? 'Obiettivo Raggiunto' : 'Progressi'}
-            </span>
-            <div className="flex items-center gap-1.5">
-              <div className="w-4 h-4 rounded-full relative bg-[var(--surface-variant)] overflow-hidden flex items-center justify-center">
-                <svg className="w-4 h-4 -rotate-90 transform" viewBox="0 0 36 36">
-                  <path className="text-[var(--border)]" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" strokeWidth="4" />
-                  <path className={isCompleted ? "text-emerald-500" : "text-[var(--accent)]"} strokeDasharray={`${progress}, 100`} d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" strokeWidth="4" />
-                </svg>
-              </div>
-              <span className={`text-xs font-bold ${isCompleted ? 'text-emerald-600' : 'text-[var(--text-main)]'}`}>
-                {progress.toFixed(0)}%
-              </span>
-            </div>
+          <div className="flex justify-between items-center text-[10px] font-bold mb-1">
+             <span className="text-[var(--text-muted)]">Progressi</span>
+             <span className={isCompleted ? 'text-emerald-500' : 'text-[var(--accent)]'}>{progress.toFixed(0)}%</span>
           </div>
-          <div className="h-2 bg-[var(--surface-variant)] rounded-full overflow-hidden shadow-inner">
+          <div className="h-2 bg-[var(--surface-variant)] rounded-full overflow-hidden">
             <motion.div 
               initial={{ width: 0 }}
               animate={{ width: `${progress}%` }}
-              className={`h-full rounded-full ${isCompleted ? 'bg-emerald-500' : 'bg-[var(--accent)]'}`}
+              className={`h-full rounded-full ${isCompleted ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.3)]' : 'bg-[var(--accent)] shadow-[0_0_8px_rgba(var(--accent-rgb),0.3)]'}`}
             />
           </div>
-          <div className="flex justify-between items-center text-[10px] font-bold text-[var(--text-muted)] px-1">
-            <span className="text-[var(--text-main)]">Totale: € {saved.toLocaleString('it-IT')}</span>
-            <span>Target: € {total.toLocaleString('it-IT')}</span>
-          </div>
-          {monthlyAmount > 0 && (
-            <div className="mt-2 flex items-center justify-between bg-purple-500/10 border border-purple-500/20 p-2 rounded-xl">
-              <span className="text-[9px] font-black uppercase tracking-widest text-purple-600">Da accantonare</span>
-              <span className="text-[11px] font-bold text-[var(--text-main)]">€ {monthlyAmount.toFixed(0)} <span className="text-[9px] font-normal text-[var(--text-muted)]">/ mese</span></span>
-            </div>
-          )}
         </div>
       </div>
     </ModuleWrapper>
   );
 };
 
-export const GalleryCard = ({ module, onShare }: { module: GalleryModule; onDelete?: (id: string) => void; onEdit?: (m: Module) => void; onShare?: (m: Module) => void; dragHandleProps?: any }) => {
-  const [showGallery, setShowGallery] = useState(false);
-  const [selectedImage, setSelectedImage] = useState<import('../types').GalleryImage | null>(null);
-
-  // Build images array safely — never mutate module.images directly
-  const images: import('../types').GalleryImage[] = [];
-  if (module.images && module.images.length > 0) {
-    images.push(...module.images);
-  } else if (module.image) {
-    // Legacy fallback: single image format
-    images.push({
-      id: module.id,
-      image: module.image,
-      filterName: module.filterName,
-      createdAt: new Date().toISOString()
-    });
-  }
-
-  const coverImage = images.length > 0 ? images[0].image : '';
-
-  const handleDownloadImage = (img: import('../types').GalleryImage, e?: React.MouseEvent) => {
-    if (e) e.stopPropagation();
-    const link = document.createElement('a');
-    link.href = img.image;
-    link.download = `chelona_${img.filterName || 'foto'}_${img.id.substring(0, 6)}.jpg`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
-  return (
-    <>
-      <ModuleWrapper module={module}>
-        <div
-          className="h-full flex flex-col cursor-pointer group/card hover:bg-[var(--bg)] transition-all p-3 -m-3 rounded-2xl active:scale-[0.98]"
-          onClick={() => setShowGallery(true)}
-        >
-          <div className="relative aspect-square rounded-xl overflow-hidden border border-[var(--border)] shadow-inner mb-3 bg-[var(--surface-variant)] flex items-center justify-center">
-            {coverImage ? (
-              <>
-                <img
-                  src={coverImage}
-                  alt={module.title}
-                  className="w-full h-full object-cover group-hover/card:scale-110 transition-transform duration-500"
-                />
-                <div className="absolute inset-0 bg-black/20 group-hover/card:bg-black/0 transition-all" />
-                <div className="absolute bottom-2 right-2 bg-black/60 backdrop-blur-md px-2 py-0.5 rounded-lg border border-white/20 flex items-center gap-1">
-                  <ImageIcon className="w-3 h-3 text-white" />
-                  <span className="text-[10px] font-black text-white">{images.length}</span>
-                </div>
-              </>
-            ) : (
-              <ImageIcon className="w-8 h-8 text-[var(--text-muted)] opacity-50" />
-            )}
-          </div>
-
-          <div className="mt-auto flex items-center justify-between">
-            <div className="flex items-center gap-2 min-w-0">
-              <div className="w-7 h-7 bg-indigo-500/10 rounded-lg flex items-center justify-center shrink-0 border border-indigo-500/20">
-                <ImageIcon className="w-3.5 h-3.5 text-indigo-500" />
-              </div>
-              <span className="text-[12px] font-bold text-[var(--text-main)] truncate max-w-[100px]">
-                {module.title || 'Galleria'}
-              </span>
-            </div>
-            {onShare && (
-              <button
-                onClick={(e) => { e.stopPropagation(); onShare(module); }}
-                className="p-1.5 hover:bg-indigo-500/10 text-indigo-500 rounded-lg transition-colors"
-              >
-                <QrCode className="w-3.5 h-3.5" />
-              </button>
-            )}
-          </div>
-        </div>
-      </ModuleWrapper>
-
-      {/* Full Gallery Viewer */}
-      <AnimatePresence>
-        {showGallery && (
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 30 }}
-            className="fixed inset-0 z-[150] flex flex-col bg-[var(--bg)]"
-          >
-            {/* Header */}
-            <div className="flex items-center justify-between p-4 border-b border-[var(--border)] shrink-0 bg-[var(--card-bg)] shadow-sm">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-indigo-500/10 rounded-2xl flex items-center justify-center text-indigo-500">
-                  <ImageIcon className="w-5 h-5" />
-                </div>
-                <div>
-                  <h2 className="text-xl font-bold text-[var(--text-main)] leading-tight">{module.title || 'Galleria'}</h2>
-                  <p className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-widest">{images.length} foto</p>
-                </div>
-              </div>
-              <button
-                onClick={() => setShowGallery(false)}
-                className="p-3 bg-[var(--surface-variant)] hover:bg-red-500/10 rounded-xl text-[var(--text-main)] hover:text-red-500 transition-colors"
-              >
-                <X className="w-6 h-6" />
-              </button>
-            </div>
-
-            {/* Grid */}
-            <div className="flex-1 overflow-y-auto p-3 custom-scrollbar">
-              {images.length === 0 ? (
-                <div className="h-full flex flex-col items-center justify-center text-[var(--text-muted)] opacity-50">
-                  <ImageIcon className="w-16 h-16 mb-4" />
-                  <p className="font-bold">Nessuna foto salvata</p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2 auto-rows-max">
-                  {images.map((img) => (
-                    <div
-                      key={img.id}
-                      className="aspect-square rounded-xl overflow-hidden cursor-pointer relative group bg-[var(--surface-variant)]"
-                      onClick={() => setSelectedImage(img)}
-                    >
-                      <img
-                        src={img.image}
-                        alt={img.filterName || 'Foto'}
-                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
-                      />
-                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors" />
-                      {img.filterName && (
-                        <div className="absolute bottom-1 left-1 right-1 text-center opacity-0 group-hover:opacity-100 transition-opacity">
-                          <span className="text-[8px] font-black text-white bg-black/60 px-1.5 py-0.5 rounded-md uppercase tracking-wider">
-                            {img.filterName}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Single Image Viewer */}
-      <AnimatePresence>
-        {selectedImage && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[200] flex flex-col bg-black"
-          >
-            {/* Top bar */}
-            <div className="flex items-center justify-between p-4 shrink-0">
-              <button
-                onClick={() => setSelectedImage(null)}
-                className="p-2 bg-white/10 hover:bg-white/20 rounded-xl text-white transition-colors"
-              >
-                <X className="w-6 h-6" />
-              </button>
-              <div className="flex items-center gap-2">
-                {selectedImage.filterName && (
-                  <span className="text-[10px] font-black text-white/60 bg-white/10 px-3 py-1 rounded-full uppercase tracking-wider">
-                    {selectedImage.filterName}
-                  </span>
-                )}
-                <button
-                  onClick={(e) => handleDownloadImage(selectedImage, e)}
-                  className="p-2 bg-white/10 hover:bg-white/20 rounded-xl text-white transition-colors"
-                  title="Scarica"
-                >
-                  <FileDown className="w-5 h-5" />
-                </button>
-              </div>
-            </div>
-
-            {/* Image */}
-            <div className="flex-1 flex items-center justify-center p-4">
-              <motion.img
-                initial={{ scale: 0.9, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                src={selectedImage.image}
-                alt="Selected"
-                className="max-w-full max-h-full object-contain rounded-2xl shadow-2xl"
-              />
-            </div>
-
-            {/* Bottom bar */}
-            <div className="p-4 text-center shrink-0">
-              <p className="text-[11px] text-white/40 font-medium">
-                {new Date(selectedImage.createdAt).toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
-              </p>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </>
-  );
-};
-
-export const TravelCard = ({ module, onDelete, onEdit, onShare }: { module: TravelModule; onDelete: (id: string) => void; onEdit: (m: Module) => void; onShare: (m: Module) => void; }) => {
-  const destinationCount = module.itineraries?.length || 0;
+export const AutoCard = ({ module, onDelete, onEdit }: { module: AutoModule; onDelete: (id: string) => void; onEdit: (m: Module) => void; }) => {
+  const brandLogo = module.brand ? module.brand.toLowerCase().replace(/ /g, '-') : '';
+  const hasLogo = CAR_BRANDS.includes(brandLogo);
 
   return (
     <ModuleWrapper module={module} onDelete={onDelete} onEdit={onEdit}>
       <div 
-        className="h-full flex flex-col cursor-pointer group/card hover:bg-[var(--bg)] transition-all p-4 -m-4 rounded-2xl active:scale-[0.98]"
+        className="h-full flex flex-col cursor-pointer group/card hover:bg-[var(--bg)] transition-colors p-4 -m-4 rounded-2xl active:scale-[0.98]"
         onClick={() => onEdit(module)}
       >
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-emerald-500/10 rounded-2xl border border-emerald-500/20 flex items-center justify-center text-emerald-600 group-hover/card:scale-110 transition-transform">
-              <Globe className="w-6 h-6" />
-            </div>
-            <div>
-              <h4 className="font-bold text-[15px] text-[var(--text-main)] leading-tight flex items-center gap-2">
-                {module.title || 'I Miei Viaggi'}
-                <span className="text-[8px] font-black bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 px-1.5 py-0.5 rounded-full uppercase tracking-widest">Viaggio</span>
-              </h4>
-              <p className="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-widest mt-0.5">Destinazioni salvate</p>
-            </div>
-          </div>
-          <button
-            onClick={(e) => { e.stopPropagation(); onShare(module); }}
-            className="p-1.5 hover:bg-emerald-500/10 text-emerald-600 rounded-lg transition-colors"
-          >
-            <QrCode className="w-4 h-4" />
-          </button>
-        </div>
-
-        <div className="flex-1 relative mt-2 mb-2 rounded-xl overflow-hidden pointer-events-none group-hover/card:pointer-events-auto transition-all min-h-[100px]">
-          <Globe3D itineraries={module.itineraries || []} className="absolute inset-0 w-full h-full cursor-grab active:cursor-grabbing" />
-        </div>
-
-        <div className="mt-auto">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-[10px] font-black uppercase text-[var(--text-muted)] tracking-widest">Esplorazione</span>
-            <span className="text-xs font-black text-emerald-600">{destinationCount}</span>
-          </div>
-          <div className="h-1.5 bg-[var(--surface-variant)] rounded-full overflow-hidden">
-            <motion.div 
-              initial={{ width: 0 }}
-              animate={{ width: `${Math.min(100, destinationCount * 10)}%` }}
-              className="h-full bg-emerald-500 rounded-full"
-            />
-          </div>
-          <div className="mt-4 flex items-center justify-between">
-            <div className="flex items-center gap-1.5 max-w-[70%]">
-              <MapPin className="w-3.5 h-3.5 text-[var(--text-muted)] shrink-0" />
-              <span className="text-[10px] font-bold text-[var(--text-muted)] truncate">
-                {destinationCount > 0 ? `Ultima: ${module.itineraries[module.itineraries.length - 1].city}` : 'Nessuna meta ancora'}
-              </span>
-            </div>
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex flex-col flex-1">
+            <h4 className="font-bold text-[14px] text-[var(--text-main)] leading-tight">
+              {module.brand} {module.model}
+            </h4>
+            <p className="text-[9px] font-black text-[var(--text-muted)] uppercase tracking-widest mt-1 mb-3">
+              {module.fuelType} {module.registrationYear ? `• ${module.registrationYear}` : ''}
+            </p>
             
-            {/* Green + Button */}
-            <button 
-              onClick={(e) => { e.stopPropagation(); onEdit(module); }}
-              className="w-8 h-8 bg-gradient-to-tr from-emerald-500 to-emerald-400 text-white rounded-full shadow-lg shadow-emerald-500/40 flex items-center justify-center hover:scale-110 active:scale-95 transition-all"
-            >
-              <Plus className="w-5 h-5" />
-            </button>
+            {module.plate && (
+              <div className="inline-flex items-center border border-gray-300 rounded-md bg-white shadow-sm h-[24px] overflow-hidden self-start">
+                <div className="bg-blue-700 h-full w-[14px] flex flex-col items-center justify-end pb-[1px] shrink-0">
+                  <div className="w-1.5 h-1.5 border border-yellow-400 rounded-full mb-[1px] opacity-80" />
+                  <span className="text-[6px] text-white font-bold leading-none">I</span>
+                </div>
+                <span className="px-2.5 text-black font-black font-mono text-[12px] tracking-widest uppercase mt-[0.5px]">
+                  {module.plate}
+                </span>
+                <div className="bg-blue-700 h-full w-[14px] shrink-0" />
+              </div>
+            )}
           </div>
+
+          <div className="w-12 h-12 bg-[var(--bg)] border border-[var(--border)] rounded-2xl flex items-center justify-center shrink-0 shadow-sm relative">
+            {hasLogo ? (
+              <img src={`/logo_auto/${brandLogo}.png`} alt={module.brand} className="w-8 h-8 object-contain" />
+            ) : (
+              <Car className="w-6 h-6 text-[var(--text-muted)]" />
+            )}
+          </div>
+        </div>
+
+        <div className="mt-auto pt-4 border-t border-[var(--border)] flex items-center justify-between">
+          <div className="flex items-center gap-1.5">
+             <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
+             <span className="text-[10px] font-bold text-[var(--text-muted)]">Gestione</span>
+          </div>
+          <ChevronRight className="w-4 h-4 text-[var(--text-muted)] group-hover:translate-x-1 transition-transform" />
         </div>
       </div>
     </ModuleWrapper>
   );
 };
 
-export const AutoCard = ({ module, onDelete, onEdit, onDirectUpdate, onShare }: { module: AutoModule; onDelete: (id: string) => void; onEdit: (m: Module) => void; onDirectUpdate?: (m: Module) => void; onShare: (m: Module) => void; dragHandleProps?: any }) => {
-  const [showFullData, setShowFullData] = useState(false);
-  const [showTireSnooze, setShowTireSnooze] = useState(false);
-  const [tireSnoozeKm, setTireSnoozeKm] = useState('5000');
-  const [copiedPlate, setCopiedPlate] = useState(false);
-  const [notifConfig, setNotifConfig] = useState<{ field: string; label: string; type: 'date' | 'km'; targetValue: string } | null>(null);
-  const [notifOffset, setNotifOffset] = useState(14);
-  const [notifRefresh, setNotifRefresh] = useState(0);
-
-  const [viewerData, setViewerData] = useState<{ title: string; data: string; type: 'pdf' | 'image' } | null>(null);
-
-  const handleViewPdf = (pdfBase64?: string, label?: string) => {
-    if (pdfBase64) {
-      setViewerData({
-        title: `${module.brand} ${module.model} - ${label || 'Documento'}`,
-        data: pdfBase64,
-        type: 'pdf'
-      });
-    }
-  };
-
-  const hasAnyDoc = !!(module.insuranceDoc || module.taxDoc || module.revisionDoc || module.serviceDoc || module.tireDoc || module.battery12vDoc || module.hybridBatteryDoc);
-
-  // Campi notifiche attive
-  const activeNotifFields = React.useMemo(() => {
-    const prefs = notificationService.getAll().filter(p => p.moduleId === module.id && p.enabled);
-    return new Set(prefs.map(p => p.field));
-  }, [module.id, notifRefresh]);
-
-  const openNotifConfig = (e: React.MouseEvent, field: string, label: string, type: 'date' | 'km', targetValue: string) => {
-    e.stopPropagation();
-    const existing = notificationService.get(module.id, field);
-    setNotifOffset(existing?.reminderOffset ?? (type === 'date' ? 14 : 1000));
-    setNotifConfig({ field, label, type, targetValue });
-  };
-  
-  const addYears = (dateStr: string, years: number) => {
-    const d = new Date(dateStr);
-    d.setFullYear(d.getFullYear() + years);
-    return d.toISOString().split('T')[0];
-  };
-
-  const getEndOfMonth = (dateStr: string, years: number) => {
-    const d = new Date(dateStr);
-    d.setFullYear(d.getFullYear() + years);
-    const endOfMonth = new Date(d.getFullYear(), d.getMonth() + 1, 0);
-    const year = endOfMonth.getFullYear();
-    const month = String(endOfMonth.getMonth() + 1).padStart(2, '0');
-    const day = String(endOfMonth.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  };
-
-  const getDeadlines = () => {
-    const deadlines: Array<{ label: string; date: string; field: string }> = [];
-    if (module.lastInsurance) deadlines.push({ label: 'Assicurazione', date: addYears(module.lastInsurance, 1), field: 'lastInsurance' });
-
-    if (module.lastRevision) {
-      deadlines.push({ label: 'Revisione', date: getEndOfMonth(module.lastRevision, 2), field: 'lastRevision' });
-    } else if (module.registrationYear) {
-      deadlines.push({ label: 'Prima Revisione (Entro)', date: `${Number(module.registrationYear) + 4}-12-31`, field: 'registrationYear' });
-    }
-
-    if (module.lastTax) deadlines.push({ label: 'Bollo', date: getEndOfMonth(module.lastTax, 1), field: 'lastTax' });
-    if (module.lastGplCylinder) deadlines.push({ label: 'Bombola GPL', date: addYears(module.lastGplCylinder, 10), field: 'lastGplCylinder' });
-    if (module.lastMethaneCylinder) deadlines.push({ label: 'Bombola Metano', date: addYears(module.lastMethaneCylinder, module.methaneType === 'r110' ? 5 : 4), field: 'lastMethaneCylinder' });
-
-    return deadlines.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-  };
-
-  const deadlines = getDeadlines();
-  
-  const brandLogo = module.brand ? module.brand.toLowerCase().replace(/ /g, '-') : '';
-  const hasLogo = CAR_BRANDS.includes(brandLogo);
-
-  const handleCopyPlate = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (module.plate) {
-      navigator.clipboard.writeText(module.plate);
-      setCopiedPlate(true);
-      setTimeout(() => setCopiedPlate(false), 2000);
-    }
-  };
-
-  // Logica snooze gomme
-  const currentKmNum = module.currentKm ? Number(module.currentKm) : null;
-  const tiresKmNum = module.tiresKm ? Number(module.tiresKm) : null;
-  const tiresSnoozeNum = module.tiresKmSnoozeUntil ? Number(module.tiresKmSnoozeUntil) : null;
-  const tiresSnoozed = tiresSnoozeNum !== null && currentKmNum !== null && currentKmNum < tiresSnoozeNum;
-  const tiresNextCheck = tiresSnoozed ? tiresSnoozeNum! : (tiresKmNum !== null ? tiresKmNum + 15000 : null);
-
-  const handleApplyTireSnooze = () => {
-    const addKm = parseInt(tireSnoozeKm) || 5000;
-    const base = currentKmNum ?? tiresKmNum ?? 0;
-    const snoozeTarget = base + addKm;
-    const updated = { ...module, tiresKmSnoozeUntil: String(snoozeTarget) } as AutoModule;
-    if (onDirectUpdate) onDirectUpdate(updated); else onEdit(updated);
-    setShowTireSnooze(false);
-    setShowFullData(false);
-  };
-
-  return (
-    <>
-      <ModuleWrapper module={module} onDelete={onDelete} onEdit={onEdit}>
-        <div className="flex flex-col gap-3">
-          <div 
-            className="flex flex-col cursor-pointer group/card hover:bg-[var(--bg)] transition-colors p-3 -m-3 rounded-2xl active:scale-[0.98]"
-            onClick={() => setShowFullData(true)}
-            title="Dettagli Auto"
-          >
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex flex-col flex-1">
-                <h4 className="font-bold text-[13px] text-[var(--text-main)] leading-tight max-w-[140px] break-words">
-                  {module.brand} {module.model}
-                </h4>
-                <p className="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-widest mt-0.5 mb-2">
-                  {module.fuelType} {module.registrationYear ? `• ${module.registrationYear}` : ''}
-                </p>
-                
-                {module.plate && (
-                  <div 
-                    onClick={handleCopyPlate}
-                    className="inline-flex items-center border border-gray-300 rounded-md bg-white shadow-sm h-[22px] overflow-hidden self-start cursor-pointer hover:border-blue-400 hover:shadow-md transition-all active:scale-95"
-                    title="Copia Targa"
-                  >
-                    <div className="bg-blue-700 h-full w-[12px] flex flex-col items-center justify-end pb-[1px] shrink-0 pointer-events-none">
-                      <div className="w-1 h-1 border border-yellow-400 rounded-full mb-[0.5px] opacity-80"></div>
-                      <span className="text-[5px] text-white font-bold leading-none">I</span>
-                    </div>
-                    <span className="px-2 text-black font-bold font-mono text-[11px] tracking-widest uppercase mt-[0.5px] pointer-events-none">
-                      {copiedPlate ? 'COPIATA' : module.plate}
-                    </span>
-                    <div className="bg-blue-700 h-full w-[12px] flex flex-col items-center justify-end shrink-0 pointer-events-none"></div>
-                  </div>
-                )}
-              </div>
-
-              <div className="w-11 h-11 bg-[var(--bg)] border border-[var(--border)] rounded-xl flex items-center justify-center shrink-0 overflow-hidden shadow-sm pointer-events-none">
-                {hasLogo ? (
-                  <img 
-                    src={`/logo_auto/${brandLogo}.png`} 
-                    alt={module.brand} 
-                    className="w-7 h-7 object-contain opacity-90 transition-all" 
-                    style={{ filter: 'contrast(1.1) brightness(1.1) saturate(0.8) grayscale(0.1) drop-shadow(0 2px 4px rgba(0,0,0,0.1))' }}
-                  />
-                ) : (
-                  <Car className="w-5 h-5 text-gray-400" />
-                )}
-                {hasAnyDoc && (
-                  <div className="absolute top-1 right-1 w-3 h-3 bg-emerald-500 rounded-full border-2 border-white shadow-sm" title="Documenti allegati" />
-                )}
-              </div>
-            </div>
-
-            <div className="mt-3 pt-2 border-t border-[var(--border)] flex items-center justify-between">
-              <div className="text-[10px] text-[var(--text-muted)] font-medium">
-                Proprietario: <span className="text-[var(--text-main)] font-bold">{module.driverName}</span>
-              </div>
-              <div className="text-[var(--text-muted)] group-hover/card:text-[var(--accent)] transition-colors">
-                <ChevronRight className="w-3.5 h-3.5" />
-              </div>
-            </div>
-          </div>
-
-          <div className="pt-2 border-t border-[var(--border)]">
-            <button
-              onClick={() => onShare(module)}
-              className="w-full flex items-center justify-center gap-2 py-2 bg-[var(--info-bg)] hover:bg-[var(--info)]/20 text-[var(--info)] border border-[var(--info)]/30 rounded-xl text-[10px] font-bold transition-all shadow-sm"
-            >
-              <QrCode className="w-3.5 h-3.5" />
-              Condividi
-            </button>
-          </div>
-        </div>
-      </ModuleWrapper>
-
-      <AnimatePresence>
-        {showFullData && (
-          <div className="fixed inset-0 z-[120] flex items-end sm:items-center justify-center p-4">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setShowFullData(false)}
-              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-            />
-            <motion.div
-              initial={{ opacity: 0, y: 40 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 40 }}
-              className="relative bg-[var(--card-bg)] border border-[var(--border)] rounded-3xl shadow-2xl w-[95vw] max-w-lg flex flex-col max-h-[92vh] overflow-hidden"
-            >
-              {/* Header */}
-              <div className="flex items-center gap-3 px-5 pt-5 pb-4 border-b border-[var(--border)] shrink-0">
-                <div className="w-10 h-10 bg-[var(--bg)] border border-[var(--border)] rounded-2xl flex items-center justify-center shrink-0 overflow-hidden shadow-sm">
-                  {hasLogo ? (
-                    <img src={`/logo_auto/${brandLogo}.png`} alt={module.brand} className="w-7 h-7 object-contain" />
-                  ) : (
-                    <Car className="w-4 h-4 text-gray-400" />
-                  )}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <h3 className="text-base font-bold text-[var(--text-main)] leading-tight">{module.brand} {module.model}</h3>
-                  <p className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest">{module.plate}{module.registrationYear ? ` • ${module.registrationYear}` : ''}</p>
-                </div>
-                <button onClick={() => setShowFullData(false)} className="p-2 bg-[var(--bg)] hover:bg-red-500/10 border border-[var(--border)] rounded-xl text-[var(--text-muted)] hover:text-red-500 transition-colors shrink-0">
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-
-              {/* Scrollable body */}
-              <div className="overflow-y-auto custom-scrollbar px-5 py-4 space-y-4">
-
-                {/* Scadenze — 2-col grid */}
-                {deadlines.length > 0 && (
-                  <div>
-                    <div className="flex items-center gap-2 mb-2">
-                      <Calendar className="w-3.5 h-3.5 text-[var(--accent)]" />
-                      <span className="text-[10px] font-bold text-[var(--accent)] uppercase tracking-wider">Scadenze</span>
-                    </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      {deadlines.map((d, i) => (
-                        <div key={i} className="bg-[var(--bg)] border border-[var(--border)] rounded-2xl px-3 py-2.5">
-                          <div className="flex items-center justify-between mb-1">
-                            <p className="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-wider">{d.label}</p>
-                              <div className="flex items-center gap-1">
-                                    {module[d.field + 'Doc' as keyof AutoModule] && (
-                                      <button onClick={(e) => { e.stopPropagation(); handleViewPdf(module[d.field + 'Doc' as keyof AutoModule] as string, d.label); }} className="p-1 text-emerald-500 hover:bg-emerald-500/10 rounded-lg transition-all" title="Vedi documento">
-                                    <FileText className="w-3 h-3" />
-                                  </button>
-                                )}
-                                <button
-                                  onClick={e => openNotifConfig(e, d.field, d.label, 'date', d.date)}
-                                  className={`p-1 rounded-lg transition-all ${activeNotifFields.has(d.field) ? 'text-[var(--accent)] bg-[var(--accent-bg)]' : 'text-[var(--text-muted)]/40 hover:text-[var(--accent)] hover:bg-[var(--accent-bg)]'}`}
-                                  title={activeNotifFields.has(d.field) ? 'Notifica attiva' : 'Imposta notifica'}
-                                >
-                                  <Bell className="w-3 h-3" />
-                                </button>
-                              </div>
-                          </div>
-                          <p className="text-sm font-bold text-[var(--text-main)]">{new Date(d.date).toLocaleDateString('it-IT')}</p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Manutenzione — 2-col grid */}
-                {(module.currentKm || module.lastServiceKm || module.tiresKm || module.battery12vWarranty || module.hybridBatteryWarranty) && (
-                  <div>
-                    <div className="flex items-center gap-2 mb-2">
-                      <Wrench className="w-3.5 h-3.5 text-[var(--text-muted)]" />
-                      <span className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider">Manutenzione</span>
-                    </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      {module.currentKm && (
-                        <div className="bg-[var(--bg)] border border-[var(--border)] rounded-2xl px-4 py-3">
-                          <p className="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-wider mb-1">Km Attuali</p>
-                          <p className="text-sm font-bold text-[var(--text-main)]">{(Number(module.currentKm) || 0).toLocaleString('it-IT')} km</p>
-                        </div>
-                      )}
-                      {module.lastServiceKm && (
-                        <div className="bg-[var(--bg)] border border-[var(--border)] rounded-2xl px-3 py-2.5">
-                          <div className="flex items-center justify-between mb-1">
-                            <p className="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-wider">Prossimo Tagliando</p>
-                              <div className="flex items-center gap-1">
-                                {module.serviceDoc && (
-                                  <button onClick={(e) => { e.stopPropagation(); handleViewPdf(module.serviceDoc); }} className="p-1 text-emerald-500 hover:bg-emerald-500/10 rounded-lg transition-all" title="Vedi tagliando">
-                                    <FileText className="w-3 h-3" />
-                                  </button>
-                                )}
-                                <button
-                                  onClick={e => openNotifConfig(e, 'lastServiceKm', 'Tagliando', 'km', String(Number(module.lastServiceKm) + 15000))}
-                                  className={`p-1 rounded-lg transition-all ${activeNotifFields.has('lastServiceKm') ? 'text-amber-500 bg-amber-500/10' : 'text-[var(--text-muted)]/40 hover:text-amber-400 hover:bg-amber-400/10'}`}
-                                  title={activeNotifFields.has('lastServiceKm') ? 'Notifica attiva' : 'Imposta notifica'}
-                                >
-                                  <Bell className="w-3 h-3" />
-                                </button>
-                              </div>
-                          </div>
-                          <p className="text-sm font-bold text-[var(--accent)]">~ {(Number(module.lastServiceKm) || 0) + 15000} km</p>
-                        </div>
-                      )}
-                      {module.tiresKm && (
-                        <div className="relative group/tire">
-                          <button
-                            onClick={() => setShowTireSnooze(true)}
-                            className={`bg-[var(--bg)] border rounded-2xl px-4 py-3 text-left w-full transition-all hover:shadow-sm ${
-                              tiresSnoozed
-                                ? 'border-blue-400/40 hover:border-blue-400/70 shadow-sm shadow-blue-400/5'
-                                : 'border-[var(--border)] hover:border-blue-400/40'
-                            }`}
-                            title={tiresSnoozed ? 'Modifica eccezione' : 'Posticipa controllo'}
-                          >
-                            <div className="flex items-center justify-between mb-1">
-                              <p className={`text-[9px] font-bold uppercase tracking-wider ${tiresSnoozed ? 'text-blue-400' : 'text-[var(--text-muted)]'}`}>
-                                Controllo Gomme
-                              </p>
-                              {tiresSnoozed && (
-                                <span className="text-[8px] font-bold bg-blue-400/10 text-blue-400 border border-blue-400/20 px-1.5 py-0.5 rounded-full">
-                                  eccezione
-                                </span>
-                              )}
-                            </div>
-                            {tiresSnoozed ? (
-                              <p className="text-sm font-bold text-blue-400">Ricontrolla a ~ {tiresNextCheck?.toLocaleString('it-IT')} km</p>
-                            ) : (
-                              <p className="text-sm font-bold text-[var(--success)]">~ {tiresNextCheck?.toLocaleString('it-IT')} km</p>
-                            )}
-                            <p className="text-[8px] mt-1.5 font-semibold text-[var(--text-muted)]/60">
-                              {tiresSnoozed ? 'Tocca per modificare eccezione' : 'Tocca per posticipare'}
-                            </p>
-                          </button>
-                          
-                          {/* Campanella Notifica Gomme */}
-                          <div className="absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover/tire:opacity-100 transition-opacity">
-                              <div className="flex items-center gap-1">
-                                {module.tireDoc && (
-                                  <button onClick={(e) => { e.stopPropagation(); handleViewPdf(module.tireDoc); }} className="p-1 text-emerald-500 hover:bg-emerald-500/10 rounded-lg transition-all" title="Vedi controllo gomme">
-                                    <FileText className="w-3 h-3" />
-                                  </button>
-                                )}
-                                <button
-                                    onClick={e => openNotifConfig(e, 'tiresKm', 'Controllo Gomme', 'km', String(tiresNextCheck))}
-                                    className={`p-1.5 rounded-lg transition-all ${activeNotifFields.has('tiresKm') ? 'text-amber-500 bg-amber-500/10' : 'text-[var(--text-muted)] hover:text-amber-400 hover:bg-amber-400/10'}`}
-                                    title={activeNotifFields.has('tiresKm') ? 'Notifica attiva' : 'Imposta notifica'}
-                                >
-                                    <Bell className="w-3 h-3" />
-                                </button>
-                              </div>
-                          </div>
-                        </div>
-                      )}
-                      {(module.battery12vWarranty || module.battery12vExpiryDate) && (
-                        <div className="bg-[var(--bg)] border border-[var(--border)] rounded-2xl px-4 py-3 relative group/bat12">
-                          <div className="flex items-center justify-between mb-1">
-                            <p className="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-wider">Batteria 12v</p>
-                              <div className="flex items-center gap-1">
-                                {module.battery12vDoc && (
-                                  <button onClick={(e) => { e.stopPropagation(); handleViewPdf(module.battery12vDoc); }} className="p-1 text-emerald-500 hover:bg-emerald-500/10 rounded-lg transition-all" title="Vedi batteria 12v">
-                                    <FileText className="w-3 h-3" />
-                                  </button>
-                                )}
-                                <button
-                                  onClick={e => openNotifConfig(e, 'battery12vExpiryDate', 'Batteria 12v', 'date', module.battery12vExpiryDate || '')}
-                                  className={`p-1 rounded-lg transition-all ${activeNotifFields.has('battery12vExpiryDate') ? 'text-amber-500 bg-amber-500/10' : 'text-[var(--text-muted)]/40 hover:text-amber-400 hover:bg-amber-400/10'}`}
-                                  title={activeNotifFields.has('battery12vExpiryDate') ? 'Notifica attiva' : 'Imposta notifica'}
-                                >
-                                  <Bell className="w-3 h-3" />
-                                </button>
-                              </div>
-                          </div>
-                          <p className="text-sm font-bold text-[var(--text-main)] break-words">
-                            {module.battery12vExpiryDate ? new Date(module.battery12vExpiryDate).toLocaleDateString('it-IT') : module.battery12vWarranty}
-                          </p>
-                        </div>
-                      )}
-                      {(module.hybridBatteryWarranty || module.hybridBatteryExpiryDate) && (
-                        <div className="bg-[var(--bg)] border border-amber-500/10 rounded-2xl px-4 py-3 col-span-2 relative group/hybrid">
-                          <div className="flex items-center justify-between mb-3">
-                            <div className="flex items-center gap-2">
-                              <ShieldCheck className="w-4 h-4 text-amber-500" />
-                              <p className="text-[9px] font-bold text-amber-500 uppercase tracking-widest">Batteria Ibrida / EV</p>
-                            </div>
-                            <div className="flex items-center gap-1.5">
-                                <span className="text-[9px] font-bold text-amber-500/40 uppercase">Notifiche km/data</span>
-                                <div className="flex items-center gap-1">
-                                    {module.hybridBatteryDoc && (
-                                      <button onClick={(e) => { e.stopPropagation(); handleViewPdf(module.hybridBatteryDoc); }} className="p-1 text-emerald-600 hover:bg-emerald-500/10 rounded-lg transition-all" title="Vedi batteria ibrida">
-                                        <FileText className="w-3.5 h-3.5" />
-                                      </button>
-                                    )}
-                                    <button
-                                        onClick={e => openNotifConfig(e, 'hybridBatteryWarranty', 'Controllo Ibrido (Km)', 'km', module.hybridBatteryWarranty || '')}
-                                        className={`p-1.5 rounded-lg transition-all ${activeNotifFields.has('hybridBatteryWarranty') ? 'text-amber-500 bg-amber-500/10' : 'text-[var(--text-muted)]/40 hover:text-amber-400 hover:bg-amber-400/10'}`}
-                                        title="Soglia KM"
-                                    >
-                                        <Gauge className="w-3 h-3" />
-                                    </button>
-                                    <button
-                                        onClick={e => openNotifConfig(e, 'hybridBatteryExpiryDate', 'Controllo Ibrido (Data)', 'date', module.hybridBatteryExpiryDate || '')}
-                                        className={`p-1.5 rounded-lg transition-all ${activeNotifFields.has('hybridBatteryExpiryDate') ? 'text-amber-500 bg-amber-500/10' : 'text-[var(--text-muted)]/40 hover:text-amber-400 hover:bg-amber-400/10'}`}
-                                        title="Scadenza Temporale"
-                                    >
-                                        <Calendar className="w-3 h-3" />
-                                    </button>
-                                </div>
-                            </div>
-                          </div>
-                          
-                          <div className="grid grid-cols-2 gap-4">
-                            <div>
-                                <p className="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-wider mb-0.5">Controllo a Km</p>
-                                <p className="text-sm font-bold text-[var(--text-main)]">{module.hybridBatteryWarranty}</p>
-                            </div>
-                            {module.hybridBatteryExpiryDate && (
-                                <div>
-                                    <p className="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-wider mb-0.5">Data Scadenza</p>
-                                    <p className="text-sm font-bold text-[var(--text-main)]">{new Date(module.hybridBatteryExpiryDate).toLocaleDateString('it-IT')}</p>
-                                </div>
-                            )}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                <div className="text-[10px] text-center text-[var(--text-muted)] font-medium pb-1">
-                  Proprietario: <span className="font-bold text-[var(--text-main)]">{module.driverName}</span>
-                </div>
-
-
-              </div>
-            </motion.div>
-
-            {/* Modal posticipa gomme */}
-            <AnimatePresence>
-              {showTireSnooze && (
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: 20 }}
-                  className="absolute inset-0 bg-[var(--card-bg)] rounded-3xl flex flex-col p-6 z-10"
-                >
-                  <div className="flex items-center justify-between mb-5">
-                    <h4 className="text-base font-bold text-[var(--text-main)]">Posticipa Controllo Gomme</h4>
-                    <button onClick={() => setShowTireSnooze(false)} className="p-2 hover:bg-[var(--bg)] rounded-xl text-[var(--text-muted)] transition-colors">
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
-                  <p className="text-sm text-[var(--text-muted)] mb-6">
-                    Hai già controllato le gomme e sono a posto? Imposta tra quanti km ricordartelo di nuovo.
-                    {currentKmNum && <span className="block mt-1 font-bold text-[var(--text-main)]">Km attuali: {currentKmNum.toLocaleString('it-IT')}</span>}
-                  </p>
-                  <label className="text-xs font-bold text-[var(--text-muted)] uppercase mb-2 block">Ricordamelo tra (km)</label>
-                  <div className="grid grid-cols-3 gap-2 mb-4">
-                    {['3000', '5000', '10000', '15000', '20000', '30000'].map(km => (
-                      <button
-                        key={km}
-                        onClick={() => setTireSnoozeKm(km)}
-                        className={`py-2.5 rounded-xl text-sm font-bold border transition-all ${
-                          tireSnoozeKm === km
-                            ? 'bg-blue-400 text-white border-blue-400 shadow-md'
-                            : 'bg-[var(--bg)] text-[var(--text-muted)] border-[var(--border)] hover:border-blue-400/50'
-                        }`}
-                      >
-                        +{Number(km).toLocaleString('it-IT')}
-                      </button>
-                    ))}
-                  </div>
-                  <div className="flex gap-2 mb-4">
-                    <input
-                      type="number"
-                      value={tireSnoozeKm}
-                      onChange={e => setTireSnoozeKm(e.target.value)}
-                      placeholder="Km personalizzati"
-                      className="flex-1 p-3 bg-[var(--bg)] border border-[var(--border)] rounded-xl outline-none focus:border-blue-400 transition-all text-sm font-bold text-[var(--text-main)] placeholder:text-[var(--text-muted)]"
-                    />
-                    <span className="flex items-center text-sm font-bold text-[var(--text-muted)] pr-2">km</span>
-                  </div>
-                  {currentKmNum && tireSnoozeKm && (
-                    <p className="text-xs text-center text-blue-400 font-bold mb-4">
-                      Ti ricorderemo a ~ {(currentKmNum + (parseInt(tireSnoozeKm) || 0)).toLocaleString('it-IT')} km
-                    </p>
-                  )}
-                  <button
-                    onClick={handleApplyTireSnooze}
-                    className="w-full py-3.5 bg-blue-500 hover:bg-blue-600 text-white rounded-2xl font-bold text-sm transition-all shadow-lg shadow-blue-500/20"
-                  >
-                    Imposta Eccezione
-                  </button>
-                  {tiresSnoozed && (
-                    <button
-                      onClick={() => {
-                        const updated = { ...module, tiresKmSnoozeUntil: undefined } as AutoModule;
-                        if (onDirectUpdate) onDirectUpdate(updated); else onEdit(updated);
-                        setShowTireSnooze(false);
-                        setShowFullData(false);
-                      }}
-                      className="w-full mt-2 py-2.5 text-[var(--text-muted)] hover:text-red-400 text-xs font-bold transition-colors"
-                    >
-                      Rimuovi eccezione
-                    </button>
-                  )}
-                </motion.div>
-              )}
-            </AnimatePresence>
-
-            {/* Pannello configurazione notifica */}
-            <AnimatePresence>
-              {notifConfig && (
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: 20 }}
-                  className="absolute inset-0 bg-[var(--card-bg)] rounded-3xl flex flex-col p-6 z-10 overflow-y-auto"
-                >
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-2">
-                      <div className="p-2 bg-[var(--accent-bg)] rounded-xl">
-                        <Bell className="w-4 h-4 text-[var(--accent)]" />
-                      </div>
-                      <h4 className="text-base font-bold text-[var(--text-main)]">Notifica</h4>
-                    </div>
-                    <button onClick={() => setNotifConfig(null)} className="p-2 hover:bg-[var(--bg)] rounded-xl text-[var(--text-muted)] transition-colors">
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
-
-                  <p className="text-sm text-[var(--text-muted)] mb-1">
-                    <span className="font-bold text-[var(--text-main)]">{notifConfig.label}</span>
-                  </p>
-                  <p className="text-xs text-[var(--text-muted)] mb-5">
-                    {notifConfig.type === 'date'
-                      ? `Scadenza: ${new Date(notifConfig.targetValue).toLocaleDateString('it-IT')}`
-                      : `Soglia km: ~ ${Number(notifConfig.targetValue).toLocaleString('it-IT')} km`}
-                  </p>
-
-                  <label className="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-wider mb-2 block">
-                    {notifConfig.type === 'date' ? 'Avvisami X giorni prima' : 'Avvisami quando mancano X km'}
-                  </label>
-
-                  <div className="grid grid-cols-3 gap-2 mb-3">
-                    {(notifConfig.type === 'date' ? [7, 14, 30, 60] : [1000, 2000, 5000]).map(v => (
-                      <button
-                        key={v}
-                        onClick={() => setNotifOffset(v)}
-                        className={`py-2.5 rounded-xl text-sm font-bold border transition-all ${
-                          notifOffset === v
-                            ? 'bg-[var(--accent)] text-white border-[var(--accent)] shadow-md'
-                            : 'bg-[var(--bg)] text-[var(--text-muted)] border-[var(--border)] hover:border-[var(--accent)]/60'
-                        }`}
-                      >
-                        {notifConfig.type === 'date' ? `${v}gg` : `${v >= 1000 ? `${v / 1000}k` : v}km`}
-                      </button>
-                    ))}
-                  </div>
-
-                  <input
-                    type="number"
-                    value={notifOffset}
-                    onChange={e => setNotifOffset(Number(e.target.value))}
-                    min={1}
-                    className="w-full p-3 bg-[var(--bg)] border border-[var(--border)] rounded-xl outline-none focus:border-amber-400 transition-all text-sm font-bold text-[var(--text-main)] text-center mb-3"
-                  />
-
-                  <p className="text-xs text-center text-amber-500 font-bold mb-5">
-                    {notifConfig.type === 'date'
-                      ? (() => {
-                          const d = new Date(notifConfig.targetValue);
-                          d.setDate(d.getDate() - notifOffset);
-                          return `Notifica il ${d.toLocaleDateString('it-IT')}`;
-                        })()
-                      : `Notifica a ~ ${(Number(notifConfig.targetValue) - notifOffset).toLocaleString('it-IT')} km`}
-                  </p>
-
-                  <button
-                    onClick={async () => {
-                      const granted = await notificationService.requestPermission();
-                      if (!granted) { alert('Abilita le notifiche nelle impostazioni del browser.'); return; }
-                      notificationService.upsert({
-                        id: `${module.id}_${notifConfig.field}`,
-                        moduleId: module.id,
-                        field: notifConfig.field,
-                        label: notifConfig.label,
-                        type: notifConfig.type,
-                        targetValue: notifConfig.targetValue,
-                        reminderOffset: notifOffset,
-                        enabled: true,
-                      });
-                      setNotifRefresh(n => n + 1);
-                      setNotifConfig(null);
-                    }}
-                    className="w-full py-3.5 bg-[var(--accent)] hover:bg-[var(--accent-hover)] active:scale-[0.98] text-white rounded-2xl font-bold text-sm transition-all shadow-lg shadow-[var(--accent)]/20 flex items-center justify-center gap-2"
-                  >
-                    <Bell className="w-4 h-4" />
-                    {activeNotifFields.has(notifConfig.field) ? 'Aggiorna notifica' : 'Attiva notifica'}
-                  </button>
-
-                  {activeNotifFields.has(notifConfig.field) && (
-                    <button
-                      onClick={() => {
-                        notificationService.remove(module.id, notifConfig.field);
-                        setNotifRefresh(n => n + 1);
-                        setNotifConfig(null);
-                      }}
-                      className="w-full mt-2 py-2.5 text-[var(--text-muted)] hover:text-red-400 text-xs font-bold transition-colors flex items-center justify-center gap-1.5"
-                    >
-                      <BellOff className="w-3.5 h-3.5" /> Disattiva notifica
-                    </button>
-                  )}
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-        )}
-      </AnimatePresence>
-      <DocumentViewer
-        isOpen={!!viewerData}
-        onClose={() => setViewerData(null)}
-        title={viewerData?.title || ''}
-        data={viewerData?.data || ''}
-        type={viewerData?.type}
-      />
-    </>
-  );
-};
-
-export const SingleExpenseCard = ({ module, onDelete, onEdit, onShare }: { module: SingleExpenseModule; onDelete: (id: string) => void; onEdit: (m: Module) => void; onShare: (m: Module) => void; dragHandleProps?: any }) => {
-  const [viewingAttachment, setViewingAttachment] = useState<string | null>(null);
-  
+export const SingleExpenseCard = ({ module, onDelete, onEdit }: { module: SingleExpenseModule; onDelete: (id: string) => void; onEdit: (m: Module) => void; }) => {
   const getCategoryTheme = (cat: string) => {
     switch (cat) {
-      case 'food':          return { icon: '🛒', color: 'text-orange-500', bg: 'bg-orange-500/10', gradient: 'from-orange-500 to-amber-400', border: 'border-orange-500/20' };
-      case 'transport':     return { icon: '🚗', color: 'text-blue-500', bg: 'bg-blue-500/10', gradient: 'from-blue-500 to-cyan-400', border: 'border-blue-500/20' };
-      case 'housing':       return { icon: '🏠', color: 'text-emerald-500', bg: 'bg-emerald-500/10', gradient: 'from-emerald-500 to-teal-400', border: 'border-emerald-500/20' };
-      case 'health':        return { icon: '🏥', color: 'text-red-500', bg: 'bg-red-500/10', gradient: 'from-red-500 to-rose-400', border: 'border-red-500/20' };
-      case 'entertainment': return { icon: '🎬', color: 'text-purple-500', bg: 'bg-purple-500/10', gradient: 'from-purple-500 to-violet-400', border: 'border-purple-500/20' };
-      case 'shopping':      return { icon: '🛍️', color: 'text-pink-500', bg: 'bg-pink-500/10', gradient: 'from-pink-500 to-fuchsia-400', border: 'border-pink-500/20' };
-      default:               return { icon: '✨', color: 'text-gray-500', bg: 'bg-gray-500/10', gradient: 'from-amber-500 to-orange-400', border: 'border-gray-500/20' };
+      case 'food':          return { icon: '🛒', color: 'text-orange-500', bg: 'bg-orange-500/10' };
+      case 'transport':     return { icon: '🚗', color: 'text-blue-500', bg: 'bg-blue-500/10' };
+      case 'housing':       return { icon: '🏠', color: 'text-emerald-500', bg: 'bg-emerald-500/10' };
+      case 'health':        return { icon: '🏥', color: 'text-red-500', bg: 'bg-red-500/10' };
+      case 'entertainment': return { icon: '🎬', color: 'text-purple-500', bg: 'bg-purple-500/10' };
+      case 'shopping':      return { icon: '🛍️', color: 'text-pink-500', bg: 'bg-pink-500/10' };
+      default:               return { icon: '✨', color: 'text-gray-500', bg: 'bg-gray-500/10' };
     }
   };
 
   const catTheme = getCategoryTheme(module.category);
 
   return (
-    <>
-      <ModuleWrapper module={module} onDelete={onDelete} onEdit={onEdit}>
-        <div 
-          className="flex flex-col cursor-pointer group/card hover:bg-[var(--surface-variant)] transition-all p-4 -m-4 rounded-[2rem] active:scale-[0.98] h-full relative overflow-hidden"
-          onClick={() => onEdit(module)}
-        >
-          {/* Header with category icon and description */}
-          <div className="flex items-start justify-between mb-3 shrink-0">
-            <div className="flex items-center gap-3 min-w-0">
-              <div className={`w-12 h-12 ${catTheme.bg} rounded-2xl flex items-center justify-center ${catTheme.border} border shrink-0 shadow-sm group-hover/card:scale-105 transition-transform`}>
-                <span className="text-[22px]">{catTheme.icon}</span>
-              </div>
-              <div className="min-w-0">
-                <h4 className="font-bold text-[15px] text-[var(--text-main)] leading-snug truncate pr-2">
-                  {module.description || 'Spesa'}
-                </h4>
-                <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 mt-1">
-                  <div className="flex items-center gap-1 bg-[var(--bg)] px-1.5 py-0.5 rounded-md">
-                    <Calendar className="w-3 h-3 text-[var(--text-muted)]" />
-                    <p className="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-tight">
-                      {new Date(module.date).toLocaleDateString('it-IT', { day: '2-digit', month: 'short', year: 'numeric' })}
-                    </p>
-                  </div>
-                  {module.expiryDate && (
-                    <div className="flex items-center gap-1 bg-amber-500/10 px-1.5 py-0.5 rounded-md border border-amber-500/20">
-                      <Clock className="w-2.5 h-2.5 text-amber-600" />
-                      <p className="text-[9px] font-black text-amber-600 uppercase tracking-tighter">
-                        {new Date(module.expiryDate).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' })}
-                      </p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-            {module.attachment && (
-              <button 
-                onClick={(e) => { e.stopPropagation(); setViewingAttachment(module.attachment!); }}
-                className="p-2.5 bg-emerald-500/10 text-emerald-500 rounded-xl border border-emerald-500/20 hover:bg-emerald-500/20 hover:scale-105 transition-all shadow-sm"
-                title="Vedi Allegato"
-              >
-                <Paperclip className="w-4 h-4" />
-              </button>
-            )}
-          </div>
-
-          {/* Amount hero section */}
-          <div className="flex-1 flex flex-col justify-center my-3 bg-[var(--bg)] p-5 rounded-2xl border border-[var(--border)] relative overflow-hidden">
-            {/* Decorative background circle */}
-            <div className={`absolute -right-6 -bottom-6 w-24 h-24 rounded-full bg-gradient-to-br ${catTheme.gradient} opacity-[0.06]`} />
-            <div className="relative z-10">
-              <div className="flex items-center justify-between mb-3">
-                <p className={`text-[9px] uppercase font-black ${catTheme.color} tracking-[0.15em]`}>Importo</p>
-                <div className={`px-2.5 py-1 ${catTheme.bg} ${catTheme.border} border rounded-lg text-[8px] font-black ${catTheme.color} uppercase`}>
-                  {EXPENSE_CATEGORIES.find(c => c.id === module.category)?.label || 'Altro'}
-                </div>
-              </div>
-              <div className="text-3xl font-black text-[var(--text-main)] tracking-tight flex items-baseline gap-1.5">
-                <span className="text-xs font-bold text-[var(--text-muted)]">{module.currency || 'EUR'}</span>
-                <span>{module.amount.toLocaleString('it-IT', { minimumFractionDigits: 2 })}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Share button */}
-          <div className="pt-3 border-t border-[var(--border)] shrink-0" onClick={e => e.stopPropagation()}>
-            <button
-              onClick={() => onShare(module)}
-              className={`w-full flex items-center justify-center gap-2 py-3 bg-gradient-to-r ${catTheme.gradient} text-white rounded-2xl text-[10px] font-bold transition-all shadow-lg opacity-80 hover:opacity-100 active:scale-95`}
-            >
-              <QrCode className="w-4 h-4" />
-              Condividi
-            </button>
-          </div>
+    <ModuleWrapper module={module} onDelete={onDelete} onEdit={onEdit}>
+      <div 
+        className="h-full flex flex-col cursor-pointer group/card hover:bg-[var(--bg)] transition-colors p-4 -m-4 rounded-2xl active:scale-[0.98]"
+        onClick={() => onEdit(module)}
+      >
+        <div className="flex items-center gap-3 mb-4">
+           <div className={`w-12 h-12 ${catTheme.bg} rounded-2xl flex items-center justify-center text-xl border border-white/10 shadow-inner`}>
+              {catTheme.icon}
+           </div>
+           <div className="min-w-0">
+              <h4 className="font-bold text-[14px] text-[var(--text-main)] truncate">{module.description || 'Spesa'}</h4>
+              <p className="text-[9px] font-black text-[var(--text-muted)] uppercase tracking-widest mt-0.5">
+                 {new Date(module.date).toLocaleDateString('it-IT')}
+              </p>
+           </div>
         </div>
-      </ModuleWrapper>
 
-      <AnimatePresence>
-        {viewingAttachment && (
-          <DocumentViewer 
-            isOpen={!!viewingAttachment}
-            data={viewingAttachment}
-            title={module.description || 'Scontrino'}
-            onClose={() => setViewingAttachment(null)}
-          />
-        )}
-      </AnimatePresence>
-    </>
+        <div className="mt-auto bg-[var(--bg)] p-3 rounded-xl border border-[var(--border)] flex items-baseline justify-center gap-1">
+           <span className="text-[10px] font-bold text-[var(--text-muted)]">{module.currency || 'EUR'}</span>
+           <span className="text-xl font-black text-[var(--text-main)]">{module.amount.toLocaleString('it-IT', { minimumFractionDigits: 2 })}</span>
+        </div>
+      </div>
+    </ModuleWrapper>
   );
 };
 
-export const SplitCard = ({ module, onDelete, onEdit, onShare }: { module: SplitModule; onDelete: (id: string) => void; onEdit: (m: Module) => void; onShare: (m: Module) => void; dragHandleProps?: any }) => {
+export const SplitCard = ({ module, onDelete, onEdit }: { module: SplitModule; onDelete: (id: string) => void; onEdit: (m: Module) => void; }) => {
   const totalAmount = module.expenses.reduce((sum, exp) => sum + exp.amount, 0);
-  const getInitials = (name: string) => name.substring(0, 2).toUpperCase();
-  const AVATAR_COLORS = ['bg-purple-500', 'bg-blue-500', 'bg-emerald-500', 'bg-amber-500', 'bg-pink-500', 'bg-cyan-500'];
   
   return (
     <ModuleWrapper module={module} onDelete={onDelete} onEdit={onEdit}>
       <div 
-        className="flex flex-col cursor-pointer group/card hover:bg-[var(--surface-variant)] transition-all p-4 -m-4 rounded-[2rem] active:scale-[0.98] h-full relative overflow-hidden"
+        className="h-full flex flex-col cursor-pointer group/card hover:bg-[var(--bg)] transition-colors p-4 -m-4 rounded-2xl active:scale-[0.98]"
         onClick={() => onEdit(module)}
       >
-        {/* Header */}
-        <div className="flex items-center justify-between mb-4 shrink-0">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="w-12 h-12 bg-gradient-to-br from-purple-500/15 to-indigo-500/15 rounded-2xl flex items-center justify-center border border-purple-500/20 shrink-0 group-hover/card:scale-105 transition-transform">
-              <Users className="w-5 h-5 text-purple-500" />
-            </div>
-            <div className="min-w-0">
-              <h4 className="font-bold text-[15px] text-[var(--text-main)] leading-tight truncate">{module.title || 'Gruppo Spese'}</h4>
-              <div className="flex items-center gap-2 mt-1">
-                <div className="flex items-center gap-1 bg-purple-500/8 px-2 py-0.5 rounded-md border border-purple-500/15">
-                  <Users className="w-2.5 h-2.5 text-purple-500" />
-                  <span className="text-[9px] font-black text-purple-600 uppercase">{module.participants.length}</span>
-                </div>
-                <div className="flex items-center gap-1 bg-[var(--bg)] px-2 py-0.5 rounded-md">
-                  <Receipt className="w-2.5 h-2.5 text-[var(--text-muted)]" />
-                  <span className="text-[9px] font-bold text-[var(--text-muted)] uppercase">{module.expenses.length} spese</span>
-                </div>
+        <div className="flex items-center gap-3 mb-4">
+           <div className="w-12 h-12 bg-purple-500/10 rounded-2xl flex items-center justify-center text-purple-500 border border-purple-500/20">
+              <Users className="w-6 h-6" />
+           </div>
+           <div className="min-w-0">
+              <h4 className="font-bold text-[14px] text-[var(--text-main)] truncate">{module.title || 'Gruppo Spese'}</h4>
+              <p className="text-[9px] font-black text-[var(--text-muted)] uppercase tracking-widest mt-1">
+                 {module.participants.length} Partecipanti • {module.expenses.length} Spese
+              </p>
+           </div>
+        </div>
+
+        <div className="mt-auto bg-[var(--bg)] p-4 rounded-xl border border-purple-500/10">
+           <p className="text-[9px] font-black text-purple-500 uppercase tracking-widest mb-1">Totale Gruppo</p>
+           <div className="flex items-baseline gap-1.5">
+              <span className="text-[10px] font-bold text-[var(--text-muted)]">{module.currency || 'EUR'}</span>
+              <span className="text-2xl font-black text-[var(--text-main)]">{totalAmount.toLocaleString('it-IT', { minimumFractionDigits: 2 })}</span>
+           </div>
+        </div>
+      </div>
+    </ModuleWrapper>
+  );
+};
+
+export const GalleryCard = ({ module }: { module: GalleryModule }) => {
+  const images: any[] = [];
+  if (module.images && module.images.length > 0) {
+    images.push(...module.images);
+  } else if (module.image) {
+    images.push({ id: module.id, image: module.image, filterName: module.filterName });
+  }
+
+  const coverImage = images.length > 0 ? images[0].image : '';
+
+  return (
+    <ModuleWrapper module={module}>
+      <div className="h-full flex flex-col p-2 -m-2 rounded-2xl transition-all">
+        <div className="relative aspect-square rounded-2xl overflow-hidden border border-[var(--border)] shadow-inner mb-3 bg-[var(--surface-variant)] flex items-center justify-center">
+          {coverImage ? (
+            <>
+              <img src={coverImage} alt={module.title} className="w-full h-full object-cover" />
+              <div className="absolute bottom-2 right-2 bg-black/60 backdrop-blur-md px-2 py-0.5 rounded-lg border border-white/20 flex items-center gap-1">
+                <ImageIcon className="w-3 h-3 text-white" />
+                <span className="text-[10px] font-black text-white">{images.length}</span>
               </div>
-            </div>
-          </div>
+            </>
+          ) : (
+            <ImageIcon className="w-8 h-8 text-[var(--text-muted)] opacity-50" />
+          )}
         </div>
-
-        {/* Participant avatars row */}
-        {module.participants.length > 0 && (
-          <div className="flex items-center gap-1 mb-4 px-1">
-            <div className="flex -space-x-2">
-              {module.participants.slice(0, 5).map((p, i) => (
-                <div 
-                  key={p.id} 
-                  className={`w-7 h-7 ${AVATAR_COLORS[i % AVATAR_COLORS.length]} rounded-full flex items-center justify-center text-white text-[8px] font-black border-2 border-[var(--card-bg)] shadow-sm`}
-                  title={p.name}
-                >
-                  {getInitials(p.name)}
-                </div>
-              ))}
-              {module.participants.length > 5 && (
-                <div className="w-7 h-7 bg-[var(--surface-variant)] rounded-full flex items-center justify-center text-[8px] font-black text-[var(--text-muted)] border-2 border-[var(--card-bg)]">
-                  +{module.participants.length - 5}
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Amount hero section */}
-        <div className="flex-1 flex flex-col justify-center bg-[var(--bg)] p-4 rounded-2xl border border-[var(--border)] mb-3 relative overflow-hidden">
-          <div className="absolute -right-6 -bottom-6 w-24 h-24 rounded-full bg-gradient-to-br from-purple-500 to-indigo-500 opacity-[0.06]" />
-          <div className="relative z-10">
-            <p className="text-[9px] uppercase font-black text-purple-500 tracking-[0.15em] mb-2">Spesa Totale</p>
-            <div className="text-2xl font-black text-[var(--text-main)] tracking-tight flex items-baseline gap-1.5">
-              <span className="text-xs font-bold text-[var(--text-muted)]">{module.currency || 'EUR'}</span>
-              <span>{totalAmount.toLocaleString('it-IT', { minimumFractionDigits: 2 })}</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Share button */}
-        <div className="pt-3 border-t border-[var(--border)] shrink-0" onClick={e => e.stopPropagation()}>
-          <button
-            onClick={() => onShare(module)}
-            className="w-full flex items-center justify-center gap-2 py-3 bg-gradient-to-r from-purple-500 to-indigo-500 text-white rounded-2xl text-[10px] font-bold transition-all shadow-lg opacity-80 hover:opacity-100 active:scale-95"
-          >
-            <QrCode className="w-4 h-4" />
-            Condividi
-          </button>
+        <div className="flex items-center gap-2">
+           <div className="w-7 h-7 bg-indigo-500/10 rounded-lg flex items-center justify-center text-indigo-500">
+              <ImageIcon className="w-4 h-4" />
+           </div>
+           <span className="text-[12px] font-bold text-[var(--text-main)] truncate">{module.title || 'Galleria'}</span>
         </div>
       </div>
     </ModuleWrapper>

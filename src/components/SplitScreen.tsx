@@ -18,6 +18,7 @@ interface SplitScreenProps {
   onClose: () => void;
   onSave: (m: SplitModule) => void;
   onSaveToSandbox?: (title: string, base64: string) => Promise<void>;
+  onDelete?: (id: string) => void;
 }
 
 const COMMON_CURRENCIES = ['EUR', 'USD', 'GBP', 'JPY', 'CHF', 'AUD', 'CAD'];
@@ -25,7 +26,7 @@ const COMMON_CURRENCIES = ['EUR', 'USD', 'GBP', 'JPY', 'CHF', 'AUD', 'CAD'];
 // Helper for initials
 const getInitials = (name: string) => name.substring(0, 2).toUpperCase();
 
-export const SplitScreen = ({ module, onClose, onSave, onSaveToSandbox }: SplitScreenProps) => {
+export const SplitScreen = ({ module, onClose, onSave, onSaveToSandbox, onDelete }: SplitScreenProps) => {
   const [activeTab, setActiveTab] = useState<'expenses' | 'participants' | 'balances' | 'dashboard'>('expenses');
   const [currency, setCurrency] = useState(module.currency || 'EUR');
   const [participants, setParticipants] = useState<SplitParticipant[]>(module.participants || []);
@@ -215,9 +216,20 @@ export const SplitScreen = ({ module, onClose, onSave, onSaveToSandbox }: SplitS
             </div>
           </div>
         </div>
-        <button onClick={() => { handleSaveAll(); onClose(); }} className="flex items-center gap-2 bg-emerald-500 text-white px-4 py-2 rounded-xl font-bold shadow-lg shadow-emerald-500/20 active:scale-95 transition-all">
-          <Check className="w-5 h-5" /> <span className="hidden sm:inline">Salva</span>
-        </button>
+        <div className="flex items-center gap-2">
+           {onDelete && (
+             <button 
+               onClick={() => { if(window.confirm('Eliminare definitivamente questo gruppo di spese?')) { onDelete(module.id); onClose(); } }}
+               className="p-2.5 text-red-400 hover:bg-red-500/10 rounded-xl transition-all"
+               title="Elimina"
+             >
+               <Trash2 className="w-5 h-5" />
+             </button>
+           )}
+           <button onClick={() => { handleSaveAll(); onClose(); }} className="flex items-center gap-2 bg-emerald-500 text-white px-4 py-2 rounded-xl font-bold shadow-lg shadow-emerald-500/20 active:scale-95 transition-all">
+             <Check className="w-5 h-5" /> <span className="hidden sm:inline">Salva</span>
+           </button>
+        </div>
       </header>
 
       {/* Tabs */}

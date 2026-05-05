@@ -8,19 +8,20 @@ import { Sun, Moon, Wrench, Plus, LayoutDashboard, Settings, User, LogOut, Searc
 import { Module, ModuleType, Folder, DocumentModule } from './types';
 import { storage, AppState } from './services/storage';
 import { encryption } from './services/encryption';
-import { GenericCard, AutoCard, DocumentCard, SplitCard, SingleExpenseCard, WalletCard, GalleryCard, TravelCard } from './components/Modules';
+import { GenericCard, AutoCard, DocumentCard, SplitCard, SingleExpenseCard, WalletCard, GalleryCard } from './components/Modules';
 import { LockScreen } from './components/LockScreen';
 import { QrScanner } from './components/QrScanner';
 import { DocumentScanner } from './components/DocumentScanner';
 import { ProfileScreen } from './components/ProfileScreen';
 import { ToolsScreen, TOOLS, TOOLS_UTILITY } from './components/ToolsScreen';
-import { AutoEditScreen } from './components/AutoEditScreen';
+import { AutoManagementScreen } from './components/AutoManagementScreen';
+import { WalletManagementScreen } from './components/WalletManagementScreen';
+import { DocumentManagementScreen } from './components/DocumentManagementScreen';
+import { NoteManagementScreen } from './components/NoteManagementScreen';
 import { SplitScreen } from './components/SplitScreen';
 import { DocumentArchive } from './components/DocumentArchive';
 import { SingleExpenseScreen } from './components/SingleExpenseScreen';
-import { WalletEditScreen } from './components/WalletEditScreen';
 import { AddressBookScreen } from './components/AddressBookScreen';
-import { TravelScreen } from './components/TravelScreen';
 import { notificationService } from './services/notificationService';
 import { motion, AnimatePresence } from 'motion/react';
 import JSZip from 'jszip';
@@ -120,12 +121,6 @@ const TEMPLATES = {
     icon: ImageIcon,
     color: 'text-indigo-500'
   },
-  travel: {
-    title: 'Viaggi',
-    content: '',
-    icon: Globe,
-    color: 'text-emerald-500'
-  },
   none: {
     title: 'Appunto Libero',
     content: '',
@@ -150,11 +145,21 @@ export default function App() {
   const [editingSplitModule, setEditingSplitModule] = useState<import('./types').SplitModule | null>(null);
   const [editingSingleExpenseModule, setEditingSingleExpenseModule] = useState<import('./types').SingleExpenseModule | null>(null);
   const [editingWalletModule, setEditingWalletModule] = useState<import('./types').WalletModule | null>(null);
-  const [editingTravelModule, setEditingTravelModule] = useState<import('./types').TravelModule | null>(null);
+  const [editingDocumentModule, setEditingDocumentModule] = useState<import('./types').DocumentModule | null>(null);
+  const [editingGenericModule, setEditingGenericModule] = useState<import('./types').GenericModule | null>(null);
   const [sharingModule, setSharingModule] = useState<Module | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedType, setSelectedType] = useState<ModuleType | null>(null);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
+  const [isSplashScreenActive, setIsSplashScreenActive] = useState(true);
+
+  useEffect(() => {
+    // Show splash screen for 1.5s
+    const timer = setTimeout(() => {
+      setIsSplashScreenActive(false);
+    }, 1500);
+    return () => clearTimeout(timer);
+  }, []);
 
   const showToast = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
     setToast({ message, type });
@@ -267,7 +272,6 @@ export default function App() {
       setModuleToDelete(state.deleteConfirm || null);
       setShowGalleryViewer(!!state.showGallery);
       setGallerySelectedImage(state.selectedImage || null);
-      setEditingTravelModule(state.travelEdit || null);
       if (!state.adding) setFormData({});
     };
 
@@ -297,7 +301,6 @@ export default function App() {
       deleteConfirm: moduleToDelete,
       showGallery: showGalleryViewer,
       selectedImage: gallerySelectedImage,
-      travelEdit: editingTravelModule
     };
 
     // Check if current history state matches to avoid redundant pushes
@@ -450,19 +453,19 @@ export default function App() {
       updated = modules.map(m => m.id === editingModuleId ? { ...m, ...processedData, folderId: processedData.folderId || undefined } : m);
     } else {
       const id = Math.random().toString(36).substr(2, 9);
-      const type = processedData.template === 'auto' ? 'auto' : processedData.template === 'document' ? 'document' : processedData.template === 'split' ? 'split' : processedData.template === 'travel' ? 'travel' : 'generic';
+      const type = processedData.template === 'auto' ? 'auto' : processedData.template === 'document' ? 'document' : processedData.template === 'split' ? 'split' : 'generic';
       const newModule: Module = {
         id,
         type,
         x: (modules.length * 2) % 12,
         y: Infinity, // puts it at the bottom
-        w: type === 'auto' ? 4 : type === 'document' ? 3 : type === 'travel' ? 4 : 3,
-        h: type === 'auto' ? 4 : type === 'document' ? 3 : type === 'travel' ? 4 : 2,
+        w: type === 'auto' ? 4 : type === 'document' ? 3 : 3,
+        h: type === 'auto' ? 4 : type === 'document' ? 3 : 2,
         ...processedData,
         ...(type === 'auto' ? { lastKmUpdatedAt: new Date().toISOString() } : {}),
         ...(type === 'document' && !processedData.documentType ? { documentType: 'generic' } : {}),
         ...(type === 'split' ? { participants: [], expenses: [], currency: 'EUR' } : {}),
-        ...(type === 'travel' ? { itineraries: [] } : {}),
+        ...({}),
         folderId: processedData.folderId !== undefined ? (processedData.folderId || undefined) : (selectedFolderId || undefined)
       };
       updated = [...modules, newModule];
@@ -591,8 +594,12 @@ export default function App() {
       setEditingWalletModule(module as import('./types').WalletModule);
       return;
     }
-    if (module.type === 'travel') {
-      setEditingTravelModule(module as import('./types').TravelModule);
+    if (module.type === 'document') {
+      setEditingDocumentModule(module as import('./types').DocumentModule);
+      return;
+    }
+    if (module.type === 'generic') {
+      setEditingGenericModule(module as import('./types').GenericModule);
       return;
     }
     // Migration for old expense template
@@ -1178,37 +1185,113 @@ export default function App() {
         />
       </div>
 
-      {isPublicToolsOpen && !encryptionKey && (
-        <div className="h-[100dvh] bg-[var(--bg)] flex flex-col relative w-full overflow-hidden" style={{ position: 'absolute', inset: 0, zIndex: 99999 }}>
-           <header className="h-20 lg:h-24 bg-[var(--header-bg)] backdrop-blur-2xl border-b border-[var(--border)] px-4 lg:px-8 flex items-center justify-between shrink-0 z-10 shadow-sm safe-area-header">
-             <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-emerald-500 rounded-xl flex items-center justify-center shadow-lg shadow-emerald-500/20">
-                   <Wrench className="w-6 h-6 text-white" />
-                </div>
-                <h1 className="text-xl lg:text-2xl font-bold text-[var(--text-main)] tracking-tight">Strumenti Rapidi</h1>
-             </div>
-             <button onClick={() => setIsPublicToolsOpen(false)} className="flex items-center gap-2 text-sm font-bold text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors bg-[var(--card-bg)] px-4 py-2 border border-[var(--border)] rounded-full shadow-sm">
-                <ArrowLeft className="w-5 h-5" />
-                <span className="hidden sm:inline">Torna ai Profili</span>
-             </button>
-           </header>
-           <main className="flex-1 overflow-y-auto w-full h-full max-w-[1200px] mx-auto">
-             <ToolsScreen showToast={showToast} onSaveToSandbox={undefined} modules={modules} />
-           </main>
+    <ErrorBoundary>
+      <AnimatePresence>
+        {isSplashScreenActive && (
+          <motion.div
+            key="splash"
+            initial={{ opacity: 1 }}
+            exit={{ opacity: 0, scale: 1.1 }}
+            transition={{ duration: 0.5, ease: "easeInOut" }}
+            className="fixed inset-0 z-[9999] bg-[var(--bg)] flex flex-col items-center justify-center overflow-hidden"
+          >
+            <motion.div
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ delay: 0.2, duration: 0.8, ease: "backOut" }}
+              className="relative"
+            >
+              <div className="w-32 h-32 md:w-40 md:h-40 bg-white/80 backdrop-blur-xl rounded-[3rem] flex items-center justify-center shadow-2xl shadow-emerald-500/10 border border-white/20 overflow-hidden">
+                <img src="/chelona_logo.png" alt="Chelona Logo" className="w-full h-full object-contain p-4" />
+              </div>
+              <motion.div
+                animate={{ 
+                  scale: [1, 1.2, 1],
+                  opacity: [0.3, 0.6, 0.3]
+                }}
+                transition={{ repeat: Infinity, duration: 2 }}
+                className="absolute inset-0 bg-emerald-500/20 blur-3xl rounded-full -z-10"
+              />
+            </motion.div>
+            
+            <motion.div
+              initial={{ y: 20, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ delay: 0.5 }}
+              className="mt-8 text-center"
+            >
+              <h1 className="text-3xl font-black text-[var(--text-main)] tracking-tighter uppercase mb-1">Chelona</h1>
+              <p className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-[0.3em] ml-1">Secure Vault</p>
+            </motion.div>
+
+            <div className="absolute bottom-12 flex flex-col items-center gap-4">
+              <div className="flex gap-1.5">
+                {[0, 1, 2].map(i => (
+                  <motion.div
+                    key={i}
+                    animate={{ 
+                      scale: [1, 1.5, 1],
+                      backgroundColor: ['var(--border)', 'var(--accent)', 'var(--border)']
+                    }}
+                    transition={{ repeat: Infinity, duration: 1, delay: i * 0.2 }}
+                    className="w-1.5 h-1.5 rounded-full"
+                  />
+                ))}
+              </div>
+              <p className="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-widest opacity-50">Inizializzazione Crittografia...</p>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <div className="min-h-[100dvh] bg-[var(--bg)] text-[var(--text-main)] font-sans selection:bg-[var(--accent)] selection:text-white transition-colors duration-300">
+        <div 
+          style={{ 
+            display: (!encryptionKey || !currentProfileId) && !isProfileOpen && !isPublicToolsOpen ? 'block' : 'none', 
+            position: 'absolute', inset: 0, zIndex: 99999 
+          }}
+        >
+          <LockScreen 
+            isVisible={(!encryptionKey || !currentProfileId) && !isProfileOpen && !isPublicToolsOpen}
+            onAuthenticated={(key, profileId) => {
+              setEncryptionKey(key);
+              setCurrentProfileId(profileId);
+            }} 
+            onStartScan={() => setIsScanning(true)}
+            onOpenTools={() => setIsPublicToolsOpen(true)}
+            onOpenAddressBook={() => setIsAddressBookOpen(true)}
+            onImportFile={handleImportFile}
+            onCheckUpdate={() => handleCheckUpdate(true)}
+          />
         </div>
-      )}
 
-      {isScanning && (
-        <QrScanner
-          onScan={handleScan}
-          onClose={() => setIsScanning(false)}
-        />
-      )}
+        {isPublicToolsOpen && !encryptionKey && (
+          <div className="h-[100dvh] bg-[var(--bg)] flex flex-col relative w-full overflow-hidden" style={{ position: 'absolute', inset: 0, zIndex: 99999 }}>
+             <header className="h-20 lg:h-24 bg-[var(--header-bg)] backdrop-blur-2xl border-b border-[var(--border)] px-4 lg:px-8 flex items-center justify-between shrink-0 z-10 shadow-sm safe-area-header">
+               <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-emerald-500 rounded-xl flex items-center justify-center shadow-lg shadow-emerald-500/20">
+                     <Wrench className="w-6 h-6 text-white" />
+                  </div>
+                  <h1 className="text-xl lg:text-2xl font-bold text-[var(--text-main)] tracking-tight">Strumenti Rapidi</h1>
+               </div>
+               <button onClick={() => setIsPublicToolsOpen(false)} className="flex items-center gap-2 text-sm font-bold text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors bg-[var(--card-bg)] px-4 py-2 border border-[var(--border)] rounded-full shadow-sm">
+                  <ArrowLeft className="w-5 h-5" />
+                  <span className="hidden sm:inline">Torna ai Profili</span>
+               </button>
+             </header>
+             <main className="flex-1 overflow-y-auto w-full h-full max-w-[1200px] mx-auto">
+               <ToolsScreen showToast={showToast} onSaveToSandbox={undefined} modules={modules} />
+             </main>
+          </div>
+        )}
 
-
-
-      {encryptionKey && currentProfileId && (
-        <ErrorBoundary>
+        {isScanning && (
+          <QrScanner
+            onScan={handleScan}
+            onClose={() => setIsScanning(false)}
+          />
+        )}
+        {encryptionKey && currentProfileId && (
           <div className="flex h-full w-full bg-[var(--bg)] overflow-hidden relative font-sans transition-colors duration-300">
             
             {/* Desktop Sidebar */}
@@ -2061,29 +2144,6 @@ export default function App() {
                             </p>
                           </div>
                         </div>
-                        
-                        {/* Section specific + button */}
-                        <button 
-                          onClick={() => {
-                            if (selectedType === 'travel') {
-                              // If travel, it has its own screen, but we might want to trigger its add flow?
-                              // Actually, the user wants a + button here too if they are in the section.
-                              const travelMod = modules.find(m => m.type === 'travel');
-                              if (travelMod) {
-                                setEditingTravelModule(travelMod as import('./types').TravelModule);
-                                // We might need a way to tell TravelScreen to open the "Add" modal immediately.
-                                // For now, let's just open the screen.
-                              }
-                            } else {
-                              setFormData({ template: selectedType });
-                              setAutoFormStep(0);
-                              setIsAdding(true);
-                            }
-                          }}
-                          className="p-4 bg-gradient-to-tr from-[var(--accent)] to-[var(--accent-on-container)] text-white rounded-[1.5rem] shadow-xl shadow-[var(--accent)]/20 hover:scale-105 active:scale-95 transition-all"
-                        >
-                          <Plus className="w-7 h-7" />
-                        </button>
                       </div>
                     )}
 
@@ -2093,21 +2153,19 @@ export default function App() {
                     {filteredModules.map((module) => (
                       <div key={module.id} className="w-full">
                         {module.type === 'auto' ? (
-                          <AutoCard module={module} onDelete={requestDelete} onEdit={openEditModal} onDirectUpdate={updateModuleDirect} onShare={setSharingModule} />
+                          <AutoCard module={module} onDelete={requestDelete} onEdit={openEditModal} />
                         ) : module.type === 'document' ? (
                           <DocumentCard module={module} onDelete={requestDelete} onEdit={openEditModal} onShare={setSharingModule} />
                         ) : module.type === 'split' ? (
-                          <SplitCard module={module as import('./types').SplitModule} onDelete={requestDelete} onEdit={openEditModal} onShare={setSharingModule} />
+                          <SplitCard module={module as import('./types').SplitModule} onDelete={requestDelete} onEdit={openEditModal} />
                         ) : module.type === 'single-expense' ? (
-                          <SingleExpenseCard module={module as import('./types').SingleExpenseModule} onDelete={requestDelete} onEdit={openEditModal} onShare={setSharingModule} />
+                          <SingleExpenseCard module={module as import('./types').SingleExpenseModule} onDelete={requestDelete} onEdit={openEditModal} />
                         ) : module.type === 'wallet' ? (
-                          <WalletCard module={module as import('./types').WalletModule} onDelete={requestDelete} onEdit={openEditModal} onShare={setSharingModule} />
+                          <WalletCard module={module as import('./types').WalletModule} onDelete={requestDelete} onEdit={openEditModal} />
                         ) : module.type === 'gallery' ? (
-                          <GalleryCard module={module as import('./types').GalleryModule} onShare={setSharingModule} />
-                        ) : module.type === 'travel' ? (
-                          <TravelCard module={module as import('./types').TravelModule} onDelete={requestDelete} onEdit={openEditModal} onShare={setSharingModule} />
+                          <GalleryCard module={module as import('./types').GalleryModule} />
                         ) : (
-                          <GenericCard module={module as import('./types').GenericModule} onDelete={requestDelete} onEdit={openEditModal} onShare={setSharingModule} />
+                          <GenericCard module={module as import('./types').GenericModule} onDelete={requestDelete} onEdit={openEditModal} />
                         )}
                       </div>
                     ))}
@@ -2118,15 +2176,15 @@ export default function App() {
             )}
           </div>
           
-          {/* Global FAB (Only on main dashboard) */}
-          {!selectedType && !isAdding && !editingModuleId && !isArchiveOpen && !isToolsOpen && !editingTravelModule && !editingAutoModule && !editingSplitModule && !editingSingleExpenseModule && !editingWalletModule && (
+          {/* Global FAB (Only on main dashboard and specific categories except gallery) */}
+          {(selectedType !== 'gallery') && !isAdding && !editingModuleId && !isArchiveOpen && !isToolsOpen && !editingAutoModule && !editingSplitModule && !editingSingleExpenseModule && !editingWalletModule && !editingDocumentModule && !editingGenericModule && (
             <motion.button
               initial={{ scale: 0, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               onClick={() => {
-                setFormData({});
+                setFormData(selectedType ? { template: selectedType } : {});
                 setAutoFormStep(0);
                 setIsAdding(true);
               }}
@@ -2191,6 +2249,9 @@ export default function App() {
               />
             )}
           </AnimatePresence>
+          </main>
+        </div>
+      )}
 
 
 
@@ -2243,10 +2304,6 @@ export default function App() {
         )}
       </AnimatePresence>
 
-          </main>
-        </div>
-      </ErrorBoundary>
-      )}
 
       {/* Toast Notification */}
       <AnimatePresence>
@@ -2376,6 +2433,98 @@ export default function App() {
       </AnimatePresence>
 
       {/* Document Archive View */}
+      <AnimatePresence>
+        {editingAutoModule && (
+          <AutoManagementScreen 
+            module={editingAutoModule} 
+            onSave={handleSaveAutoEdit} 
+            onCancel={() => setEditingAutoModule(null)} 
+            onDelete={deleteModule}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {editingSplitModule && (
+          <SplitScreen
+            module={editingSplitModule}
+            onSave={(updated) => {
+              const updatedModules = modules.map(m => m.id === updated.id ? updated : m);
+              setModules(updatedModules);
+              saveAppState(updatedModules, folders);
+              setEditingSplitModule(null);
+            }}
+            onCancel={() => setEditingSplitModule(null)}
+            onDelete={deleteModule}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {editingSingleExpenseModule && (
+          <SingleExpenseScreen
+            module={editingSingleExpenseModule}
+            onSave={(updated) => {
+              const updatedModules = modules.map(m => m.id === updated.id ? updated : m);
+              setModules(updatedModules);
+              saveAppState(updatedModules, folders);
+              setEditingSingleExpenseModule(null);
+            }}
+            onCancel={() => setEditingSingleExpenseModule(null)}
+            onDelete={deleteModule}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {editingWalletModule && (
+          <WalletManagementScreen
+            module={editingWalletModule}
+            onSave={(updated) => {
+              const updatedModules = modules.map(m => m.id === updated.id ? updated : m);
+              setModules(updatedModules);
+              saveAppState(updatedModules, folders);
+              setEditingWalletModule(null);
+            }}
+            onCancel={() => setEditingWalletModule(null)}
+            onDelete={deleteModule}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {editingDocumentModule && (
+          <DocumentManagementScreen
+            module={editingDocumentModule}
+            onSave={(updated) => {
+              const updatedModules = modules.map(m => m.id === updated.id ? updated : m);
+              setModules(updatedModules);
+              saveAppState(updatedModules, folders);
+              setEditingDocumentModule(null);
+            }}
+            onCancel={() => setEditingDocumentModule(null)}
+            onDelete={deleteModule}
+            onShare={setSharingModule as any}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {editingGenericModule && (
+          <NoteManagementScreen
+            module={editingGenericModule}
+            onSave={(updated) => {
+              const updatedModules = modules.map(m => m.id === updated.id ? updated : m);
+              setModules(updatedModules);
+              saveAppState(updatedModules, folders);
+              setEditingGenericModule(null);
+            }}
+            onCancel={() => setEditingGenericModule(null)}
+            onDelete={deleteModule}
+          />
+        )}
+      </AnimatePresence>
+
       <AnimatePresence>
         {isArchiveOpen && (
           <DocumentArchive 
@@ -2663,6 +2812,8 @@ export default function App() {
         )}
       </AnimatePresence>
 
+      </div>
+    </ErrorBoundary>
     </div>
   );
 }

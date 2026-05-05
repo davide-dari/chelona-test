@@ -11,11 +11,12 @@ interface SingleExpenseScreenProps {
   onClose: () => void;
   onSave: (m: SingleExpenseModule) => void;
   onSaveToSandbox?: (title: string, base64: string) => Promise<void>;
+  onDelete?: (id: string) => void;
 }
 
 
 
-export const SingleExpenseScreen = ({ module, onClose, onSave, onSaveToSandbox }: SingleExpenseScreenProps) => {
+export const SingleExpenseScreen = ({ module, onClose, onSave, onSaveToSandbox, onDelete }: SingleExpenseScreenProps) => {
   const [formData, setFormData] = useState<SingleExpenseModule>({
     ...module,
     amount: module.amount || 0,
@@ -70,14 +71,25 @@ export const SingleExpenseScreen = ({ module, onClose, onSave, onSaveToSandbox }
             <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--text-muted)]">Gestione Spesa Singola</p>
           </div>
         </div>
-        <button 
-          onClick={handleSave}
-          disabled={isProcessing}
-          className="flex items-center gap-2 bg-emerald-500 text-white px-6 py-3 rounded-2xl font-bold shadow-lg shadow-emerald-500/20 active:scale-95 transition-all disabled:opacity-50"
-        >
-          {isProcessing ? <RefreshCw className="w-5 h-5 animate-spin" /> : <Check className="w-5 h-5" />}
-          <span>Salva</span>
-        </button>
+        <div className="flex items-center gap-2">
+          {onDelete && (
+            <button 
+              onClick={() => { if(window.confirm('Eliminare definitivamente questa spesa?')) { onDelete(module.id); onClose(); } }}
+              className="p-3 bg-red-500/5 text-red-500 rounded-2xl hover:bg-red-500/10 transition-all shadow-sm"
+              title="Elimina"
+            >
+              <Trash2 className="w-6 h-6" />
+            </button>
+          )}
+          <button 
+            onClick={handleSave}
+            disabled={isProcessing}
+            className="flex items-center gap-2 bg-emerald-500 text-white px-6 py-3 rounded-2xl font-bold shadow-lg shadow-emerald-500/20 active:scale-95 transition-all disabled:opacity-50"
+          >
+            {isProcessing ? <RefreshCw className="w-5 h-5 animate-spin" /> : <Check className="w-5 h-5" />}
+            <span>Salva</span>
+          </button>
+        </div>
       </header>
 
       {/* Main Content */}
