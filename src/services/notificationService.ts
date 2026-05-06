@@ -165,6 +165,31 @@ export const notificationService = {
     this.checkAutoKmReminders(modules);
   },
 
+  async scheduleNotification(title: string, body: string, at: Date) {
+    if ((window as any).Capacitor?.isNativePlatform?.()) {
+      try {
+        const { LocalNotifications } = await import('@capacitor/local-notifications');
+        await LocalNotifications.schedule({
+          notifications: [{
+            title,
+            body,
+            id: Math.floor(Math.random() * 1000000),
+            schedule: { at }
+          }]
+        });
+      } catch (e) {
+        console.error('Failed to schedule native notification:', e);
+      }
+      return;
+    }
+    
+    // Fallback browser timeout if within current session
+    const delay = at.getTime() - Date.now();
+    if (delay > 0 && delay < 86400000) { // Solo se entro le prossime 24h
+      setTimeout(() => this.fire(title, body), delay);
+    }
+  },
+
   checkMiniWallets(modules: any[]) {
     const today = new Date();
     const currentYear = today.getFullYear();

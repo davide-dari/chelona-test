@@ -182,8 +182,12 @@ export const LockScreen = ({ isVisible, onAuthenticated, onStartScan, onOpenTool
     try {
       const m = await import('../services/biometricService');
       
-      // We directly call getMasterKey which triggers the biometric prompt.
-      // verifyIdentity was redundant here as getCredentials already prompts the user.
+      const verified = await m.biometricService.verifyIdentity('Sblocca il tuo profilo sicuro');
+      if (!verified) {
+        setIsLoading(false);
+        return;
+      }
+
       const masterKeyStr = await m.biometricService.getMasterKey(selectedProfile.id);
       
       if (masterKeyStr) {

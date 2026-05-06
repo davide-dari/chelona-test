@@ -304,17 +304,43 @@ export const AutoManagementScreen = ({ module, onSave, onCancel, onDelete }: Aut
                   <Field label="Targa">
                     <input type="text" value={data.plate || ''} onChange={e => set('plate', e.target.value.toUpperCase())} placeholder="Es. AB 123 CD" className={`${inputCls} font-mono uppercase`} />
                   </Field>
+                  <Field label="Alimentazione">
+                    <select 
+                      value={data.fuelType} 
+                      onChange={e => set('fuelType', e.target.value as FuelType)} 
+                      className={inputCls}
+                    >
+                      <option value="benzina">Benzina</option>
+                      <option value="diesel">Diesel</option>
+                      <option value="gpl">GPL</option>
+                      <option value="metano">Metano</option>
+                      <option value="ibrida">Ibrida</option>
+                      <option value="elettrica">Elettrica</option>
+                    </select>
+                  </Field>
                   <Field label="Anno Immatricolazione">
                     <input type="number" value={data.registrationYear || ''} onChange={e => set('registrationYear', e.target.value)} placeholder="Es. 2021" className={inputCls} />
                   </Field>
-                  <Field label="Km Attuali" colSpan={2}>
-                    <input type="text" inputMode="numeric" value={data.currentKm || ''} onChange={e => set('currentKm', e.target.value.replace(/\D/g, ''))} placeholder="Es. 45.000" className={inputCls} />
+                  <Field label="Km Attuali">
+                    <input type="text" inputMode="numeric" value={data.currentKm || ''} onChange={e => set('currentKm', e.target.value.replace(/\D/g, ''))} placeholder="Es. 45000" className={inputCls} />
+                  </Field>
+                  <Field label="Km Ultimo Tagliando">
+                    <input type="text" inputMode="numeric" value={data.lastServiceKm || ''} onChange={e => set('lastServiceKm', e.target.value.replace(/\D/g, ''))} placeholder="Es. 30000" className={inputCls} />
+                  </Field>
+                  <Field label="Km Ultimo Cambio Gomme">
+                    <input type="text" inputMode="numeric" value={data.tiresKm || ''} onChange={e => set('tiresKm', e.target.value.replace(/\D/g, ''))} placeholder="Es. 15000" className={inputCls} />
                   </Field>
                   <Field label="Scadenza Assicurazione">
                     <input type="date" value={data.lastInsurance || ''} onChange={e => set('lastInsurance', e.target.value)} className={inputCls} />
                   </Field>
                   <Field label="Scadenza Bollo">
                     <input type="date" value={data.lastTax || ''} onChange={e => set('lastTax', e.target.value)} className={inputCls} />
+                  </Field>
+                  <Field label="Scadenza Revisione">
+                    <input type="date" value={data.lastRevision || ''} onChange={e => set('lastRevision', e.target.value)} className={inputCls} />
+                  </Field>
+                  <Field label="Scadenza Batteria 12V">
+                    <input type="date" value={data.battery12vExpiryDate || ''} onChange={e => set('battery12vExpiryDate', e.target.value)} className={inputCls} />
                   </Field>
                 </div>
               </div>

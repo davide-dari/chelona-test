@@ -1407,11 +1407,6 @@ export default function App() {
                   </div>
                 </div>
               </motion.div>
-            ) : sharingModule ? (
-              <ShareScreen 
-                module={sharingModule} 
-                onClose={() => setSharingModule(null)} 
-              />
             ) : editingAutoModule ? (
               <AutoManagementScreen
                 module={editingAutoModule}
@@ -2748,6 +2743,12 @@ export default function App() {
 
       {/* Folder Management Modal */}
       <AnimatePresence>
+        {sharingModule && (
+          <ShareScreen 
+            module={sharingModule}
+            onClose={() => setSharingModule(null)}
+          />
+        )}
         {isAddingFolder && (
           <div className="fixed inset-0 z-[1000] flex items-center justify-center p-6">
             <motion.div

@@ -70,9 +70,6 @@ export const biometricService = {
       if (!NativeBiometric || typeof NativeBiometric.getCredentials !== 'function') return null;
       const credentials = await NativeBiometric.getCredentials({
         server: 'chelona.app',
-        title: 'Accesso Sicuro',
-        subtitle: 'Sblocca il tuo profilo',
-        description: 'Usa la biometria per recuperare la tua chiave di accesso.',
       });
       
       if (credentials && credentials.username === profileId) {

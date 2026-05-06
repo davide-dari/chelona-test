@@ -71,7 +71,7 @@ RELEASE_JSON=$(curl -s -X POST \
   -d "{
     \"tag_name\": \"$TAG\",
     \"name\": \"Chelona $TAG\",
-    \"body\": \"🚀 **Chelona v$VERSION**\\n\\n### ✨ Novità e Fix:\\n- **🚫 Pulizia Menu +**: Rimossa la Galleria dal menu di aggiunta rapida per un'esperienza più snella.\\n- **🖼️ Fix Logo (Native & Web)**: Risolto definitivamente il problema del logo schiacciato durante il caricamento nativo Android e nel caricamento app.\\n- **🚗 Scheda Veicolo Attiva**: Attivati i tasti 'Condividi' e 'Notifiche' nella gestione veicolo.\\n- **⚡ Ottimizzazioni**: Migliorata la fluidità generale e la stabilità dei moduli.\",
+    \"body\": \"🚀 **Chelona v$VERSION**\\n\\n### ✨ Novità e Fix:\\n- **🔐 Fix Biometria**: Ripristinato il corretto flusso di autenticazione biometrica per un accesso sicuro e fluido.\\n- **🚗 Editor Auto Potenziato**: Aggiunti tutti i campi mancanti nell'editor veicolo (Alimentazione, Tagliando, Revisione, Gomme, Batteria).\\n- **📲 Condivisione Ripristinata**: Risolto il problema della sovrapposizione dei moduli che impediva la condivisione.\\n- **🔔 Notifiche Attive**: Implementato il sistema di schedulazione notifiche per promemoria scadenze veicolo.\",
     \"draft\": false,
     \"prerelease\": false
   }")
