@@ -2171,9 +2171,14 @@ export default function App() {
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               onClick={() => {
-                setFormData(selectedType ? { template: selectedType } : {});
-                setAutoFormStep(0);
-                setIsAdding(true);
+                if (selectedType === 'split' || selectedType === 'single-expense' || selectedType === 'wallet') {
+                  setSpesaSubMenu(true);
+                  setIsAdding(true);
+                } else {
+                  setFormData(selectedType ? { template: selectedType } : {});
+                  setAutoFormStep(0);
+                  setIsAdding(true);
+                }
               }}
               className="fixed bottom-24 right-6 md:bottom-10 md:right-10 z-[60] w-16 h-16 bg-gradient-to-tr from-blue-600 to-indigo-600 text-white rounded-[1.5rem] shadow-2xl shadow-blue-500/40 flex items-center justify-center border border-white/20"
             >

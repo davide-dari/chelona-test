@@ -112,6 +112,8 @@ export const AutoManagementScreen = ({ module, onSave, onCancel, onDelete }: Aut
     if (data.lastTax && isValidDate(data.lastTax)) list.push({ label: 'Bollo', date: getEndOfMonth(data.lastTax, 1), field: 'lastTax' });
     if (data.lastGplCylinder && isValidDate(data.lastGplCylinder)) list.push({ label: 'Bombola GPL', date: addYears(data.lastGplCylinder, 10), field: 'lastGplCylinder' });
     if (data.lastMethaneCylinder && isValidDate(data.lastMethaneCylinder)) list.push({ label: 'Bombola Metano', date: addYears(data.lastMethaneCylinder, data.methaneType === 'r110' ? 5 : 4), field: 'lastMethaneCylinder' });
+    if (data.battery12vExpiryDate && isValidDate(data.battery12vExpiryDate)) list.push({ label: 'Batteria 12V', date: data.battery12vExpiryDate, field: 'battery12vExpiryDate' });
+    if (data.hybridBatteryExpiryDate && isValidDate(data.hybridBatteryExpiryDate)) list.push({ label: 'Batteria Ibrida', date: data.hybridBatteryExpiryDate, field: 'hybridBatteryExpiryDate' });
     
     return list.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
   })();
@@ -218,17 +220,17 @@ export const AutoManagementScreen = ({ module, onSave, onCancel, onDelete }: Aut
                 <span className="text-xs font-bold text-[var(--text-main)] uppercase tracking-widest">Condividi</span>
              </button>
              <button 
-               onClick={() => {
-                 notificationService.requestPermission().then(granted => {
-                   if (granted) {
-                     notificationService.scheduleNotification(
-                       'Promemoria Veicolo',
-                       `Le notifiche per la tua ${data.brand} sono attive!`,
-                       new Date(Date.now() + 3000)
-                     );
-                   }
-                 });
-               }}
+                onClick={() => {
+                  notificationService.requestPermission().then(granted => {
+                    if (granted) {
+                      notificationService.scheduleNotification(
+                        'Promemoria Veicolo',
+                        `Le notifiche per la tua ${data.brand} sono attive!`,
+                        new Date(Date.now() + 3000)
+                      );
+                    }
+                  });
+                }}
                className="bg-[var(--card-bg)] border border-[var(--border)] rounded-2xl p-4 flex items-center justify-center gap-3 hover:bg-[var(--surface-variant)] transition-all group active:scale-95"
              >
                 <Bell className="w-5 h-5 text-amber-500 group-hover:scale-110 transition-transform" />

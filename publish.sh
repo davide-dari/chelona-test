@@ -71,7 +71,7 @@ RELEASE_JSON=$(curl -s -X POST \
   -d "{
     \"tag_name\": \"$TAG\",
     \"name\": \"Chelona $TAG\",
-    \"body\": \"🚀 **Chelona v$VERSION**\\n\\n### ✨ Novità e Fix:\\n- **🔐 Fix Biometria**: Ripristinato il corretto flusso di autenticazione biometrica per un accesso sicuro e fluido.\\n- **🚗 Editor Auto Potenziato**: Aggiunti tutti i campi mancanti nell'editor veicolo (Alimentazione, Tagliando, Revisione, Gomme, Batteria).\\n- **📲 Condivisione Ripristinata**: Risolto il problema della sovrapposizione dei moduli che impediva la condivisione.\\n- **🔔 Notifiche Attive**: Implementato il sistema di schedulazione notifiche per promemoria scadenze veicolo.\",
+    \"body\": \"🚀 **Chelona v$VERSION**\\n\\n### ✨ Novità e Fix:\\n- **💳 Menu Spese Intelligente**: Il tasto '+' nelle categorie Spese ora ti permette di scegliere velocemente tra Nuova Rata, Gruppo Spese o Spesa Singola.\\n- **🚗 Scadenze Auto Ripristinate**: Corretto il calcolo e la visualizzazione di tutte le scadenze veicolo, incluse le batterie (12V e Ibrida).\\n- **⚡ UX Migliorata**: Ottimizzato il flusso di aggiunta moduli per una navigazione più rapida.\",
     \"draft\": false,
     \"prerelease\": false
   }")
