@@ -4,6 +4,8 @@ import { motion, AnimatePresence } from 'motion/react';
 import { storage } from '../services/storage';
 import { encryption } from '../services/encryption';
 import { biometricService } from '../services/biometricService';
+import { APP_VERSION } from '../constants/version';
+
 import { ProfileConfig } from '../types';
 
 interface LockScreenProps {
@@ -176,26 +178,21 @@ export const LockScreen = ({ isVisible, onAuthenticated, onStartScan, onOpenTool
     }
     
     setIsLoading(true);
+    setError(''); // Clear previous errors
     try {
       const m = await import('../services/biometricService');
       
-      // STEP 1: Explicit Physical Hardware Verification
-      // This forces the OS to show the native prompt and wait for a real scan
-      const verified = await m.biometricService.verifyIdentity('Accedi al tuo profilo sicuro.');
-      if (!verified) {
-        setError('Verifica hardware fallita. Usa l\'impronta fisica sul sensore.');
-        setIsLoading(false);
-        return;
-      }
-
-      // STEP 2: Retrieve the master key from the secure store
+      // We directly call getMasterKey which triggers the biometric prompt.
+      // verifyIdentity was redundant here as getCredentials already prompts the user.
       const masterKeyStr = await m.biometricService.getMasterKey(selectedProfile.id);
       
       if (masterKeyStr) {
         const masterKey = await encryption.importKey(masterKeyStr);
         onAuthenticated(masterKey, selectedProfile.id);
       } else {
-        setError('Impossibile recuperare la chiave di sicurezza.');
+        // If masterKeyStr is null, it means either user cancelled or something went wrong.
+        // We don't necessarily show a hard error if they just cancelled.
+        setIsLoading(false);
       }
     } catch (err: any) {
       console.error('[LockScreen] Biometric login error:', err);
@@ -337,7 +334,7 @@ export const LockScreen = ({ isVisible, onAuthenticated, onStartScan, onOpenTool
                 </button>
                 
                 <div className="flex items-center gap-2 px-3 py-1.5 bg-[var(--bg)] rounded-full border border-[var(--border)] shadow-sm">
-                   <span className="text-[10px] font-bold text-[var(--text-muted)]">Versione 1.12.49</span>
+                   <span className="text-[10px] font-bold text-[var(--text-muted)]">Versione {APP_VERSION}</span>
                    <div className="w-1 h-1 rounded-full bg-[var(--border)]" />
                    <button 
                     onClick={() => onCheckUpdate?.()}

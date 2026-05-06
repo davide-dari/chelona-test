@@ -2,6 +2,8 @@
 import { Filesystem, Directory } from '@capacitor/filesystem';
 import { Device } from '@capacitor/device';
 import { ApkInstaller } from '@bixbyte/capacitor-apk-installer';
+import { APP_VERSION } from '../constants/version';
+
 
 const GITHUB_OWNER = 'davide-dari';
 const GITHUB_REPO = 'chelona-test';
@@ -15,7 +17,7 @@ export interface UpdateInfo {
 }
 
 class UpdateService {
-  private currentVersion = '1.12.66';
+  private currentVersion = APP_VERSION;
 
   async checkForUpdates(): Promise<UpdateInfo | null> {
     console.log(`[UpdateService] Checking for updates... Current version: ${this.currentVersion}`);

@@ -70,14 +70,21 @@ export const biometricService = {
       if (!NativeBiometric || typeof NativeBiometric.getCredentials !== 'function') return null;
       const credentials = await NativeBiometric.getCredentials({
         server: 'chelona.app',
+        title: 'Accesso Sicuro',
+        subtitle: 'Sblocca il tuo profilo',
+        description: 'Usa la biometria per recuperare la tua chiave di accesso.',
       });
       
       if (credentials && credentials.username === profileId) {
         return credentials.password;
       }
       return null;
-    } catch (e) {
+    } catch (e: any) {
       console.error('[BiometricService] Failed to retrieve credentials', e);
+      // Specific error handling for user cancellation or no biometrics
+      if (e.message?.includes('User canceled') || e.code === 'USER_CANCELED') {
+        return null;
+      }
       return null;
     }
   },
@@ -91,6 +98,7 @@ export const biometricService = {
         title: 'Autenticazione Biometrica',
         subtitle: 'Usa l\'impronta o il volto per continuare',
         description: 'Verifica la tua identità per accedere alle funzioni di sicurezza.',
+        useDevicePasscode: true, // Allow fallback to PIN/Pattern/Password
       });
       return true;
     } catch (e) {

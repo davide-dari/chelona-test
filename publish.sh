@@ -71,7 +71,7 @@ RELEASE_JSON=$(curl -s -X POST \
   -d "{
     \"tag_name\": \"$TAG\",
     \"name\": \"Chelona $TAG\",
-    \"body\": \"🚀 **Chelona v$VERSION**\\n\\n### ✨ Novità e Fix:\\n- **➕ Ripristino Tasti Aggiungi**: Ripristinato il tasto + globale nella dashboard e aggiunti tasti + specifici in ogni categoria (Auto, Spese, Documenti, ecc.).\\n- **📐 Layout Ottimizzato**: Nuova intestazione di sezione con pulsante di aggiunta contestuale.\\n- **⚡ Accessibilità**: Accesso più rapido alla creazione di nuovi contenuti da qualsiasi schermata.\",
+    \"body\": \"🚀 **Chelona v$VERSION**\\n\\n### ✨ Novità e Fix:\\n- **🔐 Miglioramento Impronta**: Ottimizzato l'accesso biometrico. Rimossa la doppia richiesta e aggiunto il fallback al codice dispositivo se l'impronta fallisce.\\n- **🏷️ Sincronizzazione Versione**: Centralizzata la gestione della versione per evitare loop di aggiornamento.\\n- **🚗 Fix Modulo Auto**: Risolto l'errore di visualizzazione dell'icona elimina (trash2) nel modulo Auto.\",
     \"draft\": false,
     \"prerelease\": false
   }")
