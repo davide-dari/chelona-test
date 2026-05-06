@@ -1,7 +1,7 @@
 {
   "name": "chelona",
   "private": true,
-  "version": "1.12.68",
+  "version": "1.12.69",
   "type": "module",
   "scripts": {
     "dev": "vite --port=3000 --host=0.0.0.0",

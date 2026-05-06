@@ -1212,8 +1212,8 @@ export default function App() {
               transition={{ delay: 0.2, duration: 0.8, ease: "backOut" }}
               className="relative"
             >
-              <div className="w-32 h-32 md:w-40 md:h-40 flex items-center justify-center overflow-hidden">
-                <img src="/chelona_logo.png" alt="Chelona Logo" className="w-full h-full object-contain" />
+              <div className="w-64 h-32 md:w-80 md:h-40 flex items-center justify-center overflow-hidden">
+                <img src="/chelona_logo.png" alt="Chelona Logo" className="max-w-full max-h-full object-contain" />
               </div>
             </motion.div>
             

@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="public/icon.png" alt="Chelona Logo" width="150" height="150">
+  <img src="public/icon.png" alt="Chelona Logo" width="150">
   <h1>Chelona Vault 🐢</h1>
   <p><b>La tua roccaforte digitale. Sicura, Locale, Inviolabile.</b></p>
   

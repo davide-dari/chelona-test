@@ -71,7 +71,7 @@ RELEASE_JSON=$(curl -s -X POST \
   -d "{
     \"tag_name\": \"$TAG\",
     \"name\": \"Chelona $TAG\",
-    \"body\": \"🚀 **Chelona v$VERSION**\\n\\n### ✨ Novità e Fix:\\n- **🔐 Miglioramento Impronta**: Ottimizzato l'accesso biometrico. Rimossa la doppia richiesta e aggiunto il fallback al codice dispositivo se l'impronta fallisce.\\n- **🏷️ Sincronizzazione Versione**: Centralizzata la gestione della versione per evitare loop di aggiornamento.\\n- **🚗 Fix Modulo Auto**: Risolto l'errore di visualizzazione dell'icona elimina (trash2) nel modulo Auto.\",
+    \"body\": \"🚀 **Chelona v$VERSION**\\n\\n### ✨ Novità e Fix:\\n- **🖼️ Fix Logo & Aspect Ratio**: Risolto il problema del logo schiacciato su GitHub e nella schermata di caricamento. Ora il logo mantiene le proporzioni corrette.\\n- **📐 Layout Migliorato**: Ottimizzati i contenitori del logo per una migliore visibilità e un design più pulito.\",
     \"draft\": false,
     \"prerelease\": false
   }")
