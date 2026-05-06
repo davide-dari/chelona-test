@@ -71,7 +71,7 @@ RELEASE_JSON=$(curl -s -X POST \
   -d "{
     \"tag_name\": \"$TAG\",
     \"name\": \"Chelona $TAG\",
-    \"body\": \"🚀 **Chelona v$VERSION**\\n\\n### ✨ Novità e Fix:\\n- **🖼️ Fix Logo & Aspect Ratio**: Risolto il problema del logo schiacciato su GitHub e nella schermata di caricamento. Ora il logo mantiene le proporzioni corrette.\\n- **📐 Layout Migliorato**: Ottimizzati i contenitori del logo per una migliore visibilità e un design più pulito.\",
+    \"body\": \"🚀 **Chelona v$VERSION**\\n\\n### ✨ Novità e Fix:\\n- **🚫 Pulizia Menu +**: Rimossa la Galleria dal menu di aggiunta rapida per un'esperienza più snella.\\n- **🖼️ Fix Logo (Native & Web)**: Risolto definitivamente il problema del logo schiacciato durante il caricamento nativo Android e nel caricamento app.\\n- **🚗 Scheda Veicolo Attiva**: Attivati i tasti 'Condividi' e 'Notifiche' nella gestione veicolo.\\n- **⚡ Ottimizzazioni**: Migliorata la fluidità generale e la stabilità dei moduli.\",
     \"draft\": false,
     \"prerelease\": false
   }")

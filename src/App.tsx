@@ -117,12 +117,6 @@ const TEMPLATES = {
     icon: FileText,
     color: 'text-blue-500'
   },
-  gallery: {
-    title: 'Galleria',
-    content: '',
-    icon: ImageIcon,
-    color: 'text-indigo-500'
-  },
   none: {
     title: 'Appunto Libero',
     content: '',
@@ -1212,7 +1206,7 @@ export default function App() {
               transition={{ delay: 0.2, duration: 0.8, ease: "backOut" }}
               className="relative"
             >
-              <div className="w-64 h-32 md:w-80 md:h-40 flex items-center justify-center overflow-hidden">
+              <div className="w-full max-w-[280px] h-40 flex items-center justify-center overflow-hidden">
                 <img src="/chelona_logo.png" alt="Chelona Logo" className="max-w-full max-h-full object-contain" />
               </div>
             </motion.div>
@@ -2438,6 +2432,7 @@ export default function App() {
             onSave={handleSaveAutoEdit} 
             onCancel={() => setEditingAutoModule(null)} 
             onDelete={deleteModule}
+            onShare={(m) => setSharingModule(m)}
           />
         )}
       </AnimatePresence>

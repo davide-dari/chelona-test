@@ -13,6 +13,7 @@ interface AutoManagementScreenProps {
   onSave: (updated: AutoModule) => void;
   onCancel: () => void;
   onDelete?: (id: string) => void;
+  onShare?: (module: any) => void;
 }
 
 const Field = ({
@@ -209,11 +210,27 @@ export const AutoManagementScreen = ({ module, onSave, onCancel, onDelete }: Aut
 
           {/* Quick Actions Bar */}
           <div className="grid grid-cols-2 gap-4">
-             <button className="bg-[var(--card-bg)] border border-[var(--border)] rounded-2xl p-4 flex items-center justify-center gap-3 hover:bg-[var(--surface-variant)] transition-all group">
+             <button 
+               onClick={() => onShare?.(module)}
+               className="bg-[var(--card-bg)] border border-[var(--border)] rounded-2xl p-4 flex items-center justify-center gap-3 hover:bg-[var(--surface-variant)] transition-all group active:scale-95"
+             >
                 <QrCode className="w-5 h-5 text-[var(--accent)] group-hover:scale-110 transition-transform" />
                 <span className="text-xs font-bold text-[var(--text-main)] uppercase tracking-widest">Condividi</span>
              </button>
-             <button className="bg-[var(--card-bg)] border border-[var(--border)] rounded-2xl p-4 flex items-center justify-center gap-3 hover:bg-[var(--surface-variant)] transition-all group">
+             <button 
+               onClick={() => {
+                 notificationService.requestPermission().then(granted => {
+                   if (granted) {
+                     notificationService.scheduleNotification(
+                       'Promemoria Veicolo',
+                       `Le notifiche per la tua ${data.brand} sono attive!`,
+                       new Date(Date.now() + 3000)
+                     );
+                   }
+                 });
+               }}
+               className="bg-[var(--card-bg)] border border-[var(--border)] rounded-2xl p-4 flex items-center justify-center gap-3 hover:bg-[var(--surface-variant)] transition-all group active:scale-95"
+             >
                 <Bell className="w-5 h-5 text-amber-500 group-hover:scale-110 transition-transform" />
                 <span className="text-xs font-bold text-[var(--text-main)] uppercase tracking-widest">Notifiche</span>
              </button>
