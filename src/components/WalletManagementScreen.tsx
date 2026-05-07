@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { WalletModule } from '../types';
-import { Calendar, Wallet, ArrowLeft, Plus, TrendingUp, Info, Check, Edit2, Save, Trash2, PieChart } from 'lucide-react';
+import { Calendar, Wallet, ArrowLeft, Plus, TrendingUp, Info, Check, Edit2, Save, Trash2, PieChart, X } from 'lucide-react';
 
 interface WalletManagementScreenProps {
   module: WalletModule;

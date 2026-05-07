@@ -8,7 +8,7 @@ import { Sun, Moon, Wrench, Plus, LayoutDashboard, Settings, User, LogOut, Searc
 import { Module, ModuleType, Folder, DocumentModule } from './types';
 import { storage, AppState } from './services/storage';
 import { encryption } from './services/encryption';
-import { GenericCard, AutoCard, DocumentCard, SplitCard, SingleExpenseCard, WalletCard, GalleryCard } from './components/Modules';
+import { GenericCard, AutoCard, DocumentCard, SplitCard, SingleExpenseCard, WalletCard, GalleryCard, TravelCard } from './components/Modules';
 import { LockScreen } from './components/LockScreen';
 import { QrScanner } from './components/QrScanner';
 import { DocumentScanner } from './components/DocumentScanner';
@@ -22,6 +22,7 @@ import { SplitScreen } from './components/SplitScreen';
 import { DocumentArchive } from './components/DocumentArchive';
 import { SingleExpenseScreen } from './components/SingleExpenseScreen';
 import { AddressBookScreen } from './components/AddressBookScreen';
+import { TravelScreen } from './components/TravelScreen';
 import { notificationService } from './services/notificationService';
 import { APP_VERSION } from './constants/version';
 
@@ -104,7 +105,6 @@ const TEMPLATES = {
     icon: Users,
     color: 'text-purple-500'
   },
-
   'single-expense': {
     title: 'Spesa Singola',
     content: '',
@@ -116,6 +116,12 @@ const TEMPLATES = {
     content: '',
     icon: FileText,
     color: 'text-blue-500'
+  },
+  travel: {
+    title: 'Viaggi',
+    content: '',
+    icon: Globe,
+    color: 'text-indigo-400'
   },
   none: {
     title: 'Appunto Libero',
@@ -143,6 +149,7 @@ export default function App() {
   const [editingWalletModule, setEditingWalletModule] = useState<import('./types').WalletModule | null>(null);
   const [editingDocumentModule, setEditingDocumentModule] = useState<import('./types').DocumentModule | null>(null);
   const [editingGenericModule, setEditingGenericModule] = useState<import('./types').GenericModule | null>(null);
+  const [editingTravelModule, setEditingTravelModule] = useState<import('./types').TravelModule | null>(null);
   const [sharingModule, setSharingModule] = useState<Module | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedType, setSelectedType] = useState<ModuleType | null>(null);
@@ -600,6 +607,10 @@ export default function App() {
     if (module.type === 'gallery') {
       setGallerySelectedImage(null);
       setShowGalleryViewer(true);
+      return;
+    }
+    if (module.type === 'travel') {
+      setEditingTravelModule(module as import('./types').TravelModule);
       return;
     }
     // Migration for old expense template
@@ -1414,6 +1425,13 @@ export default function App() {
                 onCancel={() => setEditingAutoModule(null)}
                 onDelete={deleteModule}
               />
+            ) : editingTravelModule ? (
+              <TravelScreen
+                module={editingTravelModule}
+                onSave={(mod) => { updateModuleDirect(mod); setEditingTravelModule(mod); }}
+                onClose={() => setEditingTravelModule(null)}
+                onDelete={(id) => { deleteModule(id); setEditingTravelModule(null); }}
+              />
             ) : editingSplitModule ? (
               <SplitScreen
                 module={editingSplitModule}
@@ -2151,6 +2169,8 @@ export default function App() {
                           <WalletCard module={module as import('./types').WalletModule} onDelete={requestDelete} onEdit={openEditModal} />
                         ) : module.type === 'gallery' ? (
                           <GalleryCard module={module as import('./types').GalleryModule} onEdit={openEditModal} />
+                        ) : module.type === 'travel' ? (
+                          <TravelCard module={module as import('./types').TravelModule} onDelete={requestDelete} onEdit={openEditModal} />
                         ) : (
                           <GenericCard module={module as import('./types').GenericModule} onDelete={requestDelete} onEdit={openEditModal} />
                         )}
@@ -2163,15 +2183,31 @@ export default function App() {
             )}
           </div>
           
-          {/* Global FAB (Only on main dashboard and specific categories except gallery) */}
-          {(selectedType !== 'gallery') && !isAdding && !editingModuleId && !isArchiveOpen && !isToolsOpen && !editingAutoModule && !editingSplitModule && !editingSingleExpenseModule && !editingWalletModule && !editingDocumentModule && !editingGenericModule && (
+          {/* Global FAB (Only on main dashboard and specific categories except gallery/travel) */}
+          {(selectedType !== 'gallery') && !editingTravelModule && !isAdding && !editingModuleId && !isArchiveOpen && !isToolsOpen && !editingAutoModule && !editingSplitModule && !editingSingleExpenseModule && !editingWalletModule && !editingDocumentModule && !editingGenericModule && (
             <motion.button
               initial={{ scale: 0, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               onClick={() => {
-                if (selectedType === 'split' || selectedType === 'single-expense' || selectedType === 'wallet') {
+                if (selectedType === 'travel') {
+                  // Create new travel module directly
+                  const newTravel: import('./types').TravelModule = {
+                    id: generateUUID(),
+                    type: 'travel',
+                    title: 'I Miei Viaggi',
+                    destinations: [],
+                    x: 0, y: 0, w: 3, h: 3,
+                    folderId: selectedFolderId || undefined
+                  };
+                  setModules(prev => {
+                    const updated = [newTravel, ...prev];
+                    saveAppState(updated, folders).catch(console.error);
+                    return updated;
+                  });
+                  setEditingTravelModule(newTravel);
+                } else if (selectedType === 'split' || selectedType === 'single-expense' || selectedType === 'wallet') {
                   setSpesaSubMenu(true);
                   setIsAdding(true);
                 } else {

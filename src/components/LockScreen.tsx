@@ -34,6 +34,7 @@ export const LockScreen = ({ isVisible, onAuthenticated, onStartScan, onOpenTool
   const [isBioSupported, setIsBioSupported] = useState(false);
   const [onboardingStep, setOnboardingStep] = useState(0); // 0: Welcome, 1: Privacy, 2: Setup
   const autoBioTriggered = useRef<string | null>(null);
+  const bioTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const refreshProfiles = (currentView?: string) => {
     const loadedProfiles = storage.loadProfiles();
@@ -77,14 +78,32 @@ export const LockScreen = ({ isVisible, onAuthenticated, onStartScan, onOpenTool
 
   // Automatic biometric trigger when entering login view
   useEffect(() => {
-    if (view === 'login' && selectedProfile?.isBiometricEnabled && autoBioTriggered.current !== selectedProfile.id) {
-      console.log('[LockScreen] Auto-triggering biometrics for:', selectedProfile.username);
-      autoBioTriggered.current = selectedProfile.id;
-      handleBiometricLogin();
+    // Clear any pending bio timeout when view changes
+    if (bioTimeoutRef.current) {
+      clearTimeout(bioTimeoutRef.current);
+      bioTimeoutRef.current = null;
+    }
+
+    if (view === 'login' && selectedProfile?.isBiometricEnabled) {
+      if (autoBioTriggered.current !== selectedProfile.id) {
+        console.log('[LockScreen] Auto-triggering biometrics for:', selectedProfile.username);
+        autoBioTriggered.current = selectedProfile.id;
+        // Small delay to ensure the UI is rendered before the native prompt appears
+        bioTimeoutRef.current = setTimeout(() => {
+          handleBiometricLogin();
+        }, 300);
+      }
     } else if (view !== 'login') {
-      // Reset trigger tracker when leaving login view
+      // Reset trigger tracker when leaving login view so it triggers again on next entry
       autoBioTriggered.current = null;
     }
+
+    return () => {
+      if (bioTimeoutRef.current) {
+        clearTimeout(bioTimeoutRef.current);
+        bioTimeoutRef.current = null;
+      }
+    };
   }, [view, selectedProfile]);
 
   const handleSetup = async (e: React.FormEvent) => {

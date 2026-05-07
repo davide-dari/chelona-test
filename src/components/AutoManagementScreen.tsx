@@ -102,20 +102,37 @@ export const AutoManagementScreen = ({ module, onSave, onCancel, onDelete }: Aut
   };
 
   const deadlines = (() => {
-    const list: Array<{ label: string; date: string; field: string }> = [];
-    if (data.lastInsurance && isValidDate(data.lastInsurance)) list.push({ label: 'Assicurazione', date: addYears(data.lastInsurance, 1), field: 'lastInsurance' });
-    if (data.lastRevision && isValidDate(data.lastRevision)) {
-      list.push({ label: 'Revisione', date: getEndOfMonth(data.lastRevision, 2), field: 'lastRevision' });
-    } else if (data.registrationYear && !isNaN(Number(data.registrationYear))) {
-      list.push({ label: 'Prima Revisione', date: `${Number(data.registrationYear) + 4}-12-31`, field: 'registrationYear' });
+    const list: Array<{ label: string; date: string; field: string; daysLeft: number }> = [];
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const addDeadline = (label: string, dateStr: string | undefined, field: string) => {
+      if (!dateStr || !isValidDate(dateStr)) return;
+      const d = new Date(dateStr);
+      d.setHours(0, 0, 0, 0);
+      const daysLeft = Math.round((d.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+      list.push({ label, date: dateStr, field, daysLeft });
+    };
+
+    addDeadline('Assicurazione', data.lastInsurance, 'lastInsurance');
+    addDeadline('Bollo', data.lastTax, 'lastTax');
+    addDeadline('Revisione', data.lastRevision, 'lastRevision');
+    addDeadline('Batteria 12V', data.battery12vExpiryDate, 'battery12vExpiryDate');
+    addDeadline('Batteria Ibrida', data.hybridBatteryExpiryDate, 'hybridBatteryExpiryDate');
+    addDeadline('Bombola GPL', data.lastGplCylinder, 'lastGplCylinder');
+    addDeadline('Bombola Metano', data.lastMethaneCylinder, 'lastMethaneCylinder');
+
+    // Prima revisione calcolata da anno di immatricolazione se non c'è data revisione
+    if (!data.lastRevision && data.registrationYear && !isNaN(Number(data.registrationYear))) {
+      const firstRevYear = Number(data.registrationYear) + 4;
+      const firstRevDate = `${firstRevYear}-12-31`;
+      const d = new Date(firstRevDate);
+      d.setHours(0, 0, 0, 0);
+      const daysLeft = Math.round((d.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+      list.push({ label: 'Prima Revisione', date: firstRevDate, field: 'registrationYear', daysLeft });
     }
-    if (data.lastTax && isValidDate(data.lastTax)) list.push({ label: 'Bollo', date: getEndOfMonth(data.lastTax, 1), field: 'lastTax' });
-    if (data.lastGplCylinder && isValidDate(data.lastGplCylinder)) list.push({ label: 'Bombola GPL', date: addYears(data.lastGplCylinder, 10), field: 'lastGplCylinder' });
-    if (data.lastMethaneCylinder && isValidDate(data.lastMethaneCylinder)) list.push({ label: 'Bombola Metano', date: addYears(data.lastMethaneCylinder, data.methaneType === 'r110' ? 5 : 4), field: 'lastMethaneCylinder' });
-    if (data.battery12vExpiryDate && isValidDate(data.battery12vExpiryDate)) list.push({ label: 'Batteria 12V', date: data.battery12vExpiryDate, field: 'battery12vExpiryDate' });
-    if (data.hybridBatteryExpiryDate && isValidDate(data.hybridBatteryExpiryDate)) list.push({ label: 'Batteria Ibrida', date: data.hybridBatteryExpiryDate, field: 'hybridBatteryExpiryDate' });
-    
-    return list.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+    return list.sort((a, b) => a.daysLeft - b.daysLeft);
   })();
 
   return (
@@ -245,23 +262,38 @@ export const AutoManagementScreen = ({ module, onSave, onCancel, onDelete }: Aut
                 <div>
                   <SectionTitle icon={Calendar} label="Prossime Scadenze" />
                   <div className="space-y-3">
-                    {deadlines.map((d, i) => (
-                      <div key={i} className="bg-[var(--card-bg)] border border-[var(--border)] rounded-2xl p-5 flex items-center justify-between group hover:border-[var(--accent)] transition-all">
-                        <div className="flex items-center gap-4">
-                          <div className="w-10 h-10 bg-[var(--bg)] rounded-xl flex items-center justify-center text-[var(--accent)] border border-[var(--border)]">
-                             <Calendar className="w-5 h-5" />
+                    {deadlines.map((d, i) => {
+                      const isExpired = d.daysLeft < 0;
+                      const isUrgent = d.daysLeft >= 0 && d.daysLeft <= 30;
+                      const statusColor = isExpired
+                        ? 'text-red-500 bg-red-500/10 border-red-500/20'
+                        : isUrgent
+                        ? 'text-amber-500 bg-amber-500/10 border-amber-500/20'
+                        : 'text-emerald-500 bg-emerald-500/10 border-emerald-500/20';
+                      const statusLabel = isExpired
+                        ? 'Scaduta'
+                        : isUrgent
+                        ? `${d.daysLeft}gg`
+                        : 'Attiva';
+
+                      return (
+                        <div key={i} className="bg-[var(--card-bg)] border border-[var(--border)] rounded-2xl p-5 flex items-center justify-between group hover:border-[var(--accent)] transition-all">
+                          <div className="flex items-center gap-4">
+                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center border ${statusColor}`}>
+                               <Calendar className="w-5 h-5" />
+                            </div>
+                            <div>
+                              <p className="text-sm font-bold text-[var(--text-main)]">{d.label}</p>
+                              <p className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest">{new Date(d.date).toLocaleDateString('it-IT')}</p>
+                            </div>
                           </div>
-                          <div>
-                            <p className="text-sm font-bold text-[var(--text-main)]">{d.label}</p>
-                            <p className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest">{new Date(d.date).toLocaleDateString('it-IT')}</p>
+                          <div className="flex items-center gap-2">
+                             <span className={`text-[10px] font-black px-2 py-1 rounded-lg border uppercase tracking-widest ${statusColor}`}>{statusLabel}</span>
+                             <ChevronRight className="w-4 h-4 text-[var(--text-muted)] group-hover:translate-x-1 transition-transform" />
                           </div>
                         </div>
-                        <div className="flex items-center gap-2">
-                           <span className="text-[10px] font-black text-emerald-500 bg-emerald-500/10 px-2 py-1 rounded-lg border border-emerald-500/20 uppercase tracking-widest">Attiva</span>
-                           <ChevronRight className="w-4 h-4 text-[var(--text-muted)] group-hover:translate-x-1 transition-transform" />
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               )}
@@ -344,6 +376,29 @@ export const AutoManagementScreen = ({ module, onSave, onCancel, onDelete }: Aut
                   <Field label="Scadenza Batteria 12V">
                     <input type="date" value={data.battery12vExpiryDate || ''} onChange={e => set('battery12vExpiryDate', e.target.value)} className={inputCls} />
                   </Field>
+                  {(data.fuelType === 'ibrida' || data.fuelType === 'elettrica') && (
+                    <Field label="Scadenza Batteria Ibrida/EV">
+                      <input type="date" value={data.hybridBatteryExpiryDate || ''} onChange={e => set('hybridBatteryExpiryDate', e.target.value)} className={inputCls} />
+                    </Field>
+                  )}
+                  {data.fuelType === 'gpl' && (
+                    <Field label="Scadenza Bombola GPL">
+                      <input type="date" value={data.lastGplCylinder || ''} onChange={e => set('lastGplCylinder', e.target.value)} className={inputCls} />
+                    </Field>
+                  )}
+                  {data.fuelType === 'metano' && (
+                    <>
+                      <Field label="Scadenza Bombola Metano">
+                        <input type="date" value={data.lastMethaneCylinder || ''} onChange={e => set('lastMethaneCylinder', e.target.value)} className={inputCls} />
+                      </Field>
+                      <Field label="Omologazione Bombola" colSpan={2}>
+                        <select value={data.methaneType || 'standard'} onChange={e => set('methaneType', e.target.value)} className={inputCls}>
+                          <option value="standard">Standard (4 anni)</option>
+                          <option value="r110">Europea R110 (5 anni)</option>
+                        </select>
+                      </Field>
+                    </>
+                  )}
                 </div>
               </div>
             </div>

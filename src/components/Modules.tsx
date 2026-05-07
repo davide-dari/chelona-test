@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { CreditCard, ShieldCheck, Wallet, Fingerprint, Plus, Trash2, Calendar, DollarSign, Pencil, StickyNote, Copy, Check, GripVertical, Car, Wrench, AlertCircle, FileText, QrCode, FileDown, X, Clock, Eye, Lock, ChevronRight, Bell, BellOff, Gauge, Users, Paperclip, Receipt, Image as ImageIcon, MapPin, ChevronLeft } from 'lucide-react';
-import { Module, GenericModule, AutoModule, DocumentModule, SplitModule, SingleExpenseModule, WalletModule, GalleryModule } from '../types';
+import { Module, GenericModule, AutoModule, DocumentModule, SplitModule, SingleExpenseModule, WalletModule, GalleryModule, TravelModule } from '../types';
 import { EXPENSE_CATEGORIES } from '../constants/expenses';
 import { motion, AnimatePresence } from 'motion/react';
 import { CAR_BRANDS } from '../utils/carBrands';
@@ -319,6 +319,42 @@ export const GalleryCard = ({ module, onEdit }: { module: GalleryModule; onEdit?
               <ImageIcon className="w-4 h-4" />
            </div>
            <span className="text-[12px] font-bold text-[var(--text-main)] truncate">{module.title || 'Galleria'}</span>
+        </div>
+      </div>
+    </ModuleWrapper>
+  );
+};
+
+export const TravelCard = ({ module, onDelete, onEdit }: { module: TravelModule; onDelete?: (id: string) => void; onEdit?: (m: Module) => void; }) => {
+  const count = module.destinations?.length || 0;
+  return (
+    <ModuleWrapper module={module} onDelete={onDelete} onEdit={onEdit}>
+      <div
+        className="h-full flex flex-col cursor-pointer group/card hover:bg-[var(--bg)] transition-colors p-4 -m-4 rounded-2xl active:scale-[0.98]"
+        onClick={() => onEdit?.(module)}
+      >
+        {/* Globe preview */}
+        <div className="relative aspect-square rounded-2xl overflow-hidden bg-[#060d1a] border border-blue-500/20 mb-3 flex items-center justify-center shadow-inner">
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_#0f2744_0%,_#060d1a_80%)]" />
+          {/* Stars */}
+          {Array.from({ length: 20 }).map((_, i) => (
+            <div key={i} className="absolute w-px h-px rounded-full bg-white" style={{ top: `${Math.random() * 100}%`, left: `${Math.random() * 100}%`, opacity: Math.random() * 0.7 + 0.2 }} />
+          ))}
+          <div className="relative z-10 w-16 h-16 rounded-full bg-gradient-to-br from-blue-600/80 to-indigo-900 border border-blue-400/30 flex items-center justify-center shadow-lg shadow-blue-500/20">
+            <span className="text-3xl">🌍</span>
+          </div>
+          {count > 0 && (
+            <div className="absolute bottom-2 right-2 bg-blue-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full shadow">
+              {count} {count === 1 ? 'luogo' : 'luoghi'}
+            </div>
+          )}
+        </div>
+
+        <div className="flex items-center gap-2">
+          <div className="w-7 h-7 bg-blue-500/10 rounded-lg flex items-center justify-center text-blue-400">
+            <MapPin className="w-4 h-4" />
+          </div>
+          <span className="text-[12px] font-bold text-[var(--text-main)] truncate">{module.title || 'Viaggi'}</span>
         </div>
       </div>
     </ModuleWrapper>
