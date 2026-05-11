@@ -191,14 +191,31 @@ export const WalletManagementScreen = ({ module, onSave, onCancel, onDelete }: W
                     />
                   </div>
                   <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] mb-2 block">Importo Finale</label>
-                      <input 
-                        type="number" 
-                        value={data.totalAmount} 
-                        onChange={e => setData({...data, totalAmount: parseFloat(e.target.value) || 0})} 
-                        className="w-full p-4 bg-[var(--bg)] border border-[var(--border)] rounded-2xl outline-none focus:border-[var(--accent)] transition-all font-bold text-[var(--text-main)]"
-                      />
+                    <div className="flex gap-2">
+                      <div className="flex-1">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] mb-2 block">Importo Rata (€)</label>
+                        <input 
+                          type="number" 
+                          value={data.installmentAmount || ''} 
+                          onChange={e => {
+                            const val = parseFloat(e.target.value) || 0;
+                            setData(prev => ({...prev, installmentAmount: val, totalAmount: val * (prev.installmentsCount || 1)}));
+                          }} 
+                          className="w-full p-4 bg-[var(--bg)] border border-[var(--border)] rounded-2xl outline-none focus:border-[var(--accent)] transition-all font-bold text-[var(--text-main)]"
+                        />
+                      </div>
+                      <div className="w-24 shrink-0">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] mb-2 block">N. Rate</label>
+                        <input 
+                          type="number" 
+                          value={data.installmentsCount || ''} 
+                          onChange={e => {
+                            const val = parseInt(e.target.value) || 1;
+                            setData(prev => ({...prev, installmentsCount: val, totalAmount: (prev.installmentAmount || 0) * val}));
+                          }} 
+                          className="w-full p-4 bg-[var(--bg)] border border-[var(--border)] rounded-2xl outline-none focus:border-[var(--accent)] transition-all font-bold text-[var(--text-main)] text-center"
+                        />
+                      </div>
                     </div>
                     <div>
                       <label className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] mb-2 block">Data Scadenza</label>

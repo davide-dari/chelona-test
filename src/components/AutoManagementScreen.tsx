@@ -240,11 +240,24 @@ export const AutoManagementScreen = ({ module, onSave, onCancel, onDelete }: Aut
                 onClick={() => {
                   notificationService.requestPermission().then(granted => {
                     if (granted) {
-                      notificationService.scheduleNotification(
-                        'Promemoria Veicolo',
-                        `Le notifiche per la tua ${data.brand} sono attive!`,
-                        new Date(Date.now() + 3000)
-                      );
+                      let scheduled = 0;
+                      deadlines.forEach(d => {
+                        if (d.daysLeft > 0) {
+                          const notifDate = new Date(d.date);
+                          notifDate.setHours(9, 0, 0, 0); // 9 AM
+                          notificationService.scheduleNotification(
+                            'Scadenza Veicolo',
+                            `La scadenza ${d.label} per la tua ${data.brand} è il ${new Date(d.date).toLocaleDateString('it-IT')}!`,
+                            notifDate
+                          );
+                          scheduled++;
+                        }
+                      });
+                      if (scheduled > 0) {
+                        alert(`Programmate ${scheduled} notifiche per le prossime scadenze.`);
+                      } else {
+                        alert('Nessuna scadenza futura trovata da programmare.');
+                      }
                     }
                   });
                 }}
@@ -373,12 +386,21 @@ export const AutoManagementScreen = ({ module, onSave, onCancel, onDelete }: Aut
                   <Field label="Scadenza Revisione">
                     <input type="date" value={data.lastRevision || ''} onChange={e => set('lastRevision', e.target.value)} className={inputCls} />
                   </Field>
-                  <Field label="Scadenza Batteria 12V">
-                    <input type="date" value={data.battery12vExpiryDate || ''} onChange={e => set('battery12vExpiryDate', e.target.value)} className={inputCls} />
+                  <Field label="Garanzia e Scadenza Batteria 12V" colSpan={2}>
+                    <div className="flex gap-2">
+                      <input type="text" value={data.battery12vWarranty || ''} onChange={e => set('battery12vWarranty', e.target.value)} placeholder="Es. Garanzia fino al 2027" className={`flex-1 ${inputCls}`} />
+                      <input type="date" value={data.battery12vExpiryDate || ''} onChange={e => set('battery12vExpiryDate', e.target.value)} className={`w-40 ${inputCls}`} />
+                    </div>
                   </Field>
                   {(data.fuelType === 'ibrida' || data.fuelType === 'elettrica') && (
-                    <Field label="Scadenza Batteria Ibrida/EV">
-                      <input type="date" value={data.hybridBatteryExpiryDate || ''} onChange={e => set('hybridBatteryExpiryDate', e.target.value)} className={inputCls} />
+                    <Field label="Batteria Ibrida / EV (Km e Scadenza)" colSpan={2}>
+                      <div className="flex flex-col gap-2">
+                        <input type="text" value={data.hybridBatteryWarranty || ''} onChange={e => set('hybridBatteryWarranty', e.target.value)} placeholder="Es. Km per prossimo controllo (es. 99180)" className={inputCls} />
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest whitespace-nowrap">Prossima Scadenza:</span>
+                          <input type="date" value={data.hybridBatteryExpiryDate || ''} onChange={e => set('hybridBatteryExpiryDate', e.target.value)} className={`flex-1 ${inputCls}`} />
+                        </div>
+                      </div>
                     </Field>
                   )}
                   {data.fuelType === 'gpl' && (

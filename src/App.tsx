@@ -1496,7 +1496,7 @@ export default function App() {
                       <h3 className="text-lg font-bold text-[var(--text-main)] mb-8 uppercase tracking-widest text-center">Scegli un Template</h3>
                       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                         {Object.entries(TEMPLATES)
-                          .filter(([key]) => key !== 'single-expense')
+                          .filter(([key]) => key !== 'single-expense' && key !== 'travel')
                           .map(([key, t]) => (
                           <button
                             key={key}
@@ -1996,7 +1996,31 @@ export default function App() {
                         return (
                           <button
                             key={key}
-                            onClick={() => setSelectedType(key as ModuleType)}
+                            onClick={() => {
+                              if (key === 'travel') {
+                                const existingTravel = modules.find(m => m.type === 'travel') as import('./types').TravelModule;
+                                if (existingTravel) {
+                                  setEditingTravelModule(existingTravel);
+                                } else {
+                                  const newTravel: import('./types').TravelModule = {
+                                    id: generateUUID(),
+                                    type: 'travel',
+                                    title: 'I Miei Viaggi',
+                                    destinations: [],
+                                    x: 0, y: 0, w: 3, h: 3,
+                                    folderId: selectedFolderId || undefined
+                                  };
+                                  setModules(prev => {
+                                    const updated = [newTravel, ...prev];
+                                    saveAppState(updated, folders).catch(console.error);
+                                    return updated;
+                                  });
+                                  setEditingTravelModule(newTravel);
+                                }
+                              } else {
+                                setSelectedType(key as ModuleType);
+                              }
+                            }}
                             className="bg-[var(--card-bg)] p-6 lg:p-8 rounded-[2.5rem] border border-[var(--border)] shadow-sm hover:border-[var(--accent)] hover:shadow-lg hover:-translate-y-1 transition-all group flex flex-col items-center text-center gap-4"
                           >
                             <div className={`w-14 h-14 lg:w-16 lg:h-16 bg-[var(--bg)] rounded-3xl flex items-center justify-center ${t.color} group-hover:bg-[var(--accent-bg)] transition-colors shadow-inner`}>

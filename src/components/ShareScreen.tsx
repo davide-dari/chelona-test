@@ -216,7 +216,7 @@ export const ShareScreen = ({ module, onClose }: ShareScreenProps) => {
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: 40 }}
       transition={{ type: 'spring', damping: 28, stiffness: 300 }}
-      className="fixed inset-0 z-[150] bg-[var(--bg)] flex flex-col overflow-hidden"
+      className="fixed inset-0 z-[200] bg-[var(--bg)] flex flex-col overflow-hidden"
     >
       {/* ── Header ── */}
       <header className="flex items-center gap-3 px-4 py-4 border-b border-[var(--border)] bg-[var(--header-bg)] backdrop-blur-2xl shrink-0">

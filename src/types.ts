@@ -129,6 +129,8 @@ export interface WalletModule extends BaseModule {
   totalAmount: number;
   dueDate: string; // ISO date YYYY-MM-DD
   savedAmount: number;
+  installmentAmount?: number; // Importo singola rata
+  installmentsCount?: number; // Numero di rate
 }
 
 export interface GalleryImage {
