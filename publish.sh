@@ -71,7 +71,7 @@ RELEASE_JSON=$(curl -s -X POST \
   -d "{
     \"tag_name\": \"$TAG\",
     \"name\": \"Chelona $TAG\",
-    \"body\": \"🚀 **Chelona v$VERSION**\\n\\n### ✨ Novità e Fix:\\n- **💳 Menu Spese Intelligente**: Il tasto '+' nelle categorie Spese ora ti permette di scegliere velocemente tra Nuova Rata, Gruppo Spese o Spesa Singola.\\n- **🚗 Scadenze Auto Ripristinate**: Corretto il calcolo e la visualizzazione di tutte le scadenze veicolo, incluse le batterie (12V e Ibrida).\\n- **⚡ UX Migliorata**: Ottimizzato il flusso di aggiunta moduli per una navigazione più rapida.\",
+    \"body\": \"🚀 **Chelona v$VERSION**\\n\\n### ✨ Novità e Fix:\\n- **🔐 Login Ottimizzato**: Risolto il bug del doppio prompt biometrico.\\n- **🚗 Batteria Ibrida**: Ora la data di scadenza e la garanzia della batteria ibrida sono ben visibili nel modulo Auto.\\n- **🌍 Viaggi 3D**: Aggiornato il mappamondo con un modello 3D interattivo ad alta risoluzione (react-globe) e aggiunta la ricerca intelligente delle città (senza coordinate manuali).\\n- **📄 Codice Fiscale**: Nuova grafica dedicata e tasto \\\"Copia\\\" veloce per il numero del documento.\",
     \"draft\": false,
     \"prerelease\": false
   }")

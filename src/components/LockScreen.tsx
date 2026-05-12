@@ -201,11 +201,11 @@ export const LockScreen = ({ isVisible, onAuthenticated, onStartScan, onOpenTool
     try {
       const m = await import('../services/biometricService');
       
-      const verified = await m.biometricService.verifyIdentity('Sblocca il tuo profilo sicuro');
-      if (!verified) {
-        setIsLoading(false);
-        return;
-      }
+      // const verified = await m.biometricService.verifyIdentity('Sblocca il tuo profilo sicuro');
+      // if (!verified) {
+      //   setIsLoading(false);
+      //   return;
+      // }
 
       const masterKeyStr = await m.biometricService.getMasterKey(selectedProfile.id);
       

@@ -1540,28 +1540,7 @@ export default function App() {
                         <h3 className="text-lg font-bold text-[var(--text-main)] uppercase tracking-widest">Spese</h3>
                       </div>
                       <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-                         <button
-                           onClick={() => {
-                             setSpesaSubMenu(false);
-                             setEditingWalletModule({
-                               id: generateUUID(),
-                               type: 'wallet',
-                               title: 'Nuova Rata',
-                               totalAmount: 0,
-                               savedAmount: 0,
-                               dueDate: new Date().toISOString().split('T')[0],
-                               x: 0, y: 0, w: 2, h: 2,
-                               folderId: selectedFolderId || undefined
-                             });
-                           }}
-                           className="flex flex-col items-center justify-center gap-4 p-8 rounded-2xl border border-[var(--border)] hover:border-purple-500/60 hover:bg-purple-500/10 transition-all group text-center h-full text-[var(--text-main)]"
-                         >
-                           <Wallet className="w-8 h-8 text-purple-500 group-hover:scale-110 transition-transform" />
-                           <div className="text-center">
-                             <span className="font-bold text-xs uppercase tracking-wider block">Nuova Rata</span>
-                             <span className="text-[10px] text-[var(--text-muted)] mt-1 block">Crea un accantonamento</span>
-                           </div>
-                         </button>
+
                          <button
                            onClick={() => {
                              setSpesaSubMenu(false);

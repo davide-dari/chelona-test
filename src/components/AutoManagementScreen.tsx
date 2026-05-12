@@ -332,6 +332,30 @@ export const AutoManagementScreen = ({ module, onSave, onCancel, onDelete }: Aut
                       <p className="text-[10px] font-bold text-[var(--text-muted)] mt-2">Stato: Ottimale</p>
                    </div>
                 </div>
+                {(data.fuelType === 'ibrida' || data.fuelType === 'elettrica') && (
+                  <div className="grid grid-cols-1 mt-4">
+                     <div className="bg-[var(--card-bg)] border border-[var(--border)] rounded-3xl p-6 shadow-sm">
+                        <div className="flex items-center gap-2 text-emerald-500 mb-4">
+                           <Gauge className="w-4 h-4" />
+                           <span className="text-[10px] font-black uppercase tracking-widest">Batteria Ibrida / EV</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <div>
+                            <p className="text-xl font-black text-[var(--text-main)]">
+                              {data.hybridBatteryExpiryDate ? new Date(data.hybridBatteryExpiryDate).toLocaleDateString('it-IT') : '---'}
+                            </p>
+                            <p className="text-[10px] font-bold text-[var(--text-muted)] mt-1 uppercase tracking-widest">Data Scadenza</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-xl font-black text-[var(--text-main)]">
+                              {data.hybridBatteryWarranty || '---'}
+                            </p>
+                            <p className="text-[10px] font-bold text-[var(--text-muted)] mt-1 uppercase tracking-widest">Garanzia / Km</p>
+                          </div>
+                        </div>
+                     </div>
+                  </div>
+                )}
               </div>
             </div>
           ) : (

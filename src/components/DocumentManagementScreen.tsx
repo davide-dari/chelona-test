@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { DocumentModule } from '../types';
-import { ArrowLeft, FileText, Calendar, Shield, Trash2, Edit2, Save, Download, Eye, QrCode, Share2, MoreVertical, X, Clock, MapPin, Building2, Hash } from 'lucide-react';
+import { ArrowLeft, FileText, Calendar, Shield, Trash2, Edit2, Save, Download, Eye, QrCode, Share2, MoreVertical, X, Clock, MapPin, Building2, Hash, Copy, CheckCheck } from 'lucide-react';
 
 interface DocumentManagementScreenProps {
   module: DocumentModule;
@@ -15,6 +15,18 @@ export const DocumentManagementScreen = ({ module, onSave, onCancel, onDelete, o
   const [isEditing, setIsEditing] = useState(false);
   const [data, setData] = useState<DocumentModule>({ ...module });
   const [showViewer, setShowViewer] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (data.number) {
+      navigator.clipboard.writeText(data.number);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  const isTaxCode = data.documentType === 'tax_code';
 
   const handleSave = () => {
     onSave({
@@ -82,19 +94,26 @@ export const DocumentManagementScreen = ({ module, onSave, onCancel, onDelete, o
         <div className="max-w-2xl mx-auto p-6 space-y-8">
           
           {/* Document Preview Card */}
-          <div className="relative aspect-[1.6/1] bg-[var(--card-bg)] border border-[var(--border)] rounded-[2.5rem] overflow-hidden shadow-2xl group cursor-pointer" onClick={() => setShowViewer(true)}>
-             <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 to-purple-500/5" />
+          <div className={`relative aspect-[1.6/1] border border-[var(--border)] rounded-[2.5rem] overflow-hidden shadow-2xl group cursor-pointer ${isTaxCode ? 'bg-gradient-to-br from-emerald-600 to-teal-900' : 'bg-[var(--card-bg)]'}`} onClick={() => setShowViewer(true)}>
+             {!isTaxCode && <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 to-purple-500/5" />}
              
              {/* Document "Chip" Style Layout */}
              <div className="relative h-full p-8 flex flex-col justify-between">
                 <div className="flex justify-between items-start">
                    <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 bg-indigo-500 text-white rounded-2xl flex items-center justify-center shadow-lg">
+                      <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg ${isTaxCode ? 'bg-white/20 text-white backdrop-blur-md' : 'bg-indigo-500 text-white'}`}>
                          <FileText className="w-6 h-6" />
                       </div>
                       <div>
-                         <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--text-muted)]">{getDocTypeLabel(data.documentType)}</p>
-                         <h3 className="text-xl font-black text-[var(--text-main)] tracking-tight">{data.number || '--- --- ---'}</h3>
+                         <p className={`text-[10px] font-black uppercase tracking-[0.2em] ${isTaxCode ? 'text-emerald-100/70' : 'text-[var(--text-muted)]'}`}>{getDocTypeLabel(data.documentType)}</p>
+                         <div className="flex items-center gap-2">
+                           <h3 className={`text-xl font-black tracking-tight ${isTaxCode ? 'text-white' : 'text-[var(--text-main)]'}`}>{data.number || '--- --- ---'}</h3>
+                           {data.number && (
+                             <button onClick={handleCopy} className={`p-1.5 rounded-lg transition-colors ${isTaxCode ? 'hover:bg-white/20' : 'hover:bg-[var(--bg)]'}`} title="Copia">
+                               {copied ? <CheckCheck className={`w-4 h-4 ${isTaxCode ? 'text-emerald-300' : 'text-emerald-500'}`} /> : <Copy className={`w-4 h-4 ${isTaxCode ? 'text-white/70' : 'text-[var(--text-muted)]'}`} />}
+                             </button>
+                           )}
+                         </div>
                       </div>
                    </div>
                    {isExpired ? (
@@ -108,12 +127,12 @@ export const DocumentManagementScreen = ({ module, onSave, onCancel, onDelete, o
 
                 <div className="grid grid-cols-2 gap-8">
                    <div>
-                      <p className="text-[9px] font-black text-[var(--text-muted)] uppercase tracking-widest mb-1">Rilasciato il</p>
-                      <p className="text-sm font-bold text-[var(--text-main)]">{data.issueDate ? new Date(data.issueDate).toLocaleDateString('it-IT') : '---'}</p>
+                      <p className={`text-[9px] font-black uppercase tracking-widest mb-1 ${isTaxCode ? 'text-emerald-100/70' : 'text-[var(--text-muted)]'}`}>Rilasciato il</p>
+                      <p className={`text-sm font-bold ${isTaxCode ? 'text-white' : 'text-[var(--text-main)]'}`}>{data.issueDate ? new Date(data.issueDate).toLocaleDateString('it-IT') : '---'}</p>
                    </div>
                    <div>
-                      <p className="text-[9px] font-black text-[var(--text-muted)] uppercase tracking-widest mb-1">Scadenza</p>
-                      <p className="text-sm font-bold text-[var(--text-main)]">{data.expiryDate ? new Date(data.expiryDate).toLocaleDateString('it-IT') : '---'}</p>
+                      <p className={`text-[9px] font-black uppercase tracking-widest mb-1 ${isTaxCode ? 'text-emerald-100/70' : 'text-[var(--text-muted)]'}`}>Scadenza</p>
+                      <p className={`text-sm font-bold ${isTaxCode ? 'text-white' : 'text-[var(--text-main)]'}`}>{data.expiryDate ? new Date(data.expiryDate).toLocaleDateString('it-IT') : '---'}</p>
                    </div>
                 </div>
 

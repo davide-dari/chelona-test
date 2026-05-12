@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ArrowLeft, Plus, X, MapPin, Globe, Compass, Navigation, Trash2, Check } from 'lucide-react';
+import { ArrowLeft, Plus, X, MapPin, Globe, Compass, Navigation, Trash2, Check, Loader2 } from 'lucide-react';
+import ReactGlobe from 'react-globe.gl';
 import { TravelModule, TravelDestination } from '../types';
 
 interface TravelScreenProps {
@@ -10,192 +11,63 @@ interface TravelScreenProps {
   onDelete?: (id: string) => void;
 }
 
-// --- 3D Globe Canvas ---
+// --- 3D Globe with react-globe.gl ---
 const Globe3D: React.FC<{ destinations: TravelDestination[] }> = ({ destinations }) => {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const rotationRef = useRef({ x: 0.3, y: 0 });
-  const isDraggingRef = useRef(false);
-  const lastPosRef = useRef({ x: 0, y: 0 });
-  const animFrameRef = useRef<number>(0);
-  const autoRotateRef = useRef(true);
-
-  const latLngTo3D = (lat: number, lng: number, r: number, rx: number, ry: number) => {
-    const phi = (90 - lat) * (Math.PI / 180);
-    const theta = (lng + 180) * (Math.PI / 180);
-    const x0 = -r * Math.sin(phi) * Math.cos(theta);
-    const y0 = r * Math.cos(phi);
-    const z0 = r * Math.sin(phi) * Math.sin(theta);
-    // Rotate Y
-    const cosY = Math.cos(ry), sinY = Math.sin(ry);
-    const x1 = x0 * cosY + z0 * sinY;
-    const z1 = -x0 * sinY + z0 * cosY;
-    // Rotate X
-    const cosX = Math.cos(rx), sinX = Math.sin(rx);
-    const y2 = y0 * cosX - z1 * sinX;
-    const z2 = y0 * sinX + z1 * cosX;
-    return { x: x1, y: y2, z: z2 };
-  };
-
-  const draw = useCallback(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-    const w = canvas.width, h = canvas.height;
-    const cx = w / 2, cy = h / 2;
-    const r = Math.min(w, h) * 0.42;
-    const rx = rotationRef.current.x, ry = rotationRef.current.y;
-
-    ctx.clearRect(0, 0, w, h);
-
-    // Globe background gradient
-    const grad = ctx.createRadialGradient(cx - r * 0.3, cy - r * 0.3, r * 0.05, cx, cy, r);
-    grad.addColorStop(0, '#1e3a5f');
-    grad.addColorStop(0.4, '#0f2744');
-    grad.addColorStop(1, '#060d1a');
-    ctx.beginPath();
-    ctx.arc(cx, cy, r, 0, Math.PI * 2);
-    ctx.fillStyle = grad;
-    ctx.fill();
-
-    // Grid lines (lat/lng)
-    ctx.strokeStyle = 'rgba(100,160,255,0.08)';
-    ctx.lineWidth = 0.8;
-    for (let lat = -80; lat <= 80; lat += 20) {
-      ctx.beginPath();
-      let first = true;
-      for (let lng = -180; lng <= 180; lng += 3) {
-        const p = latLngTo3D(lat, lng, r, rx, ry);
-        if (p.z < 0) { first = true; continue; }
-        const px = cx + p.x, py = cy - p.y;
-        if (first) { ctx.moveTo(px, py); first = false; } else ctx.lineTo(px, py);
-      }
-      ctx.stroke();
-    }
-    for (let lng = -180; lng <= 180; lng += 30) {
-      ctx.beginPath();
-      let first = true;
-      for (let lat = -90; lat <= 90; lat += 3) {
-        const p = latLngTo3D(lat, lng, r, rx, ry);
-        if (p.z < 0) { first = true; continue; }
-        const px = cx + p.x, py = cy - p.y;
-        if (first) { ctx.moveTo(px, py); first = false; } else ctx.lineTo(px, py);
-      }
-      ctx.stroke();
-    }
-
-    // Continents (simplified outlines as land dots)
-    const landPoints: [number, number][] = [
-      // Europe
-      [51,10],[48,2],[44,12],[40,22],[36,14],[44,-8],[54,18],[60,25],[65,15],
-      // Africa
-      [0,20],[10,20],[-10,15],[-30,25],[5,38],[15,38],[30,30],
-      // Asia
-      [55,60],[40,70],[35,105],[25,120],[60,90],[70,100],[45,85],[30,70],
-      // Americas
-      [40,-100],[55,-95],[30,-90],[20,-80],[0,-65],[-15,-60],[-35,-65],[-50,-70],
-      // Oceania
-      [-25,135],[-35,148],[-20,120],[-10,130],
-    ];
-
-    landPoints.forEach(([lat, lng]) => {
-      const p = latLngTo3D(lat, lng, r, rx, ry);
-      if (p.z < 0) return;
-      const px = cx + p.x, py = cy - p.y;
-      const brightness = 0.4 + (p.z / r) * 0.6;
-      ctx.beginPath();
-      ctx.arc(px, py, 3.5, 0, Math.PI * 2);
-      ctx.fillStyle = `rgba(52,211,153,${brightness * 0.5})`;
-      ctx.fill();
-    });
-
-    // Destinations markers
-    destinations.forEach(dest => {
-      const p = latLngTo3D(dest.lat, dest.lng, r, rx, ry);
-      if (p.z < 0) return;
-      const px = cx + p.x, py = cy - p.y;
-      const isItinerary = dest.type === 'itinerary';
-      const color = isItinerary ? '#f59e0b' : '#60a5fa';
-
-      // Pulse ring
-      const pulse = (Date.now() % 2000) / 2000;
-      ctx.beginPath();
-      ctx.arc(px, py, 6 + pulse * 10, 0, Math.PI * 2);
-      ctx.strokeStyle = `${color}${Math.round((1 - pulse) * 80).toString(16).padStart(2,'0')}`;
-      ctx.lineWidth = 1.5;
-      ctx.stroke();
-
-      // Dot
-      ctx.beginPath();
-      ctx.arc(px, py, 5, 0, Math.PI * 2);
-      ctx.fillStyle = color;
-      ctx.shadowColor = color;
-      ctx.shadowBlur = 8;
-      ctx.fill();
-      ctx.shadowBlur = 0;
-    });
-
-    // Specular highlight
-    const spec = ctx.createRadialGradient(cx - r * 0.35, cy - r * 0.35, 0, cx - r * 0.35, cy - r * 0.35, r * 0.7);
-    spec.addColorStop(0, 'rgba(255,255,255,0.07)');
-    spec.addColorStop(1, 'rgba(255,255,255,0)');
-    ctx.beginPath();
-    ctx.arc(cx, cy, r, 0, Math.PI * 2);
-    ctx.fillStyle = spec;
-    ctx.fill();
-
-    // Border glow
-    ctx.beginPath();
-    ctx.arc(cx, cy, r, 0, Math.PI * 2);
-    ctx.strokeStyle = 'rgba(96,165,250,0.2)';
-    ctx.lineWidth = 1.5;
-    ctx.stroke();
-
-    if (autoRotateRef.current && !isDraggingRef.current) {
-      rotationRef.current.y += 0.003;
-    }
-    animFrameRef.current = requestAnimationFrame(draw);
-  }, [destinations]);
+  const globeEl = useRef<any>();
+  const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
+  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    animFrameRef.current = requestAnimationFrame(draw);
-    return () => cancelAnimationFrame(animFrameRef.current);
-  }, [draw]);
+    const updateSize = () => {
+      if (containerRef.current) {
+        setDimensions({
+          width: containerRef.current.clientWidth,
+          height: containerRef.current.clientHeight
+        });
+      }
+    };
+    window.addEventListener('resize', updateSize);
+    // Timeout needed for container to fully layout
+    setTimeout(updateSize, 100);
+    return () => window.removeEventListener('resize', updateSize);
+  }, []);
 
-  const getPos = (e: React.MouseEvent | React.TouchEvent) => {
-    if ('touches' in e) return { x: e.touches[0].clientX, y: e.touches[0].clientY };
-    return { x: e.clientX, y: e.clientY };
-  };
+  useEffect(() => {
+    // Auto-rotate
+    if (globeEl.current) {
+      globeEl.current.controls().autoRotate = true;
+      globeEl.current.controls().autoRotateSpeed = 0.5;
+    }
+  }, [dimensions.width]);
 
   return (
-    <canvas
-      ref={canvasRef}
-      width={500}
-      height={500}
-      className="w-full h-full cursor-grab active:cursor-grabbing"
-      style={{ maxWidth: '100%', maxHeight: '100%' }}
-      onMouseDown={e => { isDraggingRef.current = true; autoRotateRef.current = false; lastPosRef.current = getPos(e); }}
-      onMouseMove={e => {
-        if (!isDraggingRef.current) return;
-        const p = getPos(e);
-        rotationRef.current.y += (p.x - lastPosRef.current.x) * 0.005;
-        rotationRef.current.x += (p.y - lastPosRef.current.y) * 0.005;
-        rotationRef.current.x = Math.max(-1.4, Math.min(1.4, rotationRef.current.x));
-        lastPosRef.current = p;
-      }}
-      onMouseUp={() => { isDraggingRef.current = false; setTimeout(() => { autoRotateRef.current = true; }, 3000); }}
-      onMouseLeave={() => { isDraggingRef.current = false; setTimeout(() => { autoRotateRef.current = true; }, 3000); }}
-      onTouchStart={e => { isDraggingRef.current = true; autoRotateRef.current = false; lastPosRef.current = getPos(e); }}
-      onTouchMove={e => {
-        if (!isDraggingRef.current) return;
-        const p = getPos(e);
-        rotationRef.current.y += (p.x - lastPosRef.current.x) * 0.005;
-        rotationRef.current.x += (p.y - lastPosRef.current.y) * 0.005;
-        rotationRef.current.x = Math.max(-1.4, Math.min(1.4, rotationRef.current.x));
-        lastPosRef.current = p;
-      }}
-      onTouchEnd={() => { isDraggingRef.current = false; setTimeout(() => { autoRotateRef.current = true; }, 3000); }}
-    />
+    <div ref={containerRef} className="w-full h-full cursor-grab active:cursor-grabbing flex items-center justify-center">
+      {dimensions.width > 0 && (
+        <ReactGlobe
+          ref={globeEl}
+          width={dimensions.width}
+          height={dimensions.height}
+          globeImageUrl="//unpkg.com/three-globe/example/img/earth-blue-marble.jpg"
+          bumpImageUrl="//unpkg.com/three-globe/example/img/earth-topology.png"
+          backgroundColor="rgba(0,0,0,0)"
+          labelsData={destinations}
+          labelLat="lat"
+          labelLng="lng"
+          labelText="name"
+          labelSize={1.5}
+          labelDotRadius={0.5}
+          labelColor={(d: any) => d.type === 'itinerary' ? '#f59e0b' : '#60a5fa'}
+          labelResolution={2}
+          ringsData={destinations}
+          ringLat="lat"
+          ringLng="lng"
+          ringColor={(d: any) => d.type === 'itinerary' ? '#f59e0b' : '#60a5fa'}
+          ringMaxRadius={3}
+          ringPropagationSpeed={2}
+          ringRepeatPeriod={1500}
+        />
+      )}
+    </div>
   );
 };
 
@@ -205,20 +77,34 @@ const AddDestModal: React.FC<{
   onClose: () => void;
 }> = ({ onAdd, onClose }) => {
   const [name, setName] = useState('');
-  const [lat, setLat] = useState('');
-  const [lng, setLng] = useState('');
   const [type, setType] = useState<'itinerary' | 'place'>('place');
   const [notes, setNotes] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim()) { setError('Inserisci un nome'); return; }
-    const la = parseFloat(lat), lo = parseFloat(lng);
-    if (isNaN(la) || la < -90 || la > 90) { setError('Latitudine non valida (-90 a 90)'); return; }
-    if (isNaN(lo) || lo < -180 || lo > 180) { setError('Longitudine non valida (-180 a 180)'); return; }
-    onAdd({ name: name.trim(), lat: la, lng: lo, type, notes: notes.trim() || undefined });
-    onClose();
+    if (!name.trim()) { setError('Inserisci un nome o una città'); return; }
+    
+    setLoading(true);
+    setError('');
+    
+    try {
+       const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(name.trim())}`);
+       const data = await res.json();
+       if (data && data.length > 0) {
+          const la = parseFloat(data[0].lat);
+          const lo = parseFloat(data[0].lon);
+          onAdd({ name: name.trim(), lat: la, lng: lo, type, notes: notes.trim() || undefined });
+          onClose();
+       } else {
+          setError('Città non trovata. Riprova con un nome più preciso.');
+       }
+    } catch (err) {
+       setError('Errore di connessione. Controlla internet e riprova.');
+    } finally {
+       setLoading(false);
+    }
   };
 
   const inputCls = 'w-full p-4 bg-[var(--bg)] border border-[var(--border)] rounded-2xl outline-none focus:border-blue-400 transition-all text-sm font-semibold text-[var(--text-main)] placeholder:text-[var(--text-muted)]/60';
@@ -266,32 +152,21 @@ const AddDestModal: React.FC<{
           </div>
 
           <div>
-            <label className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] mb-2 block">Nome Luogo</label>
-            <input value={name} onChange={e => { setName(e.target.value); setError(''); }} placeholder="Es. Roma, Eiffel Tower..." className={inputCls} autoFocus />
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] mb-2 block">Latitudine</label>
-              <input value={lat} onChange={e => { setLat(e.target.value); setError(''); }} placeholder="Es. 41.9028" className={inputCls} inputMode="decimal" />
-            </div>
-            <div>
-              <label className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] mb-2 block">Longitudine</label>
-              <input value={lng} onChange={e => { setLng(e.target.value); setError(''); }} placeholder="Es. 12.4964" className={inputCls} inputMode="decimal" />
-            </div>
+            <label className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] mb-2 block">Città / Nome Luogo</label>
+            <input value={name} onChange={e => { setName(e.target.value); setError(''); }} placeholder="Es. Roma, Parigi, Tokyo..." className={inputCls} autoFocus disabled={loading} />
           </div>
 
           <div>
             <label className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] mb-2 block">Note (opzionale)</label>
-            <textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Descrizione, da fare, ricordi..." className={`${inputCls} resize-none h-20`} />
+            <textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Descrizione, da fare, ricordi..." className={`${inputCls} resize-none h-20`} disabled={loading} />
           </div>
 
           {error && (
             <p className="text-xs text-red-500 font-bold bg-red-500/10 px-3 py-2 rounded-xl border border-red-500/20">{error}</p>
           )}
 
-          <button type="submit" className="w-full py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-2xl font-black text-sm uppercase tracking-widest shadow-lg shadow-blue-500/25 active:scale-[0.98] transition-all">
-            Aggiungi al Mappamondo
+          <button disabled={loading} type="submit" className="w-full py-4 bg-gradient-to-r from-blue-600 to-indigo-600 disabled:opacity-70 text-white rounded-2xl font-black text-sm uppercase tracking-widest shadow-lg shadow-blue-500/25 active:scale-[0.98] transition-all flex items-center justify-center gap-2">
+            {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Aggiungi al Mappamondo'}
           </button>
         </form>
       </motion.div>
