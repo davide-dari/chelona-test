@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ArrowLeft, Plus, X, MapPin, Globe, Compass, Navigation, Trash2, Check, Loader2 } from 'lucide-react';
+import { ArrowLeft, Plus, X, MapPin, Globe, Compass, Navigation, Trash2, Check, Loader2, Pencil } from 'lucide-react';
 import ReactGlobe from 'react-globe.gl';
 import { TravelModule, TravelDestination } from '../types';
 
@@ -71,16 +71,18 @@ const Globe3D: React.FC<{ destinations: TravelDestination[] }> = ({ destinations
   );
 };
 
-// --- Add Destination Modal ---
-const AddDestModal: React.FC<{
-  onAdd: (d: Omit<TravelDestination, 'id' | 'createdAt'>) => void;
+// --- Add/Edit Destination Modal ---
+const DestModal: React.FC<{
+  onSubmit: (d: Omit<TravelDestination, 'id' | 'createdAt'>) => void;
   onClose: () => void;
-}> = ({ onAdd, onClose }) => {
-  const [name, setName] = useState('');
-  const [type, setType] = useState<'itinerary' | 'place'>('place');
-  const [notes, setNotes] = useState('');
+  initial?: TravelDestination;
+}> = ({ onSubmit, onClose, initial }) => {
+  const [name, setName] = useState(initial?.name || '');
+  const [type, setType] = useState<'itinerary' | 'place'>(initial?.type || 'place');
+  const [notes, setNotes] = useState(initial?.notes || '');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const isEdit = !!initial;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -89,13 +91,20 @@ const AddDestModal: React.FC<{
     setLoading(true);
     setError('');
     
+    // If editing and name hasn't changed, reuse existing coords
+    if (isEdit && name.trim() === initial!.name) {
+      onSubmit({ name: name.trim(), lat: initial!.lat, lng: initial!.lng, type, notes: notes.trim() || undefined });
+      onClose();
+      return;
+    }
+
     try {
        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(name.trim())}`);
        const data = await res.json();
        if (data && data.length > 0) {
           const la = parseFloat(data[0].lat);
           const lo = parseFloat(data[0].lon);
-          onAdd({ name: name.trim(), lat: la, lng: lo, type, notes: notes.trim() || undefined });
+          onSubmit({ name: name.trim(), lat: la, lng: lo, type, notes: notes.trim() || undefined });
           onClose();
        } else {
           setError('Città non trovata. Riprova con un nome più preciso.');
@@ -127,9 +136,9 @@ const AddDestModal: React.FC<{
         <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-6 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
-              <Globe className="w-5 h-5 text-white" />
+              {isEdit ? <Pencil className="w-5 h-5 text-white" /> : <Globe className="w-5 h-5 text-white" />}
             </div>
-            <h3 className="text-lg font-black text-white">Nuova Destinazione</h3>
+            <h3 className="text-lg font-black text-white">{isEdit ? 'Modifica Destinazione' : 'Nuova Destinazione'}</h3>
           </div>
           <button onClick={onClose} className="p-2 hover:bg-white/20 rounded-xl transition-colors">
             <X className="w-5 h-5 text-white" />
@@ -166,7 +175,7 @@ const AddDestModal: React.FC<{
           )}
 
           <button disabled={loading} type="submit" className="w-full py-4 bg-gradient-to-r from-blue-600 to-indigo-600 disabled:opacity-70 text-white rounded-2xl font-black text-sm uppercase tracking-widest shadow-lg shadow-blue-500/25 active:scale-[0.98] transition-all flex items-center justify-center gap-2">
-            {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Aggiungi al Mappamondo'}
+            {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : isEdit ? 'Salva Modifiche' : 'Aggiungi al Mappamondo'}
           </button>
         </form>
       </motion.div>
@@ -175,9 +184,10 @@ const AddDestModal: React.FC<{
 };
 
 // --- Main TravelScreen ---
-export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onClose, onDelete }) => {
+export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onClose }) => {
   const [destinations, setDestinations] = useState<TravelDestination[]>(module.destinations || []);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [editingDest, setEditingDest] = useState<TravelDestination | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const handleAdd = (d: Omit<TravelDestination, 'id' | 'createdAt'>) => {
@@ -189,6 +199,18 @@ export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onCl
     const updated = [...destinations, newDest];
     setDestinations(updated);
     onSave({ ...module, destinations: updated });
+  };
+
+  const handleEdit = (d: Omit<TravelDestination, 'id' | 'createdAt'>) => {
+    if (!editingDest) return;
+    const updated = destinations.map(dest => 
+      dest.id === editingDest.id 
+        ? { ...dest, ...d }
+        : dest
+    );
+    setDestinations(updated);
+    onSave({ ...module, destinations: updated });
+    setEditingDest(null);
   };
 
   const handleDelete = (id: string) => {
@@ -212,23 +234,15 @@ export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onCl
             <ArrowLeft className="w-6 h-6 text-[var(--text-main)]" />
           </button>
           <div>
-            <h2 className="text-lg font-black text-[var(--text-main)] uppercase tracking-tight leading-none">{module.title || 'I Miei Viaggi'}</h2>
+            <h2 className="text-lg font-black text-[var(--text-main)] uppercase tracking-tight leading-none">Viaggi</h2>
             <p className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest mt-1">{destinations.length} destinazioni</p>
           </div>
         </div>
-        {onDelete && (
-          <button
-            onClick={() => { if (window.confirm('Eliminare questo modulo viaggi?')) { onDelete(module.id); onClose(); } }}
-            className="p-2.5 text-red-400 hover:bg-red-500/10 rounded-xl transition-all"
-          >
-            <Trash2 className="w-5 h-5" />
-          </button>
-        )}
       </div>
 
       <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
-        {/* Globe section */}
-        <div className="relative flex items-center justify-center bg-[#060d1a] lg:flex-1 shrink-0" style={{ minHeight: '55vw', maxHeight: '55vh' }}>
+        {/* Globe section - made bigger */}
+        <div className="relative flex items-center justify-center bg-[#060d1a] lg:flex-1 shrink-0" style={{ minHeight: '70vw', maxHeight: '70vh' }}>
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_#0f2744_0%,_#060d1a_70%)]" />
 
           {/* Stars */}
@@ -248,14 +262,8 @@ export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onCl
             ))}
           </div>
 
-          <div className="relative z-10 w-full h-full flex items-center justify-center p-4">
+          <div className="relative z-10 w-full h-full flex items-center justify-center">
             <Globe3D destinations={destinations} />
-          </div>
-
-          {/* Globe hint */}
-          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-white/10 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/10">
-            <Compass className="w-3 h-3 text-white/60" />
-            <span className="text-[10px] font-bold text-white/60 uppercase tracking-widest">Trascina per ruotare</span>
           </div>
         </div>
 
@@ -297,12 +305,20 @@ export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onCl
                           <p className="text-xs text-[var(--text-muted)] mt-1 line-clamp-2">{dest.notes}</p>
                         )}
                       </div>
-                      <button
-                        onClick={() => setDeletingId(dest.id)}
-                        className="p-1.5 text-[var(--text-muted)] hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all opacity-0 group-hover:opacity-100"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <button
+                          onClick={() => setEditingDest(dest)}
+                          className="p-1.5 text-[var(--text-muted)] hover:text-blue-400 hover:bg-blue-500/10 rounded-lg transition-all"
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => setDeletingId(dest.id)}
+                          className="p-1.5 text-[var(--text-muted)] hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </motion.div>
                   ))}
                 </AnimatePresence>
@@ -356,7 +372,14 @@ export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onCl
       {/* Add modal */}
       <AnimatePresence>
         {showAddModal && (
-          <AddDestModal onAdd={handleAdd} onClose={() => setShowAddModal(false)} />
+          <DestModal onSubmit={handleAdd} onClose={() => setShowAddModal(false)} />
+        )}
+      </AnimatePresence>
+
+      {/* Edit modal */}
+      <AnimatePresence>
+        {editingDest && (
+          <DestModal onSubmit={handleEdit} onClose={() => setEditingDest(null)} initial={editingDest} />
         )}
       </AnimatePresence>
     </motion.div>

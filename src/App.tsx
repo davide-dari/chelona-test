@@ -217,9 +217,6 @@ export default function App() {
     if (CapApp && typeof CapApp.addListener === 'function') {
       const stateListener = CapApp.addListener('appStateChange', ({ isActive }) => {
         console.log('[App] State changed, isActive:', isActive);
-        // Security Lock on backgrounding disabled because it interferes with system pickers (File, QR, etc.)
-        // If needed in the future, implement a grace period or a persistent secure session.
-        /*
         if (!isActive) {
           console.log('[App] Backgrounding: Locking application for security.');
           setEncryptionKey(null);
@@ -229,7 +226,6 @@ export default function App() {
           setIsToolsOpen(false);
           setSelectedType(null);
         }
-        */
       });
       
       // Android Back Button / Gesture handling
@@ -1430,7 +1426,6 @@ export default function App() {
                 module={editingTravelModule}
                 onSave={(mod) => { updateModuleDirect(mod); setEditingTravelModule(mod); }}
                 onClose={() => setEditingTravelModule(null)}
-                onDelete={(id) => { deleteModule(id); setEditingTravelModule(null); }}
               />
             ) : editingSplitModule ? (
               <SplitScreen
@@ -1984,7 +1979,7 @@ export default function App() {
                                   const newTravel: import('./types').TravelModule = {
                                     id: generateUUID(),
                                     type: 'travel',
-                                    title: 'I Miei Viaggi',
+                                    title: 'Viaggi',
                                     destinations: [],
                                     x: 0, y: 0, w: 3, h: 3,
                                     folderId: selectedFolderId || undefined
@@ -2199,7 +2194,7 @@ export default function App() {
                   const newTravel: import('./types').TravelModule = {
                     id: generateUUID(),
                     type: 'travel',
-                    title: 'I Miei Viaggi',
+                    title: 'Viaggi',
                     destinations: [],
                     x: 0, y: 0, w: 3, h: 3,
                     folderId: selectedFolderId || undefined

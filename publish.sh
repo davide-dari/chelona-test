@@ -71,7 +71,7 @@ RELEASE_JSON=$(curl -s -X POST \
   -d "{
     \"tag_name\": \"$TAG\",
     \"name\": \"Chelona $TAG\",
-    \"body\": \"🚀 **Chelona v$VERSION**\\n\\n### ✨ Novità e Fix:\\n- **🔐 Login Ottimizzato**: Risolto il bug del doppio prompt biometrico.\\n- **🚗 Batteria Ibrida**: Ora la data di scadenza e la garanzia della batteria ibrida sono ben visibili nel modulo Auto.\\n- **🌍 Viaggi 3D**: Aggiornato il mappamondo con un modello 3D interattivo ad alta risoluzione (react-globe) e aggiunta la ricerca intelligente delle città (senza coordinate manuali).\\n- **📄 Codice Fiscale**: Nuova grafica dedicata e tasto \\\"Copia\\\" veloce per il numero del documento.\",
+    \"body\": \"🚀 **Chelona v$VERSION**\\n\\n### ✨ Novità e Fix:\\n- **🔐 Sicurezza Biometrica**: Ottimizzato il login (singolo prompt) e aggiunto il blocco automatico dell'app quando viene messa in background.\\n- **🌍 Viaggi Pro**: Mappamondo 3D ingrandito per una visione più immersiva e rimozione dei suggerimenti a schermo.\\n- **📍 Gestione Destinazioni**: Aggiunta la possibilità di modificare e cancellare singole destinazioni direttamente dalla lista.\\n- **✨ UX Viaggi**: Il modulo \\\"Viaggi\\\" è ora un menu interno permanente e non più eliminabile accidentalmente.\",
     \"draft\": false,
     \"prerelease\": false
   }")
