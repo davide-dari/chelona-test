@@ -71,7 +71,7 @@ RELEASE_JSON=$(curl -s -X POST \
   -d "{
     \"tag_name\": \"$TAG\",
     \"name\": \"Chelona $TAG\",
-    \"body\": \"🚀 **Chelona v$VERSION**\\n\\n### ✨ Novità e Fix:\\n- **🔐 Sicurezza Biometrica**: Ottimizzato il login (singolo prompt) e aggiunto il blocco automatico dell'app quando viene messa in background.\\n- **🌍 Viaggi Pro**: Mappamondo 3D ingrandito per una visione più immersiva e rimozione dei suggerimenti a schermo.\\n- **📍 Gestione Destinazioni**: Aggiunta la possibilità di modificare e cancellare singole destinazioni direttamente dalla lista.\\n- **✨ UX Viaggi**: Il modulo \\\"Viaggi\\\" è ora un menu interno permanente e non più eliminabile accidentalmente.\",
+    \"body\": \"🚀 **Chelona v$VERSION**\\n\\n### ✨ Novità e Fix:\\n- **🔐 Fix Login Biometrico**: Ripristinata correttamente la richiesta dell'impronta digitale o PIN all'avvio dell'app. Corretto il problema che causava l'apertura diretta senza autenticazione o il doppio prompt.\",
     \"draft\": false,
     \"prerelease\": false
   }")

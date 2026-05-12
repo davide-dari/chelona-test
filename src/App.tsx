@@ -1248,25 +1248,7 @@ export default function App() {
       </AnimatePresence>
 
       <div className="min-h-[100dvh] bg-[var(--bg)] text-[var(--text-main)] font-sans selection:bg-[var(--accent)] selection:text-white transition-colors duration-300">
-        <div 
-          style={{ 
-            display: (!encryptionKey || !currentProfileId) && !isProfileOpen && !isPublicToolsOpen ? 'block' : 'none', 
-            position: 'absolute', inset: 0, zIndex: 99999 
-          }}
-        >
-          <LockScreen 
-            isVisible={(!encryptionKey || !currentProfileId) && !isProfileOpen && !isPublicToolsOpen}
-            onAuthenticated={(key, profileId) => {
-              setEncryptionKey(key);
-              setCurrentProfileId(profileId);
-            }} 
-            onStartScan={() => setIsScanning(true)}
-            onOpenTools={() => setIsPublicToolsOpen(true)}
-            onOpenAddressBook={() => setIsAddressBookOpen(true)}
-            onImportFile={handleImportFile}
-            onCheckUpdate={() => handleCheckUpdate(true)}
-          />
-        </div>
+
 
         {isPublicToolsOpen && !encryptionKey && (
           <div className="h-[100dvh] bg-[var(--bg)] flex flex-col relative w-full overflow-hidden" style={{ position: 'absolute', inset: 0, zIndex: 99999 }}>
