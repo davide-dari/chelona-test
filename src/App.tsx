@@ -1402,6 +1402,7 @@ export default function App() {
                 onSave={handleSaveAutoEdit}
                 onCancel={() => setEditingAutoModule(null)}
                 onDelete={deleteModule}
+                onShare={setSharingModule as any}
               />
             ) : editingTravelModule ? (
               <TravelScreen

@@ -37,6 +37,7 @@ const Globe3D: React.FC<{ destinations: TravelDestination[] }> = ({ destinations
     if (globeEl.current) {
       globeEl.current.controls().autoRotate = true;
       globeEl.current.controls().autoRotateSpeed = 0.5;
+      globeEl.current.pointOfView({ altitude: 1.5 });
     }
   }, [dimensions.width]);
 
@@ -189,6 +190,7 @@ export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onCl
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingDest, setEditingDest] = useState<TravelDestination | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [expandedDestId, setExpandedDestId] = useState<string | null>(null);
 
   const handleAdd = (d: Omit<TravelDestination, 'id' | 'createdAt'>) => {
     const newDest: TravelDestination = {
@@ -291,34 +293,74 @@ export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onCl
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, x: -20 }}
-                      className="bg-[var(--card-bg)] border border-[var(--border)] rounded-2xl p-4 flex items-start gap-3 group"
+                      className="bg-[var(--card-bg)] border border-[var(--border)] rounded-2xl overflow-hidden group cursor-pointer transition-all"
+                      onClick={(e) => {
+                         if ((e.target as HTMLElement).closest('button')) return;
+                         setExpandedDestId(prev => prev === dest.id ? null : dest.id);
+                      }}
                     >
-                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border ${dest.type === 'itinerary' ? 'bg-amber-500/10 border-amber-500/20 text-amber-500' : 'bg-blue-500/10 border-blue-500/20 text-blue-400'}`}>
-                        {dest.type === 'itinerary' ? '✈️' : '📍'}
+                      <div className="p-4 flex items-start gap-3 hover:bg-[var(--surface-variant)] transition-colors">
+                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border ${dest.type === 'itinerary' ? 'bg-amber-500/10 border-amber-500/20 text-amber-500' : 'bg-blue-500/10 border-blue-500/20 text-blue-400'}`}>
+                          {dest.type === 'itinerary' ? '✈️' : '📍'}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-bold text-[var(--text-main)] truncate">{dest.name}</p>
+                          <p className="text-[10px] font-bold text-[var(--text-muted)] mt-0.5">
+                            {dest.lat.toFixed(2)}, {dest.lng.toFixed(2)}
+                          </p>
+                          {dest.notes && (
+                            <p className="text-xs text-[var(--text-muted)] mt-1 line-clamp-2">{dest.notes}</p>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-1 shrink-0">
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setEditingDest(dest); }}
+                            className="p-1.5 text-[var(--text-muted)] hover:text-blue-400 hover:bg-blue-500/10 rounded-lg transition-all"
+                          >
+                            <Pencil className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setDeletingId(dest.id); }}
+                            className="p-1.5 text-[var(--text-muted)] hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-bold text-[var(--text-main)] truncate">{dest.name}</p>
-                        <p className="text-[10px] font-bold text-[var(--text-muted)] mt-0.5">
-                          {dest.lat.toFixed(2)}, {dest.lng.toFixed(2)}
-                        </p>
-                        {dest.notes && (
-                          <p className="text-xs text-[var(--text-muted)] mt-1 line-clamp-2">{dest.notes}</p>
+
+                      <AnimatePresence>
+                        {expandedDestId === dest.id && (
+                           <motion.div
+                             initial={{ height: 0, opacity: 0 }}
+                             animate={{ height: 'auto', opacity: 1 }}
+                             exit={{ height: 0, opacity: 0 }}
+                             className="overflow-hidden bg-[var(--surface-variant)]"
+                           >
+                              <div className="p-4 pt-0">
+                                 <div 
+                                    className="w-full h-32 rounded-xl overflow-hidden relative cursor-pointer border border-[var(--border)] shadow-inner group/map"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      window.open(`https://maps.google.com/?q=${dest.lat},${dest.lng}`, '_system');
+                                    }}
+                                 >
+                                    <iframe
+                                      width="100%"
+                                      height="100%"
+                                      style={{ border: 0, pointerEvents: 'none' }}
+                                      loading="lazy"
+                                      src={`https://maps.google.com/maps?q=${dest.lat},${dest.lng}&z=14&output=embed`}
+                                    />
+                                    <div className="absolute inset-0 bg-black/5 hover:bg-transparent transition-colors flex items-center justify-center group-hover/map:bg-black/10">
+                                       <div className="w-10 h-10 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center opacity-0 group-hover/map:opacity-100 transition-opacity shadow-lg">
+                                          <MapPin className="w-5 h-5 text-blue-500" />
+                                       </div>
+                                    </div>
+                                 </div>
+                              </div>
+                           </motion.div>
                         )}
-                      </div>
-                      <div className="flex items-center gap-1 shrink-0">
-                        <button
-                          onClick={() => setEditingDest(dest)}
-                          className="p-1.5 text-[var(--text-muted)] hover:text-blue-400 hover:bg-blue-500/10 rounded-lg transition-all"
-                        >
-                          <Pencil className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => setDeletingId(dest.id)}
-                          className="p-1.5 text-[var(--text-muted)] hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
+                      </AnimatePresence>
                     </motion.div>
                   ))}
                 </AnimatePresence>

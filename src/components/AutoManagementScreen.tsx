@@ -67,6 +67,7 @@ export const AutoManagementScreen = ({ module, onSave, onCancel, onDelete }: Aut
   const [capturingField, setCapturingField] = useState<{ key: keyof AutoModule; title: string } | null>(null);
   const [picker, setPicker] = useState<'brand' | 'model' | null>(null);
   const [isEditing, setIsEditing] = useState(false);
+  const [showNotifMenu, setShowNotifMenu] = useState(false);
 
   const set = (key: keyof AutoModule, value: string | undefined) =>
     setData(prev => ({ ...prev, [key]: value }));
@@ -132,7 +133,7 @@ export const AutoManagementScreen = ({ module, onSave, onCancel, onDelete }: Aut
       list.push({ label: 'Prima Revisione', date: firstRevDate, field: 'registrationYear', daysLeft });
     }
 
-    return list.sort((a, b) => a.daysLeft - b.daysLeft);
+    return list.filter(a => a.daysLeft <= 30).sort((a, b) => a.daysLeft - b.daysLeft);
   })();
 
   return (
@@ -237,30 +238,7 @@ export const AutoManagementScreen = ({ module, onSave, onCancel, onDelete }: Aut
                 <span className="text-xs font-bold text-[var(--text-main)] uppercase tracking-widest">Condividi</span>
              </button>
              <button 
-                onClick={() => {
-                  notificationService.requestPermission().then(granted => {
-                    if (granted) {
-                      let scheduled = 0;
-                      deadlines.forEach(d => {
-                        if (d.daysLeft > 0) {
-                          const notifDate = new Date(d.date);
-                          notifDate.setHours(9, 0, 0, 0); // 9 AM
-                          notificationService.scheduleNotification(
-                            'Scadenza Veicolo',
-                            `La scadenza ${d.label} per la tua ${data.brand} è il ${new Date(d.date).toLocaleDateString('it-IT')}!`,
-                            notifDate
-                          );
-                          scheduled++;
-                        }
-                      });
-                      if (scheduled > 0) {
-                        alert(`Programmate ${scheduled} notifiche per le prossime scadenze.`);
-                      } else {
-                        alert('Nessuna scadenza futura trovata da programmare.');
-                      }
-                    }
-                  });
-                }}
+                onClick={() => setShowNotifMenu(true)}
                className="bg-[var(--card-bg)] border border-[var(--border)] rounded-2xl p-4 flex items-center justify-center gap-3 hover:bg-[var(--surface-variant)] transition-all group active:scale-95"
              >
                 <Bell className="w-5 h-5 text-amber-500 group-hover:scale-110 transition-transform" />
@@ -454,6 +432,95 @@ export const AutoManagementScreen = ({ module, onSave, onCancel, onDelete }: Aut
       </div>
 
       <AnimatePresence>
+        {showNotifMenu && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[200] flex items-center justify-center p-6"
+          >
+            <div className="absolute inset-0 bg-black/60 backdrop-blur-md" onClick={() => setShowNotifMenu(false)} />
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              className="relative bg-[var(--card-bg)] rounded-[2rem] p-6 w-full max-w-sm border border-[var(--border)] shadow-2xl"
+            >
+              <div className="flex items-center justify-between mb-6">
+                 <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-amber-500/10 rounded-xl flex items-center justify-center">
+                       <Bell className="w-5 h-5 text-amber-500" />
+                    </div>
+                    <h3 className="text-lg font-black text-[var(--text-main)]">Imposta Notifica</h3>
+                 </div>
+                 <button onClick={() => setShowNotifMenu(false)} className="p-2 hover:bg-[var(--surface-variant)] rounded-xl transition-colors">
+                    <X className="w-5 h-5 text-[var(--text-muted)]" />
+                 </button>
+              </div>
+              <div className="space-y-3">
+                 <button 
+                   onClick={() => {
+                     notificationService.requestPermission().then(granted => {
+                       if (granted) {
+                         let scheduled = 0;
+                         const allDeadlines: any[] = [];
+                         const today = new Date();
+                         today.setHours(0, 0, 0, 0);
+                         const addD = (lbl: string, dt: string|undefined) => { if (dt) allDeadlines.push({label: lbl, date: dt}) };
+                         addD('Assicurazione', data.lastInsurance);
+                         addD('Bollo', data.lastTax);
+                         addD('Revisione', data.lastRevision);
+                         addD('Batteria 12V', data.battery12vExpiryDate);
+                         addD('Batteria Ibrida', data.hybridBatteryExpiryDate);
+                         addD('Bombola GPL', data.lastGplCylinder);
+                         addD('Bombola Metano', data.lastMethaneCylinder);
+                         allDeadlines.forEach(d => {
+                            const nd = new Date(d.date);
+                            if (nd.getTime() > today.getTime()) {
+                               nd.setHours(9, 0, 0, 0);
+                               notificationService.scheduleNotification('Scadenza Veicolo', `La scadenza ${d.label} per la tua ${data.brand} è il ${nd.toLocaleDateString('it-IT')}!`, nd);
+                               scheduled++;
+                            }
+                         });
+                         alert(scheduled > 0 ? `Programmate ${scheduled} notifiche temporali.` : 'Nessuna scadenza futura trovata.');
+                         setShowNotifMenu(false);
+                       }
+                     });
+                   }}
+                   className="w-full flex items-center gap-3 p-4 bg-[var(--bg)] border border-[var(--border)] hover:border-amber-400 rounded-2xl transition-all text-left group"
+                 >
+                    <Calendar className="w-5 h-5 text-blue-500 group-hover:scale-110 transition-transform" />
+                    <div>
+                       <p className="text-sm font-bold text-[var(--text-main)]">Scadenze Temporali</p>
+                       <p className="text-[10px] font-medium text-[var(--text-muted)] mt-0.5">Bollo, assicurazione, revisione...</p>
+                    </div>
+                 </button>
+
+                 <button 
+                   onClick={() => {
+                     notificationService.requestPermission().then(granted => {
+                       if (granted) {
+                         const nd = new Date();
+                         nd.setMonth(nd.getMonth() + 6);
+                         nd.setHours(9, 0, 0, 0);
+                         notificationService.scheduleNotification('Controllo KM', `Ricordati di controllare i KM della tua ${data.brand} per eventuale tagliando o gomme!`, nd);
+                         alert(`Promemoria KM programmato per il ${nd.toLocaleDateString('it-IT')}.`);
+                         setShowNotifMenu(false);
+                       }
+                     });
+                   }}
+                   className="w-full flex items-center gap-3 p-4 bg-[var(--bg)] border border-[var(--border)] hover:border-amber-400 rounded-2xl transition-all text-left group"
+                 >
+                    <Gauge className="w-5 h-5 text-emerald-500 group-hover:scale-110 transition-transform" />
+                    <div>
+                       <p className="text-sm font-bold text-[var(--text-main)]">Manutenzione (Km)</p>
+                       <p className="text-[10px] font-medium text-[var(--text-muted)] mt-0.5">Promemoria tra 6 mesi per controlli</p>
+                    </div>
+                 </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
         {capturingField && (
           <DocumentScanner
             onCapture={(pdf) => {
