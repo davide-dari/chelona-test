@@ -71,7 +71,7 @@ RELEASE_JSON=$(curl -s -X POST \
   -d "{
     \"tag_name\": \"$TAG\",
     \"name\": \"Chelona $TAG\",
-    \"body\": \"🚀 **Chelona v$VERSION**\\n\\n### ✨ Novità e Fix:\\n- **🚗 Auto**: Riparato il tasto di condivisione, inserito nuovo pannello di pianificazione notifiche (scadenze e km) e visualizzazione dinamica delle prossime scadenze.\\n- **🌍 Viaggi**: Ottimizzato zoom iniziale del pianeta 3D e aggiunta l'espansione della meta con anteprima interattiva di Google Maps.\",
+    \"body\": \"🚀 **Chelona v$VERSION**\\n\\n### ✨ Novità e Fix:\\n- **👤 Profilo**: Layout migliorato ad unica schermata.\\n- **🎤 Ricerca Vocale**: Risolto errore accesso negato su Android.\\n- **🧮 Percentuale**: Interfaccia calcolatrice modernizzata.\\n- **📄 Documenti**: Nuovo stile grafico con standard Europei.\\n- **📍 Rubrica**: Aggiunto tasto Condivisione.\",
     \"draft\": false,
     \"prerelease\": false
   }")

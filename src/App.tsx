@@ -999,13 +999,26 @@ export default function App() {
           return;
         }
 
-        const { speech } = await SpeechRecognition.checkPermissions();
-        if (speech !== 'granted') {
-          const { speech: newStatus } = await SpeechRecognition.requestPermissions();
-          if (newStatus !== 'granted') {
-            showToast('Permesso microfono negato.', 'error');
-            return;
+        let hasPermission = false;
+        try {
+          const perms = await SpeechRecognition.checkPermissions() as any;
+          if (perms.speech === 'granted' || perms.speechRecognition === 'granted') {
+            hasPermission = true;
           }
+        } catch (e) { console.log('checkPermissions err:', e); }
+
+        if (!hasPermission) {
+          try {
+            const newPerms = await SpeechRecognition.requestPermissions() as any;
+            if (newPerms.speech === 'granted' || newPerms.speechRecognition === 'granted') {
+              hasPermission = true;
+            }
+          } catch (e) { console.log('requestPermissions err:', e); }
+        }
+
+        if (!hasPermission) {
+          showToast('Permesso microfono negato o non supportato.', 'error');
+          return;
         }
 
         setIsListening(true);

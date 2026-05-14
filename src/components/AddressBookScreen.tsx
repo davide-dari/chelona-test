@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Anchor, ArrowLeft, MapPin, Plus, Navigation, Trash2, Map, Edit2, X, MoreVertical } from 'lucide-react';
+import { Anchor, ArrowLeft, MapPin, Plus, Navigation, Trash2, Map, Edit2, X, MoreVertical, Share2 } from 'lucide-react';
 import { generateUUID } from '../utils/uuid';
 
 interface Address {
@@ -170,13 +170,27 @@ export const AddressBookScreen = ({ onClose }: AddressBookScreenProps) => {
                            </button>
                         </div>
                         
-                        <div className="mt-auto pt-2">
+                        <div className="mt-auto pt-2 flex gap-3">
                            <button
                              onClick={() => handleNavigate(addr.query)}
-                             className="w-full py-3.5 bg-emerald-500 hover:bg-emerald-600 active:scale-[0.98] text-white rounded-2xl font-bold tracking-wide flex items-center justify-center gap-2 transition-all shadow-md shadow-emerald-500/20"
+                             className="flex-1 py-3.5 bg-emerald-500 hover:bg-emerald-600 active:scale-[0.98] text-white rounded-2xl font-bold tracking-wide flex items-center justify-center gap-2 transition-all shadow-md shadow-emerald-500/20"
                            >
                              <Navigation className="w-5 h-5" />
                              Naviga 
+                           </button>
+                           <button
+                             onClick={() => {
+                               if (navigator.share) {
+                                 navigator.share({
+                                   title: addr.title,
+                                   text: `Indirizzo: ${addr.title}\n${addr.query}`,
+                                   url: `https://maps.google.com/?q=${encodeURIComponent(addr.query)}`
+                                 }).catch(console.error);
+                               }
+                             }}
+                             className="w-[52px] flex items-center justify-center bg-[var(--bg)] border border-[var(--border)] hover:bg-[var(--surface-variant)] active:scale-[0.98] text-[var(--text-main)] rounded-2xl transition-all shadow-sm"
+                           >
+                             <Share2 className="w-5 h-5" />
                            </button>
                         </div>
                      </div>

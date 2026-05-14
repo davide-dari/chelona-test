@@ -53,8 +53,6 @@ export function ProfileScreen({
   theme,
   onToggleTheme
 }: ProfileScreenProps) {
-  const [activeTab, setActiveTab] = useState<'profile' | 'security' | 'widgets'>('profile');
-  
   const [editName, setEditName] = useState(username);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
@@ -199,25 +197,10 @@ export function ProfileScreen({
           </button>
         </header>
 
-        <div className="flex bg-[var(--surface-variant)] p-1 rounded-full mb-6 mx-6 mt-6 border border-[var(--border)]/30">
-          {[
-            { id: 'profile', label: 'Informazioni' },
-            { id: 'security', label: 'Sicurezza' },
-            { id: 'widgets', label: 'Personalizza' }
-          ].map(tab => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id as any)}
-              className={`flex-1 py-2.5 text-sm font-bold rounded-full transition-all duration-300 ${activeTab === tab.id ? 'bg-[var(--accent-container)] text-[var(--accent-on-container)] shadow-sm' : 'text-[var(--text-muted)] hover:bg-[var(--bg)]/50'}`}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
-
-        <div className="flex-1 overflow-y-auto pb-40 space-y-6 px-6 custom-scrollbar">
-          {activeTab === 'profile' ? (
-            <div className="bg-[var(--surface-variant)]/50 rounded-[var(--radius-lg)] p-5 lg:p-6 border border-[var(--border)] shadow-sm space-y-5">
+        <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-5xl mx-auto">
+            {/* Profilo */}
+            <div className="bg-[var(--surface-variant)]/50 rounded-[var(--radius-lg)] p-5 lg:p-6 border border-[var(--border)] shadow-sm space-y-5 h-fit">
               <div className="flex flex-col items-center">
                 <div 
                   onClick={handleAvatarClick}
@@ -249,7 +232,7 @@ export function ProfileScreen({
                 <p className="mt-4 text-sm text-[var(--text-muted)] font-medium">Tocca per cambiare foto</p>
               </div>
 
-              <div className="flex-1 space-y-4">
+              <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-bold text-[var(--text-muted)] mb-2">Username</label>
                   <input
@@ -269,16 +252,17 @@ export function ProfileScreen({
                 </button>
               </div>
             </div>
-          ) : activeTab === 'security' ? (
-            <div className="space-y-4">
-              <div className="bg-[var(--card-bg)] rounded-3xl p-5 lg:p-6 border border-[var(--border)] shadow-sm space-y-4">
+
+            {/* Sicurezza e Backup */}
+            <div className="space-y-6">
+              <div className="bg-[var(--card-bg)] rounded-[var(--radius-lg)] p-5 lg:p-6 border border-[var(--border)] shadow-sm space-y-4">
                 <div className="flex items-center gap-3 border-b border-[var(--border)] pb-4 mb-2">
                   <div className="w-10 h-10 bg-[var(--accent-hover)]/10 rounded-2xl flex items-center justify-center text-[var(--accent)] shrink-0">
                     <Lock className="w-5 h-5" />
                   </div>
                   <div>
                     <h3 className="text-base font-bold text-[var(--text-main)] leading-tight">Cambia Password</h3>
-                    <p className="text-xs text-[var(--text-muted)]">Aggiorna la chiave (disabiliterà la biometria)</p>
+                    <p className="text-xs text-[var(--text-muted)]">Aggiorna la chiave crittografica</p>
                   </div>
                 </div>
 
@@ -295,192 +279,106 @@ export function ProfileScreen({
                   </div>
                 )}
 
-                <form onSubmit={handleChangePassword} className="space-y-4">
-                  <div>
+                <form onSubmit={handleChangePassword} className="space-y-3">
+                  <input
+                    type="password"
+                    placeholder="Password Attuale"
+                    required
+                    value={oldPassword}
+                    onChange={e => setOldPassword(e.target.value)}
+                    className="w-full p-3 bg-[var(--bg)] border border-[var(--border)] rounded-xl outline-none focus:border-amber-500 transition-all text-[var(--text-main)] text-sm"
+                  />
+                  <div className="flex gap-3">
                     <input
                       type="password"
-                      placeholder="Password Attuale"
-                      required
-                      value={oldPassword}
-                      onChange={e => setOldPassword(e.target.value)}
-                      className="w-full p-4 bg-[var(--bg)] border border-[var(--border)] rounded-2xl outline-none focus:border-amber-500 transition-all text-[var(--text-main)]"
-                    />
-                  </div>
-                  <div>
-                    <input
-                      type="password"
-                      placeholder="Nuova Password"
+                      placeholder="Nuova"
                       required
                       value={newPassword}
                       onChange={e => setNewPassword(e.target.value)}
-                      className="w-full p-4 bg-[var(--bg)] border border-[var(--border)] rounded-2xl outline-none focus:border-amber-500 transition-all text-[var(--text-main)]"
+                      className="w-full p-3 bg-[var(--bg)] border border-[var(--border)] rounded-xl outline-none focus:border-amber-500 transition-all text-[var(--text-main)] text-sm"
                     />
-                  </div>
-                  <div>
                     <input
                       type="password"
-                      placeholder="Conferma Nuova Password"
+                      placeholder="Conferma"
                       required
                       value={confirmPassword}
                       onChange={e => setConfirmPassword(e.target.value)}
-                      className="w-full p-4 bg-[var(--bg)] border border-[var(--border)] rounded-2xl outline-none focus:border-amber-500 transition-all text-[var(--text-main)]"
+                      className="w-full p-3 bg-[var(--bg)] border border-[var(--border)] rounded-xl outline-none focus:border-amber-500 transition-all text-[var(--text-main)] text-sm"
                     />
                   </div>
                   <button
                     type="submit"
                     disabled={isChangingPwd}
-                    className="w-full py-4 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white rounded-2xl font-bold transition-all disabled:opacity-50 mt-2 shadow-lg shadow-amber-600/20"
+                    className="w-full py-3 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white rounded-xl font-bold transition-all disabled:opacity-50 shadow-md shadow-amber-600/20 text-sm"
                   >
-                    {isChangingPwd ? 'Aggiornamento in corso...' : 'Aggiorna Password'}
+                    {isChangingPwd ? 'Aggiornamento...' : 'Aggiorna Password'}
                   </button>
                 </form>
               </div>
 
-              <div className="bg-[var(--card-bg)] rounded-3xl p-5 lg:p-6 border border-[var(--border)] shadow-sm space-y-4 relative overflow-hidden">
-                <div className="flex items-center gap-3 border-b border-[var(--border)] pb-4 mb-2">
+              <div className="bg-[var(--card-bg)] rounded-[var(--radius-lg)] p-5 border border-[var(--border)] shadow-sm flex items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
                   <div className="w-10 h-10 bg-amber-500/10 rounded-2xl flex items-center justify-center text-amber-600 shadow-inner shrink-0">
                     <Fingerprint className="w-5 h-5" />
                   </div>
-                  <div className="flex-1">
+                  <div>
                     <h3 className="text-base font-bold text-[var(--text-main)] leading-tight">Sblocco Biometrico</h3>
-                    <p className="text-[10px] text-[var(--text-muted)] font-medium leading-relaxed mt-0.5">Configura l'impronta digitale per accesso rapido.</p>
+                    <p className="text-[10px] text-[var(--text-muted)] font-medium mt-0.5">Accesso rapido</p>
                   </div>
-                  {isBioSupported && (
-                    <button
-                      onClick={isBioEnabled ? undefined : onEnableBiometrics}
-                      disabled={isBioEnabled}
-                      className={`px-6 py-3.5 rounded-2xl font-black text-xs uppercase tracking-widest transition-all ${isBioEnabled ? 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 cursor-default' : 'bg-amber-500 text-white hover:bg-amber-600 shadow-lg shadow-amber-500/20 active:scale-95'}`}
-                    >
-                      {isBioEnabled ? 'Attivo' : 'Attiva'}
-                    </button>
-                  )}
                 </div>
-
-                {/* MODALITÀ SCUSA RIMOUSA */}
-                {isBioEnabled && (
-                  <div className="mt-4 p-4 bg-emerald-500/5 rounded-2xl border border-emerald-500/10 flex items-center gap-3">
-                    <ShieldCheck className="w-5 h-5 text-emerald-500" />
-                    <span className="text-xs font-bold text-emerald-700">Autocompilazione Master Key attiva tramite impronta.</span>
-                  </div>
-                )}
-                {bioError && (
-                  <div className="p-4 bg-red-500/5 text-red-600 text-[11px] font-bold rounded-2xl border border-red-500/10 flex items-center gap-2">
-                    <AlertCircle className="w-4 h-4" />
-                    {bioError}
-                  </div>
+                {isBioSupported && (
+                  <button
+                    onClick={isBioEnabled ? undefined : onEnableBiometrics}
+                    disabled={isBioEnabled}
+                    className={`px-4 py-2 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all ${isBioEnabled ? 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 cursor-default' : 'bg-amber-500 text-white hover:bg-amber-600 shadow-md shadow-amber-500/20 active:scale-95'}`}
+                  >
+                    {isBioEnabled ? 'Attivo' : 'Attiva'}
+                  </button>
                 )}
               </div>
 
-              <div className="bg-[var(--card-bg)] rounded-3xl p-5 lg:p-6 border border-[var(--border)] shadow-sm space-y-4">
-                <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
-                  <div className="flex items-center gap-3 flex-1">
-                    <div className="w-10 h-10 bg-[var(--accent-hover)]/10 rounded-2xl flex items-center justify-center text-[var(--accent)] shrink-0">
-                      <Share2 className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <h3 className="text-base font-bold text-[var(--text-main)] leading-tight">Backup e Aggiornamenti</h3>
-                      <p className="text-[10px] text-[var(--text-muted)] mt-0.5">Trasferimenti e nuove versioni</p>
-                    </div>
+              <div className="bg-[var(--card-bg)] rounded-[var(--radius-lg)] p-5 border border-[var(--border)] shadow-sm">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-10 h-10 bg-[var(--accent-hover)]/10 rounded-2xl flex items-center justify-center text-[var(--accent)] shrink-0">
+                    <Share2 className="w-5 h-5" />
                   </div>
-                  <div className="flex flex-col sm:flex-row gap-3">
-                    <button
-                      onClick={handleGenerateBackup}
-                      className="px-6 py-3 bg-[var(--bg)] text-[var(--text-main)] border border-[var(--border)] rounded-xl font-bold hover:bg-[var(--border)] transition-all flex items-center gap-2 shadow-sm"
-                    >
-                      <QrCode className="w-5 h-5" />
-                      Backup QR
-                    </button>
-                    <button
-                      onClick={async () => {
-                        try {
-                          import('../services/updateService').then(async (m) => {
-                            const info = await m.updateService.checkForUpdates();
-                            if (info && info.available) {
-                              // We need to pass this back to App somehow or show it here.
-                              // For simplicity, we'll trigger a reload or use a custom event.
-                              window.dispatchEvent(new CustomEvent('chelona_update_available', { detail: info }));
-                            } else {
-                              showToast('L\'app è già aggiornata!', 'info');
-                            }
-                          });
-                        } catch (e) {
-                          showToast('Errore durante il controllo aggiornamenti', 'error');
-                        }
-                      }}
-                      className="px-6 py-3 bg-[var(--accent)] text-white rounded-xl font-bold hover:bg-[var(--accent-hover)] transition-all flex items-center gap-2 shadow-lg shadow-amber-600/20"
-                    >
-                      <Download className="w-5 h-5" />
-                      Aggiorna
-                    </button>
+                  <div>
+                    <h3 className="text-base font-bold text-[var(--text-main)] leading-tight">Backup e Aggiornamenti</h3>
+                    <p className="text-[10px] text-[var(--text-muted)]">Trasferimenti e nuove versioni ({packageJson.version})</p>
                   </div>
                 </div>
-
-                <div className="mt-4 pt-6 border-t border-[var(--border)] text-center">
-                   <p className="text-[10px] text-[var(--text-muted)] font-bold uppercase tracking-[0.2em]">Versione Chelona: {packageJson.version}</p>
+                <div className="flex gap-3">
+                  <button
+                    onClick={handleGenerateBackup}
+                    className="flex-1 py-3 bg-[var(--bg)] text-[var(--text-main)] border border-[var(--border)] rounded-xl font-bold hover:bg-[var(--border)] transition-all flex items-center justify-center gap-2 text-sm"
+                  >
+                    <QrCode className="w-4 h-4" />
+                    Backup QR
+                  </button>
+                  <button
+                    onClick={async () => {
+                      try {
+                        import('../services/updateService').then(async (m) => {
+                          const info = await m.updateService.checkForUpdates();
+                          if (info && info.available) {
+                            window.dispatchEvent(new CustomEvent('chelona_update_available', { detail: info }));
+                          } else {
+                            showToast('L\'app è già aggiornata!', 'info');
+                          }
+                        });
+                      } catch (e) {
+                        showToast('Errore durante il controllo', 'error');
+                      }
+                    }}
+                    className="flex-1 py-3 bg-[var(--accent)] text-white rounded-xl font-bold hover:bg-[var(--accent-hover)] transition-all flex items-center justify-center gap-2 shadow-md shadow-amber-600/20 text-sm"
+                  >
+                    <Download className="w-4 h-4" />
+                    Aggiorna
+                  </button>
                 </div>
               </div>
             </div>
-          ) : (
-            <div className="space-y-6">
-               <div className="bg-[var(--card-bg)] rounded-3xl p-6 lg:p-8 border border-[var(--border)] shadow-sm space-y-6">
-                 <div className="flex items-center gap-4 border-b border-[var(--border)] pb-6 mb-2">
-                   <div className="w-12 h-12 bg-[var(--accent-hover)]/10 rounded-2xl flex items-center justify-center text-[var(--accent)]">
-                     <LayoutDashboard className="w-6 h-6" />
-                   </div>
-                   <div>
-                     <h3 className="text-lg font-bold text-[var(--text-main)]">Gestione Widget</h3>
-                     <p className="text-sm text-[var(--text-muted)]">Scegli quali categorie o strumenti avere in Home</p>
-                   </div>
-                 </div>
-
-                 <div className="space-y-8">
-                   <div>
-                     <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--text-muted)] mb-4">Categorie Appuntate</p>
-                     <div className="grid grid-cols-2 gap-3">
-                       {['generic', 'auto', 'document', 'split'].map(catId => {
-                         const isPinned = pinnedCategoryIds.includes(catId);
-                         return (
-                           <button
-                             key={catId}
-                             onClick={() => {
-                               const next = isPinned ? pinnedCategoryIds.filter(id => id !== catId) : [...pinnedCategoryIds, catId];
-                               onUpdateWidgets(next, pinnedToolIds);
-                             }}
-                             className={`p-4 rounded-2xl border transition-all flex items-center justify-between group ${isPinned ? 'bg-[var(--accent-bg)] border-[var(--accent)]' : 'bg-[var(--bg)] border-[var(--border)] hover:border-[var(--text-muted)]'}`}
-                           >
-                             <span className={`text-sm font-bold ${isPinned ? 'text-[var(--accent)]' : 'text-[var(--text-muted)]'}`}>{catId.charAt(0).toUpperCase() + catId.slice(1)}</span>
-                             {isPinned ? <Check className="w-4 h-4 text-[var(--accent)]" /> : <Plus className="w-4 h-4 text-[var(--text-muted)] opacity-50" />}
-                           </button>
-                         );
-                       })}
-                     </div>
-                   </div>
-
-                   <div>
-                     <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--text-muted)] mb-4">Strumenti Appuntati</p>
-                     <div className="grid grid-cols-2 gap-3">
-                       {['scanner', 'archive', 'qr_gen', 'unit_conv', 'expense_stats'].map(toolId => {
-                         const isPinned = pinnedToolIds.includes(toolId);
-                         return (
-                           <button
-                             key={toolId}
-                             onClick={() => {
-                               const next = isPinned ? pinnedToolIds.filter(id => id !== toolId) : [...pinnedToolIds, toolId];
-                               onUpdateWidgets(pinnedCategoryIds, next);
-                             }}
-                             className={`p-4 rounded-2xl border transition-all flex items-center justify-between group ${isPinned ? 'bg-[var(--accent-bg)] border-[var(--accent)]' : 'bg-[var(--bg)] border-[var(--border)] hover:border-[var(--text-muted)]'}`}
-                           >
-                             <span className={`text-sm font-bold ${isPinned ? 'text-[var(--accent)]' : 'text-[var(--text-muted)]'}`}>{toolId.replace('_', ' ').toUpperCase()}</span>
-                             {isPinned ? <Check className="w-4 h-4 text-[var(--accent)]" /> : <Plus className="w-4 h-4 text-[var(--text-muted)] opacity-50" />}
-                           </button>
-                         );
-                       })}
-                     </div>
-                   </div>
-                 </div>
-               </div>
-            </div>
-          )}
+          </div>
         </div>
 
         <AnimatePresence>

@@ -435,21 +435,47 @@ export const ToolsScreen = ({ showToast, onSaveToSandbox, initialToolId, onReset
                       onSaveToSandbox={onSaveToSandbox}
                     />
                   ) : activeTool === 'percent' ? (
-                    <div className="bg-[var(--card-bg)] rounded-3xl p-6 lg:p-10 border border-[var(--border)] shadow-xl animate-scale-up">
+                    <div className="bg-[var(--card-bg)] rounded-[2rem] p-6 lg:p-10 border border-[var(--border)] shadow-2xl animate-scale-up">
                       <div className="space-y-8">
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="flex flex-col gap-6">
                           <div className="space-y-2">
-                             <label className="text-[10px] font-black text-[var(--text-muted)] uppercase ml-2">{percentMode === 'of' ? 'Percentuale' : 'Variazione %'}</label>
-                             <input type="number" placeholder="Es. 22" value={percentVal1} onChange={e => setPercentVal1(e.target.value)} className="w-full p-5 bg-[var(--bg)] border border-[var(--border)] rounded-2xl outline-none focus:border-amber-500 font-black text-center text-2xl text-[var(--text-main)] shadow-inner" />
+                             <label className="text-xs font-black text-[var(--text-muted)] uppercase tracking-widest ml-2">Valore Base</label>
+                             <div className="relative">
+                               <span className="absolute left-6 top-1/2 -translate-y-1/2 text-2xl font-black text-[var(--text-muted)]">€</span>
+                               <input type="number" placeholder="0.00" value={percentVal2} onChange={e => setPercentVal2(e.target.value)} className="w-full pl-14 p-6 bg-[var(--surface-variant)] border-2 border-[var(--border)] rounded-2xl outline-none focus:border-amber-500 font-black text-3xl text-[var(--text-main)] transition-all" />
+                             </div>
                           </div>
+                          
                           <div className="space-y-2">
-                             <label className="text-[10px] font-black text-[var(--text-muted)] uppercase ml-2">Valore Base</label>
-                             <input type="number" placeholder="Es. 100" value={percentVal2} onChange={e => setPercentVal2(e.target.value)} className="w-full p-5 bg-[var(--bg)] border border-[var(--border)] rounded-2xl outline-none focus:border-amber-500 font-black text-center text-2xl text-[var(--text-main)] shadow-inner" />
+                             <div className="flex items-center justify-between ml-2">
+                               <label className="text-xs font-black text-[var(--text-muted)] uppercase tracking-widest">{percentMode === 'of' ? 'Percentuale' : 'Variazione'}</label>
+                             </div>
+                             <div className="relative">
+                               <input type="number" placeholder="0" value={percentVal1} onChange={e => setPercentVal1(e.target.value)} className="w-full pr-14 p-6 bg-[var(--surface-variant)] border-2 border-[var(--border)] rounded-2xl outline-none focus:border-amber-500 font-black text-3xl text-[var(--text-main)] transition-all" />
+                               <span className="absolute right-6 top-1/2 -translate-y-1/2 text-2xl font-black text-[var(--text-muted)]">%</span>
+                             </div>
+                             
+                             {/* Quick Buttons */}
+                             <div className="flex gap-2 pt-2 overflow-x-auto pb-2 scrollbar-none">
+                                {[5, 10, 20, 22, 50].map(val => (
+                                   <button 
+                                     key={val} 
+                                     onClick={() => setPercentVal1(val.toString())} 
+                                     className="px-4 py-2 bg-[var(--bg)] border border-[var(--border)] rounded-xl font-bold text-sm text-[var(--text-main)] hover:bg-[var(--accent)] hover:text-white hover:border-[var(--accent)] transition-all whitespace-nowrap"
+                                   >
+                                     {val}%
+                                   </button>
+                                ))}
+                             </div>
                           </div>
                         </div>
-                        <div className="p-8 bg-gradient-to-br from-amber-500 to-amber-400 rounded-2xl text-center shadow-lg shadow-amber-500/20">
-                           <p className="text-[10px] font-black text-white/80 uppercase mb-2 tracking-widest">Risultato Finale</p>
-                           <p className="text-5xl font-black text-white drop-shadow-md">
+
+                        <div className="p-8 bg-[var(--accent)] rounded-[2rem] text-center shadow-xl shadow-[var(--accent)]/20 relative overflow-hidden group">
+                           <div className="absolute top-0 right-0 p-8 opacity-10 scale-150 rotate-12 group-hover:rotate-45 transition-transform duration-700">
+                             <Percent className="w-24 h-24 text-white" />
+                           </div>
+                           <p className="text-[10px] font-black text-white/80 uppercase mb-2 tracking-widest relative z-10">Risultato Finale</p>
+                           <p className="text-5xl lg:text-6xl font-black text-white drop-shadow-md relative z-10">
                              {(() => {
                                const v1 = parseFloat(percentVal1);
                                const v2 = parseFloat(percentVal2);
