@@ -71,7 +71,7 @@ RELEASE_JSON=$(curl -s -X POST \
   -d "{
     \"tag_name\": \"$TAG\",
     \"name\": \"Chelona $TAG\",
-    \"body\": \"🚀 **Chelona v$VERSION**\\n\\n### ✨ Novità e Fix:\\n- **📱 Layout Orizzontale Ottimizzato**: Rimosso il menu laterale sinistro in modalità landscape per lasciare l'intera dashboard a tutto schermo.\\n- **🛠️ Tasto Strumenti Integrato**: Aggiunto il tasto strumenti a sinistra della rubrica GPS nel layout orizzontale per accedere comodamente a tutte le utility.\",
+    \"body\": \"🚀 **Chelona v$VERSION**\\n\\n### ✨ Novità e Fix:\\n- **🛞 Controllo Gomme**: Ripristinato il controllo gomme classico con suggerimento fisso a +10.000 km.\\n- **📍 Ricezione Maps Perfezionata**: La condivisione da Google Maps estrae in modo intelligente titolo e via/città, escludendo i link HTTP dall'indirizzo.\\n- **🚗 Compatibilità Android Auto**: La tua rubrica indirizzi sul cruscotto dell'auto con avvio del GPS con un tocco.\\n- **📱 Layout Orizzontale Ottimizzato**: Sidebar sinistra rimossa in modalità landscape per lasciare la dashboard a tutto schermo con tasto strumenti integrato.\",
     \"draft\": false,
     \"prerelease\": false
   }")
