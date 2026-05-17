@@ -164,6 +164,58 @@ export default function App() {
     return () => clearTimeout(timer);
   }, []);
 
+  // Ricezione intenzioni di condivisione di luoghi da mappe esterne
+  useEffect(() => {
+    const handleSharedText = (text: string) => {
+      const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+      let title = 'Luogo Condiviso';
+      let query = text;
+
+      if (lines.length > 0) {
+        title = lines[0];
+        if (title.startsWith('http')) {
+          title = 'Luogo Condiviso';
+        }
+        const addressLines = lines.slice(1).filter(l => !l.startsWith('http'));
+        if (addressLines.length > 0) {
+          query = addressLines.join(', ');
+        } else {
+          query = lines[0];
+        }
+      }
+
+      setIsAddressBookOpen(true);
+      setTimeout(() => {
+        window.dispatchEvent(new CustomEvent('open-address-book-add', {
+          detail: { title, query }
+        }));
+      }, 500);
+    };
+
+    const checkPendingIntent = () => {
+      const pending = (window as any).pendingSharedIntent;
+      if (pending && pending.text) {
+        handleSharedText(pending.text);
+        (window as any).pendingSharedIntent = null;
+      }
+    };
+
+    // Ritarda leggermente il check iniziale per evitare collisioni con l'avvio della schermata di sblocco
+    const startupTimer = setTimeout(checkPendingIntent, 2000);
+
+    const handleEvent = (e: any) => {
+      if (e.detail && e.detail.text) {
+        handleSharedText(e.detail.text);
+      }
+    };
+    
+    window.addEventListener('sharedIntentReceived', handleEvent);
+    return () => {
+      clearTimeout(startupTimer);
+      window.removeEventListener('sharedIntentReceived', handleEvent);
+    };
+  }, []);
+
   const showToast = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
     setToast({ message, type });
     setTimeout(() => setToast(null), 3000);
@@ -408,6 +460,21 @@ export default function App() {
     
     return () => window.removeEventListener('chelona_update_available', handleManualUpdate);
   }, [handleCheckUpdate]);
+
+  useEffect(() => {
+    const handleTriggerWeeklyKm = () => {
+      const autoMod = modules.find(m => m.type === 'auto');
+      if (autoMod) {
+        setEditingAutoModule(autoMod as any);
+        setTimeout(() => {
+          window.dispatchEvent(new CustomEvent('open-auto-km-update'));
+        }, 500);
+      }
+    };
+    window.addEventListener('trigger-auto-km-page', handleTriggerWeeklyKm);
+    return () => window.removeEventListener('trigger-auto-km-page', handleTriggerWeeklyKm);
+  }, [modules]);
+
 
   const saveAppState = async (newModules: Module[], newFolders: Folder[]) => {
     if (!encryptionKey || !currentProfileId) return;

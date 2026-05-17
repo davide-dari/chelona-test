@@ -29,13 +29,36 @@ export const AddressBookScreen = ({ onClose }: AddressBookScreenProps) => {
   useEffect(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) setAddresses(JSON.parse(saved));
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        setAddresses(parsed);
+        if ((window as any).ChelonaNative && (window as any).ChelonaNative.saveAddresses) {
+          (window as any).ChelonaNative.saveAddresses(saved);
+        }
+      }
     } catch {}
+  }, []);
+
+  useEffect(() => {
+    const handleOpenAdd = (e: any) => {
+      if (e.detail) {
+        setNewTitle(e.detail.title || '');
+        setNewQuery(e.detail.query || '');
+        setEditingAddr(null);
+        setIsAdding(true);
+      }
+    };
+    window.addEventListener('open-address-book-add', handleOpenAdd);
+    return () => window.removeEventListener('open-address-book-add', handleOpenAdd);
   }, []);
 
   const saveAddresses = (updated: Address[]) => {
     setAddresses(updated);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+    const jsonStr = JSON.stringify(updated);
+    localStorage.setItem(STORAGE_KEY, jsonStr);
+    if ((window as any).ChelonaNative && (window as any).ChelonaNative.saveAddresses) {
+      (window as any).ChelonaNative.saveAddresses(jsonStr);
+    }
   };
 
   const handleAddOrEdit = (e: React.FormEvent) => {

@@ -71,7 +71,7 @@ RELEASE_JSON=$(curl -s -X POST \
   -d "{
     \"tag_name\": \"$TAG\",
     \"name\": \"Chelona $TAG\",
-    \"body\": \"🚀 **Chelona v$VERSION**\\n\\n### ✨ Novità e Fix:\\n- **🛞 Controllo Gomme**: Aggiunto tasto +10.000 km per posticipare il controllo quando il gommista conferma che è tutto a posto.\\n- **⚡ Batteria Ibrida/EV**: Nella modifica veicolo, aggiunto campo separato per la data di scadenza della garanzia batteria ibrida (distinto dai km di revisione). Le scadenze garanzia sono ora tracciate anche nella sezione Prossime Scadenze.\",
+    \"body\": \"🚀 **Chelona v$VERSION**\\n\\n### ✨ Novità e Fix:\\n- **🛞 Controllo Gomme**: Ripristinato il controllo gomme classico con suggerimento a +10.000 km.\\n- **📍 Ricezione Luoghi Condivisi**: Ricevi posizioni da Google Maps direttamente in Rubrica Indirizzi per salvarle all\\'istante.\\n- **🚗 Compatibilità Android Auto**: Visualizza la tua rubrica indirizzi sul cruscotto dell\\'auto e avvia il GPS con un tocco!\",
     \"draft\": false,
     \"prerelease\": false
   }")

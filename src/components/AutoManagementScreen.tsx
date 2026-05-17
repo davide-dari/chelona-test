@@ -62,12 +62,112 @@ const SectionTitle = ({ icon: Icon, label }: { icon: React.ElementType; label: s
   </div>
 );
 
-export const AutoManagementScreen = ({ module, onSave, onCancel, onDelete }: AutoManagementScreenProps) => {
+export const AutoManagementScreen = ({ module, onSave, onCancel, onDelete, onShare }: AutoManagementScreenProps) => {
   const [data, setData] = useState<AutoModule>({ ...module });
   const [capturingField, setCapturingField] = useState<{ key: keyof AutoModule; title: string } | null>(null);
   const [picker, setPicker] = useState<'brand' | 'model' | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [showNotifMenu, setShowNotifMenu] = useState(false);
+  const [isQuickKmEdit, setIsQuickKmEdit] = useState(false);
+  const [quickKm, setQuickKm] = useState(data.currentKm || '');
+  const [localPrefs, setLocalPrefs] = useState<Record<string, { enabled: boolean; offset: number }>>({});
+
+  useEffect(() => {
+    const handleOpenKm = () => {
+      setQuickKm(data.currentKm || '');
+      setIsQuickKmEdit(true);
+    };
+    window.addEventListener('open-auto-km-update', handleOpenKm);
+    return () => window.removeEventListener('open-auto-km-update', handleOpenKm);
+  }, [data.currentKm]);
+
+  useEffect(() => {
+    if (showNotifMenu) {
+      const prefs: Record<string, { enabled: boolean; offset: number }> = {};
+      [
+        'lastInsurance',
+        'lastTax',
+        'lastRevision',
+        'battery12vExpiryDate',
+        'hybridBatteryExpiryDate',
+        'hybridBatteryWarrantyDate',
+        'lastGplCylinder',
+        'lastMethaneCylinder',
+      ].forEach(field => {
+        const p = notificationService.get(data.id, field);
+        prefs[field] = {
+          enabled: p ? p.enabled : false,
+          offset: p ? p.reminderOffset : 7
+        };
+      });
+      setLocalPrefs(prefs);
+    }
+  }, [showNotifMenu, data.id]);
+
+  const togglePref = (field: string, label: string, targetValue: string) => {
+    const current = localPrefs[field] || { enabled: false, offset: 7 };
+    const nextEnabled = !current.enabled;
+    
+    setLocalPrefs(prev => ({
+      ...prev,
+      [field]: { ...current, enabled: nextEnabled }
+    }));
+
+    if (nextEnabled) {
+      notificationService.upsert({
+        id: `${data.id}_${field}`,
+        moduleId: data.id,
+        field,
+        label,
+        type: 'date',
+        targetValue,
+        reminderOffset: current.offset,
+        enabled: true
+      });
+      const targetDate = new Date(targetValue);
+      const nd = new Date(targetDate.getTime() - current.offset * 24 * 3600 * 1000);
+      nd.setHours(9, 0, 0, 0);
+      if (nd.getTime() > Date.now()) {
+        notificationService.scheduleNotification(
+          `Scadenza ${label}`,
+          `La scadenza ${label} per la tua ${data.brand} è tra ${current.offset} giorni (${new Date(targetValue).toLocaleDateString('it-IT')})!`,
+          nd
+        );
+      }
+    } else {
+      notificationService.remove(data.id, field);
+    }
+  };
+
+  const changeOffset = (field: string, label: string, targetValue: string, offset: number) => {
+    setLocalPrefs(prev => ({
+      ...prev,
+      [field]: { ...prev[field], offset }
+    }));
+
+    if (localPrefs[field]?.enabled) {
+      notificationService.upsert({
+        id: `${data.id}_${field}`,
+        moduleId: data.id,
+        field,
+        label,
+        type: 'date',
+        targetValue,
+        reminderOffset: offset,
+        enabled: true
+      });
+      const targetDate = new Date(targetValue);
+      const nd = new Date(targetDate.getTime() - offset * 24 * 3600 * 1000);
+      nd.setHours(9, 0, 0, 0);
+      if (nd.getTime() > Date.now()) {
+        notificationService.scheduleNotification(
+          `Scadenza ${label}`,
+          `La scadenza ${label} per la tua ${data.brand} è tra ${offset} giorni!`,
+          nd
+        );
+      }
+    }
+  };
 
   const set = (key: keyof AutoModule, value: string | undefined) =>
     setData(prev => ({ ...prev, [key]: value }));
@@ -80,6 +180,7 @@ export const AutoManagementScreen = ({ module, onSave, onCancel, onDelete }: Aut
 
   const brandLogo = data.brand ? data.brand.toLowerCase().replace(/ /g, '-') : '';
   const hasLogo = CAR_BRANDS.includes(brandLogo);
+
 
   const isValidDate = (dateStr: any) => {
     if (!dateStr) return false;
@@ -134,7 +235,7 @@ export const AutoManagementScreen = ({ module, onSave, onCancel, onDelete }: Aut
       list.push({ label: 'Prima Revisione', date: firstRevDate, field: 'registrationYear', daysLeft });
     }
 
-    return list.filter(a => a.daysLeft <= 30).sort((a, b) => a.daysLeft - b.daysLeft);
+    return list.sort((a, b) => a.daysLeft - b.daysLeft);
   })();
 
   return (
@@ -220,7 +321,50 @@ export const AutoManagementScreen = ({ module, onSave, onCancel, onDelete }: Aut
              <div className="mt-10 flex gap-6">
                 <div>
                    <p className="text-[9px] font-black text-white/40 uppercase tracking-widest mb-1">Chilometri</p>
-                   <p className="text-xl font-black text-white">{Number(data.currentKm || 0).toLocaleString('it-IT')} <span className="text-xs font-bold opacity-50">km</span></p>
+                    {isQuickKmEdit ? (
+                      <div className="flex items-center gap-2 mt-1" onClick={e => e.stopPropagation()}>
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          value={quickKm}
+                          onChange={e => setQuickKm(e.target.value.replace(/\D/g, ''))}
+                          className="w-32 px-3 py-1.5 bg-white/10 border border-white/20 rounded-xl text-sm font-black text-white outline-none focus:border-amber-400"
+                          placeholder="Es. 45000"
+                          autoFocus
+                        />
+                        <button
+                          onClick={() => {
+                            const updated = { ...data, currentKm: quickKm, lastKmUpdatedAt: new Date().toISOString() };
+                            setData(updated);
+                            onSave(updated);
+                            setIsQuickKmEdit(false);
+                          }}
+                          className="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-black font-black text-[10px] uppercase tracking-widest rounded-xl transition-all"
+                        >
+                          Salva
+                        </button>
+                        <button
+                          onClick={() => setIsQuickKmEdit(false)}
+                          className="p-1.5 hover:bg-white/10 rounded-xl text-white/60 hover:text-white transition-all"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ) : (
+                      <div 
+                        onClick={() => {
+                          setQuickKm(data.currentKm || '');
+                          setIsQuickKmEdit(true);
+                        }}
+                        className="flex items-center gap-2 hover:text-amber-400 transition-colors group cursor-pointer"
+                        title="Clicca per aggiornare i chilometri al volo"
+                      >
+                        <p className="text-xl font-black text-white group-hover:text-amber-300">
+                          {Number(data.currentKm || 0).toLocaleString('it-IT')} <span className="text-xs font-bold opacity-50">km</span>
+                        </p>
+                        <Edit2 className="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 text-amber-300 transition-all" />
+                      </div>
+                    )}
                 </div>
                 <div>
                    <p className="text-[9px] font-black text-white/40 uppercase tracking-widest mb-1">Alimentazione</p>
@@ -264,9 +408,7 @@ export const AutoManagementScreen = ({ module, onSave, onCancel, onDelete }: Aut
                         : 'text-emerald-500 bg-emerald-500/10 border-emerald-500/20';
                       const statusLabel = isExpired
                         ? 'Scaduta'
-                        : isUrgent
-                        ? `${d.daysLeft}gg`
-                        : 'Attiva';
+                        : `${d.daysLeft}gg`;
 
                       return (
                         <div key={i} className="bg-[var(--card-bg)] border border-[var(--border)] rounded-2xl p-5 flex items-center justify-between group hover:border-[var(--accent)] transition-all">
@@ -307,22 +449,10 @@ export const AutoManagementScreen = ({ module, onSave, onCancel, onDelete }: Aut
                           <ShieldCheck className="w-4 h-4" />
                           <span className="text-[10px] font-black uppercase tracking-widest flex-1">Controllo Gomme</span>
                        </div>
-                       <p className="text-2xl font-black text-[var(--text-main)]">{data.tiresKmSnoozeUntil ? Number(data.tiresKmSnoozeUntil).toLocaleString('it-IT') : (data.tiresKm ? Number(data.tiresKm).toLocaleString('it-IT') : '---')} <span className="text-xs font-bold opacity-50">km</span></p>
-                       <p className="text-[10px] font-bold text-[var(--text-muted)] mt-1">
-                         {data.tiresKmSnoozeUntil ? 'Prossimo controllo posticipato' : 'Km ultimo controllo gommista'}
+                       <p className="text-2xl font-black text-[var(--text-main)]">{data.tiresKm ? Number(data.tiresKm).toLocaleString('it-IT') : '---'} <span className="text-xs font-bold opacity-50">km</span></p>
+                       <p className="text-[10px] font-bold text-[var(--text-muted)] mt-2">
+                         Prossimo suggerito: {data.tiresKm ? (Number(data.tiresKm) + 10000).toLocaleString('it-IT') : '---'} km
                        </p>
-                       {/* Tasto: gommista ha detto OK → posticipa il controllo di 10.000 km */}
-                       <button
-                         onClick={() => {
-                           const base = Number(data.tiresKmSnoozeUntil || data.tiresKm || data.currentKm || 0);
-                           const next = base + 10000;
-                           setData(prev => ({ ...prev, tiresKmSnoozeUntil: String(next) }));
-                         }}
-                         className="mt-3 flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest px-3 py-1.5 bg-indigo-500/10 border border-indigo-500/20 text-indigo-500 rounded-xl hover:bg-indigo-500 hover:text-white active:scale-95 transition-all"
-                       >
-                         <Plus className="w-3 h-3" />
-                         +10.000 km (gommista OK)
-                       </button>
                     </div>
                 </div>
                 {(data.fuelType === 'ibrida' || data.fuelType === 'elettrica') && (
@@ -470,79 +600,98 @@ export const AutoManagementScreen = ({ module, onSave, onCancel, onDelete }: Aut
               initial={{ scale: 0.9, opacity: 0, y: 20 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.9, opacity: 0, y: 20 }}
-              className="relative bg-[var(--card-bg)] rounded-[2rem] p-6 w-full max-w-sm border border-[var(--border)] shadow-2xl"
+              className="relative bg-[var(--card-bg)] rounded-[2.5rem] p-6 w-full max-w-md border border-[var(--border)] shadow-2xl overflow-y-auto max-h-[85vh] custom-scrollbar"
             >
-              <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center justify-between mb-6 shrink-0">
                  <div className="flex items-center gap-3">
                     <div className="w-10 h-10 bg-amber-500/10 rounded-xl flex items-center justify-center">
-                       <Bell className="w-5 h-5 text-amber-500" />
+                       <Bell className="w-5 h-5 text-amber-500 animate-bounce" />
                     </div>
-                    <h3 className="text-lg font-black text-[var(--text-main)]">Imposta Notifica</h3>
+                    <div>
+                      <h3 className="text-base font-black text-[var(--text-main)] uppercase tracking-tight">Centro Notifiche</h3>
+                      <p className="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-widest mt-0.5">Personalizza Promemoria</p>
+                    </div>
                  </div>
                  <button onClick={() => setShowNotifMenu(false)} className="p-2 hover:bg-[var(--surface-variant)] rounded-xl transition-colors">
                     <X className="w-5 h-5 text-[var(--text-muted)]" />
                  </button>
               </div>
-              <div className="space-y-3">
-                 <button 
-                   onClick={() => {
-                     notificationService.requestPermission().then(granted => {
-                       if (granted) {
-                         let scheduled = 0;
-                         const allDeadlines: any[] = [];
-                         const today = new Date();
-                         today.setHours(0, 0, 0, 0);
-                         const addD = (lbl: string, dt: string|undefined) => { if (dt) allDeadlines.push({label: lbl, date: dt}) };
-                         addD('Assicurazione', data.lastInsurance);
-                         addD('Bollo', data.lastTax);
-                         addD('Revisione', data.lastRevision);
-                         addD('Batteria 12V', data.battery12vExpiryDate);
-                         addD('Batteria Ibrida', data.hybridBatteryExpiryDate);
-                         addD('Bombola GPL', data.lastGplCylinder);
-                         addD('Bombola Metano', data.lastMethaneCylinder);
-                         allDeadlines.forEach(d => {
-                            const nd = new Date(d.date);
-                            if (nd.getTime() > today.getTime()) {
-                               nd.setHours(9, 0, 0, 0);
-                               notificationService.scheduleNotification('Scadenza Veicolo', `La scadenza ${d.label} per la tua ${data.brand} è il ${nd.toLocaleDateString('it-IT')}!`, nd);
-                               scheduled++;
-                            }
-                         });
-                         alert(scheduled > 0 ? `Programmate ${scheduled} notifiche temporali.` : 'Nessuna scadenza futura trovata.');
-                         setShowNotifMenu(false);
-                       }
-                     });
-                   }}
-                   className="w-full flex items-center gap-3 p-4 bg-[var(--bg)] border border-[var(--border)] hover:border-amber-400 rounded-2xl transition-all text-left group"
-                 >
-                    <Calendar className="w-5 h-5 text-blue-500 group-hover:scale-110 transition-transform" />
-                    <div>
-                       <p className="text-sm font-bold text-[var(--text-main)]">Scadenze Temporali</p>
-                       <p className="text-[10px] font-medium text-[var(--text-muted)] mt-0.5">Bollo, assicurazione, revisione...</p>
-                    </div>
-                 </button>
 
-                 <button 
-                   onClick={() => {
-                     notificationService.requestPermission().then(granted => {
-                       if (granted) {
-                         const nd = new Date();
-                         nd.setMonth(nd.getMonth() + 6);
-                         nd.setHours(9, 0, 0, 0);
-                         notificationService.scheduleNotification('Controllo KM', `Ricordati di controllare i KM della tua ${data.brand} per eventuale tagliando o gomme!`, nd);
-                         alert(`Promemoria KM programmato per il ${nd.toLocaleDateString('it-IT')}.`);
-                         setShowNotifMenu(false);
-                       }
-                     });
-                   }}
-                   className="w-full flex items-center gap-3 p-4 bg-[var(--bg)] border border-[var(--border)] hover:border-amber-400 rounded-2xl transition-all text-left group"
-                 >
-                    <Gauge className="w-5 h-5 text-emerald-500 group-hover:scale-110 transition-transform" />
-                    <div>
-                       <p className="text-sm font-bold text-[var(--text-main)]">Manutenzione (Km)</p>
-                       <p className="text-[10px] font-medium text-[var(--text-muted)] mt-0.5">Promemoria tra 6 mesi per controlli</p>
+              <div className="space-y-4">
+                 {/* Promemoria Settimanale KM Card */}
+                 <div className="bg-gradient-to-br from-indigo-500/5 to-purple-500/5 border border-indigo-500/10 rounded-2xl p-4 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                       <Gauge className="w-5 h-5 text-indigo-500" />
+                       <div>
+                          <p className="text-xs font-bold text-[var(--text-main)]">Promemoria KM Settimanale</p>
+                          <p className="text-[9px] text-[var(--text-muted)] mt-0.5">Ti ricorda ogni settimana di aggiornare i chilometri</p>
+                       </div>
                     </div>
-                 </button>
+                    <span className="px-2 py-0.5 text-[8px] font-black uppercase tracking-widest text-indigo-500 bg-indigo-500/10 border border-indigo-500/20 rounded-md">Attivo</span>
+                 </div>
+
+                 {/* Lista scadenze attive */}
+                 <div className="space-y-2">
+                   <p className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] mb-1">Pianifica per Scadenza</p>
+                   {(() => {
+                     const activeDeadlines = [
+                       { label: 'Assicurazione', date: data.lastInsurance, field: 'lastInsurance' },
+                       { label: 'Bollo', date: data.lastTax, field: 'lastTax' },
+                       { label: 'Revisione', date: data.lastRevision, field: 'lastRevision' },
+                       { label: 'Batteria 12V', date: data.battery12vExpiryDate, field: 'battery12vExpiryDate' },
+                       { label: 'Batteria Ibrida (revisione)', date: data.hybridBatteryExpiryDate, field: 'hybridBatteryExpiryDate' },
+                       { label: 'Garanzia Batteria Ibrida', date: data.hybridBatteryWarrantyDate, field: 'hybridBatteryWarrantyDate' },
+                       { label: 'Bombola GPL', date: data.lastGplCylinder, field: 'lastGplCylinder' },
+                       { label: 'Bombola Metano', date: data.lastMethaneCylinder, field: 'lastMethaneCylinder' },
+                     ].filter(d => d.date && isValidDate(d.date));
+
+                     if (activeDeadlines.length === 0) {
+                       return (
+                         <p className="text-[10px] text-[var(--text-muted)] italic p-4 text-center">Nessuna data di scadenza configurata nell'editor dell'auto.</p>
+                       );
+                     }
+
+                     return activeDeadlines.map((ad, idx) => {
+                       const pref = localPrefs[ad.field] || { enabled: false, offset: 7 };
+                       return (
+                         <div key={idx} className="bg-[var(--bg)] border border-[var(--border)] rounded-2xl p-3.5 space-y-3">
+                           <div className="flex items-center justify-between">
+                             <div className="flex items-center gap-2.5">
+                               <Calendar className={`w-4 h-4 ${pref.enabled ? 'text-amber-500' : 'text-[var(--text-muted)]'}`} />
+                               <div>
+                                 <span className="text-xs font-bold text-[var(--text-main)] block">{ad.label}</span>
+                                 <span className="text-[9px] text-[var(--text-muted)] font-mono">{new Date(ad.date!).toLocaleDateString('it-IT')}</span>
+                               </div>
+                             </div>
+                             <button
+                               onClick={() => togglePref(ad.field, ad.label, ad.date!)}
+                               className={`relative w-10 h-5.5 rounded-full transition-colors ${pref.enabled ? 'bg-amber-500' : 'bg-[var(--card-bg)] border border-[var(--border)]'}`}
+                             >
+                               <div className={`absolute top-0.75 w-4 h-4 rounded-full shadow-sm transition-all ${pref.enabled ? 'left-5.25 bg-white' : 'left-0.75 bg-[var(--text-muted)]'}`} />
+                             </button>
+                           </div>
+
+                           {pref.enabled && (
+                             <div className="flex items-center gap-2 pt-2 border-t border-[var(--border)]/40">
+                               <span className="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-wider whitespace-nowrap">Preavviso:</span>
+                               <div className="flex gap-1.5 flex-1 justify-end">
+                                 {[1, 7, 15, 30].map(days => (
+                                   <button
+                                     key={days}
+                                     onClick={() => changeOffset(ad.field, ad.label, ad.date!, days)}
+                                     className={`px-2 py-1 text-[9px] font-bold rounded-lg border transition-all ${pref.offset === days ? 'bg-amber-500/10 border-amber-500/30 text-amber-500' : 'bg-[var(--card-bg)] border-[var(--border)] text-[var(--text-muted)] hover:text-[var(--text-main)]'}`}
+                                   >
+                                     {days === 1 ? '1gg' : `${days}gg`}
+                                   </button>
+                                 ))}
+                               </div>
+                             </div>
+                           )}
+                         </div>
+                       );
+                     });
+                   })()}
+                 </div>
               </div>
             </motion.div>
           </motion.div>

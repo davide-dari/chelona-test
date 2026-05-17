@@ -87,14 +87,30 @@ export const notificationService = {
   },
 
   fire(title: string, body: string) {
-    // 🤖 Capacitor APK: sostituire con LocalNotifications.schedule(...)
     if ((window as any).Capacitor?.isNativePlatform?.()) {
-      console.log('[CAPACITOR NOTIF]', title, body);
+      try {
+        import('@capacitor/local-notifications').then(({ LocalNotifications }) => {
+          LocalNotifications.schedule({
+            notifications: [{
+              title,
+              body,
+              id: Math.floor(Math.random() * 1000000),
+              schedule: { at: new Date() }
+            }]
+          });
+        });
+      } catch (e) {
+        console.error('Failed to fire native notification:', e);
+      }
       return;
     }
     if (!this.isGranted()) return;
     try {
-      new Notification(title, { body, icon: '/icon-192.png' });
+      const notif = new Notification(title, { body, icon: '/icon-192.png' });
+      notif.onclick = () => {
+        window.focus();
+        window.dispatchEvent(new CustomEvent('trigger-auto-km-page'));
+      };
     } catch (e) {
       console.warn('Notification failed:', e);
     }
@@ -221,22 +237,39 @@ export const notificationService = {
     const today = new Date();
     
     modules.filter(m => m.type === 'auto').forEach(a => {
-      if (a.lastKmUpdatedAt) {
-        const lastUpdate = new Date(a.lastKmUpdatedAt);
-        const daysDiff = (today.getTime() - lastUpdate.getTime()) / (1000 * 3600 * 24);
+      const lastUpdate = a.lastKmUpdatedAt ? new Date(a.lastKmUpdatedAt) : new Date(a.createdAt || Date.now());
+      const daysDiff = (today.getTime() - lastUpdate.getTime()) / (1000 * 3600 * 24);
+      
+      if (daysDiff >= 7) {
+        const prefId = `auto_km_weekly_${a.id}`;
+        const getWeekNumber = (d: Date) => {
+          const oneJan = new Date(d.getFullYear(), 0, 1);
+          const numberOfDays = Math.floor((d.getTime() - oneJan.getTime()) / (24 * 60 * 60 * 1000));
+          return Math.ceil((d.getDay() + 1 + numberOfDays) / 7);
+        };
+        const fireKey = `${today.getFullYear()}-w${getWeekNumber(today)}`;
+        const lastFired = localStorage.getItem(`notif_fired_${prefId}`);
         
-        if (daysDiff >= 60) {
-          const prefId = `auto_km_${a.id}`;
-          // Notifica una volta al mese (fireKey basato sul mese corrente)
-          const fireKey = `${today.getFullYear()}-${today.getMonth()}`;
-          const lastFired = localStorage.getItem(`notif_fired_${prefId}`);
-          
-          if (lastFired !== fireKey) {
-            this.fire(`🚗 Aggiorna i Chilometri`, `Sono passati più di 2 mesi. Aggiorna i km della tua ${a.title || 'Auto'}`);
-            localStorage.setItem(`notif_fired_${prefId}`, fireKey);
-          }
+        if (lastFired !== fireKey) {
+          this.fire(
+            `🚗 Aggiorna i Chilometri`,
+            `È passata una settimana dall'ultimo aggiornamento km per la tua ${a.brand || 'auto'}. Tocca qui per aggiornarli!`
+          );
+          localStorage.setItem(`notif_fired_${prefId}`, fireKey);
         }
       }
     });
   }
 };
+
+// Registra l'azione click su Capacitor per portare alla pagina km
+try {
+  import('@capacitor/local-notifications').then(({ LocalNotifications }) => {
+    LocalNotifications.addListener('localNotificationActionPerformed', () => {
+      window.dispatchEvent(new CustomEvent('trigger-auto-km-page'));
+    });
+  });
+} catch (e) {
+  // Ignora se non in ambiente nativo
+}
+
