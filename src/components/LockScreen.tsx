@@ -294,11 +294,11 @@ export const LockScreen = ({ isVisible, onAuthenticated, onStartScan, onOpenTool
                     className="flex flex-col items-center p-6 bg-[var(--surface-variant)] rounded-[var(--radius-lg)] border border-[var(--border)] transition-all group hover:scale-[1.02] shadow-sm"
                   >
                     <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-[var(--bg)] overflow-hidden mb-4 group-hover:shadow-md transition-all border-2 border-[var(--border)] flex items-center justify-center">
-                      {p.avatar ? (
-                        <img src={p.avatar} alt={p.username} className="w-full h-full object-cover" />
-                      ) : (
-                        <User className="w-10 h-10 text-[var(--accent)]" />
-                      )}
+                      <img 
+                        src={p.avatar || `https://ui-avatars.com/api/?name=${p.username}&background=E3E3E3&color=5E5E5E`} 
+                        alt={p.username} 
+                        className="w-full h-full object-cover" 
+                      />
                     </div>
                     <span className="font-bold text-[var(--text-main)] transition-colors text-base sm:text-lg truncate w-full text-center">{p.username}</span>
                   </button>
@@ -447,14 +447,12 @@ export const LockScreen = ({ isVisible, onAuthenticated, onStartScan, onOpenTool
 
                   <div className="flex flex-col items-center mb-6 sm:mb-8">
                     {view === 'login' && selectedProfile ? (
-                  <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-[var(--bg)] shadow-lg bg-[var(--accent-bg)]">
-                    {selectedProfile.avatar ? (
-                      <img src={selectedProfile.avatar} alt={selectedProfile.username} className="w-full h-full object-cover" />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center bg-[var(--accent)] text-white text-4xl font-bold">
-                        {selectedProfile.username.charAt(0).toUpperCase()}
-                      </div>
-                    )}
+                  <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-[var(--bg)] shadow-lg bg-[var(--accent-bg)] flex items-center justify-center">
+                    <img 
+                      src={selectedProfile.avatar || `https://ui-avatars.com/api/?name=${selectedProfile.username}&background=E3E3E3&color=5E5E5E`} 
+                      alt={selectedProfile.username} 
+                      className="w-full h-full object-cover" 
+                    />
                   </div>
                 ) : (
                   <div className="w-32 h-16 sm:w-40 sm:h-20 flex items-center justify-center mb-4 overflow-hidden">

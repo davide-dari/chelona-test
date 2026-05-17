@@ -71,7 +71,7 @@ RELEASE_JSON=$(curl -s -X POST \
   -d "{
     \"tag_name\": \"$TAG\",
     \"name\": \"Chelona $TAG\",
-    \"body\": \"🚀 **Chelona v$VERSION**\\n\\n### ✨ Novità e Fix:\\n- **✈️ Gestione Cartelle Paesi**: Aggiunta la possibilità di rinominare (modificare nome ed emoji) ed eliminare i paesi creati nei viaggi con pulsanti touch rapidi dedicati direttamente nell'intestazione!\\n- **📸 Ottimizzazione Foto Profilo**: Implementato il ritaglio quadrato centrale automatico e la compressione JPEG dinamica su Canvas per le foto del profilo, risolvendo i problemi di caricamento ed evitando errori di quota in memoria.\\n- **🔄 Versioning Corretto**: Sincronizzazione automatica e allineamento perfetto di tutte le costanti di versione per garantire controlli degli aggiornamenti privi di falsi allarmi.\",
+    \"body\": \"🚀 **Chelona v$VERSION**\\n\\n### ✨ Novità e Fix:\\n- **🔑 Avatar nel Login**: Visualizzazione automatica dell'immagine del profilo o dell'avatar segnaposto direttamente nella schermata di sblocco e inserimento password, garantendo coerenza estetica al 100%!\\n- **➕ FAB Multi-Opzione nei Viaggi**: Cliccando sul tasto \\\"+\\\" viene aperto un elegante menu a comparsa che permette di scegliere in modo separato se creare un **\\\"Paese\\\"**, un **\\\"Luogo\\\"** o un **\\\"Itinerario\\\"**.\\n- **📍 Campi Luogo e Integrazione Google Maps**: I campi del luogo sono ora specifici (\\\"Nome Luogo\\\" e \\\"Paese\\\"). Quando si apre la navigazione o il collegamento, Google Maps cerca dinamicamente usando il nome del luogo combinato con il nome del paese per ottenere schede informative ricche!\",
     \"draft\": false,
     \"prerelease\": false
   }")

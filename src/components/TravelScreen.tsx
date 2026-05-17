@@ -183,9 +183,10 @@ const DestModal: React.FC<{
   initial?: TravelDestination;
   countryGroups: TravelCountryGroup[];
   defaultGroupId?: string | null;
-}> = ({ onSubmit, onClose, initial, countryGroups, defaultGroupId }) => {
+  defaultType?: 'place' | 'itinerary';
+}> = ({ onSubmit, onClose, initial, countryGroups, defaultGroupId, defaultType }) => {
   const [name, setName] = useState(initial?.name || '');
-  const [type, setType] = useState<'itinerary' | 'place'>(initial?.type || 'place');
+  const [type, setType] = useState<'itinerary' | 'place'>(initial?.type || defaultType || 'place');
   const [notes, setNotes] = useState(initial?.notes || '');
   const [countryGroupId, setCountryGroupId] = useState<string>(initial?.countryGroupId || defaultGroupId || '');
   const [error, setError] = useState('');
@@ -271,13 +272,22 @@ const DestModal: React.FC<{
           </div>
 
           <div>
-            <label className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] mb-2 block">Città / Nome Luogo</label>
-            <input value={name} onChange={e => { setName(e.target.value); setError(''); }} placeholder="Es. Roma, Parigi, Tokyo..." className={inputCls} autoFocus disabled={loading} />
+            <label className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] mb-2 block">
+              {type === 'place' ? 'Nome Luogo' : 'Nome Itinerario'}
+            </label>
+            <input 
+              value={name} 
+              onChange={e => { setName(e.target.value); setError(''); }} 
+              placeholder={type === 'place' ? "Es. Colosseo, Tour Eiffel, Monte Fuji..." : "Es. Tour del Giappone, Weekend a Parigi..."} 
+              className={inputCls} 
+              autoFocus 
+              disabled={loading} 
+            />
           </div>
 
           {countryGroups.length > 0 && (
             <div>
-              <label className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] mb-2 block">Cartella / Paese</label>
+              <label className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] mb-2 block">Paese</label>
               <select 
                 value={countryGroupId} 
                 onChange={e => setCountryGroupId(e.target.value)} 
@@ -317,6 +327,8 @@ export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onCl
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
 
   const [showAddModal, setShowAddModal] = useState(false);
+  const [destModalType, setDestModalType] = useState<'place' | 'itinerary'>('place');
+  const [showFabMenu, setShowFabMenu] = useState(false);
   const [showAddGroupModal, setShowAddGroupModal] = useState(false);
   const [editingGroupId, setEditingGroupId] = useState<string | null>(null);
   const [editingDest, setEditingDest] = useState<TravelDestination | null>(null);
@@ -614,7 +626,13 @@ export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onCl
                                       className="w-full h-32 rounded-xl overflow-hidden relative cursor-pointer border border-[var(--border)] shadow-inner group/map"
                                       onClick={(e) => {
                                         e.stopPropagation();
-                                        window.open(`https://maps.google.com/?q=${dest.lat},${dest.lng}`, '_system');
+                                        const countryObj = countryGroups.find(g => g.id === dest.countryGroupId);
+                                        const queryParts = [dest.name];
+                                        if (countryObj) {
+                                          queryParts.push(countryObj.countryName);
+                                        }
+                                        const mapsQuery = encodeURIComponent(queryParts.join(', '));
+                                        window.open(`https://maps.google.com/?q=${mapsQuery}`, '_system');
                                       }}
                                    >
                                       <iframe
@@ -644,16 +662,75 @@ export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onCl
         </div>
       </div>
 
-      {/* FAB */}
-      <motion.button
-        initial={{ scale: 0 }}
-        animate={{ scale: 1 }}
-        whileTap={{ scale: 0.92 }}
-        onClick={() => setShowAddModal(true)}
-        className="fixed bottom-24 right-6 md:bottom-10 md:right-10 z-[200] w-16 h-16 bg-gradient-to-tr from-blue-600 to-indigo-500 text-white rounded-[1.5rem] shadow-2xl shadow-blue-500/40 flex items-center justify-center border border-white/20"
-      >
-        <Plus className="w-8 h-8" />
-      </motion.button>
+      {/* FAB Menu & Button */}
+      <div className="fixed bottom-24 right-6 md:bottom-10 md:right-10 z-[200] flex flex-col items-end gap-3">
+        <AnimatePresence>
+          {showFabMenu && (
+            <>
+              {/* Tap to close backdrop */}
+              <div className="fixed inset-0 z-[-1]" onClick={() => setShowFabMenu(false)} />
+              
+              <motion.div
+                initial={{ opacity: 0, y: 15, scale: 0.9 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 15, scale: 0.9 }}
+                className="flex flex-col items-end gap-2 mb-2"
+              >
+                {/* Option 1: Paese */}
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => {
+                    setShowAddGroupModal(true);
+                    setShowFabMenu(false);
+                  }}
+                  className="flex items-center gap-2.5 px-4 py-3 bg-[var(--card-bg)] hover:bg-[var(--surface-variant)] text-[var(--text-main)] rounded-2xl shadow-xl border border-[var(--border)] font-bold text-xs uppercase tracking-wider transition-all"
+                >
+                  <span>🗺️</span> Nuovo Paese
+                </motion.button>
+
+                {/* Option 2: Luogo */}
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => {
+                    setDestModalType('place');
+                    setShowAddModal(true);
+                    setShowFabMenu(false);
+                  }}
+                  className="flex items-center gap-2.5 px-4 py-3 bg-[var(--card-bg)] hover:bg-[var(--surface-variant)] text-[var(--text-main)] rounded-2xl shadow-xl border border-[var(--border)] font-bold text-xs uppercase tracking-wider transition-all"
+                >
+                  <span>📍</span> Nuovo Luogo
+                </motion.button>
+
+                {/* Option 3: Itinerario */}
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => {
+                    setDestModalType('itinerary');
+                    setShowAddModal(true);
+                    setShowFabMenu(false);
+                  }}
+                  className="flex items-center gap-2.5 px-4 py-3 bg-[var(--card-bg)] hover:bg-[var(--surface-variant)] text-[var(--text-main)] rounded-2xl shadow-xl border border-[var(--border)] font-bold text-xs uppercase tracking-wider transition-all"
+                >
+                  <span>✈️</span> Nuovo Itinerario
+                </motion.button>
+              </motion.div>
+            </>
+          )}
+        </AnimatePresence>
+
+        <motion.button
+          initial={{ scale: 0 }}
+          animate={{ scale: 1 }}
+          whileTap={{ scale: 0.92 }}
+          onClick={() => setShowFabMenu(!showFabMenu)}
+          className={`w-16 h-16 bg-gradient-to-tr from-blue-600 to-indigo-500 text-white rounded-[1.5rem] shadow-2xl shadow-blue-500/40 flex items-center justify-center border border-white/20 transition-all duration-300 ${showFabMenu ? 'rotate-45 bg-gradient-to-tr from-rose-500 to-rose-600 shadow-rose-500/40' : ''}`}
+        >
+          <Plus className="w-8 h-8" />
+        </motion.button>
+      </div>
 
       {/* Delete destination confirm */}
       <AnimatePresence>
@@ -743,6 +820,7 @@ export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onCl
             onClose={() => setShowAddModal(false)} 
             countryGroups={countryGroups}
             defaultGroupId={selectedGroupId}
+            defaultType={destModalType}
           />
         )}
       </AnimatePresence>
