@@ -71,7 +71,7 @@ RELEASE_JSON=$(curl -s -X POST \
   -d "{
     \"tag_name\": \"$TAG\",
     \"name\": \"Chelona $TAG\",
-    \"body\": \"🚀 **Chelona v$VERSION**\\n\\n### ✨ Novità e Fix:\\n- **🛞 Controllo Gomme**: Risolto errore React ReferenceError (importazione mancante di useEffect) nella sezione Auto.\\n- **📍 Ottimizzazione Ricezione Mappe**: Perfezionata la condivisione da Google Maps: rimossi i link HTTP dall'indirizzo, estratti via/città in modo pulito e inserito il nome del luogo nel campo Titolo.\",
+    \"body\": \"🚀 **Chelona v$VERSION**\\n\\n### ✨ Novità e Fix:\\n- **📱 Layout Orizzontale Ottimizzato**: Rimosso il menu laterale sinistro in modalità landscape per lasciare l'intera dashboard a tutto schermo.\\n- **🛠️ Tasto Strumenti Integrato**: Aggiunto il tasto strumenti a sinistra della rubrica GPS nel layout orizzontale per accedere comodamente a tutte le utility.\",
     \"draft\": false,
     \"prerelease\": false
   }")

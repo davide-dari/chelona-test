@@ -1368,11 +1368,6 @@ export default function App() {
         )}
         {encryptionKey && currentProfileId && (
           <div className="flex h-full w-full bg-[var(--bg)] overflow-hidden relative font-sans transition-colors duration-300">
-            
-            {/* Desktop Sidebar */}
-            <aside className="hidden md:flex flex-col w-72 bg-[var(--sidebar-bg)] backdrop-blur-3xl border-r border-[var(--border)] z-50 shadow-[4px_0_24px_rgba(0,0,0,0.02)]">
-              <SidebarContent />
-            </aside>
 
             <main className="flex-1 flex flex-col overflow-hidden w-full relative">
               <header className="h-16 lg:h-20 bg-[var(--bg)] px-6 lg:px-12 flex items-center justify-between shrink-0 z-10 safe-area-header transition-all">
@@ -1394,6 +1389,14 @@ export default function App() {
 
                 {/* Right side: Avatar (Lock and Theme moved to Profile) */}
                 <div className="flex items-center gap-2 sm:gap-4">
+                  {/* Tasto Strumenti - Sempre visibile a sinistra della rubrica in orizzontale (md) */}
+                  <button 
+                    onClick={() => { setIsToolsOpen(true); setIsProfileOpen(false); setSelectedType(null); }}
+                    className="p-2 sm:p-2.5 bg-[var(--surface-variant)] hover:bg-[var(--border)] rounded-full text-[var(--accent)] transition-all flex items-center justify-center shadow-sm hidden md:flex"
+                    title="Strumenti"
+                  >
+                    <Wrench className="w-5 h-5 sm:w-6 sm:h-6" />
+                  </button>
                   <button 
                     onClick={() => setIsAddressBookOpen(true)}
                     className="p-2 sm:p-2.5 bg-[var(--surface-variant)] hover:bg-[var(--border)] rounded-full text-[var(--accent)] transition-all flex items-center justify-center shadow-sm"
