@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ArrowLeft, Plus, X, MapPin, Globe, Compass, Navigation, Trash2, Check, Loader2, Pencil } from 'lucide-react';
 import ReactGlobe from 'react-globe.gl';
-import { TravelModule, TravelDestination, TravelCountryGroup } from '../types';
+import { TravelModule, TravelDestination, TravelCountryGroup, TravelNation } from '../types';
 
 interface TravelScreenProps {
   module: TravelModule;
@@ -14,9 +14,10 @@ interface TravelScreenProps {
 // --- 3D Globe with react-globe.gl ---
 const Globe3D: React.FC<{ 
   destinations: TravelDestination[]; 
-  selectedGroupId: string | null;
-}> = ({ destinations, selectedGroupId }) => {
-  const globeEl = useRef<any>();
+  selectedNation: string | null;
+  focusedDestId?: string | null;
+}> = ({ destinations, selectedNation, focusedDestId }) => {
+  const globeEl = useRef<any>(null);
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -45,10 +46,9 @@ const Globe3D: React.FC<{
   }, [dimensions.width]);
 
   useEffect(() => {
-    if (globeEl.current && selectedGroupId) {
-      const groupDests = destinations.filter(d => d.countryGroupId === selectedGroupId);
-      if (groupDests.length > 0) {
-        const target = groupDests[0];
+    if (globeEl.current && focusedDestId) {
+      const target = destinations.find(d => d.id === focusedDestId);
+      if (target) {
         globeEl.current.pointOfView(
           {
             lat: target.lat,
@@ -57,16 +57,32 @@ const Globe3D: React.FC<{
           },
           1200 // Transition time
         );
-        // Stop autoRotate so the user can look at the place
+        globeEl.current.controls().autoRotate = false;
+        return;
+      }
+    }
+
+    if (globeEl.current && selectedNation) {
+      const nationDests = destinations.filter(d => d.nation === selectedNation || (!d.nation && d.countryGroupId)); // fallback support
+      if (nationDests.length > 0) {
+        const target = nationDests[0];
+        globeEl.current.pointOfView(
+          {
+            lat: target.lat,
+            lng: target.lng,
+            altitude: 0.8 // Zoom altitude
+          },
+          1200 // Transition time
+        );
         globeEl.current.controls().autoRotate = false;
       }
-    } else if (globeEl.current && !selectedGroupId) {
+    } else if (globeEl.current && !selectedNation && !focusedDestId) {
       // Reset position when "All destinations" is selected
       globeEl.current.pointOfView({ altitude: 1.5 }, 1200);
       globeEl.current.controls().autoRotate = true;
       globeEl.current.controls().autoRotateSpeed = 0.5;
     }
-  }, [selectedGroupId, destinations]);
+  }, [selectedNation, focusedDestId, destinations]);
 
   return (
     <div ref={containerRef} className="w-full h-full cursor-grab active:cursor-grabbing flex items-center justify-center">
@@ -135,6 +151,16 @@ const getCountryEmoji = (name: string): string => {
   const found = Object.keys(maps).find(key => normalized.includes(key));
   if (found) return maps[found];
   return '🗺️';
+};
+
+// --- Resolve destination nation (with legacy support for countryGroupId folders) ---
+const getDestNation = (dest: TravelDestination, groups: TravelCountryGroup[]): string => {
+  if (dest.nation) return dest.nation;
+  if (dest.countryGroupId) {
+    const matchedGroup = groups.find(g => g.id === dest.countryGroupId);
+    if (matchedGroup) return matchedGroup.countryName;
+  }
+  return '';
 };
 
 // --- Add Nation Modal ---
@@ -276,60 +302,128 @@ const GroupModal: React.FC<{
   );
 };
 
+// --- Static list of sovereign countries in Italian ---
+const ALL_COUNTRIES = [
+  "Italia", "Francia", "Spagna", "Germania", "Regno Unito", "Stati Uniti", "Giappone", 
+  "Svizzera", "Austria", "Belgio", "Paesi Bassi", "Portogallo", "Grecia", "Svezia", 
+  "Norvegia", "Finlandia", "Danimarca", "Irlanda", "Canada", "Australia", "Nuova Zelanda", 
+  "Brasile", "Argentina", "Messico", "Cina", "India", "Sudafrica", "Egitto", "Turchia", 
+  "Russia", "Polonia", "Repubblica Ceca", "Ungheria", "Romania", "Ucraina", "Colombia", 
+  "Cile", "Perù", "Venezuela", "Marocco", "Tunisia", "Emirati Arabi Uniti", "Arabia Saudita", 
+  "Tailandia", "Vietnam", "Indonesia", "Filippine", "Singapore", "Corea del Sud", "Macedonia del Nord",
+  "Albania", "Croazia", "Slovenia", "Bosnia ed Erzegovina", "Montenegro", "Serbia", "Bulgaria",
+  "Islanda", "Estonia", "Lettonia", "Lituania", "Malta", "Cipro", "Lussemburgo", "Monaco",
+  "San Marino", "Andorra", "Liechtenstein", "Vaticano", "Cuba", "Giamaica", "Costa Rica",
+  "Panama", "Repubblica Dominicana", "Bahamas", "Ecuador", "Bolivia", "Paraguay", "Uruguay",
+  "Giordania", "Libano", "Israele", "Iran", "Iraq", "Pakistan", "Bangladesh", "Sri Lanka",
+  "Maldive", "Seychelles", "Mauritius", "Madagascar", "Kenya", "Tanzania", "Uganda",
+  "Nigeria", "Ghana", "Senegal", "Algeria", "Libia", "Qatar", "Kuwait", "Oman",
+  "Malaysia", "Cambogia", "Laos", "Nepal", "Kazakistan", "Uzbekistan", "Georgia", "Armenia", "Azerbaigian"
+];
+
 // --- Add/Edit Destination Modal ---
 const DestModal: React.FC<{
   onSubmit: (d: Omit<TravelDestination, 'id' | 'createdAt'>) => void;
   onClose: () => void;
   initial?: TravelDestination;
-  countryGroups: TravelCountryGroup[];
-  nations: TravelNation[];
-  defaultGroupId?: string | null;
   defaultType?: 'place' | 'itinerary';
-}> = ({ onSubmit, onClose, initial, countryGroups, nations, defaultGroupId, defaultType }) => {
+  defaultNation?: string | null;
+}> = ({ onSubmit, onClose, initial, defaultType, defaultNation }) => {
   const [name, setName] = useState(initial?.name || '');
   const type = 'place';
   const [notes, setNotes] = useState(initial?.notes || '');
 
-  // Pre-select group and nation based on initial values or selected defaultGroupId
-  const initialGroup = countryGroups.find(g => g.id === (initial?.countryGroupId || defaultGroupId || ''));
-  const initialNationId = initialGroup?.nationId || '';
+  const [nationInput, setNationInput] = useState(initial?.nation || defaultNation || '');
+  const [showNationSuggestions, setShowNationSuggestions] = useState(false);
+  const [cityInput, setCityInput] = useState(initial?.city || '');
+  const [showCitySuggestions, setShowCitySuggestions] = useState(false);
+  const [citySuggestions, setCitySuggestions] = useState<any[]>([]);
 
-  const [nationId, setNationId] = useState<string>(initialNationId);
-  const [countryGroupId, setCountryGroupId] = useState<string>(initial?.countryGroupId || defaultGroupId || '');
+  const [selectedCoords, setSelectedCoords] = useState<{ lat: number, lng: number } | null>(
+    initial ? { lat: initial.lat, lng: initial.lng } : null
+  );
+
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const isEdit = !!initial;
 
-  const filteredGroups = nationId 
-    ? countryGroups.filter(g => g.nationId === nationId)
-    : countryGroups;
+  // Debounced search for city suggestions using OpenStreetMap Nominatim
+  useEffect(() => {
+    if (!cityInput.trim() || cityInput.length < 3) {
+      setCitySuggestions([]);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      try {
+        const query = nationInput ? `${cityInput.trim()}, ${nationInput.trim()}` : cityInput.trim();
+        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&q=${encodeURIComponent(query)}&limit=5`);
+        const data = await res.json();
+        if (data && Array.isArray(data)) {
+          const suggestions = data.map((item: any) => {
+            const address = item.address || {};
+            const city = address.city || address.town || address.village || address.municipality || address.suburb || item.name || '';
+            const nation = address.country || '';
+            return {
+              displayName: item.display_name,
+              city: city,
+              nation: nation,
+              lat: parseFloat(item.lat),
+              lng: parseFloat(item.lon)
+            };
+          }).filter((s: any) => s.city);
+          setCitySuggestions(suggestions);
+        }
+      } catch (err) {
+        console.error('Error fetching city suggestions', err);
+      }
+    }, 400);
+
+    return () => clearTimeout(timer);
+  }, [cityInput, nationInput]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim()) { setError('Inserisci un nome o una città'); return; }
+    if (!cityInput.trim()) { setError('Inserisci una città'); return; }
     
     setLoading(true);
     setError('');
-    
-    const finalGroupId = countryGroupId || undefined;
 
-    // If editing and name hasn't changed, reuse existing coords
-    if (isEdit && name.trim() === initial!.name) {
-      onSubmit({ name: name.trim(), lat: initial!.lat, lng: initial!.lng, type, notes: notes.trim() || undefined, countryGroupId: finalGroupId });
+    // If coordinates are already selected, save immediately
+    if (selectedCoords) {
+      onSubmit({
+        name: name.trim() || cityInput.trim(),
+        lat: selectedCoords.lat,
+        lng: selectedCoords.lng,
+        type,
+        notes: notes.trim() || undefined,
+        nation: nationInput.trim() || undefined,
+        city: cityInput.trim()
+      });
       onClose();
+      setLoading(false);
       return;
     }
 
     try {
-       const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(name.trim())}`);
+       const query = nationInput ? `${cityInput.trim()}, ${nationInput.trim()}` : cityInput.trim();
+       const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}`);
        const data = await res.json();
        if (data && data.length > 0) {
           const la = parseFloat(data[0].lat);
           const lo = parseFloat(data[0].lon);
-          onSubmit({ name: name.trim(), lat: la, lng: lo, type, notes: notes.trim() || undefined, countryGroupId: finalGroupId });
+          onSubmit({
+            name: name.trim() || cityInput.trim(),
+            lat: la,
+            lng: lo,
+            type,
+            notes: notes.trim() || undefined,
+            nation: nationInput.trim() || undefined,
+            city: cityInput.trim()
+          });
           onClose();
        } else {
-          setError('Città non trovata. Riprova con un nome più preciso.');
+          setError('Città o luogo non trovato. Riprova con un nome più preciso.');
        }
     } catch (err) {
        setError('Errore di connessione. Controlla internet e riprova.');
@@ -337,6 +431,10 @@ const DestModal: React.FC<{
        setLoading(false);
     }
   };
+
+  const filteredCountries = nationInput.trim()
+    ? ALL_COUNTRIES.filter(c => c.toLowerCase().includes(nationInput.toLowerCase())).slice(0, 5)
+    : ALL_COUNTRIES.slice(0, 5);
 
   const inputCls = 'w-full p-4 bg-[var(--bg)] border border-[var(--border)] rounded-2xl outline-none focus:border-blue-400 transition-all text-sm font-semibold text-[var(--text-main)] placeholder:text-[var(--text-muted)]/60';
 
@@ -367,63 +465,96 @@ const DestModal: React.FC<{
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+        <form onSubmit={handleSubmit} className="p-6 space-y-4 max-h-[75vh] overflow-y-auto custom-scrollbar">
+          {/* Nome Luogo */}
           <div>
             <label className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] mb-2 block">
-              Nome Luogo
+              Nome Luogo (Es. Colosseo, Hotel Stella)
             </label>
             <input 
               value={name} 
               onChange={e => { setName(e.target.value); setError(''); }} 
-              placeholder="Es. Colosseo, Tour Eiffel, Monte Fuji..." 
+              placeholder="Es. Colosseo (lascia vuoto per usare il nome città)" 
               className={inputCls} 
-              autoFocus 
               disabled={loading} 
             />
           </div>
 
-          {nations.length > 0 && (
-            <div>
-              <label className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] mb-2 block">Nazione</label>
-              <select 
-                value={nationId} 
-                onChange={e => {
-                  const newNatId = e.target.value;
-                  setNationId(newNatId);
-                  const groupsForNation = countryGroups.filter(g => g.nationId === newNatId);
-                  if (groupsForNation.length > 0) {
-                    setCountryGroupId(groupsForNation[0].id);
-                  } else {
-                    setCountryGroupId('');
-                  }
-                }} 
-                className={`${inputCls} appearance-none cursor-pointer`}
-                disabled={loading}
-              >
-                <option value="">Nessuna Nazione</option>
-                {nations.map(n => (
-                  <option key={n.id} value={n.id}>{n.name}</option>
+          {/* Nazione */}
+          <div className="relative">
+            <label className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] mb-2 block">Nazione</label>
+            <input 
+              value={nationInput} 
+              onChange={e => { setNationInput(e.target.value); setShowNationSuggestions(true); setError(''); }} 
+              onFocus={() => setShowNationSuggestions(true)}
+              placeholder="Es. Italia, Giappone, Francia..." 
+              className={inputCls} 
+              disabled={loading} 
+            />
+            {showNationSuggestions && filteredCountries.length > 0 && (
+              <div className="absolute z-[310] left-0 right-0 mt-1 max-h-40 overflow-y-auto bg-[var(--card-bg)] border border-[var(--border)] rounded-xl shadow-lg custom-scrollbar">
+                {filteredCountries.map(c => (
+                  <button
+                    key={c}
+                    type="button"
+                    onClick={() => {
+                      setNationInput(c);
+                      setShowNationSuggestions(false);
+                    }}
+                    className="w-full text-left px-4 py-2.5 hover:bg-[var(--surface-variant)] text-sm font-semibold text-[var(--text-main)] transition-colors border-b border-[var(--border)]/30 last:border-0"
+                  >
+                    {getCountryEmoji(c)} {c}
+                  </button>
                 ))}
-              </select>
-            </div>
-          )}
+              </div>
+            )}
+            {showNationSuggestions && (
+              <div className="fixed inset-0 z-[305]" onClick={() => setShowNationSuggestions(false)} />
+            )}
+          </div>
 
-          {countryGroups.length > 0 && (
-            <div>
-              <label className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] mb-2 block">Paese (Cartella)</label>
-              <select 
-                value={countryGroupId} 
-                onChange={e => setCountryGroupId(e.target.value)} 
-                className={`${inputCls} appearance-none cursor-pointer`}
-                disabled={loading}
-              >
-                <option value="">Nessun Paese (Libero)</option>
-                {filteredGroups.map(g => (
-                  <option key={g.id} value={g.id}>{g.emoji} {g.countryName}</option>
+          {/* Città */}
+          <div className="relative">
+            <label className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] mb-2 block">Città</label>
+            <input 
+              value={cityInput} 
+              onChange={e => { setCityInput(e.target.value); setShowCitySuggestions(true); setError(''); }} 
+              onFocus={() => setShowCitySuggestions(true)}
+              placeholder="Es. Roma, Tokyo, New York..." 
+              className={inputCls} 
+              disabled={loading} 
+              required
+            />
+            {showCitySuggestions && citySuggestions.length > 0 && (
+              <div className="absolute z-[310] left-0 right-0 mt-1 max-h-48 overflow-y-auto bg-[var(--card-bg)] border border-[var(--border)] rounded-xl shadow-lg custom-scrollbar">
+                {citySuggestions.map((s, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => {
+                      setCityInput(s.city);
+                      if (s.nation && !nationInput) {
+                        setNationInput(s.nation);
+                      }
+                      if (!name.trim()) {
+                        setName(s.city);
+                      }
+                      setSelectedCoords({ lat: s.lat, lng: s.lng });
+                      setCitySuggestions([]);
+                      setShowCitySuggestions(false);
+                    }}
+                    className="w-full text-left px-4 py-3 hover:bg-[var(--surface-variant)] transition-colors border-b border-[var(--border)]/30 last:border-0"
+                  >
+                    <div className="text-sm font-bold text-[var(--text-main)]">{s.city}</div>
+                    <div className="text-[10px] font-bold text-[var(--text-muted)] mt-0.5 truncate">{s.displayName}</div>
+                  </button>
                 ))}
-              </select>
-            </div>
-          )}
+              </div>
+            )}
+            {showCitySuggestions && (
+              <div className="fixed inset-0 z-[305]" onClick={() => setShowCitySuggestions(false)} />
+            )}
+          </div>
 
           <div>
             <label className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] mb-2 block">Note (opzionale)</label>
@@ -449,6 +580,8 @@ export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onCl
   const [countryGroups, setCountryGroups] = useState<TravelCountryGroup[]>(module.countryGroups || []);
   const [nations, setNations] = useState<TravelNation[]>(module.nations || []);
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
+  const [selectedNation, setSelectedNation] = useState<string | null>(null);
+  const [focusedDestId, setFocusedDestId] = useState<string | null>(null);
 
   const [showAddModal, setShowAddModal] = useState(false);
   const [destModalType, setDestModalType] = useState<'place' | 'itinerary'>('place');
@@ -493,6 +626,11 @@ export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onCl
     const updated = [...destinations, newDest];
     setDestinations(updated);
     onSave({ ...module, destinations: updated });
+    
+    // Auto-select the newly added place's nation and focus the camera on it!
+    const newNation = d.nation || null;
+    setSelectedNation(newNation);
+    setFocusedDestId(newDest.id);
   };
 
   const handleEdit = (d: Omit<TravelDestination, 'id' | 'createdAt'>) => {
@@ -504,6 +642,10 @@ export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onCl
     );
     setDestinations(updated);
     onSave({ ...module, destinations: updated });
+    
+    const newNation = d.nation || null;
+    setSelectedNation(newNation);
+    setFocusedDestId(editingDest.id);
     setEditingDest(null);
   };
 
@@ -576,9 +718,12 @@ export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onCl
     setEditingGroupId(null);
   };
 
-  // Dynamically filter destinations based on selected country folder
-  const filteredDestinations = selectedGroupId
-    ? destinations.filter(d => d.countryGroupId === selectedGroupId)
+  // Get all unique nations from active destinations (legacy fallback included!)
+  const activeNations = Array.from(new Set(destinations.map(d => getDestNation(d, countryGroups)).filter(Boolean))) as string[];
+
+  // Dynamically filter destinations based on selected country folder/nation
+  const filteredDestinations = selectedNation
+    ? destinations.filter(d => getDestNation(d, countryGroups) === selectedNation)
     : destinations;
 
   return (
@@ -626,7 +771,11 @@ export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onCl
           </div>
 
           <div className="relative z-10 w-full h-full flex items-center justify-center">
-            <Globe3D destinations={filteredDestinations} selectedGroupId={selectedGroupId} />
+            <Globe3D 
+              destinations={filteredDestinations} 
+              selectedNation={selectedNation} 
+              focusedDestId={focusedDestId} 
+            />
           </div>
         </div>
 
@@ -637,45 +786,33 @@ export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onCl
             {/* Country Folders Horizontal Bar */}
             <div className="px-1 pt-1">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)]">Paesi / Gruppi</span>
+                <span className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)]">Nazioni</span>
               </div>
               <div className="flex gap-2 overflow-x-auto pb-2 custom-scrollbar snap-x">
                 <button
-                  onClick={() => setSelectedGroupId(null)}
-                  className={`px-4 py-2.5 rounded-2xl font-bold text-xs shrink-0 transition-all snap-start flex items-center gap-2 border ${selectedGroupId === null ? 'bg-blue-600 border-blue-600 text-white shadow-md' : 'bg-[var(--card-bg)] border-[var(--border)] text-[var(--text-muted)] hover:bg-[var(--surface-variant)]'}`}
+                  onClick={() => {
+                    setSelectedNation(null);
+                    setFocusedDestId(null);
+                  }}
+                  className={`px-4 py-2.5 rounded-2xl font-bold text-xs shrink-0 transition-all snap-start flex items-center gap-2 border ${selectedNation === null ? 'bg-blue-600 border-blue-600 text-white shadow-md' : 'bg-[var(--card-bg)] border-[var(--border)] text-[var(--text-muted)] hover:bg-[var(--surface-variant)]'}`}
                 >
                   <span>🌐</span> Tutte le mete ({destinations.length})
                 </button>
                 
-                {countryGroups.map(g => {
-                  const count = destinations.filter(d => d.countryGroupId === g.id).length;
-                  const isSelected = selectedGroupId === g.id;
+                {activeNations.map(natName => {
+                  const count = destinations.filter(d => getDestNation(d, countryGroups) === natName).length;
+                  const isSelected = selectedNation === natName;
                   return (
-                    <div key={g.id} className="relative shrink-0 snap-start group/folder">
-                      <button
-                        onClick={() => setSelectedGroupId(g.id)}
-                        onMouseDown={() => handlePressStart(g)}
-                        onMouseUp={handlePressEnd}
-                        onMouseLeave={handlePressEnd}
-                        onTouchStart={() => handlePressStart(g)}
-                        onTouchEnd={handlePressEnd}
-                        className={`px-4 py-2.5 rounded-2xl font-bold text-xs transition-all flex items-center gap-2 border select-none ${isSelected ? 'bg-blue-600 border-blue-600 text-white shadow-md' : 'bg-[var(--card-bg)] border-[var(--border)] text-[var(--text-muted)] hover:bg-[var(--surface-variant)]'}`}
-                      >
-                        <span>{g.emoji}</span>
-                        <div className="flex flex-col items-start leading-tight text-left">
-                          <span>{g.countryName}</span>
-                          {(() => {
-                            const nat = nations.find(n => n.id === g.nationId);
-                            return nat ? (
-                              <span className={`text-[8px] font-black uppercase tracking-wider ${isSelected ? 'text-white/80' : 'text-[var(--text-muted)]/70'}`}>
-                                {nat.name}
-                              </span>
-                            ) : null;
-                          })()}
-                        </div>
-                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-black ${isSelected ? 'bg-white/20 text-white' : 'bg-[var(--surface-variant)] text-[var(--text-muted)]'}`}>{count}</span>
-                      </button>
-                    </div>
+                    <button
+                      key={natName}
+                      onClick={() => {
+                        setSelectedNation(natName);
+                        setFocusedDestId(null);
+                      }}
+                      className={`px-4 py-2.5 rounded-2xl font-bold text-xs shrink-0 transition-all snap-start flex items-center gap-2 border ${isSelected ? 'bg-blue-600 border-blue-600 text-white shadow-md' : 'bg-[var(--card-bg)] border-[var(--border)] text-[var(--text-muted)] hover:bg-[var(--surface-variant)]'}`}
+                    >
+                      <span>{getCountryEmoji(natName)}</span> {natName} ({count})
+                    </button>
                   );
                 })}
               </div>
@@ -685,8 +822,8 @@ export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onCl
 
             <div>
               <h3 className="text-xs font-black uppercase tracking-widest text-[var(--text-muted)] mb-3 px-1">
-                {selectedGroupId 
-                  ? `${countryGroups.find(g => g.id === selectedGroupId)?.emoji} Luoghi da Vedere`
+                {selectedNation 
+                  ? `${getCountryEmoji(selectedNation)} ${selectedNation}`
                   : 'Tutte le Destinazioni'
                 }
               </h3>
@@ -714,6 +851,7 @@ export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onCl
                         onClick={(e) => {
                            if ((e.target as HTMLElement).closest('button')) return;
                            setExpandedDestId(prev => prev === dest.id ? null : dest.id);
+                           setFocusedDestId(dest.id);
                         }}
                       >
                         <div className="p-4 flex items-start gap-3 hover:bg-[var(--surface-variant)] transition-colors">
@@ -726,14 +864,19 @@ export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onCl
                               <p className="text-[10px] font-bold text-[var(--text-muted)]">
                                 {dest.lat.toFixed(2)}, {dest.lng.toFixed(2)}
                               </p>
-                              {dest.countryGroupId && (
-                                <>
-                                  <span className="text-[8px] opacity-40">•</span>
-                                  <span className="text-[9px] font-black text-blue-500 bg-blue-500/5 px-1.5 py-0.5 rounded-md">
-                                    {countryGroups.find(g => g.id === dest.countryGroupId)?.emoji} {countryGroups.find(g => g.id === dest.countryGroupId)?.countryName}
-                                  </span>
-                                </>
-                              )}
+                              {(() => {
+                                const nationVal = getDestNation(dest, countryGroups);
+                                const cityVal = dest.city;
+                                if (!nationVal && !cityVal) return null;
+                                return (
+                                  <>
+                                    <span className="text-[8px] opacity-40">•</span>
+                                    <span className="text-[9px] font-black text-blue-500 bg-blue-500/5 px-1.5 py-0.5 rounded-md">
+                                      {getCountryEmoji(nationVal)} {nationVal}{cityVal ? ` · ${cityVal}` : ''}
+                                    </span>
+                                  </>
+                                );
+                              })()}
                             </div>
                             {dest.notes && (
                               <p className="text-xs text-[var(--text-muted)] mt-1 line-clamp-2">{dest.notes}</p>
@@ -806,68 +949,15 @@ export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onCl
 
       {/* FAB Menu & Button */}
       <div className="fixed bottom-24 right-6 md:bottom-10 md:right-10 z-[200] flex flex-col items-end gap-3">
-        <AnimatePresence>
-          {showFabMenu && (
-            <>
-              {/* Tap to close backdrop */}
-              <div className="fixed inset-0 z-[-1]" onClick={() => setShowFabMenu(false)} />
-              
-              <motion.div
-                initial={{ opacity: 0, y: 15, scale: 0.9 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: 15, scale: 0.9 }}
-                className="flex flex-col items-end gap-2 mb-2"
-              >
-                {/* Option 0: Nazione */}
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => {
-                    setShowAddNationModal(true);
-                    setShowFabMenu(false);
-                  }}
-                  className="flex items-center gap-2.5 px-4 py-3 bg-[var(--card-bg)] hover:bg-[var(--surface-variant)] text-[var(--text-main)] rounded-2xl shadow-xl border border-[var(--border)] font-bold text-xs uppercase tracking-wider transition-all"
-                >
-                  <span>🌍</span> Nazione
-                </motion.button>
-
-                {/* Option 1: Paese */}
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => {
-                    setShowAddGroupModal(true);
-                    setShowFabMenu(false);
-                  }}
-                  className="flex items-center gap-2.5 px-4 py-3 bg-[var(--card-bg)] hover:bg-[var(--surface-variant)] text-[var(--text-main)] rounded-2xl shadow-xl border border-[var(--border)] font-bold text-xs uppercase tracking-wider transition-all"
-                >
-                  <span>🗺️</span> Paese
-                </motion.button>
-
-                {/* Option 2: Luogo */}
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => {
-                    setDestModalType('place');
-                    setShowAddModal(true);
-                    setShowFabMenu(false);
-                  }}
-                  className="flex items-center gap-2.5 px-4 py-3 bg-[var(--card-bg)] hover:bg-[var(--surface-variant)] text-[var(--text-main)] rounded-2xl shadow-xl border border-[var(--border)] font-bold text-xs uppercase tracking-wider transition-all"
-                >
-                  <span>📍</span> Luogo
-                </motion.button>
-              </motion.div>
-            </>
-          )}
-        </AnimatePresence>
-
         <motion.button
           initial={{ scale: 0 }}
           animate={{ scale: 1 }}
           whileTap={{ scale: 0.92 }}
-          onClick={() => setShowFabMenu(!showFabMenu)}
-          className={`w-16 h-16 bg-gradient-to-tr from-blue-600 to-indigo-500 text-white rounded-[1.5rem] shadow-2xl shadow-blue-500/40 flex items-center justify-center border border-white/20 transition-all duration-300 ${showFabMenu ? 'rotate-45 bg-gradient-to-tr from-rose-500 to-rose-600 shadow-rose-500/40' : ''}`}
+          onClick={() => {
+            setDestModalType('place');
+            setShowAddModal(true);
+          }}
+          className="w-16 h-16 bg-gradient-to-tr from-blue-600 to-indigo-500 text-white rounded-[1.5rem] shadow-2xl shadow-blue-500/40 flex items-center justify-center border border-white/20 transition-all"
         >
           <Plus className="w-8 h-8" />
         </motion.button>
@@ -967,9 +1057,7 @@ export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onCl
           <DestModal 
             onSubmit={handleAdd} 
             onClose={() => setShowAddModal(false)} 
-            countryGroups={countryGroups}
-            nations={nations}
-            defaultGroupId={selectedGroupId}
+            defaultNation={selectedNation}
             defaultType={destModalType}
           />
         )}
@@ -982,9 +1070,7 @@ export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onCl
             onSubmit={handleEdit} 
             onClose={() => setEditingDest(null)} 
             initial={editingDest} 
-            countryGroups={countryGroups}
-            nations={nations}
-            defaultGroupId={selectedGroupId}
+            defaultNation={selectedNation}
           />
         )}
       </AnimatePresence>

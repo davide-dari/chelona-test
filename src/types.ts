@@ -174,6 +174,8 @@ export interface TravelDestination {
   notes?: string;
   emoji?: string;
   countryGroupId?: string;
+  nation?: string;
+  city?: string;
   createdAt: string;
 }
 
