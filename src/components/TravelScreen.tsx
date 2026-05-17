@@ -137,21 +137,80 @@ const getCountryEmoji = (name: string): string => {
   return '🗺️';
 };
 
+// --- Add Nation Modal ---
+const NationModal: React.FC<{
+  onSubmit: (name: string) => void;
+  onClose: () => void;
+}> = ({ onSubmit, onClose }) => {
+  const [name, setName] = useState('');
+  
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim()) return;
+    onSubmit(name.trim());
+    onClose();
+  };
+
+  const inputCls = 'w-full p-4 bg-[var(--bg)] border border-[var(--border)] rounded-2xl outline-none focus:border-blue-400 transition-all text-sm font-semibold text-[var(--text-main)] placeholder:text-[var(--text-muted)]/60';
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-[300] flex items-end sm:items-center justify-center p-4"
+    >
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-md" onClick={onClose} />
+      <motion.div
+        initial={{ y: 60, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        exit={{ y: 60, opacity: 0 }}
+        className="relative w-full max-w-md bg-[var(--card-bg)] rounded-[2rem] border border-[var(--border)] shadow-2xl overflow-hidden"
+      >
+        <div className="bg-gradient-to-r from-purple-600 to-indigo-600 p-6 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center text-white">
+              🌍
+            </div>
+            <h3 className="text-lg font-black text-white">Nuova Nazione</h3>
+          </div>
+          <button onClick={onClose} className="p-2 hover:bg-white/20 rounded-xl transition-colors">
+            <X className="w-5 h-5 text-white" />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          <div>
+            <label className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] mb-2 block">Nome Nazione</label>
+            <input value={name} onChange={e => setName(e.target.value)} placeholder="Es. Italia, Spagna, Stati Uniti..." className={inputCls} autoFocus />
+          </div>
+
+          <button type="submit" disabled={!name.trim()} className="w-full py-4 bg-gradient-to-r from-purple-600 to-indigo-600 disabled:opacity-50 text-white rounded-2xl font-black text-sm uppercase tracking-widest shadow-lg shadow-purple-500/25 active:scale-[0.98] transition-all flex items-center justify-center gap-2">
+            Crea Nazione
+          </button>
+        </form>
+      </motion.div>
+    </motion.div>
+  );
+};
+
 // --- Add/Edit Country Group Modal ---
 const GroupModal: React.FC<{
-  onSubmit: (name: string, emoji: string) => void;
+  onSubmit: (name: string, emoji: string, nationId?: string) => void;
   onClose: () => void;
   initial?: TravelCountryGroup;
-}> = ({ onSubmit, onClose, initial }) => {
+  nations: TravelNation[];
+}> = ({ onSubmit, onClose, initial, nations }) => {
   const [name, setName] = useState(initial?.countryName || '');
   const [emoji, setEmoji] = useState(initial?.emoji || '');
+  const [nationId, setNationId] = useState(initial?.nationId || '');
   const isEdit = !!initial;
   
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
     const finalEmoji = emoji.trim() || getCountryEmoji(name);
-    onSubmit(name.trim(), finalEmoji);
+    onSubmit(name.trim(), finalEmoji, nationId || undefined);
     onClose();
   };
 
@@ -186,7 +245,21 @@ const GroupModal: React.FC<{
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           <div>
             <label className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] mb-2 block">Nome Paese</label>
-            <input value={name} onChange={e => setName(e.target.value)} placeholder="Es. Giappone, Italia, Spagna..." className={inputCls} autoFocus />
+            <input value={name} onChange={e => setName(e.target.value)} placeholder="Es. Lazio, Catalogna, California..." className={inputCls} autoFocus />
+          </div>
+
+          <div>
+            <label className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] mb-2 block">Nazione di Appartenenza</label>
+            <select
+              value={nationId}
+              onChange={e => setNationId(e.target.value)}
+              className={`${inputCls} appearance-none cursor-pointer`}
+            >
+              <option value="">Nessuna Nazione (Cartella Libera)</option>
+              {nations.map(n => (
+                <option key={n.id} value={n.id}>{n.name}</option>
+              ))}
+            </select>
           </div>
 
           <div>
@@ -339,12 +412,14 @@ const DestModal: React.FC<{
 export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onClose }) => {
   const [destinations, setDestinations] = useState<TravelDestination[]>(module.destinations || []);
   const [countryGroups, setCountryGroups] = useState<TravelCountryGroup[]>(module.countryGroups || []);
+  const [nations, setNations] = useState<TravelNation[]>(module.nations || []);
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
 
   const [showAddModal, setShowAddModal] = useState(false);
   const [destModalType, setDestModalType] = useState<'place' | 'itinerary'>('place');
   const [showFabMenu, setShowFabMenu] = useState(false);
   const [showAddGroupModal, setShowAddGroupModal] = useState(false);
+  const [showAddNationModal, setShowAddNationModal] = useState(false);
   const [activeGroupActionSheet, setActiveGroupActionSheet] = useState<TravelCountryGroup | null>(null);
   const longPressTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [editingGroupId, setEditingGroupId] = useState<string | null>(null);
@@ -404,16 +479,28 @@ export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onCl
     setDeletingId(null);
   };
 
-  const handleAddGroup = (name: string, emoji: string) => {
+  const handleAddNation = (name: string) => {
+    const newNation: TravelNation = {
+      id: Math.random().toString(36).substr(2, 9),
+      name,
+      createdAt: new Date().toISOString()
+    };
+    const updatedNations = [...nations, newNation];
+    setNations(updatedNations);
+    onSave({ ...module, nations: updatedNations });
+  };
+
+  const handleAddGroup = (name: string, emoji: string, nationId?: string) => {
     const newGroup: TravelCountryGroup = {
       id: Math.random().toString(36).substr(2, 9),
       countryName: name,
       emoji,
+      nationId,
       createdAt: new Date().toISOString()
     };
     const updatedGroups = [...countryGroups, newGroup];
     setCountryGroups(updatedGroups);
-    onSave({ ...module, countryGroups: updatedGroups });
+    onSave({ ...module, countryGroups: updatedGroups, nations });
     setSelectedGroupId(newGroup.id); // Auto-select new folder
   };
 
@@ -432,7 +519,8 @@ export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onCl
     onSave({ 
       ...module, 
       countryGroups: updatedGroups, 
-      destinations: updatedDests 
+      destinations: updatedDests,
+      nations
     });
 
     if (selectedGroupId === groupId) {
@@ -441,15 +529,15 @@ export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onCl
     setDeletingGroupId(null);
   };
 
-  const handleEditGroup = (name: string, emoji: string) => {
+  const handleEditGroup = (name: string, emoji: string, nationId?: string) => {
     if (!editingGroupId) return;
     const updatedGroups = countryGroups.map(g => 
       g.id === editingGroupId 
-        ? { ...g, countryName: name, emoji }
+        ? { ...g, countryName: name, emoji, nationId }
         : g
     );
     setCountryGroups(updatedGroups);
-    onSave({ ...module, countryGroups: updatedGroups });
+    onSave({ ...module, countryGroups: updatedGroups, nations });
     setEditingGroupId(null);
   };
 
@@ -540,7 +628,17 @@ export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onCl
                         className={`px-4 py-2.5 rounded-2xl font-bold text-xs transition-all flex items-center gap-2 border select-none ${isSelected ? 'bg-blue-600 border-blue-600 text-white shadow-md' : 'bg-[var(--card-bg)] border-[var(--border)] text-[var(--text-muted)] hover:bg-[var(--surface-variant)]'}`}
                       >
                         <span>{g.emoji}</span>
-                        <span>{g.countryName}</span>
+                        <div className="flex flex-col items-start leading-tight text-left">
+                          <span>{g.countryName}</span>
+                          {(() => {
+                            const nat = nations.find(n => n.id === g.nationId);
+                            return nat ? (
+                              <span className={`text-[8px] font-black uppercase tracking-wider ${isSelected ? 'text-white/80' : 'text-[var(--text-muted)]/70'}`}>
+                                {nat.name}
+                              </span>
+                            ) : null;
+                          })()}
+                        </div>
                         <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-black ${isSelected ? 'bg-white/20 text-white' : 'bg-[var(--surface-variant)] text-[var(--text-muted)]'}`}>{count}</span>
                       </button>
                     </div>
@@ -686,6 +784,19 @@ export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onCl
                 exit={{ opacity: 0, y: 15, scale: 0.9 }}
                 className="flex flex-col items-end gap-2 mb-2"
               >
+                {/* Option 0: Nazione */}
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => {
+                    setShowAddNationModal(true);
+                    setShowFabMenu(false);
+                  }}
+                  className="flex items-center gap-2.5 px-4 py-3 bg-[var(--card-bg)] hover:bg-[var(--surface-variant)] text-[var(--text-main)] rounded-2xl shadow-xl border border-[var(--border)] font-bold text-xs uppercase tracking-wider transition-all"
+                >
+                  <span>🌍</span> Nazione
+                </motion.button>
+
                 {/* Option 1: Paese */}
                 <motion.button
                   whileHover={{ scale: 1.05 }}
@@ -807,7 +918,7 @@ export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onCl
       {/* Add country group modal */}
       <AnimatePresence>
         {showAddGroupModal && (
-          <GroupModal onSubmit={handleAddGroup} onClose={() => setShowAddGroupModal(false)} />
+          <GroupModal onSubmit={handleAddGroup} onClose={() => setShowAddGroupModal(false)} nations={nations} />
         )}
       </AnimatePresence>
 
@@ -818,7 +929,15 @@ export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onCl
             onSubmit={handleEditGroup} 
             onClose={() => setEditingGroupId(null)} 
             initial={countryGroups.find(g => g.id === editingGroupId)}
+            nations={nations}
           />
+        )}
+      </AnimatePresence>
+
+      {/* Add nation modal */}
+      <AnimatePresence>
+        {showAddNationModal && (
+          <NationModal onSubmit={handleAddNation} onClose={() => setShowAddNationModal(false)} />
         )}
       </AnimatePresence>
 
@@ -869,6 +988,14 @@ export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onCl
             >
               <div className="text-3xl mb-2">{activeGroupActionSheet.emoji}</div>
               <h3 className="text-lg font-black text-[var(--text-main)] mb-1">Gestisci {activeGroupActionSheet.countryName}</h3>
+              {(() => {
+                const nat = nations.find(n => n.id === activeGroupActionSheet.nationId);
+                return nat ? (
+                  <span className="text-[10px] font-black uppercase tracking-widest text-indigo-500 bg-indigo-500/10 px-2.5 py-1 rounded-full mb-3 inline-block">
+                    {nat.name}
+                  </span>
+                ) : null;
+              })()}
               <p className="text-xs text-[var(--text-muted)] mb-6">Scegli quale azione eseguire per questo paese.</p>
               
               <div className="space-y-3">

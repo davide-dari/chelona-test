@@ -151,10 +151,17 @@ export interface GalleryModule extends BaseModule {
   filterName?: string;
 }
 
+export interface TravelNation {
+  id: string;
+  name: string;
+  createdAt: string;
+}
+
 export interface TravelCountryGroup {
   id: string;
   countryName: string;
   emoji?: string;
+  nationId?: string;
   createdAt: string;
 }
 
@@ -172,6 +179,7 @@ export interface TravelDestination {
 
 export interface TravelModule extends BaseModule {
   type: 'travel';
+  nations?: TravelNation[];
   countryGroups?: TravelCountryGroup[];
   destinations: TravelDestination[];
 }
