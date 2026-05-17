@@ -75,8 +75,26 @@ const Globe3D: React.FC<{
     }
   }, [selectedNation, focusedDestId, destinations]);
 
-  // Only show points when a nation is selected
-  const visiblePoints = selectedNation ? destinations : [];
+  // Determine what to show on the globe:
+  // - No selection: clean globe, no pins
+  // - Nation selected (no focused dest): single label with nation name at centroid
+  // - Focused dest (card click): single label with city/name at that point
+  const globeLabels: { lat: number; lng: number; label: string }[] = [];
+  const globeRings: { lat: number; lng: number }[] = [];
+
+  if (focusedDestId) {
+    const target = destinations.find(d => d.id === focusedDestId);
+    if (target) {
+      globeLabels.push({ lat: target.lat, lng: target.lng, label: target.city || target.name });
+      globeRings.push({ lat: target.lat, lng: target.lng });
+    }
+  } else if (selectedNation && destinations.length > 0) {
+    // Show one label with the nation name at the average position of all its destinations
+    const avgLat = destinations.reduce((sum, d) => sum + d.lat, 0) / destinations.length;
+    const avgLng = destinations.reduce((sum, d) => sum + d.lng, 0) / destinations.length;
+    globeLabels.push({ lat: avgLat, lng: avgLng, label: selectedNation });
+    globeRings.push({ lat: avgLat, lng: avgLng });
+  }
 
   return (
     <div ref={containerRef} className="w-full h-full cursor-grab active:cursor-grabbing flex items-center justify-center">
@@ -88,19 +106,19 @@ const Globe3D: React.FC<{
           globeImageUrl="//unpkg.com/three-globe/example/img/earth-blue-marble.jpg"
           bumpImageUrl="//unpkg.com/three-globe/example/img/earth-topology.png"
           backgroundColor="rgba(0,0,0,0)"
-          labelsData={visiblePoints}
+          labelsData={globeLabels}
           labelLat="lat"
           labelLng="lng"
-          labelText={d => (d as TravelDestination).city || (d as TravelDestination).name}
-          labelSize={1.5}
-          labelDotRadius={0.5}
+          labelText="label"
+          labelSize={1.8}
+          labelDotRadius={0.6}
           labelColor={() => '#60a5fa'}
           labelResolution={2}
-          ringsData={visiblePoints}
+          ringsData={globeRings}
           ringLat="lat"
           ringLng="lng"
           ringColor={() => '#60a5fa'}
-          ringMaxRadius={3}
+          ringMaxRadius={4}
           ringPropagationSpeed={2}
           ringRepeatPeriod={1500}
         />

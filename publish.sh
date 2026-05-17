@@ -71,7 +71,7 @@ RELEASE_JSON=$(curl -s -X POST \
   -d "{
     \"tag_name\": \"$TAG\",
     \"name\": \"Chelona $TAG\",
-    \"body\": \"🚀 **Chelona v$VERSION**\\n\\n### ✨ Novità e Fix:\\n- **🌍 Mappamondo a Nazione Singola**: Il globo 3D ora mostra esclusivamente i punti della nazione selezionata. Quando nessuna nazione è selezionata il mappamondo ruota pulito senza alcun pin, offrendo un'esperienza visiva ordinata e focalizzata.\\n- **🎯 Camera Focus Migliorato**: La logica di zoom della fotocamera è stata semplificata e resa più affidabile, con transizioni fluide tra selezione nazione, click su scheda luogo e vista globale.\",
+    \"body\": \"🚀 **Chelona v$VERSION**\\n\\n### ✨ Novità e Fix:\\n- **🌍 Etichetta Nazione sul Mappamondo**: Selezionando una nazione, il globo 3D mostra ora un'unica etichetta con il nome della nazione posizionata al centro geografico delle destinazioni, senza mostrare le singole città. Un look pulito e focalizzato.\\n- **🎯 Focus Città al Click**: Cliccando su una scheda luogo specifica, il globo zooma sul punto esatto e mostra l'etichetta con il nome della città. Un'interazione a due livelli: nazione → città.\",
     \"draft\": false,
     \"prerelease\": false
   }")
