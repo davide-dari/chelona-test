@@ -97,7 +97,7 @@ const Globe3D: React.FC<{
           labelsData={destinations}
           labelLat="lat"
           labelLng="lng"
-          labelText="name"
+          labelText={d => (d as TravelDestination).city || (d as TravelDestination).name}
           labelSize={1.5}
           labelDotRadius={0.5}
           labelColor={() => '#60a5fa'}
@@ -726,6 +726,16 @@ export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onCl
     ? destinations.filter(d => getDestNation(d, countryGroups) === selectedNation)
     : destinations;
 
+  // Group filteredDestinations by city (with fallback)
+  const destinationsByCity: Record<string, TravelDestination[]> = {};
+  filteredDestinations.forEach(dest => {
+    const cityKey = dest.city?.trim() || 'Altre località';
+    if (!destinationsByCity[cityKey]) {
+      destinationsByCity[cityKey] = [];
+    }
+    destinationsByCity[cityKey].push(dest);
+  });
+
   return (
     <motion.div
       initial={{ opacity: 0, x: 20 }}
@@ -734,7 +744,7 @@ export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onCl
       className="fixed inset-0 z-[150] bg-[var(--bg)] flex flex-col"
     >
       {/* Header */}
-      <div className="bg-[var(--card-bg)] border-b border-[var(--border)] px-6 py-4 flex items-center justify-between shrink-0">
+      <div className="bg-[var(--card-bg)] border-b border-[var(--border)] px-6 py-4 flex items-center justify-between shrink-0 relative z-30 shadow-sm">
         <div className="flex items-center gap-4">
           <button onClick={onClose} className="p-2 hover:bg-[var(--surface-variant)] rounded-xl transition-colors">
             <ArrowLeft className="w-6 h-6 text-[var(--text-main)]" />
@@ -750,7 +760,7 @@ export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onCl
 
       <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
         {/* Globe section - dynamically filtered! */}
-        <div className="relative flex items-center justify-center bg-[#060d1a] lg:flex-1 shrink-0" style={{ minHeight: '70vw', maxHeight: '70vh' }}>
+        <div className="relative w-full h-[320px] lg:h-full lg:flex-1 shrink-0 bg-[#060d1a] overflow-hidden z-10">
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_#0f2744_0%,_#060d1a_70%)]" />
 
           {/* Stars */}
@@ -780,7 +790,7 @@ export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onCl
         </div>
 
         {/* Destinations list panel */}
-        <div className="flex-1 overflow-y-auto custom-scrollbar bg-[var(--bg)] pb-28 lg:pb-8 lg:max-w-sm lg:border-l border-[var(--border)]">
+        <div className="flex-1 relative z-20 overflow-y-auto custom-scrollbar bg-[var(--bg)] pb-28 lg:pb-8 lg:max-w-sm lg:border-l border-[var(--border)] shadow-2xl">
           <div className="p-4 space-y-4">
             
             {/* Country Folders Horizontal Bar */}
@@ -839,107 +849,124 @@ export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onCl
                   </p>
                 </div>
               ) : (
-                <div className="space-y-2">
-                  <AnimatePresence>
-                    {filteredDestinations.map(dest => (
-                      <motion.div
-                        key={dest.id}
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, x: -20 }}
-                        className="bg-[var(--card-bg)] border border-[var(--border)] rounded-2xl overflow-hidden group cursor-pointer transition-all hover:border-blue-500/20"
-                        onClick={(e) => {
-                           if ((e.target as HTMLElement).closest('button')) return;
-                           setExpandedDestId(prev => prev === dest.id ? null : dest.id);
-                           setFocusedDestId(dest.id);
-                        }}
-                      >
-                        <div className="p-4 flex items-start gap-3 hover:bg-[var(--surface-variant)] transition-colors">
-                          <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border bg-blue-500/10 border-blue-500/20 text-blue-400">
-                            📍
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-bold text-[var(--text-main)] truncate">{dest.name}</p>
-                            <div className="flex items-center gap-1.5 mt-0.5">
-                              <p className="text-[10px] font-bold text-[var(--text-muted)]">
-                                {dest.lat.toFixed(2)}, {dest.lng.toFixed(2)}
-                              </p>
-                              {(() => {
-                                const nationVal = getDestNation(dest, countryGroups);
-                                const cityVal = dest.city;
-                                if (!nationVal && !cityVal) return null;
-                                return (
-                                  <>
-                                    <span className="text-[8px] opacity-40">•</span>
-                                    <span className="text-[9px] font-black text-blue-500 bg-blue-500/5 px-1.5 py-0.5 rounded-md">
-                                      {getCountryEmoji(nationVal)} {nationVal}{cityVal ? ` · ${cityVal}` : ''}
-                                    </span>
-                                  </>
-                                );
-                              })()}
-                            </div>
-                            {dest.notes && (
-                              <p className="text-xs text-[var(--text-muted)] mt-1 line-clamp-2">{dest.notes}</p>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-1 shrink-0">
-                            <button
-                              onClick={(e) => { e.stopPropagation(); setEditingDest(dest); }}
-                              className="p-1.5 text-[var(--text-muted)] hover:text-blue-400 hover:bg-blue-500/10 rounded-lg transition-all"
-                            >
-                              <Pencil className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={(e) => { e.stopPropagation(); setDeletingId(dest.id); }}
-                              className="p-1.5 text-[var(--text-muted)] hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </div>
-                        </div>
-
+                <div className="space-y-4">
+                  {Object.entries(destinationsByCity).map(([cityName, cityDests]) => (
+                    <div key={cityName} className="space-y-2">
+                      {/* City Section Header */}
+                      <h4 className="text-[10px] font-black uppercase tracking-widest text-blue-500 bg-blue-500/5 px-2.5 py-1.5 rounded-xl inline-flex items-center gap-1.5 ml-1 select-none">
+                        🏙️ {cityName}
+                      </h4>
+                      
+                      <div className="space-y-2 pl-2.5 border-l border-[var(--border)] ml-2">
                         <AnimatePresence>
-                          {expandedDestId === dest.id && (
-                             <motion.div
-                               initial={{ height: 0, opacity: 0 }}
-                               animate={{ height: 'auto', opacity: 1 }}
-                               exit={{ height: 0, opacity: 0 }}
-                               className="overflow-hidden bg-[var(--surface-variant)]"
-                             >
-                                <div className="p-4 pt-0">
-                                   <div 
-                                      className="w-full h-32 rounded-xl overflow-hidden relative cursor-pointer border border-[var(--border)] shadow-inner group/map"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        const countryObj = countryGroups.find(g => g.id === dest.countryGroupId);
-                                        const queryParts = [dest.name];
-                                        if (countryObj) {
-                                          queryParts.push(countryObj.countryName);
-                                        }
-                                        const mapsQuery = encodeURIComponent(queryParts.join(', '));
-                                        window.open(`https://maps.google.com/?q=${mapsQuery}`, '_system');
-                                      }}
-                                   >
-                                      <iframe
-                                        width="100%"
-                                        height="100%"
-                                        style={{ border: 0, pointerEvents: 'none' }}
-                                        loading="lazy"
-                                        src={`https://maps.google.com/maps?q=${dest.lat},${dest.lng}&z=14&output=embed`}
-                                      />
-                                      <div className="absolute inset-0 bg-black/5 hover:bg-transparent transition-colors flex items-center justify-center group-hover/map:bg-black/10">
-                                         <div className="w-10 h-10 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center opacity-0 group-hover/map:opacity-100 transition-opacity shadow-lg">
-                                            <MapPin className="w-5 h-5 text-blue-500" />
-                                         </div>
-                                      </div>
-                                   </div>
+                          {cityDests.map(dest => (
+                            <motion.div
+                              key={dest.id}
+                              initial={{ opacity: 0, y: 10 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              exit={{ opacity: 0, x: -20 }}
+                              className="bg-[var(--card-bg)] border border-[var(--border)] rounded-2xl overflow-hidden group cursor-pointer transition-all hover:border-blue-500/20"
+                              onClick={(e) => {
+                                 if ((e.target as HTMLElement).closest('button')) return;
+                                 setExpandedDestId(prev => prev === dest.id ? null : dest.id);
+                                 setFocusedDestId(dest.id);
+                              }}
+                            >
+                              <div className="p-4 flex items-start gap-3 hover:bg-[var(--surface-variant)] transition-colors">
+                                <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border bg-blue-500/10 border-blue-500/20 text-blue-400">
+                                  📍
                                 </div>
-                             </motion.div>
-                          )}
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm font-bold text-[var(--text-main)] truncate">{dest.name}</p>
+                                  <div className="flex items-center gap-1.5 mt-0.5">
+                                    <p className="text-[10px] font-bold text-[var(--text-muted)]">
+                                      {dest.lat.toFixed(2)}, {dest.lng.toFixed(2)}
+                                    </p>
+                                    {(() => {
+                                      const nationVal = getDestNation(dest, countryGroups);
+                                      const cityVal = dest.city;
+                                      if (!nationVal && !cityVal) return null;
+                                      return (
+                                        <>
+                                          <span className="text-[8px] opacity-40">•</span>
+                                          <span className="text-[9px] font-black text-blue-500 bg-blue-500/5 px-1.5 py-0.5 rounded-md">
+                                            {getCountryEmoji(nationVal)} {nationVal}{cityVal ? ` · ${cityVal}` : ''}
+                                          </span>
+                                        </>
+                                      );
+                                    })()}
+                                  </div>
+                                  {dest.notes && (
+                                    <p className="text-xs text-[var(--text-muted)] mt-1 line-clamp-2">{dest.notes}</p>
+                                  )}
+                                </div>
+                                <div className="flex items-center gap-1 shrink-0">
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); setEditingDest(dest); }}
+                                    className="p-1.5 text-[var(--text-muted)] hover:text-blue-400 hover:bg-blue-500/10 rounded-lg transition-all"
+                                  >
+                                    <Pencil className="w-4 h-4" />
+                                  </button>
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); setDeletingId(dest.id); }}
+                                    className="p-1.5 text-[var(--text-muted)] hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </button>
+                                </div>
+                              </div>
+
+                              <AnimatePresence>
+                                {expandedDestId === dest.id && (
+                                   <motion.div
+                                     initial={{ height: 0, opacity: 0 }}
+                                     animate={{ height: 'auto', opacity: 1 }}
+                                     exit={{ height: 0, opacity: 0 }}
+                                     className="overflow-hidden bg-[var(--surface-variant)]"
+                                   >
+                                      <div className="p-4 pt-0">
+                                         <div 
+                                            className="w-full h-32 rounded-xl overflow-hidden relative cursor-pointer border border-[var(--border)] shadow-inner group/map"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              const countryObj = countryGroups.find(g => g.id === dest.countryGroupId);
+                                              const queryParts = [dest.name];
+                                              if (countryObj) {
+                                                queryParts.push(countryObj.countryName);
+                                              }
+                                              const mapsQuery = encodeURIComponent(queryParts.join(', '));
+                                              window.open(`https://maps.google.com/?q=${mapsQuery}`, '_system');
+                                            }}
+                                         >
+                                            <iframe
+                                              width="100%"
+                                              height="100%"
+                                              style={{ border: 0, pointerEvents: 'none' }}
+                                              loading="lazy"
+                                              src={`https://maps.google.com/maps?q=${dest.lat},${dest.lng}&z=14&output=embed`}
+                                            />
+                                            <div className="absolute inset-0 bg-black/5 hover:bg-transparent transition-colors flex items-center justify-center group-hover/map:bg-black/10">
+                                               <div className="w-10 h-10 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center opacity-0 group-hover/map:opacity-100 transition-opacity shadow-lg">
+                                                  <MapPin className="w-5 h-5 text-blue-500" />
+                                               </div>
+                                            </div>
+                                         </div>
+                                         {dest.notes && (
+                                           <div className="mt-3 text-xs text-[var(--text-muted)]">
+                                             <span className="font-bold block mb-1 text-[var(--text-main)] text-[10px] uppercase tracking-wider">Note</span>
+                                             <p className="leading-relaxed whitespace-pre-wrap">{dest.notes}</p>
+                                           </div>
+                                         )}
+                                      </div>
+                                   </motion.div>
+                                )}
+                              </AnimatePresence>
+                            </motion.div>
+                          ))}
                         </AnimatePresence>
-                      </motion.div>
-                    ))}
-                  </AnimatePresence>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               )}
             </div>
