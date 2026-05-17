@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Anchor, ArrowLeft, MapPin, Plus, Navigation, Trash2, Map, Edit2, X, MoreVertical, Share2 } from 'lucide-react';
 import { generateUUID } from '../utils/uuid';
+import { Share } from '@capacitor/share';
 
 interface Address {
   id: string;
@@ -178,20 +179,28 @@ export const AddressBookScreen = ({ onClose }: AddressBookScreenProps) => {
                              <Navigation className="w-5 h-5" />
                              Naviga 
                            </button>
-                           <button
-                             onClick={() => {
-                               if (navigator.share) {
-                                 navigator.share({
-                                   title: addr.title,
-                                   text: `Indirizzo: ${addr.title}\n${addr.query}`,
-                                   url: `https://maps.google.com/?q=${encodeURIComponent(addr.query)}`
-                                 }).catch(console.error);
-                               }
-                             }}
-                             className="w-[52px] flex items-center justify-center bg-[var(--bg)] border border-[var(--border)] hover:bg-[var(--surface-variant)] active:scale-[0.98] text-[var(--text-main)] rounded-2xl transition-all shadow-sm"
-                           >
-                             <Share2 className="w-5 h-5" />
-                           </button>
+                            <button
+                              onClick={async () => {
+                                const mapUrl = `https://maps.google.com/?q=${encodeURIComponent(addr.query)}`;
+                                const shareText = `📍 ${addr.title}\n${addr.query}\n\n${mapUrl}`;
+                                try {
+                                  await Share.share({
+                                    title: addr.title,
+                                    text: shareText,
+                                    url: mapUrl,
+                                    dialogTitle: 'Condividi indirizzo',
+                                  });
+                                } catch (err: any) {
+                                  // L'utente ha annullato o siamo su web: fallback silenzioso
+                                  if (err?.message && !err.message.includes('cancel')) {
+                                    console.error('Share error:', err);
+                                  }
+                                }
+                              }}
+                              className="w-[52px] flex items-center justify-center bg-[var(--bg)] border border-[var(--border)] hover:bg-[var(--surface-variant)] active:scale-[0.98] text-[var(--text-main)] rounded-2xl transition-all shadow-sm"
+                            >
+                              <Share2 className="w-5 h-5" />
+                            </button>
                         </div>
                      </div>
 

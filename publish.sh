@@ -71,7 +71,7 @@ RELEASE_JSON=$(curl -s -X POST \
   -d "{
     \"tag_name\": \"$TAG\",
     \"name\": \"Chelona $TAG\",
-    \"body\": \"🚀 **Chelona v$VERSION**\\n\\n### ✨ Novità e Fix:\\n- **👤 Profilo**: Layout migliorato ad unica schermata.\\n- **🎤 Ricerca Vocale**: Risolto errore accesso negato su Android.\\n- **🧮 Percentuale**: Interfaccia calcolatrice modernizzata.\\n- **📄 Documenti**: Nuovo stile grafico con standard Europei.\\n- **📍 Rubrica**: Aggiunto tasto Condivisione.\",
+    \"body\": \"🚀 **Chelona v$VERSION**\\n\\n### ✨ Novità e Fix:\\n- **🔢 Versionamento**: Risolto il problema che mostrava aggiornamenti disponibili anche quando l'app era già aggiornata. Tutti i numeri di versione (app, Android, GitHub) ora sono sempre sincronizzati automaticamente.\\n- **📍 Rubrica Indirizzi**: Il tasto Condividi ora funziona correttamente su Android aprendo il pannello di condivisione nativo del sistema.\",
     \"draft\": false,
     \"prerelease\": false
   }")
