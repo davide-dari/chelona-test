@@ -71,7 +71,7 @@ RELEASE_JSON=$(curl -s -X POST \
   -d "{
     \"tag_name\": \"$TAG\",
     \"name\": \"Chelona $TAG\",
-    \"body\": \"🚀 **Chelona v$VERSION**\\n\\n### ✨ Novità e Fix:\\n- **🛞 Controllo Gomme**: Ripristinato il controllo gomme classico con suggerimento a +10.000 km.\\n- **📍 Ricezione Luoghi Condivisi**: Ricevi posizioni da Google Maps direttamente in Rubrica Indirizzi per salvarle all\\'istante.\\n- **🚗 Compatibilità Android Auto**: Visualizza la tua rubrica indirizzi sul cruscotto dell\\'auto e avvia il GPS con un tocco!\",
+    \"body\": \"🚀 **Chelona v$VERSION**\\n\\n### ✨ Novità e Fix:\\n- **🛞 Controllo Gomme**: Ripristinato il controllo gomme classico con suggerimento a +10.000 km.\\n- **📍 Ricezione Luoghi Condivisi**: Ricevi posizioni da Google Maps direttamente in Rubrica Indirizzi per salvarle all'istante.\\n- **🚗 Compatibilità Android Auto**: Visualizza la tua rubrica indirizzi sul cruscotto dell'auto e avvia il GPS con un tocco!\",
     \"draft\": false,
     \"prerelease\": false
   }")
