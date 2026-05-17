@@ -71,7 +71,7 @@ RELEASE_JSON=$(curl -s -X POST \
   -d "{
     \"tag_name\": \"$TAG\",
     \"name\": \"Chelona $TAG\",
-    \"body\": \"🚀 **Chelona v$VERSION**\\n\\n### ✨ Novità e Fix:\\n- **🏙️ Raggruppamento per Città**: I luoghi all'interno di una Nazione sono ora organizzati in sezioni separate per città, con badge eleganti e bordi laterali per una navigazione gerarchica chiara e intuitiva.\\n- **🌍 Etichette Città sul Mappamondo**: Le etichette sul globo 3D ora mostrano il nome della Città anziché il nome personalizzato del luogo, per un'orientamento geografico più naturale e immediato.\\n- **📐 Contenimento del Globo**: Il Mappamondo 3D è ora racchiuso in un contenitore con altezza fissa (320px su mobile) e overflow-hidden, con layering z-index preciso per evitare qualsiasi sovrapposizione con l'header o il pannello lista durante lo zoom.\\n- **📝 Note Espanse nel Dettaglio**: Quando si espande un luogo, le note vengono ora visualizzate in una sezione dedicata sotto la mappa con formattazione migliorata.\",
+    \"body\": \"🚀 **Chelona v$VERSION**\\n\\n### ✨ Novità e Fix:\\n- **🌍 Mappamondo a Nazione Singola**: Il globo 3D ora mostra esclusivamente i punti della nazione selezionata. Quando nessuna nazione è selezionata il mappamondo ruota pulito senza alcun pin, offrendo un'esperienza visiva ordinata e focalizzata.\\n- **🎯 Camera Focus Migliorato**: La logica di zoom della fotocamera è stata semplificata e resa più affidabile, con transizioni fluide tra selezione nazione, click su scheda luogo e vista globale.\",
     \"draft\": false,
     \"prerelease\": false
   }")

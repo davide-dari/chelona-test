@@ -31,13 +31,11 @@ const Globe3D: React.FC<{
       }
     };
     window.addEventListener('resize', updateSize);
-    // Timeout needed for container to fully layout
     setTimeout(updateSize, 100);
     return () => window.removeEventListener('resize', updateSize);
   }, []);
 
   useEffect(() => {
-    // Auto-rotate
     if (globeEl.current) {
       globeEl.current.controls().autoRotate = true;
       globeEl.current.controls().autoRotateSpeed = 0.5;
@@ -46,43 +44,39 @@ const Globe3D: React.FC<{
   }, [dimensions.width]);
 
   useEffect(() => {
-    if (globeEl.current && focusedDestId) {
+    if (!globeEl.current) return;
+
+    // 1) Focus on a specific destination (click on card)
+    if (focusedDestId) {
       const target = destinations.find(d => d.id === focusedDestId);
       if (target) {
         globeEl.current.pointOfView(
-          {
-            lat: target.lat,
-            lng: target.lng,
-            altitude: 0.8 // Zoom altitude
-          },
-          1200 // Transition time
+          { lat: target.lat, lng: target.lng, altitude: 0.8 },
+          1200
         );
         globeEl.current.controls().autoRotate = false;
         return;
       }
     }
 
-    if (globeEl.current && selectedNation) {
-      const nationDests = destinations.filter(d => d.nation === selectedNation || (!d.nation && d.countryGroupId)); // fallback support
-      if (nationDests.length > 0) {
-        const target = nationDests[0];
-        globeEl.current.pointOfView(
-          {
-            lat: target.lat,
-            lng: target.lng,
-            altitude: 0.8 // Zoom altitude
-          },
-          1200 // Transition time
-        );
-        globeEl.current.controls().autoRotate = false;
-      }
-    } else if (globeEl.current && !selectedNation && !focusedDestId) {
-      // Reset position when "All destinations" is selected
+    // 2) Focus on nation — zoom to the first destination of that nation
+    if (selectedNation && destinations.length > 0) {
+      const target = destinations[0];
+      globeEl.current.pointOfView(
+        { lat: target.lat, lng: target.lng, altitude: 0.8 },
+        1200
+      );
+      globeEl.current.controls().autoRotate = false;
+    } else {
+      // 3) No selection — clean globe with auto-rotation
       globeEl.current.pointOfView({ altitude: 1.5 }, 1200);
       globeEl.current.controls().autoRotate = true;
       globeEl.current.controls().autoRotateSpeed = 0.5;
     }
   }, [selectedNation, focusedDestId, destinations]);
+
+  // Only show points when a nation is selected
+  const visiblePoints = selectedNation ? destinations : [];
 
   return (
     <div ref={containerRef} className="w-full h-full cursor-grab active:cursor-grabbing flex items-center justify-center">
@@ -94,7 +88,7 @@ const Globe3D: React.FC<{
           globeImageUrl="//unpkg.com/three-globe/example/img/earth-blue-marble.jpg"
           bumpImageUrl="//unpkg.com/three-globe/example/img/earth-topology.png"
           backgroundColor="rgba(0,0,0,0)"
-          labelsData={destinations}
+          labelsData={visiblePoints}
           labelLat="lat"
           labelLng="lng"
           labelText={d => (d as TravelDestination).city || (d as TravelDestination).name}
@@ -102,7 +96,7 @@ const Globe3D: React.FC<{
           labelDotRadius={0.5}
           labelColor={() => '#60a5fa'}
           labelResolution={2}
-          ringsData={destinations}
+          ringsData={visiblePoints}
           ringLat="lat"
           ringLng="lng"
           ringColor={() => '#60a5fa'}
