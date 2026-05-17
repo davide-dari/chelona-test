@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ArrowLeft, Save, Car, Wrench, Calendar, Fuel, User, Hash, Gauge, FileText, Smartphone, Scan, Check, QrCode, Bell, ChevronRight, X, ShieldCheck, Edit2, Trash2 } from 'lucide-react';
+import { ArrowLeft, Save, Car, Wrench, Calendar, Fuel, User, Hash, Gauge, FileText, Smartphone, Scan, Check, QrCode, Bell, ChevronRight, X, ShieldCheck, Edit2, Trash2, Plus } from 'lucide-react';
 import { AutoModule } from '../types';
 import { DocumentScanner } from './DocumentScanner';
 import { CAR_BRANDS } from '../utils/carBrands';
@@ -119,7 +119,8 @@ export const AutoManagementScreen = ({ module, onSave, onCancel, onDelete }: Aut
     addDeadline('Bollo', data.lastTax, 'lastTax');
     addDeadline('Revisione', data.lastRevision, 'lastRevision');
     addDeadline('Batteria 12V', data.battery12vExpiryDate, 'battery12vExpiryDate');
-    addDeadline('Batteria Ibrida', data.hybridBatteryExpiryDate, 'hybridBatteryExpiryDate');
+    addDeadline('Batteria Ibrida (revisione)', data.hybridBatteryExpiryDate, 'hybridBatteryExpiryDate');
+    addDeadline('Garanzia Batteria Ibrida', data.hybridBatteryWarrantyDate, 'hybridBatteryWarrantyDate');
     addDeadline('Bombola GPL', data.lastGplCylinder, 'lastGplCylinder');
     addDeadline('Bombola Metano', data.lastMethaneCylinder, 'lastMethaneCylinder');
 
@@ -302,13 +303,27 @@ export const AutoManagementScreen = ({ module, onSave, onCancel, onDelete }: Aut
                       <p className="text-[10px] font-bold text-[var(--text-muted)] mt-2">Prossimo suggerito: {data.lastServiceKm ? (Number(data.lastServiceKm) + 15000).toLocaleString('it-IT') : '---'} km</p>
                    </div>
                    <div className="bg-[var(--card-bg)] border border-[var(--border)] rounded-3xl p-6 shadow-sm">
-                      <div className="flex items-center gap-2 text-indigo-500 mb-3">
-                         <ShieldCheck className="w-4 h-4" />
-                         <span className="text-[10px] font-black uppercase tracking-widest">Controllo Gomme</span>
-                      </div>
-                      <p className="text-2xl font-black text-[var(--text-main)]">{data.tiresKm ? Number(data.tiresKm).toLocaleString('it-IT') : '---'} <span className="text-xs font-bold opacity-50">km</span></p>
-                      <p className="text-[10px] font-bold text-[var(--text-muted)] mt-2">Stato: Ottimale</p>
-                   </div>
+                       <div className="flex items-center gap-2 text-indigo-500 mb-3">
+                          <ShieldCheck className="w-4 h-4" />
+                          <span className="text-[10px] font-black uppercase tracking-widest flex-1">Controllo Gomme</span>
+                       </div>
+                       <p className="text-2xl font-black text-[var(--text-main)]">{data.tiresKmSnoozeUntil ? Number(data.tiresKmSnoozeUntil).toLocaleString('it-IT') : (data.tiresKm ? Number(data.tiresKm).toLocaleString('it-IT') : '---')} <span className="text-xs font-bold opacity-50">km</span></p>
+                       <p className="text-[10px] font-bold text-[var(--text-muted)] mt-1">
+                         {data.tiresKmSnoozeUntil ? 'Prossimo controllo posticipato' : 'Km ultimo controllo gommista'}
+                       </p>
+                       {/* Tasto: gommista ha detto OK → posticipa il controllo di 10.000 km */}
+                       <button
+                         onClick={() => {
+                           const base = Number(data.tiresKmSnoozeUntil || data.tiresKm || data.currentKm || 0);
+                           const next = base + 10000;
+                           setData(prev => ({ ...prev, tiresKmSnoozeUntil: String(next) }));
+                         }}
+                         className="mt-3 flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest px-3 py-1.5 bg-indigo-500/10 border border-indigo-500/20 text-indigo-500 rounded-xl hover:bg-indigo-500 hover:text-white active:scale-95 transition-all"
+                       >
+                         <Plus className="w-3 h-3" />
+                         +10.000 km (gommista OK)
+                       </button>
+                    </div>
                 </div>
                 {(data.fuelType === 'ibrida' || data.fuelType === 'elettrica') && (
                   <div className="grid grid-cols-1 mt-4">
@@ -395,12 +410,23 @@ export const AutoManagementScreen = ({ module, onSave, onCancel, onDelete }: Aut
                     </div>
                   </Field>
                   {(data.fuelType === 'ibrida' || data.fuelType === 'elettrica') && (
-                    <Field label="Batteria Ibrida / EV (Km e Scadenza)" colSpan={2}>
+                    <Field label="Batteria Ibrida / EV" colSpan={2}>
                       <div className="flex flex-col gap-2">
-                        <input type="text" value={data.hybridBatteryWarranty || ''} onChange={e => set('hybridBatteryWarranty', e.target.value)} placeholder="Es. Km per prossimo controllo (es. 99180)" className={inputCls} />
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          value={data.hybridBatteryWarranty || ''}
+                          onChange={e => set('hybridBatteryWarranty', e.target.value.replace(/\D/g, ''))}
+                          placeholder="Km prossimo controllo batteria (es. 99180)"
+                          className={inputCls}
+                        />
                         <div className="flex items-center gap-2">
-                          <span className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest whitespace-nowrap">Prossima Scadenza:</span>
+                          <span className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest whitespace-nowrap">Scad. Revisione:</span>
                           <input type="date" value={data.hybridBatteryExpiryDate || ''} onChange={e => set('hybridBatteryExpiryDate', e.target.value)} className={`flex-1 ${inputCls}`} />
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest whitespace-nowrap">Scad. Garanzia:</span>
+                          <input type="date" value={data.hybridBatteryWarrantyDate || ''} onChange={e => set('hybridBatteryWarrantyDate', e.target.value)} className={`flex-1 ${inputCls}`} />
                         </div>
                       </div>
                     </Field>

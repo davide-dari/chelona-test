@@ -71,10 +71,11 @@ RELEASE_JSON=$(curl -s -X POST \
   -d "{
     \"tag_name\": \"$TAG\",
     \"name\": \"Chelona $TAG\",
-    \"body\": \"🚀 **Chelona v$VERSION**\\n\\n### ✨ Novità e Fix:\\n- **🔢 Versionamento**: Risolto il problema che mostrava aggiornamenti disponibili anche quando l'app era già aggiornata. Tutti i numeri di versione (app, Android, GitHub) ora sono sempre sincronizzati automaticamente.\\n- **📍 Rubrica Indirizzi**: Il tasto Condividi ora funziona correttamente su Android aprendo il pannello di condivisione nativo del sistema.\",
+    \"body\": \"🚀 **Chelona v$VERSION**\\n\\n### ✨ Novità e Fix:\\n- **🛞 Controllo Gomme**: Aggiunto tasto +10.000 km per posticipare il controllo quando il gommista conferma che è tutto a posto.\\n- **⚡ Batteria Ibrida/EV**: Nella modifica veicolo, aggiunto campo separato per la data di scadenza della garanzia batteria ibrida (distinto dai km di revisione). Le scadenze garanzia sono ora tracciate anche nella sezione Prossime Scadenze.\",
     \"draft\": false,
     \"prerelease\": false
   }")
+
 
 RELEASE_ID=$(echo $RELEASE_JSON | node -p "JSON.parse(process.argv[1]).id" "$(cat)")
 

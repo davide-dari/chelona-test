@@ -57,8 +57,10 @@ export interface AutoModule extends BaseModule {
   battery12vExpiryDate?: string;
   lastTax?: string;
 
-  hybridBatteryWarranty?: string;
-  hybridBatteryExpiryDate?: string;
+  hybridBatteryWarranty?: string;       // km per prossimo controllo batteria
+  hybridBatteryExpiryDate?: string;     // data scadenza revisione/controllo batteria
+  hybridBatteryWarrantyDate?: string;   // data scadenza garanzia batteria ibrida
+
   lastGplCylinder?: string;
   lastMethaneCylinder?: string;
   methaneType?: 'standard' | 'r110';
