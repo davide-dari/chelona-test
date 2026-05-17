@@ -12,7 +12,10 @@ interface TravelScreenProps {
 }
 
 // --- 3D Globe with react-globe.gl ---
-const Globe3D: React.FC<{ destinations: TravelDestination[] }> = ({ destinations }) => {
+const Globe3D: React.FC<{ 
+  destinations: TravelDestination[]; 
+  selectedGroupId: string | null;
+}> = ({ destinations, selectedGroupId }) => {
   const globeEl = useRef<any>();
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
   const containerRef = useRef<HTMLDivElement>(null);
@@ -40,6 +43,30 @@ const Globe3D: React.FC<{ destinations: TravelDestination[] }> = ({ destinations
       globeEl.current.pointOfView({ altitude: 1.5 });
     }
   }, [dimensions.width]);
+
+  useEffect(() => {
+    if (globeEl.current && selectedGroupId) {
+      const groupDests = destinations.filter(d => d.countryGroupId === selectedGroupId);
+      if (groupDests.length > 0) {
+        const target = groupDests[0];
+        globeEl.current.pointOfView(
+          {
+            lat: target.lat,
+            lng: target.lng,
+            altitude: 0.8 // Zoom altitude
+          },
+          1200 // Transition time
+        );
+        // Stop autoRotate so the user can look at the place
+        globeEl.current.controls().autoRotate = false;
+      }
+    } else if (globeEl.current && !selectedGroupId) {
+      // Reset position when "All destinations" is selected
+      globeEl.current.pointOfView({ altitude: 1.5 }, 1200);
+      globeEl.current.controls().autoRotate = true;
+      globeEl.current.controls().autoRotateSpeed = 0.5;
+    }
+  }, [selectedGroupId, destinations]);
 
   return (
     <div ref={containerRef} className="w-full h-full cursor-grab active:cursor-grabbing flex items-center justify-center">
@@ -257,19 +284,7 @@ const DestModal: React.FC<{
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
-          {/* Type toggle */}
-          <div className="flex gap-2 p-1 bg-[var(--bg)] rounded-2xl border border-[var(--border)]">
-            {([['place', '📍', 'Luogo'], ['itinerary', '✈️', 'Itinerario']] as const).map(([v, emoji, label]) => (
-              <button
-                key={v}
-                type="button"
-                onClick={() => setType(v)}
-                className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold text-sm transition-all ${type === v ? 'bg-[var(--card-bg)] shadow-sm text-[var(--text-main)]' : 'text-[var(--text-muted)]'}`}
-              >
-                <span>{emoji}</span> {label}
-              </button>
-            ))}
-          </div>
+          {/* Type hidden toggle */}
 
           <div>
             <label className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] mb-2 block">
@@ -330,11 +345,34 @@ export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onCl
   const [destModalType, setDestModalType] = useState<'place' | 'itinerary'>('place');
   const [showFabMenu, setShowFabMenu] = useState(false);
   const [showAddGroupModal, setShowAddGroupModal] = useState(false);
+  const [activeGroupActionSheet, setActiveGroupActionSheet] = useState<TravelCountryGroup | null>(null);
+  const longPressTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [editingGroupId, setEditingGroupId] = useState<string | null>(null);
   const [editingDest, setEditingDest] = useState<TravelDestination | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [deletingGroupId, setDeletingGroupId] = useState<string | null>(null);
   const [expandedDestId, setExpandedDestId] = useState<string | null>(null);
+
+  const handleTouchEnd = () => {
+    if (longPressTimeout.current) {
+      clearTimeout(longPressTimeout.current);
+      longPressTimeout.current = null;
+    }
+  };
+
+  const handlePressStart = (g: TravelCountryGroup) => {
+    handleTouchEnd();
+    longPressTimeout.current = setTimeout(() => {
+      setActiveGroupActionSheet(g);
+      if (navigator.vibrate) {
+        navigator.vibrate(50);
+      }
+    }, 600);
+  };
+
+  const handlePressEnd = () => {
+    handleTouchEnd();
+  };
 
   const handleAdd = (d: Omit<TravelDestination, 'id' | 'createdAt'>) => {
     const newDest: TravelDestination = {
@@ -465,7 +503,7 @@ export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onCl
           </div>
 
           <div className="relative z-10 w-full h-full flex items-center justify-center">
-            <Globe3D destinations={filteredDestinations} />
+            <Globe3D destinations={filteredDestinations} selectedGroupId={selectedGroupId} />
           </div>
         </div>
 
@@ -477,32 +515,7 @@ export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onCl
             <div className="px-1 pt-1">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)]">Paesi / Gruppi</span>
-                <div className="flex items-center gap-1.5">
-                  {selectedGroupId && (
-                    <>
-                      <button 
-                        onClick={() => setEditingGroupId(selectedGroupId)}
-                        className="text-[10px] font-black uppercase tracking-widest text-amber-500 hover:text-amber-600 transition-colors flex items-center gap-1 bg-amber-500/10 px-2 py-1 rounded-lg"
-                        title="Modifica Nome/Emoji del Paese"
-                      >
-                        <Pencil className="w-3 h-3" /> Modifica
-                      </button>
-                      <button 
-                        onClick={() => setDeletingGroupId(selectedGroupId)}
-                        className="text-[10px] font-black uppercase tracking-widest text-rose-500 hover:text-rose-600 transition-colors flex items-center gap-1 bg-rose-500/10 px-2 py-1 rounded-lg"
-                        title="Elimina Paese"
-                      >
-                        <Trash2 className="w-3 h-3" /> Elimina
-                      </button>
-                    </>
-                  )}
-                  <button 
-                    onClick={() => setShowAddGroupModal(true)}
-                    className="text-[10px] font-black uppercase tracking-widest text-blue-500 hover:text-blue-600 transition-colors flex items-center gap-1 bg-blue-500/10 px-2 py-1 rounded-lg"
-                  >
-                    <Plus className="w-3 h-3" /> Nuovo
-                  </button>
-                </div>
+                <span className="text-[9px] font-bold text-[var(--text-muted)] bg-[var(--surface-variant)] px-2 py-0.5 rounded-full select-none">Tieni premuto per gestire</span>
               </div>
               <div className="flex gap-2 overflow-x-auto pb-2 custom-scrollbar snap-x">
                 <button
@@ -519,19 +532,16 @@ export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onCl
                     <div key={g.id} className="relative shrink-0 snap-start group/folder">
                       <button
                         onClick={() => setSelectedGroupId(g.id)}
-                        className={`px-4 py-2.5 rounded-2xl font-bold text-xs transition-all flex items-center gap-2 border ${isSelected ? 'bg-blue-600 border-blue-600 text-white shadow-md' : 'bg-[var(--card-bg)] border-[var(--border)] text-[var(--text-muted)] hover:bg-[var(--surface-variant)]'}`}
+                        onMouseDown={() => handlePressStart(g)}
+                        onMouseUp={handlePressEnd}
+                        onMouseLeave={handlePressEnd}
+                        onTouchStart={() => handlePressStart(g)}
+                        onTouchEnd={handlePressEnd}
+                        className={`px-4 py-2.5 rounded-2xl font-bold text-xs transition-all flex items-center gap-2 border select-none ${isSelected ? 'bg-blue-600 border-blue-600 text-white shadow-md' : 'bg-[var(--card-bg)] border-[var(--border)] text-[var(--text-muted)] hover:bg-[var(--surface-variant)]'}`}
                       >
                         <span>{g.emoji}</span>
                         <span>{g.countryName}</span>
                         <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-black ${isSelected ? 'bg-white/20 text-white' : 'bg-[var(--surface-variant)] text-[var(--text-muted)]'}`}>{count}</span>
-                      </button>
-                      
-                      <button
-                        onClick={(e) => { e.stopPropagation(); setDeletingGroupId(g.id); }}
-                        className="absolute -top-1 -right-1 w-5 h-5 bg-rose-500 hover:bg-rose-600 text-white rounded-full flex items-center justify-center opacity-0 group-hover/folder:opacity-100 transition-all shadow-md z-20"
-                        title="Elimina Paese"
-                      >
-                        <X className="w-3 h-3" />
                       </button>
                     </div>
                   );
@@ -686,7 +696,7 @@ export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onCl
                   }}
                   className="flex items-center gap-2.5 px-4 py-3 bg-[var(--card-bg)] hover:bg-[var(--surface-variant)] text-[var(--text-main)] rounded-2xl shadow-xl border border-[var(--border)] font-bold text-xs uppercase tracking-wider transition-all"
                 >
-                  <span>🗺️</span> Nuovo Paese
+                  <span>🗺️</span> Paese
                 </motion.button>
 
                 {/* Option 2: Luogo */}
@@ -700,7 +710,7 @@ export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onCl
                   }}
                   className="flex items-center gap-2.5 px-4 py-3 bg-[var(--card-bg)] hover:bg-[var(--surface-variant)] text-[var(--text-main)] rounded-2xl shadow-xl border border-[var(--border)] font-bold text-xs uppercase tracking-wider transition-all"
                 >
-                  <span>📍</span> Nuovo Luogo
+                  <span>📍</span> Luogo
                 </motion.button>
 
                 {/* Option 3: Itinerario */}
@@ -714,7 +724,7 @@ export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onCl
                   }}
                   className="flex items-center gap-2.5 px-4 py-3 bg-[var(--card-bg)] hover:bg-[var(--surface-variant)] text-[var(--text-main)] rounded-2xl shadow-xl border border-[var(--border)] font-bold text-xs uppercase tracking-wider transition-all"
                 >
-                  <span>✈️</span> Nuovo Itinerario
+                  <span>✈️</span> Itinerario
                 </motion.button>
               </motion.div>
             </>
@@ -835,6 +845,62 @@ export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onCl
             countryGroups={countryGroups}
             defaultGroupId={selectedGroupId}
           />
+        )}
+      </AnimatePresence>
+
+      {/* Country Actions Sheet */}
+      <AnimatePresence>
+        {activeGroupActionSheet && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[350] flex items-end sm:items-center justify-center p-4"
+          >
+            {/* Backdrop */}
+            <div className="absolute inset-0 bg-black/60 backdrop-blur-md" onClick={() => setActiveGroupActionSheet(null)} />
+            
+            {/* Sheet */}
+            <motion.div
+              initial={{ y: 100, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: 100, opacity: 0 }}
+              className="relative w-full max-w-sm bg-[var(--card-bg)] rounded-[2rem] border border-[var(--border)] shadow-2xl p-6 text-center z-10"
+            >
+              <div className="text-3xl mb-2">{activeGroupActionSheet.emoji}</div>
+              <h3 className="text-lg font-black text-[var(--text-main)] mb-1">Gestisci {activeGroupActionSheet.countryName}</h3>
+              <p className="text-xs text-[var(--text-muted)] mb-6">Scegli quale azione eseguire per questo paese.</p>
+              
+              <div className="space-y-3">
+                <button
+                  onClick={() => {
+                    setEditingGroupId(activeGroupActionSheet.id);
+                    setActiveGroupActionSheet(null);
+                  }}
+                  className="w-full py-4 bg-[var(--surface-variant)] hover:bg-[var(--border)] text-[var(--text-main)] rounded-2xl font-bold text-sm transition-all flex items-center justify-center gap-2 border border-[var(--border)]"
+                >
+                  <Pencil className="w-4 h-4 text-amber-500" /> Modifica Nome/Emoji
+                </button>
+                
+                <button
+                  onClick={() => {
+                    setDeletingGroupId(activeGroupActionSheet.id);
+                    setActiveGroupActionSheet(null);
+                  }}
+                  className="w-full py-4 bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 rounded-2xl font-bold text-sm transition-all flex items-center justify-center gap-2 border border-rose-500/20"
+                >
+                  <Trash2 className="w-4 h-4" /> Elimina Paese
+                </button>
+                
+                <button
+                  onClick={() => setActiveGroupActionSheet(null)}
+                  className="w-full py-4 bg-[var(--bg)] hover:bg-[var(--surface-variant)] text-[var(--text-muted)] rounded-2xl font-bold text-sm transition-all border border-[var(--border)]"
+                >
+                  Annulla
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
         )}
       </AnimatePresence>
     </motion.div>
