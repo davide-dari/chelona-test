@@ -1960,299 +1960,302 @@ export default function App() {
 
                 </div>
 
-                {searchQuery.trim() && filteredTools.length > 0 && (
-                  <div className="mb-10 animate-fade-in px-4 lg:px-8">
-                    <h3 className="text-xl font-bold text-[var(--text-main)] mb-5 flex items-center gap-2">
-                      <Wrench className="w-5 h-5 text-[var(--accent)]" />
-                      Strumenti Rapidi
-                    </h3>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 3xl:grid-cols-6 gap-4">
-                      {filteredTools.map((t: any) => (
-                        <button
-                          key={t.id}
-                          onClick={() => { setIsToolsOpen(true); setActiveToolId(t.id); setSearchQuery(''); }}
-                          className="bg-[var(--card-bg)]/80 backdrop-blur-xl border border-[var(--border)] p-4 rounded-2xl hover:border-[var(--accent)] shadow-sm transition-all flex items-center gap-4 text-left group"
-                        >
-                          <div className={`w-12 h-12 bg-[var(--accent-bg)] ${t.color} rounded-xl flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform`}>
-                            <t.icon className="w-6 h-6" />
-                          </div>
-                          <div>
-                            <h4 className="font-bold text-[var(--text-main)]">{t.title}</h4>
-                            <p className="text-xs text-[var(--text-muted)] line-clamp-1">{t.desc}</p>
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {!selectedType && !selectedFolderId && !searchQuery.trim() && !isListening ? (
-                  <div className="px-4 lg:px-8 pb-40">
-
-
-
-                    {/* Widgets Section (Shortcuts) */}
-                    {(pinnedToolIds.length > 0 || pinnedCategoryIds.length > 0) && (
-                      <div className="mb-10">
-                        <h3 className="text-lg font-bold text-[var(--text-main)] mb-5 flex items-center gap-2">
-                          <LayoutDashboard className="w-5 h-5 text-indigo-500" />
-                          Accesso Rapido
-                        </h3>
-                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-                          {/* Categories Pinned */}
-                          {pinnedCategoryIds.map(catId => {
-                            const t = TEMPLATES[catId as ModuleType];
-                            if (!t) return null;
-                            return (
-                              <button
-                                key={`pinned-cat-${catId}`}
-                                onClick={() => setSelectedType(catId as ModuleType)}
-                                className="bg-[var(--card-bg)] p-5 rounded-3xl border border-[var(--border)] shadow-sm hover:border-[var(--accent)] transition-all flex items-center gap-4 group"
-                              >
-                                <div className={`w-12 h-12 bg-[var(--bg)] rounded-2xl flex items-center justify-center ${t.color} group-hover:scale-110 transition-transform shadow-inner`}>
-                                  <t.icon className="w-6 h-6" />
-                                </div>
-                                <span className="font-bold text-xs text-[var(--text-main)]">{t.title}</span>
-                              </button>
-                            );
-                          })}
-                          {/* Tools Pinned */}
-                          {pinnedToolIds.map(toolId => {
-                            const t = (Object.values(TOOLS_UTILITY).flat() as any[]).find(t => t.id === toolId);
-                            if (!t) return null;
-                            return (
-                              <button
-                                key={`pinned-tool-${toolId}`}
-                                onClick={() => { setIsToolsOpen(true); setActiveToolId(toolId); }}
-                                className="bg-[var(--card-bg)] p-5 rounded-3xl border border-[var(--border)] shadow-sm hover:border-[var(--accent)] transition-all flex items-center gap-4 group"
-                              >
-                                <div className={`w-12 h-12 bg-[var(--bg)] rounded-2xl flex items-center justify-center ${t.color} group-hover:scale-110 transition-transform shadow-inner text-[var(--accent)]`}>
-                                  <t.icon className="w-6 h-6" />
-                                </div>
-                                <span className="font-bold text-xs text-[var(--text-main)]">{t.title}</span>
-                              </button>
-                            );
-                          })}
-                        </div>
+                {isListening ? (
+                  <div className="py-20 flex flex-col items-center justify-center text-center px-4 animate-fade-in">
+                    <div className="relative w-28 h-28 flex items-center justify-center mb-6">
+                      <motion.div
+                        animate={{
+                          scale: [1, 1.4, 1],
+                          opacity: [0.3, 0, 0.3]
+                        }}
+                        transition={{
+                          repeat: Infinity,
+                          duration: 2,
+                          ease: "easeInOut"
+                        }}
+                        className="absolute inset-0 bg-[var(--accent)]/20 rounded-full"
+                      />
+                      <motion.div
+                        animate={{
+                          scale: [1, 1.2, 1],
+                          opacity: [0.5, 0.1, 0.5]
+                        }}
+                        transition={{
+                          repeat: Infinity,
+                          duration: 1.5,
+                          ease: "easeInOut",
+                          delay: 0.3
+                        }}
+                        className="absolute w-20 h-20 bg-[var(--accent)]/30 rounded-full"
+                      />
+                      <div className="w-16 h-16 bg-[var(--accent)] text-white rounded-full flex items-center justify-center shadow-lg shadow-[var(--accent)]/30 z-10">
+                        <Mic className="w-8 h-8 animate-bounce text-white" />
                       </div>
-                    )}
-
-                    {/* All Categories Grid (Main Entry Point) */}
-                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 pb-12">
-                      {Object.entries(TEMPLATES)
-                        .filter(([key]) => key !== 'single-expense')
-                        .map(([key, t]) => {
-                        
-                        return (
-                          <button
-                            key={key}
-                            onClick={() => {
-                              if (key === 'travel') {
-                                const existingTravel = modules.find(m => m.type === 'travel') as import('./types').TravelModule;
-                                if (existingTravel) {
-                                  setEditingTravelModule(existingTravel);
-                                } else {
-                                  const newTravel: import('./types').TravelModule = {
-                                    id: generateUUID(),
-                                    type: 'travel',
-                                    title: 'Viaggi',
-                                    destinations: [],
-                                    x: 0, y: 0, w: 3, h: 3,
-                                    folderId: selectedFolderId || undefined
-                                  };
-                                  setModules(prev => {
-                                    const updated = [newTravel, ...prev];
-                                    saveAppState(updated, folders).catch(console.error);
-                                    return updated;
-                                  });
-                                  setEditingTravelModule(newTravel);
-                                }
-                              } else {
-                                setSelectedType(key as ModuleType);
-                              }
-                            }}
-                            className="bg-[var(--card-bg)] p-6 lg:p-8 rounded-[2.5rem] border border-[var(--border)] shadow-sm hover:border-[var(--accent)] hover:shadow-lg hover:-translate-y-1 transition-all group flex flex-col items-center text-center gap-4"
-                          >
-                            <div className={`w-14 h-14 lg:w-16 lg:h-16 bg-[var(--bg)] rounded-3xl flex items-center justify-center ${t.color} group-hover:bg-[var(--accent-bg)] transition-colors shadow-inner`}>
-                              <t.icon className="w-7 h-7 lg:w-8 lg:h-8" />
-                            </div>
-                            <div>
-                              <p className="font-black text-[var(--text-main)] text-sm">{t.title}</p>
-
-                            </div>
-                          </button>
-                        );
-                      })}
                     </div>
-
-
-
-
+                    <h3 className="text-2xl font-black text-[var(--text-main)] mb-2 uppercase tracking-wide animate-pulse">Ascolto in corso...</h3>
+                    <p className="text-sm text-[var(--text-muted)] max-w-xs font-semibold">Parla ora per effettuare la ricerca vocale</p>
                   </div>
-                ) : filteredModules.length === 0 ? (
-                  selectedType === 'gallery' ? (
-                    <div className="py-20 flex flex-col items-center justify-center text-center px-4">
-                      <div className="w-20 h-20 bg-indigo-500/10 rounded-full flex items-center justify-center mb-6">
-                        <ImageIcon className="w-10 h-10 text-indigo-500 opacity-70" />
-                      </div>
-                      <h3 className="text-2xl font-bold text-[var(--text-main)] mb-2">Nessuna foto in galleria</h3>
-                      <p className="text-[var(--text-muted)] mb-8 max-w-sm mx-auto">Usa lo strumento Filtri Immagine per salvare le tue foto qui.</p>
-                      <button
-                        onClick={() => { setSelectedType(null); setIsToolsOpen(true); setActiveToolId('image-filter'); }}
-                        className="flex items-center justify-center gap-3 bg-indigo-500 hover:bg-indigo-600 text-white px-8 py-4 rounded-2xl font-bold transition-all shadow-lg shadow-indigo-500/20 active:scale-95"
-                      >
-                        <ImageIcon className="w-6 h-6" />
-                        <span>Apri Filtri Immagine</span>
-                      </button>
-                    </div>
-                  ) : (
-                  <div className="py-20 flex flex-col items-center justify-center text-center px-4">
-                    <div className="w-20 h-20 bg-[var(--bg)] border border-[var(--border)] rounded-full flex items-center justify-center mb-6">
-                      <LayoutDashboard className="w-10 h-10 text-[var(--text-muted)] opacity-50" />
-                    </div>
-                    <h3 className="text-2xl font-bold text-[var(--text-main)] mb-2">
-                      {modules.length === 0 ? 'Nessun contenuto' : 'Nessun risultato trovato'}
-                    </h3>
-                    <p className="text-[var(--text-muted)] mb-8 max-w-sm mx-auto">
-                      {modules.length === 0 ? 'Inizia ad organizzare i tuoi dati aggiungendo la prima voce.' : 'Prova a cercare un termine diverso o cambiare filtro di categoria.'}
-                    </p>
-
-                  </div>
-                  )
                 ) : (
                   <>
-
-                    {/* Total Balance Hero Summary - Only for Wallet Category */}
-                    {selectedType === 'wallet' && (() => {
-                      const walletModules = modules.filter(m => m.type === 'wallet') as import('./types').WalletModule[];
-                      const totalMonthlyAmount = walletModules.reduce((acc, module) => {
-                        if (!module.totalAmount || !module.dueDate) return acc;
-                        const total = Number(module.totalAmount);
-                        if (isNaN(total) || total <= 0) return acc;
-                        
-                        const remaining = Math.max(0, total - (module.savedAmount || 0));
-                        if (remaining === 0) return acc;
-
-                        const today = new Date();
-                        const targetDate = new Date(module.dueDate);
-                        
-                        let months = (targetDate.getFullYear() - today.getFullYear()) * 12 + targetDate.getMonth() - today.getMonth();
-                        if (targetDate.getDate() > today.getDate() && months === 0) {
-                           months = 1;
-                        }
-                        months = Math.max(1, months);
-
-                        return acc + (remaining / months);
-                      }, 0);
-
-                      const totalRemaining = walletModules.reduce((acc, module) => {
-                         const total = Number(module.totalAmount) || 0;
-                         const saved = Number(module.savedAmount) || 0;
-                         return acc + Math.max(0, total - saved);
-                      }, 0);
-
-                      return (
-                       <div className="mb-10 animate-fade-in px-4 lg:px-8">
-                         <div className="bg-gradient-to-br from-purple-600 to-indigo-600 rounded-[2.5rem] p-8 lg:p-10 shadow-xl shadow-purple-500/20 relative overflow-hidden group">
-                           <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -mr-20 -mt-20 blur-3xl" />
-                           <div className="absolute bottom-0 left-0 w-40 h-40 bg-black/10 rounded-full -ml-10 -mb-10 blur-2xl" />
-                           
-                           <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-8">
-                             <div>
-                               <div className="flex items-center gap-2 text-purple-100/80 mb-2">
-                                 <Wallet className="w-4 h-4" />
-                                 <span className="text-[10px] font-black uppercase tracking-[0.2em]">Accantonamento Mensile</span>
-                               </div>
-                               <div className="flex items-baseline gap-2">
-                                 <span className="text-2xl font-bold text-white/70">€</span>
-                                 <span className="text-5xl lg:text-6xl font-black text-white tracking-tighter">
-                                   {totalMonthlyAmount.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                 </span>
-                               </div>
-                               <p className="text-xs font-bold text-white/60 mt-2">
-                                 Totale da mettere da parte ogni mese per {walletModules.length} rate attive
-                               </p>
-                             </div>
-                             
-                             <div className="flex gap-4">
-                               <div className="bg-white/10 backdrop-blur-md rounded-[1.5rem] p-5 border border-white/10 min-w-[140px]">
-                                 <p className="text-[9px] font-black text-purple-100/50 uppercase tracking-widest mb-1">Rate Attive</p>
-                                 <p className="text-2xl font-black text-white">{walletModules.length}</p>
-                               </div>
-                               <div className="bg-white/10 backdrop-blur-md rounded-[1.5rem] p-5 border border-white/10 min-w-[140px]">
-                                 <p className="text-[9px] font-black text-purple-100/50 uppercase tracking-widest mb-1">Residuo Totale</p>
-                                 <p className="text-2xl font-black text-white">€ {totalRemaining.toLocaleString('it-IT', { maximumFractionDigits: 0 })}</p>
-                               </div>
-                             </div>
-                           </div>
-
-                           {totalMonthlyAmount > 0 && (
-                             <div className="relative z-10 mt-6 bg-white/10 backdrop-blur-md rounded-[1.5rem] p-5 border border-emerald-500/30 flex items-start gap-4 shadow-lg shadow-emerald-500/10">
-                               <div className="p-3 bg-emerald-500/20 text-emerald-300 rounded-xl shrink-0">
-                                 <Lightbulb className="w-6 h-6" />
-                               </div>
-                               <div>
-                                 <h4 className="font-black text-white text-xs uppercase tracking-wider mb-1">Il Nostro Consiglio</h4>
-                                 <p className="text-white/80 text-[11px] font-medium leading-relaxed">
-                                   Per gestire le scadenze senza stress, ti consigliamo di accantonare <strong className="text-white bg-emerald-500/20 border border-emerald-500/30 px-1.5 py-0.5 rounded-md mx-1">€ {totalMonthlyAmount.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong> al mese. Questo coprirà in tempo tutte le tue {walletModules.length} rate attive.
-                                 </p>
-                               </div>
-                             </div>
-                           )}
-                         </div>
-                       </div>
-                      );
-                    })()}
-
-                    {/* Category Header with Back and Add buttons */}
-                    {selectedType && (
-                      <div className="flex items-center justify-between px-4 lg:px-8 mb-8 mt-2">
-                        <div className="flex items-center gap-4">
-                          <button 
-                            onClick={() => setSelectedType(null)}
-                            className="p-3 bg-[var(--card-bg)] border border-[var(--border)] rounded-2xl text-[var(--text-muted)] hover:text-[var(--text-main)] transition-all shadow-sm"
-                          >
-                            <ChevronLeft className="w-6 h-6" />
-                          </button>
-                          <div>
-                            <h2 className="text-2xl font-black text-[var(--text-main)] uppercase tracking-tight leading-none">
-                              {TEMPLATES[selectedType as ModuleType]?.title || selectedType}
-                            </h2>
-                            <p className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-[0.2em] mt-2">
-                              {filteredModules.length} Elementi Trovati
-                            </p>
-                          </div>
+                    {searchQuery.trim() && filteredTools.length > 0 && (
+                      <div className="mb-10 animate-fade-in px-4 lg:px-8">
+                        <h3 className="text-xl font-bold text-[var(--text-main)] mb-5 flex items-center gap-2">
+                          <Wrench className="w-5 h-5 text-[var(--accent)]" />
+                          Strumenti Rapidi
+                        </h3>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 3xl:grid-cols-6 gap-4">
+                          {filteredTools.map((t: any) => (
+                            <button
+                              key={t.id}
+                              onClick={() => { setIsToolsOpen(true); setActiveToolId(t.id); setSearchQuery(''); }}
+                              className="bg-[var(--card-bg)]/80 backdrop-blur-xl border border-[var(--border)] p-4 rounded-2xl hover:border-[var(--accent)] shadow-sm transition-all flex items-center gap-4 text-left group"
+                            >
+                              <div className={`w-12 h-12 bg-[var(--accent-bg)] ${t.color} rounded-xl flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform`}>
+                                <t.icon className="w-6 h-6" />
+                              </div>
+                              <div>
+                                <h4 className="font-bold text-[var(--text-main)]">{t.title}</h4>
+                                <p className="text-xs text-[var(--text-muted)] line-clamp-1">{t.desc}</p>
+                              </div>
+                            </button>
+                          ))}
                         </div>
                       </div>
                     )}
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6 3xl:grid-cols-8 gap-6 stagger-fade-in px-4 lg:px-8 pb-32 md:pb-8">
-
-                    
-                    {filteredModules.map((module) => (
-                      <div key={module.id} className="w-full">
-                        {module.type === 'auto' ? (
-                          <AutoCard module={module} onDelete={requestDelete} onEdit={openEditModal} />
-                        ) : module.type === 'document' ? (
-                          <DocumentCard module={module} onDelete={requestDelete} onEdit={openEditModal} onShare={setSharingModule} />
-                        ) : module.type === 'split' ? (
-                          <SplitCard module={module as import('./types').SplitModule} onDelete={requestDelete} onEdit={openEditModal} />
-                        ) : module.type === 'single-expense' ? (
-                          <SingleExpenseCard module={module as import('./types').SingleExpenseModule} onDelete={requestDelete} onEdit={openEditModal} />
-                        ) : module.type === 'wallet' ? (
-                          <WalletCard module={module as import('./types').WalletModule} onDelete={requestDelete} onEdit={openEditModal} />
-                        ) : module.type === 'gallery' ? (
-                          <GalleryCard module={module as import('./types').GalleryModule} onEdit={openEditModal} />
-                        ) : module.type === 'travel' ? (
-                          <TravelCard module={module as import('./types').TravelModule} onDelete={requestDelete} onEdit={openEditModal} />
-                        ) : (
-                          <GenericCard module={module as import('./types').GenericModule} onDelete={requestDelete} onEdit={openEditModal} />
+                    {!selectedType && !selectedFolderId && !searchQuery.trim() ? (
+                      <div className="px-4 lg:px-8 pb-40">
+                        {/* Widgets Section (Shortcuts) */}
+                        {(pinnedToolIds.length > 0 || pinnedCategoryIds.length > 0) && (
+                          <div className="mb-10">
+                            <h3 className="text-lg font-bold text-[var(--text-main)] mb-5 flex items-center gap-2">
+                              <LayoutDashboard className="w-5 h-5 text-indigo-500" />
+                              Accesso Rapido
+                            </h3>
+                            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+                              {/* Categories Pinned */}
+                              {pinnedCategoryIds.map(catId => {
+                                const t = TEMPLATES[catId as ModuleType];
+                                if (!t) return null;
+                                return (
+                                  <button
+                                    key={`pinned-cat-${catId}`}
+                                    onClick={() => setSelectedType(catId as ModuleType)}
+                                    className="bg-[var(--card-bg)] p-5 rounded-3xl border border-[var(--border)] shadow-sm hover:border-[var(--accent)] transition-all flex items-center gap-4 group"
+                                  >
+                                    <div className={`w-12 h-12 bg-[var(--bg)] rounded-2xl flex items-center justify-center ${t.color} group-hover:scale-110 transition-transform shadow-inner`}>
+                                      <t.icon className="w-6 h-6" />
+                                    </div>
+                                    <span className="font-bold text-xs text-[var(--text-main)]">{t.title}</span>
+                                  </button>
+                                );
+                              })}
+                              {/* Tools Pinned */}
+                              {pinnedToolIds.map(toolId => {
+                                const t = (Object.values(TOOLS_UTILITY).flat() as any[]).find(t => t.id === toolId);
+                                if (!t) return null;
+                                return (
+                                  <button
+                                    key={`pinned-tool-${toolId}`}
+                                    onClick={() => { setIsToolsOpen(true); setActiveToolId(toolId); }}
+                                    className="bg-[var(--card-bg)] p-5 rounded-3xl border border-[var(--border)] shadow-sm hover:border-[var(--accent)] transition-all flex items-center gap-4 group"
+                                  >
+                                    <div className={`w-12 h-12 bg-[var(--bg)] rounded-2xl flex items-center justify-center ${t.color} group-hover:scale-110 transition-transform shadow-inner text-[var(--accent)]`}>
+                                      <t.icon className="w-6 h-6" />
+                                    </div>
+                                    <span className="font-bold text-xs text-[var(--text-main)]">{t.title}</span>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
                         )}
+
+                        {/* All Categories Grid (Main Entry Point) */}
+                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 pb-12">
+                          {Object.entries(TEMPLATES)
+                            .filter(([key]) => key !== 'single-expense')
+                            .map(([key, t]) => {
+                            return (
+                              <button
+                                key={key}
+                                onClick={() => {
+                                  if (key === 'travel') {
+                                    const existingTravel = modules.find(m => m.type === 'travel') as import('./types').TravelModule;
+                                    if (existingTravel) {
+                                      setEditingTravelModule(existingTravel);
+                                    } else {
+                                      const newTravel: import('./types').TravelModule = {
+                                        id: generateUUID(),
+                                        type: 'travel',
+                                        title: 'Viaggi',
+                                        destinations: [],
+                                        x: 0, y: 0, w: 3, h: 3,
+                                        folderId: selectedFolderId || undefined
+                                      };
+                                      setModules(prev => {
+                                        const updated = [newTravel, ...prev];
+                                        saveAppState(updated, folders).catch(console.error);
+                                        return updated;
+                                      });
+                                      setEditingTravelModule(newTravel);
+                                    }
+                                  } else {
+                                    setSelectedType(key as ModuleType);
+                                  }
+                                }}
+                                className="bg-[var(--card-bg)] p-6 lg:p-8 rounded-[2.5rem] border border-[var(--border)] shadow-sm hover:border-[var(--accent)] hover:shadow-lg hover:-translate-y-1 transition-all group flex flex-col items-center text-center gap-4"
+                              >
+                                <div className={`w-14 h-14 lg:w-16 lg:h-16 bg-[var(--bg)] rounded-3xl flex items-center justify-center ${t.color} group-hover:bg-[var(--accent-bg)] transition-colors shadow-inner`}>
+                                  <t.icon className="w-7 h-7 lg:w-8 lg:h-8" />
+                                </div>
+                                <div>
+                                  <p className="font-black text-[var(--text-main)] text-sm">{t.title}</p>
+                                </div>
+                              </button>
+                            );
+                          })}
+                        </div>
                       </div>
-                    ))}
-                  </div>
-                </>
-              )}
+                    ) : filteredModules.length === 0 ? (
+                      selectedType === 'gallery' ? (
+                        <div className="py-20 flex flex-col items-center justify-center text-center px-4">
+                          <div className="w-20 h-20 bg-indigo-500/10 rounded-full flex items-center justify-center mb-6">
+                            <ImageIcon className="w-10 h-10 text-indigo-500 opacity-70" />
+                          </div>
+                          <h3 className="text-2xl font-bold text-[var(--text-main)] mb-2">Nessuna foto in galleria</h3>
+                          <p className="text-[var(--text-muted)] mb-8 max-w-sm mx-auto">Usa lo strumento Filtri Immagine per salvare le tue foto qui.</p>
+                          <button
+                            onClick={() => { setSelectedType(null); setIsToolsOpen(true); setActiveToolId('image-filter'); }}
+                            className="flex items-center justify-center gap-3 bg-indigo-500 hover:bg-indigo-600 text-white px-8 py-4 rounded-2xl font-bold transition-all shadow-lg shadow-indigo-500/20 active:scale-95"
+                          >
+                            <ImageIcon className="w-6 h-6" />
+                            <span>Apri Filtri Immagine</span>
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="py-20 flex flex-col items-center justify-center text-center px-4">
+                          <div className="w-20 h-20 bg-[var(--bg)] border border-[var(--border)] rounded-full flex items-center justify-center mb-6">
+                            <LayoutDashboard className="w-10 h-10 text-[var(--text-muted)] opacity-50" />
+                          </div>
+                          <h3 className="text-2xl font-bold text-[var(--text-main)] mb-2">
+                            {modules.length === 0 ? 'Nessun contenuto' : 'Nessun risultato trovato'}
+                          </h3>
+                          <p className="text-[var(--text-muted)] mb-8 max-w-sm mx-auto">
+                            {modules.length === 0 ? 'Inizia ad organizzare i tuoi dati aggiungendo la prima voce.' : 'Prova a cercare un termine diverso o cambiare filtro di categoria.'}
+                          </p>
+                        </div>
+                      )
+                    ) : (
+                      <>
+                        {/* Total Balance Hero Summary - Only for Wallet Category */}
+                        {selectedType === 'wallet' && (() => {
+                          const walletModules = modules.filter(m => m.type === 'wallet') as import('./types').WalletModule[];
+                          const totalMonthlyAmount = walletModules.reduce((acc, module) => {
+                            if (!module.totalAmount || !module.dueDate) return acc;
+                            const total = Number(module.totalAmount);
+                            if (isNaN(total) || total <= 0) return acc;
+                            
+                            const remaining = Math.max(0, total - (module.savedAmount || 0));
+                            if (remaining === 0) return acc;
+
+                            const today = new Date();
+                            const targetDate = new Date(module.dueDate);
+                            
+                            let months = (targetDate.getFullYear() - today.getFullYear()) * 12 + targetDate.getMonth() - today.getMonth();
+                            if (targetDate.getDate() > today.getDate() && months === 0) {
+                               months = 1;
+                            }
+                            months = Math.max(1, months);
+
+                            return acc + (remaining / months);
+                          }, 0);
+
+                          const totalRemaining = walletModules.reduce((acc, module) => {
+                             const total = Number(module.totalAmount) || 0;
+                             const saved = Number(module.savedAmount) || 0;
+                             return acc + Math.max(0, total - saved);
+                          }, 0);
+
+                          return (
+                            <div className="px-4 lg:px-8 mb-8 animate-fade-in max-w-2xl mx-auto">
+                              <div className="relative overflow-hidden bg-gradient-to-br from-indigo-600 via-indigo-700 to-purple-800 rounded-[2rem] p-6 lg:p-8 text-white shadow-xl shadow-indigo-500/20 border border-white/10">
+                                {/* Ambient Background Glow */}
+                                <div className="absolute right-0 top-0 w-64 h-64 bg-white/5 rounded-full blur-3xl pointer-events-none" />
+                                
+                                <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+                                  <div>
+                                    <span className="text-[10px] font-black uppercase tracking-widest text-indigo-200">Totale Risparmio Mensile Consigliato</span>
+                                    <h3 className="text-3xl lg:text-4xl font-black mt-2 leading-none">
+                                      € {totalMonthlyAmount.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                    </h3>
+                                    <p className="text-xs text-indigo-200/80 mt-2 font-medium">
+                                      Per completare tutti i {walletModules.length} obiettivi di risparmio attivi.
+                                    </p>
+                                  </div>
+                                  
+                                  <div className="h-px md:h-12 w-full md:w-px bg-white/20" />
+                                  
+                                  <div>
+                                    <span className="text-[10px] font-black uppercase tracking-widest text-indigo-200">Rimanente Totale da Risparmiare</span>
+                                    <h4 className="text-xl lg:text-2xl font-bold mt-1 text-white/95">
+                                      € {totalRemaining.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                    </h4>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })()}
+
+                        {selectedType && (
+                          <div className="px-4 lg:px-8 mb-6 animate-fade-in flex items-center justify-between max-w-7xl mx-auto">
+                            <div className="flex items-center gap-4">
+                              <button 
+                                onClick={() => setSelectedType(null)}
+                                className="p-3 bg-[var(--card-bg)] border border-[var(--border)] rounded-2xl text-[var(--text-muted)] hover:text-[var(--text-main)] transition-all shadow-sm"
+                              >
+                                <ChevronLeft className="w-6 h-6" />
+                              </button>
+                              <div>
+                                <h2 className="text-2xl font-black text-[var(--text-main)] uppercase tracking-tight leading-none">
+                                  {TEMPLATES[selectedType as ModuleType]?.title || selectedType}
+                                </h2>
+                                <p className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-[0.2em] mt-2">
+                                  {filteredModules.length} Elementi Trovati
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6 3xl:grid-cols-8 gap-6 stagger-fade-in px-4 lg:px-8 pb-32 md:pb-8">
+                          {filteredModules.map((module) => (
+                            <div key={module.id} className="w-full">
+                              {module.type === 'auto' ? (
+                                <AutoCard module={module} onDelete={requestDelete} onEdit={openEditModal} />
+                              ) : module.type === 'document' ? (
+                                <DocumentCard module={module} onDelete={requestDelete} onEdit={openEditModal} onShare={setSharingModule} />
+                              ) : module.type === 'split' ? (
+                                <SplitCard module={module as import('./types').SplitModule} onDelete={requestDelete} onEdit={openEditModal} />
+                              ) : module.type === 'single-expense' ? (
+                                <SingleExpenseCard module={module as import('./types').SingleExpenseModule} onDelete={requestDelete} onEdit={openEditModal} />
+                              ) : module.type === 'wallet' ? (
+                                <WalletCard module={module as import('./types').WalletModule} onDelete={requestDelete} onEdit={openEditModal} />
+                              ) : module.type === 'gallery' ? (
+                                <GalleryCard module={module as import('./types').GalleryModule} onEdit={openEditModal} />
+                              ) : module.type === 'travel' ? (
+                                <TravelCard module={module as import('./types').TravelModule} onDelete={requestDelete} onEdit={openEditModal} />
+                              ) : (
+                                <GenericCard module={module as import('./types').GenericModule} onDelete={requestDelete} onEdit={openEditModal} />
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </>
+                    )}
+                  </>
+                )}
               </div>
             )}
           </div>

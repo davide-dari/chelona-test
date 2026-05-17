@@ -71,7 +71,7 @@ RELEASE_JSON=$(curl -s -X POST \
   -d "{
     \"tag_name\": \"$TAG\",
     \"name\": \"Chelona $TAG\",
-    \"body\": \"🚀 **Chelona v$VERSION**\\n\\n### ✨ Novità e Fix:\\n- **🌍 Nuova Gestione Nazioni**: Aggiunta la possibilità di creare e gestire entità \\\"Nazione\\\" distinte direttamente dal menu FAB \\\"+\\\".\\n- **🏢 Collegamento dei Paesi alle Nazioni**: Durante la creazione o modifica di un Paese (cartella), è ora possibile associarlo a una delle Nazioni create tramite un menu a tendina dedicato.\\n- **🏷️ Badge Nazione nella UI**: Nelle cartelle orizzontali e nell'Action Sheet di gestione viene ora mostrata in piccolo la Nazione di appartenenza, garantendo un'organizzazione e una navigazione ancora più premium ed ordinata!\",
+    \"body\": \"🚀 **Chelona v$VERSION**\\n\\n### ✨ Novità e Fix:\\n- **📍 Assegnazione Automatica Nazione/Gruppo**: Se un Paese o cartella è selezionato nella schermata principale dei Viaggi, la creazione di un nuovo luogo imposta automaticamente la Nazione e il Paese pre-selezionati.\\n- **🔗 Selettori Collegati**: Nel modulo di creazione del luogo, il menu a tendina del Paese è ora dinamicamente collegato alla Nazione selezionata.\\n- **✈️ Deprecazione Sezione Itinerari**: Rimossa la sezione ed opzione Itinerari per una gestione dei luoghi da vedere più pulita ed essenziale.\\n- **🎙️ Overlay Ricerca Vocale**: Aggiunto un overlay a tutto schermo con microfono pulsante per la ricerca vocale nella Sandbox per un look modernissimo ed elegante!\",
     \"draft\": false,
     \"prerelease\": false
   }")

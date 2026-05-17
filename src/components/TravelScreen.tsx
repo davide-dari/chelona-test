@@ -84,12 +84,12 @@ const Globe3D: React.FC<{
           labelText="name"
           labelSize={1.5}
           labelDotRadius={0.5}
-          labelColor={(d: any) => d.type === 'itinerary' ? '#f59e0b' : '#60a5fa'}
+          labelColor={() => '#60a5fa'}
           labelResolution={2}
           ringsData={destinations}
           ringLat="lat"
           ringLng="lng"
-          ringColor={(d: any) => d.type === 'itinerary' ? '#f59e0b' : '#60a5fa'}
+          ringColor={() => '#60a5fa'}
           ringMaxRadius={3}
           ringPropagationSpeed={2}
           ringRepeatPeriod={1500}
@@ -282,16 +282,27 @@ const DestModal: React.FC<{
   onClose: () => void;
   initial?: TravelDestination;
   countryGroups: TravelCountryGroup[];
+  nations: TravelNation[];
   defaultGroupId?: string | null;
   defaultType?: 'place' | 'itinerary';
-}> = ({ onSubmit, onClose, initial, countryGroups, defaultGroupId, defaultType }) => {
+}> = ({ onSubmit, onClose, initial, countryGroups, nations, defaultGroupId, defaultType }) => {
   const [name, setName] = useState(initial?.name || '');
-  const [type, setType] = useState<'itinerary' | 'place'>(initial?.type || defaultType || 'place');
+  const type = 'place';
   const [notes, setNotes] = useState(initial?.notes || '');
+
+  // Pre-select group and nation based on initial values or selected defaultGroupId
+  const initialGroup = countryGroups.find(g => g.id === (initial?.countryGroupId || defaultGroupId || ''));
+  const initialNationId = initialGroup?.nationId || '';
+
+  const [nationId, setNationId] = useState<string>(initialNationId);
   const [countryGroupId, setCountryGroupId] = useState<string>(initial?.countryGroupId || defaultGroupId || '');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const isEdit = !!initial;
+
+  const filteredGroups = nationId 
+    ? countryGroups.filter(g => g.nationId === nationId)
+    : countryGroups;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -349,7 +360,7 @@ const DestModal: React.FC<{
             <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
               {isEdit ? <Pencil className="w-5 h-5 text-white" /> : <Globe className="w-5 h-5 text-white" />}
             </div>
-            <h3 className="text-lg font-black text-white">{isEdit ? 'Modifica Destinazione' : 'Nuova Destinazione'}</h3>
+            <h3 className="text-lg font-black text-white">{isEdit ? 'Modifica Luogo' : 'Nuovo Luogo'}</h3>
           </div>
           <button onClick={onClose} className="p-2 hover:bg-white/20 rounded-xl transition-colors">
             <X className="w-5 h-5 text-white" />
@@ -357,33 +368,57 @@ const DestModal: React.FC<{
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
-          {/* Type hidden toggle */}
-
           <div>
             <label className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] mb-2 block">
-              {type === 'place' ? 'Nome Luogo' : 'Nome Itinerario'}
+              Nome Luogo
             </label>
             <input 
               value={name} 
               onChange={e => { setName(e.target.value); setError(''); }} 
-              placeholder={type === 'place' ? "Es. Colosseo, Tour Eiffel, Monte Fuji..." : "Es. Tour del Giappone, Weekend a Parigi..."} 
+              placeholder="Es. Colosseo, Tour Eiffel, Monte Fuji..." 
               className={inputCls} 
               autoFocus 
               disabled={loading} 
             />
           </div>
 
+          {nations.length > 0 && (
+            <div>
+              <label className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] mb-2 block">Nazione</label>
+              <select 
+                value={nationId} 
+                onChange={e => {
+                  const newNatId = e.target.value;
+                  setNationId(newNatId);
+                  const groupsForNation = countryGroups.filter(g => g.nationId === newNatId);
+                  if (groupsForNation.length > 0) {
+                    setCountryGroupId(groupsForNation[0].id);
+                  } else {
+                    setCountryGroupId('');
+                  }
+                }} 
+                className={`${inputCls} appearance-none cursor-pointer`}
+                disabled={loading}
+              >
+                <option value="">Nessuna Nazione</option>
+                {nations.map(n => (
+                  <option key={n.id} value={n.id}>{n.name}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
           {countryGroups.length > 0 && (
             <div>
-              <label className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] mb-2 block">Paese</label>
+              <label className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] mb-2 block">Paese (Cartella)</label>
               <select 
                 value={countryGroupId} 
                 onChange={e => setCountryGroupId(e.target.value)} 
-                className={inputCls}
+                className={`${inputCls} appearance-none cursor-pointer`}
                 disabled={loading}
               >
                 <option value="">Nessun Paese (Libero)</option>
-                {countryGroups.map(g => (
+                {filteredGroups.map(g => (
                   <option key={g.id} value={g.id}>{g.emoji} {g.countryName}</option>
                 ))}
               </select>
@@ -603,7 +638,6 @@ export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onCl
             <div className="px-1 pt-1">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)]">Paesi / Gruppi</span>
-                <span className="text-[9px] font-bold text-[var(--text-muted)] bg-[var(--surface-variant)] px-2 py-0.5 rounded-full select-none">Tieni premuto per gestire</span>
               </div>
               <div className="flex gap-2 overflow-x-auto pb-2 custom-scrollbar snap-x">
                 <button
@@ -683,8 +717,8 @@ export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onCl
                         }}
                       >
                         <div className="p-4 flex items-start gap-3 hover:bg-[var(--surface-variant)] transition-colors">
-                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border ${dest.type === 'itinerary' ? 'bg-amber-500/10 border-amber-500/20 text-amber-500' : 'bg-blue-500/10 border-blue-500/20 text-blue-400'}`}>
-                            {dest.type === 'itinerary' ? '✈️' : '📍'}
+                          <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border bg-blue-500/10 border-blue-500/20 text-blue-400">
+                            📍
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-bold text-[var(--text-main)] truncate">{dest.name}</p>
@@ -823,20 +857,6 @@ export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onCl
                 >
                   <span>📍</span> Luogo
                 </motion.button>
-
-                {/* Option 3: Itinerario */}
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => {
-                    setDestModalType('itinerary');
-                    setShowAddModal(true);
-                    setShowFabMenu(false);
-                  }}
-                  className="flex items-center gap-2.5 px-4 py-3 bg-[var(--card-bg)] hover:bg-[var(--surface-variant)] text-[var(--text-main)] rounded-2xl shadow-xl border border-[var(--border)] font-bold text-xs uppercase tracking-wider transition-all"
-                >
-                  <span>✈️</span> Itinerario
-                </motion.button>
               </motion.div>
             </>
           )}
@@ -948,6 +968,7 @@ export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onCl
             onSubmit={handleAdd} 
             onClose={() => setShowAddModal(false)} 
             countryGroups={countryGroups}
+            nations={nations}
             defaultGroupId={selectedGroupId}
             defaultType={destModalType}
           />
@@ -962,6 +983,7 @@ export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onCl
             onClose={() => setEditingDest(null)} 
             initial={editingDest} 
             countryGroups={countryGroups}
+            nations={nations}
             defaultGroupId={selectedGroupId}
           />
         )}
