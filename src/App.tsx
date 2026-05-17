@@ -167,21 +167,31 @@ export default function App() {
   // Ricezione intenzioni di condivisione di luoghi da mappe esterne
   useEffect(() => {
     const handleSharedText = (text: string) => {
-      const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
-      let title = 'Luogo Condiviso';
-      let query = text;
+      const nonLinkLines = text
+        .split('\n')
+        .map(l => l.trim())
+        .filter(l => l.length > 0 && !l.includes('http://') && !l.includes('https://'));
 
-      if (lines.length > 0) {
-        title = lines[0];
-        if (title.startsWith('http')) {
-          title = 'Luogo Condiviso';
-        }
-        const addressLines = lines.slice(1).filter(l => !l.startsWith('http'));
-        if (addressLines.length > 0) {
-          query = addressLines.join(', ');
+      let title = 'Luogo Condiviso';
+      let query = '';
+
+      if (nonLinkLines.length === 0) {
+        const linkMatch = text.match(/https?:\/\/\S+/);
+        query = linkMatch ? linkMatch[0] : text;
+        title = 'Luogo da Link';
+      } else if (nonLinkLines.length === 1) {
+        const line = nonLinkLines[0];
+        const commaIdx = line.indexOf(',');
+        if (commaIdx > 0) {
+          title = line.substring(0, commaIdx).trim();
+          query = line.trim();
         } else {
-          query = lines[0];
+          title = line;
+          query = line;
         }
+      } else {
+        title = nonLinkLines[0];
+        query = nonLinkLines.slice(1).join(', ');
       }
 
       setIsAddressBookOpen(true);
