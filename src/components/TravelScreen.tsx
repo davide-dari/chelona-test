@@ -110,13 +110,15 @@ const getCountryEmoji = (name: string): string => {
   return '🗺️';
 };
 
-// --- Add Country Group Modal ---
+// --- Add/Edit Country Group Modal ---
 const GroupModal: React.FC<{
   onSubmit: (name: string, emoji: string) => void;
   onClose: () => void;
-}> = ({ onSubmit, onClose }) => {
-  const [name, setName] = useState('');
-  const [emoji, setEmoji] = useState('');
+  initial?: TravelCountryGroup;
+}> = ({ onSubmit, onClose, initial }) => {
+  const [name, setName] = useState(initial?.countryName || '');
+  const [emoji, setEmoji] = useState(initial?.emoji || '');
+  const isEdit = !!initial;
   
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -147,7 +149,7 @@ const GroupModal: React.FC<{
             <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center text-white">
               🗺️
             </div>
-            <h3 className="text-lg font-black text-white">Nuova Cartella Paese</h3>
+            <h3 className="text-lg font-black text-white">{isEdit ? 'Modifica Paese' : 'Nuova Cartella Paese'}</h3>
           </div>
           <button onClick={onClose} className="p-2 hover:bg-white/20 rounded-xl transition-colors">
             <X className="w-5 h-5 text-white" />
@@ -166,7 +168,7 @@ const GroupModal: React.FC<{
           </div>
 
           <button type="submit" disabled={!name.trim()} className="w-full py-4 bg-gradient-to-r from-blue-600 to-indigo-600 disabled:opacity-50 text-white rounded-2xl font-black text-sm uppercase tracking-widest shadow-lg shadow-blue-500/25 active:scale-[0.98] transition-all flex items-center justify-center gap-2">
-            Crea Cartella
+            {isEdit ? 'Salva Modifiche' : 'Crea Cartella'}
           </button>
         </form>
       </motion.div>
@@ -316,6 +318,7 @@ export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onCl
 
   const [showAddModal, setShowAddModal] = useState(false);
   const [showAddGroupModal, setShowAddGroupModal] = useState(false);
+  const [editingGroupId, setEditingGroupId] = useState<string | null>(null);
   const [editingDest, setEditingDest] = useState<TravelDestination | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [deletingGroupId, setDeletingGroupId] = useState<string | null>(null);
@@ -388,6 +391,18 @@ export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onCl
     setDeletingGroupId(null);
   };
 
+  const handleEditGroup = (name: string, emoji: string) => {
+    if (!editingGroupId) return;
+    const updatedGroups = countryGroups.map(g => 
+      g.id === editingGroupId 
+        ? { ...g, countryName: name, emoji }
+        : g
+    );
+    setCountryGroups(updatedGroups);
+    onSave({ ...module, countryGroups: updatedGroups });
+    setEditingGroupId(null);
+  };
+
   // Dynamically filter destinations based on selected country folder
   const filteredDestinations = selectedGroupId
     ? destinations.filter(d => d.countryGroupId === selectedGroupId)
@@ -450,12 +465,32 @@ export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onCl
             <div className="px-1 pt-1">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)]">Paesi / Gruppi</span>
-                <button 
-                  onClick={() => setShowAddGroupModal(true)}
-                  className="text-[10px] font-black uppercase tracking-widest text-blue-500 hover:text-blue-600 transition-colors flex items-center gap-1 bg-blue-500/5 px-2 py-1 rounded-lg"
-                >
-                  <Plus className="w-3 h-3" /> Nuovo Paese
-                </button>
+                <div className="flex items-center gap-1.5">
+                  {selectedGroupId && (
+                    <>
+                      <button 
+                        onClick={() => setEditingGroupId(selectedGroupId)}
+                        className="text-[10px] font-black uppercase tracking-widest text-amber-500 hover:text-amber-600 transition-colors flex items-center gap-1 bg-amber-500/10 px-2 py-1 rounded-lg"
+                        title="Modifica Nome/Emoji del Paese"
+                      >
+                        <Pencil className="w-3 h-3" /> Modifica
+                      </button>
+                      <button 
+                        onClick={() => setDeletingGroupId(selectedGroupId)}
+                        className="text-[10px] font-black uppercase tracking-widest text-rose-500 hover:text-rose-600 transition-colors flex items-center gap-1 bg-rose-500/10 px-2 py-1 rounded-lg"
+                        title="Elimina Paese"
+                      >
+                        <Trash2 className="w-3 h-3" /> Elimina
+                      </button>
+                    </>
+                  )}
+                  <button 
+                    onClick={() => setShowAddGroupModal(true)}
+                    className="text-[10px] font-black uppercase tracking-widest text-blue-500 hover:text-blue-600 transition-colors flex items-center gap-1 bg-blue-500/10 px-2 py-1 rounded-lg"
+                  >
+                    <Plus className="w-3 h-3" /> Nuovo
+                  </button>
+                </div>
               </div>
               <div className="flex gap-2 overflow-x-auto pb-2 custom-scrollbar snap-x">
                 <button
@@ -686,6 +721,17 @@ export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onCl
       <AnimatePresence>
         {showAddGroupModal && (
           <GroupModal onSubmit={handleAddGroup} onClose={() => setShowAddGroupModal(false)} />
+        )}
+      </AnimatePresence>
+
+      {/* Edit country group modal */}
+      <AnimatePresence>
+        {editingGroupId && (
+          <GroupModal 
+            onSubmit={handleEditGroup} 
+            onClose={() => setEditingGroupId(null)} 
+            initial={countryGroups.find(g => g.id === editingGroupId)}
+          />
         )}
       </AnimatePresence>
 

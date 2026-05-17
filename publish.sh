@@ -71,7 +71,7 @@ RELEASE_JSON=$(curl -s -X POST \
   -d "{
     \"tag_name\": \"$TAG\",
     \"name\": \"Chelona $TAG\",
-    \"body\": \"🚀 **Chelona v$VERSION**\\n\\n### ✨ Novità e Fix:\\n- **✈️ Cartelle Viaggi per Paese**: Aggiunta la possibilità di organizzare i luoghi da vedere in cartelle per paese (con emoji bandiera indovinata automaticamente). La lista e il mappamondo 3D filtrano dinamicamente per mostrare solo i luoghi del paese selezionato!\\n- **🛞 Estensione Suggerito Gomme**: Aggiunta la possibilità di inserire un'estensione personalizzata in km (es. +2.000 km) al prossimo controllo gomme suggerito dal gommista, sia in visualizzazione che in fase di inserimento/modifica scheda auto.\",
+    \"body\": \"🚀 **Chelona v$VERSION**\\n\\n### ✨ Novità e Fix:\\n- **✈️ Gestione Cartelle Paesi**: Aggiunta la possibilità di rinominare (modificare nome ed emoji) ed eliminare i paesi creati nei viaggi con pulsanti touch rapidi dedicati direttamente nell'intestazione!\\n- **📸 Ottimizzazione Foto Profilo**: Implementato il ritaglio quadrato centrale automatico e la compressione JPEG dinamica su Canvas per le foto del profilo, risolvendo i problemi di caricamento ed evitando errori di quota in memoria.\\n- **🔄 Versioning Corretto**: Sincronizzazione automatica e allineamento perfetto di tutte le costanti di versione per garantire controlli degli aggiornamenti privi di falsi allarmi.\",
     \"draft\": false,
     \"prerelease\": false
   }")

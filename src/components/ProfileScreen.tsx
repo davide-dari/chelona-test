@@ -99,8 +99,29 @@ export function ProfileScreen({
 
     const reader = new FileReader();
     reader.onload = (event) => {
-      const base64 = event.target?.result as string;
-      onUpdateProfile(editName, base64);
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const maxDim = 200;
+        
+        // Calculate square center crop
+        const size = Math.min(img.width, img.height);
+        const xOffset = (img.width - size) / 2;
+        const yOffset = (img.height - size) / 2;
+        
+        canvas.width = maxDim;
+        canvas.height = maxDim;
+        
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(img, xOffset, yOffset, size, size, 0, 0, maxDim, maxDim);
+          const compressedBase64 = canvas.toDataURL('image/jpeg', 0.85);
+          onUpdateProfile(editName, compressedBase64);
+        } else {
+          onUpdateProfile(editName, event.target?.result as string);
+        }
+      };
+      img.src = event.target?.result as string;
     };
     reader.readAsDataURL(file);
   };
