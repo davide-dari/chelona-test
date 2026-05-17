@@ -1,8 +1,8 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ArrowLeft, Plus, X, MapPin, Globe, Compass, Navigation, Trash2, Check, Loader2, Pencil } from 'lucide-react';
 import ReactGlobe from 'react-globe.gl';
-import { TravelModule, TravelDestination } from '../types';
+import { TravelModule, TravelDestination, TravelCountryGroup } from '../types';
 
 interface TravelScreenProps {
   module: TravelModule;
@@ -72,15 +72,120 @@ const Globe3D: React.FC<{ destinations: TravelDestination[] }> = ({ destinations
   );
 };
 
+// --- Automatic Country Flag Emoji Guesser ---
+const getCountryEmoji = (name: string): string => {
+  const normalized = name.toLowerCase().trim();
+  const maps: Record<string, string> = {
+    'italia': '🇮🇹', 'italy': '🇮🇹',
+    'francia': '🇫🇷', 'france': '🇫🇷',
+    'spagna': '🇪🇸', 'spain': '🇪🇸',
+    'germania': '🇩🇪', 'germany': '🇩🇪',
+    'regno unito': '🇬🇧', 'uk': '🇬🇧', 'england': '🇬🇧',
+    'stati uniti': '🇺🇸', 'usa': '🇺🇸', 'america': '🇺🇸',
+    'giappone': '🇯🇵', 'japan': '🇯🇵',
+    'cina': '🇨🇳', 'china': '🇨🇳',
+    'grecia': '🇬🇷', 'greece': '🇬🇷',
+    'portogallo': '🇵🇹', 'portugal': '🇵🇹',
+    'svizzera': '🇨🇭', 'switzerland': '🇨🇭',
+    'austria': '🇦🇹',
+    'paesi bassi': '🇳🇱', 'holland': '🇳🇱', 'netherlands': '🇳🇱',
+    'egitto': '🇪🇬', 'egypt': '🇪🇬',
+    'marocco': '🇲🇦', 'morocco': '🇲🇦',
+    'brasile': '🇧🇷', 'brazil': '🇧🇷',
+    'messico': '🇲🇽', 'mexico': '🇲🇽',
+    'canada': '🇨🇦',
+    'australia': '🇦🇺',
+    'india': '🇮🇳',
+    'thailandia': '🇹🇭', 'thailand': '🇹🇭',
+    'vietnam': '🇻🇳',
+    'indonesia': '🇮🇩',
+    'sudafrica': '🇿🇦', 'south africa': '🇿🇦',
+    'croazia': '🇭🇷', 'croatia': '🇭🇷',
+    'turchia': '🇹🇷', 'turkey': '🇹🇷'
+  };
+  
+  if (maps[normalized]) return maps[normalized];
+  const found = Object.keys(maps).find(key => normalized.includes(key));
+  if (found) return maps[found];
+  return '🗺️';
+};
+
+// --- Add Country Group Modal ---
+const GroupModal: React.FC<{
+  onSubmit: (name: string, emoji: string) => void;
+  onClose: () => void;
+}> = ({ onSubmit, onClose }) => {
+  const [name, setName] = useState('');
+  const [emoji, setEmoji] = useState('');
+  
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim()) return;
+    const finalEmoji = emoji.trim() || getCountryEmoji(name);
+    onSubmit(name.trim(), finalEmoji);
+    onClose();
+  };
+
+  const inputCls = 'w-full p-4 bg-[var(--bg)] border border-[var(--border)] rounded-2xl outline-none focus:border-blue-400 transition-all text-sm font-semibold text-[var(--text-main)] placeholder:text-[var(--text-muted)]/60';
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-[300] flex items-end sm:items-center justify-center p-4"
+    >
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-md" onClick={onClose} />
+      <motion.div
+        initial={{ y: 60, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        exit={{ y: 60, opacity: 0 }}
+        className="relative w-full max-w-md bg-[var(--card-bg)] rounded-[2rem] border border-[var(--border)] shadow-2xl overflow-hidden"
+      >
+        <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-6 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center text-white">
+              🗺️
+            </div>
+            <h3 className="text-lg font-black text-white">Nuova Cartella Paese</h3>
+          </div>
+          <button onClick={onClose} className="p-2 hover:bg-white/20 rounded-xl transition-colors">
+            <X className="w-5 h-5 text-white" />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          <div>
+            <label className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] mb-2 block">Nome Paese</label>
+            <input value={name} onChange={e => setName(e.target.value)} placeholder="Es. Giappone, Italia, Spagna..." className={inputCls} autoFocus />
+          </div>
+
+          <div>
+            <label className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] mb-2 block">Emoji Bandiera / Icona (opzionale)</label>
+            <input value={emoji} onChange={e => setEmoji(e.target.value)} placeholder="Lascia vuoto per rilevamento automatico" className={inputCls} />
+          </div>
+
+          <button type="submit" disabled={!name.trim()} className="w-full py-4 bg-gradient-to-r from-blue-600 to-indigo-600 disabled:opacity-50 text-white rounded-2xl font-black text-sm uppercase tracking-widest shadow-lg shadow-blue-500/25 active:scale-[0.98] transition-all flex items-center justify-center gap-2">
+            Crea Cartella
+          </button>
+        </form>
+      </motion.div>
+    </motion.div>
+  );
+};
+
 // --- Add/Edit Destination Modal ---
 const DestModal: React.FC<{
   onSubmit: (d: Omit<TravelDestination, 'id' | 'createdAt'>) => void;
   onClose: () => void;
   initial?: TravelDestination;
-}> = ({ onSubmit, onClose, initial }) => {
+  countryGroups: TravelCountryGroup[];
+  defaultGroupId?: string | null;
+}> = ({ onSubmit, onClose, initial, countryGroups, defaultGroupId }) => {
   const [name, setName] = useState(initial?.name || '');
   const [type, setType] = useState<'itinerary' | 'place'>(initial?.type || 'place');
   const [notes, setNotes] = useState(initial?.notes || '');
+  const [countryGroupId, setCountryGroupId] = useState<string>(initial?.countryGroupId || defaultGroupId || '');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const isEdit = !!initial;
@@ -92,9 +197,11 @@ const DestModal: React.FC<{
     setLoading(true);
     setError('');
     
+    const finalGroupId = countryGroupId || undefined;
+
     // If editing and name hasn't changed, reuse existing coords
     if (isEdit && name.trim() === initial!.name) {
-      onSubmit({ name: name.trim(), lat: initial!.lat, lng: initial!.lng, type, notes: notes.trim() || undefined });
+      onSubmit({ name: name.trim(), lat: initial!.lat, lng: initial!.lng, type, notes: notes.trim() || undefined, countryGroupId: finalGroupId });
       onClose();
       return;
     }
@@ -105,7 +212,7 @@ const DestModal: React.FC<{
        if (data && data.length > 0) {
           const la = parseFloat(data[0].lat);
           const lo = parseFloat(data[0].lon);
-          onSubmit({ name: name.trim(), lat: la, lng: lo, type, notes: notes.trim() || undefined });
+          onSubmit({ name: name.trim(), lat: la, lng: lo, type, notes: notes.trim() || undefined, countryGroupId: finalGroupId });
           onClose();
        } else {
           setError('Città non trovata. Riprova con un nome più preciso.');
@@ -166,6 +273,23 @@ const DestModal: React.FC<{
             <input value={name} onChange={e => { setName(e.target.value); setError(''); }} placeholder="Es. Roma, Parigi, Tokyo..." className={inputCls} autoFocus disabled={loading} />
           </div>
 
+          {countryGroups.length > 0 && (
+            <div>
+              <label className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] mb-2 block">Cartella / Paese</label>
+              <select 
+                value={countryGroupId} 
+                onChange={e => setCountryGroupId(e.target.value)} 
+                className={inputCls}
+                disabled={loading}
+              >
+                <option value="">Nessun Paese (Libero)</option>
+                {countryGroups.map(g => (
+                  <option key={g.id} value={g.id}>{g.emoji} {g.countryName}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
           <div>
             <label className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] mb-2 block">Note (opzionale)</label>
             <textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Descrizione, da fare, ricordi..." className={`${inputCls} resize-none h-20`} disabled={loading} />
@@ -187,9 +311,14 @@ const DestModal: React.FC<{
 // --- Main TravelScreen ---
 export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onClose }) => {
   const [destinations, setDestinations] = useState<TravelDestination[]>(module.destinations || []);
+  const [countryGroups, setCountryGroups] = useState<TravelCountryGroup[]>(module.countryGroups || []);
+  const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
+
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showAddGroupModal, setShowAddGroupModal] = useState(false);
   const [editingDest, setEditingDest] = useState<TravelDestination | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deletingGroupId, setDeletingGroupId] = useState<string | null>(null);
   const [expandedDestId, setExpandedDestId] = useState<string | null>(null);
 
   const handleAdd = (d: Omit<TravelDestination, 'id' | 'createdAt'>) => {
@@ -222,6 +351,48 @@ export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onCl
     setDeletingId(null);
   };
 
+  const handleAddGroup = (name: string, emoji: string) => {
+    const newGroup: TravelCountryGroup = {
+      id: Math.random().toString(36).substr(2, 9),
+      countryName: name,
+      emoji,
+      createdAt: new Date().toISOString()
+    };
+    const updatedGroups = [...countryGroups, newGroup];
+    setCountryGroups(updatedGroups);
+    onSave({ ...module, countryGroups: updatedGroups });
+    setSelectedGroupId(newGroup.id); // Auto-select new folder
+  };
+
+  const handleDeleteGroup = (groupId: string) => {
+    const updatedGroups = countryGroups.filter(g => g.id !== groupId);
+    setCountryGroups(updatedGroups);
+
+    // Keep destinations by moving them to Uncategorized (no folder)
+    const updatedDests = destinations.map(d => 
+      d.countryGroupId === groupId 
+        ? { ...d, countryGroupId: undefined }
+        : d
+    );
+    setDestinations(updatedDests);
+    
+    onSave({ 
+      ...module, 
+      countryGroups: updatedGroups, 
+      destinations: updatedDests 
+    });
+
+    if (selectedGroupId === groupId) {
+      setSelectedGroupId(null);
+    }
+    setDeletingGroupId(null);
+  };
+
+  // Dynamically filter destinations based on selected country folder
+  const filteredDestinations = selectedGroupId
+    ? destinations.filter(d => d.countryGroupId === selectedGroupId)
+    : destinations;
+
   return (
     <motion.div
       initial={{ opacity: 0, x: 20 }}
@@ -237,13 +408,15 @@ export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onCl
           </button>
           <div>
             <h2 className="text-lg font-black text-[var(--text-main)] uppercase tracking-tight leading-none">Viaggi</h2>
-            <p className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest mt-1">{destinations.length} destinazioni</p>
+            <p className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest mt-1">
+              {destinations.length} destinazioni {countryGroups.length > 0 && `· ${countryGroups.length} paesi`}
+            </p>
           </div>
         </div>
       </div>
 
       <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
-        {/* Globe section - made bigger */}
+        {/* Globe section - dynamically filtered! */}
         <div className="relative flex items-center justify-center bg-[#060d1a] lg:flex-1 shrink-0" style={{ minHeight: '70vw', maxHeight: '70vh' }}>
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_#0f2744_0%,_#060d1a_70%)]" />
 
@@ -265,107 +438,173 @@ export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onCl
           </div>
 
           <div className="relative z-10 w-full h-full flex items-center justify-center">
-            <Globe3D destinations={destinations} />
+            <Globe3D destinations={filteredDestinations} />
           </div>
         </div>
 
-        {/* Destinations list */}
+        {/* Destinations list panel */}
         <div className="flex-1 overflow-y-auto custom-scrollbar bg-[var(--bg)] pb-28 lg:pb-8 lg:max-w-sm lg:border-l border-[var(--border)]">
-          <div className="p-4">
-            <h3 className="text-xs font-black uppercase tracking-widest text-[var(--text-muted)] mb-3 px-1">
-              Le Tue Destinazioni
-            </h3>
+          <div className="p-4 space-y-4">
+            
+            {/* Country Folders Horizontal Bar */}
+            <div className="px-1 pt-1">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)]">Paesi / Gruppi</span>
+                <button 
+                  onClick={() => setShowAddGroupModal(true)}
+                  className="text-[10px] font-black uppercase tracking-widest text-blue-500 hover:text-blue-600 transition-colors flex items-center gap-1 bg-blue-500/5 px-2 py-1 rounded-lg"
+                >
+                  <Plus className="w-3 h-3" /> Nuovo Paese
+                </button>
+              </div>
+              <div className="flex gap-2 overflow-x-auto pb-2 custom-scrollbar snap-x">
+                <button
+                  onClick={() => setSelectedGroupId(null)}
+                  className={`px-4 py-2.5 rounded-2xl font-bold text-xs shrink-0 transition-all snap-start flex items-center gap-2 border ${selectedGroupId === null ? 'bg-blue-600 border-blue-600 text-white shadow-md' : 'bg-[var(--card-bg)] border-[var(--border)] text-[var(--text-muted)] hover:bg-[var(--surface-variant)]'}`}
+                >
+                  <span>🌐</span> Tutte le mete ({destinations.length})
+                </button>
+                
+                {countryGroups.map(g => {
+                  const count = destinations.filter(d => d.countryGroupId === g.id).length;
+                  const isSelected = selectedGroupId === g.id;
+                  return (
+                    <div key={g.id} className="relative shrink-0 snap-start group/folder">
+                      <button
+                        onClick={() => setSelectedGroupId(g.id)}
+                        className={`px-4 py-2.5 rounded-2xl font-bold text-xs transition-all flex items-center gap-2 border ${isSelected ? 'bg-blue-600 border-blue-600 text-white shadow-md' : 'bg-[var(--card-bg)] border-[var(--border)] text-[var(--text-muted)] hover:bg-[var(--surface-variant)]'}`}
+                      >
+                        <span>{g.emoji}</span>
+                        <span>{g.countryName}</span>
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-black ${isSelected ? 'bg-white/20 text-white' : 'bg-[var(--surface-variant)] text-[var(--text-muted)]'}`}>{count}</span>
+                      </button>
+                      
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setDeletingGroupId(g.id); }}
+                        className="absolute -top-1 -right-1 w-5 h-5 bg-rose-500 hover:bg-rose-600 text-white rounded-full flex items-center justify-center opacity-0 group-hover/folder:opacity-100 transition-all shadow-md z-20"
+                        title="Elimina Paese"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
 
-            {destinations.length === 0 ? (
-              <div className="flex flex-col items-center py-12 text-center">
-                <div className="w-16 h-16 bg-blue-500/10 rounded-full flex items-center justify-center mb-4">
-                  <Navigation className="w-8 h-8 text-blue-400 opacity-60" />
+            <div className="h-px bg-[var(--border)]" />
+
+            <div>
+              <h3 className="text-xs font-black uppercase tracking-widest text-[var(--text-muted)] mb-3 px-1">
+                {selectedGroupId 
+                  ? `${countryGroups.find(g => g.id === selectedGroupId)?.emoji} Luoghi da Vedere`
+                  : 'Tutte le Destinazioni'
+                }
+              </h3>
+
+              {filteredDestinations.length === 0 ? (
+                <div className="flex flex-col items-center py-12 text-center">
+                  <div className="w-16 h-16 bg-blue-500/10 rounded-full flex items-center justify-center mb-4">
+                    <Navigation className="w-8 h-8 text-blue-400 opacity-60" />
+                  </div>
+                  <p className="text-sm font-bold text-[var(--text-muted)]">Nessuna meta</p>
+                  <p className="text-xs text-[var(--text-muted)] mt-1 opacity-70">
+                    Premi + per aggiungere un luogo {selectedGroupId && 'in questa cartella'}
+                  </p>
                 </div>
-                <p className="text-sm font-bold text-[var(--text-muted)]">Nessuna destinazione</p>
-                <p className="text-xs text-[var(--text-muted)] mt-1 opacity-70">Premi + per aggiungere un luogo</p>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                <AnimatePresence>
-                  {destinations.map(dest => (
-                    <motion.div
-                      key={dest.id}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, x: -20 }}
-                      className="bg-[var(--card-bg)] border border-[var(--border)] rounded-2xl overflow-hidden group cursor-pointer transition-all"
-                      onClick={(e) => {
-                         if ((e.target as HTMLElement).closest('button')) return;
-                         setExpandedDestId(prev => prev === dest.id ? null : dest.id);
-                      }}
-                    >
-                      <div className="p-4 flex items-start gap-3 hover:bg-[var(--surface-variant)] transition-colors">
-                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border ${dest.type === 'itinerary' ? 'bg-amber-500/10 border-amber-500/20 text-amber-500' : 'bg-blue-500/10 border-blue-500/20 text-blue-400'}`}>
-                          {dest.type === 'itinerary' ? '✈️' : '📍'}
+              ) : (
+                <div className="space-y-2">
+                  <AnimatePresence>
+                    {filteredDestinations.map(dest => (
+                      <motion.div
+                        key={dest.id}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, x: -20 }}
+                        className="bg-[var(--card-bg)] border border-[var(--border)] rounded-2xl overflow-hidden group cursor-pointer transition-all hover:border-blue-500/20"
+                        onClick={(e) => {
+                           if ((e.target as HTMLElement).closest('button')) return;
+                           setExpandedDestId(prev => prev === dest.id ? null : dest.id);
+                        }}
+                      >
+                        <div className="p-4 flex items-start gap-3 hover:bg-[var(--surface-variant)] transition-colors">
+                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border ${dest.type === 'itinerary' ? 'bg-amber-500/10 border-amber-500/20 text-amber-500' : 'bg-blue-500/10 border-blue-500/20 text-blue-400'}`}>
+                            {dest.type === 'itinerary' ? '✈️' : '📍'}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-bold text-[var(--text-main)] truncate">{dest.name}</p>
+                            <div className="flex items-center gap-1.5 mt-0.5">
+                              <p className="text-[10px] font-bold text-[var(--text-muted)]">
+                                {dest.lat.toFixed(2)}, {dest.lng.toFixed(2)}
+                              </p>
+                              {dest.countryGroupId && (
+                                <>
+                                  <span className="text-[8px] opacity-40">•</span>
+                                  <span className="text-[9px] font-black text-blue-500 bg-blue-500/5 px-1.5 py-0.5 rounded-md">
+                                    {countryGroups.find(g => g.id === dest.countryGroupId)?.emoji} {countryGroups.find(g => g.id === dest.countryGroupId)?.countryName}
+                                  </span>
+                                </>
+                              )}
+                            </div>
+                            {dest.notes && (
+                              <p className="text-xs text-[var(--text-muted)] mt-1 line-clamp-2">{dest.notes}</p>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-1 shrink-0">
+                            <button
+                              onClick={(e) => { e.stopPropagation(); setEditingDest(dest); }}
+                              className="p-1.5 text-[var(--text-muted)] hover:text-blue-400 hover:bg-blue-500/10 rounded-lg transition-all"
+                            >
+                              <Pencil className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); setDeletingId(dest.id); }}
+                              className="p-1.5 text-[var(--text-muted)] hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-bold text-[var(--text-main)] truncate">{dest.name}</p>
-                          <p className="text-[10px] font-bold text-[var(--text-muted)] mt-0.5">
-                            {dest.lat.toFixed(2)}, {dest.lng.toFixed(2)}
-                          </p>
-                          {dest.notes && (
-                            <p className="text-xs text-[var(--text-muted)] mt-1 line-clamp-2">{dest.notes}</p>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-1 shrink-0">
-                          <button
-                            onClick={(e) => { e.stopPropagation(); setEditingDest(dest); }}
-                            className="p-1.5 text-[var(--text-muted)] hover:text-blue-400 hover:bg-blue-500/10 rounded-lg transition-all"
-                          >
-                            <Pencil className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={(e) => { e.stopPropagation(); setDeletingId(dest.id); }}
-                            className="p-1.5 text-[var(--text-muted)] hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </div>
 
-                      <AnimatePresence>
-                        {expandedDestId === dest.id && (
-                           <motion.div
-                             initial={{ height: 0, opacity: 0 }}
-                             animate={{ height: 'auto', opacity: 1 }}
-                             exit={{ height: 0, opacity: 0 }}
-                             className="overflow-hidden bg-[var(--surface-variant)]"
-                           >
-                              <div className="p-4 pt-0">
-                                 <div 
-                                    className="w-full h-32 rounded-xl overflow-hidden relative cursor-pointer border border-[var(--border)] shadow-inner group/map"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      window.open(`https://maps.google.com/?q=${dest.lat},${dest.lng}`, '_system');
-                                    }}
-                                 >
-                                    <iframe
-                                      width="100%"
-                                      height="100%"
-                                      style={{ border: 0, pointerEvents: 'none' }}
-                                      loading="lazy"
-                                      src={`https://maps.google.com/maps?q=${dest.lat},${dest.lng}&z=14&output=embed`}
-                                    />
-                                    <div className="absolute inset-0 bg-black/5 hover:bg-transparent transition-colors flex items-center justify-center group-hover/map:bg-black/10">
-                                       <div className="w-10 h-10 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center opacity-0 group-hover/map:opacity-100 transition-opacity shadow-lg">
-                                          <MapPin className="w-5 h-5 text-blue-500" />
-                                       </div>
-                                    </div>
-                                 </div>
-                              </div>
-                           </motion.div>
-                        )}
-                      </AnimatePresence>
-                    </motion.div>
-                  ))}
-                </AnimatePresence>
-              </div>
-            )}
+                        <AnimatePresence>
+                          {expandedDestId === dest.id && (
+                             <motion.div
+                               initial={{ height: 0, opacity: 0 }}
+                               animate={{ height: 'auto', opacity: 1 }}
+                               exit={{ height: 0, opacity: 0 }}
+                               className="overflow-hidden bg-[var(--surface-variant)]"
+                             >
+                                <div className="p-4 pt-0">
+                                   <div 
+                                      className="w-full h-32 rounded-xl overflow-hidden relative cursor-pointer border border-[var(--border)] shadow-inner group/map"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        window.open(`https://maps.google.com/?q=${dest.lat},${dest.lng}`, '_system');
+                                      }}
+                                   >
+                                      <iframe
+                                        width="100%"
+                                        height="100%"
+                                        style={{ border: 0, pointerEvents: 'none' }}
+                                        loading="lazy"
+                                        src={`https://maps.google.com/maps?q=${dest.lat},${dest.lng}&z=14&output=embed`}
+                                      />
+                                      <div className="absolute inset-0 bg-black/5 hover:bg-transparent transition-colors flex items-center justify-center group-hover/map:bg-black/10">
+                                         <div className="w-10 h-10 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center opacity-0 group-hover/map:opacity-100 transition-opacity shadow-lg">
+                                            <MapPin className="w-5 h-5 text-blue-500" />
+                                         </div>
+                                      </div>
+                                   </div>
+                                </div>
+                             </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </motion.div>
+                    ))}
+                  </AnimatePresence>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -381,7 +620,7 @@ export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onCl
         <Plus className="w-8 h-8" />
       </motion.button>
 
-      {/* Delete confirm */}
+      {/* Delete destination confirm */}
       <AnimatePresence>
         {deletingId && (
           <motion.div
@@ -411,17 +650,67 @@ export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onCl
         )}
       </AnimatePresence>
 
-      {/* Add modal */}
+      {/* Delete country folder confirm */}
       <AnimatePresence>
-        {showAddModal && (
-          <DestModal onSubmit={handleAdd} onClose={() => setShowAddModal(false)} />
+        {deletingGroupId && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[400] flex items-center justify-center p-6"
+          >
+            <div className="absolute inset-0 bg-black/60 backdrop-blur-md" onClick={() => setDeletingGroupId(null)} />
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="relative bg-[var(--card-bg)] rounded-[2rem] p-8 w-full max-w-sm border border-[var(--border)] text-center shadow-2xl"
+            >
+              <div className="w-14 h-14 bg-rose-500/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                <Trash2 className="w-7 h-7 text-rose-500" />
+              </div>
+              <h3 className="text-lg font-black text-[var(--text-main)] mb-2">Elimina cartella paese?</h3>
+              <p className="text-xs text-[var(--text-muted)] mb-6">
+                Tutti i luoghi all'interno di questo paese verranno conservati e spostati in "Destinazioni Libere" (senza cartella).
+              </p>
+              <div className="flex gap-3">
+                <button onClick={() => setDeletingGroupId(null)} className="flex-1 py-3 bg-[var(--bg)] border border-[var(--border)] rounded-2xl font-bold text-[var(--text-muted)] text-sm">Annulla</button>
+                <button onClick={() => handleDeleteGroup(deletingGroupId)} className="flex-1 py-3 bg-rose-500 text-white rounded-2xl font-bold text-sm shadow-lg shadow-rose-500/20">Elimina</button>
+              </div>
+            </motion.div>
+          </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Edit modal */}
+      {/* Add country group modal */}
+      <AnimatePresence>
+        {showAddGroupModal && (
+          <GroupModal onSubmit={handleAddGroup} onClose={() => setShowAddGroupModal(false)} />
+        )}
+      </AnimatePresence>
+
+      {/* Add destination modal */}
+      <AnimatePresence>
+        {showAddModal && (
+          <DestModal 
+            onSubmit={handleAdd} 
+            onClose={() => setShowAddModal(false)} 
+            countryGroups={countryGroups}
+            defaultGroupId={selectedGroupId}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Edit destination modal */}
       <AnimatePresence>
         {editingDest && (
-          <DestModal onSubmit={handleEdit} onClose={() => setEditingDest(null)} initial={editingDest} />
+          <DestModal 
+            onSubmit={handleEdit} 
+            onClose={() => setEditingDest(null)} 
+            initial={editingDest} 
+            countryGroups={countryGroups}
+            defaultGroupId={selectedGroupId}
+          />
         )}
       </AnimatePresence>
     </motion.div>

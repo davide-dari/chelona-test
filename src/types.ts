@@ -52,6 +52,7 @@ export interface AutoModule extends BaseModule {
   lastRevision?: string;
   lastServiceKm?: string;
   tiresKm?: string;
+  tiresSuggestedOffsetKm?: number;
   tiresKmSnoozeUntil?: string; // km a cui il prossimo controllo deve essere ricordato (eccezione/posticipo)
   battery12vWarranty?: string;
   battery12vExpiryDate?: string;
@@ -150,6 +151,13 @@ export interface GalleryModule extends BaseModule {
   filterName?: string;
 }
 
+export interface TravelCountryGroup {
+  id: string;
+  countryName: string;
+  emoji?: string;
+  createdAt: string;
+}
+
 export interface TravelDestination {
   id: string;
   name: string;
@@ -158,11 +166,13 @@ export interface TravelDestination {
   type: 'itinerary' | 'place';
   notes?: string;
   emoji?: string;
+  countryGroupId?: string;
   createdAt: string;
 }
 
 export interface TravelModule extends BaseModule {
   type: 'travel';
+  countryGroups?: TravelCountryGroup[];
   destinations: TravelDestination[];
 }
 

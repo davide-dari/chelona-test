@@ -264,6 +264,17 @@ export const AutoEditScreen = ({ module, onSave, onCancel }: AutoEditScreenProps
               />
             </Field>
 
+            <Field label="Estensione Suggerito Gomme (+ Km)">
+              <input
+                type="text"
+                inputMode="numeric"
+                value={data.tiresSuggestedOffsetKm || ''}
+                onChange={e => set('tiresSuggestedOffsetKm', e.target.value.replace(/\D/g, '') ? Number(e.target.value.replace(/\D/g, '')) : undefined)}
+                placeholder="Es. 2.000"
+                className={inputCls}
+              />
+            </Field>
+
             <Field label="Garanzia/Scadenza Batteria 12v" colSpan={2} onAttach={() => setCapturingField({ key: 'battery12vDoc', title: 'Batteria 12v' })} hasDoc={!!data.battery12vDoc}>
               <div className="flex gap-2">
                 <input

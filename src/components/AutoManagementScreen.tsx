@@ -451,7 +451,7 @@ export const AutoManagementScreen = ({ module, onSave, onCancel, onDelete, onSha
                        </div>
                        <p className="text-2xl font-black text-[var(--text-main)]">{data.tiresKm ? Number(data.tiresKm).toLocaleString('it-IT') : '---'} <span className="text-xs font-bold opacity-50">km</span></p>
                        <p className="text-[10px] font-bold text-[var(--text-muted)] mt-2">
-                         Prossimo suggerito: {data.tiresKm ? (Number(data.tiresKm) + 10000).toLocaleString('it-IT') : '---'} km
+                         Prossimo suggerito: {data.tiresKm ? (Number(data.tiresKm) + 10000 + (data.tiresSuggestedOffsetKm ? Number(data.tiresSuggestedOffsetKm) : 0)).toLocaleString('it-IT') : '---'} km{data.tiresSuggestedOffsetKm && Number(data.tiresSuggestedOffsetKm) > 0 ? ` (+${Number(data.tiresSuggestedOffsetKm).toLocaleString('it-IT')} km)` : ''}
                        </p>
                     </div>
                 </div>
@@ -523,6 +523,9 @@ export const AutoManagementScreen = ({ module, onSave, onCancel, onDelete, onSha
                   </Field>
                   <Field label="Km Ultimo Cambio Gomme">
                     <input type="text" inputMode="numeric" value={data.tiresKm || ''} onChange={e => set('tiresKm', e.target.value.replace(/\D/g, ''))} placeholder="Es. 15000" className={inputCls} />
+                  </Field>
+                  <Field label="Estensione Suggerito Gomme (+ Km)">
+                    <input type="text" inputMode="numeric" value={data.tiresSuggestedOffsetKm || ''} onChange={e => set('tiresSuggestedOffsetKm', e.target.value.replace(/\D/g, '') ? Number(e.target.value.replace(/\D/g, '')) : undefined)} placeholder="Aggiungi km (es. 2000)" className={inputCls} />
                   </Field>
                   <Field label="Scadenza Assicurazione">
                     <input type="date" value={data.lastInsurance || ''} onChange={e => set('lastInsurance', e.target.value)} className={inputCls} />
