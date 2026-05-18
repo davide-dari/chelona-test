@@ -308,7 +308,7 @@ export const AutoManagementScreen = ({ module, onSave, onCancel, onDelete, onSha
                     <p className="text-[10px] font-medium text-white/40 uppercase tracking-widest">Registrata nel {data.registrationYear || '---'}</p>
                   </div>
                </div>
-               <div className="w-20 h-20 bg-white/10 backdrop-blur-xl rounded-3xl flex items-center justify-center border border-white/10">
+               <div className="w-20 h-20 bg-white/10 backdrop-blur-xl rounded-3xl flex items-center justify-center border border-white/10 car-logo-bg">
                  {hasLogo ? (
                    <img src={`/logo_auto/${brandLogo}.png`} alt={data.brand} className="w-12 h-12 object-contain" />
                  ) : (

@@ -162,3 +162,9 @@ body {
   animation: float 4s ease-in-out infinite;
 }
 
+/* Sfondo bianco per i loghi delle auto in modalità scura */
+[data-theme="dark"] .car-logo-bg {
+  background-color: #FFFFFF !important;
+  border-color: #E2E8F0 !important;
+}
+

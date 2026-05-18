@@ -150,7 +150,7 @@ export const DocumentManagementScreen = ({ module, onSave, onCancel, onDelete, o
               <div className="absolute inset-0 flex flex-col items-center justify-center">
                 <p className="text-[9px] font-black text-emerald-300/70 uppercase tracking-[0.3em] mb-1">CODICE FISCALE</p>
                 <div className="flex items-center gap-2">
-                  <p className="text-2xl sm:text-3xl font-black text-white tracking-[0.25em] font-mono drop-shadow-lg">
+                  <p className="text-lg sm:text-xl font-black text-white tracking-[0.15em] font-mono drop-shadow-lg">
                     {data.number || '--- --- --- --- --'}
                   </p>
                   {data.number && (

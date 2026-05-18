@@ -1835,27 +1835,41 @@ export default function App() {
                             <div className="mb-8 flex justify-center">
                               {formData.documentType === 'tax_code' ? (
                                 /* green tax code card preview */
-                                <div className="w-full max-w-sm aspect-[1.586/1] bg-gradient-to-br from-emerald-600 via-teal-700 to-emerald-800 rounded-[1.5rem] p-6 text-white shadow-2xl relative overflow-hidden border border-emerald-500/30 flex flex-col justify-between font-mono">
-                                  <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full blur-2xl pointer-events-none" />
-                                  <div className="flex justify-between items-start">
-                                    <div>
-                                      <span className="text-[7px] tracking-widest text-emerald-100 font-bold block uppercase">Repubblica Italiana</span>
-                                      <span className="text-[9px] font-black text-white uppercase tracking-wider">Tessera Sanitaria</span>
+                                <div className="w-full max-w-sm aspect-[1.6/1] rounded-[1.8rem] overflow-hidden shadow-2xl relative flex flex-col justify-between p-4"
+                                  style={{ background: 'linear-gradient(135deg, #1a5f3f 0%, #0d3d28 40%, #0a2e1e 100%)' }}
+                                >
+                                  {/* Sfondo trama ministeriale */}
+                                  <div className="absolute inset-0 opacity-5 pointer-events-none" style={{ backgroundImage: 'repeating-linear-gradient(45deg, #fff 0, #fff 1px, transparent 0, transparent 50%)', backgroundSize: '8px 8px' }} />
+                                  
+                                  <div className="flex items-start justify-between z-10">
+                                    <div className="flex items-center gap-2">
+                                      <div className="w-6 h-6 rounded-full bg-white/15 flex items-center justify-center text-xs">
+                                        🇮🇹
+                                      </div>
+                                      <div>
+                                        <p className="text-[6px] font-black text-emerald-200/80 uppercase tracking-[0.15em] leading-tight m-0">REPUBBLICA ITALIANA</p>
+                                        <p className="text-[7px] font-black text-white/60 uppercase tracking-widest leading-tight m-0">TESSERA SANITARIA</p>
+                                      </div>
                                     </div>
-                                    <div className="w-6 h-4 bg-blue-600 rounded-sm flex items-center justify-center text-[7px] font-black text-white px-0.5 border border-white/20 select-none">
-                                      IT
+                                    <div className="text-right">
+                                      <p className="text-[6px] font-black text-white/50 uppercase tracking-widest leading-none m-0">CODICE</p>
+                                      <p className="text-[6px] font-black text-white/50 uppercase tracking-widest leading-none m-0">FISCALE</p>
                                     </div>
                                   </div>
-                                  <div className="my-3 space-y-1 text-left">
-                                    <div className="text-[7px] text-emerald-200 uppercase tracking-widest leading-none">Codice Fiscale / Tax Code</div>
-                                    <div className="text-sm font-black text-white tracking-widest bg-black/20 px-2.5 py-1.5 rounded-lg border border-white/10 uppercase select-all min-h-[32px] flex items-center">
+
+                                  {/* Codice fiscale grande al centro */}
+                                  <div className="flex flex-col items-center justify-center my-auto z-10">
+                                    <p className="text-[8px] font-black text-emerald-300/70 uppercase tracking-[0.3em] mb-1">CODICE FISCALE</p>
+                                    <p className="text-sm sm:text-base font-black text-white tracking-[0.15em] font-mono drop-shadow-lg uppercase select-all m-0">
                                       {formData.number || 'RSSMRA80A01F205X'}
-                                    </div>
+                                    </p>
                                   </div>
-                                  <div className="flex justify-between items-end border-t border-white/10 pt-2 text-[8px] text-emerald-100">
+
+                                  {/* Barra bassa */}
+                                  <div className="flex justify-between items-end border-t border-white/10 pt-2 text-[8px] text-emerald-100 z-10">
                                     <div>
                                       <span className="block text-[6px] text-emerald-300 uppercase font-black">Cognome Nome</span>
-                                      <span className="font-bold text-white uppercase truncate max-w-[150px] block">
+                                      <span className="font-bold text-white uppercase truncate max-w-[150px] block leading-normal">
                                         {formData.title || 'ROSSI MARIO'}
                                       </span>
                                     </div>

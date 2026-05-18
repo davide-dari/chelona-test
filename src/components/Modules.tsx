@@ -189,7 +189,7 @@ export const AutoCard = ({ module, onDelete, onEdit }: { module: AutoModule; onD
             )}
           </div>
 
-          <div className="w-12 h-12 bg-[var(--bg)] border border-[var(--border)] rounded-2xl flex items-center justify-center shrink-0 shadow-sm relative">
+          <div className="w-12 h-12 bg-[var(--bg)] border border-[var(--border)] rounded-2xl flex items-center justify-center shrink-0 shadow-sm relative car-logo-bg">
             {hasLogo ? (
               <img src={`/logo_auto/${brandLogo}.png`} alt={module.brand} className="w-8 h-8 object-contain" />
             ) : (
