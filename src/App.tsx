@@ -122,12 +122,6 @@ const TEMPLATES = {
     content: '',
     icon: Globe,
     color: 'text-indigo-400'
-  },
-  none: {
-    title: 'Appunto Libero',
-    content: '',
-    icon: StickyNote,
-    color: 'text-[var(--text-muted)]'
   }
 };
 
@@ -1558,7 +1552,9 @@ export default function App() {
                   <button onClick={() => { setIsAdding(false); setEditingModuleId(null); setFormData({}); setAutoFormStep(0); setSpesaSubMenu(false); }} className="p-2 hover:bg-[var(--card-bg)] rounded-xl text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors">
                     <X className="w-6 h-6" />
                   </button>
-                  <h2 className="text-2xl lg:text-3xl font-bold text-[var(--text-main)]">{editingModuleId ? 'Modifica' : 'Nuovo'} Appunto</h2>
+                  <h2 className="text-2xl lg:text-3xl font-bold text-[var(--text-main)]">
+                    {editingModuleId ? 'Modifica' : 'Nuovo'} {(formData.template === 'document' || formData.type === 'document') ? 'Documento' : 'Appunto'}
+                  </h2>
                 </div>
 
                 <div className="flex-1 overflow-y-auto pb-32">
@@ -1835,25 +1831,198 @@ export default function App() {
                           })()
                         ) : (formData.template === 'document' || formData.type === 'document') ? (
                           <div className="space-y-6">
+                            {/* Live High-fidelity Document Preview Card! */}
+                            <div className="mb-8 flex justify-center">
+                              {formData.documentType === 'tax_code' ? (
+                                /* green tax code card preview */
+                                <div className="w-full max-w-sm aspect-[1.586/1] bg-gradient-to-br from-emerald-600 via-teal-700 to-emerald-800 rounded-[1.5rem] p-6 text-white shadow-2xl relative overflow-hidden border border-emerald-500/30 flex flex-col justify-between font-mono">
+                                  <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full blur-2xl pointer-events-none" />
+                                  <div className="flex justify-between items-start">
+                                    <div>
+                                      <span className="text-[7px] tracking-widest text-emerald-100 font-bold block uppercase">Repubblica Italiana</span>
+                                      <span className="text-[9px] font-black text-white uppercase tracking-wider">Tessera Sanitaria</span>
+                                    </div>
+                                    <div className="w-6 h-4 bg-blue-600 rounded-sm flex items-center justify-center text-[7px] font-black text-white px-0.5 border border-white/20 select-none">
+                                      IT
+                                    </div>
+                                  </div>
+                                  <div className="my-3 space-y-1 text-left">
+                                    <div className="text-[7px] text-emerald-200 uppercase tracking-widest leading-none">Codice Fiscale / Tax Code</div>
+                                    <div className="text-sm font-black text-white tracking-widest bg-black/20 px-2.5 py-1.5 rounded-lg border border-white/10 uppercase select-all min-h-[32px] flex items-center">
+                                      {formData.number || 'RSSMRA80A01F205X'}
+                                    </div>
+                                  </div>
+                                  <div className="flex justify-between items-end border-t border-white/10 pt-2 text-[8px] text-emerald-100">
+                                    <div>
+                                      <span className="block text-[6px] text-emerald-300 uppercase font-black">Cognome Nome</span>
+                                      <span className="font-bold text-white uppercase truncate max-w-[150px] block">
+                                        {formData.title || 'ROSSI MARIO'}
+                                      </span>
+                                    </div>
+                                    <div className="text-right">
+                                      <span className="block text-[6px] text-emerald-300 uppercase font-black">Scadenza</span>
+                                      <span className="font-bold text-white block">
+                                        {formData.expiryDate ? new Date(formData.expiryDate).toLocaleDateString('it-IT') : '31/12/2030'}
+                                      </span>
+                                    </div>
+                                  </div>
+                                </div>
+                              ) : formData.documentType === 'identity' ? (
+                                /* blue CIE card preview */
+                                <div className="w-full max-w-sm aspect-[1.586/1] bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-950 rounded-[1.5rem] p-6 text-white shadow-2xl relative overflow-hidden border border-indigo-500/20 flex flex-col justify-between">
+                                  <div className="absolute -right-10 -top-10 w-32 h-32 bg-indigo-500/10 rounded-full blur-2xl pointer-events-none" />
+                                  <div className="flex justify-between items-start">
+                                    <div>
+                                      <span className="text-[7px] tracking-widest text-indigo-300 font-bold block uppercase">Repubblica Italiana</span>
+                                      <span className="text-[9px] font-black text-white uppercase tracking-wider">Carta d'Identità</span>
+                                    </div>
+                                    <div className="w-6 h-4 bg-blue-600 rounded-sm flex items-center justify-center text-[7px] font-black text-white px-0.5 border border-white/20 select-none">
+                                      CIE
+                                    </div>
+                                  </div>
+                                  <div className="my-3 flex gap-4 items-center">
+                                    {/* Simulated Photo Placeholder */}
+                                    <div className="w-12 h-16 bg-white/5 border border-white/15 rounded-lg flex flex-col items-center justify-center text-[8px] text-white/30 font-bold select-none shrink-0">
+                                      👤
+                                    </div>
+                                    <div className="flex-1 min-w-0 space-y-1">
+                                      <div>
+                                        <span className="block text-[6px] text-indigo-300 uppercase leading-none font-black">Cognome Nome / Full Name</span>
+                                        <span className="font-bold text-sm text-white uppercase truncate block">
+                                          {formData.title || 'ROSSI MARIO'}
+                                        </span>
+                                      </div>
+                                      <div>
+                                        <span className="block text-[6px] text-indigo-300 uppercase leading-none font-black">Numero / Number</span>
+                                        <span className="font-mono text-xs font-bold text-white tracking-wider block">
+                                          {formData.number || 'CA00000AA'}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  </div>
+                                  <div className="flex justify-between items-end border-t border-white/10 pt-2 text-[8px] text-indigo-200">
+                                    <div>
+                                      <span className="block text-[6px] text-indigo-400 uppercase">Rilascio</span>
+                                      <span className="font-bold text-white">
+                                        {formData.issueDate ? new Date(formData.issueDate).toLocaleDateString('it-IT') : '--/--/----'}
+                                      </span>
+                                    </div>
+                                    <div className="text-right">
+                                      <span className="block text-[6px] text-indigo-400 uppercase">Scadenza</span>
+                                      <span className="font-bold text-white">
+                                        {formData.expiryDate ? new Date(formData.expiryDate).toLocaleDateString('it-IT') : '--/--/----'}
+                                      </span>
+                                    </div>
+                                  </div>
+                                </div>
+                              ) : formData.documentType === 'driving_license' ? (
+                                /* pinkish/purple driving license card preview */
+                                <div className="w-full max-w-sm aspect-[1.586/1] bg-gradient-to-br from-pink-900 via-rose-950 to-slate-900 rounded-[1.5rem] p-6 text-white shadow-2xl relative overflow-hidden border border-pink-500/20 flex flex-col justify-between">
+                                  <div className="absolute top-0 right-0 w-24 h-24 bg-pink-500/5 rounded-full blur-2xl pointer-events-none" />
+                                  <div className="flex justify-between items-start">
+                                    <div>
+                                      <span className="text-[7px] tracking-widest text-pink-300 font-bold block uppercase">Repubblica Italiana</span>
+                                      <span className="text-[9px] font-black text-white uppercase tracking-wider">Patente di Guida</span>
+                                    </div>
+                                    <div className="w-6 h-4 bg-pink-600 rounded-sm flex items-center justify-center text-[7px] font-black text-white px-0.5 border border-white/20 select-none">
+                                      B
+                                    </div>
+                                  </div>
+                                  <div className="my-2 flex gap-4 items-center">
+                                    <div className="w-12 h-16 bg-white/5 border border-white/15 rounded-lg flex flex-col items-center justify-center text-[8px] text-white/30 font-bold select-none shrink-0">
+                                      👤
+                                    </div>
+                                    <div className="flex-1 min-w-0 space-y-1">
+                                      <div>
+                                        <span className="block text-[6px] text-pink-300 uppercase leading-none font-black">Cognome Nome</span>
+                                        <span className="font-bold text-sm text-white uppercase truncate block">
+                                          {formData.title || 'ROSSI MARIO'}
+                                        </span>
+                                      </div>
+                                      <div>
+                                        <span className="block text-[6px] text-pink-300 uppercase leading-none font-black">Numero Patente</span>
+                                        <span className="font-mono text-xs font-bold text-white tracking-wider block">
+                                          {formData.number || 'U1B000000X'}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  </div>
+                                  <div className="flex justify-between items-end border-t border-white/10 pt-2 text-[8px] text-pink-200">
+                                    <div>
+                                      <span className="block text-[6px] text-pink-400 uppercase">Ente</span>
+                                      <span className="font-bold text-white truncate max-w-[80px] block">
+                                        {formData.issuedBy || 'MIT-UCO'}
+                                      </span>
+                                    </div>
+                                    <div className="text-right">
+                                      <span className="block text-[6px] text-pink-400 uppercase font-black">Scadenza</span>
+                                      <span className="font-bold text-white block">
+                                        {formData.expiryDate ? new Date(formData.expiryDate).toLocaleDateString('it-IT') : '--/--/----'}
+                                      </span>
+                                    </div>
+                                  </div>
+                                </div>
+                              ) : (
+                                /* Premium Generic Document Preview Card */
+                                <div className="w-full max-w-sm aspect-[1.586/1] bg-gradient-to-br from-blue-900/40 via-indigo-950/40 to-slate-950/40 backdrop-blur-md rounded-[1.5rem] p-6 text-[var(--text-main)] shadow-2xl relative overflow-hidden border border-[var(--border)] flex flex-col justify-between">
+                                  <div className="absolute top-0 right-0 w-32 h-32 bg-[var(--accent)]/5 rounded-full blur-2xl pointer-events-none" />
+                                  <div className="flex justify-between items-start">
+                                    <div>
+                                      <span className="text-[7px] tracking-widest text-[var(--text-muted)] font-bold block uppercase">Archivio Documenti</span>
+                                      <span className="text-[9px] font-black text-[var(--text-main)] uppercase tracking-wider">Documento Generico</span>
+                                    </div>
+                                    <div className="w-6 h-6 bg-[var(--surface-variant)] rounded-lg flex items-center justify-center text-xs text-[var(--text-muted)] border border-[var(--border)] select-none">
+                                      🗂️
+                                    </div>
+                                  </div>
+                                  <div className="my-3 space-y-1">
+                                    <span className="block text-[6px] text-[var(--text-muted)] uppercase leading-none mt-2 font-black">Titolo Documento / Title</span>
+                                    <span className="font-bold text-sm text-[var(--text-main)] uppercase truncate block">
+                                      {formData.title || 'NOME DOCUMENTO'}
+                                    </span>
+                                    <span className="block text-[6px] text-[var(--text-muted)] uppercase leading-none mt-2 font-black">Numero / Identifier</span>
+                                    <span className="font-mono text-xs font-bold text-[var(--text-main)] block">
+                                      {formData.number || 'NON DISPONIBILE'}
+                                    </span>
+                                  </div>
+                                  <div className="flex justify-between items-end border-t border-[var(--border)] pt-2 text-[8px] text-[var(--text-muted)]">
+                                    <div>
+                                      <span className="block text-[6px] uppercase">Rilascio</span>
+                                      <span className="font-bold text-[var(--text-main)]">
+                                        {formData.issueDate ? new Date(formData.issueDate).toLocaleDateString('it-IT') : '--/--/----'}
+                                      </span>
+                                    </div>
+                                    <div className="text-right">
+                                      <span className="block text-[6px] uppercase">Scadenza</span>
+                                      <span className="font-bold text-[var(--text-main)]">
+                                        {formData.expiryDate ? new Date(formData.expiryDate).toLocaleDateString('it-IT') : '--/--/----'}
+                                      </span>
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+
                             <div>
                               <label className="text-xs font-bold text-[var(--text-muted)] uppercase mb-1 block">Tipo Documento</label>
-                              <input
-                                list="doc-types"
+                              <select
                                 required
-                                placeholder="es. Carta d'Identità, Passaporto..."
-                                value={formData.documentType || ''}
+                                value={formData.documentType || 'generic'}
                                 onChange={e => setFormData({ ...formData, documentType: e.target.value })}
                                 className="w-full p-4 bg-[var(--bg)] border border-[var(--border)] rounded-2xl outline-none focus:border-[var(--accent)] transition-all font-medium text-[var(--text-main)]"
-                              />
-                              <datalist id="doc-types">
-                                <option value="Carta d'Identità" />
-                                <option value="Patente di Guida" />
-                                <option value="Codice Fiscale / Tessera Sanitaria" />
-                                <option value="Passaporto" />
-                              </datalist>
+                              >
+                                <option value="generic">Altro / Documento Generico</option>
+                                <option value="identity">Carta d'Identità (CIE)</option>
+                                <option value="driving_license">Patente di Guida</option>
+                                <option value="tax_code">Codice Fiscale (Tessera Sanitaria)</option>
+                              </select>
                             </div>
 
                             <div className="grid grid-cols-2 gap-4">
+                              <div className="col-span-2">
+                                <label className="text-xs font-bold text-[var(--text-muted)] uppercase mb-1 block">Intestatario / Titolo Documento</label>
+                                <input type="text" placeholder="Es. ROSSI MARIO o Carta Spese" value={formData.title || ''} onChange={e => setFormData({ ...formData, title: e.target.value })} className="w-full p-4 bg-[var(--bg)] border border-[var(--border)] rounded-2xl outline-none focus:border-[var(--accent)] transition-all font-medium text-[var(--text-main)]" />
+                              </div>
                               <div className="col-span-2">
                                 <label className="text-xs font-bold text-[var(--text-muted)] uppercase mb-1 block">Numero Documento</label>
                                 <input type="text" value={formData.number || ''} onChange={e => setFormData({ ...formData, number: e.target.value })} className="w-full p-4 bg-[var(--bg)] border border-[var(--border)] rounded-2xl outline-none focus:border-[var(--accent)] transition-all font-medium text-[var(--text-main)]" />
@@ -1905,10 +2074,12 @@ export default function App() {
 
                         {(formData.template !== 'auto' && formData.type !== 'auto') && (
                           <button type="submit" className="w-full py-5 bg-gradient-to-tr from-[var(--accent)] to-[var(--accent)]/80 hover:from-[var(--accent)] hover:to-[var(--accent)] text-white rounded-[1.5rem] font-bold transition-all shadow-xl shadow-[var(--accent)]/20 mt-6 text-lg hover:scale-[1.02] active:scale-[0.98]">
-                            {editingModuleId ? 'Aggiorna' : 'Crea'} Sandbox
+                            {(formData.template === 'document' || formData.type === 'document')
+                              ? (editingModuleId ? 'Salva Documento' : 'Crea Documento')
+                              : (editingModuleId ? 'Aggiorna Sandbox' : 'Crea Sandbox')}
                           </button>
                         )}
-                        {!editingModuleId && (
+                        {!editingModuleId && (formData.template !== 'document' && formData.type !== 'document') && (
                           <button type="button" onClick={() => {setFormData({}); setAutoFormStep(0);}} className="w-full py-3 text-[var(--text-muted)] text-xs font-bold uppercase tracking-widest hover:text-[var(--text-main)] transition-colors">
                             Cambia Template
                           </button>

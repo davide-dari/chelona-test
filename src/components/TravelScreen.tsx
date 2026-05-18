@@ -768,6 +768,15 @@ export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onCl
             </p>
           </div>
         </div>
+        <button
+          onClick={() => {
+            setDestModalType('place');
+            setShowAddModal(true);
+          }}
+          className="px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-500 hover:from-blue-700 hover:to-indigo-600 text-white rounded-xl font-bold text-xs uppercase tracking-wider flex items-center gap-2 shadow-md shadow-blue-500/25 active:scale-95 transition-all shrink-0"
+        >
+          <Plus className="w-4 h-4" /> Aggiungi Meta
+        </button>
       </div>
 
       <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
@@ -857,7 +866,7 @@ export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onCl
                   </div>
                   <p className="text-sm font-bold text-[var(--text-muted)]">Nessuna meta</p>
                   <p className="text-xs text-[var(--text-muted)] mt-1 opacity-70">
-                    Premi + per aggiungere un luogo {selectedGroupId && 'in questa cartella'}
+                    Premi 'Aggiungi Meta' in alto per aggiungere un luogo {selectedGroupId && 'in questa cartella'}
                   </p>
                 </div>
               ) : (
@@ -986,28 +995,7 @@ export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onCl
         </div>
       </div>
 
-      {/* FAB Menu & Button - hidden when a card is expanded */}
-      <AnimatePresence>
-        {!expandedDestId && (
-          <motion.div
-            initial={{ scale: 0, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0, opacity: 0 }}
-            className="fixed bottom-24 right-6 md:bottom-10 md:right-10 z-[50] flex flex-col items-end gap-3"
-          >
-            <motion.button
-              whileTap={{ scale: 0.92 }}
-              onClick={() => {
-                setDestModalType('place');
-                setShowAddModal(true);
-              }}
-              className="w-16 h-16 bg-gradient-to-tr from-blue-600 to-indigo-500 text-white rounded-[1.5rem] shadow-2xl shadow-blue-500/40 flex items-center justify-center border border-white/20 transition-all"
-            >
-              <Plus className="w-8 h-8" />
-            </motion.button>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* FAB Menu removed to avoid overlap */}
 
       {/* Delete destination confirm */}
       <AnimatePresence>
