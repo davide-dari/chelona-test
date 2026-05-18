@@ -22,34 +22,61 @@ export const DocumentManagementScreen = ({ module, onSave, onCancel, onDelete, o
     e.preventDefault();
     if (!data.number) return;
     const text = data.number;
-    // Try modern clipboard API first (works in browser, may fail on Android WebView)
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(text).then(() => {
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
-      }).catch(() => {
-        // Fallback: execCommand
-        fallbackCopy(text);
-      });
-    } else {
-      fallbackCopy(text);
+    
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(() => {
+          setCopied(true);
+          setTimeout(() => setCopied(false), 2000);
+        }).catch(() => {
+          bulletproofCopy(text);
+        });
+      } else {
+        bulletproofCopy(text);
+      }
+    } catch (err) {
+      bulletproofCopy(text);
     }
   };
 
-  const fallbackCopy = (text: string) => {
-    const el = document.createElement('textarea');
-    el.value = text;
-    el.setAttribute('readonly', '');
-    el.style.position = 'absolute';
-    el.style.left = '-9999px';
-    document.body.appendChild(el);
-    el.select();
+  const bulletproofCopy = (text: string) => {
+    const textarea = document.createElement('textarea');
+    textarea.value = text;
+    textarea.style.top = '0';
+    textarea.style.left = '0';
+    textarea.style.position = 'fixed';
+    textarea.style.opacity = '0';
+    textarea.style.width = '2em';
+    textarea.style.height = '2em';
+    textarea.style.padding = '0';
+    textarea.style.border = 'none';
+    textarea.style.outline = 'none';
+    textarea.style.boxShadow = 'none';
+    textarea.style.background = 'transparent';
+    
+    document.body.appendChild(textarea);
+    textarea.focus();
+    textarea.select();
+    textarea.setSelectionRange(0, 99999);
+    
+    let successful = false;
     try {
-      document.execCommand('copy');
+      successful = document.execCommand('copy');
+    } catch (err) {
+      successful = false;
+    }
+    
+    if (successful) {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-    } catch {}
-    document.body.removeChild(el);
+    } else {
+      const result = window.prompt("Copia il codice fiscale:", text);
+      if (result !== null) {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      }
+    }
+    document.body.removeChild(textarea);
   };
 
   const isTaxCode = data.documentType === 'tax_code';
@@ -124,70 +151,93 @@ export const DocumentManagementScreen = ({ module, onSave, onCancel, onDelete, o
           
           {/* === CODICE FISCALE CARD === */}
           {isTaxCode && (
-            <div className="relative aspect-[1.6/1] rounded-[1.8rem] overflow-hidden shadow-2xl cursor-pointer group"
-              style={{ background: 'linear-gradient(135deg, #1a5f3f 0%, #0d3d28 40%, #0a2e1e 100%)' }}
+            <div className="relative aspect-[1.6/1] rounded-[2rem] overflow-hidden shadow-2xl cursor-pointer group"
+              style={{ background: 'linear-gradient(135deg, #0f766e 0%, #115e59 40%, #042f2e 100%)' }}
               onClick={() => setShowViewer(true)}
             >
-              {/* Sfondo trama ministeriale */}
-              <div className="absolute inset-0 opacity-5" style={{ backgroundImage: 'repeating-linear-gradient(45deg, #fff 0, #fff 1px, transparent 0, transparent 50%)', backgroundSize: '8px 8px' }} />
-              <div className="absolute top-3 left-3 right-3 flex items-start justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="w-7 h-7 rounded-full bg-white/15 flex items-center justify-center">
-                    <span className="text-base">🇮🇹</span>
+              {/* Sfondo trama ministeriale e stellone italiano sfumato */}
+              <div className="absolute inset-0 opacity-5 pointer-events-none" style={{ backgroundImage: 'repeating-linear-gradient(45deg, #fff 0, #fff 1px, transparent 0, transparent 50%)', backgroundSize: '8px 8px' }} />
+              
+              {/* Stellone d'Italia / Emblem Watermark in background */}
+              <div className="absolute right-4 top-1/2 -translate-y-1/2 w-32 h-32 opacity-10 pointer-events-none text-white">
+                <svg viewBox="0 0 100 100" fill="currentColor" className="w-full h-full">
+                  <path d="M50 15 L58 38 L83 38 L63 53 L70 76 L50 61 L30 76 L37 53 L17 38 L42 38 Z" />
+                  <circle cx="50" cy="50" r="22" fill="none" stroke="currentColor" strokeWidth="4" />
+                </svg>
+              </div>
+
+              {/* Upper Section */}
+              <div className="absolute top-4 left-4 right-4 flex items-start justify-between z-10">
+                <div className="flex items-center gap-3">
+                  {/* EU Band / Italian flag */}
+                  <div className="w-7 h-5 bg-[#003399] rounded flex flex-col items-center justify-center relative overflow-hidden border border-white/10 shrink-0">
+                    <span className="text-[7px] text-white font-black z-10 leading-none">IT</span>
                   </div>
                   <div>
-                    <p className="text-[6px] font-black text-emerald-200/80 uppercase tracking-[0.15em] leading-tight">REPUBBLICA ITALIANA</p>
-                    <p className="text-[7px] font-black text-white/60 uppercase tracking-widest leading-tight">TESSERA SANITARIA</p>
+                    <p className="text-[6.5px] font-black text-teal-200 uppercase tracking-[0.2em] leading-tight m-0">REPUBBLICA ITALIANA</p>
+                    <p className="text-[8px] font-black text-white uppercase tracking-widest leading-tight m-0">TESSERA SANITARIA</p>
                   </div>
                 </div>
                 <div className="text-right">
-                  <p className="text-[6px] font-black text-white/50 uppercase tracking-widest">CODICE</p>
-                  <p className="text-[6px] font-black text-white/50 uppercase tracking-widest">FISCALE</p>
+                  <p className="text-[6px] font-bold text-white/45 uppercase tracking-widest leading-none m-0">MINISTERO DELL'ECONOMIA</p>
+                  <p className="text-[6px] font-bold text-white/45 uppercase tracking-widest leading-none m-0">E DELLE FINANZE</p>
                 </div>
               </div>
 
-              {/* Codice fiscale grande al centro */}
-              <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <p className="text-[9px] font-black text-emerald-300/70 uppercase tracking-[0.3em] mb-1">CODICE FISCALE</p>
-                <div className="flex items-center gap-2">
-                  <p className="text-lg sm:text-xl font-black text-white tracking-[0.15em] font-mono drop-shadow-lg">
-                    {data.number || '--- --- --- --- --'}
-                  </p>
+              {/* Middle Section: Smart-Card Chip & Codice Fiscale */}
+              <div className="absolute inset-x-4 top-1/2 -translate-y-1/2 flex items-center justify-between gap-4 z-10">
+                {/* Microchip dorato realistico */}
+                <div className="w-9 h-7 bg-gradient-to-br from-amber-300 via-yellow-400 to-amber-500 rounded-md border border-amber-600/30 relative overflow-hidden shadow-md flex flex-wrap p-0.5 opacity-90 shrink-0">
+                  <div className="absolute inset-0 bg-[linear-gradient(45deg,transparent_45%,#d97706_45%,#d97706_55%,transparent_55%)] opacity-20" />
+                  <div className="w-1/2 h-1/3 border-r border-b border-amber-700/20" />
+                  <div className="w-1/2 h-1/3 border-b border-amber-700/20" />
+                  <div className="w-1/2 h-1/3 border-r border-b border-amber-700/20" />
+                  <div className="w-1/2 h-1/3 border-b border-amber-700/20" />
+                  <div className="w-1/2 h-1/3 border-r border-amber-700/20" />
+                  <div className="w-1/2 h-1/3" />
+                </div>
+
+                {/* Tactile strip containing the text-code */}
+                <div className="flex-1 bg-emerald-50/95 rounded-xl border border-emerald-600/20 shadow-[inset_0_2px_4px_rgba(0,0,0,0.06)] px-3 py-1.5 flex items-center justify-between min-w-0">
+                  <span className="text-emerald-950 font-mono font-black text-xs sm:text-sm tracking-[0.12em] uppercase select-all truncate">
+                    {data.number || 'RSSMRA80A01F205X'}
+                  </span>
                   {data.number && (
                     <button
                       onClick={handleCopy}
-                      className="p-1.5 rounded-lg hover:bg-white/20 transition-colors active:scale-90"
+                      className="p-1 rounded-lg hover:bg-emerald-500/10 text-emerald-800 hover:text-emerald-950 transition-colors active:scale-90 relative z-30 shrink-0"
                       title="Copia codice fiscale"
                     >
                       {copied
-                        ? <CheckCheck className="w-4 h-4 text-emerald-300" />
-                        : <Copy className="w-4 h-4 text-white/70" />}
+                        ? <CheckCheck className="w-3.5 h-3.5 text-emerald-600" />
+                        : <Copy className="w-3.5 h-3.5" />}
                     </button>
                   )}
                 </div>
-                {copied && <p className="text-[9px] text-emerald-300 font-bold mt-1 animate-pulse">Copiato!</p>}
               </div>
 
-              {/* Barra bassa */}
-              <div className="absolute bottom-0 left-0 right-0 h-10 bg-black/30 backdrop-blur-sm flex items-center px-4 justify-between">
-                <div>
-                  <p className="text-[7px] text-white/50 font-bold uppercase tracking-widest">SCADENZA</p>
-                  <p className="text-[9px] text-white font-black">{data.expiryDate ? new Date(data.expiryDate).toLocaleDateString('it-IT') : '---'}</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-[7px] text-white/50 font-bold uppercase tracking-widest">RILASCIO</p>
-                  <p className="text-[9px] text-white font-black">{data.issueDate ? new Date(data.issueDate).toLocaleDateString('it-IT') : '---'}</p>
+              {/* Lower Section (Barra Bassa) */}
+              <div className="absolute bottom-0 left-0 right-0 h-10 bg-black/20 border-t border-white/5 backdrop-blur-sm flex items-center px-4 justify-between z-10">
+                <div className="flex gap-4">
+                  <div>
+                    <p className="text-[6px] text-white/50 font-bold uppercase tracking-widest m-0">SCADENZA</p>
+                    <p className="text-[8px] text-white font-black m-0">{data.expiryDate ? new Date(data.expiryDate).toLocaleDateString('it-IT') : '---'}</p>
+                  </div>
+                  <div>
+                    <p className="text-[6px] text-white/50 font-bold uppercase tracking-widest m-0">RILASCIO</p>
+                    <p className="text-[8px] text-white font-black m-0">{data.issueDate ? new Date(data.issueDate).toLocaleDateString('it-IT') : '---'}</p>
+                  </div>
                 </div>
                 {isExpired
-                  ? <div className="bg-red-500 text-white px-2 py-0.5 rounded-lg text-[8px] font-black uppercase">SCADUTO</div>
+                  ? <div className="bg-red-500 text-white px-2 py-0.5 rounded-md text-[7px] font-black uppercase tracking-wider">SCADUTO</div>
                   : expiresSoon
-                  ? <div className="bg-amber-400 text-black px-2 py-0.5 rounded-lg text-[8px] font-black uppercase">IN SCADENZA</div>
-                  : <div className="bg-emerald-400 text-black px-2 py-0.5 rounded-lg text-[8px] font-black uppercase">VALIDO</div>
+                  ? <div className="bg-amber-400 text-black px-2 py-0.5 rounded-md text-[7px] font-black uppercase tracking-wider">IN SCADENZA</div>
+                  : <div className="bg-emerald-400 text-black px-2 py-0.5 rounded-md text-[7px] font-black uppercase tracking-wider">VALIDO</div>
                 }
               </div>
 
               {/* Hover overlay */}
-              <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-sm rounded-[1.8rem]">
+              <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-sm rounded-[2rem] z-20">
                 <div className="bg-white text-black px-5 py-2.5 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center gap-2 shadow-xl">
                   <Eye className="w-4 h-4" /> Visualizza PDF
                 </div>
@@ -243,7 +293,7 @@ export const DocumentManagementScreen = ({ module, onSave, onCancel, onDelete, o
                     <div className="flex items-center gap-1">
                       <p className="text-[11px] font-black text-white font-mono tracking-wider">{data.number || '---'}</p>
                       {data.number && (
-                        <button onClick={handleCopy} className="p-1 rounded hover:bg-white/20 transition-colors" title="Copia">
+                        <button onClick={handleCopy} className="p-1 rounded hover:bg-white/20 transition-colors relative z-30" title="Copia">
                           {copied ? <CheckCheck className="w-3 h-3 text-emerald-300" /> : <Copy className="w-3 h-3 text-white/60" />}
                         </button>
                       )}
@@ -313,7 +363,7 @@ export const DocumentManagementScreen = ({ module, onSave, onCancel, onDelete, o
                     {data.number || '--- --- ---'}
                   </p>
                   {data.number && (
-                    <button onClick={handleCopy} className="p-1.5 rounded-lg hover:bg-white/20 transition-colors" title="Copia">
+                    <button onClick={handleCopy} className="p-1.5 rounded-lg hover:bg-white/20 transition-colors relative z-30" title="Copia">
                       {copied ? <CheckCheck className="w-4 h-4 text-purple-200" /> : <Copy className="w-4 h-4 text-white/60" />}
                     </button>
                   )}
@@ -363,7 +413,7 @@ export const DocumentManagementScreen = ({ module, onSave, onCancel, onDelete, o
                       <div className="flex items-center gap-2">
                         <h3 className="text-xl font-black tracking-tight text-[var(--text-main)]">{data.number || '--- --- ---'}</h3>
                         {data.number && (
-                          <button onClick={handleCopy} className="p-1.5 rounded-lg hover:bg-[var(--bg)] transition-colors" title="Copia">
+                          <button onClick={handleCopy} className="p-1.5 rounded-lg hover:bg-[var(--bg)] transition-colors relative z-30" title="Copia">
                             {copied ? <CheckCheck className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4 text-[var(--text-muted)]" />}
                           </button>
                         )}

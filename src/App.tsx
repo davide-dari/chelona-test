@@ -1835,48 +1835,73 @@ export default function App() {
                             <div className="mb-8 flex justify-center">
                               {formData.documentType === 'tax_code' ? (
                                 /* green tax code card preview */
-                                <div className="w-full max-w-sm aspect-[1.6/1] rounded-[1.8rem] overflow-hidden shadow-2xl relative flex flex-col justify-between p-4"
-                                  style={{ background: 'linear-gradient(135deg, #1a5f3f 0%, #0d3d28 40%, #0a2e1e 100%)' }}
+                                <div className="w-full max-w-sm aspect-[1.6/1] rounded-[2rem] overflow-hidden shadow-2xl relative flex flex-col justify-between p-4 animate-fade-in"
+                                  style={{ background: 'linear-gradient(135deg, #0f766e 0%, #115e59 40%, #042f2e 100%)' }}
                                 >
-                                  {/* Sfondo trama ministeriale */}
+                                  {/* Sfondo trama ministeriale e stellone italiano sfumato */}
                                   <div className="absolute inset-0 opacity-5 pointer-events-none" style={{ backgroundImage: 'repeating-linear-gradient(45deg, #fff 0, #fff 1px, transparent 0, transparent 50%)', backgroundSize: '8px 8px' }} />
                                   
+                                  {/* Stellone d'Italia / Emblem Watermark in background */}
+                                  <div className="absolute right-4 top-1/2 -translate-y-1/2 w-32 h-32 opacity-10 pointer-events-none text-white">
+                                    <svg viewBox="0 0 100 100" fill="currentColor" className="w-full h-full">
+                                      <path d="M50 15 L58 38 L83 38 L63 53 L70 76 L50 61 L30 76 L37 53 L17 38 L42 38 Z" />
+                                      <circle cx="50" cy="50" r="22" fill="none" stroke="currentColor" strokeWidth="4" />
+                                    </svg>
+                                  </div>
+
+                                  {/* Upper Section */}
                                   <div className="flex items-start justify-between z-10">
-                                    <div className="flex items-center gap-2">
-                                      <div className="w-6 h-6 rounded-full bg-white/15 flex items-center justify-center text-xs">
-                                        🇮🇹
+                                    <div className="flex items-center gap-3">
+                                      {/* EU Band / Italian flag */}
+                                      <div className="w-7 h-5 bg-[#003399] rounded flex flex-col items-center justify-center relative overflow-hidden border border-white/10 shrink-0">
+                                        <span className="text-[7px] text-white font-black z-10 leading-none">IT</span>
                                       </div>
                                       <div>
-                                        <p className="text-[6px] font-black text-emerald-200/80 uppercase tracking-[0.15em] leading-tight m-0">REPUBBLICA ITALIANA</p>
-                                        <p className="text-[7px] font-black text-white/60 uppercase tracking-widest leading-tight m-0">TESSERA SANITARIA</p>
+                                        <p className="text-[6.5px] font-black text-teal-200 uppercase tracking-[0.2em] leading-tight m-0">REPUBBLICA ITALIANA</p>
+                                        <p className="text-[8px] font-black text-white uppercase tracking-widest leading-tight m-0">TESSERA SANITARIA</p>
                                       </div>
                                     </div>
                                     <div className="text-right">
-                                      <p className="text-[6px] font-black text-white/50 uppercase tracking-widest leading-none m-0">CODICE</p>
-                                      <p className="text-[6px] font-black text-white/50 uppercase tracking-widest leading-none m-0">FISCALE</p>
+                                      <p className="text-[6px] font-bold text-white/45 uppercase tracking-widest leading-none m-0">MINISTERO DELL'ECONOMIA</p>
+                                      <p className="text-[6px] font-bold text-white/45 uppercase tracking-widest leading-none m-0">E DELLE FINANZE</p>
                                     </div>
                                   </div>
 
-                                  {/* Codice fiscale grande al centro */}
-                                  <div className="flex flex-col items-center justify-center my-auto z-10">
-                                    <p className="text-[8px] font-black text-emerald-300/70 uppercase tracking-[0.3em] mb-1">CODICE FISCALE</p>
-                                    <p className="text-sm sm:text-base font-black text-white tracking-[0.15em] font-mono drop-shadow-lg uppercase select-all m-0">
-                                      {formData.number || 'RSSMRA80A01F205X'}
-                                    </p>
+                                  {/* Middle Section: Smart-Card Chip & Codice Fiscale */}
+                                  <div className="flex items-center justify-between gap-4 z-10 my-auto">
+                                    {/* Microchip dorato realistico */}
+                                    <div className="w-9 h-7 bg-gradient-to-br from-amber-300 via-yellow-400 to-amber-500 rounded-md border border-amber-600/30 relative overflow-hidden shadow-md flex flex-wrap p-0.5 opacity-90 shrink-0">
+                                      <div className="absolute inset-0 bg-[linear-gradient(45deg,transparent_45%,#d97706_45%,#d97706_55%,transparent_55%)] opacity-20" />
+                                      <div className="w-1/2 h-1/3 border-r border-b border-amber-700/20" />
+                                      <div className="w-1/2 h-1/3 border-b border-amber-700/20" />
+                                      <div className="w-1/2 h-1/3 border-r border-b border-amber-700/20" />
+                                      <div className="w-1/2 h-1/3 border-b border-amber-700/20" />
+                                      <div className="w-1/2 h-1/3 border-r border-amber-700/20" />
+                                      <div className="w-1/2 h-1/3" />
+                                    </div>
+
+                                    {/* Tactile strip containing the text-code */}
+                                    <div className="flex-1 bg-emerald-50/95 rounded-xl border border-emerald-600/20 shadow-[inset_0_2px_4px_rgba(0,0,0,0.06)] px-3 py-1.5 flex items-center justify-between min-w-0">
+                                      <span className="text-emerald-950 font-mono font-black text-xs sm:text-sm tracking-[0.12em] uppercase select-all truncate">
+                                        {formData.number || 'RSSMRA80A01F205X'}
+                                      </span>
+                                    </div>
                                   </div>
 
-                                  {/* Barra bassa */}
+                                  {/* Lower Section (Barra Bassa) */}
                                   <div className="flex justify-between items-end border-t border-white/10 pt-2 text-[8px] text-emerald-100 z-10">
-                                    <div>
+                                    <div className="flex gap-4">
+                                      <div>
+                                        <p className="text-[6px] text-white/50 font-bold uppercase tracking-widest m-0">SCADENZA</p>
+                                        <p className="text-[8px] text-white font-black m-0">
+                                          {formData.expiryDate ? new Date(formData.expiryDate).toLocaleDateString('it-IT') : '31/12/2030'}
+                                        </p>
+                                      </div>
+                                    </div>
+                                    <div className="text-right">
                                       <span className="block text-[6px] text-emerald-300 uppercase font-black">Cognome Nome</span>
                                       <span className="font-bold text-white uppercase truncate max-w-[150px] block leading-normal">
                                         {formData.title || 'ROSSI MARIO'}
-                                      </span>
-                                    </div>
-                                    <div className="text-right">
-                                      <span className="block text-[6px] text-emerald-300 uppercase font-black">Scadenza</span>
-                                      <span className="font-bold text-white block">
-                                        {formData.expiryDate ? new Date(formData.expiryDate).toLocaleDateString('it-IT') : '31/12/2030'}
                                       </span>
                                     </div>
                                   </div>
