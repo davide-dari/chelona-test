@@ -7,8 +7,8 @@ android {
         applicationId "com.davidedari.chelona"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 11323
-        versionName "1.13.23"
+        versionCode 11324
+        versionName "1.13.24"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.

@@ -986,21 +986,28 @@ export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onCl
         </div>
       </div>
 
-      {/* FAB Menu & Button */}
-      <div className="fixed bottom-24 right-6 md:bottom-10 md:right-10 z-[200] flex flex-col items-end gap-3">
-        <motion.button
-          initial={{ scale: 0 }}
-          animate={{ scale: 1 }}
-          whileTap={{ scale: 0.92 }}
-          onClick={() => {
-            setDestModalType('place');
-            setShowAddModal(true);
-          }}
-          className="w-16 h-16 bg-gradient-to-tr from-blue-600 to-indigo-500 text-white rounded-[1.5rem] shadow-2xl shadow-blue-500/40 flex items-center justify-center border border-white/20 transition-all"
-        >
-          <Plus className="w-8 h-8" />
-        </motion.button>
-      </div>
+      {/* FAB Menu & Button - hidden when a card is expanded */}
+      <AnimatePresence>
+        {!expandedDestId && (
+          <motion.div
+            initial={{ scale: 0, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0, opacity: 0 }}
+            className="fixed bottom-24 right-6 md:bottom-10 md:right-10 z-[50] flex flex-col items-end gap-3"
+          >
+            <motion.button
+              whileTap={{ scale: 0.92 }}
+              onClick={() => {
+                setDestModalType('place');
+                setShowAddModal(true);
+              }}
+              className="w-16 h-16 bg-gradient-to-tr from-blue-600 to-indigo-500 text-white rounded-[1.5rem] shadow-2xl shadow-blue-500/40 flex items-center justify-center border border-white/20 transition-all"
+            >
+              <Plus className="w-8 h-8" />
+            </motion.button>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Delete destination confirm */}
       <AnimatePresence>

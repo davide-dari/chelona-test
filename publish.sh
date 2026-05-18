@@ -71,7 +71,7 @@ RELEASE_JSON=$(curl -s -X POST \
   -d "{
     \"tag_name\": \"$TAG\",
     \"name\": \"Chelona $TAG\",
-    \"body\": \"🚀 **Chelona v$VERSION**\\n\\n### ✨ Novità e Fix:\\n- **🌍 Etichetta Nazione sul Mappamondo**: Selezionando una nazione, il globo 3D mostra ora un'unica etichetta con il nome della nazione posizionata al centro geografico delle destinazioni, senza mostrare le singole città. Un look pulito e focalizzato.\\n- **🎯 Focus Città al Click**: Cliccando su una scheda luogo specifica, il globo zooma sul punto esatto e mostra l'etichetta con il nome della città. Un'interazione a due livelli: nazione → città.\",
+    \"body\": \"🚀 **Chelona v$VERSION**\\n\\n### ✨ Novità e Fix:\\n- **🗺️ Fix Sovrapposizione Viaggi**: Il pulsante + (FAB) del modulo Viaggi ora si nasconde automaticamente quando viene aperta o espansa la scheda di una località, eliminando ogni sovrapposizione visiva.\\n- **🪪 Estetica Documenti Reale**: Le schede per **Codice Fiscale**, **Carta d'Identità** e **Patente di Guida** sono state completamente riprogettate con una grafica ad alta fedeltà che riproduce i layout e i colori dei documenti fisici italiani reali.\\n- **📋 Copia Codice Fiscale Affidabile**: Risolto il problema della copia del Codice Fiscale integrando un metodo di fallback robusto per tutti i dispositivi e sistemi operativi.\",
     \"draft\": false,
     \"prerelease\": false
   }")

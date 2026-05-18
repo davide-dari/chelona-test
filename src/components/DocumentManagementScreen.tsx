@@ -19,11 +19,37 @@ export const DocumentManagementScreen = ({ module, onSave, onCancel, onDelete, o
 
   const handleCopy = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (data.number) {
-      navigator.clipboard.writeText(data.number);
+    e.preventDefault();
+    if (!data.number) return;
+    const text = data.number;
+    // Try modern clipboard API first (works in browser, may fail on Android WebView)
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(() => {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      }).catch(() => {
+        // Fallback: execCommand
+        fallbackCopy(text);
+      });
+    } else {
+      fallbackCopy(text);
+    }
+  };
+
+  const fallbackCopy = (text: string) => {
+    const el = document.createElement('textarea');
+    el.value = text;
+    el.setAttribute('readonly', '');
+    el.style.position = 'absolute';
+    el.style.left = '-9999px';
+    document.body.appendChild(el);
+    el.select();
+    try {
+      document.execCommand('copy');
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-    }
+    } catch {}
+    document.body.removeChild(el);
   };
 
   const isTaxCode = data.documentType === 'tax_code';
@@ -31,12 +57,6 @@ export const DocumentManagementScreen = ({ module, onSave, onCancel, onDelete, o
   const isLicense = data.documentType === 'driving_license';
   const isColorCard = isTaxCode || isIdentity || isLicense;
 
-  const getCardStyle = () => {
-    if (isTaxCode) return 'bg-gradient-to-br from-emerald-600 to-teal-900';
-    if (isIdentity) return 'bg-gradient-to-br from-blue-600 to-cyan-800';
-    if (isLicense) return 'bg-gradient-to-br from-pink-500 to-purple-800';
-    return 'bg-[var(--card-bg)]';
-  };
   const handleSave = () => {
     onSave({
       ...data,
@@ -102,64 +122,279 @@ export const DocumentManagementScreen = ({ module, onSave, onCancel, onDelete, o
       <div className="flex-1 overflow-y-auto custom-scrollbar">
         <div className="max-w-2xl mx-auto p-6 space-y-8">
           
-          {/* Document Preview Card */}
-          <div className={`relative aspect-[1.6/1] border border-[var(--border)] rounded-[2.5rem] overflow-hidden shadow-2xl group cursor-pointer ${getCardStyle()}`} onClick={() => setShowViewer(true)}>
-             {!isColorCard && <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 to-purple-500/5" />}
-             
-             {/* EU Stars watermark for ID/License */}
-             {(isIdentity || isLicense) && (
-               <div className="absolute top-0 right-0 w-48 h-48 opacity-10 pointer-events-none overflow-hidden">
-                 <div className="absolute top-4 right-4 w-32 h-32 border-[8px] border-dashed border-white rounded-full animate-[spin_60s_linear_infinite]" />
-               </div>
-             )}
+          {/* === CODICE FISCALE CARD === */}
+          {isTaxCode && (
+            <div className="relative aspect-[1.6/1] rounded-[1.8rem] overflow-hidden shadow-2xl cursor-pointer group"
+              style={{ background: 'linear-gradient(135deg, #1a5f3f 0%, #0d3d28 40%, #0a2e1e 100%)' }}
+              onClick={() => setShowViewer(true)}
+            >
+              {/* Sfondo trama ministeriale */}
+              <div className="absolute inset-0 opacity-5" style={{ backgroundImage: 'repeating-linear-gradient(45deg, #fff 0, #fff 1px, transparent 0, transparent 50%)', backgroundSize: '8px 8px' }} />
+              <div className="absolute top-3 left-3 right-3 flex items-start justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-full bg-white/15 flex items-center justify-center">
+                    <span className="text-base">🇮🇹</span>
+                  </div>
+                  <div>
+                    <p className="text-[6px] font-black text-emerald-200/80 uppercase tracking-[0.15em] leading-tight">REPUBBLICA ITALIANA</p>
+                    <p className="text-[7px] font-black text-white/60 uppercase tracking-widest leading-tight">TESSERA SANITARIA</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="text-[6px] font-black text-white/50 uppercase tracking-widest">CODICE</p>
+                  <p className="text-[6px] font-black text-white/50 uppercase tracking-widest">FISCALE</p>
+                </div>
+              </div>
 
-             {/* Document "Chip" Style Layout */}
-             <div className="relative h-full p-8 flex flex-col justify-between">
+              {/* Codice fiscale grande al centro */}
+              <div className="absolute inset-0 flex flex-col items-center justify-center">
+                <p className="text-[9px] font-black text-emerald-300/70 uppercase tracking-[0.3em] mb-1">CODICE FISCALE</p>
+                <div className="flex items-center gap-2">
+                  <p className="text-2xl sm:text-3xl font-black text-white tracking-[0.25em] font-mono drop-shadow-lg">
+                    {data.number || '--- --- --- --- --'}
+                  </p>
+                  {data.number && (
+                    <button
+                      onClick={handleCopy}
+                      className="p-1.5 rounded-lg hover:bg-white/20 transition-colors active:scale-90"
+                      title="Copia codice fiscale"
+                    >
+                      {copied
+                        ? <CheckCheck className="w-4 h-4 text-emerald-300" />
+                        : <Copy className="w-4 h-4 text-white/70" />}
+                    </button>
+                  )}
+                </div>
+                {copied && <p className="text-[9px] text-emerald-300 font-bold mt-1 animate-pulse">Copiato!</p>}
+              </div>
+
+              {/* Barra bassa */}
+              <div className="absolute bottom-0 left-0 right-0 h-10 bg-black/30 backdrop-blur-sm flex items-center px-4 justify-between">
+                <div>
+                  <p className="text-[7px] text-white/50 font-bold uppercase tracking-widest">SCADENZA</p>
+                  <p className="text-[9px] text-white font-black">{data.expiryDate ? new Date(data.expiryDate).toLocaleDateString('it-IT') : '---'}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-[7px] text-white/50 font-bold uppercase tracking-widest">RILASCIO</p>
+                  <p className="text-[9px] text-white font-black">{data.issueDate ? new Date(data.issueDate).toLocaleDateString('it-IT') : '---'}</p>
+                </div>
+                {isExpired
+                  ? <div className="bg-red-500 text-white px-2 py-0.5 rounded-lg text-[8px] font-black uppercase">SCADUTO</div>
+                  : expiresSoon
+                  ? <div className="bg-amber-400 text-black px-2 py-0.5 rounded-lg text-[8px] font-black uppercase">IN SCADENZA</div>
+                  : <div className="bg-emerald-400 text-black px-2 py-0.5 rounded-lg text-[8px] font-black uppercase">VALIDO</div>
+                }
+              </div>
+
+              {/* Hover overlay */}
+              <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-sm rounded-[1.8rem]">
+                <div className="bg-white text-black px-5 py-2.5 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center gap-2 shadow-xl">
+                  <Eye className="w-4 h-4" /> Visualizza PDF
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* === CARTA D'IDENTITÀ CARD === */}
+          {isIdentity && (
+            <div className="relative aspect-[1.6/1] rounded-[1.8rem] overflow-hidden shadow-2xl cursor-pointer group"
+              style={{ background: 'linear-gradient(135deg, #1a3a6b 0%, #0d255c 50%, #061540 100%)' }}
+              onClick={() => setShowViewer(true)}
+            >
+              {/* Pattern fondo */}
+              <div className="absolute inset-0 opacity-[0.06]" style={{ backgroundImage: 'radial-gradient(circle, #fff 1px, transparent 1px)', backgroundSize: '18px 18px' }} />
+
+              {/* Fascia blu EU a sinistra */}
+              <div className="absolute left-0 top-0 bottom-0 w-12 flex flex-col items-center justify-between py-3"
+                style={{ background: 'rgba(0,47,135,0.8)' }}>
+                <div className="flex flex-col items-center gap-0.5">
+                  {/* Stelle EU */}
+                  {Array.from({length: 6}).map((_,i) => (
+                    <div key={i} className="text-yellow-300 text-[6px]">★</div>
+                  ))}
+                </div>
+                <div className="flex flex-col items-center">
+                  <span className="text-[6px] font-black text-white/80 uppercase tracking-widest rotate-[-90deg] whitespace-nowrap" style={{transformOrigin:'center', writingMode: 'vertical-rl', textOrientation: 'mixed'}}>ITALIA</span>
+                </div>
+                <div className="flex flex-col items-center gap-0.5">
+                  {Array.from({length: 6}).map((_,i) => (
+                    <div key={i} className="text-yellow-300 text-[6px]">★</div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Contenuto principale */}
+              <div className="absolute left-14 right-3 top-3 bottom-10">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="text-[6px] font-black text-blue-200/70 uppercase tracking-[0.2em]">CARTA D'IDENTITÀ ELETTRONICA</p>
+                    <p className="text-[6px] text-white/50 uppercase tracking-widest">ELECTRONIC IDENTITY CARD</p>
+                  </div>
+                  <div className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center">
+                    <span className="text-sm">🇮🇹</span>
+                  </div>
+                </div>
+
+                <div className="mt-2 flex items-center gap-2">
+                  <div>
+                    <p className="text-[7px] text-white/50 uppercase tracking-widest">COGNOME / SURNAME</p>
+                    <p className="text-sm font-black text-white tracking-wide">{data.title || '---'}</p>
+                    <p className="text-[7px] text-white/50 uppercase tracking-widest mt-1">NUMERO / NUMBER</p>
+                    <div className="flex items-center gap-1">
+                      <p className="text-[11px] font-black text-white font-mono tracking-wider">{data.number || '---'}</p>
+                      {data.number && (
+                        <button onClick={handleCopy} className="p-1 rounded hover:bg-white/20 transition-colors" title="Copia">
+                          {copied ? <CheckCheck className="w-3 h-3 text-emerald-300" /> : <Copy className="w-3 h-3 text-white/60" />}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  {/* Chip NFC simulato */}
+                  <div className="ml-auto w-10 h-8 rounded-md border border-yellow-400/40 bg-gradient-to-br from-yellow-300/20 to-yellow-500/10 flex items-center justify-center">
+                    <div className="w-6 h-4 border border-yellow-400/60 rounded-sm bg-yellow-400/10" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Barra bassa */}
+              <div className="absolute bottom-0 left-0 right-0 h-8 bg-black/40 flex items-center px-4 justify-between">
+                <p className="text-[7px] text-white/50 font-bold uppercase tracking-widest">SCAD: <span className="text-white">{data.expiryDate ? new Date(data.expiryDate).toLocaleDateString('it-IT') : '---'}</span></p>
+                <p className="text-[7px] text-white/50 font-bold uppercase tracking-widest">RIL: <span className="text-white">{data.issueDate ? new Date(data.issueDate).toLocaleDateString('it-IT') : '---'}</span></p>
+                {isExpired
+                  ? <div className="bg-red-500 text-white px-2 py-0.5 rounded-lg text-[7px] font-black uppercase">SCADUTO</div>
+                  : expiresSoon
+                  ? <div className="bg-amber-400 text-black px-2 py-0.5 rounded-lg text-[7px] font-black uppercase">IN SCADENZA</div>
+                  : <div className="bg-emerald-400 text-black px-2 py-0.5 rounded-lg text-[7px] font-black uppercase">VALIDA</div>
+                }
+              </div>
+
+              {/* Hover */}
+              <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-sm rounded-[1.8rem]">
+                <div className="bg-white text-black px-5 py-2.5 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center gap-2">
+                  <Eye className="w-4 h-4" /> Visualizza PDF
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* === PATENTE DI GUIDA CARD === */}
+          {isLicense && (
+            <div className="relative aspect-[1.6/1] rounded-[1.8rem] overflow-hidden shadow-2xl cursor-pointer group"
+              style={{ background: 'linear-gradient(135deg, #5b1fa3 0%, #3b0f6e 50%, #21094a 100%)' }}
+              onClick={() => setShowViewer(true)}
+            >
+              <div className="absolute inset-0 opacity-[0.04]" style={{ backgroundImage: 'repeating-linear-gradient(-45deg, #fff 0, #fff 1px, transparent 0, transparent 8px)', backgroundSize: '12px 12px' }} />
+
+              {/* Header */}
+              <div className="absolute top-3 left-3 right-3 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-full bg-white/15 flex items-center justify-center"><span className="text-base">🇮🇹</span></div>
+                  <div>
+                    <p className="text-[6px] font-black text-purple-200/70 uppercase tracking-[0.15em]">REPUBBLICA ITALIANA</p>
+                    <p className="text-[7px] font-black text-white/50 uppercase tracking-widest">PATENTE DI GUIDA</p>
+                    <p className="text-[6px] text-white/40 uppercase">DRIVING LICENCE</p>
+                  </div>
+                </div>
+                {/* Categorie patente */}
+                <div className="flex gap-1">
+                  {['B', 'AM'].map(cat => (
+                    <div key={cat} className="w-6 h-6 rounded-md bg-white/20 border border-white/30 flex items-center justify-center">
+                      <span className="text-[8px] font-black text-white">{cat}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Centro */}
+              <div className="absolute inset-0 flex flex-col items-center justify-center">
+                <p className="text-[8px] font-black text-purple-300/60 uppercase tracking-widest mb-1">NUMERO PATENTE</p>
+                <div className="flex items-center gap-2">
+                  <p className="text-2xl font-black text-white font-mono tracking-[0.2em] drop-shadow-lg">
+                    {data.number || '--- --- ---'}
+                  </p>
+                  {data.number && (
+                    <button onClick={handleCopy} className="p-1.5 rounded-lg hover:bg-white/20 transition-colors" title="Copia">
+                      {copied ? <CheckCheck className="w-4 h-4 text-purple-200" /> : <Copy className="w-4 h-4 text-white/60" />}
+                    </button>
+                  )}
+                </div>
+                {copied && <p className="text-[9px] text-purple-300 font-bold mt-1 animate-pulse">Copiato!</p>}
+              </div>
+
+              {/* Barra bassa */}
+              <div className="absolute bottom-0 left-0 right-0 h-10 bg-black/30 backdrop-blur-sm flex items-center px-4 justify-between">
+                <div>
+                  <p className="text-[7px] text-white/40 uppercase tracking-widest">SCADENZA</p>
+                  <p className="text-[9px] text-white font-black">{data.expiryDate ? new Date(data.expiryDate).toLocaleDateString('it-IT') : '---'}</p>
+                </div>
+                <div>
+                  <p className="text-[7px] text-white/40 uppercase tracking-widest">RILASCIO</p>
+                  <p className="text-[9px] text-white font-black">{data.issueDate ? new Date(data.issueDate).toLocaleDateString('it-IT') : '---'}</p>
+                </div>
+                {isExpired
+                  ? <div className="bg-red-500 text-white px-2 py-0.5 rounded-lg text-[7px] font-black uppercase">SCADUTA</div>
+                  : expiresSoon
+                  ? <div className="bg-amber-400 text-black px-2 py-0.5 rounded-lg text-[7px] font-black uppercase">IN SCADENZA</div>
+                  : <div className="bg-purple-300 text-purple-900 px-2 py-0.5 rounded-lg text-[7px] font-black uppercase">VALIDA</div>
+                }
+              </div>
+
+              {/* Hover */}
+              <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-sm rounded-[1.8rem]">
+                <div className="bg-white text-black px-5 py-2.5 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center gap-2">
+                  <Eye className="w-4 h-4" /> Visualizza PDF
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* === DOCUMENTO GENERICO CARD === */}
+          {!isColorCard && (
+            <div className={`relative aspect-[1.6/1] border border-[var(--border)] rounded-[2.5rem] overflow-hidden shadow-2xl group cursor-pointer bg-[var(--card-bg)]`} onClick={() => setShowViewer(true)}>
+              <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 to-purple-500/5" />
+              <div className="relative h-full p-8 flex flex-col justify-between">
                 <div className="flex justify-between items-start">
-                   <div className="flex items-center gap-3">
-                      <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg ${isColorCard ? 'bg-white/20 text-white backdrop-blur-md' : 'bg-indigo-500 text-white'}`}>
-                         <FileText className="w-6 h-6" />
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg bg-indigo-500 text-white">
+                      <FileText className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--text-muted)]">{getDocTypeLabel(data.documentType)}</p>
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-xl font-black tracking-tight text-[var(--text-main)]">{data.number || '--- --- ---'}</h3>
+                        {data.number && (
+                          <button onClick={handleCopy} className="p-1.5 rounded-lg hover:bg-[var(--bg)] transition-colors" title="Copia">
+                            {copied ? <CheckCheck className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4 text-[var(--text-muted)]" />}
+                          </button>
+                        )}
                       </div>
-                      <div>
-                         <p className={`text-[10px] font-black uppercase tracking-[0.2em] ${isColorCard ? 'text-white/70' : 'text-[var(--text-muted)]'}`}>{getDocTypeLabel(data.documentType)}</p>
-                         <div className="flex items-center gap-2">
-                           <h3 className={`text-xl font-black tracking-tight ${isColorCard ? 'text-white' : 'text-[var(--text-main)]'}`}>{data.number || '--- --- ---'}</h3>
-                           {data.number && (
-                             <button onClick={handleCopy} className={`p-1.5 rounded-lg transition-colors ${isColorCard ? 'hover:bg-white/20' : 'hover:bg-[var(--bg)]'}`} title="Copia">
-                               {copied ? <CheckCheck className={`w-4 h-4 ${isColorCard ? 'text-emerald-300' : 'text-emerald-500'}`} /> : <Copy className={`w-4 h-4 ${isColorCard ? 'text-white/70' : 'text-[var(--text-muted)]'}`} />}
-                             </button>
-                           )}
-                         </div>
-                      </div>
-                   </div>
-                   {isExpired ? (
-                     <div className="bg-red-500 text-white px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest shadow-lg shadow-red-500/20">Scaduto</div>
-                   ) : expiresSoon ? (
-                     <div className="bg-amber-500 text-white px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest shadow-lg shadow-amber-500/20">In Scadenza</div>
-                   ) : (
-                     <div className="bg-emerald-500 text-white px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest shadow-lg shadow-emerald-500/20">Valido</div>
-                   )}
+                    </div>
+                  </div>
+                  {isExpired
+                    ? <div className="bg-red-500 text-white px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest">Scaduto</div>
+                    : expiresSoon
+                    ? <div className="bg-amber-500 text-white px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest">In Scadenza</div>
+                    : <div className="bg-emerald-500 text-white px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest">Valido</div>
+                  }
                 </div>
-
                 <div className="grid grid-cols-2 gap-8">
-                   <div>
-                      <p className={`text-[9px] font-black uppercase tracking-widest mb-1 ${isColorCard ? 'text-white/70' : 'text-[var(--text-muted)]'}`}>Rilasciato il</p>
-                      <p className={`text-sm font-bold ${isColorCard ? 'text-white' : 'text-[var(--text-main)]'}`}>{data.issueDate ? new Date(data.issueDate).toLocaleDateString('it-IT') : '---'}</p>
-                   </div>
-                   <div>
-                      <p className={`text-[9px] font-black uppercase tracking-widest mb-1 ${isColorCard ? 'text-white/70' : 'text-[var(--text-muted)]'}`}>Scadenza</p>
-                      <p className={`text-sm font-bold ${isColorCard ? 'text-white' : 'text-[var(--text-main)]'}`}>{data.expiryDate ? new Date(data.expiryDate).toLocaleDateString('it-IT') : '---'}</p>
-                   </div>
+                  <div>
+                    <p className="text-[9px] font-black uppercase tracking-widest mb-1 text-[var(--text-muted)]">Rilasciato il</p>
+                    <p className="text-sm font-bold text-[var(--text-main)]">{data.issueDate ? new Date(data.issueDate).toLocaleDateString('it-IT') : '---'}</p>
+                  </div>
+                  <div>
+                    <p className="text-[9px] font-black uppercase tracking-widest mb-1 text-[var(--text-muted)]">Scadenza</p>
+                    <p className="text-sm font-bold text-[var(--text-main)]">{data.expiryDate ? new Date(data.expiryDate).toLocaleDateString('it-IT') : '---'}</p>
+                  </div>
                 </div>
-
-                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-sm rounded-[2.5rem]">
-                   <div className="bg-white text-black px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center gap-2 shadow-xl">
-                      <Eye className="w-4 h-4" />
-                      Visualizza PDF
-                   </div>
+              </div>
+              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-sm rounded-[2.5rem]">
+                <div className="bg-white text-black px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center gap-2 shadow-xl">
+                  <Eye className="w-4 h-4" /> Visualizza PDF
                 </div>
-             </div>
-          </div>
+              </div>
+            </div>
+          )}
 
           {/* Details & Metadata Grid */}
           <div className="space-y-6">
