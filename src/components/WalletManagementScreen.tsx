@@ -11,7 +11,7 @@ interface WalletManagementScreenProps {
 }
 
 export const WalletManagementScreen = ({ module, onSave, onCancel, onDelete }: WalletManagementScreenProps) => {
-  const [isEditing, setIsEditing] = useState(false);
+  const [isEditing, setIsEditing] = useState(module.totalAmount === 0);
   const [data, setData] = useState<WalletModule>({ ...module });
   const [addAmount, setAddAmount] = useState('');
 
@@ -190,42 +190,42 @@ export const WalletManagementScreen = ({ module, onSave, onCancel, onDelete }: W
                       className="w-full p-4 bg-[var(--bg)] border border-[var(--border)] rounded-2xl outline-none focus:border-[var(--accent)] transition-all font-bold text-[var(--text-main)]"
                     />
                   </div>
+                  
                   <div className="grid grid-cols-2 gap-4">
-                    <div className="flex gap-2">
-                      <div className="flex-1">
-                        <label className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] mb-2 block">Importo Rata (€)</label>
-                        <input 
-                          type="number" 
-                          value={data.installmentAmount || ''} 
-                          onChange={e => {
-                            const val = parseFloat(e.target.value) || 0;
-                            setData(prev => ({...prev, installmentAmount: val, totalAmount: val * (prev.installmentsCount || 1)}));
-                          }} 
-                          className="w-full p-4 bg-[var(--bg)] border border-[var(--border)] rounded-2xl outline-none focus:border-[var(--accent)] transition-all font-bold text-[var(--text-main)]"
-                        />
-                      </div>
-                      <div className="w-24 shrink-0">
-                        <label className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] mb-2 block">N. Rate</label>
-                        <input 
-                          type="number" 
-                          value={data.installmentsCount || ''} 
-                          onChange={e => {
-                            const val = parseInt(e.target.value) || 1;
-                            setData(prev => ({...prev, installmentsCount: val, totalAmount: (prev.installmentAmount || 0) * val}));
-                          }} 
-                          className="w-full p-4 bg-[var(--bg)] border border-[var(--border)] rounded-2xl outline-none focus:border-[var(--accent)] transition-all font-bold text-[var(--text-main)] text-center"
-                        />
-                      </div>
-                    </div>
                     <div>
-                      <label className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] mb-2 block">Data Scadenza</label>
+                      <label className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] mb-2 block">Importo da Estinguere (€)</label>
                       <input 
-                        type="date" 
-                        value={data.dueDate} 
-                        onChange={e => setData({...data, dueDate: e.target.value})} 
+                        type="number" 
+                        value={data.totalAmount || ''} 
+                        onChange={e => {
+                          const val = parseFloat(e.target.value) || 0;
+                          setData(prev => ({...prev, totalAmount: val}));
+                        }} 
                         className="w-full p-4 bg-[var(--bg)] border border-[var(--border)] rounded-2xl outline-none focus:border-[var(--accent)] transition-all font-bold text-[var(--text-main)]"
                       />
                     </div>
+                    <div>
+                      <label className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] mb-2 block">Soldi già Accantonati (€)</label>
+                      <input 
+                        type="number" 
+                        value={data.savedAmount || 0} 
+                        onChange={e => {
+                          const val = parseFloat(e.target.value) || 0;
+                          setData(prev => ({...prev, savedAmount: val}));
+                        }} 
+                        className="w-full p-4 bg-[var(--bg)] border border-[var(--border)] rounded-2xl outline-none focus:border-[var(--accent)] transition-all font-bold text-[var(--text-main)]"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] mb-2 block">Data Scadenza</label>
+                    <input 
+                      type="date" 
+                      value={data.dueDate} 
+                      onChange={e => setData({...data, dueDate: e.target.value})} 
+                      className="w-full p-4 bg-[var(--bg)] border border-[var(--border)] rounded-2xl outline-none focus:border-[var(--accent)] transition-all font-bold text-[var(--text-main)]"
+                    />
                   </div>
                </div>
                <div className="pt-4 flex gap-3">

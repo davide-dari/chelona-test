@@ -1,12 +1,16 @@
 import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, User, Lock, Fingerprint, LogOut, Camera, Check, AlertCircle, Share2, Download, Copy, ShieldCheck, QrCode, SunDim, RefreshCw, LayoutDashboard, Plus, Sun, Moon } from 'lucide-react';
+import { X, User, Lock, Fingerprint, LogOut, Camera, Check, AlertCircle, Share2, Download, Copy, ShieldCheck, QrCode, SunDim, RefreshCw, LayoutDashboard, Plus, Sun, Moon, FileArchive } from 'lucide-react';
 import { storage } from '../services/storage';
 import { encryption } from '../services/encryption';
 import { updateService } from '../services/updateService';
 import { Module, Folder } from '../types';
 import { QRCodeSVG } from 'qrcode.react';
 import packageJson from '../../package.json';
+import JSZip from 'jszip';
+import { lzw } from '../utils/lzw';
+import { Filesystem, Directory } from '@capacitor/filesystem';
+import { Capacitor } from '@capacitor/core';
 
 interface ProfileScreenProps {
   onClose: () => void;
@@ -82,11 +86,76 @@ export function ProfileScreen({
     };
 
     const json = JSON.stringify(backup);
-    if (json.length > 2900) {
-      alert("Attenzione: I dati nel profilo sono troppi per essere salvati in un singolo QR code. Il backup potrebbe essere parziale o illeggibile. Si consiglia di esportare i dati in formato file (Prossimamente).");
+    const compressed = lzw.compress(json);
+    if (compressed.length > 2900) {
+      alert("Attenzione: I dati nel profilo sono molto grandi. Se il QR Code è troppo denso per la scansione, si raccomanda di utilizzare l'opzione Esporta ZIP.");
     }
-    setBackupJSON(json);
+    setBackupJSON(compressed);
     setShowBackupQR(true);
+  };
+
+  const handleExportZip = async () => {
+    try {
+      const zip = new JSZip();
+      
+      const profilesEnc = localStorage.getItem('chelona_profiles_enc') || '';
+      if (!profilesEnc) {
+        showToast('Nessun profilo da esportare', 'error');
+        return;
+      }
+      
+      zip.file('profiles.enc', profilesEnc);
+      
+      const profiles = storage.loadProfiles();
+      for (const p of profiles) {
+        const stateEnc = localStorage.getItem(`chelona_dashboard_state_enc_${p.id}`);
+        if (stateEnc) {
+          zip.file(`state_${p.id}.enc`, stateEnc);
+        }
+      }
+      
+      const zipBlob = await zip.generateAsync({ type: 'blob' });
+      const dateStr = new Date().toISOString().substring(0, 10);
+      const filename = `chelona_backup_${dateStr}.zip`;
+      
+      if (Capacitor.isNativePlatform()) {
+        const reader = new FileReader();
+        reader.onloadend = async () => {
+          const base64Data = (reader.result as string).split(',')[1];
+          try {
+            const fileUri = await Filesystem.writeFile({
+              path: filename,
+              data: base64Data,
+              directory: Directory.Documents
+            });
+            
+            const { Share } = await import('@capacitor/share');
+            await Share.share({
+              title: 'Esporta Backup Chelona',
+              url: fileUri.uri,
+              dialogTitle: 'Salva o Condividi il Backup ZIP'
+            });
+            showToast('Backup ZIP pronto e condiviso!', 'success');
+          } catch (e) {
+            showToast('Errore durante la condivisione del backup', 'error');
+          }
+        };
+        reader.readAsDataURL(zipBlob);
+      } else {
+        const url = URL.createObjectURL(zipBlob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        showToast('Backup ZIP scaricato con successo!', 'success');
+      }
+    } catch (err) {
+      console.error('ZIP creation error', err);
+      showToast('Errore durante la creazione del file ZIP', 'error');
+    }
   };
 
   const handleAvatarClick = () => {
@@ -368,13 +437,20 @@ export function ProfileScreen({
                     <p className="text-[10px] text-[var(--text-muted)]">Trasferimenti e nuove versioni ({packageJson.version})</p>
                   </div>
                 </div>
-                <div className="flex gap-3">
+                <div className="flex flex-col sm:flex-row gap-3 mt-4">
                   <button
                     onClick={handleGenerateBackup}
                     className="flex-1 py-3 bg-[var(--bg)] text-[var(--text-main)] border border-[var(--border)] rounded-xl font-bold hover:bg-[var(--border)] transition-all flex items-center justify-center gap-2 text-sm"
                   >
                     <QrCode className="w-4 h-4" />
                     Backup QR
+                  </button>
+                  <button
+                    onClick={handleExportZip}
+                    className="flex-1 py-3 bg-[var(--bg)] text-[var(--text-main)] border border-[var(--border)] rounded-xl font-bold hover:bg-[var(--border)] transition-all flex items-center justify-center gap-2 text-sm"
+                  >
+                    <FileArchive className="w-4 h-4 text-amber-500" />
+                    Backup ZIP
                   </button>
                   <button
                     onClick={async () => {

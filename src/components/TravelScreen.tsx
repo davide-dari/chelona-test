@@ -369,7 +369,7 @@ const DestModal: React.FC<{
     const timer = setTimeout(async () => {
       try {
         const query = nationInput ? `${cityInput.trim()}, ${nationInput.trim()}` : cityInput.trim();
-        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&q=${encodeURIComponent(query)}&limit=5`);
+        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&q=${encodeURIComponent(query)}&limit=5&accept-language=en`);
         const data = await res.json();
         if (data && Array.isArray(data)) {
           const suggestions = data.map((item: any) => {
@@ -419,7 +419,7 @@ const DestModal: React.FC<{
 
     try {
        const query = nationInput ? `${cityInput.trim()}, ${nationInput.trim()}` : cityInput.trim();
-       const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}`);
+       const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&accept-language=en`);
        const data = await res.json();
        if (data && data.length > 0) {
           const la = parseFloat(data[0].lat);
@@ -448,7 +448,7 @@ const DestModal: React.FC<{
     ? ALL_COUNTRIES.filter(c => c.toLowerCase().includes(nationInput.toLowerCase())).slice(0, 5)
     : ALL_COUNTRIES.slice(0, 5);
 
-  const inputCls = 'w-full p-4 bg-[var(--bg)] border border-[var(--border)] rounded-2xl outline-none focus:border-blue-400 transition-all text-sm font-semibold text-[var(--text-main)] placeholder:text-[var(--text-muted)]/60';
+  const inputCls = 'w-full pl-11 pr-4 py-3.5 bg-[var(--bg)] border border-[var(--border)] rounded-2xl outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 transition-all text-sm font-semibold text-[var(--text-main)] placeholder:text-[var(--text-muted)]/60';
 
   return (
     <motion.div
@@ -462,7 +462,7 @@ const DestModal: React.FC<{
         initial={{ y: 60, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         exit={{ y: 60, opacity: 0 }}
-        className="relative w-full max-w-md bg-[var(--card-bg)] rounded-[2rem] border border-[var(--border)] shadow-2xl overflow-hidden"
+        className="relative w-full max-w-md bg-[var(--card-bg)] rounded-[2.5rem] border border-[var(--border)] shadow-2xl overflow-hidden"
       >
         {/* Header */}
         <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-6 flex items-center justify-between">
@@ -477,34 +477,40 @@ const DestModal: React.FC<{
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-4 max-h-[75vh] overflow-y-auto custom-scrollbar">
+        <form onSubmit={handleSubmit} className="p-6 space-y-5 max-h-[75vh] overflow-y-auto custom-scrollbar">
           {/* Nome Luogo */}
-          <div>
+          <div className="relative">
             <label className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] mb-2 block">
               Nome Luogo (Es. Colosseo, Hotel Stella)
             </label>
-            <input 
-              value={name} 
-              onChange={e => { setName(e.target.value); setError(''); }} 
-              placeholder="Es. Colosseo (lascia vuoto per usare il nome città)" 
-              className={inputCls} 
-              disabled={loading} 
-            />
+            <div className="relative flex items-center">
+              <Compass className="w-5 h-5 absolute left-4 text-[var(--text-muted)]" />
+              <input 
+                value={name} 
+                onChange={e => { setName(e.target.value); setError(''); }} 
+                placeholder="Es. Colosseo (lascia vuoto per usare il nome città)" 
+                className={inputCls} 
+                disabled={loading} 
+              />
+            </div>
           </div>
 
           {/* Nazione */}
           <div className="relative">
             <label className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] mb-2 block">Nazione</label>
-            <input 
-              value={nationInput} 
-              onChange={e => { setNationInput(e.target.value); setShowNationSuggestions(true); setError(''); }} 
-              onFocus={() => setShowNationSuggestions(true)}
-              placeholder="Es. Italia, Giappone, Francia..." 
-              className={inputCls} 
-              disabled={loading} 
-            />
+            <div className="relative flex items-center">
+              <Globe className="w-5 h-5 absolute left-4 text-[var(--text-muted)]" />
+              <input 
+                value={nationInput} 
+                onChange={e => { setNationInput(e.target.value); setShowNationSuggestions(true); setError(''); }} 
+                onFocus={() => setShowNationSuggestions(true)}
+                placeholder="Es. Italia, Giappone, Francia..." 
+                className={inputCls} 
+                disabled={loading} 
+              />
+            </div>
             {showNationSuggestions && filteredCountries.length > 0 && (
-              <div className="absolute z-[310] left-0 right-0 mt-1 max-h-40 overflow-y-auto bg-[var(--card-bg)] border border-[var(--border)] rounded-xl shadow-lg custom-scrollbar">
+              <div className="absolute z-[310] left-0 right-0 mt-2 max-h-40 overflow-y-auto bg-[var(--card-bg)] border border-[var(--border)] rounded-2xl shadow-xl custom-scrollbar animate-fade-in">
                 {filteredCountries.map(c => (
                   <button
                     key={c}
@@ -513,7 +519,7 @@ const DestModal: React.FC<{
                       setNationInput(c);
                       setShowNationSuggestions(false);
                     }}
-                    className="w-full text-left px-4 py-2.5 hover:bg-[var(--surface-variant)] text-sm font-semibold text-[var(--text-main)] transition-colors border-b border-[var(--border)]/30 last:border-0"
+                    className="w-full text-left px-4 py-3 hover:bg-blue-500/10 text-sm font-semibold text-[var(--text-main)] transition-colors border-b border-[var(--border)]/30 last:border-0"
                   >
                     {getCountryEmoji(c)} {c}
                   </button>
@@ -528,17 +534,20 @@ const DestModal: React.FC<{
           {/* Città */}
           <div className="relative">
             <label className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] mb-2 block">Città</label>
-            <input 
-              value={cityInput} 
-              onChange={e => { setCityInput(e.target.value); setShowCitySuggestions(true); setError(''); }} 
-              onFocus={() => setShowCitySuggestions(true)}
-              placeholder="Es. Roma, Tokyo, New York..." 
-              className={inputCls} 
-              disabled={loading} 
-              required
-            />
+            <div className="relative flex items-center">
+              <MapPin className="w-5 h-5 absolute left-4 text-[var(--text-muted)]" />
+              <input 
+                value={cityInput} 
+                onChange={e => { setCityInput(e.target.value); setShowCitySuggestions(true); setError(''); }} 
+                onFocus={() => setShowCitySuggestions(true)}
+                placeholder="Es. Roma, Tokyo, New York..." 
+                className={inputCls} 
+                disabled={loading} 
+                required
+              />
+            </div>
             {showCitySuggestions && citySuggestions.length > 0 && (
-              <div className="absolute z-[310] left-0 right-0 mt-1 max-h-48 overflow-y-auto bg-[var(--card-bg)] border border-[var(--border)] rounded-xl shadow-lg custom-scrollbar">
+              <div className="absolute z-[310] left-0 right-0 mt-2 max-h-48 overflow-y-auto bg-[var(--card-bg)] border border-[var(--border)] rounded-2xl shadow-xl custom-scrollbar animate-fade-in">
                 {citySuggestions.map((s, idx) => (
                   <button
                     key={idx}
@@ -555,7 +564,7 @@ const DestModal: React.FC<{
                       setCitySuggestions([]);
                       setShowCitySuggestions(false);
                     }}
-                    className="w-full text-left px-4 py-3 hover:bg-[var(--surface-variant)] transition-colors border-b border-[var(--border)]/30 last:border-0"
+                    className="w-full text-left px-4 py-3 hover:bg-blue-500/10 transition-colors border-b border-[var(--border)]/30 last:border-0"
                   >
                     <div className="text-sm font-bold text-[var(--text-main)]">{s.city}</div>
                     <div className="text-[10px] font-bold text-[var(--text-muted)] mt-0.5 truncate">{s.displayName}</div>
@@ -570,7 +579,13 @@ const DestModal: React.FC<{
 
           <div>
             <label className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] mb-2 block">Note (opzionale)</label>
-            <textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Descrizione, da fare, ricordi..." className={`${inputCls} resize-none h-20`} disabled={loading} />
+            <textarea 
+              value={notes} 
+              onChange={e => setNotes(e.target.value)} 
+              placeholder="Descrizione, da fare, ricordi..." 
+              className="w-full p-4 bg-[var(--bg)] border border-[var(--border)] rounded-2xl outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 transition-all text-sm font-semibold text-[var(--text-main)] placeholder:text-[var(--text-muted)]/60 resize-none h-20" 
+              disabled={loading} 
+            />
           </div>
 
           {error && (

@@ -28,6 +28,7 @@ import { APP_VERSION } from './constants/version';
 
 import { motion, AnimatePresence } from 'motion/react';
 import JSZip from 'jszip';
+import { lzw } from './utils/lzw';
 import { updateService, UpdateInfo } from './services/updateService';
 import { App as CapApp } from '@capacitor/app';
 import { generateUUID } from './utils/uuid';
@@ -155,6 +156,7 @@ export default function App() {
     const timer = setTimeout(() => {
       setIsSplashScreenActive(false);
     }, 1500);
+    storage.initStorage().catch(console.error);
     return () => clearTimeout(timer);
   }, []);
 
@@ -553,7 +555,11 @@ export default function App() {
     setIsScanning(false);
 
     try {
-      let parsedData = JSON.parse(data);
+      let rawData = data;
+      if (rawData.startsWith('LZW:')) {
+        rawData = lzw.decompress(rawData);
+      }
+      let parsedData = JSON.parse(rawData);
       
       // Normalize Shorthand format to Full format
       // t -> type, d -> data, a -> isAutodestruct, e -> qrExpiresAt, p -> profile, v -> version
@@ -987,6 +993,32 @@ export default function App() {
         if (file.name.toLowerCase().endsWith('.zip')) {
           const content = event.target?.result as ArrayBuffer;
           const zip = await JSZip.loadAsync(content);
+          
+          const profilesEncFile = zip.file("profiles.enc");
+          if (profilesEncFile) {
+            if (confirm("Vuoi ripristinare il backup completo (profili e dati)? Questo sovrascriverà i profili e i dati esistenti su questo dispositivo.")) {
+              const profilesEnc = await profilesEncFile.async("string");
+              await storage.saveRawProfiles(profilesEnc);
+              
+              // Read and write all state files in the zip
+              const files = Object.keys(zip.files);
+              for (const name of files) {
+                if (name.startsWith('state_') && name.endsWith('.enc')) {
+                  const profileId = name.substring(6, name.length - 4);
+                  const stateEncFile = zip.file(name);
+                  if (stateEncFile) {
+                    const stateEnc = await stateEncFile.async("string");
+                    await storage.saveRawState(profileId, stateEnc);
+                  }
+                }
+              }
+              
+              showToast("Backup ripristinato con successo!", "success");
+              window.dispatchEvent(new Event('chelona_profiles_updated'));
+            }
+            return;
+          }
+          
           const dataFile = zip.file("data.json");
           
           if (!dataFile) {
@@ -1636,6 +1668,29 @@ export default function App() {
                              <span className="text-[10px] text-[var(--text-muted)] mt-1 block">Traccia una spesa</span>
                            </div>
                          </button>
+                         <button
+                           onClick={() => {
+                             setSpesaSubMenu(false);
+                             setIsAdding(false);
+                             setEditingWalletModule({
+                               id: generateUUID(),
+                               type: 'wallet',
+                               title: 'Nuova Rata',
+                               totalAmount: 0,
+                               savedAmount: 0,
+                               dueDate: new Date(new Date().getFullYear(), new Date().getMonth() + 1, new Date().getDate()).toISOString().substring(0, 10),
+                               x: 0, y: 0, w: 2, h: 2,
+                               folderId: selectedFolderId || undefined
+                             });
+                           }}
+                           className="flex flex-col items-center justify-center gap-4 p-8 rounded-2xl border border-[var(--border)] hover:border-amber-500/60 hover:bg-amber-500/10 transition-all group text-center h-full text-[var(--text-main)]"
+                         >
+                           <Wallet className="w-8 h-8 text-amber-500 group-hover:scale-110 transition-transform" />
+                           <div className="text-center">
+                             <span className="font-bold text-xs uppercase tracking-wider block">Rate</span>
+                             <span className="text-[10px] text-[var(--text-muted)] mt-1 block">Gestisci le tue rate</span>
+                           </div>
+                         </button>
                       </div>
                     </div>
                   )}
@@ -1868,21 +1923,10 @@ export default function App() {
                                   </div>
 
                                   {/* Middle Section: Smart-Card Chip & Codice Fiscale */}
-                                  <div className="flex items-center justify-between gap-4 z-10 my-auto">
-                                    {/* Microchip dorato realistico */}
-                                    <div className="w-9 h-7 bg-gradient-to-br from-amber-300 via-yellow-400 to-amber-500 rounded-md border border-amber-600/30 relative overflow-hidden shadow-md flex flex-wrap p-0.5 opacity-90 shrink-0">
-                                      <div className="absolute inset-0 bg-[linear-gradient(45deg,transparent_45%,#d97706_45%,#d97706_55%,transparent_55%)] opacity-20" />
-                                      <div className="w-1/2 h-1/3 border-r border-b border-amber-700/20" />
-                                      <div className="w-1/2 h-1/3 border-b border-amber-700/20" />
-                                      <div className="w-1/2 h-1/3 border-r border-b border-amber-700/20" />
-                                      <div className="w-1/2 h-1/3 border-b border-amber-700/20" />
-                                      <div className="w-1/2 h-1/3 border-r border-amber-700/20" />
-                                      <div className="w-1/2 h-1/3" />
-                                    </div>
-
-                                    {/* Tactile strip containing the text-code */}
-                                    <div className="flex-1 bg-emerald-50/95 rounded-xl border border-emerald-600/20 shadow-[inset_0_2px_4px_rgba(0,0,0,0.06)] px-3 py-1.5 flex items-center justify-between min-w-0">
-                                      <span className="text-emerald-950 font-mono font-black text-xs sm:text-sm tracking-[0.12em] uppercase select-all truncate">
+                                  <div className="flex items-center justify-center gap-4 z-10 my-auto w-full">
+                                    {/* Tactile strip containing the text-code - Enlarged with larger font */}
+                                    <div className="w-full bg-emerald-50/95 rounded-2xl border border-emerald-600/30 shadow-[inset_0_2px_6px_rgba(0,0,0,0.08)] px-4 py-3 flex items-center justify-center min-w-0">
+                                      <span className="text-emerald-950 font-mono font-black text-base sm:text-lg md:text-xl tracking-[0.15em] uppercase select-all truncate text-center">
                                         {formData.number || 'RSSMRA80A01F205X'}
                                       </span>
                                     </div>
@@ -2359,7 +2403,7 @@ export default function App() {
                     ) : (
                       <>
                         {/* Total Balance Hero Summary - Only for Wallet Category */}
-                        {selectedType === 'wallet' && (() => {
+                        {selectedType === 'split' && (() => {
                           const walletModules = modules.filter(m => m.type === 'wallet') as import('./types').WalletModule[];
                           const totalMonthlyAmount = walletModules.reduce((acc, module) => {
                             if (!module.totalAmount || !module.dueDate) return acc;

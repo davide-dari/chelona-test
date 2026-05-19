@@ -185,32 +185,23 @@ export const DocumentManagementScreen = ({ module, onSave, onCancel, onDelete, o
               </div>
 
               {/* Middle Section: Smart-Card Chip & Codice Fiscale */}
-              <div className="absolute inset-x-4 top-1/2 -translate-y-1/2 flex items-center justify-between gap-4 z-10">
-                {/* Microchip dorato realistico */}
-                <div className="w-9 h-7 bg-gradient-to-br from-amber-300 via-yellow-400 to-amber-500 rounded-md border border-amber-600/30 relative overflow-hidden shadow-md flex flex-wrap p-0.5 opacity-90 shrink-0">
-                  <div className="absolute inset-0 bg-[linear-gradient(45deg,transparent_45%,#d97706_45%,#d97706_55%,transparent_55%)] opacity-20" />
-                  <div className="w-1/2 h-1/3 border-r border-b border-amber-700/20" />
-                  <div className="w-1/2 h-1/3 border-b border-amber-700/20" />
-                  <div className="w-1/2 h-1/3 border-r border-b border-amber-700/20" />
-                  <div className="w-1/2 h-1/3 border-b border-amber-700/20" />
-                  <div className="w-1/2 h-1/3 border-r border-amber-700/20" />
-                  <div className="w-1/2 h-1/3" />
-                </div>
-
-                {/* Tactile strip containing the text-code */}
-                <div className="flex-1 bg-emerald-50/95 rounded-xl border border-emerald-600/20 shadow-[inset_0_2px_4px_rgba(0,0,0,0.06)] px-3 py-1.5 flex items-center justify-between min-w-0">
-                  <span className="text-emerald-950 font-mono font-black text-xs sm:text-sm tracking-[0.12em] uppercase select-all truncate">
-                    {data.number || 'RSSMRA80A01F205X'}
-                  </span>
+              <div className="absolute inset-x-4 top-1/2 -translate-y-1/2 flex items-center justify-center gap-4 z-10 w-[calc(100%-2rem)]">
+                {/* Tactile strip containing the text-code - Enlarged with larger font */}
+                <div className="w-full bg-emerald-50/95 rounded-2xl border border-emerald-600/30 shadow-[inset_0_2px_6px_rgba(0,0,0,0.08)] px-4 py-3.5 flex items-center justify-between min-w-0">
+                  <div className="flex-1 text-center">
+                    <span className="text-emerald-950 font-mono font-black text-sm sm:text-lg md:text-xl tracking-[0.15em] uppercase select-all truncate">
+                      {data.number || 'RSSMRA80A01F205X'}
+                    </span>
+                  </div>
                   {data.number && (
                     <button
-                      onClick={handleCopy}
-                      className="p-1 rounded-lg hover:bg-emerald-500/10 text-emerald-800 hover:text-emerald-950 transition-colors active:scale-90 relative z-30 shrink-0"
+                      onClick={(e) => { e.stopPropagation(); handleCopy(); }}
+                      className="p-1.5 rounded-xl hover:bg-emerald-500/10 text-emerald-800 hover:text-emerald-950 transition-colors active:scale-90 relative z-30 shrink-0 border border-emerald-800/10 ml-2"
                       title="Copia codice fiscale"
                     >
                       {copied
-                        ? <CheckCheck className="w-3.5 h-3.5 text-emerald-600" />
-                        : <Copy className="w-3.5 h-3.5" />}
+                        ? <CheckCheck className="w-4 h-4 text-emerald-600" />
+                        : <Copy className="w-4 h-4" />}
                     </button>
                   )}
                 </div>

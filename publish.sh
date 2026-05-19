@@ -71,7 +71,7 @@ RELEASE_JSON=$(curl -s -X POST \
   -d "{
     \"tag_name\": \"$TAG\",
     \"name\": \"Chelona $TAG\",
-    \"body\": \"🚀 **Chelona v$VERSION**\\n\\n### ✨ Novità e Fix:\\n- **🗺️ Fix Sovrapposizione Viaggi**: Il pulsante + (FAB) del modulo Viaggi ora si nasconde automaticamente quando viene aperta o espansa la scheda di una località, eliminando ogni sovrapposizione visiva.\\n- **🪪 Estetica Documenti Reale**: Le schede per **Codice Fiscale**, **Carta d'Identità** e **Patente di Guida** sono state completamente riprogettate con una grafica ad alta fedeltà che riproduce i layout e i colori dei documenti fisici italiani reali.\\n- **📋 Copia Codice Fiscale Affidabile**: Risolto il problema della copia del Codice Fiscale integrando un metodo di fallback robusto per tutti i dispositivi e sistemi operativi.\",
+    \"body\": \"🚀 **Chelona v$VERSION**\\n\\n### ✨ Novità e Fix:\\n- **🗺️ Viaggi & Geocodifica**: Nomi dei luoghi ricercati con geocodifica internazionale (inglese) e modale di creazione Nuovo Luogo ridisegnata con icone.\\n- **💰 Gestione Rate (Spese)**: Introdotta la creazione e gestione delle Rate in Spese con inserimento di importo target, soldi accantonati, scadenza e quota mensile consigliata.\\n- **🪪 Codice Fiscale**: Rimosso il microchip e ingranditi i caratteri per una migliore visibilità e fedeltà grafica.\\n- **📁 Backup ZIP e LZW QR**: Aggiunta la condivisione/esportazione in ZIP crittografato di tutti i profili e compressione LZW per i QR code di backup.\\n- **📸 Filtri Immagini**: Risolto il bug di event bubbling che apriva fotocamera e galleria contemporaneamente.\",
     \"draft\": false,
     \"prerelease\": false
   }")
