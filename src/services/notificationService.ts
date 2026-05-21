@@ -177,7 +177,6 @@ export const notificationService = {
     }
 
     // Controlli Custom
-    this.checkMiniWallets(modules);
     this.checkAutoKmReminders(modules);
   },
 
@@ -206,32 +205,6 @@ export const notificationService = {
     }
   },
 
-  checkMiniWallets(modules: any[]) {
-    const today = new Date();
-    const currentYear = today.getFullYear();
-    const currentMonth = today.getMonth();
-
-    modules.filter(m => m.type === 'wallet').forEach(w => {
-      if (!w.dueDate) return;
-      const due = new Date(w.dueDate);
-      const saved = Number(w.savedAmount) || 0;
-      const total = Number(w.totalAmount) || 0;
-      if (saved >= total) return; // Finito, skip
-
-      const diffMonths = (due.getFullYear() - currentYear) * 12 + (due.getMonth() - currentMonth);
-      // Notifica se entro 1 mese la scadenza, o scaduta
-      if (diffMonths <= 1) {
-        const prefId = `wallet_${w.id}`;
-        const fireKey = `${currentYear}-${currentMonth}`;
-        const lastFired = localStorage.getItem(`notif_fired_${prefId}`);
-        
-        if (lastFired !== fireKey) {
-          this.fire(`💼 Portafoglio`, `Ricordati di accantonare i fondi per la scadenza imminente: ${w.title}`);
-          localStorage.setItem(`notif_fired_${prefId}`, fireKey);
-        }
-      }
-    });
-  },
 
   checkAutoKmReminders(modules: any[]) {
     const today = new Date();

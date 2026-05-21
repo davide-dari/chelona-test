@@ -45,6 +45,10 @@ const ModuleWrapper = ({ module, onDelete, onEdit, children }: ModuleWrapperProp
 );
 
 export const DocumentCard = ({ module, onDelete, onEdit, onShare }: { module: DocumentModule; onDelete: (id: string) => void; onEdit: (m: Module) => void; onShare: (m: Module) => void; }) => {
+  const isTaxCode = module.documentType === 'tax_code';
+  const isIdentity = module.documentType === 'identity';
+  const isLicense = module.documentType === 'driving_license';
+
   const getDocTypeLabel = (type: string) => {
     switch (type) {
       case 'identity': return 'Carta d\'Identità';
@@ -55,30 +59,183 @@ export const DocumentCard = ({ module, onDelete, onEdit, onShare }: { module: Do
     }
   };
 
+  const isExpired = module.expiryDate && new Date(module.expiryDate) < new Date();
+  const expiresSoon = module.expiryDate && !isExpired && (new Date(module.expiryDate).getTime() - new Date().getTime()) < (30 * 24 * 60 * 60 * 1000);
+
   return (
     <ModuleWrapper module={module} onDelete={onDelete} onEdit={onEdit}>
       <div 
-        className="h-full flex flex-col cursor-pointer group/card hover:bg-[var(--bg)] transition-colors p-4 -m-4 rounded-2xl active:scale-[0.98]"
+        className="w-full aspect-[1.58/1] rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow cursor-pointer relative active:scale-[0.98]"
         onClick={() => onEdit(module)}
       >
-        <div className="flex items-start justify-between mb-3">
-          <div className="w-12 h-12 bg-indigo-500/10 rounded-2xl flex items-center justify-center text-indigo-500 border border-indigo-500/20">
-            <FileText className="w-6 h-6" />
-          </div>
-          <div className="text-right">
-             <h4 className="font-bold text-[14px] text-[var(--text-main)] truncate max-w-[120px]">
-               {module.title || getDocTypeLabel(module.documentType)}
-             </h4>
-             <p className="text-[9px] font-black text-[var(--text-muted)] uppercase tracking-widest mt-1">
-               {getDocTypeLabel(module.documentType)}
-             </p>
-          </div>
-        </div>
+        {/* === CODICE FISCALE === */}
+        {isTaxCode && (
+          <div className="absolute inset-0 p-3.5 flex flex-col justify-between text-white" style={{ background: 'linear-gradient(135deg, #0f766e 0%, #115e59 40%, #042f2e 100%)' }}>
+            <div className="flex items-start justify-between">
+              <div className="flex items-center gap-1.5">
+                <div className="w-5 h-3.5 bg-[#003399] rounded-sm flex items-center justify-center border border-white/10 shrink-0">
+                  <span className="text-[5px] text-white font-black leading-none">IT</span>
+                </div>
+                <div className="leading-none">
+                  <p className="text-[5px] font-black text-teal-200 uppercase tracking-widest m-0">REPUBBLICA ITALIANA</p>
+                  <p className="text-[6.5px] font-black text-white uppercase tracking-wider mt-0.5 m-0">TESSERA SANITARIA</p>
+                </div>
+              </div>
+              <div className="text-[4px] font-bold text-white/40 uppercase tracking-wider leading-none">
+                MIN. FINANZE
+              </div>
+            </div>
 
-        <div className="mt-auto pt-4 border-t border-[var(--border)] flex items-center justify-between">
-          <span className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest">Apri per gestire</span>
-          <ChevronRight className="w-4 h-4 text-[var(--text-muted)] group-hover:translate-x-1 transition-transform" />
-        </div>
+            <div className="my-auto w-full bg-emerald-50/95 rounded-lg border border-emerald-600/30 px-2 py-1 flex items-center justify-center">
+              <span className="text-emerald-950 font-mono font-black text-[9.5px] sm:text-[10px] md:text-[11px] tracking-[0.1em] uppercase truncate">
+                {module.number || 'RSSMRA80A01F205X'}
+              </span>
+            </div>
+
+            <div className="flex items-center justify-between border-t border-white/10 pt-1">
+              <div className="text-[5px] font-bold text-white/60">
+                SCAD: <span className="text-white font-black">{module.expiryDate ? new Date(module.expiryDate).toLocaleDateString('it-IT') : '---'}</span>
+              </div>
+              {isExpired ? (
+                <div className="bg-red-500 text-white px-1 py-0.5 rounded text-[5px] font-black uppercase">SCADUTO</div>
+              ) : expiresSoon ? (
+                <div className="bg-amber-400 text-black px-1 py-0.5 rounded text-[5px] font-black uppercase">IN SCADENZA</div>
+              ) : (
+                <div className="bg-emerald-400 text-black px-1 py-0.5 rounded text-[5px] font-black uppercase">VALIDO</div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* === CARTA D'IDENTITA === */}
+        {isIdentity && (
+          <div className="absolute inset-0 flex text-white" style={{ background: 'linear-gradient(135deg, #1a3a6b 0%, #0d255c 50%, #061540 100%)' }}>
+            <div className="w-6 flex flex-col items-center justify-between py-1.5 shrink-0" style={{ background: 'rgba(0,47,135,0.8)' }}>
+              <div className="flex flex-col items-center gap-0.5">
+                <div className="text-yellow-300 text-[3px]">★</div>
+                <div className="text-yellow-300 text-[3px]">★</div>
+              </div>
+              <span className="text-[4px] font-black text-white/80 uppercase tracking-widest rotate-[-90deg] whitespace-nowrap">ITALIA</span>
+              <div className="flex flex-col items-center gap-0.5">
+                <div className="text-yellow-300 text-[3px]">★</div>
+                <div className="text-yellow-300 text-[3px]">★</div>
+              </div>
+            </div>
+
+            <div className="flex-1 p-3 flex flex-col justify-between min-w-0">
+              <div className="flex justify-between items-start">
+                <div>
+                  <p className="text-[4.5px] font-black text-blue-200/70 uppercase tracking-wider leading-none m-0">CARTA D'IDENTITÀ</p>
+                  <p className="text-[4px] text-white/50 uppercase tracking-widest mt-0.5 leading-none m-0">IDENTITY CARD</p>
+                </div>
+                <span className="text-[8px] leading-none">🇮🇹</span>
+              </div>
+
+              <div className="my-auto flex items-center justify-between gap-1.5 min-w-0">
+                <div className="min-w-0 flex-1">
+                  <p className="text-[4.5px] text-white/50 uppercase tracking-wider leading-none m-0">COGNOME / SURNAME</p>
+                  <p className="text-[9px] font-black text-white tracking-wide truncate mt-0.5 m-0 leading-none">{module.title || '---'}</p>
+                  
+                  <p className="text-[4.5px] text-white/50 uppercase tracking-wider leading-none mt-1 m-0">NUMERO / NUMBER</p>
+                  <p className="text-[8px] font-black text-white font-mono tracking-wider mt-0.5 m-0 leading-none truncate">{module.number || '---'}</p>
+                </div>
+
+                <div className="w-6 h-4.5 rounded border border-yellow-400/40 bg-gradient-to-br from-yellow-300/20 to-yellow-500/10 flex items-center justify-center shrink-0">
+                  <div className="w-3.5 h-2 border border-yellow-400/60 rounded-sm bg-yellow-400/10" />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between border-t border-white/10 pt-1">
+                <span className="text-[5px] text-white/50 font-bold leading-none">SCAD: <span className="text-white">{module.expiryDate ? new Date(module.expiryDate).toLocaleDateString('it-IT') : '---'}</span></span>
+                {isExpired ? (
+                  <div className="bg-red-500 text-white px-1 py-0.5 rounded text-[5px] font-black uppercase leading-none">SCADUTO</div>
+                ) : expiresSoon ? (
+                  <div className="bg-amber-400 text-black px-1 py-0.5 rounded text-[5px] font-black uppercase leading-none">IN SCADENZA</div>
+                ) : (
+                  <div className="bg-emerald-400 text-black px-1 py-0.5 rounded text-[5px] font-black uppercase leading-none">VALIDA</div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* === PATENTE DI GUIDA === */}
+        {isLicense && (
+          <div className="absolute inset-0 p-3.5 flex flex-col justify-between text-white" style={{ background: 'linear-gradient(135deg, #5b1fa3 0%, #3b0f6e 50%, #21094a 100%)' }}>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5">
+                <div className="w-4 h-4 rounded-full bg-white/15 flex items-center justify-center text-[7px] shrink-0">🇮🇹</div>
+                <div className="leading-none">
+                  <p className="text-[5px] font-black text-purple-200/70 uppercase tracking-wider m-0">REPUBBLICA ITALIANA</p>
+                  <p className="text-[6.5px] font-black text-white uppercase tracking-wider mt-0.5 m-0">PATENTE DI GUIDA</p>
+                </div>
+              </div>
+              <div className="flex gap-0.5 shrink-0">
+                {['B', 'AM'].map(cat => (
+                  <div key={cat} className="w-3.5 h-3.5 rounded bg-white/20 border border-white/30 flex items-center justify-center">
+                    <span className="text-[5.5px] font-black text-white">{cat}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="my-auto flex flex-col items-center">
+              <p className="text-[4.5px] font-black text-purple-300/60 uppercase tracking-widest leading-none m-0">NUMERO PATENTE</p>
+              <p className="text-[12px] font-black text-white font-mono tracking-wider mt-1 leading-none truncate max-w-full">
+                {module.number || '--- --- ---'}
+              </p>
+            </div>
+
+            <div className="flex items-center justify-between border-t border-white/10 pt-1">
+              <div className="text-[5px] font-bold text-white/50 leading-none">
+                SCAD: <span className="text-white font-black">{module.expiryDate ? new Date(module.expiryDate).toLocaleDateString('it-IT') : '---'}</span>
+              </div>
+              {isExpired ? (
+                <div className="bg-red-500 text-white px-1 py-0.5 rounded text-[5px] font-black uppercase leading-none">SCADUTA</div>
+              ) : expiresSoon ? (
+                <div className="bg-amber-400 text-black px-1 py-0.5 rounded text-[5px] font-black uppercase leading-none">IN SCADENZA</div>
+              ) : (
+                <div className="bg-purple-300 text-purple-900 px-1 py-0.5 rounded text-[5px] font-black uppercase leading-none">VALIDA</div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* === DOCUMENTO GENERICO === */}
+        {!isTaxCode && !isIdentity && !isLicense && (
+          <div className="absolute inset-0 p-3.5 flex flex-col justify-between text-white" style={{ background: 'linear-gradient(135deg, #374151 0%, #1f2937 100%)' }}>
+            <div className="flex justify-between items-start">
+              <div className="flex items-center gap-2 min-w-0">
+                <div className="w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center text-white shrink-0 border border-white/10">
+                  <FileText className="w-3.5 h-3.5" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[4.5px] font-black text-white/50 uppercase tracking-wider leading-none m-0">DOCUMENTO GENERICO</p>
+                  <h4 className="text-[9.5px] font-black text-white tracking-wide truncate mt-0.5 m-0 leading-tight">
+                    {module.title || getDocTypeLabel(module.documentType)}
+                  </h4>
+                </div>
+              </div>
+              {isExpired ? (
+                <div className="bg-red-500 text-white px-1 py-0.5 rounded text-[5px] font-black uppercase leading-none">SCADUTO</div>
+              ) : expiresSoon ? (
+                <div className="bg-amber-500 text-white px-1 py-0.5 rounded text-[5px] font-black uppercase leading-none">IN SCADENZA</div>
+              ) : (
+                <div className="bg-emerald-500 text-white px-1 py-0.5 rounded text-[5px] font-black uppercase leading-none">VALIDO</div>
+              )}
+            </div>
+
+            <div className="my-auto flex flex-col">
+              <span className="text-[4.5px] font-bold text-white/50 uppercase tracking-wider leading-none m-0">NUMERO</span>
+              <span className="text-[10px] font-black font-mono tracking-wider mt-0.5 text-white leading-none truncate">{module.number || '---'}</span>
+            </div>
+
+            <div className="flex items-center justify-between border-t border-white/10 pt-1">
+              <span className="text-[5px] text-white/50 font-bold leading-none">SCAD: <span className="text-white font-black">{module.expiryDate ? new Date(module.expiryDate).toLocaleDateString('it-IT') : '---'}</span></span>
+              <span className="text-[5px] text-white/50 font-bold leading-none">RIL: <span className="text-white font-black">{module.issueDate ? new Date(module.issueDate).toLocaleDateString('it-IT') : '---'}</span></span>
+            </div>
+          </div>
+        )}
       </div>
     </ModuleWrapper>
   );
@@ -108,48 +265,6 @@ export const GenericCard = ({ module, onDelete, onEdit }: { module: GenericModul
         <div className="mt-auto pt-4 border-t border-[var(--border)] flex items-center justify-between">
           <span className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest">Dettagli</span>
           <ChevronRight className="w-4 h-4 text-[var(--text-muted)]" />
-        </div>
-      </div>
-    </ModuleWrapper>
-  );
-};
-
-export const WalletCard = ({ module, onDelete, onEdit }: { module: WalletModule; onDelete: (id: string) => void; onEdit: (m: Module) => void; }) => {
-  const saved = Number(module.savedAmount) || 0;
-  const total = Number(module.totalAmount) || 0;
-  const progress = total > 0 ? Math.min(100, (saved / total) * 100) : 0;
-  const isCompleted = progress >= 100;
-
-  return (
-    <ModuleWrapper module={module} onDelete={onDelete} onEdit={onEdit}>
-      <div 
-        className="h-full flex flex-col cursor-pointer group/card hover:bg-[var(--bg)] transition-colors p-4 -m-4 rounded-2xl active:scale-[0.98]"
-        onClick={() => onEdit(module)}
-      >
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-3">
-            <div className={`p-2.5 rounded-2xl border ${isCompleted ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-600' : 'bg-purple-500/10 border-purple-500/20 text-purple-600'}`}>
-              <Wallet className="w-5 h-5" />
-            </div>
-            <div>
-              <h4 className="font-bold text-[14px] text-[var(--text-main)] leading-tight">{module.title || 'Risparmio'}</h4>
-              <p className="text-[9px] font-black text-[var(--text-muted)] uppercase tracking-widest mt-1">Obiettivo: € {total.toLocaleString('it-IT')}</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="space-y-2 mt-auto">
-          <div className="flex justify-between items-center text-[10px] font-bold mb-1">
-             <span className="text-[var(--text-muted)]">Progressi</span>
-             <span className={isCompleted ? 'text-emerald-500' : 'text-[var(--accent)]'}>{progress.toFixed(0)}%</span>
-          </div>
-          <div className="h-2 bg-[var(--surface-variant)] rounded-full overflow-hidden">
-            <motion.div 
-              initial={{ width: 0 }}
-              animate={{ width: `${progress}%` }}
-              className={`h-full rounded-full ${isCompleted ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.3)]' : 'bg-[var(--accent)] shadow-[0_0_8px_rgba(var(--accent-rgb),0.3)]'}`}
-            />
-          </div>
         </div>
       </div>
     </ModuleWrapper>

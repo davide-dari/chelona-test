@@ -4,18 +4,17 @@
  */
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Sun, Moon, Wrench, Plus, LayoutDashboard, Settings, User, LogOut, Search, Mic, Bell, CreditCard, Fingerprint, ShieldCheck, Wallet, Lock, Menu, X, StickyNote, FileText, Grid2X2, Car, QrCode, Folder as FolderIcon, Check, Edit2, Trash2, BookOpen, ArrowLeft, ArrowRight, Camera, FileDown, Hourglass, Users, Download, Receipt, MapPin, Image as ImageIcon, Lightbulb, Globe, ChevronLeft } from 'lucide-react';
+import { Sun, Moon, Wrench, Plus, LayoutDashboard, Settings, User, LogOut, Search, Mic, Bell, CreditCard, Fingerprint, ShieldCheck, Lock, Menu, X, StickyNote, FileText, Grid2X2, Car, QrCode, Folder as FolderIcon, Check, Edit2, Trash2, BookOpen, ArrowLeft, ArrowRight, Camera, FileDown, Hourglass, Users, Download, Receipt, MapPin, Image as ImageIcon, Lightbulb, Globe, ChevronLeft } from 'lucide-react';
 import { Module, ModuleType, Folder, DocumentModule } from './types';
 import { storage, AppState } from './services/storage';
 import { encryption } from './services/encryption';
-import { GenericCard, AutoCard, DocumentCard, SplitCard, SingleExpenseCard, WalletCard, GalleryCard, TravelCard } from './components/Modules';
+import { GenericCard, AutoCard, DocumentCard, SplitCard, SingleExpenseCard, GalleryCard, TravelCard } from './components/Modules';
 import { LockScreen } from './components/LockScreen';
 import { QrScanner } from './components/QrScanner';
 import { DocumentScanner } from './components/DocumentScanner';
 import { ProfileScreen } from './components/ProfileScreen';
 import { ToolsScreen, TOOLS, TOOLS_UTILITY } from './components/ToolsScreen';
 import { AutoManagementScreen } from './components/AutoManagementScreen';
-import { WalletManagementScreen } from './components/WalletManagementScreen';
 import { DocumentManagementScreen } from './components/DocumentManagementScreen';
 import { NoteManagementScreen } from './components/NoteManagementScreen';
 import { SplitScreen } from './components/SplitScreen';
@@ -141,7 +140,6 @@ export default function App() {
   const [editingAutoModule, setEditingAutoModule] = useState<import('./types').AutoModule | null>(null);
   const [editingSplitModule, setEditingSplitModule] = useState<import('./types').SplitModule | null>(null);
   const [editingSingleExpenseModule, setEditingSingleExpenseModule] = useState<import('./types').SingleExpenseModule | null>(null);
-  const [editingWalletModule, setEditingWalletModule] = useState<import('./types').WalletModule | null>(null);
   const [editingDocumentModule, setEditingDocumentModule] = useState<import('./types').DocumentModule | null>(null);
   const [editingGenericModule, setEditingGenericModule] = useState<import('./types').GenericModule | null>(null);
   const [editingTravelModule, setEditingTravelModule] = useState<import('./types').TravelModule | null>(null);
@@ -325,7 +323,6 @@ export default function App() {
       setEditingAutoModule(state.autoEdit || null);
       setEditingSplitModule(state.splitEdit || null);
       setEditingSingleExpenseModule(state.singleExpenseEdit || null);
-      setEditingWalletModule(state.walletEdit || null);
       setModuleToDelete(state.deleteConfirm || null);
       setShowGalleryViewer(!!state.showGallery);
       setGallerySelectedImage(state.selectedImage || null);
@@ -354,7 +351,6 @@ export default function App() {
       autoEdit: editingAutoModule,
       splitEdit: editingSplitModule,
       singleExpenseEdit: editingSingleExpenseModule,
-      walletEdit: editingWalletModule,
       deleteConfirm: moduleToDelete,
       showGallery: showGalleryViewer,
       selectedImage: gallerySelectedImage,
@@ -365,7 +361,7 @@ export default function App() {
     const hasChanges = !historyState || JSON.stringify(historyState) !== JSON.stringify(currentState);
     
     const isAnyOpen = isToolsOpen || activeToolId || isAdding || editingModuleId || isProfileOpen || 
-                      editingWalletModule || moduleToDelete || showGalleryViewer || gallerySelectedImage;
+                      moduleToDelete || showGalleryViewer || gallerySelectedImage;
 
     if (hasChanges) {
       if (isAnyOpen) {
@@ -378,7 +374,7 @@ export default function App() {
   }, [
     isToolsOpen, activeToolId, isAdding, editingModuleId, isProfileOpen, isArchiveOpen, 
     selectedType, selectedFolderId, isSidebarOpen, editingAutoModule, editingSplitModule, 
-    editingSingleExpenseModule, editingWalletModule, moduleToDelete, showGalleryViewer, gallerySelectedImage
+    editingSingleExpenseModule, moduleToDelete, showGalleryViewer, gallerySelectedImage
   ]);
 
   useEffect(() => {
@@ -665,10 +661,6 @@ export default function App() {
       setEditingSingleExpenseModule(module as import('./types').SingleExpenseModule);
       return;
     }
-    if (module.type === 'wallet') {
-      setEditingWalletModule(module as import('./types').WalletModule);
-      return;
-    }
     if (module.type === 'document') {
       setEditingDocumentModule(module as import('./types').DocumentModule);
       return;
@@ -684,18 +676,6 @@ export default function App() {
     }
     if (module.type === 'travel') {
       setEditingTravelModule(module as import('./types').TravelModule);
-      return;
-    }
-    // Migration for old expense template
-    if (module.type === 'generic' && (module as import('./types').GenericModule).template === 'expense') {
-      const wallet: import('./types').WalletModule = {
-        ...module,
-        type: 'wallet',
-        totalAmount: 0,
-        dueDate: new Date().toISOString().split('T')[0],
-        savedAmount: 0
-      };
-      setEditingWalletModule(wallet);
       return;
     }
     setEditingModuleId(module.id);
@@ -861,7 +841,7 @@ export default function App() {
       // Type (Category) filter - Disabled when a folder/group is selected
       if (!selectedFolderId && selectedType) {
         if (selectedType === 'split') {
-          if (m.type !== 'split' && m.type !== 'single-expense' && m.type !== 'wallet') return false;
+          if (m.type !== 'split' && m.type !== 'single-expense') return false;
         } else if (m.type !== selectedType) {
           return false;
         }
@@ -1536,13 +1516,6 @@ export default function App() {
                 onClose={() => setEditingSplitModule(null)}
                 onSaveToSandbox={handleSaveToSandbox}
               />
-            ) : editingWalletModule ? (
-              <WalletManagementScreen
-                module={editingWalletModule}
-                onSave={(mod) => { updateModuleDirect(mod); setEditingWalletModule(null); }}
-                onCancel={() => setEditingWalletModule(null)}
-                onDelete={deleteModule}
-              />
             ) : editingSingleExpenseModule || formData.template === 'single-expense' ? (
               <SingleExpenseScreen
                 module={editingSingleExpenseModule || {
@@ -1602,18 +1575,6 @@ export default function App() {
                             onClick={() => {
                               if (key === 'split') {
                                 setSpesaSubMenu(true);
-                              } else if (key === 'expense') {
-                                setEditingWalletModule({
-                                  id: generateUUID(),
-                                  type: 'wallet',
-                                  title: 'Rate',
-                                  balance: 0,
-                                  currency: 'EUR',
-                                  payments: [],
-                                  x: 0, y: 0, w: 2, h: 2,
-                                  folderId: selectedFolderId || undefined
-                                });
-                                setIsAdding(false);
                               } else {
                                 setFormData({ ...formData, template: key, title: t.title, content: t.content });
                                 setAutoFormStep(0);
@@ -1638,7 +1599,7 @@ export default function App() {
                       <div className="flex items-center gap-3 mb-8">
                         <h3 className="text-lg font-bold text-[var(--text-main)] uppercase tracking-widest">Spese</h3>
                       </div>
-                      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+                      <div className="grid grid-cols-2 gap-4">
 
                          <button
                            onClick={() => {
@@ -1666,29 +1627,6 @@ export default function App() {
                            <div className="text-center">
                              <span className="font-bold text-xs uppercase tracking-wider block">Spesa Singola</span>
                              <span className="text-[10px] text-[var(--text-muted)] mt-1 block">Traccia una spesa</span>
-                           </div>
-                         </button>
-                         <button
-                           onClick={() => {
-                             setSpesaSubMenu(false);
-                             setIsAdding(false);
-                             setEditingWalletModule({
-                               id: generateUUID(),
-                               type: 'wallet',
-                               title: 'Nuova Rata',
-                               totalAmount: 0,
-                               savedAmount: 0,
-                               dueDate: new Date(new Date().getFullYear(), new Date().getMonth() + 1, new Date().getDate()).toISOString().substring(0, 10),
-                               x: 0, y: 0, w: 2, h: 2,
-                               folderId: selectedFolderId || undefined
-                             });
-                           }}
-                           className="flex flex-col items-center justify-center gap-4 p-8 rounded-2xl border border-[var(--border)] hover:border-amber-500/60 hover:bg-amber-500/10 transition-all group text-center h-full text-[var(--text-main)]"
-                         >
-                           <Wallet className="w-8 h-8 text-amber-500 group-hover:scale-110 transition-transform" />
-                           <div className="text-center">
-                             <span className="font-bold text-xs uppercase tracking-wider block">Rate</span>
-                             <span className="text-[10px] text-[var(--text-muted)] mt-1 block">Gestisci le tue rate</span>
                            </div>
                          </button>
                       </div>
@@ -2402,65 +2340,7 @@ export default function App() {
                       )
                     ) : (
                       <>
-                        {/* Total Balance Hero Summary - Only for Wallet Category */}
-                        {selectedType === 'split' && (() => {
-                          const walletModules = modules.filter(m => m.type === 'wallet') as import('./types').WalletModule[];
-                          const totalMonthlyAmount = walletModules.reduce((acc, module) => {
-                            if (!module.totalAmount || !module.dueDate) return acc;
-                            const total = Number(module.totalAmount);
-                            if (isNaN(total) || total <= 0) return acc;
-                            
-                            const remaining = Math.max(0, total - (module.savedAmount || 0));
-                            if (remaining === 0) return acc;
 
-                            const today = new Date();
-                            const targetDate = new Date(module.dueDate);
-                            
-                            let months = (targetDate.getFullYear() - today.getFullYear()) * 12 + targetDate.getMonth() - today.getMonth();
-                            if (targetDate.getDate() > today.getDate() && months === 0) {
-                               months = 1;
-                            }
-                            months = Math.max(1, months);
-
-                            return acc + (remaining / months);
-                          }, 0);
-
-                          const totalRemaining = walletModules.reduce((acc, module) => {
-                             const total = Number(module.totalAmount) || 0;
-                             const saved = Number(module.savedAmount) || 0;
-                             return acc + Math.max(0, total - saved);
-                          }, 0);
-
-                          return (
-                            <div className="px-4 lg:px-8 mb-8 animate-fade-in max-w-2xl mx-auto">
-                              <div className="relative overflow-hidden bg-gradient-to-br from-indigo-600 via-indigo-700 to-purple-800 rounded-[2rem] p-6 lg:p-8 text-white shadow-xl shadow-indigo-500/20 border border-white/10">
-                                {/* Ambient Background Glow */}
-                                <div className="absolute right-0 top-0 w-64 h-64 bg-white/5 rounded-full blur-3xl pointer-events-none" />
-                                
-                                <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-                                  <div>
-                                    <span className="text-[10px] font-black uppercase tracking-widest text-indigo-200">Totale Risparmio Mensile Consigliato</span>
-                                    <h3 className="text-3xl lg:text-4xl font-black mt-2 leading-none">
-                                      € {totalMonthlyAmount.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                    </h3>
-                                    <p className="text-xs text-indigo-200/80 mt-2 font-medium">
-                                      Per completare tutti i {walletModules.length} obiettivi di risparmio attivi.
-                                    </p>
-                                  </div>
-                                  
-                                  <div className="h-px md:h-12 w-full md:w-px bg-white/20" />
-                                  
-                                  <div>
-                                    <span className="text-[10px] font-black uppercase tracking-widest text-indigo-200">Rimanente Totale da Risparmiare</span>
-                                    <h4 className="text-xl lg:text-2xl font-bold mt-1 text-white/95">
-                                      € {totalRemaining.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                    </h4>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        })()}
 
                         {selectedType && (
                           <div className="px-4 lg:px-8 mb-6 animate-fade-in flex items-center justify-between max-w-7xl mx-auto">
@@ -2494,8 +2374,6 @@ export default function App() {
                                 <SplitCard module={module as import('./types').SplitModule} onDelete={requestDelete} onEdit={openEditModal} />
                               ) : module.type === 'single-expense' ? (
                                 <SingleExpenseCard module={module as import('./types').SingleExpenseModule} onDelete={requestDelete} onEdit={openEditModal} />
-                              ) : module.type === 'wallet' ? (
-                                <WalletCard module={module as import('./types').WalletModule} onDelete={requestDelete} onEdit={openEditModal} />
                               ) : module.type === 'gallery' ? (
                                 <GalleryCard module={module as import('./types').GalleryModule} onEdit={openEditModal} />
                               ) : module.type === 'travel' ? (
@@ -2515,7 +2393,7 @@ export default function App() {
           </div>
           
           {/* Global FAB (Only on main dashboard and specific categories except gallery/travel) */}
-          {(selectedType !== 'gallery') && !editingTravelModule && !isAdding && !editingModuleId && !isArchiveOpen && !isToolsOpen && !editingAutoModule && !editingSplitModule && !editingSingleExpenseModule && !editingWalletModule && !editingDocumentModule && !editingGenericModule && (
+          {(selectedType !== 'gallery') && !editingTravelModule && !isAdding && !editingModuleId && !isArchiveOpen && !isToolsOpen && !editingAutoModule && !editingSplitModule && !editingSingleExpenseModule && !editingDocumentModule && !editingGenericModule && (
             <motion.button
               initial={{ scale: 0, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
@@ -2538,7 +2416,7 @@ export default function App() {
                     return updated;
                   });
                   setEditingTravelModule(newTravel);
-                } else if (selectedType === 'split' || selectedType === 'single-expense' || selectedType === 'wallet') {
+                } else if (selectedType === 'split' || selectedType === 'single-expense') {
                   setSpesaSubMenu(true);
                   setIsAdding(true);
                 } else {
@@ -2836,21 +2714,6 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      <AnimatePresence>
-        {editingWalletModule && (
-          <WalletManagementScreen
-            module={editingWalletModule}
-            onSave={(updated) => {
-              const updatedModules = modules.map(m => m.id === updated.id ? updated : m);
-              setModules(updatedModules);
-              saveAppState(updatedModules, folders);
-              setEditingWalletModule(null);
-            }}
-            onCancel={() => setEditingWalletModule(null)}
-            onDelete={deleteModule}
-          />
-        )}
-      </AnimatePresence>
 
       <AnimatePresence>
         {editingDocumentModule && (

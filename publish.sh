@@ -71,7 +71,7 @@ RELEASE_JSON=$(curl -s -X POST \
   -d "{
     \"tag_name\": \"$TAG\",
     \"name\": \"Chelona $TAG\",
-    \"body\": \"🚀 **Chelona v$VERSION**\\n\\n### ✨ Novità e Fix:\\n- **🗺️ Viaggi & Geocodifica**: Nomi dei luoghi ricercati con geocodifica internazionale (inglese) e modale di creazione Nuovo Luogo ridisegnata con icone.\\n- **💰 Gestione Rate (Spese)**: Introdotta la creazione e gestione delle Rate in Spese con inserimento di importo target, soldi accantonati, scadenza e quota mensile consigliata.\\n- **🪪 Codice Fiscale**: Rimosso il microchip e ingranditi i caratteri per una migliore visibilità e fedeltà grafica.\\n- **📁 Backup ZIP e LZW QR**: Aggiunta la condivisione/esportazione in ZIP crittografato di tutti i profili e compressione LZW per i QR code di backup.\\n- **📸 Filtri Immagini**: Risolto il bug di event bubbling che apriva fotocamera e galleria contemporaneamente.\",
+    \"body\": \"🚀 **Chelona v$VERSION**\\n\\n### ✨ Novità e Fix:\\n- **🪪 Anteprime Documenti**: Riprogettato il design delle anteprime dei documenti sulla dashboard principale per richiamare in miniatura la grafica e il tema della scheda dettagliata interna.\\n- **💰 Rimozione Rate**: Rimossa completamente la funzionalità delle Rate (wallet/installments) e i relativi totali/calcoli dalle Spese.\",
     \"draft\": false,
     \"prerelease\": false
   }")
