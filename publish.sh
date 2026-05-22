@@ -71,7 +71,7 @@ RELEASE_JSON=$(curl -s -X POST \
   -d "{
     \"tag_name\": \"$TAG\",
     \"name\": \"Chelona $TAG\",
-    \"body\": \"🚀 **Chelona v$VERSION**\\n\\n### ✨ Novità e Fix:\\n- **🪪 Anteprime Documenti**: Riprogettato il design delle anteprime dei documenti sulla dashboard principale per richiamare in miniatura la grafica e il tema della scheda dettagliata interna.\\n- **💰 Rimozione Rate**: Rimossa completamente la funzionalità delle Rate (wallet/installments) e i relativi totali/calcoli dalle Spese.\",
+    \"body\": \"🚀 **Chelona v$VERSION**\\n\\n### ✨ Novità e Fix:\\n- **🧳 Ricerca e Rilevamento Luoghi**: Introdotto un campo di ricerca unico per l'aggiunta di mete di viaggio con auto-compilazione di città, nazione e coordinate.\\n- **🗺️ Database Attrazioni Famose**: Creato un database offline con oltre 150 monumenti, musei e attrazioni di rilievo mondiale per un rilevamento locale immediato.\",
     \"draft\": false,
     \"prerelease\": false
   }")

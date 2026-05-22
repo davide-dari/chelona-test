@@ -1,8 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ArrowLeft, Plus, X, MapPin, Globe, Compass, Navigation, Trash2, Check, Loader2, Pencil } from 'lucide-react';
+import { ArrowLeft, Plus, X, MapPin, Globe, Compass, Navigation, Trash2, Check, Loader2, Pencil, Search } from 'lucide-react';
 import ReactGlobe from 'react-globe.gl';
 import { TravelModule, TravelDestination, TravelCountryGroup, TravelNation } from '../types';
+import { FAMOUS_PLACES_DB } from '../constants/famousPlaces';
 
 interface TravelScreenProps {
   module: TravelModule;
@@ -341,6 +342,15 @@ const DestModal: React.FC<{
   defaultType?: 'place' | 'itinerary';
   defaultNation?: string | null;
 }> = ({ onSubmit, onClose, initial, defaultType, defaultNation }) => {
+  const isEdit = !!initial;
+  
+  const [step, setStep] = useState<'search' | 'details'>(isEdit ? 'details' : 'search');
+  const [searchQuery, setSearchQuery] = useState('');
+  
+  const [localSuggestions, setLocalSuggestions] = useState<any[]>([]);
+  const [remoteSuggestions, setRemoteSuggestions] = useState<any[]>([]);
+  const [loadingSuggestions, setLoadingSuggestions] = useState(false);
+
   const [name, setName] = useState(initial?.name || '');
   const type = 'place';
   const [notes, setNotes] = useState(initial?.notes || '');
@@ -357,9 +367,87 @@ const DestModal: React.FC<{
 
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const isEdit = !!initial;
 
-  // Debounced search for city suggestions using OpenStreetMap Nominatim
+  // 1. Dynamic local famous places filtering
+  useEffect(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) {
+      setLocalSuggestions([]);
+      return;
+    }
+    const matches = FAMOUS_PLACES_DB.filter(p => 
+      p.name.toLowerCase().includes(q) ||
+      p.city.toLowerCase().includes(q) ||
+      p.nation.toLowerCase().includes(q)
+    ).slice(0, 5).map(p => ({
+      name: p.name,
+      city: p.city,
+      nation: p.nation,
+      lat: p.lat,
+      lng: p.lng,
+      displayName: `${p.name}, ${p.city}, ${p.nation}`,
+      source: 'local'
+    }));
+    setLocalSuggestions(matches);
+  }, [searchQuery]);
+
+  // 2. Debounced online Nominatim place geocoding search
+  useEffect(() => {
+    const q = searchQuery.trim();
+    if (q.length < 3) {
+      setRemoteSuggestions([]);
+      return;
+    }
+
+    setLoadingSuggestions(true);
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&q=${encodeURIComponent(q)}&limit=8&accept-language=en`);
+        const data = await res.json();
+        if (data && Array.isArray(data)) {
+          const formatted = data.map((item: any) => {
+            const addr = item.address || {};
+            const city = addr.city || addr.town || addr.village || addr.municipality || addr.suburb || addr.county || item.name || '';
+            const nation = addr.country || '';
+            
+            const displayName = item.display_name;
+            const name = item.name || city;
+            
+            return {
+              name: name,
+              city: city,
+              nation: nation,
+              lat: parseFloat(item.lat),
+              lng: parseFloat(item.lon),
+              displayName: displayName,
+              source: 'remote'
+            };
+          }).filter((item: any) => item.city || item.nation);
+          setRemoteSuggestions(formatted);
+        }
+      } catch (err) {
+        console.error('Error fetching remote suggestions', err);
+      } finally {
+        setLoadingSuggestions(false);
+      }
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  // Merge suggestions
+  const allSuggestions = [
+    ...localSuggestions,
+    ...remoteSuggestions.filter(remoteItem => 
+      !localSuggestions.some(localItem => 
+        (localItem.name.toLowerCase() === remoteItem.name.toLowerCase() && 
+         localItem.city.toLowerCase() === remoteItem.city.toLowerCase()) ||
+        (Math.abs(localItem.lat - remoteItem.lat) < 0.005 && Math.abs(localItem.lng - remoteItem.lng) < 0.005)
+      )
+    )
+  ];
+
+  // Debounced search for city suggestions in Details view (using OpenStreetMap Nominatim)
   useEffect(() => {
     if (!cityInput.trim() || cityInput.length < 3) {
       setCitySuggestions([]);
@@ -393,6 +481,38 @@ const DestModal: React.FC<{
 
     return () => clearTimeout(timer);
   }, [cityInput, nationInput]);
+
+  const handleSelectSuggestion = (s: any) => {
+    setName(s.name);
+    setCityInput(s.city);
+    setNationInput(s.nation);
+    setSelectedCoords({ lat: s.lat, lng: s.lng });
+    setError('');
+    setStep('details');
+  };
+
+  const handleManualEntry = () => {
+    setName(searchQuery);
+    setCityInput('');
+    setNationInput(defaultNation || '');
+    setSelectedCoords(null);
+    setError('');
+    setStep('details');
+  };
+
+  const handleCityChange = (val: string) => {
+    setCityInput(val);
+    setSelectedCoords(null);
+    setShowCitySuggestions(true);
+    setError('');
+  };
+
+  const handleNationChange = (val: string) => {
+    setNationInput(val);
+    setSelectedCoords(null);
+    setShowNationSuggestions(true);
+    setError('');
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -467,135 +587,245 @@ const DestModal: React.FC<{
         {/* Header */}
         <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-6 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
-              {isEdit ? <Pencil className="w-5 h-5 text-white" /> : <Globe className="w-5 h-5 text-white" />}
-            </div>
-            <h3 className="text-lg font-black text-white">{isEdit ? 'Modifica Luogo' : 'Nuovo Luogo'}</h3>
+            {step === 'details' && !isEdit ? (
+              <button 
+                type="button" 
+                onClick={() => setStep('search')} 
+                className="p-2 hover:bg-white/20 rounded-xl transition-colors -ml-2"
+              >
+                <ArrowLeft className="w-5 h-5 text-white" />
+              </button>
+            ) : (
+              <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
+                {isEdit ? <Pencil className="w-5 h-5 text-white" /> : <Globe className="w-5 h-5 text-white" />}
+              </div>
+            )}
+            <h3 className="text-lg font-black text-white">
+              {isEdit ? 'Modifica Luogo' : step === 'search' ? 'Aggiungi Luogo' : 'Conferma Dettagli'}
+            </h3>
           </div>
           <button onClick={onClose} className="p-2 hover:bg-white/20 rounded-xl transition-colors">
             <X className="w-5 h-5 text-white" />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-5 max-h-[75vh] overflow-y-auto custom-scrollbar">
-          {/* Nome Luogo */}
-          <div className="relative">
-            <label className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] mb-2 block">
-              Nome Luogo (Es. Colosseo, Hotel Stella)
-            </label>
-            <div className="relative flex items-center">
-              <Compass className="w-5 h-5 absolute left-4 text-[var(--text-muted)]" />
-              <input 
-                value={name} 
-                onChange={e => { setName(e.target.value); setError(''); }} 
-                placeholder="Es. Colosseo (lascia vuoto per usare il nome città)" 
-                className={inputCls} 
-                disabled={loading} 
-              />
-            </div>
-          </div>
-
-          {/* Nazione */}
-          <div className="relative">
-            <label className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] mb-2 block">Nazione</label>
-            <div className="relative flex items-center">
-              <Globe className="w-5 h-5 absolute left-4 text-[var(--text-muted)]" />
-              <input 
-                value={nationInput} 
-                onChange={e => { setNationInput(e.target.value); setShowNationSuggestions(true); setError(''); }} 
-                onFocus={() => setShowNationSuggestions(true)}
-                placeholder="Es. Italia, Giappone, Francia..." 
-                className={inputCls} 
-                disabled={loading} 
-              />
-            </div>
-            {showNationSuggestions && filteredCountries.length > 0 && (
-              <div className="absolute z-[310] left-0 right-0 mt-2 max-h-40 overflow-y-auto bg-[var(--card-bg)] border border-[var(--border)] rounded-2xl shadow-xl custom-scrollbar animate-fade-in">
-                {filteredCountries.map(c => (
-                  <button
-                    key={c}
-                    type="button"
-                    onClick={() => {
-                      setNationInput(c);
-                      setShowNationSuggestions(false);
-                    }}
-                    className="w-full text-left px-4 py-3 hover:bg-blue-500/10 text-sm font-semibold text-[var(--text-main)] transition-colors border-b border-[var(--border)]/30 last:border-0"
+        {step === 'search' ? (
+          /* Search mode View */
+          <div className="p-6 space-y-5 max-h-[75vh] flex flex-col">
+            {/* Search query input */}
+            <div className="relative">
+              <label className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] mb-2 block">
+                Nome, Città o Attrazione
+              </label>
+              <div className="relative flex items-center">
+                <Search className="w-5 h-5 absolute left-4 text-[var(--text-muted)]" />
+                <input 
+                  value={searchQuery} 
+                  onChange={e => { setSearchQuery(e.target.value); setError(''); }} 
+                  placeholder="Es. Eiffel Tower, Colosseo, Tokyo..." 
+                  className={inputCls} 
+                  autoFocus
+                />
+                {searchQuery && (
+                  <button 
+                    type="button" 
+                    onClick={() => setSearchQuery('')}
+                    className="absolute right-4 p-1 hover:bg-[var(--bg)] rounded-full text-[var(--text-muted)]"
                   >
-                    {getCountryEmoji(c)} {c}
+                    <X className="w-4 h-4" />
                   </button>
-                ))}
+                )}
               </div>
-            )}
-            {showNationSuggestions && (
-              <div className="fixed inset-0 z-[305]" onClick={() => setShowNationSuggestions(false)} />
-            )}
-          </div>
-
-          {/* Città */}
-          <div className="relative">
-            <label className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] mb-2 block">Città</label>
-            <div className="relative flex items-center">
-              <MapPin className="w-5 h-5 absolute left-4 text-[var(--text-muted)]" />
-              <input 
-                value={cityInput} 
-                onChange={e => { setCityInput(e.target.value); setShowCitySuggestions(true); setError(''); }} 
-                onFocus={() => setShowCitySuggestions(true)}
-                placeholder="Es. Roma, Tokyo, New York..." 
-                className={inputCls} 
-                disabled={loading} 
-                required
-              />
             </div>
-            {showCitySuggestions && citySuggestions.length > 0 && (
-              <div className="absolute z-[310] left-0 right-0 mt-2 max-h-48 overflow-y-auto bg-[var(--card-bg)] border border-[var(--border)] rounded-2xl shadow-xl custom-scrollbar animate-fade-in">
-                {citySuggestions.map((s, idx) => (
+
+            {/* Suggestions list */}
+            <div className="flex-1 overflow-y-auto max-h-[35vh] pr-1 space-y-2.5 custom-scrollbar">
+              {loadingSuggestions && searchQuery.length >= 3 && allSuggestions.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-8 text-[var(--text-muted)]">
+                  <Loader2 className="w-8 h-8 animate-spin text-blue-500 mb-2" />
+                  <span className="text-xs font-semibold">Ricerca in corso su mappa...</span>
+                </div>
+              ) : allSuggestions.length > 0 ? (
+                allSuggestions.map((s, idx) => (
                   <button
                     key={idx}
                     type="button"
-                    onClick={() => {
-                      setCityInput(s.city);
-                      if (s.nation && !nationInput) {
-                        setNationInput(s.nation);
-                      }
-                      if (!name.trim()) {
-                        setName(s.city);
-                      }
-                      setSelectedCoords({ lat: s.lat, lng: s.lng });
-                      setCitySuggestions([]);
-                      setShowCitySuggestions(false);
-                    }}
-                    className="w-full text-left px-4 py-3 hover:bg-blue-500/10 transition-colors border-b border-[var(--border)]/30 last:border-0"
+                    onClick={() => handleSelectSuggestion(s)}
+                    className="w-full text-left p-3.5 bg-[var(--bg)] border border-[var(--border)] hover:border-blue-500/50 hover:bg-blue-500/5 rounded-2xl transition-all flex items-start gap-3.5 group active:scale-[0.99]"
                   >
-                    <div className="text-sm font-bold text-[var(--text-main)]">{s.city}</div>
-                    <div className="text-[10px] font-bold text-[var(--text-muted)] mt-0.5 truncate">{s.displayName}</div>
+                    <div className="w-8 h-8 rounded-xl bg-blue-500/10 text-blue-500 flex items-center justify-center shrink-0 group-hover:bg-blue-500 group-hover:text-white transition-colors">
+                      <MapPin className="w-4 h-4" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-sm font-bold text-[var(--text-main)] truncate group-hover:text-blue-500 transition-colors">
+                          {s.name}
+                        </span>
+                        <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full shrink-0 ${
+                          s.source === 'local' 
+                            ? 'bg-purple-500/10 text-purple-400 border border-purple-500/20' 
+                            : 'bg-blue-500/10 text-blue-400 border border-blue-500/20'
+                        }`}>
+                          {s.source === 'local' ? 'Suggerito' : 'Mappa'}
+                        </span>
+                      </div>
+                      <p className="text-xs text-[var(--text-muted)] truncate mt-0.5">
+                        {s.city ? `${s.city}, ` : ''}{s.nation}
+                      </p>
+                    </div>
                   </button>
-                ))}
+                ))
+              ) : searchQuery.trim().length >= 3 ? (
+                <div className="text-center py-8 text-xs font-semibold text-[var(--text-muted)]">
+                  Nessun luogo trovato. Prova ad inserire manualmente.
+                </div>
+              ) : (
+                <div className="text-center py-8 text-xs font-semibold text-[var(--text-muted)] flex flex-col items-center gap-2">
+                  <Compass className="w-8 h-8 text-[var(--text-muted)]/50" />
+                  <span>Digita una destinazione famosa o città per iniziare</span>
+                </div>
+              )}
+            </div>
+
+            {/* Manual entry button */}
+            <div className="pt-2 border-t border-[var(--border)]/60">
+              <button
+                type="button"
+                onClick={handleManualEntry}
+                className="w-full py-4 bg-[var(--bg)] border border-[var(--border)] hover:border-blue-500/30 hover:bg-blue-500/5 text-[var(--text-main)] rounded-2xl font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2"
+              >
+                <Plus className="w-4 h-4 text-blue-500" /> Inserisci manualmente
+              </button>
+            </div>
+          </div>
+        ) : (
+          /* Confirmation / Details Form Mode */
+          <form onSubmit={handleSubmit} className="p-6 space-y-5 max-h-[75vh] overflow-y-auto custom-scrollbar">
+            {/* Nome Luogo */}
+            <div className="relative">
+              <label className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] mb-2 block">
+                Nome Luogo (Es. Colosseo, Hotel Stella)
+              </label>
+              <div className="relative flex items-center">
+                <Compass className="w-5 h-5 absolute left-4 text-[var(--text-muted)]" />
+                <input 
+                  value={name} 
+                  onChange={e => { setName(e.target.value); setError(''); }} 
+                  placeholder="Es. Colosseo" 
+                  className={inputCls} 
+                  disabled={loading} 
+                  required
+                />
+              </div>
+            </div>
+
+            {/* Nazione */}
+            <div className="relative">
+              <label className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] mb-2 block">Nazione</label>
+              <div className="relative flex items-center">
+                <Globe className="w-5 h-5 absolute left-4 text-[var(--text-muted)]" />
+                <input 
+                  value={nationInput} 
+                  onChange={e => handleNationChange(e.target.value)} 
+                  onFocus={() => setShowNationSuggestions(true)}
+                  placeholder="Es. Italia, Giappone, Francia..." 
+                  className={inputCls} 
+                  disabled={loading} 
+                />
+              </div>
+              {showNationSuggestions && filteredCountries.length > 0 && (
+                <div className="absolute z-[310] left-0 right-0 mt-2 max-h-40 overflow-y-auto bg-[var(--card-bg)] border border-[var(--border)] rounded-2xl shadow-xl custom-scrollbar animate-fade-in">
+                  {filteredCountries.map(c => (
+                    <button
+                      key={c}
+                      type="button"
+                      onClick={() => {
+                        setNationInput(c);
+                        setSelectedCoords(null);
+                        setShowNationSuggestions(false);
+                      }}
+                      className="w-full text-left px-4 py-3 hover:bg-blue-500/10 text-sm font-semibold text-[var(--text-main)] transition-colors border-b border-[var(--border)]/30 last:border-0"
+                    >
+                      {getCountryEmoji(c)} {c}
+                    </button>
+                  ))}
+                </div>
+              )}
+              {showNationSuggestions && (
+                <div className="fixed inset-0 z-[305]" onClick={() => setShowNationSuggestions(false)} />
+              )}
+            </div>
+
+            {/* Città */}
+            <div className="relative">
+              <label className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] mb-2 block">Città</label>
+              <div className="relative flex items-center">
+                <MapPin className="w-5 h-5 absolute left-4 text-[var(--text-muted)]" />
+                <input 
+                  value={cityInput} 
+                  onChange={e => handleCityChange(e.target.value)} 
+                  onFocus={() => setShowCitySuggestions(true)}
+                  placeholder="Es. Roma, Tokyo, New York..." 
+                  className={inputCls} 
+                  disabled={loading} 
+                  required
+                />
+              </div>
+              {showCitySuggestions && citySuggestions.length > 0 && (
+                <div className="absolute z-[310] left-0 right-0 mt-2 max-h-48 overflow-y-auto bg-[var(--card-bg)] border border-[var(--border)] rounded-2xl shadow-xl custom-scrollbar animate-fade-in">
+                  {citySuggestions.map((s, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => {
+                        setCityInput(s.city);
+                        if (s.nation && !nationInput) {
+                          setNationInput(s.nation);
+                        }
+                        setSelectedCoords({ lat: s.lat, lng: s.lng });
+                        setCitySuggestions([]);
+                        setShowCitySuggestions(false);
+                      }}
+                      className="w-full text-left px-4 py-3 hover:bg-blue-500/10 transition-colors border-b border-[var(--border)]/30 last:border-0"
+                    >
+                      <div className="text-sm font-bold text-[var(--text-main)]">{s.city}</div>
+                      <div className="text-[10px] font-bold text-[var(--text-muted)] mt-0.5 truncate">{s.displayName}</div>
+                    </button>
+                  ))}
+                </div>
+              )}
+              {showCitySuggestions && (
+                <div className="fixed inset-0 z-[305]" onClick={() => setShowCitySuggestions(false)} />
+              )}
+            </div>
+
+            <div>
+              <label className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] mb-2 block">Note (opzionale)</label>
+              <textarea 
+                value={notes} 
+                onChange={e => setNotes(e.target.value)} 
+                placeholder="Descrizione, da fare, ricordi..." 
+                className="w-full p-4 bg-[var(--bg)] border border-[var(--border)] rounded-2xl outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 transition-all text-sm font-semibold text-[var(--text-main)] placeholder:text-[var(--text-muted)]/60 resize-none h-20" 
+                disabled={loading} 
+              />
+            </div>
+
+            {selectedCoords && (
+              <div className="flex items-center gap-2 text-emerald-500 bg-emerald-500/10 border border-emerald-500/20 px-4 py-3 rounded-2xl text-xs font-semibold">
+                <Check className="w-4 h-4 shrink-0" />
+                <span>Coordinate rilevate correttamente ({selectedCoords.lat.toFixed(4)}, {selectedCoords.lng.toFixed(4)})</span>
               </div>
             )}
-            {showCitySuggestions && (
-              <div className="fixed inset-0 z-[305]" onClick={() => setShowCitySuggestions(false)} />
+
+            {error && (
+              <p className="text-xs text-red-500 font-bold bg-red-500/10 px-3 py-2 rounded-xl border border-red-500/20">{error}</p>
             )}
-          </div>
 
-          <div>
-            <label className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] mb-2 block">Note (opzionale)</label>
-            <textarea 
-              value={notes} 
-              onChange={e => setNotes(e.target.value)} 
-              placeholder="Descrizione, da fare, ricordi..." 
-              className="w-full p-4 bg-[var(--bg)] border border-[var(--border)] rounded-2xl outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 transition-all text-sm font-semibold text-[var(--text-main)] placeholder:text-[var(--text-muted)]/60 resize-none h-20" 
-              disabled={loading} 
-            />
-          </div>
-
-          {error && (
-            <p className="text-xs text-red-500 font-bold bg-red-500/10 px-3 py-2 rounded-xl border border-red-500/20">{error}</p>
-          )}
-
-          <button disabled={loading} type="submit" className="w-full py-4 bg-gradient-to-r from-blue-600 to-indigo-600 disabled:opacity-70 text-white rounded-2xl font-black text-sm uppercase tracking-widest shadow-lg shadow-blue-500/25 active:scale-[0.98] transition-all flex items-center justify-center gap-2">
-            {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : isEdit ? 'Salva Modifiche' : 'Aggiungi al Mappamondo'}
-          </button>
-        </form>
+            <button disabled={loading} type="submit" className="w-full py-4 bg-gradient-to-r from-blue-600 to-indigo-600 disabled:opacity-70 text-white rounded-2xl font-black text-sm uppercase tracking-widest shadow-lg shadow-blue-500/25 active:scale-[0.98] transition-all flex items-center justify-center gap-2">
+              {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : isEdit ? 'Salva Modifiche' : 'Aggiungi al Mappamondo'}
+            </button>
+          </form>
+        )}
       </motion.div>
     </motion.div>
   );
