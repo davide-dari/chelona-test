@@ -71,7 +71,7 @@ RELEASE_JSON=$(curl -s -X POST \
   -d "{
     \"tag_name\": \"$TAG\",
     \"name\": \"Chelona $TAG\",
-    \"body\": \"🚀 **Chelona v$VERSION**\\n\\n### ✨ Novità e Fix:\\n- **🧳 Ricerca e Rilevamento Luoghi**: Introdotto un campo di ricerca unico per l'aggiunta di mete di viaggio con auto-compilazione di città, nazione e coordinate.\\n- **🗺️ Database Attrazioni Famose**: Creato un database offline con oltre 150 monumenti, musei e attrazioni di rilievo mondiale per un rilevamento locale immediato.\",
+    \"body\": \"🚀 **Chelona v$VERSION**\\n\\n### ✨ Novità e Fix:\\n- **🇮🇹 Traduzione Luoghi Consigliati**: Tradotti in lingua italiana tutti i nomi dei monumenti, musei e attrazioni famose nel database dei viaggi per una ricerca e una visualizzazione locale ottimale.\\n- **🛡️ Configurazione Firma Android**: Ottimizzato il pacchetto APK abilitando esplicitamente le firme V1 e V2 in fase di rilascio, garantendo una maggiore compatibilità con tutte le versioni di Android.\\n\\n### ⚠️ Avviso installazione APK (App Sconosciuta / Play Protect):\\nTrattandosi di un'applicazione compilata e distribuita manualmente (sideloaded) e non tramite Google Play Store, al momento dell'installazione o dell'aggiornamento Android potrebbe mostrare un avviso di sicurezza (*App Sconosciuta* o *Play Protect*).\\n\\nPer procedere:\\n1. Se appare il blocco di Google Play Protect, premi su **Ulteriori dettagli** e successivamente su **Installa comunque**.\\n2. Se richiesto, abilita l'opzione **Consenti l'installazione da questa sorgente** o **Installa app sconosciute** nelle impostazioni di Android per l'app Chelona (o il browser).\",
     \"draft\": false,
     \"prerelease\": false
   }")
