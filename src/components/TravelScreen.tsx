@@ -402,7 +402,7 @@ const DestModal: React.FC<{
     setLoadingSuggestions(true);
     const timer = setTimeout(async () => {
       try {
-        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&q=${encodeURIComponent(q)}&limit=8&accept-language=en`);
+        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&q=${encodeURIComponent(q)}&limit=8&accept-language=it`);
         const data = await res.json();
         if (data && Array.isArray(data)) {
           const formatted = data.map((item: any) => {
@@ -457,7 +457,7 @@ const DestModal: React.FC<{
     const timer = setTimeout(async () => {
       try {
         const query = nationInput ? `${cityInput.trim()}, ${nationInput.trim()}` : cityInput.trim();
-        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&q=${encodeURIComponent(query)}&limit=5&accept-language=en`);
+        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&q=${encodeURIComponent(query)}&limit=5&accept-language=it`);
         const data = await res.json();
         if (data && Array.isArray(data)) {
           const suggestions = data.map((item: any) => {
@@ -539,7 +539,7 @@ const DestModal: React.FC<{
 
     try {
        const query = nationInput ? `${cityInput.trim()}, ${nationInput.trim()}` : cityInput.trim();
-       const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&accept-language=en`);
+       const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&accept-language=it`);
        const data = await res.json();
        if (data && data.length > 0) {
           const la = parseFloat(data[0].lat);
