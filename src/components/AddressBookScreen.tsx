@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Anchor, ArrowLeft, MapPin, Plus, Navigation, Trash2, Map, Edit2, X, MoreVertical, Share2 } from 'lucide-react';
 import { generateUUID } from '../utils/uuid';
 import { Share } from '@capacitor/share';
+import { storage } from '../services/storage';
 
 interface Address {
   id: string;
@@ -27,16 +28,11 @@ export const AddressBookScreen = ({ onClose }: AddressBookScreenProps) => {
   const pressTimer = useRef<any>(null);
 
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        setAddresses(parsed);
-        if ((window as any).ChelonaNative && (window as any).ChelonaNative.saveAddresses) {
-          (window as any).ChelonaNative.saveAddresses(saved);
-        }
-      }
-    } catch {}
+    const loaded = storage.loadAddressBook();
+    setAddresses(loaded);
+    if ((window as any).ChelonaNative && (window as any).ChelonaNative.saveAddresses) {
+      (window as any).ChelonaNative.saveAddresses(JSON.stringify(loaded));
+    }
   }, []);
 
   useEffect(() => {
@@ -55,7 +51,7 @@ export const AddressBookScreen = ({ onClose }: AddressBookScreenProps) => {
   const saveAddresses = (updated: Address[]) => {
     setAddresses(updated);
     const jsonStr = JSON.stringify(updated);
-    localStorage.setItem(STORAGE_KEY, jsonStr);
+    storage.saveAddressBook(updated);
     if ((window as any).ChelonaNative && (window as any).ChelonaNative.saveAddresses) {
       (window as any).ChelonaNative.saveAddresses(jsonStr);
     }

@@ -585,7 +585,7 @@ export default function App() {
         if (confirm(`Vuoi importare il profilo "${profile.username}"?`)) {
           storage.saveProfiles([...currentProfiles, profile]);
           if (encData) {
-            localStorage.setItem(`chelona_dashboard_state_enc_${profile.id}`, encData);
+            await storage.saveRawState(profile.id, encData);
           }
           showToast(`Profilo "${profile.username}" importato!`);
           window.dispatchEvent(new Event('chelona_profiles_updated'));

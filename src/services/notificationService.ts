@@ -14,6 +14,8 @@
  *   E schedulare le notifiche future con date precise anziché controllare al launch.
  */
 
+import { storage } from './storage';
+
 export interface NotificationPref {
   id: string;           // moduleId + '_' + field
   moduleId: string;
@@ -30,26 +32,11 @@ const STORAGE_KEY = 'diari_notification_prefs';
 
 export const notificationService = {
   getAll(): NotificationPref[] {
-    try {
-      let saved = localStorage.getItem(STORAGE_KEY);
-      
-      // 🚚 MIGRATION: Se non ci sono preferenze Chelona, prova a cercarle sotto Diari
-      if (!saved) {
-        const legacy = localStorage.getItem('diari_notification_prefs');
-        if (legacy) {
-          localStorage.setItem(STORAGE_KEY, legacy);
-          saved = legacy;
-        }
-      }
-
-      return JSON.parse(saved || '[]');
-    } catch {
-      return [];
-    }
+    return storage.loadNotificationPrefs();
   },
 
   save(prefs: NotificationPref[]) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(prefs));
+    storage.saveNotificationPrefs(prefs);
   },
 
   get(moduleId: string, field: string): NotificationPref | undefined {
@@ -221,14 +208,14 @@ export const notificationService = {
           return Math.ceil((d.getDay() + 1 + numberOfDays) / 7);
         };
         const fireKey = `${today.getFullYear()}-w${getWeekNumber(today)}`;
-        const lastFired = localStorage.getItem(`notif_fired_${prefId}`);
+        const lastFired = storage.loadNotifFired(prefId);
         
         if (lastFired !== fireKey) {
           this.fire(
             `🚗 Aggiorna i Chilometri`,
             `È passata una settimana dall'ultimo aggiornamento km per la tua ${a.brand || 'auto'}. Tocca qui per aggiornarli!`
           );
-          localStorage.setItem(`notif_fired_${prefId}`, fireKey);
+          storage.saveNotifFired(prefId, fireKey);
         }
       }
     });

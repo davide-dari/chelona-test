@@ -76,7 +76,7 @@ export function ProfileScreen({
     const profile = profiles.find(p => p.id === currentProfileId);
     if (!profile) return;
 
-    const encryptedData = localStorage.getItem(`chelona_dashboard_state_enc_${currentProfileId}`);
+    const encryptedData = storage.getRawState(currentProfileId);
     
     const backup = {
       t: 'chelona_profile_backup',
@@ -98,7 +98,7 @@ export function ProfileScreen({
     try {
       const zip = new JSZip();
       
-      const profilesEnc = localStorage.getItem('chelona_profiles_enc') || '';
+      const profilesEnc = storage.getRawProfiles();
       if (!profilesEnc) {
         showToast('Nessun profilo da esportare', 'error');
         return;
@@ -108,7 +108,7 @@ export function ProfileScreen({
       
       const profiles = storage.loadProfiles();
       for (const p of profiles) {
-        const stateEnc = localStorage.getItem(`chelona_dashboard_state_enc_${p.id}`);
+        const stateEnc = storage.getRawState(p.id);
         if (stateEnc) {
           zip.file(`state_${p.id}.enc`, stateEnc);
         }
