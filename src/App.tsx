@@ -1613,8 +1613,21 @@ export default function App() {
                          <button
                            onClick={() => {
                              setSpesaSubMenu(false);
-                             setFormData({ ...formData, template: 'split', title: 'Gruppo Spese', content: '' });
-                             setAutoFormStep(0);
+                             setIsAdding(false);
+                             const newSplit = {
+                               id: generateUUID(),
+                               type: 'split' as const,
+                               title: 'Gruppo Spese',
+                               currency: 'EUR',
+                               participants: [],
+                               expenses: [],
+                               x: (modules.length * 2) % 12,
+                               y: Infinity,
+                               w: 3,
+                               h: 2,
+                               folderId: selectedFolderId || undefined
+                             };
+                             setEditingSplitModule(newSplit);
                            }}
                            className="flex flex-col items-center justify-center gap-4 p-8 rounded-2xl border border-[var(--border)] hover:border-indigo-500/60 hover:bg-indigo-500/10 transition-all group text-center h-full text-[var(--text-main)]"
                          >
@@ -2696,9 +2709,7 @@ export default function App() {
           <SplitScreen
             module={editingSplitModule}
             onSave={(updated) => {
-              const updatedModules = modules.map(m => m.id === updated.id ? updated : m);
-              setModules(updatedModules);
-              saveAppState(updatedModules, folders);
+              updateModuleDirect(updated);
               setEditingSplitModule(null);
             }}
             onCancel={() => setEditingSplitModule(null)}
