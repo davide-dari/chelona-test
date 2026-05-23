@@ -154,7 +154,16 @@ export default function App() {
     const timer = setTimeout(() => {
       setIsSplashScreenActive(false);
     }, 1500);
-    storage.initStorage().catch(console.error);
+    storage.initStorage().then(() => {
+      try {
+        const loadedAddresses = storage.loadAddressBook();
+        if ((window as any).ChelonaNative && (window as any).ChelonaNative.saveAddresses) {
+          (window as any).ChelonaNative.saveAddresses(JSON.stringify(loadedAddresses));
+        }
+      } catch (err) {
+        console.error('Failed to sync addresses for Android Auto at startup', err);
+      }
+    }).catch(console.error);
     return () => clearTimeout(timer);
   }, []);
 
