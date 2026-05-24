@@ -46,7 +46,7 @@ export const QrScanner: React.FC<QrScannerProps> = ({ onScan, onClose }) => {
             },
             aspectRatio: 1.0,
             useBarCodeDetectorIfSupported: true
-          },
+          } as any,
           (decodedText) => {
             if (isMounted) {
               if (navigator.vibrate) navigator.vibrate(100);
@@ -67,7 +67,7 @@ export const QrScanner: React.FC<QrScannerProps> = ({ onScan, onClose }) => {
           
           // Rilevamento capacità hardware
           try {
-            const capabilities = html5QrCode?.getRunningTrackCapabilities();
+            const capabilities = html5QrCode?.getRunningTrackCapabilities() as any;
             if (capabilities) {
               if (capabilities.zoom) {
                 setMinZoom(capabilities.zoom.min || 1);
@@ -110,7 +110,7 @@ export const QrScanner: React.FC<QrScannerProps> = ({ onScan, onClose }) => {
     try {
       await scannerRef.current.applyVideoConstraints({
         zoom: newZoom
-      });
+      } as any);
       setZoom(newZoom);
     } catch (e) {
       console.error("Failed to apply zoom", e);

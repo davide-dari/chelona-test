@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, RefreshCw, Bus, MapPin, ExternalLink, Calendar, Info, Clock, DollarSign, Compass, Navigation } from 'lucide-react';
+import { ArrowLeft, RefreshCw, Bus, MapPin, ExternalLink, Calendar, Info, Clock, DollarSign, Compass, Navigation, ChevronRight } from 'lucide-react';
 import { TransportModule } from '../types';
 import { fetchLiveAeginaTransport, AeginaTransportData, FALLBACK_TRANSPORT_DATA, BusRoute, BusTrip } from '../services/transportParser';
 

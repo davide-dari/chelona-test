@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { ArrowLeft, Users, Receipt, ArrowRightLeft, Plus, Check, X, Trash2, Edit2, Wallet, Camera, Paperclip, FileDown, Eye } from 'lucide-react';
+import { ArrowLeft, Users, Receipt, ArrowRightLeft, Plus, Check, X, Trash2, Edit2, Wallet, Camera, Paperclip, FileDown, Eye, Calendar } from 'lucide-react';
 import { SplitModule, SplitExpense, SplitParticipant, SplitType } from '../types';
 import { calculateSplits, Settlement } from '../utils/splitAlgorithm';
 import { encryption } from '../services/encryption';

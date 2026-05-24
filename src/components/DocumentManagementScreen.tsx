@@ -195,7 +195,7 @@ export const DocumentManagementScreen = ({ module, onSave, onCancel, onDelete, o
                   </div>
                   {data.number && (
                     <button
-                      onClick={(e) => { e.stopPropagation(); handleCopy(); }}
+                      onClick={handleCopy}
                       className="p-1.5 rounded-xl hover:bg-emerald-500/10 text-emerald-800 hover:text-emerald-950 transition-colors active:scale-90 relative z-30 shrink-0 border border-emerald-800/10 ml-2"
                       title="Copia codice fiscale"
                     >

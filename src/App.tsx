@@ -2730,7 +2730,7 @@ export default function App() {
                     </div>
                     {updateProgress < 10 && (
                       <button 
-                        onClick={() => CapApp.openUrl({ url: availableUpdate.downloadUrl })}
+                        onClick={() => window.open(availableUpdate.downloadUrl, '_system')}
                         className="w-full mt-2 text-[10px] font-bold text-[var(--accent)] hover:underline uppercase tracking-widest text-center"
                       >
                         Problemi col download? Scarica dal browser
@@ -2790,7 +2790,7 @@ export default function App() {
               updateModuleDirect(updated);
               setEditingSplitModule(null);
             }}
-            onCancel={() => setEditingSplitModule(null)}
+            onClose={() => setEditingSplitModule(null)}
             onDelete={deleteModule}
           />
         )}
@@ -2820,7 +2820,7 @@ export default function App() {
               saveAppState(updatedModules, folders);
               setEditingSingleExpenseModule(null);
             }}
-            onCancel={() => setEditingSingleExpenseModule(null)}
+            onClose={() => setEditingSingleExpenseModule(null)}
             onDelete={deleteModule}
           />
         )}

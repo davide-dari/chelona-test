@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Save, Car, Wrench, Calendar, Fuel, User, Hash, Gauge, FileText, Smartphone, Scan, Check, QrCode, Bell, ChevronRight, X, ShieldCheck, Edit2, Trash2, Plus } from 'lucide-react';
-import { AutoModule } from '../types';
+import { AutoModule, FuelType } from '../types';
 import { DocumentScanner } from './DocumentScanner';
 import { CAR_BRANDS } from '../utils/carBrands';
 import { CAR_MODELS } from '../constants/carModels';
@@ -169,7 +169,7 @@ export const AutoManagementScreen = ({ module, onSave, onCancel, onDelete, onSha
     }
   };
 
-  const set = (key: keyof AutoModule, value: string | undefined) =>
+  const set = (key: keyof AutoModule, value: any) =>
     setData(prev => ({ ...prev, [key]: value }));
 
   const handleSubmit = () => {

@@ -46,6 +46,7 @@ export interface AutoModule extends BaseModule {
   plate: string;
   fuelType: FuelType;
   currentKm?: string;
+  lastKmUpdatedAt?: string;
   registrationYear?: string;
 
   lastInsurance?: string;
@@ -190,7 +191,7 @@ export interface TravelModule extends BaseModule {
   destinations: TravelDestination[];
 }
 
-export type Module = GenericModule | AutoModule | DocumentModule | SplitModule | SingleExpenseModule | WalletModule | GalleryModule | TravelModule;
+export type Module = GenericModule | AutoModule | DocumentModule | SplitModule | SingleExpenseModule | WalletModule | GalleryModule | TravelModule | TransportModule;
 
 export interface DashboardState {
   modules: Module[];

@@ -96,7 +96,7 @@ export const biometricService = {
         subtitle: 'Usa l\'impronta o il volto per continuare',
         description: 'Verifica la tua identità per accedere alle funzioni di sicurezza.',
         useDevicePasscode: true, // Allow fallback to PIN/Pattern/Password
-      });
+      } as any);
       return true;
     } catch (e) {
       console.error('[BiometricService] verifyIdentity error:', e);

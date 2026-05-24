@@ -64,7 +64,7 @@ export const AutoEditScreen = ({ module, onSave, onCancel }: AutoEditScreenProps
   const [capturingField, setCapturingField] = useState<{ key: keyof AutoModule; title: string } | null>(null);
   const [picker, setPicker] = useState<'brand' | 'model' | null>(null);
 
-  const set = (key: keyof AutoModule, value: string | undefined) =>
+  const set = (key: keyof AutoModule, value: any) =>
     setData(prev => ({ ...prev, [key]: value }));
 
   const handleSubmit = (e: React.FormEvent) => {
