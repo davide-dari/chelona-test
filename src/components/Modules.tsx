@@ -478,7 +478,7 @@ export const TravelCard = ({ module, onDelete, onEdit }: { module: TravelModule;
 
 export const TransportCard = ({ module, onDelete, onEdit }: { module: TransportModule; onDelete?: (id: string) => void; onEdit?: (m: Module) => void; }) => {
   return (
-    <ModuleWrapper module={module} onDelete={onDelete} onEdit={onEdit}>
+    <ModuleWrapper module={module} onDelete={undefined} onEdit={onEdit}>
       <div
         className="h-full flex flex-col cursor-pointer group/card hover:bg-[var(--bg)] transition-colors p-4 -m-4 rounded-2xl active:scale-[0.98]"
         onClick={() => onEdit?.(module)}

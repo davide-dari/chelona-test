@@ -122,20 +122,11 @@ export const TransportScreen = ({ module, onClose, onSave, onDelete }: Transport
               <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin text-cyan-500' : ''}`} />
             </button>
           )}
-          {onDelete && (
-            <button 
-              onClick={() => { if(window.confirm('Eliminare definitivamente questa sezione trasporti?')) { onDelete(module.id); onClose(); } }}
-              className="p-2.5 text-red-400 hover:bg-red-500/10 rounded-xl transition-all"
-              title="Elimina Modulo"
-            >
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-            </button>
-          )}
         </div>
       </header>
 
       {/* Body */}
-      <div className="flex-1 overflow-y-auto w-full max-w-2xl mx-auto p-4 custom-scrollbar">
+      <div className="flex-1 overflow-y-auto w-full max-w-lg mx-auto p-3 sm:p-4 custom-scrollbar">
         
         {/* LIVELLO 1: PAESI */}
         {currentLevel === 'countries' && (
@@ -199,39 +190,39 @@ export const TransportScreen = ({ module, onClose, onSave, onDelete }: Transport
           <div className="space-y-6 fade-in">
             
             {/* Banner info agg */}
-            <div className="bg-[var(--card-bg)] rounded-[2rem] border border-[var(--border)] p-5 flex items-center justify-between shadow-sm relative overflow-hidden">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-cyan-500/10 border border-cyan-500/20 rounded-xl flex items-center justify-center text-cyan-500 shrink-0">
-                  <Calendar className="w-5 h-5" />
+            <div className="bg-[var(--card-bg)] rounded-2xl border border-[var(--border)] p-4 flex items-center justify-between shadow-sm relative overflow-hidden">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 bg-cyan-500/10 border border-cyan-500/20 rounded-lg flex items-center justify-center text-cyan-500 shrink-0">
+                  <Calendar className="w-4.5 h-4.5" />
                 </div>
                 <div>
-                  <h4 className="text-xs font-black text-[var(--text-main)] uppercase tracking-wide">Orari Ufficiali KTEL</h4>
-                  <p className="text-[10px] text-[var(--text-muted)] mt-0.5">Aggiornati al: <span className="font-bold text-[var(--text-main)]">{transportData.lastUpdated}</span></p>
+                  <h4 className="text-[11px] font-black text-[var(--text-main)] uppercase tracking-wide">Orari Ufficiali KTEL</h4>
+                  <p className="text-[9px] text-[var(--text-muted)] mt-0.5">Aggiornati al: <span className="font-bold text-[var(--text-main)]">{transportData.lastUpdated}</span></p>
                 </div>
               </div>
               <button 
                 onClick={() => handleRefresh(false)}
                 disabled={loading}
-                className="text-xs font-bold bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-600 border border-cyan-500/20 px-3.5 py-2 rounded-xl transition-all active:scale-95"
+                className="text-[10px] font-bold bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-600 border border-cyan-500/20 px-3 py-1.5 rounded-lg transition-all active:scale-95"
               >
                 Aggiorna Ora
               </button>
             </div>
 
             {/* Tab weekdays / weekends */}
-            <div className="flex bg-[var(--card-bg)] border border-[var(--border)] rounded-2xl p-1 shrink-0">
+            <div className="flex bg-[var(--card-bg)] border border-[var(--border)] rounded-xl p-0.5 shrink-0">
               <button
                 onClick={() => setActiveTab('weekdays')}
-                className={`flex-1 py-3 text-center text-xs font-black uppercase tracking-wider rounded-xl transition-all ${
-                  activeTab === 'weekdays' ? 'bg-cyan-500 text-white shadow-lg shadow-cyan-500/20' : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
+                className={`flex-1 py-2 text-center text-[10px] font-black uppercase tracking-wider rounded-lg transition-all ${
+                  activeTab === 'weekdays' ? 'bg-cyan-500 text-white shadow-md shadow-cyan-500/15' : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
                 }`}
               >
                 Lunedì - Venerdì
               </button>
               <button
                 onClick={() => setActiveTab('weekends')}
-                className={`flex-1 py-3 text-center text-xs font-black uppercase tracking-wider rounded-xl transition-all ${
-                  activeTab === 'weekends' ? 'bg-cyan-500 text-white shadow-lg shadow-cyan-500/20' : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
+                className={`flex-1 py-2 text-center text-[10px] font-black uppercase tracking-wider rounded-lg transition-all ${
+                  activeTab === 'weekends' ? 'bg-cyan-500 text-white shadow-md shadow-cyan-500/15' : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
                 }`}
               >
                 Sabato - Domenica
@@ -239,48 +230,48 @@ export const TransportScreen = ({ module, onClose, onSave, onDelete }: Transport
             </div>
 
             {/* Lista Rotte */}
-            <div className="space-y-3">
-              <h3 className="text-xs font-black text-[var(--text-muted)] uppercase tracking-widest px-2">Linee Disponibili</h3>
+            <div className="space-y-2">
+              <h3 className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest px-2">Linee Disponibili</h3>
               {transportData.routes
                 .filter(r => r.dayType === activeTab)
                 .map((route) => (
                   <button
                     key={route.id}
                     onClick={() => { setSelectedRoute(route); setSelectedTrip(null); }}
-                    className="w-full flex items-center justify-between p-5 bg-[var(--card-bg)] hover:bg-[var(--surface-variant)] border border-[var(--border)] hover:border-cyan-500/40 rounded-[2rem] text-left transition-all group shadow-sm active:scale-[0.99]"
+                    className="w-full flex items-center justify-between p-3.5 bg-[var(--card-bg)] hover:bg-[var(--surface-variant)] border border-[var(--border)] hover:border-cyan-500/40 rounded-2xl text-left transition-all group shadow-sm active:scale-[0.99]"
                   >
-                    <div className="flex items-center gap-4 min-w-0">
-                      <div className="w-11 h-11 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-600 flex items-center justify-center shrink-0">
-                        <Bus className="w-5 h-5 group-hover:scale-110 transition-transform" />
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-9 h-9 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-600 flex items-center justify-center shrink-0">
+                        <Bus className="w-4 h-4 group-hover:scale-110 transition-transform" />
                       </div>
                       <div className="min-w-0">
-                        <h4 className="font-bold text-sm text-[var(--text-main)] truncate">{route.title}</h4>
-                        <div className="flex items-center gap-x-2 mt-1 flex-wrap text-[10px] text-[var(--text-muted)]">
-                          <span>{route.departureTimes.length} corse andata</span>
+                        <h4 className="font-bold text-xs text-[var(--text-main)] truncate">{route.title}</h4>
+                        <div className="flex items-center gap-x-2 mt-0.5 flex-wrap text-[9px] text-[var(--text-muted)]">
+                          <span>{route.departureTimes.length} andata</span>
                           <span>•</span>
-                          <span>{route.returnTimes.length} corse ritorno</span>
+                          <span>{route.returnTimes.length} ritorno</span>
                         </div>
                       </div>
                     </div>
-                    <ChevronRight className="w-5 h-5 text-[var(--text-muted)] group-hover:translate-x-1 transition-transform shrink-0" />
+                    <ChevronRight className="w-4 h-4 text-[var(--text-muted)] group-hover:translate-x-1 transition-transform shrink-0" />
                   </button>
               ))}
             </div>
 
             {/* Info addizionali stazioni */}
-            <div className="bg-[var(--card-bg)]/60 rounded-[2.5rem] border border-[var(--border)] p-6 space-y-4">
-              <h4 className="text-xs font-black text-[var(--text-main)] uppercase tracking-wider flex items-center gap-2">
-                <Info className="w-4 h-4 text-cyan-500" /> Informazioni Utili
+            <div className="bg-[var(--card-bg)]/60 rounded-2xl border border-[var(--border)] p-4 space-y-2.5">
+              <h4 className="text-[11px] font-black text-[var(--text-main)] uppercase tracking-wider flex items-center gap-1.5">
+                <Info className="w-3.5 h-3.5 text-cyan-500" /> Informazioni Utili
               </h4>
-              <div className="space-y-3 text-xs leading-relaxed text-[var(--text-muted)]">
+              <div className="space-y-2 text-[11px] leading-relaxed text-[var(--text-muted)]">
                 <p>
-                  🎟️ <strong>Biglietti:</strong> Il costo del biglietto varia tra 1.80€ e 2.00€ a seconda della tratta. I biglietti possono essere acquistati al capolinea di Egina Town o direttamente a bordo dell'autobus.
+                  🎟️ <strong>Biglietti:</strong> Il costo varia tra 1.80€ e 2.00€. Acquistabili al capolinea di Egina Town o a bordo.
                 </p>
                 <p>
-                  📍 <strong>Stazione Principale:</strong> Si trova proprio di fronte al porto di Egina Town, a sinistra dell'uscita dei traghetti. Da lì partono tutte le linee.
+                  📍 <strong>Stazione Principale:</strong> A sinistra dell'uscita dei traghetti di fronte al porto di Egina Town.
                 </p>
                 <p>
-                  ⚠️ <strong>Orari:</strong> Gli orari possono subire variazioni stagionali o a causa del traffico. Clicca sul tasto di aggiornamento in alto per scaricare le ultime tabelle caricate in tempo reale dal portale ufficiale.
+                  ⚠️ <strong>Orari:</strong> Clicca sul tasto di aggiornamento in alto per scaricare i dati in tempo reale dal portale.
                 </p>
               </div>
             </div>
@@ -293,19 +284,19 @@ export const TransportScreen = ({ module, onClose, onSave, onDelete }: Transport
           <div className="space-y-6 fade-in pb-20">
             
             {/* Selettore direzione */}
-            <div className="flex bg-[var(--card-bg)] border border-[var(--border)] rounded-2xl p-1 shrink-0">
+            <div className="flex bg-[var(--card-bg)] border border-[var(--border)] rounded-xl p-0.5 shrink-0">
               <button
                 onClick={() => { setDirection('departure'); setSelectedTrip(null); }}
-                className={`flex-1 py-3 text-center text-xs font-black uppercase tracking-wider rounded-xl transition-all ${
-                  direction === 'departure' ? 'bg-cyan-500 text-white shadow-lg shadow-cyan-500/20' : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
+                className={`flex-1 py-2 text-center text-[10px] font-black uppercase tracking-wider rounded-lg transition-all ${
+                  direction === 'departure' ? 'bg-cyan-500 text-white shadow-md shadow-cyan-500/15' : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
                 }`}
               >
                 Andata (Da Egina)
               </button>
               <button
                 onClick={() => { setDirection('return'); setSelectedTrip(null); }}
-                className={`flex-1 py-3 text-center text-xs font-black uppercase tracking-wider rounded-xl transition-all ${
-                  direction === 'return' ? 'bg-cyan-500 text-white shadow-lg shadow-cyan-500/20' : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
+                className={`flex-1 py-2 text-center text-[10px] font-black uppercase tracking-wider rounded-lg transition-all ${
+                  direction === 'return' ? 'bg-cyan-500 text-white shadow-md shadow-cyan-500/15' : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
                 }`}
               >
                 Ritorno (A Egina)
@@ -313,26 +304,26 @@ export const TransportScreen = ({ module, onClose, onSave, onDelete }: Transport
             </div>
 
             {/* Tabella Orari in griglia */}
-            <div className="bg-[var(--card-bg)] rounded-[2.5rem] border border-[var(--border)] p-6 shadow-sm">
-              <h3 className="text-xs font-black text-[var(--text-muted)] uppercase tracking-widest mb-4">
-                Seleziona un orario per vedere la fermata
+            <div className="bg-[var(--card-bg)] rounded-2xl border border-[var(--border)] p-4 shadow-sm">
+              <h3 className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest mb-3">
+                Seleziona un orario per la fermata
               </h3>
               
               {((direction === 'departure' ? selectedRoute.departureTimes : selectedRoute.returnTimes).length === 0) ? (
-                <div className="text-center py-6 text-xs text-[var(--text-muted)] font-bold">
-                  Nessuna corsa programmata per questa direzione.
+                <div className="text-center py-4 text-xs text-[var(--text-muted)] font-bold">
+                  Nessuna corsa programmata.
                 </div>
               ) : (
-                <div className="grid grid-cols-4 gap-2.5">
+                <div className="grid grid-cols-4 gap-2">
                   {(direction === 'departure' ? selectedRoute.departureTrips : selectedRoute.returnTrips).map((trip) => {
                     const isSelected = selectedTrip?.time === trip.time;
                     return (
                       <button
                         key={trip.time}
                         onClick={() => setSelectedTrip(trip)}
-                        className={`py-3 rounded-2xl border text-xs font-black tracking-wider transition-all active:scale-95 ${
+                        className={`py-2 rounded-xl border text-xs font-black tracking-wider transition-all active:scale-95 ${
                           isSelected 
-                            ? 'bg-gradient-to-tr from-cyan-500 to-blue-500 text-white border-cyan-400 shadow-md shadow-cyan-500/20' 
+                            ? 'bg-gradient-to-tr from-cyan-500 to-blue-500 text-white border-cyan-400 shadow-md shadow-cyan-500/15' 
                             : 'bg-[var(--bg)] text-[var(--text-main)] border-[var(--border)] hover:border-cyan-500/40'
                         }`}
                       >
@@ -346,52 +337,52 @@ export const TransportScreen = ({ module, onClose, onSave, onDelete }: Transport
 
             {/* Dettagli della corsa selezionata */}
             {selectedTrip && (
-              <div className="space-y-4 fade-in">
-                <h3 className="text-xs font-black text-[var(--text-muted)] uppercase tracking-widest px-2">Dettagli ed Indicazioni Stradali</h3>
+              <div className="space-y-3 fade-in">
+                <h3 className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest px-2">Dettagli ed Indicazioni</h3>
                 
-                <div className="bg-[var(--card-bg)] rounded-[2.5rem] border border-[var(--border)] p-6 space-y-6 shadow-md">
+                <div className="bg-[var(--card-bg)] rounded-2xl border border-[var(--border)] p-4 space-y-4 shadow-md">
                   
                   {/* Tracciato fermate */}
-                  <div className="relative pl-6 space-y-6">
+                  <div className="relative pl-5 space-y-4">
                     {/* Linea verticale */}
-                    <div className="absolute top-2.5 bottom-2.5 left-2 w-0.5 bg-gradient-to-b from-cyan-500 to-blue-500" />
+                    <div className="absolute top-2 bottom-2 left-1.5 w-0.5 bg-gradient-to-b from-cyan-500 to-blue-500" />
                     
                     {/* Partenza */}
                     <div className="relative">
-                      <div className="absolute -left-5 top-1 w-2.5 h-2.5 rounded-full bg-cyan-500 border-2 border-white ring-4 ring-cyan-500/20" />
+                      <div className="absolute -left-[19px] top-1 w-2 h-2 rounded-full bg-cyan-500 border-2 border-white ring-4 ring-cyan-500/10" />
                       <div className="flex items-start justify-between gap-4">
                         <div>
-                          <h4 className="text-[10px] font-black text-cyan-500 uppercase tracking-wider leading-none">Partenza ({selectedTrip.time})</h4>
-                          <h5 className="font-bold text-xs text-[var(--text-main)] mt-1.5 leading-tight">{selectedTrip.originStop.name}</h5>
-                          <p className="text-[10px] text-[var(--text-muted)] mt-1 leading-relaxed">{selectedTrip.originStop.description}</p>
+                          <h4 className="text-[9px] font-black text-cyan-500 uppercase tracking-wider leading-none">Partenza ({selectedTrip.time})</h4>
+                          <h5 className="font-bold text-xs text-[var(--text-main)] mt-1 leading-tight">{selectedTrip.originStop.name}</h5>
+                          <p className="text-[9px] text-[var(--text-muted)] mt-0.5 leading-relaxed">{selectedTrip.originStop.description}</p>
                         </div>
                         <a 
                           href={selectedTrip.originStop.mapsUrl}
                           target="_blank"
                           rel="noreferrer"
-                          className="flex items-center gap-1 text-[10px] font-black bg-[var(--bg)] hover:bg-[var(--border)] text-cyan-600 px-2.5 py-1.5 rounded-lg border border-[var(--border)] transition-colors shrink-0"
+                          className="flex items-center gap-1 text-[9px] font-black bg-[var(--bg)] hover:bg-[var(--border)] text-cyan-600 px-2 py-1 rounded-lg border border-[var(--border)] transition-colors shrink-0"
                         >
-                          <MapPin className="w-3.5 h-3.5" /> Mappa
+                          <MapPin className="w-3 h-3" /> Mappa
                         </a>
                       </div>
                     </div>
 
                     {/* Arrivo */}
                     <div className="relative">
-                      <div className="absolute -left-5 top-1 w-2.5 h-2.5 rounded-full bg-blue-500 border-2 border-white ring-4 ring-blue-500/20" />
+                      <div className="absolute -left-[19px] top-1 w-2 h-2 rounded-full bg-blue-500 border-2 border-white ring-4 ring-blue-500/10" />
                       <div className="flex items-start justify-between gap-4">
                         <div>
-                          <h4 className="text-[10px] font-black text-blue-500 uppercase tracking-wider leading-none">Arrivo</h4>
-                          <h5 className="font-bold text-xs text-[var(--text-main)] mt-1.5 leading-tight">{selectedTrip.destinationStop.name}</h5>
-                          <p className="text-[10px] text-[var(--text-muted)] mt-1 leading-relaxed">{selectedTrip.destinationStop.description}</p>
+                          <h4 className="text-[9px] font-black text-blue-500 uppercase tracking-wider leading-none">Arrivo</h4>
+                          <h5 className="font-bold text-xs text-[var(--text-main)] mt-1 leading-tight">{selectedTrip.destinationStop.name}</h5>
+                          <p className="text-[9px] text-[var(--text-muted)] mt-0.5 leading-relaxed">{selectedTrip.destinationStop.description}</p>
                         </div>
                         <a 
                           href={selectedTrip.destinationStop.mapsUrl}
                           target="_blank"
                           rel="noreferrer"
-                          className="flex items-center gap-1 text-[10px] font-black bg-[var(--bg)] hover:bg-[var(--border)] text-cyan-600 px-2.5 py-1.5 rounded-lg border border-[var(--border)] transition-colors shrink-0"
+                          className="flex items-center gap-1 text-[9px] font-black bg-[var(--bg)] hover:bg-[var(--border)] text-cyan-600 px-2 py-1 rounded-lg border border-[var(--border)] transition-colors shrink-0"
                         >
-                          <MapPin className="w-3.5 h-3.5" /> Mappa
+                          <MapPin className="w-3 h-3" /> Mappa
                         </a>
                       </div>
                     </div>
@@ -401,24 +392,24 @@ export const TransportScreen = ({ module, onClose, onSave, onDelete }: Transport
                   <hr className="border-[var(--border)]" />
 
                   {/* Info di viaggio */}
-                  <div className="grid grid-cols-2 gap-4 bg-[var(--bg)] p-4 rounded-2xl border border-[var(--border)]">
-                    <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-xl bg-cyan-500/10 text-cyan-600 flex items-center justify-center shrink-0">
-                        <Clock className="w-4.5 h-4.5" />
+                  <div className="grid grid-cols-2 gap-3 bg-[var(--bg)] p-3 rounded-xl border border-[var(--border)]">
+                    <div className="flex items-center gap-2">
+                      <div className="w-7 h-7 rounded-lg bg-cyan-500/10 text-cyan-600 flex items-center justify-center shrink-0">
+                        <Clock className="w-4 h-4" />
                       </div>
                       <div>
-                        <p className="text-[9px] uppercase font-black text-[var(--text-muted)] tracking-wider leading-none">Durata Appross.</p>
-                        <p className="text-xs font-bold text-[var(--text-main)] mt-1 leading-none">{selectedTrip.duration}</p>
+                        <p className="text-[8px] uppercase font-black text-[var(--text-muted)] tracking-wider leading-none">Durata</p>
+                        <p className="text-xs font-bold text-[var(--text-main)] mt-0.5 leading-none">{selectedTrip.duration}</p>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center shrink-0">
-                        <DollarSign className="w-4.5 h-4.5" />
+                    <div className="flex items-center gap-2">
+                      <div className="w-7 h-7 rounded-lg bg-emerald-500/10 text-emerald-600 flex items-center justify-center shrink-0">
+                        <DollarSign className="w-4 h-4" />
                       </div>
                       <div>
-                        <p className="text-[9px] uppercase font-black text-[var(--text-muted)] tracking-wider leading-none">Prezzo indicativo</p>
-                        <p className="text-xs font-bold text-[var(--text-main)] mt-1 leading-none">{selectedTrip.price}</p>
+                        <p className="text-[8px] uppercase font-black text-[var(--text-muted)] tracking-wider leading-none">Prezzo</p>
+                        <p className="text-xs font-bold text-[var(--text-main)] mt-0.5 leading-none">{selectedTrip.price}</p>
                       </div>
                     </div>
                   </div>
