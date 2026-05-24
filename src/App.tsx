@@ -4,11 +4,11 @@
  */
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Sun, Moon, Wrench, Plus, LayoutDashboard, Settings, User, LogOut, Search, Mic, Bell, CreditCard, Fingerprint, ShieldCheck, Lock, Menu, X, StickyNote, FileText, Grid2X2, Car, QrCode, Folder as FolderIcon, Check, Edit2, Trash2, BookOpen, ArrowLeft, ArrowRight, Camera, FileDown, Hourglass, Users, Download, Receipt, MapPin, Image as ImageIcon, Lightbulb, Globe, ChevronLeft } from 'lucide-react';
+import { Sun, Moon, Wrench, Plus, LayoutDashboard, Settings, User, LogOut, Search, Mic, Bell, CreditCard, Fingerprint, ShieldCheck, Lock, Menu, X, StickyNote, FileText, Grid2X2, Car, QrCode, Folder as FolderIcon, Check, Edit2, Trash2, BookOpen, ArrowLeft, ArrowRight, Camera, FileDown, Hourglass, Users, Download, Receipt, MapPin, Image as ImageIcon, Lightbulb, Globe, ChevronLeft, Bus } from 'lucide-react';
 import { Module, ModuleType, Folder, DocumentModule } from './types';
 import { storage, AppState } from './services/storage';
 import { encryption } from './services/encryption';
-import { GenericCard, AutoCard, DocumentCard, SplitCard, SingleExpenseCard, GalleryCard, TravelCard } from './components/Modules';
+import { GenericCard, AutoCard, DocumentCard, SplitCard, SingleExpenseCard, GalleryCard, TravelCard, TransportCard } from './components/Modules';
 import { LockScreen } from './components/LockScreen';
 import { QrScanner } from './components/QrScanner';
 import { DocumentScanner } from './components/DocumentScanner';
@@ -22,6 +22,7 @@ import { DocumentArchive } from './components/DocumentArchive';
 import { SingleExpenseScreen } from './components/SingleExpenseScreen';
 import { AddressBookScreen } from './components/AddressBookScreen';
 import { TravelScreen } from './components/TravelScreen';
+import { TransportScreen } from './components/TransportScreen';
 import { notificationService } from './services/notificationService';
 import { APP_VERSION } from './constants/version';
 
@@ -122,6 +123,12 @@ const TEMPLATES = {
     content: '',
     icon: Globe,
     color: 'text-indigo-400'
+  },
+  transport: {
+    title: 'Trasporti',
+    content: '',
+    icon: Bus,
+    color: 'text-cyan-500'
   }
 };
 
@@ -143,6 +150,7 @@ export default function App() {
   const [editingDocumentModule, setEditingDocumentModule] = useState<import('./types').DocumentModule | null>(null);
   const [editingGenericModule, setEditingGenericModule] = useState<import('./types').GenericModule | null>(null);
   const [editingTravelModule, setEditingTravelModule] = useState<import('./types').TravelModule | null>(null);
+  const [editingTransportModule, setEditingTransportModule] = useState<import('./types').TransportModule | null>(null);
   const [sharingModule, setSharingModule] = useState<Module | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedType, setSelectedType] = useState<ModuleType | null>(null);
@@ -530,7 +538,7 @@ export default function App() {
       updated = modules.map(m => m.id === editingModuleId ? { ...m, ...processedData, folderId: processedData.folderId || undefined } : m);
     } else {
       const id = Math.random().toString(36).substr(2, 9);
-      const type = processedData.template === 'auto' ? 'auto' : processedData.template === 'document' ? 'document' : processedData.template === 'split' ? 'split' : 'generic';
+      const type = processedData.template === 'auto' ? 'auto' : processedData.template === 'document' ? 'document' : processedData.template === 'split' ? 'split' : processedData.template === 'transport' ? 'transport' : 'generic';
       const newModule: Module = {
         id,
         type,
@@ -685,6 +693,10 @@ export default function App() {
     }
     if (module.type === 'travel') {
       setEditingTravelModule(module as import('./types').TravelModule);
+      return;
+    }
+    if (module.type === 'transport') {
+      setEditingTransportModule(module as import('./types').TransportModule);
       return;
     }
     setEditingModuleId(module.id);
@@ -1518,6 +1530,12 @@ export default function App() {
                 onSave={(mod) => { updateModuleDirect(mod); setEditingTravelModule(mod); }}
                 onClose={() => setEditingTravelModule(null)}
               />
+            ) : editingTransportModule ? (
+              <TransportScreen
+                module={editingTransportModule}
+                onSave={(mod) => { updateModuleDirect(mod); setEditingTransportModule(null); }}
+                onClose={() => setEditingTransportModule(null)}
+              />
             ) : editingSplitModule ? (
               <SplitScreen
                 module={editingSplitModule}
@@ -1584,6 +1602,24 @@ export default function App() {
                             onClick={() => {
                               if (key === 'split') {
                                 setSpesaSubMenu(true);
+                              } else if (key === 'transport') {
+                                setIsAdding(false);
+                                const newTransport: import('./types').TransportModule = {
+                                  id: generateUUID(),
+                                  type: 'transport',
+                                  title: 'Trasporti',
+                                  x: (modules.length * 2) % 12,
+                                  y: Infinity,
+                                  w: 3,
+                                  h: 2,
+                                  folderId: selectedFolderId || undefined
+                                };
+                                setModules(prev => {
+                                  const updated = [newTransport, ...prev];
+                                  saveAppState(updated, folders).catch(console.error);
+                                  return updated;
+                                });
+                                setEditingTransportModule(newTransport);
                               } else {
                                 setFormData({ ...formData, template: key, title: t.title, content: t.content });
                                 setAutoFormStep(0);
@@ -2314,6 +2350,28 @@ export default function App() {
                                       });
                                       setEditingTravelModule(newTravel);
                                     }
+                                  } else if (key === 'transport') {
+                                    const existingTransport = modules.find(m => m.type === 'transport') as import('./types').TransportModule;
+                                    if (existingTransport) {
+                                      setEditingTransportModule(existingTransport);
+                                    } else {
+                                      const newTransport: import('./types').TransportModule = {
+                                        id: generateUUID(),
+                                        type: 'transport',
+                                        title: 'Trasporti',
+                                        x: (modules.length * 2) % 12,
+                                        y: Infinity,
+                                        w: 3,
+                                        h: 2,
+                                        folderId: selectedFolderId || undefined
+                                      };
+                                      setModules(prev => {
+                                        const updated = [newTransport, ...prev];
+                                        saveAppState(updated, folders).catch(console.error);
+                                        return updated;
+                                      });
+                                      setEditingTransportModule(newTransport);
+                                    }
                                   } else {
                                     setSelectedType(key as ModuleType);
                                   }
@@ -2398,6 +2456,8 @@ export default function App() {
                                 <SingleExpenseCard module={module as import('./types').SingleExpenseModule} onDelete={requestDelete} onEdit={openEditModal} />
                               ) : module.type === 'gallery' ? (
                                 <GalleryCard module={module as import('./types').GalleryModule} onEdit={openEditModal} />
+                              ) : module.type === 'transport' ? (
+                                <TransportCard module={module as import('./types').TransportModule} onDelete={requestDelete} onEdit={openEditModal} />
                               ) : module.type === 'travel' ? (
                                 <TravelCard module={module as import('./types').TravelModule} onDelete={requestDelete} onEdit={openEditModal} />
                               ) : (
@@ -2415,7 +2475,7 @@ export default function App() {
           </div>
           
           {/* Global FAB (Only on main dashboard and specific categories except gallery/travel) */}
-          {(selectedType !== 'gallery') && !editingTravelModule && !isAdding && !editingModuleId && !isArchiveOpen && !isToolsOpen && !editingAutoModule && !editingSplitModule && !editingSingleExpenseModule && !editingDocumentModule && !editingGenericModule && (
+          {(selectedType !== 'gallery') && !editingTravelModule && !editingTransportModule && !isAdding && !editingModuleId && !isArchiveOpen && !isToolsOpen && !editingAutoModule && !editingSplitModule && !editingSingleExpenseModule && !editingDocumentModule && !editingGenericModule && (
             <motion.button
               initial={{ scale: 0, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
@@ -2438,6 +2498,24 @@ export default function App() {
                     return updated;
                   });
                   setEditingTravelModule(newTravel);
+                } else if (selectedType === 'transport') {
+                  // Create new transport module directly
+                  const newTransport: import('./types').TransportModule = {
+                    id: generateUUID(),
+                    type: 'transport',
+                    title: 'Trasporti',
+                    x: (modules.length * 2) % 12,
+                    y: Infinity,
+                    w: 3,
+                    h: 2,
+                    folderId: selectedFolderId || undefined
+                  };
+                  setModules(prev => {
+                    const updated = [newTransport, ...prev];
+                    saveAppState(updated, folders).catch(console.error);
+                    return updated;
+                  });
+                  setEditingTransportModule(newTransport);
                 } else if (selectedType === 'split' || selectedType === 'single-expense') {
                   setSpesaSubMenu(true);
                   setIsAdding(true);
@@ -2713,6 +2791,20 @@ export default function App() {
               setEditingSplitModule(null);
             }}
             onCancel={() => setEditingSplitModule(null)}
+            onDelete={deleteModule}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {editingTransportModule && (
+          <TransportScreen
+            module={editingTransportModule}
+            onSave={(updated) => {
+              updateModuleDirect(updated);
+              setEditingTransportModule(null);
+            }}
+            onClose={() => setEditingTransportModule(null)}
             onDelete={deleteModule}
           />
         )}
