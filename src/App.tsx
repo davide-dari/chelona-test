@@ -2614,26 +2614,7 @@ export default function App() {
                       )
                     ) : (
                       <>
-                        {selectedType && selectedType !== 'auto' && (
-                          <div className="px-4 lg:px-8 mb-6 animate-fade-in flex items-center justify-between max-w-7xl mx-auto">
-                            <div className="flex items-center gap-4">
-                              <button 
-                                onClick={() => setSelectedType(null)}
-                                className="p-3 bg-[var(--card-bg)] border border-[var(--border)] rounded-2xl text-[var(--text-muted)] hover:text-[var(--text-main)] transition-all shadow-sm"
-                              >
-                                <ChevronLeft className="w-6 h-6" />
-                              </button>
-                              <div>
-                                <h2 className="text-2xl font-black text-[var(--text-main)] uppercase tracking-tight leading-none">
-                                  {TEMPLATES[selectedType as ModuleType]?.title || selectedType}
-                                </h2>
-                                <p className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-[0.2em] mt-2">
-                                  {filteredModules.length} Elementi Trovati
-                                </p>
-                              </div>
-                            </div>
-                          </div>
-                        )}
+
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6 3xl:grid-cols-8 gap-6 stagger-fade-in px-4 lg:px-8 pb-32 md:pb-8">
                           {filteredModules.map((module) => (
