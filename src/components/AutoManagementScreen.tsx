@@ -71,6 +71,15 @@ export const AutoManagementScreen = ({ module, onSave, onCancel, onDelete, onSha
   const [isQuickKmEdit, setIsQuickKmEdit] = useState(false);
   const [quickKm, setQuickKm] = useState(data.currentKm || '');
   const [localPrefs, setLocalPrefs] = useState<Record<string, { enabled: boolean; offset: number }>>({});
+  const [showCopiedToast, setShowCopiedToast] = useState(false);
+
+  const handleCopyPlate = () => {
+    if (!data.plate) return;
+    navigator.clipboard.writeText(data.plate);
+    setShowCopiedToast(true);
+    setTimeout(() => setShowCopiedToast(false), 2000);
+    if (navigator.vibrate) navigator.vibrate(80);
+  };
 
   useEffect(() => {
     const handleOpenKm = () => {
@@ -90,7 +99,6 @@ export const AutoManagementScreen = ({ module, onSave, onCancel, onDelete, onSha
         'lastRevision',
         'battery12vExpiryDate',
         'hybridBatteryExpiryDate',
-        'hybridBatteryWarrantyDate',
         'lastGplCylinder',
         'lastMethaneCylinder',
       ].forEach(field => {
@@ -220,8 +228,7 @@ export const AutoManagementScreen = ({ module, onSave, onCancel, onDelete, onSha
     addDeadline('Bollo', data.lastTax, 'lastTax');
     addDeadline('Revisione', data.lastRevision, 'lastRevision');
     addDeadline('Batteria 12V', data.battery12vExpiryDate, 'battery12vExpiryDate');
-    addDeadline('Batteria Ibrida (revisione)', data.hybridBatteryExpiryDate, 'hybridBatteryExpiryDate');
-    addDeadline('Garanzia Batteria Ibrida', data.hybridBatteryWarrantyDate, 'hybridBatteryWarrantyDate');
+    addDeadline('Garanzia Batteria Ibrida', data.hybridBatteryExpiryDate, 'hybridBatteryExpiryDate');
     addDeadline('Bombola GPL', data.lastGplCylinder, 'lastGplCylinder');
     addDeadline('Bombola Metano', data.lastMethaneCylinder, 'lastMethaneCylinder');
 
@@ -298,11 +305,15 @@ export const AutoManagementScreen = ({ module, onSave, onCancel, onDelete, onSha
              <div className="relative z-10 flex items-start justify-between">
                <div>
                   <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40 mb-1">Dettagli Targa</p>
-                  <div className="inline-flex items-center border border-white/20 rounded-lg bg-white/10 backdrop-blur-md px-3 py-1.5 gap-3 shadow-lg">
-                    <div className="w-1.5 h-6 bg-blue-600 rounded-sm" />
-                    <span className="text-2xl font-black font-mono tracking-[0.2em]">{data.plate || '---'}</span>
-                    <div className="w-1.5 h-6 bg-blue-600 rounded-sm" />
-                  </div>
+                   <div 
+                     onClick={handleCopyPlate}
+                     className="inline-flex items-center border border-white/20 rounded-lg bg-white/10 hover:bg-white/20 backdrop-blur-md px-3 py-1.5 gap-3 shadow-lg cursor-pointer active:scale-95 transition-all"
+                     title="Clicca per copiare la targa"
+                   >
+                     <div className="w-1.5 h-6 bg-blue-600 rounded-sm" />
+                     <span className="text-2xl font-black font-mono tracking-[0.2em]">{data.plate || '---'}</span>
+                     <div className="w-1.5 h-6 bg-blue-600 rounded-sm" />
+                   </div>
                   <div className="mt-6 space-y-1">
                     <p className="text-sm font-bold text-white/80">{data.driverName || 'Nessun intestatario'}</p>
                     <p className="text-[10px] font-medium text-white/40 uppercase tracking-widest">Registrata nel {data.registrationYear || '---'}</p>
@@ -462,12 +473,12 @@ export const AutoManagementScreen = ({ module, onSave, onCancel, onDelete, onSha
                            <Gauge className="w-4 h-4" />
                            <span className="text-[10px] font-black uppercase tracking-widest">Batteria Ibrida / EV</span>
                         </div>
-                        <div className="flex justify-between items-center">
+               <div className="flex justify-between items-center">
                           <div>
                             <p className="text-xl font-black text-[var(--text-main)]">
                               {data.hybridBatteryExpiryDate ? new Date(data.hybridBatteryExpiryDate).toLocaleDateString('it-IT') : '---'}
                             </p>
-                            <p className="text-[10px] font-bold text-[var(--text-muted)] mt-1 uppercase tracking-widest">Data Scadenza</p>
+                            <p className="text-[10px] font-bold text-[var(--text-muted)] mt-1 uppercase tracking-widest">Scadenza Garanzia</p>
                           </div>
                           <div className="text-right">
                             <p className="text-xl font-black text-[var(--text-main)]">
@@ -536,14 +547,11 @@ export const AutoManagementScreen = ({ module, onSave, onCancel, onDelete, onSha
                   <Field label="Scadenza Revisione">
                     <input type="date" value={data.lastRevision || ''} onChange={e => set('lastRevision', e.target.value)} className={inputCls} />
                   </Field>
-                  <Field label="Garanzia e Scadenza Batteria 12V" colSpan={2}>
-                    <div className="flex gap-2">
-                      <input type="text" value={data.battery12vWarranty || ''} onChange={e => set('battery12vWarranty', e.target.value)} placeholder="Es. Garanzia fino al 2027" className={`flex-1 ${inputCls}`} />
-                      <input type="date" value={data.battery12vExpiryDate || ''} onChange={e => set('battery12vExpiryDate', e.target.value)} className={`w-40 ${inputCls}`} />
-                    </div>
+                  <Field label="Scadenza Batteria 12V" colSpan={2}>
+                    <input type="date" value={data.battery12vExpiryDate || ''} onChange={e => set('battery12vExpiryDate', e.target.value)} className={inputCls} />
                   </Field>
                   {(data.fuelType === 'ibrida' || data.fuelType === 'elettrica') && (
-                    <Field label="Batteria Ibrida / EV" colSpan={2}>
+                    <Field label="Batteria Ibrida / EV (Km e Garanzia)" colSpan={2}>
                       <div className="flex flex-col gap-2">
                         <input
                           type="text"
@@ -554,12 +562,8 @@ export const AutoManagementScreen = ({ module, onSave, onCancel, onDelete, onSha
                           className={inputCls}
                         />
                         <div className="flex items-center gap-2">
-                          <span className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest whitespace-nowrap">Scad. Revisione:</span>
-                          <input type="date" value={data.hybridBatteryExpiryDate || ''} onChange={e => set('hybridBatteryExpiryDate', e.target.value)} className={`flex-1 ${inputCls}`} />
-                        </div>
-                        <div className="flex items-center gap-2">
                           <span className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest whitespace-nowrap">Scad. Garanzia:</span>
-                          <input type="date" value={data.hybridBatteryWarrantyDate || ''} onChange={e => set('hybridBatteryWarrantyDate', e.target.value)} className={`flex-1 ${inputCls}`} />
+                          <input type="date" value={data.hybridBatteryExpiryDate || ''} onChange={e => set('hybridBatteryExpiryDate', e.target.value)} className={`flex-1 ${inputCls}`} />
                         </div>
                       </div>
                     </Field>
@@ -642,8 +646,7 @@ export const AutoManagementScreen = ({ module, onSave, onCancel, onDelete, onSha
                        { label: 'Bollo', date: data.lastTax, field: 'lastTax' },
                        { label: 'Revisione', date: data.lastRevision, field: 'lastRevision' },
                        { label: 'Batteria 12V', date: data.battery12vExpiryDate, field: 'battery12vExpiryDate' },
-                       { label: 'Batteria Ibrida (revisione)', date: data.hybridBatteryExpiryDate, field: 'hybridBatteryExpiryDate' },
-                       { label: 'Garanzia Batteria Ibrida', date: data.hybridBatteryWarrantyDate, field: 'hybridBatteryWarrantyDate' },
+                       { label: 'Garanzia Batteria Ibrida', date: data.hybridBatteryExpiryDate, field: 'hybridBatteryExpiryDate' },
                        { label: 'Bombola GPL', date: data.lastGplCylinder, field: 'lastGplCylinder' },
                        { label: 'Bombola Metano', date: data.lastMethaneCylinder, field: 'lastMethaneCylinder' },
                      ].filter(d => d.date && isValidDate(d.date));
@@ -719,6 +722,17 @@ export const AutoManagementScreen = ({ module, onSave, onCancel, onDelete, onSha
             }}
             onClose={() => setPicker(null)}
           />
+        )}
+        {showCopiedToast && (
+          <motion.div 
+            initial={{ opacity: 0, y: -20, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -20, scale: 0.9 }}
+            className="fixed top-6 left-1/2 -translate-x-1/2 z-[200] bg-emerald-500 text-white px-6 py-3 rounded-2xl shadow-xl flex items-center gap-2 border border-emerald-400 font-bold text-sm"
+          >
+            <Check className="w-4 h-4" />
+            <span>Targa copiata!</span>
+          </motion.div>
         )}
       </AnimatePresence>
     </motion.div>

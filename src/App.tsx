@@ -153,6 +153,7 @@ export default function App() {
   const [editingTransportModule, setEditingTransportModule] = useState<import('./types').TransportModule | null>(null);
   const [sharingModule, setSharingModule] = useState<Module | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [voiceResponse, setVoiceResponse] = useState<{ query: string; answer: string } | null>(null);
   const [selectedType, setSelectedType] = useState<ModuleType | null>(null);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
   const [isSplashScreenActive, setIsSplashScreenActive] = useState(true);
@@ -1091,6 +1092,199 @@ export default function App() {
 
 
   const recognitionRef = useRef<any>(null);
+
+  const triggerVoiceResponse = (query: string, answer: string) => {
+    setVoiceResponse({ query, answer });
+    try {
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(answer);
+        utterance.lang = 'it-IT';
+        utterance.rate = 1.0;
+        utterance.pitch = 1.0;
+        const voices = window.speechSynthesis.getVoices();
+        const itVoice = voices.find(v => v.lang.startsWith('it'));
+        if (itVoice) utterance.voice = itVoice;
+        window.speechSynthesis.speak(utterance);
+      }
+    } catch(e) {
+      console.warn("SpeechSynthesis error", e);
+    }
+  };
+
+  const processVoiceQuery = (queryText: string) => {
+    const text = queryText.toLowerCase().trim();
+    if (!text) return;
+
+    const isAutoRelated = text.includes('auto') || text.includes('macchina') || text.includes('veicolo') || text.includes('vettura') || 
+                          text.includes('revisione') || text.includes('tagliando') || text.includes('bollo') || 
+                          text.includes('assicurazione') || text.includes('gomme') || text.includes('targa') || text.includes('km') || text.includes('chilometri');
+
+    if (!isAutoRelated) {
+      setSearchQuery(queryText);
+      return;
+    }
+
+    const autoModule = modules.find(m => m.type === 'auto') as import('./types').AutoModule | undefined;
+    if (!autoModule) {
+      triggerVoiceResponse(
+        queryText, 
+        "Non ho trovato nessuna automobile configurata nella tua Dashboard. Aggiungine una per poter tracciare chilometri e scadenze."
+      );
+      return;
+    }
+
+    const currentKm = autoModule.currentKm ? parseInt(autoModule.currentKm.replace(/\D/g, '')) : 0;
+    const brandModel = `${autoModule.brand || ''} ${autoModule.model || ''}`.trim() || 'tua vettura';
+
+    if (text.includes('revisione')) {
+      let expiryDateStr = autoModule.lastRevision;
+      let isCalculated = false;
+
+      if (!expiryDateStr && autoModule.registrationYear) {
+        const regYear = parseInt(autoModule.registrationYear);
+        if (!isNaN(regYear)) {
+          expiryDateStr = `${regYear + 4}-12-31`;
+          isCalculated = true;
+        }
+      }
+
+      if (!expiryDateStr) {
+        triggerVoiceResponse(
+          queryText,
+          `Non ho registrato nessuna data di revisione per la tua ${brandModel}. Puoi inserirla modificando la scheda dell'auto.`
+        );
+        return;
+      }
+
+      const expiryDate = new Date(expiryDateStr);
+      const today = new Date();
+      today.setHours(0,0,0,0);
+      const daysLeft = Math.round((expiryDate.getTime() - today.getTime()) / (1000 * 3600 * 24));
+
+      let answer = "";
+      if (text.includes('km') || text.includes('chilometri') || text.includes('mancano') || text.includes('manca')) {
+        answer = `La revisione della tua ${brandModel} ha una scadenza temporale e non chilometrica. `;
+        if (daysLeft < 0) {
+          answer += `Risulta scaduta da ${Math.abs(daysLeft)} giorni (il ${expiryDate.toLocaleDateString('it-IT')}). Ti consiglio di effettuarla al più presto!`;
+        } else {
+          answer += `Scadrà il ${expiryDate.toLocaleDateString('it-IT')} (tra ${daysLeft} giorni).`;
+        }
+      } else {
+        if (daysLeft < 0) {
+          answer = `La revisione della tua ${brandModel} è scaduta il ${expiryDate.toLocaleDateString('it-IT')} (da ${Math.abs(daysLeft)} giorni). Dovresti prenotarla subito per evitare sanzioni.`;
+        } else {
+          answer = `La revisione della tua ${brandModel} scade il ${expiryDate.toLocaleDateString('it-IT')} (tra ${daysLeft} giorni).${isCalculated ? ' Questa data è calcolata a 4 anni dall\'immatricolazione.' : ''}`;
+        }
+      }
+      triggerVoiceResponse(queryText, answer);
+      return;
+    }
+
+    if (text.includes('tagliando') || text.includes('servizio') || text.includes('manutenzione')) {
+      const lastServiceKm = autoModule.lastServiceKm ? parseInt(autoModule.lastServiceKm.replace(/\D/g, '')) : 0;
+      if (!lastServiceKm) {
+        triggerVoiceResponse(
+          queryText,
+          `Non ho dati sull'ultimo tagliando effettuato per la tua ${brandModel}. Inserisci i chilometri dell'ultimo tagliando per calcolare la scadenza.`
+        );
+        return;
+      }
+
+      const targetKm = lastServiceKm + 15000;
+      const kmDiff = targetKm - currentKm;
+
+      let answer = "";
+      if (kmDiff < 0) {
+        answer = `Hai superato la soglia consigliata per il tagliando della tua ${brandModel} di ${Math.abs(kmDiff).toLocaleString('it-IT')} chilometri! L'ultimo tagliando è stato fatto a ${lastServiceKm.toLocaleString('it-IT')} km ed era consigliato effettuarlo entro i ${targetKm.toLocaleString('it-IT')} km.`;
+      } else {
+        answer = `Per il prossimo tagliando della tua ${brandModel} mancano circa ${kmDiff.toLocaleString('it-IT')} chilometri. L'ultimo è stato eseguito a ${lastServiceKm.toLocaleString('it-IT')} km ed è consigliato farlo a ${targetKm.toLocaleString('it-IT')} km.`;
+      }
+      triggerVoiceResponse(queryText, answer);
+      return;
+    }
+
+    if (text.includes('assicurazione') || text.includes('polizza')) {
+      const lastInsurance = autoModule.lastInsurance;
+      if (!lastInsurance) {
+        triggerVoiceResponse(queryText, `Non ho registrato la scadenza dell'assicurazione per la tua ${brandModel}.`);
+        return;
+      }
+
+      const expiryDate = new Date(lastInsurance);
+      const today = new Date();
+      today.setHours(0,0,0,0);
+      const daysLeft = Math.round((expiryDate.getTime() - today.getTime()) / (1000 * 3600 * 24));
+
+      let answer = "";
+      if (daysLeft < 0) {
+        answer = `L'assicurazione della tua ${brandModel} è scaduta il ${expiryDate.toLocaleDateString('it-IT')} (da ${Math.abs(daysLeft)} giorni).`;
+      } else {
+        answer = `L'assicurazione della tua ${brandModel} scade il ${expiryDate.toLocaleDateString('it-IT')} (tra ${daysLeft} giorni).`;
+      }
+      triggerVoiceResponse(queryText, answer);
+      return;
+    }
+
+    if (text.includes('bollo') || text.includes('tassa')) {
+      const lastTax = autoModule.lastTax;
+      if (!lastTax) {
+        triggerVoiceResponse(queryText, `Non ho inserito la scadenza del bollo per la tua ${brandModel}.`);
+        return;
+      }
+
+      const expiryDate = new Date(lastTax);
+      const today = new Date();
+      today.setHours(0,0,0,0);
+      const daysLeft = Math.round((expiryDate.getTime() - today.getTime()) / (1000 * 3600 * 24));
+
+      let answer = "";
+      if (daysLeft < 0) {
+        answer = `Il bollo della tua ${brandModel} risulta scaduto il ${expiryDate.toLocaleDateString('it-IT')} (da ${Math.abs(daysLeft)} giorni).`;
+      } else {
+        answer = `Il bollo della tua ${brandModel} scade il ${expiryDate.toLocaleDateString('it-IT')} (tra ${daysLeft} giorni).`;
+      }
+      triggerVoiceResponse(queryText, answer);
+      return;
+    }
+
+    if (text.includes('gomme') || text.includes('pneumatici') || text.includes('tires')) {
+      const tiresKm = autoModule.tiresKm ? parseInt(autoModule.tiresKm.replace(/\D/g, '')) : 0;
+      if (!tiresKm) {
+        triggerVoiceResponse(queryText, `Non ho registrato i chilometri dell'ultimo cambio gomme per la tua ${brandModel}.`);
+        return;
+      }
+
+      const offset = autoModule.tiresSuggestedOffsetKm ? Number(autoModule.tiresSuggestedOffsetKm) : 0;
+      const targetKm = tiresKm + 10000 + offset;
+      const kmDiff = targetKm - currentKm;
+
+      let answer = "";
+      if (kmDiff < 0) {
+        answer = `Dovresti controllare le gomme della tua ${brandModel}! Hai superato il chilometraggio consigliato di ${Math.abs(kmDiff).toLocaleString('it-IT')} km.`;
+      } else {
+        answer = `Per il prossimo controllo delle gomme della tua ${brandModel} mancano circa ${kmDiff.toLocaleString('it-IT')} chilometri.`;
+      }
+      triggerVoiceResponse(queryText, answer);
+      return;
+    }
+
+    if (text.includes('km') || text.includes('chilometri') || text.includes('stato') || text.includes('info')) {
+      let answer = `La tua ${brandModel} (targa: ${autoModule.plate || 'Non specificata'}) ha attualmente registrati ${currentKm.toLocaleString('it-IT')} chilometri. `;
+      if (autoModule.lastKmUpdatedAt) {
+        const updateDate = new Date(autoModule.lastKmUpdatedAt);
+        answer += `L'ultimo aggiornamento risale al ${updateDate.toLocaleDateString('it-IT')} alle ore ${updateDate.toLocaleTimeString('it-IT', {hour: '2-digit', minute:'2-digit'})}.`;
+      }
+      triggerVoiceResponse(queryText, answer);
+      return;
+    }
+
+    triggerVoiceResponse(
+      queryText,
+      `Ho trovato l'auto ${brandModel} con targa ${autoModule.plate || 'Non specificata'}. Puoi chiedermi "quando scade la revisione" o "quanti chilometri mancano al tagliando".`
+    );
+  };
+
   const handleVoiceSearch = async () => {
     // Check if running on Capacitor (Android/iOS)
     const { platform } = await Device.getInfo();
@@ -1136,7 +1330,7 @@ export default function App() {
           popup: true,
         }).then((result) => {
           if (result.matches && result.matches.length > 0) {
-            setSearchQuery(result.matches[0]);
+            processVoiceQuery(result.matches[0]);
             if (navigator.vibrate) navigator.vibrate([30, 30]);
           }
         }).catch((err) => {
@@ -1190,7 +1384,7 @@ export default function App() {
     recognition.onresult = (event: any) => {
       clearTimeout(timeoutId);
       const transcript = event.results[0][0].transcript;
-      setSearchQuery(transcript);
+      processVoiceQuery(transcript);
       if (navigator.vibrate) navigator.vibrate([30, 30]);
       setIsListening(false);
     };
@@ -1595,7 +1789,7 @@ export default function App() {
                       <h3 className="text-lg font-bold text-[var(--text-main)] mb-8 uppercase tracking-widest text-center">Scegli un Template</h3>
                       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                         {Object.entries(TEMPLATES)
-                          .filter(([key]) => key !== 'single-expense' && key !== 'travel')
+                          .filter(([key]) => key !== 'single-expense' && key !== 'travel' && key !== 'transport')
                           .map(([key, t]) => (
                           <button
                             key={key}
@@ -2414,15 +2608,13 @@ export default function App() {
                             {modules.length === 0 ? 'Nessun contenuto' : 'Nessun risultato trovato'}
                           </h3>
                           <p className="text-[var(--text-muted)] mb-8 max-w-sm mx-auto">
-                            {modules.length === 0 ? 'Inizia ad organizzare i tuoi dati aggiungendo la prima voce.' : 'Prova a cercare un termine diverso o cambiare filtro di categoria.'}
+                          {modules.length === 0 ? 'Inizia ad organizzare i tuoi dati aggiungendo la prima voce.' : 'Prova a cercare un termine diverso o cambiare filtro di categoria.'}
                           </p>
                         </div>
                       )
                     ) : (
                       <>
-
-
-                        {selectedType && (
+                        {selectedType && selectedType !== 'auto' && (
                           <div className="px-4 lg:px-8 mb-6 animate-fade-in flex items-center justify-between max-w-7xl mx-auto">
                             <div className="flex items-center gap-4">
                               <button 
@@ -2866,6 +3058,56 @@ export default function App() {
             modules={modules} 
             onClose={() => setIsArchiveOpen(false)} 
           />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {voiceResponse && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[200000] flex items-center justify-center p-6"
+          >
+            <div 
+              className="absolute inset-0 bg-black/60 backdrop-blur-md" 
+              onClick={() => {
+                setVoiceResponse(null);
+                if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+              }} 
+            />
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              className="relative bg-[var(--card-bg)] rounded-[2.5rem] p-6 lg:p-8 w-full max-w-md border border-[var(--border)] shadow-2xl flex flex-col items-center text-center overflow-hidden"
+            >
+              <div className="absolute top-0 right-0 w-32 h-32 bg-cyan-500/5 rounded-full -mr-12 -mt-12 blur-2xl pointer-events-none" />
+              
+              <div className="w-16 h-16 bg-cyan-500/10 rounded-full flex items-center justify-center text-cyan-500 mb-4 border border-cyan-500/20 turtle-float shadow-lg shadow-cyan-500/5">
+                <Mic className="w-8 h-8 animate-pulse" />
+              </div>
+
+              <h3 className="text-[10px] font-black text-cyan-500 uppercase tracking-[0.2em] mb-1">Assistente Vocale</h3>
+              <p className="text-xs italic font-medium text-[var(--text-muted)] max-w-xs mb-6 px-4">
+                "{voiceResponse.query}"
+              </p>
+
+              <div className="w-full bg-[var(--bg)] border border-[var(--border)] p-5 rounded-2xl mb-6 shadow-inner text-sm font-semibold text-[var(--text-main)] text-left leading-relaxed">
+                {voiceResponse.answer}
+              </div>
+
+              <button
+                onClick={() => {
+                  setVoiceResponse(null);
+                  if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+                }}
+                className="w-full py-4 bg-cyan-500 hover:bg-cyan-600 text-white rounded-2xl font-bold text-xs uppercase tracking-widest transition-all active:scale-[0.98] shadow-lg shadow-cyan-500/20"
+              >
+                Ho Capito
+              </button>
+            </motion.div>
+          </motion.div>
         )}
       </AnimatePresence>
 

@@ -275,46 +275,37 @@ export const AutoEditScreen = ({ module, onSave, onCancel }: AutoEditScreenProps
               />
             </Field>
 
-            <Field label="Garanzia/Scadenza Batteria 12v" colSpan={2} onAttach={() => setCapturingField({ key: 'battery12vDoc', title: 'Batteria 12v' })} hasDoc={!!data.battery12vDoc}>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={data.battery12vWarranty || ''}
-                  onChange={e => set('battery12vWarranty', e.target.value)}
-                  placeholder="Es. Garanzia fino al 2027"
-                  className="flex-1 p-3.5 bg-[var(--bg)] border border-[var(--border)] rounded-2xl outline-none focus:border-amber-400 transition-all text-sm font-semibold text-[var(--text-main)] placeholder:text-[var(--text-muted)]/50"
-                />
-                <input
-                  type="date"
-                  value={data.battery12vExpiryDate || ''}
-                  onChange={e => set('battery12vExpiryDate', e.target.value)}
-                  className="w-40 p-3.5 bg-[var(--bg)] border border-[var(--border)] rounded-2xl outline-none focus:border-amber-400 transition-all text-sm font-semibold text-[var(--text-main)]"
-                />
-              </div>
-            </Field>
-
-            {(data.fuelType === 'ibrida' || data.fuelType === 'elettrica') && (
-              <Field label="Batteria Ibrida / EV (Km e Scadenza)" colSpan={2} onAttach={() => setCapturingField({ key: 'hybridBatteryDoc', title: 'Batteria Ibrida' })} hasDoc={!!data.hybridBatteryDoc}>
-                <div className="flex flex-col gap-2">
-                  <input
-                    type="text"
-                    value={data.hybridBatteryWarranty || ''}
-                    onChange={e => set('hybridBatteryWarranty', e.target.value)}
-                    placeholder="Es. Km per prossimo controllo (es. 99180)"
-                    className="w-full p-3.5 bg-[var(--bg)] border border-[var(--border)] rounded-2xl outline-none focus:border-amber-400 transition-all text-sm font-semibold text-[var(--text-main)] placeholder:text-[var(--text-muted)]/50"
-                  />
-                  <div className="flex items-center gap-2">
-                    <span className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest whitespace-nowrap">Prossima Scadenza:</span>
-                    <input
-                        type="date"
-                        value={data.hybridBatteryExpiryDate || ''}
-                        onChange={e => set('hybridBatteryExpiryDate', e.target.value)}
-                        className="flex-1 p-3.5 bg-[var(--bg)] border border-[var(--border)] rounded-2xl outline-none focus:border-amber-400 transition-all text-sm font-semibold text-[var(--text-main)]"
-                    />
-                  </div>
-                </div>
-              </Field>
-            )}
+             <Field label="Scadenza Batteria 12v" colSpan={2} onAttach={() => setCapturingField({ key: 'battery12vDoc', title: 'Batteria 12v' })} hasDoc={!!data.battery12vDoc}>
+               <input
+                 type="date"
+                 value={data.battery12vExpiryDate || ''}
+                 onChange={e => set('battery12vExpiryDate', e.target.value)}
+                 className="w-full p-3.5 bg-[var(--bg)] border border-[var(--border)] rounded-2xl outline-none focus:border-amber-400 transition-all text-sm font-semibold text-[var(--text-main)]"
+               />
+             </Field>
+ 
+             {(data.fuelType === 'ibrida' || data.fuelType === 'elettrica') && (
+               <Field label="Batteria Ibrida / EV (Km e Garanzia)" colSpan={2} onAttach={() => setCapturingField({ key: 'hybridBatteryDoc', title: 'Batteria Ibrida' })} hasDoc={!!data.hybridBatteryDoc}>
+                 <div className="flex flex-col gap-2">
+                   <input
+                     type="text"
+                     value={data.hybridBatteryWarranty || ''}
+                     onChange={e => set('hybridBatteryWarranty', e.target.value)}
+                     placeholder="Es. Km per prossimo controllo (es. 99180)"
+                     className="w-full p-3.5 bg-[var(--bg)] border border-[var(--border)] rounded-2xl outline-none focus:border-amber-400 transition-all text-sm font-semibold text-[var(--text-main)] placeholder:text-[var(--text-muted)]/50"
+                   />
+                   <div className="flex items-center gap-2">
+                     <span className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest whitespace-nowrap">Scadenza Garanzia:</span>
+                     <input
+                         type="date"
+                         value={data.hybridBatteryExpiryDate || ''}
+                         onChange={e => set('hybridBatteryExpiryDate', e.target.value)}
+                         className="flex-1 p-3.5 bg-[var(--bg)] border border-[var(--border)] rounded-2xl outline-none focus:border-amber-400 transition-all text-sm font-semibold text-[var(--text-main)]"
+                     />
+                   </div>
+                 </div>
+               </Field>
+             )}
 
             {data.fuelType === 'gpl' && (
               <Field label="Data Installazione Bombola GPL" colSpan={2}>
