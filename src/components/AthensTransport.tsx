@@ -226,6 +226,66 @@ export const AthensTransport = () => {
   // Stato per ricerca bus
   const [busSearch, setBusSearch] = useState<string>('');
 
+  // Stati per la ricerca autocompletamento
+  const [originSearch, setOriginSearch] = useState('Pireo (Porto)');
+  const [destSearch, setDestSearch] = useState('Aeroporto di Atene');
+  const [showOriginSuggestions, setShowOriginSuggestions] = useState(false);
+  const [showDestSuggestions, setShowDestSuggestions] = useState(false);
+
+  const handleSelectOrigin = (id: string, name: string) => {
+    setOrigin(id);
+    setOriginSearch(name);
+    setShowOriginSuggestions(false);
+  };
+
+  const handleSelectDest = (id: string, name: string) => {
+    setDestination(id);
+    setDestSearch(name);
+    setShowDestSuggestions(false);
+  };
+
+  // Liste delle suggest per autocompletamento
+  const originSuggestions = useMemo(() => {
+    const query = originSearch.toLowerCase().trim();
+    if (!query) {
+      return [
+        ...Object.values(ATHENS_STATIONS).slice(0, 4).map(s => ({ id: s.id, name: s.nameIt, isStation: true })),
+        ...Object.values(ATHENS_STREETS).slice(0, 4).map(s => ({ id: `street_${s.id}`, name: s.nameIt, isStation: false }))
+      ];
+    }
+    
+    const matchedStations = Object.values(ATHENS_STATIONS)
+      .filter(s => s.nameIt.toLowerCase().includes(query) || s.nameEl.toLowerCase().includes(query))
+      .map(s => ({ id: s.id, name: s.nameIt, isStation: true }));
+
+    const matchedStreets = Object.values(ATHENS_STREETS)
+      .filter(s => s.nameIt.toLowerCase().includes(query) || s.nameEl.toLowerCase().includes(query))
+      .map(s => ({ id: `street_${s.id}`, name: s.nameIt, isStation: false }));
+
+    return [...matchedStations, ...matchedStreets].slice(0, 8);
+  }, [originSearch]);
+
+  const destSuggestions = useMemo(() => {
+    const query = destSearch.toLowerCase().trim();
+    if (!query) {
+      return [
+        ...Object.values(ATHENS_STATIONS).slice(0, 4).map(s => ({ id: s.id, name: s.nameIt, isStation: true })),
+        ...Object.values(ATHENS_STREETS).slice(0, 4).map(s => ({ id: `street_${s.id}`, name: s.nameIt, isStation: false }))
+      ];
+    }
+    
+    const matchedStations = Object.values(ATHENS_STATIONS)
+      .filter(s => s.nameIt.toLowerCase().includes(query) || s.nameEl.toLowerCase().includes(query))
+      .map(s => ({ id: s.id, name: s.nameIt, isStation: true }));
+
+    const matchedStreets = Object.values(ATHENS_STREETS)
+      .filter(s => s.nameIt.toLowerCase().includes(query) || s.nameEl.toLowerCase().includes(query))
+      .map(s => ({ id: `street_${s.id}`, name: s.nameIt, isStation: false }));
+
+    return [...matchedStations, ...matchedStreets].slice(0, 8);
+  }, [destSearch]);
+
+
   // Stato per i percorsi preferiti
   const [favorites, setFavorites] = useState<{ id: string; origin: string; destination: string; originName: string; destinationName: string }[]>(() => {
     try {
@@ -674,8 +734,11 @@ export const AthensTransport = () => {
                       className="flex items-center gap-2 bg-[var(--bg)] border border-[var(--border)] hover:border-cyan-500/50 rounded-2xl py-2 px-3 transition-all cursor-pointer shadow-sm active:scale-[0.98]"
                       onClick={() => {
                         setOrigin(fav.origin);
+                        setOriginSearch(fav.originName);
                         setDestination(fav.destination);
+                        setDestSearch(fav.destinationName);
                       }}
+
                     >
                       <span className="text-xs font-bold text-[var(--text-main)]">
                         {fav.originName} ➔ {fav.destinationName}
@@ -698,63 +761,128 @@ export const AthensTransport = () => {
 
             {/* Box input percorsi */}
             <div className="bg-[var(--card-bg)] rounded-3xl border border-[var(--border)] p-4 shadow-sm space-y-4">
-              <h3 className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-wider px-1">
-                Pianifica il tuo tragitto nella metro
-              </h3>
+              <div className="flex justify-between items-center px-1">
+                <h3 className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-wider">
+                  Pianifica il tuo tragitto nella metro
+                </h3>
+                <button
+                  onClick={() => toggleFavorite(origin, destination)}
+                  className={`flex items-center justify-center p-2 rounded-xl transition-all active:scale-95 ${
+                    isFavorite(origin, destination)
+                      ? 'bg-amber-500/10 text-amber-500 border border-amber-500/30'
+                      : 'bg-cyan-500/10 text-cyan-500 border border-cyan-500/30 hover:bg-cyan-500/20'
+                  }`}
+                  title={isFavorite(origin, destination) ? 'Rimuovi dai Preferiti' : 'Salva nei Preferiti'}
+                >
+                  <Star className={`w-4 h-4 ${isFavorite(origin, destination) ? 'fill-amber-500 text-amber-500' : ''}`} />
+                </button>
+              </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 relative">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 relative">
                 
                 {/* Partenza */}
-                <div className="space-y-1">
-                  <label className="text-[9px] font-black text-[var(--text-muted)] uppercase tracking-wider block pl-1">Partenza</label>
-                  <select 
-                    value={origin} 
-                    onChange={(e) => setOrigin(e.target.value)}
-                    className="w-full bg-[var(--bg)] text-[var(--text-main)] border border-[var(--border)] focus:border-cyan-500 p-3 rounded-2xl text-xs font-bold outline-none appearance-none transition-colors"
-                  >
-                    <optgroup label="🚉 Stazioni Metropolitana">
-                      {selectorStations.map(st => (
-                        <option key={st.id} value={st.id}>🟢 {st.nameIt}</option>
+                <div className="space-y-1 relative">
+                  <label className="text-[9px] font-black text-[var(--text-muted)] uppercase tracking-wider block pl-1">Partenza (Stazione o Via)</label>
+                  <input
+                    type="text"
+                    value={originSearch}
+                    onChange={(e) => {
+                      setOriginSearch(e.target.value);
+                      setShowOriginSuggestions(true);
+                      
+                      // Cerca corrispondenza esatta al volo per aggiornare lo stato interno
+                      const query = e.target.value.toLowerCase().trim();
+                      const bestMatch = [
+                        ...Object.values(ATHENS_STATIONS).map(s => ({ id: s.id, name: s.nameIt })),
+                        ...Object.values(ATHENS_STREETS).map(s => ({ id: `street_${s.id}`, name: s.nameIt }))
+                      ].find(item => item.name.toLowerCase() === query);
+                      
+                      if (bestMatch) {
+                        setOrigin(bestMatch.id);
+                      }
+                    }}
+                    onFocus={() => setShowOriginSuggestions(true)}
+                    onBlur={() => {
+                      setTimeout(() => setShowOriginSuggestions(false), 250);
+                    }}
+                    placeholder="Esempio: Ermou, Pireo, Omonia..."
+                    className="w-full bg-[var(--bg)] text-[var(--text-main)] border border-[var(--border)] focus:border-cyan-500 p-3 rounded-2xl text-xs font-bold outline-none transition-colors"
+                  />
+                  {showOriginSuggestions && originSuggestions.length > 0 && (
+                    <div className="absolute left-0 right-0 top-full mt-1 bg-[var(--card-bg)] border border-[var(--border)] rounded-2xl shadow-xl z-50 max-h-60 overflow-y-auto custom-scrollbar">
+                      {originSuggestions.map(item => (
+                        <div
+                          key={item.id}
+                          onClick={() => handleSelectOrigin(item.id, item.name)}
+                          className="px-4 py-2.5 hover:bg-[var(--surface-variant)] text-xs font-bold cursor-pointer transition-colors border-b border-[var(--border)] last:border-b-0 flex justify-between items-center"
+                        >
+                          <span>{item.isStation ? '🚉' : '🛣️'} {item.name}</span>
+                          <span className="text-[8px] text-[var(--text-muted)] font-black uppercase tracking-wider bg-[var(--bg)] px-1.5 py-0.5 rounded-md border border-[var(--border)]">
+                            {item.isStation ? 'Metro' : 'Via'}
+                          </span>
+                        </div>
                       ))}
-                    </optgroup>
-                    <optgroup label="🛣️ Vie e Piazze principali">
-                      {Object.values(ATHENS_STREETS).map(str => (
-                        <option key={str.id} value={`street_${str.id}`}>📍 {str.nameIt}</option>
-                      ))}
-                    </optgroup>
-                  </select>
+                    </div>
+                  )}
                 </div>
 
                 {/* Arrivo */}
-                <div className="space-y-1">
-                  <label className="text-[9px] font-black text-[var(--text-muted)] uppercase tracking-wider block pl-1">Arrivo</label>
-                  <select 
-                    value={destination} 
-                    onChange={(e) => setDestination(e.target.value)}
-                    className="w-full bg-[var(--bg)] text-[var(--text-main)] border border-[var(--border)] focus:border-cyan-500 p-3 rounded-2xl text-xs font-bold outline-none appearance-none transition-colors"
-                  >
-                    <optgroup label="🚉 Stazioni Metropolitana">
-                      {selectorStations.map(st => (
-                        <option key={st.id} value={st.id}>🔴 {st.nameIt}</option>
+                <div className="space-y-1 relative">
+                  <label className="text-[9px] font-black text-[var(--text-muted)] uppercase tracking-wider block pl-1">Arrivo (Stazione o Via)</label>
+                  <input
+                    type="text"
+                    value={destSearch}
+                    onChange={(e) => {
+                      setDestSearch(e.target.value);
+                      setShowDestSuggestions(true);
+                      
+                      // Cerca corrispondenza esatta al volo per aggiornare lo stato interno
+                      const query = e.target.value.toLowerCase().trim();
+                      const bestMatch = [
+                        ...Object.values(ATHENS_STATIONS).map(s => ({ id: s.id, name: s.nameIt })),
+                        ...Object.values(ATHENS_STREETS).map(s => ({ id: `street_${s.id}`, name: s.nameIt }))
+                      ].find(item => item.name.toLowerCase() === query);
+                      
+                      if (bestMatch) {
+                        setDestination(bestMatch.id);
+                      }
+                    }}
+                    onFocus={() => setShowDestSuggestions(true)}
+                    onBlur={() => {
+                      setTimeout(() => setShowDestSuggestions(false), 250);
+                    }}
+                    placeholder="Esempio: Aeroporto, Acropoli, Plaka..."
+                    className="w-full bg-[var(--bg)] text-[var(--text-main)] border border-[var(--border)] focus:border-cyan-500 p-3 rounded-2xl text-xs font-bold outline-none transition-colors"
+                  />
+                  {showDestSuggestions && destSuggestions.length > 0 && (
+                    <div className="absolute left-0 right-0 top-full mt-1 bg-[var(--card-bg)] border border-[var(--border)] rounded-2xl shadow-xl z-50 max-h-60 overflow-y-auto custom-scrollbar">
+                      {destSuggestions.map(item => (
+                        <div
+                          key={item.id}
+                          onClick={() => handleSelectDest(item.id, item.name)}
+                          className="px-4 py-2.5 hover:bg-[var(--surface-variant)] text-xs font-bold cursor-pointer transition-colors border-b border-[var(--border)] last:border-b-0 flex justify-between items-center"
+                        >
+                          <span>{item.isStation ? '🚉' : '🛣️'} {item.name}</span>
+                          <span className="text-[8px] text-[var(--text-muted)] font-black uppercase tracking-wider bg-[var(--bg)] px-1.5 py-0.5 rounded-md border border-[var(--border)]">
+                            {item.isStation ? 'Metro' : 'Via'}
+                          </span>
+                        </div>
                       ))}
-                    </optgroup>
-                    <optgroup label="🛣️ Vie e Piazze principali">
-                      {Object.values(ATHENS_STREETS).map(str => (
-                        <option key={str.id} value={`street_${str.id}`}>📍 {str.nameIt}</option>
-                      ))}
-                    </optgroup>
-                  </select>
+                    </div>
+                  )}
                 </div>
 
-
-                {/* Pulsante Inverti Direzione */}
+                {/* Pulsante Inverti Direzione (Desktop) */}
                 <button
                   onClick={() => {
-                    const temp = origin;
+                    const tempVal = origin;
+                    const tempText = originSearch;
                     setOrigin(destination);
-                    setDestination(temp);
+                    setOriginSearch(destSearch);
+                    setDestination(tempVal);
+                    setDestSearch(tempText);
                   }}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 p-2 bg-cyan-500 hover:bg-cyan-600 text-white rounded-xl border border-cyan-400 shadow-md active:scale-90 transition-all shrink-0 hidden sm:block"
+                  className="absolute right-4 top-1/2 -translate-y-1/2 p-2 bg-cyan-500 hover:bg-cyan-600 text-white rounded-xl border border-cyan-400 shadow-md active:scale-90 transition-all shrink-0 hidden sm:block z-20"
                   title="Inverti Stazioni"
                 >
                   <ArrowLeftRight className="w-4 h-4" />
@@ -764,15 +892,19 @@ export const AthensTransport = () => {
               {/* Tasto Inverti per mobile */}
               <button
                 onClick={() => {
-                  const temp = origin;
+                  const tempVal = origin;
+                  const tempText = originSearch;
                   setOrigin(destination);
-                  setDestination(temp);
+                  setOriginSearch(destSearch);
+                  setDestination(tempVal);
+                  setDestSearch(tempText);
                 }}
                 className="w-full flex items-center justify-center gap-2 bg-[var(--bg)] hover:bg-[var(--border)] border border-[var(--border)] text-xs font-bold py-2.5 rounded-xl sm:hidden active:scale-95 transition-all text-[var(--text-muted)]"
               >
                 <ArrowLeftRight className="w-4 h-4" /> Inverti Partenza/Arrivo
               </button>
             </div>
+
 
             {/* Risultato della Pianificazione */}
             {calculatedRoute && (
@@ -850,19 +982,8 @@ export const AthensTransport = () => {
                     <h4 className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-wider">
                       Dettaglio del Percorso
                     </h4>
-                    <button
-                      onClick={() => toggleFavorite(origin, destination)}
-                      className={`flex items-center justify-center p-2 rounded-xl transition-all active:scale-95 ${
-                        isFavorite(origin, destination)
-                          ? 'bg-amber-500/10 text-amber-500 border border-amber-500/30'
-                          : 'bg-cyan-500/10 text-cyan-500 border border-cyan-500/30 hover:bg-cyan-500/20'
-                      }`}
-                      title={isFavorite(origin, destination) ? 'Rimuovi dai Preferiti' : 'Salva nei Preferiti'}
-                    >
-                      <Star className={`w-4 h-4 ${isFavorite(origin, destination) ? 'fill-amber-500 text-amber-500' : ''}`} />
-                    </button>
-
                   </div>
+
 
 
                   <div className="relative pl-7 space-y-4">
