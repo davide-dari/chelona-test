@@ -1,8 +1,10 @@
 import React, { useState, useMemo } from 'react';
 import { 
   Bus, MapPin, Navigation, ExternalLink, Info, Compass, 
-  ArrowLeftRight, Search, Clock, DollarSign, Download, Map, HelpCircle
+  ArrowLeftRight, Search, Clock, DollarSign, Download, Map, HelpCircle,
+  Star
 } from 'lucide-react';
+
 
 // Interfaccia Fermata e Corsa
 export interface MetroStation {
@@ -193,6 +195,35 @@ export const AthensTransport = () => {
 
   // Stato per ricerca bus
   const [busSearch, setBusSearch] = useState<string>('');
+
+  // Stato per i percorsi preferiti
+  const [favorites, setFavorites] = useState<{ id: string; origin: string; destination: string; originName: string; destinationName: string }[]>(() => {
+    try {
+      const saved = localStorage.getItem('chelona_athens_fav_routes');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const toggleFavorite = (origId: string, destId: string) => {
+    const favId = `${origId}-${destId}`;
+    let newFavs;
+    if (favorites.some(f => f.id === favId)) {
+      newFavs = favorites.filter(f => f.id !== favId);
+    } else {
+      const originName = ATHENS_STATIONS[origId]?.nameIt || origId;
+      const destinationName = ATHENS_STATIONS[destId]?.nameIt || destId;
+      newFavs = [...favorites, { id: favId, origin: origId, destination: destId, originName, destinationName }];
+    }
+    setFavorites(newFavs);
+    localStorage.setItem('chelona_athens_fav_routes', JSON.stringify(newFavs));
+  };
+
+  const isFavorite = (origId: string, destId: string) => {
+    return favorites.some(f => f.id === `${origId}-${destId}`);
+  };
+
 
   // 4. ALGORITMO BFS LOCALE PER CALCOLARE I PERCORSI METRO INTERAMENTE OFFLINE
   const calculatedRoute = useMemo(() => {
@@ -563,6 +594,41 @@ export const AthensTransport = () => {
         {/* TAB 2: CALCOLATORE PERCORSO */}
         {activeTab === 'planner' && (
           <div className="space-y-4 fade-in">
+            {/* Percorsi Preferiti */}
+            {favorites.length > 0 && (
+              <div className="bg-[var(--card-bg)] rounded-3xl border border-[var(--border)] p-4 shadow-sm space-y-3">
+                <h4 className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-wider px-1 flex items-center gap-1.5">
+                  <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" /> Percorsi Preferiti
+                </h4>
+                <div className="flex flex-wrap gap-2">
+                  {favorites.map((fav) => (
+                    <div 
+                      key={fav.id}
+                      className="flex items-center gap-2 bg-[var(--bg)] border border-[var(--border)] hover:border-cyan-500/50 rounded-2xl py-2 px-3 transition-all cursor-pointer shadow-sm active:scale-[0.98]"
+                      onClick={() => {
+                        setOrigin(fav.origin);
+                        setDestination(fav.destination);
+                      }}
+                    >
+                      <span className="text-xs font-bold text-[var(--text-main)]">
+                        {fav.originName} ➔ {fav.destinationName}
+                      </span>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleFavorite(fav.origin, fav.destination);
+                        }}
+                        className="text-amber-500 hover:text-red-500 p-0.5 transition-colors flex items-center justify-center"
+                        title="Rimuovi dai preferiti"
+                      >
+                        <Star className="w-3 h-3 fill-amber-500 text-amber-500" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Box input percorsi */}
             <div className="bg-[var(--card-bg)] rounded-3xl border border-[var(--border)] p-4 shadow-sm space-y-4">
               <h3 className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-wider px-1">
@@ -654,9 +720,23 @@ export const AthensTransport = () => {
 
                 {/* Timeline Grafica delle Fermate */}
                 <div className="space-y-3">
-                  <h4 className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-wider px-1">
-                    Dettaglio del Percorso
-                  </h4>
+                  <div className="flex justify-between items-center px-1">
+                    <h4 className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-wider">
+                      Dettaglio del Percorso
+                    </h4>
+                    <button
+                      onClick={() => toggleFavorite(origin, destination)}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all active:scale-95 ${
+                        isFavorite(origin, destination)
+                          ? 'bg-amber-500/10 text-amber-600 border border-amber-500/30'
+                          : 'bg-cyan-500/10 text-cyan-600 border border-cyan-500/30 hover:bg-cyan-500/20'
+                      }`}
+                    >
+                      <Star className={`w-3.5 h-3.5 ${isFavorite(origin, destination) ? 'fill-amber-500 text-amber-500' : ''}`} />
+                      {isFavorite(origin, destination) ? 'Rimuovi dai Preferiti' : 'Salva nei Preferiti'}
+                    </button>
+                  </div>
+
 
                   <div className="relative pl-7 space-y-4">
                     {/* Linea verticale grafica */}
