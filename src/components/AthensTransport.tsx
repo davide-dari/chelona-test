@@ -235,6 +235,12 @@ export const AthensTransport = () => {
   const [customOriginCoords, setCustomOriginCoords] = useState<{ lat: number; lng: number; name: string } | null>(null);
   const [customDestCoords, setCustomDestCoords] = useState<{ lat: number; lng: number; name: string } | null>(null);
 
+  // Stati per la ricerca autocompletamento
+  const [originSearch, setOriginSearch] = useState('Pireo (Porto)');
+  const [destSearch, setDestSearch] = useState('Aeroporto di Atene');
+  const [showOriginSuggestions, setShowOriginSuggestions] = useState(false);
+  const [showDestSuggestions, setShowDestSuggestions] = useState(false);
+
   // Effetto per cercare vie in Grecia in tempo reale (de-bounced) per la Partenza
   useEffect(() => {
     const query = originSearch.trim();
@@ -324,11 +330,7 @@ export const AthensTransport = () => {
   }, [destSearch]);
 
 
-  // Stati per la ricerca autocompletamento
-  const [originSearch, setOriginSearch] = useState('Pireo (Porto)');
-  const [destSearch, setDestSearch] = useState('Aeroporto di Atene');
-  const [showOriginSuggestions, setShowOriginSuggestions] = useState(false);
-  const [showDestSuggestions, setShowDestSuggestions] = useState(false);
+
 
   const handleSelectOrigin = (id: string, name: string) => {
     setOrigin(id);
