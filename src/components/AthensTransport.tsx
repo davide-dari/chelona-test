@@ -184,6 +184,36 @@ export const POPULAR_ATHENS_BUSES: BusLine[] = [
   }
 ];
 
+export interface AthensStreet {
+  id: string;
+  nameIt: string;
+  nameEl: string;
+  lat: number;
+  lng: number;
+  description: string;
+}
+
+export const ATHENS_STREETS: Record<string, AthensStreet> = {
+  ermou: { id: 'ermou', nameIt: 'Via Ermou (Shopping)', nameEl: 'Οδός Ερμού', lat: 37.9758, lng: 23.7312, description: 'La via dello shopping più famosa di Atene, che unisce Syntagma a Monastiraki.' },
+  patision: { id: 'patision', nameIt: 'Via Patission (Viale 28 Ottobre)', nameEl: 'Οδός Πατησίων', lat: 37.9915, lng: 23.7305, description: 'Grande viale che ospita il Museo Archeologico Nazionale e lo storico Politecnico.' },
+  athinas: { id: 'athinas', nameIt: 'Via Athinas (Mercato)', nameEl: 'Οδός Αθηνάς', lat: 37.9805, lng: 23.7275, description: 'Via del mercato ortofrutticolo e ittico centrale, connette Omonia a Monastiraki.' },
+  syngrou: { id: 'syngrou', nameIt: 'Viale Syngrou', nameEl: 'Λεωφόρος Συγγρού', lat: 37.9620, lng: 23.7235, description: 'Grande arteria di scorrimento che connette il centro città alla costa meridionale.' },
+  areopagitou: { id: 'areopagitou', nameIt: 'Via Dionysiou Areopagitou', nameEl: 'Οδός Διονυσίου Αρεοπαγίτου', lat: 37.9695, lng: 23.7278, description: 'Splendida via pedonale ai piedi dell\'Acropoli e davanti al Museo dell\'Acropoli.' },
+  adrianou: { id: 'adrianou', nameIt: 'Via Adrianou (Plaka)', nameEl: 'Οδός Αδριανού', lat: 37.9752, lng: 23.7245, description: 'La via più antica e caratteristica del quartiere storico di Plaka.' },
+  sofias: { id: 'sofias', nameIt: 'Viale Vassilissis Sofias', nameEl: 'Λεωφόρος Βασιλίσσης Σοφίας', lat: 37.9765, lng: 23.7485, description: 'Elegante viale alberato, sede di ambasciate, gallerie d\'arte e musei.' },
+  panepistimiou: { id: 'panepistimiou', nameIt: 'Via Panepistimiou', nameEl: 'Οδός Πανεπιστημίου', lat: 37.9812, lng: 23.7320, description: 'Via monumentale sede dell\'Università, dell\'Accademia e della Biblioteca Nazionale.' },
+  stadiou: { id: 'stadiou', nameIt: 'Via Stadiou', nameEl: 'Οδός Σταδίου', lat: 37.9790, lng: 23.7310, description: 'Importante via commerciale del centro parallela a Panepistimiou.' },
+  akadimias: { id: 'akadimias', nameIt: 'Via Akadimias', nameEl: 'Οδός Ακαδημίας', lat: 37.9798, lng: 23.7340, description: 'Grande asse viario parallelo a Panepistimiou, centro nevralgico degli autobus urbani.' },
+  pireos: { id: 'pireos', nameIt: 'Via Pireos', nameEl: 'Οδός Πειραιώς', lat: 37.9740, lng: 23.7050, description: 'Strada storica e industriale che unisce il cuore di Atene al Porto del Pireo.' },
+  vouliagmenis: { id: 'vouliagmenis', nameIt: 'Viale Vouliagmenis', nameEl: 'Λεωφόρος Βουλιαγμένης', lat: 37.9150, lng: 23.7415, description: 'Lungo asse stradale che unisce il centro città alla zona residenziale sud.' },
+  mitropoleos: { id: 'mitropoleos', nameIt: 'Via Mitropoleos', nameEl: 'Οδός Μητροπόλεως', lat: 37.9755, lng: 23.7285, description: 'Via che ospita la Cattedrale dell\'Annunciazione (Mitropoli) di Atene.' },
+  aiolou: { id: 'aiolou', nameIt: 'Via Aiolou', nameEl: 'Οδός Αιόλου', lat: 37.9785, lng: 23.7270, description: 'Via pedonale con splendida vista sull\'Acropoli, ricca di bar e caffetterie.' },
+  solonos: { id: 'solonos', nameIt: 'Via Solonos', nameEl: 'Οδός Σόλωνος', lat: 37.9825, lng: 23.7355, description: 'Via commerciale nel quartiere studentesco e vivace di Exarcheia.' },
+  themistokleous: { id: 'themistokleous', nameIt: 'Via Themistokleous', nameEl: 'Οδός Θεμιστοκλέους', lat: 37.9835, lng: 23.7315, description: 'Famoso passaggio pedonale alberato nel centro del quartiere Exarcheia.' },
+  kidathineon: { id: 'kidathineon', nameIt: 'Via Kidathineon (Plaka)', nameEl: 'Οδός Κυδαθηναίων', lat: 37.9725, lng: 23.7318, description: 'Caratteristica via pedonale nel cuore di Plaka, famosa per taverne e negozietti.' }
+};
+
+
 export const AthensTransport = () => {
   const [activeTab, setActiveTab] = useState<'metro' | 'planner' | 'buses' | 'map'>('metro');
   const [selectedLine, setSelectedLine] = useState<number>(3);
@@ -225,15 +255,48 @@ export const AthensTransport = () => {
   };
 
 
+  const resolveStationId = (val: string): string => {
+    if (val.startsWith('street_')) {
+      const streetId = val.replace('street_', '');
+      const street = ATHENS_STREETS[streetId];
+      if (street) {
+        let closestId = 'syntagma';
+        let minDistance = Infinity;
+        Object.entries(ATHENS_STATIONS).forEach(([stId, station]) => {
+          const dLat = station.lat - street.lat;
+          const dLng = station.lng - street.lng;
+          const dist = Math.sqrt(dLat * dLat + dLng * dLng);
+          if (dist < minDistance) {
+            minDistance = dist;
+            closestId = stId;
+          }
+        });
+        return closestId;
+      }
+    }
+    return val;
+  };
+
+  const getDistanceInMeters = (lat1: number, lng1: number, lat2: number, lng2: number) => {
+    const dLat = lat2 - lat1;
+    const dLng = (lng2 - lng1) * Math.cos(lat1 * Math.PI / 180);
+    return Math.round(Math.sqrt(dLat * dLat + dLng * dLng) * 111000);
+  };
+
   // 4. ALGORITMO BFS LOCALE PER CALCOLARE I PERCORSI METRO INTERAMENTE OFFLINE
   const calculatedRoute = useMemo(() => {
     if (!origin || !destination) return null;
-    if (origin === destination) {
+    const resolvedOrigin = resolveStationId(origin);
+    const resolvedDestination = resolveStationId(destination);
+
+    if (resolvedOrigin === resolvedDestination) {
       return {
-        path: [ATHENS_STATIONS[origin]],
+        path: [ATHENS_STATIONS[resolvedOrigin]],
         stops: 0,
         transfers: [],
-        time: 0
+        time: 0,
+        resolvedOrigin,
+        resolvedDestination
       };
     }
 
@@ -260,8 +323,8 @@ export const AthensTransport = () => {
     });
 
     // BFS standard per trovare il cammino minimo
-    const queue: string[][] = [[origin]];
-    const visited = new Set<string>([origin]);
+    const queue: string[][] = [[resolvedOrigin]];
+    const visited = new Set<string>([resolvedOrigin]);
 
     let pathFound: string[] | null = null;
 
@@ -269,7 +332,7 @@ export const AthensTransport = () => {
       const currentPath = queue.shift()!;
       const lastNode = currentPath[currentPath.length - 1];
 
-      if (lastNode === destination) {
+      if (lastNode === resolvedDestination) {
         pathFound = currentPath;
         break;
       }
@@ -284,6 +347,7 @@ export const AthensTransport = () => {
     }
 
     if (!pathFound) return null;
+
 
     // Dettaglio sul percorso
     const stationsPath = pathFound.map(id => ATHENS_STATIONS[id]);
@@ -333,9 +397,12 @@ export const AthensTransport = () => {
       pathLinesUsed,
       stops: stationsPath.length - 1,
       transfers,
-      time: estimatedTime
+      time: estimatedTime,
+      resolvedOrigin,
+      resolvedDestination
     };
   }, [origin, destination]);
+
 
   // Lista stazioni per i selector
   const selectorStations = useMemo(() => {
@@ -645,9 +712,16 @@ export const AthensTransport = () => {
                     onChange={(e) => setOrigin(e.target.value)}
                     className="w-full bg-[var(--bg)] text-[var(--text-main)] border border-[var(--border)] focus:border-cyan-500 p-3 rounded-2xl text-xs font-bold outline-none appearance-none transition-colors"
                   >
-                    {selectorStations.map(st => (
-                      <option key={st.id} value={st.id}>🟢 {st.nameIt}</option>
-                    ))}
+                    <optgroup label="🚉 Stazioni Metropolitana">
+                      {selectorStations.map(st => (
+                        <option key={st.id} value={st.id}>🟢 {st.nameIt}</option>
+                      ))}
+                    </optgroup>
+                    <optgroup label="🛣️ Vie e Piazze principali">
+                      {Object.values(ATHENS_STREETS).map(str => (
+                        <option key={str.id} value={`street_${str.id}`}>📍 {str.nameIt}</option>
+                      ))}
+                    </optgroup>
                   </select>
                 </div>
 
@@ -659,11 +733,19 @@ export const AthensTransport = () => {
                     onChange={(e) => setDestination(e.target.value)}
                     className="w-full bg-[var(--bg)] text-[var(--text-main)] border border-[var(--border)] focus:border-cyan-500 p-3 rounded-2xl text-xs font-bold outline-none appearance-none transition-colors"
                   >
-                    {selectorStations.map(st => (
-                      <option key={st.id} value={st.id}>🔴 {st.nameIt}</option>
-                    ))}
+                    <optgroup label="🚉 Stazioni Metropolitana">
+                      {selectorStations.map(st => (
+                        <option key={st.id} value={st.id}>🔴 {st.nameIt}</option>
+                      ))}
+                    </optgroup>
+                    <optgroup label="🛣️ Vie e Piazze principali">
+                      {Object.values(ATHENS_STREETS).map(str => (
+                        <option key={str.id} value={`street_${str.id}`}>📍 {str.nameIt}</option>
+                      ))}
+                    </optgroup>
                   </select>
                 </div>
+
 
                 {/* Pulsante Inverti Direzione */}
                 <button
@@ -718,8 +800,52 @@ export const AthensTransport = () => {
                   </div>
                 </div>
 
+                {/* Consigli Pedonali per le Vie di Atene */}
+                {(origin.startsWith('street_') || destination.startsWith('street_')) && (
+                  <div className="bg-[var(--bg)] p-3.5 rounded-2xl border border-[var(--border)] space-y-2.5 text-xs text-[var(--text-main)] font-medium">
+                    <p className="text-[9px] font-black text-[var(--text-muted)] uppercase tracking-wider pl-1">🏃 Indicazioni a Piedi Consigliate</p>
+                    
+                    {origin.startsWith('street_') && (() => {
+                      const streetId = origin.replace('street_', '');
+                      const street = ATHENS_STREETS[streetId];
+                      const station = ATHENS_STATIONS[calculatedRoute.resolvedOrigin];
+                      const distance = getDistanceInMeters(street.lat, street.lng, station.lat, station.lng);
+                      return (
+                        <div className="flex gap-2.5 items-start pl-1">
+                          <span className="text-cyan-500 text-sm">🚶</span>
+                          <div>
+                            <p className="font-bold">Partenza da {street.nameIt}</p>
+                            <p className="text-[10px] text-[var(--text-muted)] mt-0.5 leading-normal">
+                              Cammina circa <strong className="text-cyan-500 font-black">{distance} metri</strong> per raggiungere la stazione della metro più vicina: <strong className="text-[var(--text-main)]">{station.nameIt}</strong>.
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })()}
+
+                    {destination.startsWith('street_') && (() => {
+                      const streetId = destination.replace('street_', '');
+                      const street = ATHENS_STREETS[streetId];
+                      const station = ATHENS_STATIONS[calculatedRoute.resolvedDestination];
+                      const distance = getDistanceInMeters(station.lat, station.lng, street.lat, street.lng);
+                      return (
+                        <div className="flex gap-2.5 items-start pl-1 border-t border-[var(--border)] pt-2.5">
+                          <span className="text-amber-500 text-sm">🚶</span>
+                          <div>
+                            <p className="font-bold">Arrivo a {street.nameIt}</p>
+                            <p className="text-[10px] text-[var(--text-muted)] mt-0.5 leading-normal">
+                              Scendi alla stazione <strong className="text-[var(--text-main)]">{station.nameIt}</strong> e cammina circa <strong className="text-amber-500 font-black">{distance} metri</strong> per raggiungere la via di destinazione.
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                )}
+
                 {/* Timeline Grafica delle Fermate */}
                 <div className="space-y-3">
+
                   <div className="flex justify-between items-center px-1">
                     <h4 className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-wider">
                       Dettaglio del Percorso
