@@ -726,15 +726,16 @@ export const AthensTransport = () => {
                     </h4>
                     <button
                       onClick={() => toggleFavorite(origin, destination)}
-                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all active:scale-95 ${
+                      className={`flex items-center justify-center p-2 rounded-xl transition-all active:scale-95 ${
                         isFavorite(origin, destination)
-                          ? 'bg-amber-500/10 text-amber-600 border border-amber-500/30'
-                          : 'bg-cyan-500/10 text-cyan-600 border border-cyan-500/30 hover:bg-cyan-500/20'
+                          ? 'bg-amber-500/10 text-amber-500 border border-amber-500/30'
+                          : 'bg-cyan-500/10 text-cyan-500 border border-cyan-500/30 hover:bg-cyan-500/20'
                       }`}
+                      title={isFavorite(origin, destination) ? 'Rimuovi dai Preferiti' : 'Salva nei Preferiti'}
                     >
-                      <Star className={`w-3.5 h-3.5 ${isFavorite(origin, destination) ? 'fill-amber-500 text-amber-500' : ''}`} />
-                      {isFavorite(origin, destination) ? 'Rimuovi dai Preferiti' : 'Salva nei Preferiti'}
+                      <Star className={`w-4 h-4 ${isFavorite(origin, destination) ? 'fill-amber-500 text-amber-500' : ''}`} />
                     </button>
+
                   </div>
 
 

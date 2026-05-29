@@ -2,13 +2,18 @@ package com.davidedari.chelona;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.view.WindowManager;
 import com.getcapacitor.BridgeActivity;
 
 public class MainActivity extends BridgeActivity {
     
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        // Prevent screenshots and hide app preview in recent switcher for privacy
+        getWindow().setFlags(WindowManager.LayoutParams.FLAG_SECURE, WindowManager.LayoutParams.FLAG_SECURE);
+        
         super.onCreate(savedInstanceState);
+
         
         // Espone l'interfaccia Javascript ChelonaNative per sincronizzare la rubrica indirizzi nativamente
         this.getBridge().getWebView().post(new Runnable() {
