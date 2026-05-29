@@ -1,4 +1,5 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
+
 import { 
   Bus, MapPin, Navigation, ExternalLink, Info, Compass, 
   ArrowLeftRight, Search, Clock, DollarSign, Download, Map, HelpCircle,
@@ -226,6 +227,103 @@ export const AthensTransport = () => {
   // Stato per ricerca bus
   const [busSearch, setBusSearch] = useState<string>('');
 
+  // Stati per la geolocalizzazione ed autocompilazione delle vie di tutta la Grecia via Nominatim API
+  const [originApiSuggestions, setOriginApiSuggestions] = useState<any[]>([]);
+  const [destApiSuggestions, setDestApiSuggestions] = useState<any[]>([]);
+  const [isLoadingOrigin, setIsLoadingOrigin] = useState(false);
+  const [isLoadingDest, setIsLoadingDest] = useState(false);
+  const [customOriginCoords, setCustomOriginCoords] = useState<{ lat: number; lng: number; name: string } | null>(null);
+  const [customDestCoords, setCustomDestCoords] = useState<{ lat: number; lng: number; name: string } | null>(null);
+
+  // Effetto per cercare vie in Grecia in tempo reale (de-bounced) per la Partenza
+  useEffect(() => {
+    const query = originSearch.trim();
+    if (query.length < 3) {
+      setOriginApiSuggestions([]);
+      return;
+    }
+    
+    // Se corrisponde a una delle stazioni offline, non chiamiamo l'API
+    const offlineMatch = Object.values(ATHENS_STATIONS).some(
+      s => s.nameIt.toLowerCase() === query.toLowerCase()
+    );
+    if (offlineMatch) return;
+
+    const timer = setTimeout(async () => {
+      setIsLoadingOrigin(true);
+      try {
+        const response = await fetch(
+          `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}, Greece&format=json&limit=5`,
+          { headers: { 'User-Agent': 'ChelonaVaultApp/1.13.48' } }
+        );
+        const data = await response.json();
+        if (Array.isArray(data)) {
+          setOriginApiSuggestions(data.map(item => {
+            const parts = item.display_name.split(',');
+            const shortName = parts[0] + (parts[1] ? `, ${parts[1].trim()}` : '') + (parts[2] ? `, ${parts[2].trim()}` : '');
+            return {
+              id: `custom_${item.lat}_${item.lon}`,
+              name: shortName,
+              lat: parseFloat(item.lat),
+              lng: parseFloat(item.lon)
+            };
+          }));
+        }
+      } catch (error) {
+        console.error("Error fetching geocoding", error);
+      } finally {
+        setIsLoadingOrigin(false);
+      }
+    }, 450);
+
+    return () => clearTimeout(timer);
+  }, [originSearch]);
+
+  // Effetto per cercare vie in Grecia in tempo reale (de-bounced) per l'Arrivo
+  useEffect(() => {
+    const query = destSearch.trim();
+    if (query.length < 3) {
+      setDestApiSuggestions([]);
+      return;
+    }
+    
+    // Se corrisponde a una delle stazioni offline, non chiamiamo l'API
+    const offlineMatch = Object.values(ATHENS_STATIONS).some(
+      s => s.nameIt.toLowerCase() === query.toLowerCase()
+    );
+    if (offlineMatch) return;
+
+    const timer = setTimeout(async () => {
+      setIsLoadingDest(true);
+      try {
+        const response = await fetch(
+          `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}, Greece&format=json&limit=5`,
+          { headers: { 'User-Agent': 'ChelonaVaultApp/1.13.48' } }
+        );
+        const data = await response.json();
+        if (Array.isArray(data)) {
+          setDestApiSuggestions(data.map(item => {
+            const parts = item.display_name.split(',');
+            const shortName = parts[0] + (parts[1] ? `, ${parts[1].trim()}` : '') + (parts[2] ? `, ${parts[2].trim()}` : '');
+            return {
+              id: `custom_${item.lat}_${item.lon}`,
+              name: shortName,
+              lat: parseFloat(item.lat),
+              lng: parseFloat(item.lon)
+            };
+          }));
+        }
+      } catch (error) {
+        console.error("Error fetching geocoding", error);
+      } finally {
+        setIsLoadingDest(false);
+      }
+    }, 450);
+
+    return () => clearTimeout(timer);
+  }, [destSearch]);
+
+
   // Stati per la ricerca autocompletamento
   const [originSearch, setOriginSearch] = useState('Pireo (Porto)');
   const [destSearch, setDestSearch] = useState('Aeroporto di Atene');
@@ -236,12 +334,28 @@ export const AthensTransport = () => {
     setOrigin(id);
     setOriginSearch(name);
     setShowOriginSuggestions(false);
+    if (id.startsWith('custom_')) {
+      const parts = id.split('_');
+      setCustomOriginCoords({
+        lat: parseFloat(parts[1]),
+        lng: parseFloat(parts[2]),
+        name: name
+      });
+    }
   };
 
   const handleSelectDest = (id: string, name: string) => {
     setDestination(id);
     setDestSearch(name);
     setShowDestSuggestions(false);
+    if (id.startsWith('custom_')) {
+      const parts = id.split('_');
+      setCustomDestCoords({
+        lat: parseFloat(parts[1]),
+        lng: parseFloat(parts[2]),
+        name: name
+      });
+    }
   };
 
   // Liste delle suggest per autocompletamento
@@ -262,8 +376,15 @@ export const AthensTransport = () => {
       .filter(s => s.nameIt.toLowerCase().includes(query) || s.nameEl.toLowerCase().includes(query))
       .map(s => ({ id: `street_${s.id}`, name: s.nameIt, isStation: false }));
 
-    return [...matchedStations, ...matchedStreets].slice(0, 8);
-  }, [originSearch]);
+    const apiMatched = originApiSuggestions.map(item => ({
+      id: item.id,
+      name: item.name,
+      isStation: false,
+      isApi: true
+    }));
+
+    return [...matchedStations, ...matchedStreets, ...apiMatched].slice(0, 8);
+  }, [originSearch, originApiSuggestions]);
 
   const destSuggestions = useMemo(() => {
     const query = destSearch.toLowerCase().trim();
@@ -282,8 +403,16 @@ export const AthensTransport = () => {
       .filter(s => s.nameIt.toLowerCase().includes(query) || s.nameEl.toLowerCase().includes(query))
       .map(s => ({ id: `street_${s.id}`, name: s.nameIt, isStation: false }));
 
-    return [...matchedStations, ...matchedStreets].slice(0, 8);
-  }, [destSearch]);
+    const apiMatched = destApiSuggestions.map(item => ({
+      id: item.id,
+      name: item.name,
+      isStation: false,
+      isApi: true
+    }));
+
+    return [...matchedStations, ...matchedStreets, ...apiMatched].slice(0, 8);
+  }, [destSearch, destApiSuggestions]);
+
 
 
   // Stato per i percorsi preferiti
@@ -333,6 +462,24 @@ export const AthensTransport = () => {
         });
         return closestId;
       }
+    } else if (val.startsWith('custom_')) {
+      const parts = val.split('_');
+      const lat = parseFloat(parts[1]);
+      const lng = parseFloat(parts[2]);
+      if (!isNaN(lat) && !isNaN(lng)) {
+        let closestId = 'syntagma';
+        let minDistance = Infinity;
+        Object.entries(ATHENS_STATIONS).forEach(([stId, station]) => {
+          const dLat = station.lat - lat;
+          const dLng = station.lng - lng;
+          const dist = Math.sqrt(dLat * dLat + dLng * dLng);
+          if (dist < minDistance) {
+            minDistance = dist;
+            closestId = stId;
+          }
+        });
+        return closestId;
+      }
     }
     return val;
   };
@@ -341,6 +488,21 @@ export const AthensTransport = () => {
     const dLat = lat2 - lat1;
     const dLng = (lng2 - lng1) * Math.cos(lat1 * Math.PI / 180);
     return Math.round(Math.sqrt(dLat * dLat + dLng * dLng) * 111000);
+  };
+
+  const getCoords = (id: string, customCoords: any) => {
+    if (id.startsWith('street_')) {
+      const streetId = id.replace('street_', '');
+      const street = ATHENS_STREETS[streetId];
+      if (street) return { lat: street.lat, lng: street.lng };
+    } else if (id.startsWith('custom_')) {
+      const parts = id.split('_');
+      return { lat: parseFloat(parts[1]), lng: parseFloat(parts[2]) };
+    } else {
+      const station = ATHENS_STATIONS[id];
+      if (station) return { lat: station.lat, lng: station.lng };
+    }
+    return { lat: 37.9838, lng: 23.7275 }; // Centro di Atene default
   };
 
   // 4. ALGORITMO BFS LOCALE PER CALCOLARE I PERCORSI METRO INTERAMENTE OFFLINE
@@ -480,6 +642,50 @@ export const AthensTransport = () => {
       b.destination.toLowerCase().includes(query)
     );
   }, [busSearch]);
+
+  // Consiglia autobus utili in base al percorso calcolato
+  const recommendedBuses = useMemo(() => {
+    if (!calculatedRoute) return [];
+    
+    // Raccogliamo i termini di ricerca (stazioni del percorso, via partenza, via arrivo)
+    const terms = new Set<string>();
+    
+    // Aggiungiamo i nomi delle stazioni sul percorso metro
+    calculatedRoute.path.forEach(station => {
+      terms.add(station.nameIt.toLowerCase());
+      terms.add(station.nameEl.toLowerCase());
+      // Rimuoviamo eventuali dettagli tra parentesi se presenti, es. "Pireo (Porto)" -> "pireo"
+      const cleanIt = station.nameIt.split('(')[0].trim().toLowerCase();
+      if (cleanIt.length > 2) terms.add(cleanIt);
+    });
+
+    // Aggiungiamo i nomi cercati di partenza e arrivo
+    const cleanOrigin = originSearch.split(',')[0].split('(')[0].trim().toLowerCase();
+    if (cleanOrigin.length > 2) terms.add(cleanOrigin);
+    const cleanDest = destSearch.split(',')[0].split('(')[0].trim().toLowerCase();
+    if (cleanDest.length > 2) terms.add(cleanDest);
+
+    // Seleziona i bus che hanno una fermata o un capolinea/descrizione correlati ai termini
+    return POPULAR_ATHENS_BUSES.filter(bus => {
+      // 1. Controlla le fermate del bus
+      const matchesStop = bus.stops.some(stop => {
+        const stopLower = stop.toLowerCase();
+        return Array.from(terms).some(term => 
+          stopLower.includes(term) || term.includes(stopLower)
+        );
+      });
+
+      // 2. Controlla origine/destinazione/descrizione del bus
+      const matchesMeta = Array.from(terms).some(term => 
+        bus.name.toLowerCase().includes(term) || 
+        bus.origin.toLowerCase().includes(term) || 
+        bus.destination.toLowerCase().includes(term) ||
+        bus.description.toLowerCase().includes(term)
+      );
+
+      return matchesStop || matchesMeta;
+    });
+  }, [calculatedRoute, originSearch, destSearch]);
 
   const activeStationData = selectedStation ? ATHENS_STATIONS[selectedStation] : null;
 
@@ -933,20 +1139,37 @@ export const AthensTransport = () => {
                 </div>
 
                 {/* Consigli Pedonali per le Vie di Atene */}
-                {(origin.startsWith('street_') || destination.startsWith('street_')) && (
+                {(origin.startsWith('street_') || origin.startsWith('custom_') || destination.startsWith('street_') || destination.startsWith('custom_')) && (
                   <div className="bg-[var(--bg)] p-3.5 rounded-2xl border border-[var(--border)] space-y-2.5 text-xs text-[var(--text-main)] font-medium">
                     <p className="text-[9px] font-black text-[var(--text-muted)] uppercase tracking-wider pl-1">🏃 Indicazioni a Piedi Consigliate</p>
                     
-                    {origin.startsWith('street_') && (() => {
-                      const streetId = origin.replace('street_', '');
-                      const street = ATHENS_STREETS[streetId];
+                    {(origin.startsWith('street_') || origin.startsWith('custom_')) && (() => {
+                      let lat = 0;
+                      let lng = 0;
+                      let name = '';
+                      if (origin.startsWith('street_')) {
+                        const streetId = origin.replace('street_', '');
+                        const street = ATHENS_STREETS[streetId];
+                        if (street) {
+                          lat = street.lat;
+                          lng = street.lng;
+                          name = street.nameIt;
+                        }
+                      } else if (origin.startsWith('custom_')) {
+                        const parts = origin.split('_');
+                        lat = parseFloat(parts[1]);
+                        lng = parseFloat(parts[2]);
+                        name = customOriginCoords?.name || originSearch || 'Partenza selezionata';
+                      }
+
                       const station = ATHENS_STATIONS[calculatedRoute.resolvedOrigin];
-                      const distance = getDistanceInMeters(street.lat, street.lng, station.lat, station.lng);
+                      if (!station) return null;
+                      const distance = getDistanceInMeters(lat, lng, station.lat, station.lng);
                       return (
                         <div className="flex gap-2.5 items-start pl-1">
                           <span className="text-cyan-500 text-sm">🚶</span>
                           <div>
-                            <p className="font-bold">Partenza da {street.nameIt}</p>
+                            <p className="font-bold">Partenza da {name}</p>
                             <p className="text-[10px] text-[var(--text-muted)] mt-0.5 leading-normal">
                               Cammina circa <strong className="text-cyan-500 font-black">{distance} metri</strong> per raggiungere la stazione della metro più vicina: <strong className="text-[var(--text-main)]">{station.nameIt}</strong>.
                             </p>
@@ -955,16 +1178,33 @@ export const AthensTransport = () => {
                       );
                     })()}
 
-                    {destination.startsWith('street_') && (() => {
-                      const streetId = destination.replace('street_', '');
-                      const street = ATHENS_STREETS[streetId];
+                    {(destination.startsWith('street_') || destination.startsWith('custom_')) && (() => {
+                      let lat = 0;
+                      let lng = 0;
+                      let name = '';
+                      if (destination.startsWith('street_')) {
+                        const streetId = destination.replace('street_', '');
+                        const street = ATHENS_STREETS[streetId];
+                        if (street) {
+                          lat = street.lat;
+                          lng = street.lng;
+                          name = street.nameIt;
+                        }
+                      } else if (destination.startsWith('custom_')) {
+                        const parts = destination.split('_');
+                        lat = parseFloat(parts[1]);
+                        lng = parseFloat(parts[2]);
+                        name = customDestCoords?.name || destSearch || 'Destinazione selezionata';
+                      }
+
                       const station = ATHENS_STATIONS[calculatedRoute.resolvedDestination];
-                      const distance = getDistanceInMeters(station.lat, station.lng, street.lat, street.lng);
+                      if (!station) return null;
+                      const distance = getDistanceInMeters(station.lat, station.lng, lat, lng);
                       return (
                         <div className="flex gap-2.5 items-start pl-1 border-t border-[var(--border)] pt-2.5">
                           <span className="text-amber-500 text-sm">🚶</span>
                           <div>
-                            <p className="font-bold">Arrivo a {street.nameIt}</p>
+                            <p className="font-bold">Arrivo a {name}</p>
                             <p className="text-[10px] text-[var(--text-muted)] mt-0.5 leading-normal">
                               Scendi alla stazione <strong className="text-[var(--text-main)]">{station.nameIt}</strong> e cammina circa <strong className="text-amber-500 font-black">{distance} metri</strong> per raggiungere la via di destinazione.
                             </p>
@@ -1046,17 +1286,62 @@ export const AthensTransport = () => {
                   </div>
                 </div>
 
+                {/* Collegamenti Bus Consigliati */}
+                {recommendedBuses.length > 0 && (
+                  <div className="bg-[var(--bg)] p-3.5 rounded-2xl border border-[var(--border)] space-y-2.5 text-xs text-[var(--text-main)] font-medium">
+                    <p className="text-[9px] font-black text-[var(--text-muted)] uppercase tracking-wider pl-1 flex items-center gap-1.5">
+                      <span>🚌</span> Collegamenti Bus Consigliati
+                    </p>
+                    
+                    <div className="space-y-2">
+                      {recommendedBuses.map((bus) => (
+                        <div 
+                          key={bus.code} 
+                          className="bg-[var(--card-bg)] p-3 rounded-xl border border-[var(--border)] flex justify-between items-start gap-3 hover:border-cyan-500/50 transition-all cursor-pointer"
+                          onClick={() => {
+                            setBusSearch(bus.code);
+                            setActiveTab('buses');
+                          }}
+                        >
+                          <div className="flex items-start gap-2.5">
+                            <div className="w-8 h-8 bg-cyan-500/10 border border-cyan-500/20 text-cyan-500 rounded-lg flex items-center justify-center font-black shrink-0 text-xs shadow-sm">
+                              {bus.code}
+                            </div>
+                            <div>
+                              <h5 className="text-[11px] font-black text-[var(--text-main)] leading-normal">
+                                {bus.name}
+                              </h5>
+                              <p className="text-[9px] text-[var(--text-muted)] mt-0.5 leading-normal">
+                                Capolinea: <span className="font-bold">{bus.origin} ↔ {bus.destination}</span>
+                              </p>
+                            </div>
+                          </div>
+                          <span className="text-[8px] font-black bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 px-1.5 py-0.5 rounded-md shrink-0">
+                            {bus.price}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {/* Bottone Navigazione Reale */}
-                <a
-                  href={`https://www.google.com/maps/dir/?api=1&origin=${ATHENS_STATIONS[origin].lat},${ATHENS_STATIONS[origin].lng}&destination=${ATHENS_STATIONS[destination].lat},${ATHENS_STATIONS[destination].lng}&travelmode=transit`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="w-full flex items-center justify-center gap-2 bg-gradient-to-tr from-cyan-500 to-blue-500 text-white py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg shadow-cyan-500/20 active:scale-[0.98] hover:brightness-110 transition-all text-center"
-                >
-                  <Navigation className="w-4 h-4 shrink-0" />
-                  Visualizza Navigazione Live (Google Maps)
-                  <ExternalLink className="w-3.5 h-3.5 shrink-0" />
-                </a>
+                {(() => {
+                  const oCoords = getCoords(origin, customOriginCoords);
+                  const dCoords = getCoords(destination, customDestCoords);
+                  return (
+                    <a
+                      href={`https://www.google.com/maps/dir/?api=1&origin=${oCoords.lat},${oCoords.lng}&destination=${dCoords.lat},${dCoords.lng}&travelmode=transit`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="w-full flex items-center justify-center gap-2 bg-gradient-to-tr from-cyan-500 to-blue-500 text-white py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg shadow-cyan-500/20 active:scale-[0.98] hover:brightness-110 transition-all text-center"
+                    >
+                      <Navigation className="w-4 h-4 shrink-0" />
+                      Visualizza Navigazione Live (Google Maps)
+                      <ExternalLink className="w-3.5 h-3.5 shrink-0" />
+                    </a>
+                  );
+                })()}
 
               </div>
             )}
