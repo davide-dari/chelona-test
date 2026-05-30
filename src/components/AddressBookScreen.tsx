@@ -1,9 +1,11 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Anchor, ArrowLeft, MapPin, Plus, Navigation, Trash2, Map, Edit2, X, MoreVertical, Share2 } from 'lucide-react';
+import { Anchor, ArrowLeft, MapPin, Plus, Navigation, Trash2, Map, Edit2, X, MoreVertical, Share2, QrCode } from 'lucide-react';
 import { generateUUID } from '../utils/uuid';
 import { Share } from '@capacitor/share';
 import { storage } from '../services/storage';
+import { QrScanner } from './QrScanner';
+import { QRCodeSVG } from 'qrcode.react';
 
 interface Address {
   id: string;
@@ -23,9 +25,46 @@ export const AddressBookScreen = ({ onClose }: AddressBookScreenProps) => {
   const [editingAddr, setEditingAddr] = useState<Address | null>(null);
   const [newTitle, setNewTitle] = useState('');
   const [newQuery, setNewQuery] = useState('');
+  const [isScanning, setIsScanning] = useState(false);
+  const [sharingAddr, setSharingAddr] = useState<Address | null>(null);
   
   const [contextMenuId, setContextMenuId] = useState<string | null>(null);
   const pressTimer = useRef<any>(null);
+
+  const sharePayload = useMemo(() => {
+    if (!sharingAddr) return '';
+    return JSON.stringify({
+      t: 'shared_address',
+      d: {
+        title: sharingAddr.title,
+        query: sharingAddr.query
+      }
+    });
+  }, [sharingAddr]);
+
+  const handleScanAddress = (data: string) => {
+    setIsScanning(false);
+    try {
+      let parsed = JSON.parse(data);
+      if (parsed.t === 'shared_address' || parsed.type === 'shared_address') {
+        const addressData = parsed.d || parsed.data;
+        if (addressData && addressData.title && addressData.query) {
+          const updated = [
+            { id: generateUUID(), title: addressData.title.trim(), query: addressData.query.trim() },
+            ...addresses
+          ];
+          saveAddresses(updated);
+          alert(`Indirizzo "${addressData.title}" importato con successo!`);
+        } else {
+          alert('Dati indirizzo non validi nel QR code.');
+        }
+      } else {
+        alert('Questo QR code non contiene un indirizzo valido.');
+      }
+    } catch (e) {
+      alert('Errore nella lettura del QR code.');
+    }
+  };
 
   useEffect(() => {
     const loaded = storage.loadAddressBook();
@@ -129,12 +168,21 @@ export const AddressBookScreen = ({ onClose }: AddressBookScreenProps) => {
             <p className="text-[10px] uppercase font-black tracking-widest text-[var(--text-muted)]">Gestione rapida indirizzi</p>
           </div>
         </div>
-        <button
-          onClick={() => { setEditingAddr(null); setNewTitle(''); setNewQuery(''); setIsAdding(true); }}
-          className="p-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-2xl shadow-lg shadow-emerald-500/20 transition-all font-bold"
-        >
-          <Plus className="w-5 h-5" />
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setIsScanning(true)}
+            className="p-2.5 bg-teal-500 hover:bg-teal-600 text-white rounded-2xl shadow-lg shadow-teal-500/20 transition-all font-bold flex items-center justify-center"
+            title="Scansiona QR"
+          >
+            <QrCode className="w-5 h-5" />
+          </button>
+          <button
+            onClick={() => { setEditingAddr(null); setNewTitle(''); setNewQuery(''); setIsAdding(true); }}
+            className="p-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-2xl shadow-lg shadow-emerald-500/20 transition-all font-bold"
+          >
+            <Plus className="w-5 h-5" />
+          </button>
+        </div>
       </header>
 
       <div className="flex-1 overflow-y-auto custom-scrollbar p-6">
@@ -198,6 +246,13 @@ export const AddressBookScreen = ({ onClose }: AddressBookScreenProps) => {
                              <Navigation className="w-5 h-5" />
                              Naviga 
                            </button>
+                            <button
+                              onClick={() => setSharingAddr(addr)}
+                              className="w-[52px] flex items-center justify-center bg-[var(--bg)] border border-[var(--border)] hover:bg-[var(--surface-variant)] active:scale-[0.98] text-emerald-500 rounded-2xl transition-all shadow-sm"
+                              title="Condividi come QR Code"
+                            >
+                              <QrCode className="w-5 h-5" />
+                            </button>
                             <button
                               onClick={async () => {
                                 const mapUrl = `https://maps.google.com/?q=${encodeURIComponent(addr.query)}`;
@@ -320,6 +375,63 @@ export const AddressBookScreen = ({ onClose }: AddressBookScreenProps) => {
                   </div>
                </form>
             </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* QR Code Sharing Modal */}
+      <AnimatePresence>
+        {sharingAddr && (
+          <div className="fixed inset-0 z-[250] flex flex-col justify-end">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setSharingAddr(null)}
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ y: '100%' }}
+              animate={{ y: 0 }}
+              exit={{ y: '100%' }}
+              className="relative bg-[var(--card-bg)] border-t border-[var(--border)] rounded-t-[2.5rem] p-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))] shadow-2xl flex flex-col items-center text-center z-[260]"
+            >
+              <div className="w-12 h-1.5 bg-[var(--border)] rounded-full mb-6" />
+              <h3 className="text-xl font-bold text-[var(--text-main)] mb-2">
+                Condividi Indirizzo
+              </h3>
+              <p className="text-[var(--text-muted)] text-xs mb-6">
+                Fai scansionare questo QR Code da un altro dispositivo per importare l'indirizzo.
+              </p>
+
+              <div className="p-4 bg-white rounded-3xl shadow-md mb-6 border border-gray-100 flex items-center justify-center">
+                <QRCodeSVG value={sharePayload} size={200} />
+              </div>
+
+              <div className="w-full max-w-sm mb-6 bg-[var(--bg)] p-4 rounded-2xl border border-[var(--border)] text-left">
+                <p className="text-xs font-black text-emerald-500 uppercase tracking-widest mb-1">{sharingAddr.title}</p>
+                <p className="text-sm font-bold text-[var(--text-main)] truncate">{sharingAddr.query}</p>
+              </div>
+
+              <button
+                onClick={() => setSharingAddr(null)}
+                className="w-full max-w-sm py-4 bg-[var(--surface-variant)] hover:bg-[var(--border)] text-[var(--text-main)] rounded-2xl font-bold transition-all"
+              >
+                Chiudi
+              </button>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* QR Code Scanner Overlay */}
+      <AnimatePresence>
+        {isScanning && (
+          <div className="fixed inset-0 z-[300] bg-black">
+            <QrScanner
+              onScan={handleScanAddress}
+              onClose={() => setIsScanning(false)}
+            />
           </div>
         )}
       </AnimatePresence>

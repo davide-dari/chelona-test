@@ -2649,59 +2649,74 @@ export default function App() {
           
           {/* Global FAB (Only on main dashboard and specific categories except gallery/travel) */}
           {(selectedType !== 'gallery') && !editingTravelModule && !editingTransportModule && !isAdding && !editingModuleId && !isArchiveOpen && !isToolsOpen && !editingAutoModule && !editingSplitModule && !editingSingleExpenseModule && !editingDocumentModule && !editingGenericModule && (
-            <motion.button
-              initial={{ scale: 0, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => {
-                if (selectedType === 'travel') {
-                  // Create new travel module directly
-                  const newTravel: import('./types').TravelModule = {
-                    id: generateUUID(),
-                    type: 'travel',
-                    title: 'Viaggi',
-                    destinations: [],
-                    x: 0, y: 0, w: 3, h: 3,
-                    folderId: selectedFolderId || undefined
-                  };
-                  setModules(prev => {
-                    const updated = [newTravel, ...prev];
-                    saveAppState(updated, folders).catch(console.error);
-                    return updated;
-                  });
-                  setEditingTravelModule(newTravel);
-                } else if (selectedType === 'transport') {
-                  // Create new transport module directly
-                  const newTransport: import('./types').TransportModule = {
-                    id: generateUUID(),
-                    type: 'transport',
-                    title: 'Trasporti',
-                    x: (modules.length * 2) % 12,
-                    y: Infinity,
-                    w: 3,
-                    h: 2,
-                    folderId: selectedFolderId || undefined
-                  };
-                  setModules(prev => {
-                    const updated = [newTransport, ...prev];
-                    saveAppState(updated, folders).catch(console.error);
-                    return updated;
-                  });
-                  setEditingTransportModule(newTransport);
-                } else if (selectedType === 'split' || selectedType === 'single-expense') {
-                  setSpesaSubMenu(true);
-                  setIsAdding(true);
-                } else {
-                  setFormData(selectedType ? { template: selectedType } : {});
-                  setAutoFormStep(0);
-                  setIsAdding(true);
-                }
-              }}
-              className="fixed bottom-24 right-6 md:bottom-10 md:right-10 z-[60] w-16 h-16 bg-gradient-to-tr from-blue-600 to-indigo-600 text-white rounded-[1.5rem] shadow-2xl shadow-blue-500/40 flex items-center justify-center border border-white/20"
-            >
-              <Plus className="w-8 h-8" />
-            </motion.button>
+            <>
+              {/* Scan QR Button next to Plus button */}
+              <motion.button
+                initial={{ scale: 0, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => setIsScanning(true)}
+                className="fixed bottom-24 right-24 md:bottom-10 md:right-28 z-[60] w-16 h-16 bg-gradient-to-tr from-emerald-600 to-teal-600 text-white rounded-[1.5rem] shadow-2xl shadow-emerald-500/40 flex items-center justify-center border border-white/20 animate-fade-in"
+                title="Scansiona scheda"
+              >
+                <QrCode className="w-8 h-8" />
+              </motion.button>
+
+              <motion.button
+                initial={{ scale: 0, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => {
+                  if (selectedType === 'travel') {
+                    // Create new travel module directly
+                    const newTravel: import('./types').TravelModule = {
+                      id: generateUUID(),
+                      type: 'travel',
+                      title: 'Viaggi',
+                      destinations: [],
+                      x: 0, y: 0, w: 3, h: 3,
+                      folderId: selectedFolderId || undefined
+                    };
+                    setModules(prev => {
+                      const updated = [newTravel, ...prev];
+                      saveAppState(updated, folders).catch(console.error);
+                      return updated;
+                    });
+                    setEditingTravelModule(newTravel);
+                  } else if (selectedType === 'transport') {
+                    // Create new transport module directly
+                    const newTransport: import('./types').TransportModule = {
+                      id: generateUUID(),
+                      type: 'transport',
+                      title: 'Trasporti',
+                      x: (modules.length * 2) % 12,
+                      y: Infinity,
+                      w: 3,
+                      h: 2,
+                      folderId: selectedFolderId || undefined
+                    };
+                    setModules(prev => {
+                      const updated = [newTransport, ...prev];
+                      saveAppState(updated, folders).catch(console.error);
+                      return updated;
+                    });
+                    setEditingTransportModule(newTransport);
+                  } else if (selectedType === 'split' || selectedType === 'single-expense') {
+                    setSpesaSubMenu(true);
+                    setIsAdding(true);
+                  } else {
+                    setFormData(selectedType ? { template: selectedType } : {});
+                    setAutoFormStep(0);
+                    setIsAdding(true);
+                  }
+                }}
+                className="fixed bottom-24 right-6 md:bottom-10 md:right-10 z-[60] w-16 h-16 bg-gradient-to-tr from-blue-600 to-indigo-600 text-white rounded-[1.5rem] shadow-2xl shadow-blue-500/40 flex items-center justify-center border border-white/20"
+              >
+                <Plus className="w-8 h-8" />
+              </motion.button>
+            </>
           )}
 
           {/* Mobile Bottom Navigation Bar - Hidden during full-screen edit/modals */}

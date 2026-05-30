@@ -29,7 +29,7 @@ echo "🚀 Starting deployment for $TAG..."
 
 # 1. Build Web App
 echo "📦 Building Web App..."
-node node_modules/vite/bin/vite.js build || { echo "❌ Build failed"; exit 1; }
+node --max-old-space-size=1024 node_modules/vite/bin/vite.js build || { echo "❌ Build failed"; exit 1; }
 
 # 2. Capacitor Sync
 echo "🔄 Syncing Capacitor..."

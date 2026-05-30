@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
-import { ArrowLeft, Users, Receipt, ArrowRightLeft, Plus, Check, X, Trash2, Edit2, Wallet, Camera, Paperclip, FileDown, Eye, Calendar } from 'lucide-react';
+import { ArrowLeft, Users, Receipt, ArrowRightLeft, Plus, Check, X, Trash2, Edit2, Wallet, Camera, Paperclip, FileDown, Eye, Calendar, QrCode } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 import { SplitModule, SplitExpense, SplitParticipant, SplitType } from '../types';
 import { calculateSplits, Settlement } from '../utils/splitAlgorithm';
 import { encryption } from '../services/encryption';
@@ -12,6 +13,8 @@ import {
   Tooltip, Legend, LineChart, Line 
 } from 'recharts';
 import { EXPENSE_CATEGORIES } from '../constants/expenses';
+import { QrScanner } from './QrScanner';
+import { QRCodeSVG } from 'qrcode.react';
 
 interface SplitScreenProps {
   module: SplitModule;
@@ -51,6 +54,68 @@ export const SplitScreen = ({ module, onClose, onSave, onSaveToSandbox, onDelete
 
   const [showReceiptScanner, setShowReceiptScanner] = useState(false);
   const [viewingReceipt, setViewingReceipt] = useState<string | null>(null);
+  
+  // QR Share and Scanner states
+  const [isScanning, setIsScanning] = useState(false);
+  const [sharingExpense, setSharingExpense] = useState<SplitExpense | null>(null);
+
+  const sharePayload = useMemo(() => {
+    if (!sharingExpense) return '';
+    const payerName = participants.find(p => p.id === sharingExpense.paidById)?.name || 'Sconosciuto';
+    return JSON.stringify({
+      t: 'shared_split_expense',
+      d: {
+        title: sharingExpense.title,
+        amount: sharingExpense.amount,
+        paidByName: payerName,
+        date: sharingExpense.date
+      }
+    });
+  }, [sharingExpense, participants]);
+
+  const handleScanExpense = (data: string) => {
+    setIsScanning(false);
+    try {
+      let parsed = JSON.parse(data);
+      if (parsed.t === 'shared_split_expense' || parsed.type === 'shared_split_expense') {
+        const expData = parsed.d || parsed.data;
+        if (expData && expData.title && expData.amount) {
+          let payerId = '';
+          const payerName = expData.paidByName || 'Importato';
+          const existing = participants.find(p => p.name.toLowerCase() === payerName.toLowerCase());
+          if (existing) {
+            payerId = existing.id;
+          } else {
+            const newP = {
+              id: generateUUID(),
+              name: payerName
+            };
+            setParticipants(prev => [...prev, newP]);
+            payerId = newP.id;
+          }
+
+          const newExp: SplitExpense = {
+            id: generateUUID(),
+            title: expData.title,
+            amount: parseFloat(expData.amount),
+            date: expData.date || new Date().toISOString().substring(0, 10),
+            paidById: payerId,
+            splitType: 'equal',
+            participants: participants.map(p => ({ participantId: p.id, value: 0 }))
+          };
+
+          setExpenses(prev => [...prev, newExp]);
+          alert(`Spesa "${expData.title}" importata con successo!`);
+        } else {
+          alert('Dati spesa non validi nel QR code.');
+        }
+      } else {
+        alert('Questo QR code non contiene una spesa valida.');
+      }
+    } catch (e) {
+      alert('Errore nella lettura del QR code.');
+    }
+  };
   
   // Personal Mode
   const [expIsPersonal, setExpIsPersonal] = useState(false);
@@ -261,9 +326,18 @@ export const SplitScreen = ({ module, onClose, onSave, onSaveToSandbox, onDelete
           <div className="space-y-4 fade-in">
             <div className="flex items-center justify-between mb-2">
                 <h3 className="text-sm font-bold text-[var(--text-main)] uppercase tracking-wider">Partecipanti ({participants.length})</h3>
-                <button onClick={() => setShowParticipantModal(true)} className="flex items-center gap-1.5 text-xs bg-amber-500/10 text-amber-600 px-3 py-1.5 rounded-lg font-bold hover:bg-amber-500/20 transition-colors border border-amber-500/20">
-                    <Plus className="w-4 h-4" /> Aggiungi
-                </button>
+                <div className="flex gap-1.5 animate-fade-in">
+                    <button
+                        onClick={() => setIsScanning(true)}
+                        className="flex items-center gap-1.5 text-xs bg-teal-500/10 text-teal-600 px-3 py-1.5 rounded-lg font-bold hover:bg-teal-500/20 transition-colors border border-teal-500/20"
+                        title="Scansiona QR Spesa"
+                    >
+                        <QrCode className="w-4 h-4" />
+                    </button>
+                    <button onClick={() => setShowParticipantModal(true)} className="flex items-center gap-1.5 text-xs bg-amber-500/10 text-amber-600 px-3 py-1.5 rounded-lg font-bold hover:bg-amber-500/20 transition-colors border border-amber-500/20">
+                        <Plus className="w-4 h-4" /> Aggiungi
+                    </button>
+                </div>
             </div>
             {participants.length === 0 ? (
                 <div className="text-center py-10 bg-[var(--card-bg)] rounded-3xl border border-[var(--border)] border-dashed">
@@ -340,6 +414,13 @@ export const SplitScreen = ({ module, onClose, onSave, onSaveToSandbox, onDelete
                                 </div>
                                 <div className="flex items-center gap-1.5 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all shrink-0">
                                     <button
+                                        onClick={() => setSharingExpense(exp)}
+                                        className="p-2 hover:bg-[var(--bg)] text-emerald-500 rounded-lg transition-all"
+                                        title="Condividi Spesa via QR"
+                                    >
+                                        <QrCode className="w-4 h-4" />
+                                    </button>
+                                    <button
                                         onClick={() => openEditExpense(exp)}
                                         className="p-2 hover:bg-[var(--bg)] text-[var(--text-muted)] hover:text-amber-500 rounded-lg transition-all"
                                     >
@@ -386,8 +467,15 @@ export const SplitScreen = ({ module, onClose, onSave, onSaveToSandbox, onDelete
 
             )}
 
-            {/* Fab button for new expense */}
-            <div className="fixed bottom-6 right-6 z-30">
+            {/* Fab button for new expense and scanning */}
+            <div className="fixed bottom-6 right-6 z-30 flex gap-2">
+                <button
+                    onClick={() => setIsScanning(true)}
+                    className="w-14 h-14 bg-teal-500 text-white rounded-2xl shadow-lg shadow-teal-500/30 flex items-center justify-center hover:scale-105 active:scale-95 transition-all"
+                    title="Scansiona QR Spesa"
+                >
+                    <QrCode className="w-6 h-6" />
+                </button>
                 <button onClick={() => {
                     if (participants.length === 0) {
                         alert("Aggiungi prima dei partecipanti!");
@@ -880,6 +968,68 @@ export const SplitScreen = ({ module, onClose, onSave, onSaveToSandbox, onDelete
         type="pdf"
       />
 
+      {/* QR Code Sharing Modal */}
+      <AnimatePresence>
+        {sharingExpense && (
+          <div className="fixed inset-0 z-[250] flex flex-col justify-end">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setSharingExpense(null)}
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ y: '100%' }}
+              animate={{ y: 0 }}
+              exit={{ y: '100%' }}
+              className="relative bg-[var(--card-bg)] border-t border-[var(--border)] rounded-t-[2.5rem] p-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))] shadow-2xl flex flex-col items-center text-center z-[260]"
+            >
+              <div className="w-12 h-1.5 bg-[var(--border)] rounded-full mb-6" />
+              <h3 className="text-xl font-bold text-[var(--text-main)] mb-2">
+                Condividi Spesa
+              </h3>
+              <p className="text-[var(--text-muted)] text-xs mb-6">
+                Fai scansionare questo QR Code da un altro dispositivo per importare la spesa.
+              </p>
+
+              <div className="p-4 bg-white rounded-3xl shadow-md mb-6 border border-gray-100 flex items-center justify-center">
+                <QRCodeSVG value={sharePayload} size={200} />
+              </div>
+
+              <div className="w-full max-w-sm mb-6 bg-[var(--bg)] p-4 rounded-2xl border border-[var(--border)] text-left">
+                <p className="text-xs font-black text-amber-500 uppercase tracking-widest mb-1">{sharingExpense.title}</p>
+                <div className="text-2xl font-black text-[var(--text-main)] tracking-tight">
+                  <span className="text-[10px] font-bold text-[var(--text-muted)] mr-1">{currency}</span>
+                  {sharingExpense.amount.toLocaleString('it-IT', { minimumFractionDigits: 2 })}
+                </div>
+                <p className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider mt-2">
+                  Pagato da: {participants.find(p => p.id === sharingExpense.paidById)?.name || 'Sconosciuto'}
+                </p>
+              </div>
+
+              <button
+                onClick={() => setSharingExpense(null)}
+                className="w-full max-w-sm py-4 bg-[var(--surface-variant)] hover:bg-[var(--border)] text-[var(--text-main)] rounded-2xl font-bold transition-all"
+              >
+                Chiudi
+              </button>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* QR Code Scanner Overlay */}
+      <AnimatePresence>
+        {isScanning && (
+          <div className="fixed inset-0 z-[300] bg-black">
+            <QrScanner
+              onScan={handleScanExpense}
+              onClose={() => setIsScanning(false)}
+            />
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

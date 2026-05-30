@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Lock, Fingerprint, ArrowRight, KeyRound, AlertCircle, User, Loader2, Plus, ArrowLeft, QrCode, Wrench, FileDown, MapPin, Eye, EyeOff } from 'lucide-react';
+import { Lock, Fingerprint, ArrowRight, KeyRound, AlertCircle, User, Loader2, Plus, ArrowLeft, QrCode, Wrench, FileDown, MapPin, Eye, EyeOff, Trash2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { storage } from '../services/storage';
 import { encryption } from '../services/encryption';
@@ -35,6 +35,60 @@ export const LockScreen = ({ isVisible, onAuthenticated, onStartScan, onOpenTool
   const [onboardingStep, setOnboardingStep] = useState(0); // 0: Welcome, 1: Privacy, 2: Setup
   const autoBioTriggered = useRef<string | null>(null);
   const bioTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const [isEditMode, setIsEditMode] = useState(false);
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isLongPress = useRef(false);
+
+  const startPress = (profileId: string) => {
+    isLongPress.current = false;
+    longPressTimer.current = setTimeout(() => {
+      isLongPress.current = true;
+      setIsEditMode(true);
+      if (navigator.vibrate) {
+        navigator.vibrate(50);
+      }
+    }, 600);
+  };
+
+  const endPress = (onClickAction: () => void) => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+    if (!isLongPress.current) {
+      onClickAction();
+    }
+  };
+
+  const cancelPress = () => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+  };
+
+  const handleDeleteProfile = async (profileId: string, username: string) => {
+    if (window.confirm(`Sei sicuro di voler eliminare il profilo "${username}"? Tutti i dati associati andranno persi.`)) {
+      try {
+        const updatedProfiles = profiles.filter(p => p.id !== profileId);
+        storage.saveProfiles(updatedProfiles);
+        
+        // Delete biometric credentials
+        try {
+          const m = await import('../services/biometricService');
+          await m.biometricService.deleteCredentials(profileId);
+        } catch (bioErr) {
+          console.error('[LockScreen] Failed to delete biometric credentials:', bioErr);
+        }
+        
+        refreshProfiles();
+        setIsEditMode(false);
+      } catch (err) {
+        console.error('[LockScreen] Error deleting profile:', err);
+      }
+    }
+  };
 
   const refreshProfiles = (currentView?: string) => {
     const loadedProfiles = storage.loadProfiles();
@@ -279,20 +333,58 @@ export const LockScreen = ({ isVisible, onAuthenticated, onStartScan, onOpenTool
                 <h1 className="text-2xl sm:text-3xl font-bold text-[var(--text-main)]">
                   {profiles.length > 0 ? 'Chi sta guardando?' : 'Benvenuto su Chelona'}
                 </h1>
-                <p className="text-[var(--text-muted)] mt-2">
-                  {profiles.length > 0 
-                    ? 'Seleziona il tuo profilo per accedere ai tuoi dati protetti.' 
-                    : 'Crea un profilo o usa gli strumenti rapidi per iniziare.'}
-                </p>
+                {isEditMode ? (
+                  <button
+                    onClick={() => setIsEditMode(false)}
+                    className="mt-2 px-4 py-1.5 bg-red-500 hover:bg-red-600 text-white text-xs font-bold rounded-full transition-all shadow-sm"
+                  >
+                    Fine eliminazione
+                  </button>
+                ) : (
+                  <p className="text-[var(--text-muted)] mt-2">
+                    {profiles.length > 0 
+                      ? 'Seleziona il tuo profilo (tieni premuto per eliminare).' 
+                      : 'Crea un profilo o usa gli strumenti rapidi per iniziare.'}
+                  </p>
+                )}
               </div>
 
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 sm:gap-6 justify-center">
                 {profiles.map(p => (
-                  <button
+                  <div
                     key={p.id}
-                    onClick={() => { setSelectedProfile(p); setError(''); setPassword(''); setView('login'); }}
-                    className="flex flex-col items-center p-6 bg-[var(--surface-variant)] rounded-[var(--radius-lg)] border border-[var(--border)] transition-all group hover:scale-[1.02] shadow-sm"
+                    onTouchStart={() => startPress(p.id)}
+                    onTouchEnd={() => endPress(() => {
+                      if (isEditMode) return;
+                      setSelectedProfile(p);
+                      setError('');
+                      setPassword('');
+                      setView('login');
+                    })}
+                    onMouseDown={() => startPress(p.id)}
+                    onMouseUp={() => endPress(() => {
+                      if (isEditMode) return;
+                      setSelectedProfile(p);
+                      setError('');
+                      setPassword('');
+                      setView('login');
+                    })}
+                    onTouchMove={cancelPress}
+                    onMouseLeave={cancelPress}
+                    className="relative flex flex-col items-center p-6 bg-[var(--surface-variant)] rounded-[var(--radius-lg)] border border-[var(--border)] transition-all group hover:scale-[1.02] shadow-sm cursor-pointer select-none"
                   >
+                    {isEditMode && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteProfile(p.id, p.username);
+                        }}
+                        className="absolute top-2 right-2 w-8 h-8 rounded-full bg-red-500 hover:bg-red-600 text-white flex items-center justify-center shadow-lg z-10 transition-all transform hover:scale-110 active:scale-90"
+                        title="Elimina profilo"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
                     <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-[var(--bg)] overflow-hidden mb-4 group-hover:shadow-md transition-all border-2 border-[var(--border)] flex items-center justify-center">
                       <img 
                         src={p.avatar || `https://ui-avatars.com/api/?name=${p.username}&background=E3E3E3&color=5E5E5E`} 
@@ -301,7 +393,7 @@ export const LockScreen = ({ isVisible, onAuthenticated, onStartScan, onOpenTool
                       />
                     </div>
                     <span className="font-bold text-[var(--text-main)] transition-colors text-base sm:text-lg truncate w-full text-center">{p.username}</span>
-                  </button>
+                  </div>
                 ))}
 
                 <button

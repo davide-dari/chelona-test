@@ -51,7 +51,7 @@ export const biometricService = {
     // ("failed to save credentials"). Tentiamo sempre di svuotare lo slot prima.
     try {
       if (typeof NativeBiometric.deleteCredentials === 'function') {
-        await NativeBiometric.deleteCredentials({ server: 'chelona.app' });
+        await NativeBiometric.deleteCredentials({ server: 'chelona.app.' + profileId });
       }
     } catch (e) {
       console.warn('[BiometricService] fallback deleteCredentials', e);
@@ -60,7 +60,7 @@ export const biometricService = {
     await NativeBiometric.setCredentials({
       username: profileId,
       password: masterKeyStr,
-      server: 'chelona.app',
+      server: 'chelona.app.' + profileId,
     });
   },
 
@@ -68,9 +68,21 @@ export const biometricService = {
   async getMasterKey(profileId: string): Promise<string | null> {
     try {
       if (!NativeBiometric || typeof NativeBiometric.getCredentials !== 'function') return null;
-      const credentials = await NativeBiometric.getCredentials({
-        server: 'chelona.app',
-      });
+      let credentials = null;
+      try {
+        credentials = await NativeBiometric.getCredentials({
+          server: 'chelona.app.' + profileId,
+        });
+      } catch (e) {
+        // Fallback backward-compatible check for legacy single profile stored on old 'chelona.app'
+        try {
+          credentials = await NativeBiometric.getCredentials({
+            server: 'chelona.app',
+          });
+        } catch (fallbackErr) {
+          console.warn('[BiometricService] fallback getCredentials error:', fallbackErr);
+        }
+      }
       
       if (credentials && credentials.username === profileId) {
         return credentials.password;
@@ -107,8 +119,18 @@ export const biometricService = {
   // Delete credentials
   async deleteCredentials(profileId: string): Promise<void> {
     if (!NativeBiometric || typeof NativeBiometric.deleteCredentials !== 'function') return;
-    await NativeBiometric.deleteCredentials({
-      server: 'chelona.app',
-    });
+    try {
+      await NativeBiometric.deleteCredentials({
+        server: 'chelona.app.' + profileId,
+      });
+    } catch (e) {
+      console.warn('[BiometricService] Failed to delete credentials for ' + profileId, e);
+    }
+    // Also try legacy just in case
+    try {
+      await NativeBiometric.deleteCredentials({
+        server: 'chelona.app',
+      });
+    } catch (e) {}
   }
 };
