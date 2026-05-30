@@ -141,6 +141,25 @@ export const storage = {
               }
             } catch {}
           }
+      }
+      }
+
+      // 1b. Migration: If any profile has biometrics enabled but lacks biometricServerKey, assign legacy 'chelona.app'
+      let migrated = false;
+      profilesCache = profilesCache.map(p => {
+        if (p.isBiometricEnabled && !p.biometricServerKey) {
+          p.biometricServerKey = 'chelona.app';
+          migrated = true;
+        }
+        return p;
+      });
+      if (migrated) {
+        const encrypted = encryptText(JSON.stringify(profilesCache));
+        profilesEncCache = encrypted;
+        if (Capacitor.isNativePlatform()) {
+          await saveToExternalFile('profiles.enc', encrypted);
+        } else {
+          localStorage.setItem(PROFILES_ENC_KEY, encrypted);
         }
       }
 

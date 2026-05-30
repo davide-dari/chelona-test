@@ -71,13 +71,16 @@ export const LockScreen = ({ isVisible, onAuthenticated, onStartScan, onOpenTool
   const handleDeleteProfile = async (profileId: string, username: string) => {
     if (window.confirm(`Sei sicuro di voler eliminare il profilo "${username}"? Tutti i dati associati andranno persi.`)) {
       try {
+        const targetProfile = profiles.find(p => p.id === profileId);
+        const serverKey = targetProfile?.biometricServerKey;
+
         const updatedProfiles = profiles.filter(p => p.id !== profileId);
         storage.saveProfiles(updatedProfiles);
         
         // Delete biometric credentials
         try {
           const m = await import('../services/biometricService');
-          await m.biometricService.deleteCredentials(profileId);
+          await m.biometricService.deleteCredentials(profileId, serverKey);
         } catch (bioErr) {
           console.error('[LockScreen] Failed to delete biometric credentials:', bioErr);
         }
@@ -198,9 +201,11 @@ export const LockScreen = ({ isVisible, onAuthenticated, onStartScan, onOpenTool
           const m = await import('../services/biometricService');
           if (true) { // Proceed directly to setCredentials
             const masterKeyStr = await encryption.exportKey(key);
-            await m.biometricService.saveMasterKey(newConfig.id, masterKeyStr);
+            const serverKey = 'chelona.app.' + newConfig.id;
+            await m.biometricService.saveMasterKey(newConfig.id, masterKeyStr, serverKey);
             // Update the profile to indicate biometrics are enabled
             newConfig.isBiometricEnabled = true;
+            newConfig.biometricServerKey = serverKey;
             storage.saveProfiles(updatedProfiles);
           }
         } catch (bioErr) {
@@ -261,7 +266,7 @@ export const LockScreen = ({ isVisible, onAuthenticated, onStartScan, onOpenTool
         return;
       }
 
-      const masterKeyStr = await m.biometricService.getMasterKey(selectedProfile.id);
+      const masterKeyStr = await m.biometricService.getMasterKey(selectedProfile.id, selectedProfile.biometricServerKey);
       
       if (masterKeyStr) {
         const masterKey = await encryption.importKey(masterKeyStr);

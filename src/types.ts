@@ -203,6 +203,7 @@ export interface ProfileConfig {
   passwordHash: string;
   salt: string;
   isBiometricEnabled: boolean;
+  biometricServerKey?: string;
   credentialId?: string; // For WebAuthn
   encryptedMasterKey?: string; // Master key encrypted for biometric recovery
   bioSalt?: string;

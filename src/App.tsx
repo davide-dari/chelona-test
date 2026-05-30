@@ -803,8 +803,9 @@ export default function App() {
       console.log('[App] Exporting master key for secure storage...');
       const masterKeyStr = await encryption.exportKey(encryptionKey);
       
+      const serverKey = 'chelona.app.' + currentProfileId;
       // Save it natively (will prompt for biometric store access on some platforms)
-      await m.biometricService.saveMasterKey(currentProfileId, masterKeyStr);
+      await m.biometricService.saveMasterKey(currentProfileId, masterKeyStr, serverKey);
       
       const profiles = storage.loadProfiles();
       const profile = profiles.find(p => p.id === currentProfileId);
@@ -812,6 +813,7 @@ export default function App() {
         const updatedProfile = {
           ...profile,
           isBiometricEnabled: true,
+          biometricServerKey: serverKey,
           // We no longer need these WebAuthn specific fields, but keeping for compatibility if needed
           credentialId: 'native-v2' 
         };
