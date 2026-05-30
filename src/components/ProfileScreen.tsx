@@ -417,13 +417,24 @@ export function ProfileScreen({
                   </div>
                 </div>
                 {isBioSupported && (
-                  <button
-                    onClick={isBioEnabled ? undefined : onEnableBiometrics}
-                    disabled={isBioEnabled}
-                    className={`px-4 py-2 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all ${isBioEnabled ? 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 cursor-default' : 'bg-amber-500 text-white hover:bg-amber-600 shadow-md shadow-amber-500/20 active:scale-95'}`}
-                  >
-                    {isBioEnabled ? 'Attivo' : 'Attiva'}
-                  </button>
+                  <div className="flex items-center gap-2">
+                    {isBioEnabled && (
+                      <button
+                        onClick={onEnableBiometrics}
+                        className="px-3 py-2 bg-[var(--surface-variant)] hover:bg-[var(--border)] text-[var(--text-main)] rounded-xl font-black text-[10px] uppercase tracking-widest transition-all border border-[var(--border)] active:scale-95"
+                        title="Aggiorna impronta o dispositivo biometrico"
+                      >
+                        Aggiorna
+                      </button>
+                    )}
+                    <button
+                      onClick={isBioEnabled ? undefined : onEnableBiometrics}
+                      disabled={isBioEnabled}
+                      className={`px-4 py-2 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all ${isBioEnabled ? 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 cursor-default' : 'bg-amber-500 text-white hover:bg-amber-600 shadow-md shadow-amber-500/20 active:scale-95'}`}
+                    >
+                      {isBioEnabled ? 'Attivo' : 'Attiva'}
+                    </button>
+                  </div>
                 )}
               </div>
 
