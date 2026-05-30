@@ -201,7 +201,8 @@ export const LockScreen = ({ isVisible, onAuthenticated, onStartScan, onOpenTool
           const m = await import('../services/biometricService');
           if (true) { // Proceed directly to setCredentials
             const masterKeyStr = await encryption.exportKey(key);
-            const serverKey = 'chelona.app.' + newConfig.id;
+            const uniqueSuffix = Math.random().toString(36).substring(2, 7) + '.' + Date.now();
+            const serverKey = 'chelona.app.' + newConfig.id + '.' + uniqueSuffix;
             await m.biometricService.saveMasterKey(newConfig.id, masterKeyStr, serverKey);
             // Update the profile to indicate biometrics are enabled
             newConfig.isBiometricEnabled = true;

@@ -803,18 +803,30 @@ export default function App() {
       console.log('[App] Exporting master key for secure storage...');
       const masterKeyStr = await encryption.exportKey(encryptionKey);
       
-      const serverKey = 'chelona.app.' + currentProfileId;
-      // Save it natively (will prompt for biometric store access on some platforms)
-      await m.biometricService.saveMasterKey(currentProfileId, masterKeyStr, serverKey);
-      
       const profiles = storage.loadProfiles();
       const profile = profiles.find(p => p.id === currentProfileId);
+      
+      // Delete old credentials if they exist to prevent leakage/accumulation
+      if (profile && profile.biometricServerKey) {
+        try {
+          await m.biometricService.deleteCredentials(currentProfileId, profile.biometricServerKey);
+        } catch (delErr) {
+          console.warn('[App] Failed to delete old credentials, continuing:', delErr);
+        }
+      }
+
+      // Generate a brand new completely unique server key for this profile to prevent conflict with others
+      const uniqueSuffix = Math.random().toString(36).substring(2, 7) + '.' + Date.now();
+      const serverKey = 'chelona.app.' + currentProfileId + '.' + uniqueSuffix;
+
+      // Save it natively
+      await m.biometricService.saveMasterKey(currentProfileId, masterKeyStr, serverKey);
+      
       if (profile) {
         const updatedProfile = {
           ...profile,
           isBiometricEnabled: true,
           biometricServerKey: serverKey,
-          // We no longer need these WebAuthn specific fields, but keeping for compatibility if needed
           credentialId: 'native-v2' 
         };
         
@@ -825,6 +837,39 @@ export default function App() {
     } catch (e: any) {
       console.error('[App] Biometric activation error', e);
       setBioError(e.message || 'Errore durante la registrazione biometrica.');
+    }
+  };
+
+  const handleDisableBiometrics = async () => {
+    if (!currentProfileId) return;
+    try {
+      const m = await import('./services/biometricService');
+      const profiles = storage.loadProfiles();
+      const profile = profiles.find(p => p.id === currentProfileId);
+      if (profile) {
+        const oldServerKey = profile.biometricServerKey;
+        if (oldServerKey) {
+          try {
+            await m.biometricService.deleteCredentials(currentProfileId, oldServerKey);
+          } catch (bioErr) {
+            console.error('[App] Failed to delete biometric credentials:', bioErr);
+          }
+        }
+        
+        const updatedProfile = {
+          ...profile,
+          isBiometricEnabled: false,
+          biometricServerKey: undefined,
+          credentialId: undefined
+        };
+        
+        storage.saveProfiles(profiles.map(p => p.id === currentProfileId ? updatedProfile : p));
+        setIsBioEnabled(false);
+        showToast('Accesso biometrico disattivato con successo!', 'success');
+      }
+    } catch (e: any) {
+      console.error('[App] Biometric deactivation error', e);
+      showToast('Errore durante la disattivazione biometrica.', 'error');
     }
   };
 
@@ -1650,6 +1695,7 @@ export default function App() {
                 isBioSupported={isBioSupported}
                 isBioEnabled={isBioEnabled}
                 onEnableBiometrics={handleEnableBiometrics}
+                onDisableBiometrics={handleDisableBiometrics}
                 bioError={bioError}
                 onLogout={handleLogout}
                 encryptionKey={encryptionKey!}
