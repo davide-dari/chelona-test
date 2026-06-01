@@ -15,6 +15,7 @@ import {
 import { EXPENSE_CATEGORIES } from '../constants/expenses';
 import { QrScanner } from './QrScanner';
 import { QRCodeSVG } from 'qrcode.react';
+import { lzw } from '../utils/lzw';
 
 interface SplitScreenProps {
   module: SplitModule;
@@ -90,10 +91,11 @@ export const SplitScreen = ({ module, onClose, onSave, onSaveToSandbox, onDelete
       participants: cleanParticipants,
       expenses: cleanExpenses
     };
-    return JSON.stringify({
+    const json = JSON.stringify({
       t: 'shared_split',
       d: cleanModule
     });
+    return lzw.compress(json);
   }, [title, currency, participants, expenses]);
 
   const handleScanExpense = (data: string) => {

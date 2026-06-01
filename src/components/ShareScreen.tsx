@@ -5,6 +5,7 @@ import { Module } from '../types';
 import JSZip from 'jszip';
 import { encryption } from '../services/encryption';
 import { motion, AnimatePresence } from 'motion/react';
+import { lzw } from '../utils/lzw';
 
 interface ShareScreenProps {
   module: Module;
@@ -115,7 +116,8 @@ export const ShareScreen = ({ module, onClose }: ShareScreenProps) => {
       payload.e = expiryMs;
     }
 
-    return JSON.stringify(payload);
+    const json = JSON.stringify(payload);
+    return module.type === 'split' ? lzw.compress(json) : json;
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [module, totalDurationMs, qrKey, isAutodestruct]);
 
