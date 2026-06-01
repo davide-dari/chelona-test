@@ -76,11 +76,19 @@ export const SplitScreen = ({ module, onClose, onSave, onSaveToSandbox, onDelete
   const [sharingGroup, setSharingGroup] = useState(false);
 
   const groupSharePayload = useMemo(() => {
+    const cleanExpenses = expenses.map(exp => {
+      const { receiptAttachment, ...cleanExp } = exp;
+      return cleanExp;
+    });
+    const cleanParticipants = participants.map(p => {
+      const { avatar, ...cleanP } = p;
+      return cleanP;
+    });
     const cleanModule = {
       title,
       currency,
-      participants,
-      expenses
+      participants: cleanParticipants,
+      expenses: cleanExpenses
     };
     return JSON.stringify({
       t: 'shared_split',

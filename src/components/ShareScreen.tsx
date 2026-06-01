@@ -69,7 +69,7 @@ export const ShareScreen = ({ module, onClose }: ShareScreenProps) => {
 
   const qrData = useMemo(() => {
     // Rimuoviamo allegati pesanti e campi vuoti per ridurre la densità del QR e facilitare la scansione da lontano
-    const cleanData = Object.fromEntries(
+    let cleanData = Object.fromEntries(
       Object.entries(module).filter(([key, value]) => {
         if (key === 'pdfAttachment' || key === 'photo') return false;
         if (value === null || value === undefined || value === '') return false;
@@ -78,6 +78,23 @@ export const ShareScreen = ({ module, onClose }: ShareScreenProps) => {
         return true;
       })
     );
+
+    if (module.type === 'split') {
+      const splitMod = module as any;
+      const cleanExpenses = (splitMod.expenses || []).map((exp: any) => {
+        const { receiptAttachment, ...cleanExp } = exp;
+        return cleanExp;
+      });
+      const cleanParticipants = (splitMod.participants || []).map((p: any) => {
+        const { avatar, ...cleanP } = p;
+        return cleanP;
+      });
+      cleanData = {
+        ...cleanData,
+        expenses: cleanExpenses,
+        participants: cleanParticipants
+      };
+    }
     
     /**
      * SHORTHAND MAPPING for QR density optimization:
