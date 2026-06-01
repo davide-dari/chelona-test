@@ -11,13 +11,23 @@ interface ModuleWrapperProps {
   module: Module;
   onDelete?: (id: string) => void;
   onEdit?: (module: Module) => void;
+  onShare?: (module: Module) => void;
   children: React.ReactNode;
 }
 
-const ModuleWrapper = ({ module, onDelete, onEdit, children }: ModuleWrapperProps) => (
+const ModuleWrapper = ({ module, onDelete, onEdit, onShare, children }: ModuleWrapperProps) => (
   <div className="module-card relative group flex flex-col bg-[var(--card-bg)] backdrop-blur-3xl rounded-[2.5rem] border border-[var(--border)] shadow-[0_8px_30px_rgba(0,0,0,0.04)] hover:shadow-[0_20px_50px_rgba(0,0,0,0.12)] transition-all p-5 sm:p-6 overflow-hidden">
     <div className="flex items-center justify-end mb-3 shrink-0">
       <div className="flex items-center gap-1.5 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all shrink-0">
+        {onShare && (
+          <button
+            onClick={(e) => { e.stopPropagation(); onShare(module); }}
+            className="p-2 sm:p-1.5 hover:bg-[var(--bg)] text-[var(--text-muted)] hover:text-indigo-500 rounded-lg transition-all"
+            title="Condividi via QR"
+          >
+            <QrCode className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
+          </button>
+        )}
         {onEdit && (
           <button
             onClick={() => onEdit(module)}
@@ -367,11 +377,11 @@ export const SingleExpenseCard = ({ module, onDelete, onEdit }: { module: Single
   );
 };
 
-export const SplitCard = ({ module, onDelete, onEdit }: { module: SplitModule; onDelete: (id: string) => void; onEdit: (m: Module) => void; }) => {
+export const SplitCard = ({ module, onDelete, onEdit, onShare }: { module: SplitModule; onDelete: (id: string) => void; onEdit: (m: Module) => void; onShare?: (m: Module) => void; }) => {
   const totalAmount = module.expenses.reduce((sum, exp) => sum + exp.amount, 0);
   
   return (
-    <ModuleWrapper module={module} onDelete={onDelete} onEdit={onEdit}>
+    <ModuleWrapper module={module} onDelete={onDelete} onEdit={onEdit} onShare={onShare}>
       <div 
         className="h-full flex flex-col cursor-pointer group/card hover:bg-[var(--bg)] transition-colors p-4 -m-4 rounded-2xl active:scale-[0.98]"
         onClick={() => onEdit(module)}

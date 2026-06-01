@@ -1839,7 +1839,7 @@ export default function App() {
                         {Object.entries(TEMPLATES)
                           .filter(([key]) => key !== 'single-expense' && key !== 'travel' && key !== 'transport')
                           .map(([key, t]) => (
-                          <button
+                      <button
                             key={key}
                             onClick={() => {
                               if (key === 'split') {
@@ -1890,6 +1890,23 @@ export default function App() {
 
                          <button
                            onClick={() => {
+                             const numPeopleStr = window.prompt("Quante persone ci sono nel gruppo?");
+                             if (numPeopleStr === null) return;
+                             const numPeople = parseInt(numPeopleStr, 10);
+                             if (isNaN(numPeople) || numPeople <= 0) {
+                               alert("Inserisci un numero valido di persone.");
+                               return;
+                             }
+
+                             const groupParticipants: import('./types').SplitParticipant[] = [];
+                             for (let i = 0; i < numPeople; i++) {
+                               const name = window.prompt(`Nome della persona ${i + 1}:`) || `Partecipante ${i + 1}`;
+                               groupParticipants.push({
+                                 id: generateUUID(),
+                                 name: name.trim() || `Partecipante ${i + 1}`
+                               });
+                             }
+
                              setSpesaSubMenu(false);
                              setIsAdding(false);
                              const newSplit = {
@@ -1897,7 +1914,7 @@ export default function App() {
                                type: 'split' as const,
                                title: 'Gruppo Spese',
                                currency: 'EUR',
-                               participants: [],
+                               participants: groupParticipants,
                                expenses: [],
                                x: (modules.length * 2) % 12,
                                y: Infinity,
@@ -2672,7 +2689,7 @@ export default function App() {
                               ) : module.type === 'document' ? (
                                 <DocumentCard module={module} onDelete={requestDelete} onEdit={openEditModal} onShare={setSharingModule} />
                               ) : module.type === 'split' ? (
-                                <SplitCard module={module as import('./types').SplitModule} onDelete={requestDelete} onEdit={openEditModal} />
+                                <SplitCard module={module as import('./types').SplitModule} onDelete={requestDelete} onEdit={openEditModal} onShare={setSharingModule as any} />
                               ) : module.type === 'single-expense' ? (
                                 <SingleExpenseCard module={module as import('./types').SingleExpenseModule} onDelete={requestDelete} onEdit={openEditModal} />
                               ) : module.type === 'gallery' ? (

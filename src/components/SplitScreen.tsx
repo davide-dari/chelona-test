@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { ArrowLeft, Users, Receipt, ArrowRightLeft, Plus, Check, X, Trash2, Edit2, Wallet, Camera, Paperclip, FileDown, Eye, Calendar, QrCode } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { SplitModule, SplitExpense, SplitParticipant, SplitType } from '../types';
@@ -72,6 +72,21 @@ export const SplitScreen = ({ module, onClose, onSave, onSaveToSandbox, onDelete
       }
     });
   }, [sharingExpense, participants]);
+
+  const [sharingGroup, setSharingGroup] = useState(false);
+
+  const groupSharePayload = useMemo(() => {
+    const cleanModule = {
+      title,
+      currency,
+      participants,
+      expenses
+    };
+    return JSON.stringify({
+      t: 'shared_split',
+      d: cleanModule
+    });
+  }, [title, currency, participants, expenses]);
 
   const handleScanExpense = (data: string) => {
     setIsScanning(false);
@@ -173,6 +188,13 @@ export const SplitScreen = ({ module, onClose, onSave, onSaveToSandbox, onDelete
     setExpShouldArchive(false);
     setShowExpenseModal(true);
   };
+
+  useEffect(() => {
+    if (module.expenses?.length === 0 && participants.length > 0 && !module.createdAt) {
+      openNewExpense();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const openEditExpense = (exp: SplitExpense) => {
     setExpTitle(exp.title);
@@ -282,6 +304,13 @@ export const SplitScreen = ({ module, onClose, onSave, onSaveToSandbox, onDelete
           </div>
         </div>
         <div className="flex items-center gap-2">
+           <button 
+             onClick={() => setSharingGroup(true)}
+             className="p-2.5 text-indigo-400 hover:bg-indigo-500/10 rounded-xl transition-all"
+             title="Condividi Gruppo via QR"
+           >
+             <QrCode className="w-5 h-5" />
+           </button>
            {onDelete && (
              <button 
                onClick={() => { if(window.confirm('Eliminare definitivamente questo gruppo di spese?')) { onDelete(module.id); onClose(); } }}
@@ -1010,6 +1039,57 @@ export const SplitScreen = ({ module, onClose, onSave, onSaveToSandbox, onDelete
 
               <button
                 onClick={() => setSharingExpense(null)}
+                className="w-full max-w-sm py-4 bg-[var(--surface-variant)] hover:bg-[var(--border)] text-[var(--text-main)] rounded-2xl font-bold transition-all"
+              >
+                Chiudi
+              </button>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* QR Code Sharing Modal for Group */}
+      <AnimatePresence>
+        {sharingGroup && (
+          <div className="fixed inset-0 z-[250] flex flex-col justify-end">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setSharingGroup(false)}
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ y: '100%' }}
+              animate={{ y: 0 }}
+              exit={{ y: '100%' }}
+              className="relative bg-[var(--card-bg)] border-t border-[var(--border)] rounded-t-[2.5rem] p-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))] shadow-2xl flex flex-col items-center text-center z-[260]"
+            >
+              <div className="w-12 h-1.5 bg-[var(--border)] rounded-full mb-6" />
+              <h3 className="text-xl font-bold text-[var(--text-main)] mb-2">
+                Condividi Gruppo Spese
+              </h3>
+              <p className="text-[var(--text-muted)] text-xs mb-6">
+                Fai scansionare questo QR Code da un altro dispositivo per importare l'intero gruppo di spese.
+              </p>
+
+              <div className="p-4 bg-white rounded-3xl shadow-md mb-6 border border-gray-100 flex items-center justify-center">
+                <QRCodeSVG value={groupSharePayload} size={200} />
+              </div>
+
+              <div className="w-full max-w-sm mb-6 bg-[var(--bg)] p-4 rounded-2xl border border-[var(--border)] text-left">
+                <p className="text-xs font-black text-purple-500 uppercase tracking-widest mb-1">{title}</p>
+                <div className="text-sm font-bold text-[var(--text-main)] mt-1">
+                  {participants.length} Partecipanti • {expenses.length} Spese
+                </div>
+                <div className="text-xl font-black text-[var(--text-main)] tracking-tight mt-2">
+                  <span className="text-[10px] font-bold text-[var(--text-muted)] mr-1">Totale: {currency}</span>
+                  {expenses.reduce((sum, exp) => sum + exp.amount, 0).toLocaleString('it-IT', { minimumFractionDigits: 2 })}
+                </div>
+              </div>
+
+              <button
+                onClick={() => setSharingGroup(false)}
                 className="w-full max-w-sm py-4 bg-[var(--surface-variant)] hover:bg-[var(--border)] text-[var(--text-main)] rounded-2xl font-bold transition-all"
               >
                 Chiudi
