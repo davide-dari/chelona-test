@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { ArrowLeft, Lock, FileDown, Share2, Clock, QrCode, Shield, RefreshCw, Eye, Check, Copy, ShieldCheck, SunDim } from 'lucide-react';
+import { ArrowLeft, Lock, FileDown, Share2, Clock, QrCode, Shield, RefreshCw, Eye, Check, Copy, ShieldCheck, SunDim, AlertCircle } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { Module } from '../types';
 import JSZip from 'jszip';
@@ -290,15 +290,25 @@ export const ShareScreen = ({ module, onClose }: ShareScreenProps) => {
                     transition={isExpired ? { duration: 0.8, ease: "easeInOut" } : {}}
                     className={`p-5 rounded-3xl shadow-2xl relative z-10 border transition-all duration-500 ${isAntiGlare ? 'bg-gray-300 border-gray-400' : 'bg-[var(--card-bg)] border-[var(--border)]'}`}
                 >
-                    <QRCodeSVG 
-                        value={qrData} 
-                        size={320} 
-                        level="L" 
-                        includeMargin={true}
-                        bgColor={isAntiGlare ? "#d1d5db" : "#FFFFFF"}
-                        fgColor="#000000"
-                        className="rounded-2xl transition-all duration-500 max-w-full h-auto"
-                    />
+                    {qrData.length > 2000 ? (
+                      <div className="w-[320px] h-[320px] flex flex-col items-center justify-center p-6 text-center rounded-2xl bg-[var(--bg)] border border-red-500/20">
+                        <AlertCircle className="w-12 h-12 text-red-500 mb-4" />
+                        <h4 className="text-[var(--text-main)] font-bold mb-2">Dati troppo grandi</h4>
+                        <p className="text-[var(--text-muted)] text-sm">
+                          Il modulo contiene troppi dati per essere condiviso tramite QR Code. Utilizza l'esportazione in file.
+                        </p>
+                      </div>
+                    ) : (
+                      <QRCodeSVG 
+                          value={qrData} 
+                          size={320} 
+                          level="L" 
+                          includeMargin={true}
+                          bgColor={isAntiGlare ? "#d1d5db" : "#FFFFFF"}
+                          fgColor="#000000"
+                          className="rounded-2xl transition-all duration-500 max-w-full h-auto"
+                      />
+                    )}
                 </motion.div>
 
                 {/* Pulsante Anti-Abbaglio */}

@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { ArrowLeft, Users, Receipt, ArrowRightLeft, Plus, Check, X, Trash2, Edit2, Wallet, Camera, Paperclip, FileDown, Eye, Calendar, QrCode } from 'lucide-react';
+import { ArrowLeft, Users, Receipt, ArrowRightLeft, Plus, Check, X, Trash2, Edit2, Wallet, Camera, Paperclip, FileDown, Eye, Calendar, QrCode, AlertCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { SplitModule, SplitExpense, SplitParticipant, SplitType } from '../types';
 import { calculateSplits, Settlement } from '../utils/splitAlgorithm';
@@ -1033,7 +1033,17 @@ export const SplitScreen = ({ module, onClose, onSave, onSaveToSandbox, onDelete
               </p>
 
               <div className="p-4 bg-white rounded-3xl shadow-md mb-6 border border-gray-100 flex items-center justify-center">
-                <QRCodeSVG value={sharePayload} size={200} />
+                {sharePayload.length > 2000 ? (
+                  <div className="w-[200px] h-[200px] flex flex-col items-center justify-center text-center p-4">
+                    <AlertCircle className="w-10 h-10 text-red-500 mb-2" />
+                    <p className="text-[var(--text-main)] font-bold text-sm mb-1">Troppi dati</p>
+                    <p className="text-[var(--text-muted)] text-[10px]">
+                      L'elemento contiene troppi dati per il QR Code.
+                    </p>
+                  </div>
+                ) : (
+                  <QRCodeSVG value={sharePayload} size={200} />
+                )}
               </div>
 
               <div className="w-full max-w-sm mb-6 bg-[var(--bg)] p-4 rounded-2xl border border-[var(--border)] text-left">
@@ -1084,7 +1094,17 @@ export const SplitScreen = ({ module, onClose, onSave, onSaveToSandbox, onDelete
               </p>
 
               <div className="p-4 bg-white rounded-3xl shadow-md mb-6 border border-gray-100 flex items-center justify-center">
-                <QRCodeSVG value={groupSharePayload} size={200} />
+                {groupSharePayload.length > 2000 ? (
+                  <div className="w-[200px] h-[200px] flex flex-col items-center justify-center text-center p-4">
+                    <AlertCircle className="w-10 h-10 text-red-500 mb-2" />
+                    <p className="text-[var(--text-main)] font-bold text-sm mb-1">Troppi dati</p>
+                    <p className="text-[var(--text-muted)] text-[10px]">
+                      Il gruppo è troppo grande. Usa l'esportazione file.
+                    </p>
+                  </div>
+                ) : (
+                  <QRCodeSVG value={groupSharePayload} size={200} />
+                )}
               </div>
 
               <div className="w-full max-w-sm mb-6 bg-[var(--bg)] p-4 rounded-2xl border border-[var(--border)] text-left">
