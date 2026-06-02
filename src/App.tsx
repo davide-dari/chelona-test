@@ -294,7 +294,6 @@ export default function App() {
   useEffect(() => {
     console.log('[App] Initializing Lifecycle Listener');
     
-    // Check if App plugin is available and has the required methods
     if (CapApp && typeof CapApp.addListener === 'function') {
       const stateListener = CapApp.addListener('appStateChange', ({ isActive }) => {
         console.log('[App] State changed, isActive:', isActive);
@@ -309,102 +308,57 @@ export default function App() {
         }
       });
       
-      // Android Back Button / Gesture handling
-      const backListener = CapApp.addListener('backButton', ({ canGoBack }) => {
-        console.log('[App] Back button pressed, canGoBack history:', canGoBack);
-        if (window.history.length > 1) {
-          window.history.back();
-        } else {
-          // Default behavior (exit app) if we are at the root
-          CapApp.exitApp();
-        }
-      });
-      
       return () => {
         stateListener.then(l => l.remove());
-        backListener.then(l => l.remove());
       };
     } else {
       console.warn('[App] Capacitor App plugin not available or addListener missing.');
     }
   }, []);
 
-  // History API Sync (Back/Forward Gestures)
+  // Android back button: chiude il pannello/modal aperto più recente con logica a priorità.
+  // NON usa window.history.back() per evitare swipe avanti/indietro indesiderati.
   useEffect(() => {
-    const handlePopState = (event: PopStateEvent) => {
-      console.log('[App] popstate event:', event.state);
-      const state = event.state || {};
-      
-      // Update React states based on history state
-      setIsToolsOpen(!!state.tools);
-      setActiveToolId(state.toolId || null);
-      setIsAdding(!!state.adding);
-      setEditingModuleId(state.editingId || null);
-      setIsProfileOpen(!!state.profile);
-      setIsArchiveOpen(!!state.archive);
-      setSelectedType(state.type || null);
-      setSelectedFolderId(state.folderId || null);
-      setIsSidebarOpen(!!state.sidebar);
-      setEditingAutoModule(state.autoEdit || null);
-      setEditingSplitModule(state.splitEdit || null);
-      setEditingSingleExpenseModule(state.singleExpenseEdit || null);
-      setModuleToDelete(state.deleteConfirm || null);
-      setShowGalleryViewer(!!state.showGallery);
-      setGallerySelectedImage(state.selectedImage || null);
-      if (!state.adding) setFormData({});
-    };
+    if (!CapApp || typeof CapApp.addListener !== 'function') return;
 
-    window.addEventListener('popstate', handlePopState);
-    return () => window.removeEventListener('popstate', handlePopState);
+    const backListener = CapApp.addListener('backButton', () => {
+      // Priorità: chiude l'elemento più "in primo piano" prima
+      if (moduleToDelete) { setModuleToDelete(null); return; }
+      if (showGalleryViewer || gallerySelectedImage) { setShowGalleryViewer(false); setGallerySelectedImage(null); return; }
+      if (editingAutoModule) { setEditingAutoModule(null); return; }
+      if (editingSplitModule) { setEditingSplitModule(null); return; }
+      if (editingSingleExpenseModule) { setEditingSingleExpenseModule(null); return; }
+      if (editingTravelModule) { setEditingTravelModule(null); return; }
+      if (editingTransportModule) { setEditingTransportModule(null); return; }
+      if (editingDocumentModule) { setEditingDocumentModule(null); return; }
+      if (editingGenericModule) { setEditingGenericModule(null); return; }
+      if (editingModuleId) { setEditingModuleId(null); setFormData({}); return; }
+      if (isAdding) { setIsAdding(false); setFormData({}); setSpesaSubMenu(false); return; }
+      if (isProfileOpen) { setIsProfileOpen(false); return; }
+      if (activeToolId) { setActiveToolId(null); return; }
+      if (isToolsOpen) { setIsToolsOpen(false); return; }
+      if (isArchiveOpen) { setIsArchiveOpen(false); return; }
+      if (isAddressBookOpen) { setIsAddressBookOpen(false); return; }
+      if (isSidebarOpen) { setIsSidebarOpen(false); return; }
+      if (selectedFolderId) { setSelectedFolderId(null); return; }
+      if (selectedType) { setSelectedType(null); return; }
+      // Niente di aperto: esci dall'app
+      CapApp.exitApp();
+    });
+
+    return () => {
+      backListener.then(l => l.remove());
+    };
   }, [
-    // no specific dependencies here as we only want to listen once, 
-    // but the interior functions need the setters which are stable
+    moduleToDelete, showGalleryViewer, gallerySelectedImage,
+    editingAutoModule, editingSplitModule, editingSingleExpenseModule,
+    editingTravelModule, editingTransportModule, editingDocumentModule,
+    editingGenericModule, editingModuleId, isAdding, isProfileOpen,
+    activeToolId, isToolsOpen, isArchiveOpen, isAddressBookOpen,
+    isSidebarOpen, selectedFolderId, selectedType, spesaSubMenu
   ]);
 
-  // Helper to push state to history when a view opens
-  const syncHistory = React.useCallback(() => {
-    const currentState = {
-      tools: isToolsOpen,
-      toolId: activeToolId,
-      adding: isAdding,
-      editingId: editingModuleId,
-      profile: isProfileOpen,
-      archive: isArchiveOpen,
-      type: selectedType,
-      folderId: selectedFolderId,
-      sidebar: isSidebarOpen,
-      autoEdit: editingAutoModule,
-      splitEdit: editingSplitModule,
-      singleExpenseEdit: editingSingleExpenseModule,
-      deleteConfirm: moduleToDelete,
-      showGallery: showGalleryViewer,
-      selectedImage: gallerySelectedImage,
-    };
 
-    // Check if current history state matches to avoid redundant pushes
-    const historyState = window.history.state;
-    const hasChanges = !historyState || JSON.stringify(historyState) !== JSON.stringify(currentState);
-    
-    const isAnyOpen = isToolsOpen || activeToolId || isAdding || editingModuleId || isProfileOpen || 
-                      moduleToDelete || showGalleryViewer || gallerySelectedImage;
-
-    if (hasChanges) {
-      if (isAnyOpen) {
-        console.log('[App] Pushing history state');
-        window.history.pushState(currentState, '');
-      } else if (historyState) {
-        // If everything is closed and we have a state, we might want to stay at root
-      }
-    }
-  }, [
-    isToolsOpen, activeToolId, isAdding, editingModuleId, isProfileOpen, isArchiveOpen, 
-    selectedType, selectedFolderId, isSidebarOpen, editingAutoModule, editingSplitModule, 
-    editingSingleExpenseModule, moduleToDelete, showGalleryViewer, gallerySelectedImage
-  ]);
-
-  useEffect(() => {
-    syncHistory();
-  }, [syncHistory]);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);

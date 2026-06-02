@@ -2,7 +2,9 @@ package com.davidedari.chelona;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.view.View;
 import android.view.WindowManager;
+import android.webkit.WebView;
 import com.getcapacitor.BridgeActivity;
 
 public class MainActivity extends BridgeActivity {
@@ -14,7 +16,19 @@ public class MainActivity extends BridgeActivity {
         
         super.onCreate(savedInstanceState);
 
-        
+        // Disabilita swipe back/forward nativo del WebView per evitare
+        // navigazioni inaspettate con le gesture Android edge-swipe
+        WebView webView = this.getBridge().getWebView();
+        webView.post(new Runnable() {
+            @Override
+            public void run() {
+                // Disabilita history navigation via swipe
+                webView.clearHistory();
+                // Disabilita overscroll (effetto rimbalzo ai bordi)
+                webView.setOverScrollMode(View.OVER_SCROLL_NEVER);
+            }
+        });
+
         // Espone l'interfaccia Javascript ChelonaNative per sincronizzare la rubrica indirizzi nativamente
         this.getBridge().getWebView().post(new Runnable() {
             @Override
