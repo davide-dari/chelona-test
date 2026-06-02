@@ -21,6 +21,7 @@ import { SplitScreen } from './components/SplitScreen';
 import { DocumentArchive } from './components/DocumentArchive';
 import { SingleExpenseScreen } from './components/SingleExpenseScreen';
 import { AddressBookScreen } from './components/AddressBookScreen';
+import { RecipesScreen } from './components/RecipesScreen';
 import { TravelScreen } from './components/TravelScreen';
 import { TransportScreen } from './components/TransportScreen';
 import { notificationService } from './services/notificationService';
@@ -266,6 +267,7 @@ export default function App() {
   const [editingFolderId, setEditingFolderId] = useState<string | null>(null);
   const [moduleToDelete, setModuleToDelete] = useState<Module | null>(null);
   const [isAddressBookOpen, setIsAddressBookOpen] = useState(false);
+  const [isRecipesOpen, setIsRecipesOpen] = useState(false);
   const [autoFormStep, setAutoFormStep] = useState(0);
   const [picker, setPicker] = useState<'brand' | 'model' | null>(null);
   const [pendingImportModule, setPendingImportModule] = useState<Module | null>(null);
@@ -338,6 +340,7 @@ export default function App() {
       if (activeToolId) { setActiveToolId(null); return; }
       if (isToolsOpen) { setIsToolsOpen(false); return; }
       if (isArchiveOpen) { setIsArchiveOpen(false); return; }
+      if (isRecipesOpen) { setIsRecipesOpen(false); return; }
       if (isAddressBookOpen) { setIsAddressBookOpen(false); return; }
       if (isSidebarOpen) { setIsSidebarOpen(false); return; }
       if (selectedFolderId) { setSelectedFolderId(null); return; }
@@ -354,7 +357,7 @@ export default function App() {
     editingAutoModule, editingSplitModule, editingSingleExpenseModule,
     editingTravelModule, editingTransportModule, editingDocumentModule,
     editingGenericModule, editingModuleId, isAdding, isProfileOpen,
-    activeToolId, isToolsOpen, isArchiveOpen, isAddressBookOpen,
+    activeToolId, isToolsOpen, isArchiveOpen, isAddressBookOpen, isRecipesOpen,
     isSidebarOpen, selectedFolderId, selectedType, spesaSubMenu
   ]);
 
@@ -1625,6 +1628,13 @@ export default function App() {
                     title="Strumenti"
                   >
                     <Wrench className="w-5 h-5 sm:w-6 sm:h-6" />
+                  </button>
+                  <button 
+                    onClick={() => setIsRecipesOpen(true)}
+                    className="p-2 sm:p-2.5 bg-[var(--surface-variant)] hover:bg-[var(--border)] rounded-full text-[var(--accent)] transition-all flex items-center justify-center shadow-sm"
+                    title="Ricettario"
+                  >
+                    <BookOpen className="w-5 h-5 sm:w-6 sm:h-6" />
                   </button>
                   <button 
                     onClick={() => setIsAddressBookOpen(true)}
@@ -3011,6 +3021,11 @@ export default function App() {
       </AnimatePresence>
 
       <AnimatePresence>
+         {isRecipesOpen && (
+           <div className="absolute inset-0 z-[100] bg-[var(--bg)] flex flex-col h-[100dvh] safe-area-inset-bottom safe-area-header overflow-hidden">
+             <RecipesScreen onClose={() => setIsRecipesOpen(false)} />
+           </div>
+         )}
          {isAddressBookOpen && (
             <AddressBookScreen onClose={() => setIsAddressBookOpen(false)} />
          )}
