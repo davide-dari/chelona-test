@@ -130,6 +130,12 @@ const TEMPLATES = {
     content: '',
     icon: Bus,
     color: 'text-cyan-500'
+  },
+  recipes: {
+    title: 'Ricette',
+    content: '',
+    icon: BookOpen,
+    color: 'text-orange-500'
   }
 };
 
@@ -1630,13 +1636,6 @@ export default function App() {
                     <Wrench className="w-5 h-5 sm:w-6 sm:h-6" />
                   </button>
                   <button 
-                    onClick={() => setIsRecipesOpen(true)}
-                    className="p-2 sm:p-2.5 bg-[var(--surface-variant)] hover:bg-[var(--border)] rounded-full text-[var(--accent)] transition-all flex items-center justify-center shadow-sm"
-                    title="Ricettario"
-                  >
-                    <BookOpen className="w-5 h-5 sm:w-6 sm:h-6" />
-                  </button>
-                  <button 
                     onClick={() => setIsAddressBookOpen(true)}
                     className="p-2 sm:p-2.5 bg-[var(--surface-variant)] hover:bg-[var(--border)] rounded-full text-[var(--accent)] transition-all flex items-center justify-center shadow-sm"
                     title="Rubrica GPS"
@@ -1809,7 +1808,7 @@ export default function App() {
                       <h3 className="text-lg font-bold text-[var(--text-main)] mb-8 uppercase tracking-widest text-center">Scegli un Template</h3>
                       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                         {Object.entries(TEMPLATES)
-                          .filter(([key]) => key !== 'single-expense' && key !== 'travel' && key !== 'transport')
+                          .filter(([key]) => key !== 'single-expense' && key !== 'travel' && key !== 'transport' && key !== 'recipes')
                           .map(([key, t]) => (
                       <button
                             key={key}
@@ -2533,7 +2532,9 @@ export default function App() {
                               <button
                                 key={key}
                                 onClick={() => {
-                                  if (key === 'travel') {
+                                  if (key === 'recipes') {
+                                    setIsRecipesOpen(true);
+                                  } else if (key === 'travel') {
                                     const existingTravel = modules.find(m => m.type === 'travel') as import('./types').TravelModule;
                                     if (existingTravel) {
                                       setEditingTravelModule(existingTravel);
