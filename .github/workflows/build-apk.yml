@@ -40,7 +40,7 @@ jobs:
         run: npm run build
 
       - name: Capacitor Sync
-        run: npm exec cap sync android
+        run: node node_modules/@capacitor/cli/bin/capacitor sync android
 
       - name: Build Release APK
         run: |
