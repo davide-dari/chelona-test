@@ -19,7 +19,8 @@ const fetchHtml = (url) => {
     { name: "Primi", url: "https://www.giallozafferano.it/ricette-cat/Primi/" },
     { name: "Secondi", url: "https://www.giallozafferano.it/ricette-cat/Secondi-piatti/" },
     { name: "Dolci", url: "https://www.giallozafferano.it/ricette-cat/Dolci-e-Desserts/" },
-    { name: "Antipasti", url: "https://www.giallozafferano.it/ricette-cat/Antipasti/" }
+    { name: "Antipasti", url: "https://www.giallozafferano.it/ricette-cat/Antipasti/" },
+    { name: "Fit (sani)", url: "https://www.giallozafferano.it/ricerca-ricette/light/" }
   ];
 
   const db = [];

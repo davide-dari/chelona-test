@@ -346,7 +346,7 @@ export default function App() {
       if (activeToolId) { setActiveToolId(null); return; }
       if (isToolsOpen) { setIsToolsOpen(false); return; }
       if (isArchiveOpen) { setIsArchiveOpen(false); return; }
-      if (isRecipesOpen) { setIsRecipesOpen(false); return; }
+      if (isRecipesOpen) { window.dispatchEvent(new CustomEvent('recipes-back')); return; }
       if (isAddressBookOpen) { setIsAddressBookOpen(false); return; }
       if (isSidebarOpen) { setIsSidebarOpen(false); return; }
       if (selectedFolderId) { setSelectedFolderId(null); return; }

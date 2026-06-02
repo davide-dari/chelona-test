@@ -24,6 +24,21 @@ export function RecipesScreen({ onClose }: RecipeScreenProps) {
   }, []);
 
   useEffect(() => {
+    const handleBack = () => {
+      if (selectedMeal) {
+        setSelectedMeal(null);
+      } else if (selectedCategory || searchQuery) {
+        setSelectedCategory(null);
+        setSearchQuery('');
+      } else {
+        onClose();
+      }
+    };
+    window.addEventListener('recipes-back', handleBack);
+    return () => window.removeEventListener('recipes-back', handleBack);
+  }, [selectedMeal, selectedCategory, searchQuery, onClose]);
+
+  useEffect(() => {
     // Load the static JSON containing GialloZafferano scraped recipes
     fetch('/gz_recipes.json')
       .then(res => res.json())
