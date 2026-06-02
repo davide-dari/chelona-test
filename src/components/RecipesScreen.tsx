@@ -25,9 +25,8 @@ export function RecipesScreen({ onClose }: RecipeScreenProps) {
 
   useEffect(() => {
     const handleBack = () => {
-      if (selectedMeal) {
+      if (selectedMeal || selectedCategory || searchQuery) {
         setSelectedMeal(null);
-      } else if (selectedCategory || searchQuery) {
         setSelectedCategory(null);
         setSearchQuery('');
       } else {
@@ -144,7 +143,17 @@ export function RecipesScreen({ onClose }: RecipeScreenProps) {
                     <span className="font-bold text-yellow-800 text-sm text-center">Le mie Preferite</span>
                   </motion.button>
                   
-                  {categories.map((cat, i) => (
+                  {categories.map((cat, i) => {
+                    let emoji = "🍽️";
+                    const lowerCat = cat.toLowerCase();
+                    if (lowerCat.includes("primi")) emoji = "🍝";
+                    else if (lowerCat.includes("secondi")) emoji = "🥩";
+                    else if (lowerCat.includes("dolci")) emoji = "🍰";
+                    else if (lowerCat.includes("antipasti")) emoji = "🥗";
+                    
+                    if (lowerCat.includes("fit")) emoji = "🥑 " + emoji;
+                    
+                    return (
                     <motion.button
                       key={cat}
                       whileHover={{ scale: 1.02 }}
@@ -152,12 +161,13 @@ export function RecipesScreen({ onClose }: RecipeScreenProps) {
                       onClick={() => setSelectedCategory(cat)}
                       className="flex flex-col items-center justify-center p-4 bg-[var(--card-bg)] border border-[var(--border)] rounded-2xl hover:border-orange-500 hover:bg-orange-50/10 transition-all shadow-sm group"
                     >
-                      <span className="text-2xl mb-2 group-hover:scale-110 transition-transform">🍝</span>
+                      <span className="text-2xl mb-2 group-hover:scale-110 transition-transform">{emoji}</span>
                       <span className="font-bold text-[var(--text-main)] text-sm text-center capitalize">
                         {cat}
                       </span>
                     </motion.button>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>

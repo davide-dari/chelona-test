@@ -20,7 +20,10 @@ const fetchHtml = (url) => {
     { name: "Secondi", url: "https://www.giallozafferano.it/ricette-cat/Secondi-piatti/" },
     { name: "Dolci", url: "https://www.giallozafferano.it/ricette-cat/Dolci-e-Desserts/" },
     { name: "Antipasti", url: "https://www.giallozafferano.it/ricette-cat/Antipasti/" },
-    { name: "Fit (sani)", url: "https://www.giallozafferano.it/ricerca-ricette/light/" }
+    { name: "Fit - Primi", url: "https://www.giallozafferano.it/ricerca-ricette/primi+light/" },
+    { name: "Fit - Secondi", url: "https://www.giallozafferano.it/ricerca-ricette/secondi+light/" },
+    { name: "Fit - Dolci", url: "https://www.giallozafferano.it/ricerca-ricette/dolci+light/" },
+    { name: "Fit - Antipasti", url: "https://www.giallozafferano.it/ricerca-ricette/antipasti+light/" }
   ];
 
   const db = [];
