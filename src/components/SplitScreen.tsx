@@ -1,5 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { ArrowLeft, Users, Receipt, ArrowRightLeft, Plus, Check, X, Trash2, Edit2, Wallet, Camera, Paperclip, FileDown, Eye, Calendar, QrCode, AlertCircle, Share2 } from 'lucide-react';
+import { ArrowLeft, Users, Receipt, ArrowRightLeft, Plus, Check, X, Trash2, Edit2, Wallet, Camera, Paperclip, FileDown, Eye, Calendar, QrCode, AlertCircle, Share2, Target } from 'lucide-react';
+import { Share } from '@capacitor/share';
+import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
 import { motion, AnimatePresence } from 'motion/react';
 import { SplitModule, SplitExpense, SplitParticipant, SplitType } from '../types';
 import { calculateSplits, Settlement } from '../utils/splitAlgorithm';
@@ -36,6 +38,7 @@ export const SplitScreen = ({ module, onClose, onSave, onSaveToSandbox, onDelete
   const [participants, setParticipants] = useState<SplitParticipant[]>(module.participants || []);
   const [expenses, setExpenses] = useState<SplitExpense[]>(module.expenses || []);
   const [title, setTitle] = useState(module.title || 'Gruppo Spese');
+  const [budget, setBudget] = useState<number>(module.budget || 0);
 
   // Modal states
   const [showParticipantModal, setShowParticipantModal] = useState(false);
@@ -89,6 +92,7 @@ export const SplitScreen = ({ module, onClose, onSave, onSaveToSandbox, onDelete
       type: 'split',
       title,
       currency,
+      budget,
       participants: cleanParticipants,
       expenses: cleanExpenses
     };
@@ -117,6 +121,7 @@ export const SplitScreen = ({ module, onClose, onSave, onSaveToSandbox, onDelete
           type: 'split',
           title,
           currency,
+          budget,
           participants: cleanParticipants,
           expenses: cleanExpenses
         };
@@ -138,7 +143,27 @@ export const SplitScreen = ({ module, onClose, onSave, onSaveToSandbox, onDelete
         data: dataToShare
       };
       
-      const blob = new Blob([JSON.stringify(exportPayload)], { type: 'application/json' });
+      const jsonStr = JSON.stringify(exportPayload);
+      
+      try {
+        const result = await Filesystem.writeFile({
+          path: filename,
+          data: jsonStr,
+          directory: Directory.Cache,
+          encoding: Encoding.UTF8
+        });
+        
+        await Share.share({
+          title: 'Condivisione Chelona',
+          url: result.uri,
+          dialogTitle: 'Condividi file'
+        });
+        return;
+      } catch (capErr) {
+        console.warn('Capacitor Share failed, fallback to Web API', capErr);
+      }
+      
+      const blob = new Blob([jsonStr], { type: 'application/json' });
       const file = new File([blob], filename, { type: 'application/json' });
       
       let shared = false;
@@ -227,6 +252,7 @@ export const SplitScreen = ({ module, onClose, onSave, onSaveToSandbox, onDelete
       ...module,
       title,
       currency,
+      budget,
       participants,
       expenses
     });
@@ -378,6 +404,17 @@ export const SplitScreen = ({ module, onClose, onSave, onSaveToSandbox, onDelete
                     className="bg-transparent border-none text-[10px] uppercase font-bold text-amber-500 w-12 outline-none"
                     placeholder="Es. USD"
                 />
+                <div className="flex items-center ml-2 border-l border-[var(--border)] pl-2">
+                   <Target className="w-3 h-3 text-[var(--text-muted)] mr-1" />
+                   <span className="text-[10px] text-[var(--text-muted)] mr-1">Budget:</span>
+                   <input 
+                     type="number"
+                     value={budget || ''}
+                     onChange={e => setBudget(parseFloat(e.target.value) || 0)}
+                     className="bg-transparent border-none text-[10px] font-bold text-[var(--text-main)] w-16 outline-none"
+                     placeholder="0"
+                   />
+                </div>
             </div>
           </div>
         </div>
@@ -656,16 +693,28 @@ export const SplitScreen = ({ module, onClose, onSave, onSaveToSandbox, onDelete
 
         {/* DASHBOARD TAB */}
         {activeTab === 'dashboard' && (
-          <div className="space-y-8 fade-in pb-10">
+          <div className="space-y-6 fade-in pb-10">
             {/* Riepilogo Totale */}
             <div className="bg-gradient-to-br from-amber-500 to-orange-500 p-8 rounded-[2.5rem] text-white shadow-xl shadow-amber-500/20 relative overflow-hidden group">
                 <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
                     <Wallet className="w-24 h-24" />
                 </div>
                 <div className="flex justify-between items-start relative z-10">
-                  <div>
+                  <div className="flex-1">
                     <p className="text-amber-100 text-[10px] font-black uppercase tracking-widest mb-1">Spesa Totale Gruppo</p>
-                    <h2 className="text-4xl font-black">{formatCurrency(expenses.reduce((s, e) => s + e.amount, 0))}</h2>
+                    <h2 className="text-4xl font-black mb-4">{formatCurrency(expenses.reduce((s, e) => s + e.amount, 0))}</h2>
+                    
+                    {budget > 0 && (
+                      <div className="mt-4 pt-4 border-t border-white/20">
+                        <div className="flex items-center justify-between">
+                          <p className="text-amber-100 text-[10px] font-black uppercase tracking-widest">Budget Rimanente</p>
+                          <span className="text-xs font-bold text-white/80">di {formatCurrency(budget)}</span>
+                        </div>
+                        <h3 className={`text-2xl font-black mt-1 ${(budget - expenses.reduce((s, e) => s + e.amount, 0)) < 0 ? 'text-red-200' : 'text-white'}`}>
+                          {formatCurrency(budget - expenses.reduce((s, e) => s + e.amount, 0))}
+                        </h3>
+                      </div>
+                    )}
                   </div>
                   <button 
                     onClick={() => {
@@ -676,10 +725,10 @@ export const SplitScreen = ({ module, onClose, onSave, onSaveToSandbox, onDelete
                       }
                       openNewExpense();
                     }}
-                    className="p-3 bg-white/20 hover:bg-white/30 backdrop-blur-md rounded-2xl transition-all border border-white/20"
+                    className="p-3 bg-white/20 hover:bg-white/30 backdrop-blur-md rounded-2xl transition-all border border-white/20 ml-4 shrink-0"
                     title="Aggiungi Nuova Spesa"
                   >
-                    <Plus className="w-6 h-6 text-white" />
+                    <Plus className="w-6 h-6" />
                   </button>
                 </div>
                 <div className="mt-4 flex items-center gap-4 text-[10px] font-bold uppercase tracking-wider text-amber-100/80">

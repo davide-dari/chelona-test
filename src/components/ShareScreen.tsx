@@ -1,5 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { ArrowLeft, Lock, FileDown, Share2, Clock, QrCode, Shield, RefreshCw, Eye, Check, Copy, ShieldCheck, SunDim, AlertCircle } from 'lucide-react';
+import { Share } from '@capacitor/share';
+import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
 import { QRCodeSVG } from 'qrcode.react';
 import { Module } from '../types';
 import JSZip from 'jszip';
@@ -136,8 +138,28 @@ export const ShareScreen = ({ module, onClose }: ShareScreenProps) => {
         type: `shared_${module.type}`,
         data: cleanData
       };
-      const blob = new Blob([JSON.stringify(exportPayload)], { type: 'application/json' });
       const filename = `${(module.title || 'condivisione').replace(/[^a-z0-9]/gi, '_').toLowerCase()}.chelona`;
+      const jsonStr = JSON.stringify(exportPayload);
+      
+      try {
+        const result = await Filesystem.writeFile({
+          path: filename,
+          data: jsonStr,
+          directory: Directory.Cache,
+          encoding: Encoding.UTF8
+        });
+        
+        await Share.share({
+          title: 'Condivisione Chelona',
+          url: result.uri,
+          dialogTitle: 'Condividi file'
+        });
+        return;
+      } catch (capErr) {
+        console.warn('Capacitor Share failed, fallback to Web API', capErr);
+      }
+      
+      const blob = new Blob([jsonStr], { type: 'application/json' });
       const file = new File([blob], filename, { type: 'application/json' });
       
       let shared = false;

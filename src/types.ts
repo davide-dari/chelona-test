@@ -103,6 +103,7 @@ export interface SplitExpense {
 export interface SplitModule extends BaseModule {
   type: 'split';
   currency: string;
+  budget?: number;
   participants: SplitParticipant[];
   expenses: SplitExpense[];
 }
