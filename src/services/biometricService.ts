@@ -97,9 +97,9 @@ export const biometricService = {
       if (!NativeBiometric || typeof NativeBiometric.verifyIdentity !== 'function') return false;
       await NativeBiometric.verifyIdentity({
         reason,
-        title: 'Autenticazione Biometrica',
-        subtitle: 'Usa l\'impronta o il volto per continuare',
-        description: 'Verifica la tua identità per accedere alle funzioni di sicurezza.',
+        title: 'Chelona — Accesso Sicuro',
+        subtitle: reason,
+        description: 'Usa la tua impronta digitale per accedere.',
         useDevicePasscode: true, // Allow fallback to PIN/Pattern/Password
       } as any);
       return true;

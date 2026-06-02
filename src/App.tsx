@@ -278,6 +278,13 @@ export default function App() {
   const [updateProgress, setUpdateProgress] = useState<number | null>(null);
   const [spesaSubMenu, setSpesaSubMenu] = useState(false);
   const [isArchiveOpen, setIsArchiveOpen] = useState(false);
+
+  // Modal creazione gruppo spese
+  const [showSplitModal, setShowSplitModal] = useState(false);
+  const [splitModalTitle, setSplitModalTitle] = useState('Gruppo Spese');
+  const [splitModalCurrency, setSplitModalCurrency] = useState('EUR');
+  const [splitModalBudget, setSplitModalBudget] = useState('');
+  const [splitModalParticipants, setSplitModalParticipants] = useState<string[]>(['', '']);
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     const saved = localStorage.getItem('lifemod_theme');
     return (saved as 'light' | 'dark') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
@@ -1891,39 +1898,11 @@ export default function App() {
 
                          <button
                            onClick={() => {
-                             const numPeopleStr = window.prompt("Quante persone ci sono nel gruppo?");
-                             if (numPeopleStr === null) return;
-                             const numPeople = parseInt(numPeopleStr, 10);
-                             if (isNaN(numPeople) || numPeople <= 0) {
-                               alert("Inserisci un numero valido di persone.");
-                               return;
-                             }
-
-                             const groupParticipants: import('./types').SplitParticipant[] = [];
-                             for (let i = 0; i < numPeople; i++) {
-                               const name = window.prompt(`Nome della persona ${i + 1}:`) || `Partecipante ${i + 1}`;
-                               groupParticipants.push({
-                                 id: generateUUID(),
-                                 name: name.trim() || `Partecipante ${i + 1}`
-                               });
-                             }
-
-                             setSpesaSubMenu(false);
-                             setIsAdding(false);
-                             const newSplit = {
-                               id: generateUUID(),
-                               type: 'split' as const,
-                               title: 'Gruppo Spese',
-                               currency: 'EUR',
-                               participants: groupParticipants,
-                               expenses: [],
-                               x: (modules.length * 2) % 12,
-                               y: Infinity,
-                               w: 3,
-                               h: 2,
-                               folderId: selectedFolderId || undefined
-                             };
-                             setEditingSplitModule(newSplit);
+                             setSplitModalTitle('Gruppo Spese');
+                             setSplitModalCurrency('EUR');
+                             setSplitModalBudget('');
+                             setSplitModalParticipants(['', '']);
+                             setShowSplitModal(true);
                            }}
                            className="flex flex-col items-center justify-center gap-4 p-8 rounded-2xl border border-[var(--border)] hover:border-indigo-500/60 hover:bg-indigo-500/10 transition-all group text-center h-full text-[var(--text-main)]"
                          >
@@ -2848,9 +2827,171 @@ export default function App() {
 
 
 
+      {/* Modal Creazione Gruppo Spese */}
+      <AnimatePresence>
+        {showSplitModal && (
+          <div className="fixed inset-0 z-[10000] flex items-end justify-center sm:items-center p-0 sm:p-6">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowSplitModal(false)}
+              className="absolute inset-0 bg-black/60 backdrop-blur-md"
+            />
+            <motion.div
+              initial={{ y: '100%', opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: '100%', opacity: 0 }}
+              transition={{ type: 'spring', damping: 28, stiffness: 300 }}
+              className="relative w-full max-w-md bg-[var(--card-bg)] rounded-t-[2.5rem] sm:rounded-[2.5rem] p-6 shadow-2xl border border-[var(--border)] overflow-y-auto max-h-[92vh]"
+            >
+              {/* Handle bar */}
+              <div className="w-10 h-1 bg-[var(--border)] rounded-full mx-auto mb-6 sm:hidden" />
+
+              {/* Header */}
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-11 h-11 rounded-2xl bg-indigo-500/15 flex items-center justify-center flex-shrink-0">
+                  <Users className="w-5 h-5 text-indigo-500" />
+                </div>
+                <div>
+                  <h2 className="text-base font-black text-[var(--text-main)] uppercase tracking-wider">Nuovo Gruppo Spese</h2>
+                  <p className="text-[10px] text-[var(--text-muted)] mt-0.5">Dividi le spese con il tuo gruppo</p>
+                </div>
+              </div>
+
+              <div className="space-y-5">
+                {/* Nome gruppo */}
+                <div>
+                  <label className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest mb-1.5 block">Nome Gruppo</label>
+                  <input
+                    type="text"
+                    value={splitModalTitle}
+                    onChange={e => setSplitModalTitle(e.target.value)}
+                    placeholder="Es. Vacanza estate, Cena amici..."
+                    className="w-full px-4 py-3 bg-[var(--bg)] border border-[var(--border)] rounded-2xl text-[var(--text-main)] text-sm focus:outline-none focus:border-indigo-500 transition-colors placeholder:text-[var(--text-muted)]/50"
+                  />
+                </div>
+
+                {/* Valuta e Budget */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest mb-1.5 block">Valuta</label>
+                    <select
+                      value={splitModalCurrency}
+                      onChange={e => setSplitModalCurrency(e.target.value)}
+                      className="w-full px-4 py-3 bg-[var(--bg)] border border-[var(--border)] rounded-2xl text-[var(--text-main)] text-sm focus:outline-none focus:border-indigo-500 transition-colors appearance-none"
+                    >
+                      {['EUR','USD','GBP','JPY','CHF','AUD','CAD','SEK','NOK','DKK','PLN','CZK','HUF'].map(c => (
+                        <option key={c} value={c}>{c}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest mb-1.5 block">Budget <span className="normal-case text-[9px] opacity-60">(opz.)</span></label>
+                    <input
+                      type="number"
+                      value={splitModalBudget}
+                      onChange={e => setSplitModalBudget(e.target.value)}
+                      placeholder="0.00"
+                      min="0"
+                      step="0.01"
+                      className="w-full px-4 py-3 bg-[var(--bg)] border border-[var(--border)] rounded-2xl text-[var(--text-main)] text-sm focus:outline-none focus:border-indigo-500 transition-colors placeholder:text-[var(--text-muted)]/50"
+                    />
+                  </div>
+                </div>
+
+                {/* Partecipanti */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest">Partecipanti</label>
+                    <button
+                      type="button"
+                      onClick={() => setSplitModalParticipants(p => [...p, ''])}
+                      className="flex items-center gap-1 text-indigo-500 text-[10px] font-bold uppercase tracking-wider hover:text-indigo-400 transition-colors"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      Aggiungi
+                    </button>
+                  </div>
+                  <div className="space-y-2">
+                    {splitModalParticipants.map((name, i) => (
+                      <div key={i} className="flex items-center gap-2">
+                        <div className="w-7 h-7 rounded-xl bg-indigo-500/15 flex items-center justify-center flex-shrink-0">
+                          <span className="text-[10px] font-black text-indigo-500">{i + 1}</span>
+                        </div>
+                        <input
+                          type="text"
+                          value={name}
+                          onChange={e => {
+                            const updated = [...splitModalParticipants];
+                            updated[i] = e.target.value;
+                            setSplitModalParticipants(updated);
+                          }}
+                          placeholder={`Persona ${i + 1}`}
+                          className="flex-1 px-3 py-2.5 bg-[var(--bg)] border border-[var(--border)] rounded-xl text-[var(--text-main)] text-sm focus:outline-none focus:border-indigo-500 transition-colors placeholder:text-[var(--text-muted)]/50"
+                        />
+                        {splitModalParticipants.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => setSplitModalParticipants(p => p.filter((_, j) => j !== i))}
+                            className="w-8 h-8 flex items-center justify-center rounded-xl text-[var(--text-muted)] hover:text-red-500 hover:bg-red-500/10 transition-all flex-shrink-0"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="flex flex-col gap-3 mt-7">
+                <button
+                  onClick={() => {
+                    const validParticipants = splitModalParticipants.filter(n => n.trim().length > 0);
+                    const groupParticipants = (validParticipants.length > 0 ? validParticipants : splitModalParticipants).map((n, i) => ({
+                      id: generateUUID(),
+                      name: n.trim() || `Partecipante ${i + 1}`
+                    }));
+                    const newSplit = {
+                      id: generateUUID(),
+                      type: 'split' as const,
+                      title: splitModalTitle.trim() || 'Gruppo Spese',
+                      currency: splitModalCurrency,
+                      budget: splitModalBudget ? parseFloat(splitModalBudget) : undefined,
+                      participants: groupParticipants,
+                      expenses: [],
+                      x: (modules.length * 2) % 12,
+                      y: Infinity,
+                      w: 3,
+                      h: 2,
+                      folderId: selectedFolderId || undefined
+                    };
+                    setShowSplitModal(false);
+                    setSpesaSubMenu(false);
+                    setIsAdding(false);
+                    setEditingSplitModule(newSplit);
+                  }}
+                  className="w-full py-4 bg-indigo-500 hover:bg-indigo-600 text-white rounded-2xl font-black text-sm uppercase tracking-wider transition-all shadow-lg shadow-indigo-500/25 active:scale-[0.98]"
+                >
+                  Crea Gruppo
+                </button>
+                <button
+                  onClick={() => setShowSplitModal(false)}
+                  className="w-full py-3.5 bg-[var(--bg)] hover:bg-[var(--border)] text-[var(--text-muted)] hover:text-[var(--text-main)] rounded-2xl font-bold text-sm transition-all"
+                >
+                  Annulla
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
 
       {/* Delete Confirmation Modal */}
+
       <AnimatePresence>
         {moduleToDelete && (
           <div className="fixed inset-0 z-[10000] flex items-center justify-center p-6">

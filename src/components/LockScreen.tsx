@@ -261,7 +261,7 @@ export const LockScreen = ({ isVisible, onAuthenticated, onStartScan, onOpenTool
     try {
       const m = await import('../services/biometricService');
       
-      const verified = await m.biometricService.verifyIdentity('Sblocca il tuo profilo sicuro');
+      const verified = await m.biometricService.verifyIdentity(`Sblocca il profilo di ${selectedProfile.username}`);
       if (!verified) {
         setIsLoading(false);
         return;
