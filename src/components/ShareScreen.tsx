@@ -121,6 +121,50 @@ export const ShareScreen = ({ module, onClose }: ShareScreenProps) => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [module, totalDurationMs, qrKey, isAutodestruct]);
 
+  const shareAsFile = async () => {
+    try {
+      let cleanData: any = { ...module };
+      if (module.type === 'split') {
+        const sm = module as any;
+        cleanData = {
+          ...sm,
+          expenses: sm.expenses?.map((e: any) => { const { receiptAttachment, ...rest } = e; return rest; }) || [],
+          participants: sm.participants?.map((p: any) => { const { avatar, ...rest } = p; return rest; }) || []
+        };
+      }
+      const exportPayload = {
+        type: `shared_${module.type}`,
+        data: cleanData
+      };
+      const blob = new Blob([JSON.stringify(exportPayload)], { type: 'application/json' });
+      const filename = `${(module.title || 'condivisione').replace(/[^a-z0-9]/gi, '_').toLowerCase()}.chelona`;
+      const file = new File([blob], filename, { type: 'application/json' });
+      
+      let shared = false;
+      if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+        try {
+          await navigator.share({ title: 'Condivisione Chelona', files: [file] });
+          shared = true;
+        } catch (e: any) {
+          if (e.name === 'AbortError') shared = true;
+        }
+      }
+      if (!shared) {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+      }
+    } catch (e) {
+      console.error(e);
+      alert('Errore durante la condivisione');
+    }
+  };
+
   // Gestione timer e progresso
   useEffect(() => {
     if (!isAutodestruct) {
@@ -294,9 +338,16 @@ export const ShareScreen = ({ module, onClose }: ShareScreenProps) => {
                       <div className="w-[320px] h-[320px] flex flex-col items-center justify-center p-6 text-center rounded-2xl bg-[var(--bg)] border border-red-500/20">
                         <AlertCircle className="w-12 h-12 text-red-500 mb-4" />
                         <h4 className="text-[var(--text-main)] font-bold mb-2">Dati troppo grandi</h4>
-                        <p className="text-[var(--text-muted)] text-sm">
-                          Il modulo contiene troppi dati per essere condiviso tramite QR Code. Utilizza l'esportazione in file.
+                        <p className="text-[var(--text-muted)] text-sm mb-6">
+                          Il modulo contiene troppi dati per essere condiviso tramite QR Code. Utilizza la condivisione file.
                         </p>
+                        <button
+                          onClick={shareAsFile}
+                          className="px-6 py-3 bg-[var(--accent)] text-white font-bold rounded-xl flex items-center gap-2 hover:opacity-90 transition-all shadow-lg"
+                        >
+                          <Share2 className="w-5 h-5" />
+                          Invia File
+                        </button>
                       </div>
                     ) : (
                       <QRCodeSVG 

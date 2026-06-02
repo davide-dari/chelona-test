@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { ArrowLeft, Users, Receipt, ArrowRightLeft, Plus, Check, X, Trash2, Edit2, Wallet, Camera, Paperclip, FileDown, Eye, Calendar, QrCode, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Users, Receipt, ArrowRightLeft, Plus, Check, X, Trash2, Edit2, Wallet, Camera, Paperclip, FileDown, Eye, Calendar, QrCode, AlertCircle, Share2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { SplitModule, SplitExpense, SplitParticipant, SplitType } from '../types';
 import { calculateSplits, Settlement } from '../utils/splitAlgorithm';
@@ -86,6 +86,7 @@ export const SplitScreen = ({ module, onClose, onSave, onSaveToSandbox, onDelete
       return cleanP;
     });
     const cleanModule = {
+      type: 'split',
       title,
       currency,
       participants: cleanParticipants,
@@ -97,6 +98,73 @@ export const SplitScreen = ({ module, onClose, onSave, onSaveToSandbox, onDelete
     });
     return lzw.compress(json);
   }, [title, currency, participants, expenses]);
+
+  const shareAsFile = async (payloadType: string, isGroup: boolean) => {
+    try {
+      let dataToShare;
+      let filename;
+      
+      if (isGroup) {
+        const cleanExpenses = expenses.map(exp => {
+          const { receiptAttachment, ...cleanExp } = exp;
+          return cleanExp;
+        });
+        const cleanParticipants = participants.map(p => {
+          const { avatar, ...cleanP } = p;
+          return cleanP;
+        });
+        dataToShare = {
+          type: 'split',
+          title,
+          currency,
+          participants: cleanParticipants,
+          expenses: cleanExpenses
+        };
+        filename = `${(title || 'gruppo').replace(/[^a-z0-9]/gi, '_').toLowerCase()}.chelona`;
+      } else {
+        if (!sharingExpense) return;
+        const payerName = participants.find(p => p.id === sharingExpense.paidById)?.name || 'Sconosciuto';
+        dataToShare = {
+          title: sharingExpense.title,
+          amount: sharingExpense.amount,
+          paidByName: payerName,
+          date: sharingExpense.date
+        };
+        filename = `${(sharingExpense.title || 'spesa').replace(/[^a-z0-9]/gi, '_').toLowerCase()}.chelona`;
+      }
+      
+      const exportPayload = {
+        type: `shared_${payloadType}`,
+        data: dataToShare
+      };
+      
+      const blob = new Blob([JSON.stringify(exportPayload)], { type: 'application/json' });
+      const file = new File([blob], filename, { type: 'application/json' });
+      
+      let shared = false;
+      if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+        try {
+          await navigator.share({ title: 'Condivisione Chelona', files: [file] });
+          shared = true;
+        } catch (e: any) {
+          if (e.name === 'AbortError') shared = true;
+        }
+      }
+      if (!shared) {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+      }
+    } catch (e) {
+      console.error(e);
+      alert('Errore durante la condivisione file');
+    }
+  };
 
   const handleScanExpense = (data: string) => {
     setIsScanning(false);
@@ -1037,9 +1105,16 @@ export const SplitScreen = ({ module, onClose, onSave, onSaveToSandbox, onDelete
                   <div className="w-[200px] h-[200px] flex flex-col items-center justify-center text-center p-4">
                     <AlertCircle className="w-10 h-10 text-red-500 mb-2" />
                     <p className="text-[var(--text-main)] font-bold text-sm mb-1">Troppi dati</p>
-                    <p className="text-[var(--text-muted)] text-[10px]">
+                    <p className="text-[var(--text-muted)] text-[10px] mb-3">
                       L'elemento contiene troppi dati per il QR Code.
                     </p>
+                    <button
+                      onClick={() => shareAsFile('split_expense', false)}
+                      className="px-4 py-2 bg-[var(--accent)] text-white font-bold rounded-xl flex items-center gap-2 hover:opacity-90 transition-all text-xs"
+                    >
+                      <Share2 className="w-4 h-4" />
+                      Invia File
+                    </button>
                   </div>
                 ) : (
                   <QRCodeSVG value={sharePayload} size={200} />
@@ -1098,9 +1173,16 @@ export const SplitScreen = ({ module, onClose, onSave, onSaveToSandbox, onDelete
                   <div className="w-[200px] h-[200px] flex flex-col items-center justify-center text-center p-4">
                     <AlertCircle className="w-10 h-10 text-red-500 mb-2" />
                     <p className="text-[var(--text-main)] font-bold text-sm mb-1">Troppi dati</p>
-                    <p className="text-[var(--text-muted)] text-[10px]">
+                    <p className="text-[var(--text-muted)] text-[10px] mb-3">
                       Il gruppo è troppo grande. Usa l'esportazione file.
                     </p>
+                    <button
+                      onClick={() => shareAsFile('split', true)}
+                      className="px-4 py-2 bg-[var(--accent)] text-white font-bold rounded-xl flex items-center gap-2 hover:opacity-90 transition-all text-xs"
+                    >
+                      <Share2 className="w-4 h-4" />
+                      Invia File
+                    </button>
                   </div>
                 ) : (
                   <QRCodeSVG value={groupSharePayload} size={200} />
