@@ -43,27 +43,56 @@ const AREA_FLAGS: Record<string, string> = {
   'Turkish': '🇹🇷', 'Ukrainian': '🇺🇦', 'Vietnamese': '🇻🇳', 'Unknown': '🌍', 'Preferiti': '⭐'
 };
 
+const chunkTexts = (texts: string[], maxLen = 3000): string[][] => {
+  const chunks: string[][] = [];
+  let currentChunk: string[] = [];
+  let currentLen = 0;
+  
+  for (const text of texts) {
+    const wrapped = `<t>${(text || '').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</t>`;
+    if (currentLen + wrapped.length > maxLen && currentChunk.length > 0) {
+      chunks.push(currentChunk);
+      currentChunk = [wrapped];
+      currentLen = wrapped.length;
+    } else {
+      currentChunk.push(wrapped);
+      currentLen += wrapped.length;
+    }
+  }
+  if (currentChunk.length > 0) chunks.push(currentChunk);
+  return chunks;
+};
+
 const translateTexts = async (texts: string[]): Promise<string[]> => {
   if (texts.length === 0) return [];
-  const safeTexts = texts.map(t => (t || '').replace(/\n/g, ' ~NL~ ').replace(/\r/g, ''));
-  const joinedText = safeTexts.join('\n');
   try {
-    const res = await fetch('https://translate.googleapis.com/translate_a/single?client=gtx&dt=t&sl=en&tl=it', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: 'q=' + encodeURIComponent(joinedText)
-    });
-    const data = await res.json();
-    const fullTranslated = data[0].map((item: any) => item[0]).join('');
-    const tArray = fullTranslated.split('\n').map(s => {
-      return s.replace(/~ NL ~/gi, '\n')
-              .replace(/~NL~/gi, '\n')
-              .replace(/~ Nl ~/gi, '\n')
-              .replace(/~ nl ~/gi, '\n')
-              .replace(/~nl~/gi, '\n')
-              .trim();
-    });
-    return texts.map((_, i) => tArray[i] || texts[i]);
+    const chunks = chunkTexts(texts, 3000);
+    const results: string[] = [];
+    
+    for (const chunk of chunks) {
+      const joinedText = chunk.join('');
+      const res = await fetch('https://translate.googleapis.com/translate_a/single?client=gtx&dt=t&sl=en&tl=it', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: 'q=' + encodeURIComponent(joinedText)
+      });
+      if (!res.ok) throw new Error('Translation failed');
+      const data = await res.json();
+      const fullTranslated = data[0].map((item: any) => item[0]).join('');
+      
+      const regex = /<\s*t\s*>([\s\S]*?)<\/\s*t\s*>/gi;
+      let match;
+      let chunkResults = [];
+      while ((match = regex.exec(fullTranslated)) !== null) {
+        chunkResults.push(match[1].replace(/&lt;/g, '<').replace(/&gt;/g, '>').trim());
+      }
+      
+      if (chunkResults.length !== chunk.length) {
+         chunkResults = chunk.map(c => c.replace(/<t>/, '').replace(/<\/t>/, '').replace(/&lt;/g, '<').replace(/&gt;/g, '>'));
+      }
+      results.push(...chunkResults);
+    }
+    return texts.map((_, i) => results[i] || texts[i]);
   } catch (err) {
     console.error('Translation error', err);
     return texts;
