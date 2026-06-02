@@ -1782,6 +1782,7 @@ export default function App() {
               <SplitScreen
                 module={editingSplitModule}
                 onSave={(mod) => { updateModuleDirect(mod); setEditingSplitModule(null); }}
+                onAutoSave={(mod) => { updateModuleDirect(mod); setEditingSplitModule(mod); }}
                 onClose={() => setEditingSplitModule(null)}
                 onSaveToSandbox={handleSaveToSandbox}
               />
@@ -3042,6 +3043,10 @@ export default function App() {
             onSave={(updated) => {
               updateModuleDirect(updated);
               setEditingSplitModule(null);
+            }}
+            onAutoSave={(updated) => {
+              updateModuleDirect(updated);
+              setEditingSplitModule(updated);
             }}
             onClose={() => setEditingSplitModule(null)}
             onDelete={deleteModule}

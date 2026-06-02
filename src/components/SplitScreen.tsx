@@ -23,6 +23,7 @@ interface SplitScreenProps {
   module: SplitModule;
   onClose: () => void;
   onSave: (m: SplitModule) => void;
+  onAutoSave?: (m: SplitModule) => void;
   onSaveToSandbox?: (title: string, base64: string) => Promise<void>;
   onDelete?: (id: string) => void;
 }
@@ -32,7 +33,7 @@ const COMMON_CURRENCIES = ['EUR', 'USD', 'GBP', 'JPY', 'CHF', 'AUD', 'CAD'];
 // Helper for initials
 const getInitials = (name: string) => name.substring(0, 2).toUpperCase();
 
-export const SplitScreen = ({ module, onClose, onSave, onSaveToSandbox, onDelete }: SplitScreenProps) => {
+export const SplitScreen = ({ module, onClose, onSave, onAutoSave, onSaveToSandbox, onDelete }: SplitScreenProps) => {
   const [activeTab, setActiveTab] = useState<'expenses' | 'participants' | 'balances' | 'dashboard'>('expenses');
   const [currency, setCurrency] = useState(module.currency || 'EUR');
   const [participants, setParticipants] = useState<SplitParticipant[]>(module.participants || []);
@@ -257,6 +258,28 @@ export const SplitScreen = ({ module, onClose, onSave, onSaveToSandbox, onDelete
       expenses
     });
   };
+
+  // Auto-save con debounce: salva automaticamente quando cambiano i dati principali
+  const isFirstRender = React.useRef(true);
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
+    const timer = setTimeout(() => {
+      const autoSaveFn = onAutoSave ?? onSave;
+      autoSaveFn({
+        ...module,
+        title,
+        currency,
+        budget,
+        participants,
+        expenses
+      });
+    }, 800);
+    return () => clearTimeout(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [budget, title, currency, participants, expenses]);
 
   // Participant Handlers
   const handleAddParticipant = () => {
