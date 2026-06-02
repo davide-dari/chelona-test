@@ -704,17 +704,31 @@ export const SplitScreen = ({ module, onClose, onSave, onSaveToSandbox, onDelete
                     <p className="text-amber-100 text-[10px] font-black uppercase tracking-widest mb-1">Spesa Totale Gruppo</p>
                     <h2 className="text-4xl font-black mb-4">{formatCurrency(expenses.reduce((s, e) => s + e.amount, 0))}</h2>
                     
-                    {budget > 0 && (
-                      <div className="mt-4 pt-4 border-t border-white/20">
-                        <div className="flex items-center justify-between">
-                          <p className="text-amber-100 text-[10px] font-black uppercase tracking-widest">Budget Rimanente</p>
-                          <span className="text-xs font-bold text-white/80">di {formatCurrency(budget)}</span>
-                        </div>
-                        <h3 className={`text-2xl font-black mt-1 ${(budget - expenses.reduce((s, e) => s + e.amount, 0)) < 0 ? 'text-red-200' : 'text-white'}`}>
-                          {formatCurrency(budget - expenses.reduce((s, e) => s + e.amount, 0))}
-                        </h3>
+                    <div className="mt-4 pt-4 border-t border-white/20">
+                      <div className="flex items-center justify-between mb-2">
+                        <p className="text-amber-100 text-[10px] font-black uppercase tracking-widest">Budget del Gruppo</p>
                       </div>
-                    )}
+                      <div className="flex items-center gap-6">
+                        <div className="flex items-center bg-white/10 rounded-xl p-2 border border-white/20">
+                           <span className="text-white font-bold ml-2 mr-1">{currency}</span>
+                           <input 
+                             type="number"
+                             value={budget || ''}
+                             onChange={e => setBudget(parseFloat(e.target.value) || 0)}
+                             className="bg-transparent border-none text-white font-bold w-20 outline-none placeholder:text-white/50"
+                             placeholder="0"
+                           />
+                        </div>
+                        {budget > 0 && (
+                          <div className="flex flex-col">
+                            <span className="text-amber-100 text-[10px] font-black uppercase tracking-widest mb-1">Rimanente</span>
+                            <span className={`text-xl font-black leading-none ${(budget - expenses.reduce((s, e) => s + e.amount, 0)) < 0 ? 'text-red-200' : 'text-white'}`}>
+                              {formatCurrency(budget - expenses.reduce((s, e) => s + e.amount, 0))}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   </div>
                   <button 
                     onClick={() => {
