@@ -24,8 +24,9 @@ export function RecipesScreen({ onClose }: RecipeScreenProps) {
   }, []);
 
   const handleBack = useCallback(() => {
-    if (selectedMeal || selectedCategory || searchQuery) {
+    if (selectedMeal) {
       setSelectedMeal(null);
+    } else if (selectedCategory || searchQuery) {
       setSelectedCategory(null);
       setSearchQuery('');
     } else {

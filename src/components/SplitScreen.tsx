@@ -47,6 +47,7 @@ export const SplitScreen = ({ module, onClose, onSave, onAutoSave, onSaveToSandb
 
   const [showExpenseModal, setShowExpenseModal] = useState(false);
   const [editingExpenseId, setEditingExpenseId] = useState<string | null>(null);
+  const [expenseToDelete, setExpenseToDelete] = useState<SplitExpense | null>(null);
   
   // Expense form state
   const [expTitle, setExpTitle] = useState('');
@@ -387,11 +388,9 @@ export const SplitScreen = ({ module, onClose, onSave, onAutoSave, onSaveToSandb
     setShowExpenseModal(false);
   };
 
-  const handleDeleteExpense = (id: string, e: React.MouseEvent) => {
+  const handleDeleteExpense = (exp: SplitExpense, e: React.MouseEvent) => {
       e.stopPropagation();
-      if (window.confirm("Sei sicuro di voler eliminare questa spesa?")) {
-          setExpenses(expenses.filter(x => x.id !== id));
-      }
+      setExpenseToDelete(exp);
   }
 
   const { balances, settlements } = useMemo(() => calculateSplits(participants, expenses), [participants, expenses]);
@@ -599,7 +598,7 @@ export const SplitScreen = ({ module, onClose, onSave, onAutoSave, onSaveToSandb
                                         <Edit2 className="w-4 h-4" />
                                     </button>
                                     <button
-                                        onClick={(e) => handleDeleteExpense(exp.id, e)}
+                                        onClick={(e) => handleDeleteExpense(exp, e)}
                                         className="p-2 hover:bg-rose-500/10 text-[var(--text-muted)] hover:text-rose-500 rounded-lg transition-all"
                                     >
                                         <Trash2 className="w-4 h-4" />
@@ -1313,6 +1312,29 @@ export const SplitScreen = ({ module, onClose, onSave, onAutoSave, onSaveToSandb
           </div>
         )}
       </AnimatePresence>
+
+      {/* Delete Confirmation Modal */}
+      {expenseToDelete && (
+          <div className="fixed inset-0 z-[200] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+              <div className="bg-[var(--card-bg)] border border-[var(--border)] rounded-3xl w-full max-w-sm p-6 shadow-2xl animate-fade-in">
+                  <h3 className="text-lg font-bold text-[var(--text-main)] mb-2">Elimina Spesa</h3>
+                  <p className="text-sm text-[var(--text-muted)] mb-6">
+                      Sei sicuro di voler eliminare la spesa <span className="font-bold text-[var(--text-main)]">"{expenseToDelete.title}"</span> da {formatCurrency(expenseToDelete.amount)}? L'azione è irreversibile.
+                  </p>
+                  <div className="flex gap-3">
+                      <button onClick={() => setExpenseToDelete(null)} className="flex-1 py-3 font-bold text-[var(--text-muted)] bg-[var(--bg)] border border-[var(--border)] rounded-xl hover:bg-[var(--border)] transition-colors">
+                          Annulla
+                      </button>
+                      <button onClick={() => {
+                          setExpenses(expenses.filter(x => x.id !== expenseToDelete.id));
+                          setExpenseToDelete(null);
+                      }} className="flex-1 py-3 font-bold text-white bg-red-500 hover:bg-red-600 rounded-xl transition-colors shadow-lg shadow-red-500/20">
+                          Elimina
+                      </button>
+                  </div>
+              </div>
+          </div>
+      )}
     </div>
   );
 };
