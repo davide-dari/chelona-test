@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, Search, X, BookOpen, Star, ChefHat } from 'lucide-react';
 
@@ -23,19 +23,20 @@ export function RecipesScreen({ onClose }: RecipeScreenProps) {
     }
   }, []);
 
+  const handleBack = useCallback(() => {
+    if (selectedMeal || selectedCategory || searchQuery) {
+      setSelectedMeal(null);
+      setSelectedCategory(null);
+      setSearchQuery('');
+    } else {
+      onClose();
+    }
+  }, [selectedMeal, selectedCategory, searchQuery, onClose]);
+
   useEffect(() => {
-    const handleBack = () => {
-      if (selectedMeal || selectedCategory || searchQuery) {
-        setSelectedMeal(null);
-        setSelectedCategory(null);
-        setSearchQuery('');
-      } else {
-        onClose();
-      }
-    };
     window.addEventListener('recipes-back', handleBack);
     return () => window.removeEventListener('recipes-back', handleBack);
-  }, [selectedMeal, selectedCategory, searchQuery, onClose]);
+  }, [handleBack]);
 
   useEffect(() => {
     // Load the static JSON containing GialloZafferano scraped recipes
@@ -93,7 +94,7 @@ export function RecipesScreen({ onClose }: RecipeScreenProps) {
       <header className="h-16 lg:h-20 bg-[var(--bg)] px-6 flex items-center justify-between shrink-0 z-10 border-b border-[var(--border)]">
         <div className="flex items-center gap-4">
           <button 
-            onClick={onClose}
+            onClick={handleBack}
             className="p-2 hover:bg-[var(--surface-variant)] rounded-full text-[var(--text-muted)] transition-all flex items-center justify-center"
           >
             <ArrowLeft className="w-6 h-6" />
@@ -102,7 +103,7 @@ export function RecipesScreen({ onClose }: RecipeScreenProps) {
             <div className="w-8 h-8 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center">
               <BookOpen className="w-5 h-5" />
             </div>
-            <h1 className="text-xl lg:text-2xl font-bold text-[var(--text-main)]">Ricettario GialloZafferano</h1>
+            <h1 className="text-xl lg:text-2xl font-bold text-[var(--text-main)]">Ricettario</h1>
           </div>
         </div>
       </header>
@@ -176,15 +177,6 @@ export function RecipesScreen({ onClose }: RecipeScreenProps) {
           <div className="max-w-6xl mx-auto space-y-6">
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
               <div className="flex items-center gap-3 w-full sm:w-auto">
-                <button 
-                  onClick={() => {
-                     setSelectedCategory(null);
-                     setSearchQuery('');
-                  }}
-                  className="px-4 py-2 bg-[var(--surface-variant)] text-[var(--text-main)] rounded-full text-sm font-medium hover:bg-[var(--border)] transition-colors flex items-center gap-2"
-                >
-                  <ArrowLeft className="w-4 h-4" /> Indietro
-                </button>
                 <h2 className="text-xl md:text-2xl font-bold text-[var(--text-main)] flex items-center gap-2 truncate">
                   {selectedCategory === 'favorites' ? (
                     <><Star className="w-6 h-6 text-yellow-500 fill-yellow-500" /> Le mie Preferite</>

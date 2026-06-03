@@ -59,22 +59,25 @@ const extractRecipeDetails = (html) => {
   const db = [];
 
   for (const cat of categories) {
-    console.log("Scraping category:", cat.name);
-    const html = await fetchHtml(cat.url);
-    const recipesList = extractRecipes(html).slice(0, 10); // get first 10 for each to keep it fast
+    for (let page = 1; page <= 4; page++) {
+      const pageUrl = page === 1 ? cat.url : cat.url.replace('/ricette-cat/', `/ricette-cat/page${page}/`);
+      console.log("Scraping category:", cat.name, "Page:", page);
+      const html = await fetchHtml(pageUrl);
+      const recipesList = extractRecipes(html);
 
-    for (const r of recipesList) {
-      console.log("  Fetching recipe:", r.title);
-      const rHtml = await fetchHtml(r.url);
-      const details = extractRecipeDetails(rHtml);
-      db.push({
-        id: Buffer.from(r.url).toString('base64').substring(0, 10),
-        title: r.title,
-        image: r.image,
-        category: cat.name,
-        ingredients: details.ingredients,
-        steps: details.steps
-      });
+      for (const r of recipesList) {
+        console.log("  Fetching recipe:", r.title);
+        const rHtml = await fetchHtml(r.url);
+        const details = extractRecipeDetails(rHtml);
+        db.push({
+          id: Buffer.from(r.url).toString('base64').substring(0, 10),
+          title: r.title,
+          image: r.image,
+          category: cat.name,
+          ingredients: details.ingredients,
+          steps: details.steps
+        });
+      }
     }
   }
 
