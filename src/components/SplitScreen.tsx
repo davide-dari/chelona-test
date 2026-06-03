@@ -389,7 +389,9 @@ export const SplitScreen = ({ module, onClose, onSave, onAutoSave, onSaveToSandb
 
   const handleDeleteExpense = (id: string, e: React.MouseEvent) => {
       e.stopPropagation();
-      setExpenses(expenses.filter(x => x.id !== id));
+      if (window.confirm("Sei sicuro di voler eliminare questa spesa?")) {
+          setExpenses(expenses.filter(x => x.id !== id));
+      }
   }
 
   const { balances, settlements } = useMemo(() => calculateSplits(participants, expenses), [participants, expenses]);
@@ -519,7 +521,10 @@ export const SplitScreen = ({ module, onClose, onSave, onAutoSave, onSaveToSandb
                                 <div className="w-10 h-10 rounded-full bg-amber-500/10 border border-amber-500/20 flex items-center justify-center font-bold text-amber-600">
                                     {getInitials(p.name)}
                                 </div>
-                                <span className="font-bold text-[var(--text-main)]">{p.name}</span>
+                                <div className="flex flex-col">
+                                    <span className="font-bold text-[var(--text-main)]">{p.name}</span>
+                                    <span className="text-xs text-[var(--text-muted)] font-bold">Spesi: {formatCurrency(expenses.filter(e => e.paidById === p.id).reduce((s, e) => s + e.amount, 0))}</span>
+                                </div>
                             </div>
                             <button onClick={() => handleDeleteParticipant(p.id)} className="p-2 text-red-400 hover:bg-red-400/10 rounded-xl transition-all">
                                 <Trash2 className="w-4 h-4" />
@@ -542,7 +547,7 @@ export const SplitScreen = ({ module, onClose, onSave, onAutoSave, onSaveToSandb
                     <p className="text-sm text-[var(--text-muted)] font-bold">Nessuna spesa inserita</p>
                 </div>
             ) : (
-                [...expenses].sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map(exp => {
+                [...expenses].sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime()).map(exp => {
                     const payer = participants.find(p => p.id === exp.paidById);
                     const category = EXPENSE_CATEGORIES.find(c => c.id === (exp as any).categoryId);
 
