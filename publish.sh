@@ -27,6 +27,9 @@ TAG="v$VERSION"
 
 echo "🚀 Starting deployment for $TAG..."
 
+# Update version.ts to match package.json
+echo "export const APP_VERSION = '$VERSION';" > src/constants/version.ts
+
 # 1. Build Web App
 echo "📦 Building Web App..."
 node --max-old-space-size=1024 node_modules/vite/bin/vite.js build || { echo "❌ Build failed"; exit 1; }

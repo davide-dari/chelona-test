@@ -97,7 +97,7 @@ export function RecipesScreen({ onClose }: RecipeScreenProps) {
           }
         });
         return { ...meal, fridgeScore: score };
-      }).filter(m => m.fridgeScore > 0);
+      }).filter(m => m.fridgeScore === fridgeIngredients.length);
       
       return scored.sort((a, b) => b.fridgeScore - a.fridgeScore);
     }
