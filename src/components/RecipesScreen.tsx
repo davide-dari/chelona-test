@@ -44,25 +44,21 @@ export function RecipesScreen({ onClose }: RecipeScreenProps) {
   }, [handleBack]);
 
   useEffect(() => {
-    Promise.all([
-      fetch('/gz_recipes.json').then(res => res.json().catch(() => [])),
-      fetch('/ricette_mondo.json').then(res => res.json().catch(() => []))
-    ])
-    .then(([gzData, mondoData]) => {
+    fetch('/ricette_mondo.json').then(res => res.json().catch(() => []))
+    .then((mondoData) => {
       let combined: any[] = [];
-      if (Array.isArray(gzData)) {
-        combined = [...gzData];
-      }
       if (Array.isArray(mondoData)) {
-        const formatted = mondoData.map((m: any, i: number) => ({
-          id: `mondo_${i}`,
-          title: m.nome,
-          image: '',
-          category: m.categoria || 'Dal Mondo',
-          ingredients: m.ingredienti || [],
-          steps: [m.procedimento]
-        }));
-        combined = [...combined, ...formatted];
+        const formatted = mondoData
+          .filter((m: any) => m.image) // Only recipes with images
+          .map((m: any, i: number) => ({
+            id: `gz_${i}`,
+            title: m.nome,
+            image: m.image,
+            category: m.categoria || 'Primi',
+            ingredients: m.ingredienti || [],
+            steps: typeof m.procedimento === 'string' ? [m.procedimento] : (m.procedimento || [])
+          }));
+        combined = [...formatted];
       }
       setAllMeals(combined);
       setLoading(false);
@@ -73,10 +69,11 @@ export function RecipesScreen({ onClose }: RecipeScreenProps) {
     });
   }, []);
 
+  const FIXED_CATEGORIES = ['Antipasti', 'Primi', 'Secondi', 'Dolci', 'Colazione'];
+
   const categories = useMemo(() => {
-    const cats = new Set(allMeals.map(m => m.category));
-    return Array.from(cats);
-  }, [allMeals]);
+    return FIXED_CATEGORIES;
+  }, []);
 
   const filteredMeals = useMemo(() => {
     if (selectedCategory === 'favorites') {
@@ -192,14 +189,14 @@ export function RecipesScreen({ onClose }: RecipeScreenProps) {
                   </motion.button>
                   
                   {categories.map((cat, i) => {
-                    let emoji = "🍽️";
-                    const lowerCat = cat.toLowerCase();
-                    if (lowerCat.includes("primi")) emoji = "🍝";
-                    else if (lowerCat.includes("secondi")) emoji = "🥩";
-                    else if (lowerCat.includes("dolci")) emoji = "🍰";
-                    else if (lowerCat.includes("antipasti")) emoji = "🥗";
-                    
-                    if (lowerCat.includes("fit")) emoji = "🥑 " + emoji;
+                    const emojiMap: Record<string, string> = {
+                      'Antipasti': '🥗',
+                      'Primi': '🍝',
+                      'Secondi': '🥩',
+                      'Dolci': '🍰',
+                      'Colazione': '☕',
+                    };
+                    const emoji = emojiMap[cat] || '🍽️';
                     
                     return (
                     <motion.button
