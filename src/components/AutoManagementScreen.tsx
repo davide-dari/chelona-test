@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Save, Car, Wrench, Calendar, Fuel, User, Hash, Gauge, FileText, Smartphone, Scan, Check, QrCode, Bell, ChevronRight, X, ShieldCheck, Edit2, Trash2, Plus } from 'lucide-react';
+import { ArrowLeft, Save, Car, Wrench, Calendar, Fuel, User, Hash, Gauge, FileText, Smartphone, Scan, Check, QrCode, Bell, ChevronRight, X, ShieldCheck, Edit2, Trash2, Plus, Info } from 'lucide-react';
 import { AutoModule, FuelType } from '../types';
 import { DocumentScanner } from './DocumentScanner';
 import { CAR_BRANDS } from '../utils/carBrands';
@@ -7,6 +7,7 @@ import { CAR_MODELS } from '../constants/carModels';
 import { BrandModelPicker } from './BrandModelPicker';
 import { motion, AnimatePresence } from 'motion/react';
 import { notificationService } from '../services/notificationService';
+import { ConfirmDialog } from './ConfirmDialog';
 
 interface AutoManagementScreenProps {
   module: AutoModule;
@@ -270,7 +271,7 @@ export const AutoManagementScreen = ({ module, onSave, onCancel, onDelete, onSha
         <div className="flex items-center gap-2">
            {onDelete && (
              <button 
-               onClick={() => { if(window.confirm('Eliminare definitivamente questo veicolo?')) { onDelete(module.id); onCancel(); } }}
+               onClick={() => setShowDeleteConfirm(true)}
                className="p-2.5 text-red-400 hover:bg-red-500/10 rounded-xl transition-all"
                title="Elimina"
              >
@@ -735,6 +736,13 @@ export const AutoManagementScreen = ({ module, onSave, onCancel, onDelete, onSha
           </motion.div>
         )}
       </AnimatePresence>
+      <ConfirmDialog
+        isOpen={showDeleteConfirm}
+        title="Elimina Veicolo"
+        message="Eliminare definitivamente questo veicolo?"
+        onConfirm={() => { onDelete?.(module?.id || ''); onCancel(); }}
+        onCancel={() => setShowDeleteConfirm(false)}
+      />
     </motion.div>
   );
 };

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { DocumentModule } from '../types';
 import { ArrowLeft, FileText, Calendar, Shield, Trash2, Edit2, Save, Download, Eye, QrCode, Share2, MoreVertical, X, Clock, MapPin, Building2, Hash, Copy, CheckCheck } from 'lucide-react';
+import { ConfirmDialog } from './ConfirmDialog';
 
 interface DocumentManagementScreenProps {
   module: DocumentModule;
@@ -15,6 +16,7 @@ export const DocumentManagementScreen = ({ module, onSave, onCancel, onDelete, o
   const [isEditing, setIsEditing] = useState(false);
   const [data, setData] = useState<DocumentModule>({ ...module });
   const [showViewer, setShowViewer] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [copied, setCopied] = useState(false);
 
   const handleCopy = (e: React.MouseEvent) => {
@@ -533,7 +535,7 @@ export const DocumentManagementScreen = ({ module, onSave, onCancel, onDelete, o
                   <button onClick={handleSave} className="flex-1 py-4 bg-[var(--accent)] text-white rounded-2xl font-bold uppercase tracking-widest">Applica Modifiche</button>
                   {onDelete && (
                     <button 
-                      onClick={() => { if(window.confirm('Eliminare questo documento?')) { onDelete(data.id); onCancel(); } }} 
+                      onClick={() => setShowDeleteConfirm(true)} 
                       className="p-4 bg-red-500/10 text-red-500 rounded-2xl hover:bg-red-500 hover:text-white transition-all"
                     >
                       <Trash2 className="w-6 h-6" />
@@ -560,6 +562,13 @@ export const DocumentManagementScreen = ({ module, onSave, onCancel, onDelete, o
            </div>
          )}
       </AnimatePresence>
+      <ConfirmDialog
+        isOpen={showDeleteConfirm}
+        title="Elimina Documento"
+        message="Eliminare questo documento?"
+        onConfirm={() => { onDelete?.(data.id); onCancel(); }}
+        onCancel={() => setShowDeleteConfirm(false)}
+      />
     </motion.div>
   );
 };

@@ -7,6 +7,7 @@ import { biometricService } from '../services/biometricService';
 import { APP_VERSION } from '../constants/version';
 
 import { ProfileConfig } from '../types';
+import { ConfirmDialog } from './ConfirmDialog';
 
 interface LockScreenProps {
   isVisible?: boolean;
@@ -31,6 +32,7 @@ export const LockScreen = ({ isVisible, onAuthenticated, onStartScan, onOpenTool
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [profileToDelete, setProfileToDelete] = useState<{id: string, username: string} | null>(null);
   const [isBioSupported, setIsBioSupported] = useState(false);
   const [onboardingStep, setOnboardingStep] = useState(0); // 0: Welcome, 1: Privacy, 2: Setup
   const autoBioTriggered = useRef<string | null>(null);
@@ -69,8 +71,14 @@ export const LockScreen = ({ isVisible, onAuthenticated, onStartScan, onOpenTool
   };
 
   const handleDeleteProfile = async (profileId: string, username: string) => {
-    if (window.confirm(`Sei sicuro di voler eliminare il profilo "${username}"? Tutti i dati associati andranno persi.`)) {
-      try {
+    setProfileToDelete({ id: profileId, username });
+  };
+
+  const confirmDeleteProfile = async () => {
+    if (!profileToDelete) return;
+    const { id: profileId } = profileToDelete;
+    
+    try {
         const targetProfile = profiles.find(p => p.id === profileId);
         const serverKey = targetProfile?.biometricServerKey;
 
@@ -90,7 +98,7 @@ export const LockScreen = ({ isVisible, onAuthenticated, onStartScan, onOpenTool
       } catch (err) {
         console.error('[LockScreen] Error deleting profile:', err);
       }
-    }
+      setProfileToDelete(null);
   };
 
   const refreshProfiles = (currentView?: string) => {
@@ -291,6 +299,7 @@ export const LockScreen = ({ isVisible, onAuthenticated, onStartScan, onOpenTool
   };
 
   return (
+    <>
     <div className="fixed inset-0 bg-[var(--bg)] flex items-center justify-center p-4 z-[100] overflow-y-auto transition-colors duration-300">
       <motion.div
         initial={{ opacity: 0, scale: 0.98 }}
@@ -712,5 +721,14 @@ export const LockScreen = ({ isVisible, onAuthenticated, onStartScan, onOpenTool
     </AnimatePresence>
   </motion.div>
 </div>
+
+  <ConfirmDialog
+    isOpen={!!profileToDelete}
+    title="Elimina Profilo"
+    message={`Sei sicuro di voler eliminare il profilo "${profileToDelete?.username}"? Tutti i dati associati andranno persi.`}
+    onConfirm={confirmDeleteProfile}
+    onCancel={() => setProfileToDelete(null)}
+  />
+</>
 );
 };

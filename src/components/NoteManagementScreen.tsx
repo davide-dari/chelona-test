@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { GenericModule } from '../types';
 import { ArrowLeft, StickyNote, Save, Trash2, Calendar, Share2, Copy, Check, Clock, Edit3, X } from 'lucide-react';
+import { ConfirmDialog } from './ConfirmDialog';
 
 interface NoteManagementScreenProps {
   module: GenericModule;
@@ -13,6 +14,7 @@ interface NoteManagementScreenProps {
 export const NoteManagementScreen = ({ module, onSave, onCancel, onDelete }: NoteManagementScreenProps) => {
   const [data, setData] = useState<GenericModule>({ ...module });
   const [copied, setCopied] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const handleSave = () => {
     onSave({
@@ -123,7 +125,7 @@ export const NoteManagementScreen = ({ module, onSave, onCancel, onDelete }: Not
            {onDelete && (
              <div className="pt-10 flex justify-center">
                 <button 
-                  onClick={() => { if(window.confirm('Eliminare questo appunto?')) { onDelete(data.id); onCancel(); } }}
+                  onClick={() => setShowDeleteConfirm(true)}
                   className="flex items-center gap-2 px-6 py-3 bg-red-500/10 text-red-500 rounded-2xl font-bold text-xs uppercase tracking-widest hover:bg-red-500 hover:text-white transition-all shadow-sm shadow-red-500/10"
                 >
                    <Trash2 className="w-4 h-4" />
@@ -134,6 +136,13 @@ export const NoteManagementScreen = ({ module, onSave, onCancel, onDelete }: Not
 
         </div>
       </div>
+      <ConfirmDialog
+        isOpen={showDeleteConfirm}
+        title="Elimina Appunto"
+        message="Eliminare questo appunto?"
+        onConfirm={() => { onDelete?.(data.id); onCancel(); }}
+        onCancel={() => setShowDeleteConfirm(false)}
+      />
     </motion.div>
   );
 };

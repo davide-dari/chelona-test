@@ -18,6 +18,7 @@ import { EXPENSE_CATEGORIES } from '../constants/expenses';
 import { QrScanner } from './QrScanner';
 import { QRCodeSVG } from 'qrcode.react';
 import { lzw } from '../utils/lzw';
+import { ConfirmDialog } from './ConfirmDialog';
 
 interface SplitScreenProps {
   module: SplitModule;
@@ -50,6 +51,8 @@ export const SplitScreen = ({ module, onClose, onSave, onAutoSave, onSaveToSandb
   const [expenseToDelete, setExpenseToDelete] = useState<SplitExpense | null>(null);
   
   // Expense form state
+  const [qrError, setQrError] = useState('');
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [expTitle, setExpTitle] = useState('');
   const [expAmount, setExpAmount] = useState('');
   const [expDate, setExpDate] = useState(new Date().toISOString().substring(0, 10));
@@ -452,8 +455,8 @@ export const SplitScreen = ({ module, onClose, onSave, onAutoSave, onSaveToSandb
            </button>
            {onDelete && (
              <button 
-               onClick={() => { if(window.confirm('Eliminare definitivamente questo gruppo di spese?')) { onDelete(module.id); onClose(); } }}
-               className="p-2.5 text-red-400 hover:bg-red-500/10 rounded-xl transition-all"
+               onClick={() => setShowDeleteConfirm(true)}
+               className="p-2 sm:p-2.5 text-red-500 hover:bg-red-500/10 rounded-xl transition-all"
                title="Elimina"
              >
                <Trash2 className="w-5 h-5" />
@@ -1313,28 +1316,30 @@ export const SplitScreen = ({ module, onClose, onSave, onAutoSave, onSaveToSandb
         )}
       </AnimatePresence>
 
-      {/* Delete Confirmation Modal */}
-      {expenseToDelete && (
-          <div className="fixed inset-0 z-[200] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-              <div className="bg-[var(--card-bg)] border border-[var(--border)] rounded-3xl w-full max-w-sm p-6 shadow-2xl animate-fade-in">
-                  <h3 className="text-lg font-bold text-[var(--text-main)] mb-2">Elimina Spesa</h3>
-                  <p className="text-sm text-[var(--text-muted)] mb-6">
-                      Sei sicuro di voler eliminare la spesa <span className="font-bold text-[var(--text-main)]">"{expenseToDelete.title}"</span> da {formatCurrency(expenseToDelete.amount)}? L'azione è irreversibile.
-                  </p>
-                  <div className="flex gap-3">
-                      <button onClick={() => setExpenseToDelete(null)} className="flex-1 py-3 font-bold text-[var(--text-muted)] bg-[var(--bg)] border border-[var(--border)] rounded-xl hover:bg-[var(--border)] transition-colors">
-                          Annulla
-                      </button>
-                      <button onClick={() => {
-                          setExpenses(expenses.filter(x => x.id !== expenseToDelete.id));
-                          setExpenseToDelete(null);
-                      }} className="flex-1 py-3 font-bold text-white bg-red-500 hover:bg-red-600 rounded-xl transition-colors shadow-lg shadow-red-500/20">
-                          Elimina
-                      </button>
-                  </div>
-              </div>
-          </div>
-      )}
+      <ConfirmDialog
+        isOpen={!!expenseToDelete}
+        title="Elimina Spesa"
+        message={
+          <>
+            Sei sicuro di voler eliminare la spesa <span className="font-bold text-[var(--text-main)]">"{expenseToDelete?.title}"</span> da {expenseToDelete ? formatCurrency(expenseToDelete.amount) : ''}? L'azione è irreversibile.
+          </>
+        }
+        onConfirm={() => {
+          if (expenseToDelete) {
+            setExpenses(expenses.filter(x => x.id !== expenseToDelete.id));
+            setExpenseToDelete(null);
+          }
+        }}
+        onCancel={() => setExpenseToDelete(null)}
+      />
+
+      <ConfirmDialog
+        isOpen={showDeleteConfirm}
+        title="Elimina Gruppo Spese"
+        message="Eliminare definitivamente questo gruppo di spese?"
+        onConfirm={() => { onDelete?.(module.id); onClose(); }}
+        onCancel={() => setShowDeleteConfirm(false)}
+      />
     </div>
   );
 };

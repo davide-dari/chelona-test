@@ -5,6 +5,8 @@ import ReactGlobe from 'react-globe.gl';
 import { TravelModule, TravelDestination, TravelCountryGroup, TravelNation } from '../types';
 import { FAMOUS_PLACES_DB } from '../constants/famousPlaces';
 
+import { ConfirmDialog } from './ConfirmDialog';
+
 interface TravelScreenProps {
   module: TravelModule;
   onSave: (m: TravelModule) => void;
@@ -1242,67 +1244,22 @@ export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onCl
 
       {/* FAB Menu removed to avoid overlap */}
 
-      {/* Delete destination confirm */}
-      <AnimatePresence>
-        {deletingId && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[400] flex items-center justify-center p-6"
-          >
-            <div className="absolute inset-0 bg-black/60 backdrop-blur-md" onClick={() => setDeletingId(null)} />
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              className="relative bg-[var(--card-bg)] rounded-[2rem] p-8 w-full max-w-sm border border-[var(--border)] text-center shadow-2xl"
-            >
-              <div className="w-14 h-14 bg-red-500/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                <Trash2 className="w-7 h-7 text-red-400" />
-              </div>
-              <h3 className="text-lg font-black text-[var(--text-main)] mb-2">Elimina destinazione?</h3>
-              <p className="text-sm text-[var(--text-muted)] mb-6">Questa azione è irreversibile.</p>
-              <div className="flex gap-3">
-                <button onClick={() => setDeletingId(null)} className="flex-1 py-3 bg-[var(--bg)] border border-[var(--border)] rounded-2xl font-bold text-[var(--text-muted)] text-sm">Annulla</button>
-                <button onClick={() => handleDelete(deletingId)} className="flex-1 py-3 bg-red-500 text-white rounded-2xl font-bold text-sm shadow-lg shadow-red-500/20">Elimina</button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <ConfirmDialog
+        isOpen={!!deletingId}
+        title="Elimina destinazione"
+        message="Questa azione è irreversibile."
+        onConfirm={() => { if(deletingId) handleDelete(deletingId); }}
+        onCancel={() => setDeletingId(null)}
+      />
 
       {/* Delete country folder confirm */}
-      <AnimatePresence>
-        {deletingGroupId && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[400] flex items-center justify-center p-6"
-          >
-            <div className="absolute inset-0 bg-black/60 backdrop-blur-md" onClick={() => setDeletingGroupId(null)} />
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              className="relative bg-[var(--card-bg)] rounded-[2rem] p-8 w-full max-w-sm border border-[var(--border)] text-center shadow-2xl"
-            >
-              <div className="w-14 h-14 bg-rose-500/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                <Trash2 className="w-7 h-7 text-rose-500" />
-              </div>
-              <h3 className="text-lg font-black text-[var(--text-main)] mb-2">Elimina cartella paese?</h3>
-              <p className="text-xs text-[var(--text-muted)] mb-6">
-                Tutti i luoghi all'interno di questo paese verranno conservati e spostati in "Destinazioni Libere" (senza cartella).
-              </p>
-              <div className="flex gap-3">
-                <button onClick={() => setDeletingGroupId(null)} className="flex-1 py-3 bg-[var(--bg)] border border-[var(--border)] rounded-2xl font-bold text-[var(--text-muted)] text-sm">Annulla</button>
-                <button onClick={() => handleDeleteGroup(deletingGroupId)} className="flex-1 py-3 bg-rose-500 text-white rounded-2xl font-bold text-sm shadow-lg shadow-rose-500/20">Elimina</button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <ConfirmDialog
+        isOpen={!!deletingGroupId}
+        title="Elimina cartella paese"
+        message="Tutti i luoghi all'interno di questo paese verranno conservati e spostati in 'Destinazioni Libere' (senza cartella)."
+        onConfirm={() => { if(deletingGroupId) handleDeleteGroup(deletingGroupId); }}
+        onCancel={() => setDeletingGroupId(null)}
+      />
 
       {/* Add country group modal */}
       <AnimatePresence>

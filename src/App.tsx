@@ -23,6 +23,7 @@ import { SingleExpenseScreen } from './components/SingleExpenseScreen';
 import { AddressBookScreen } from './components/AddressBookScreen';
 import { RecipesScreen } from './components/RecipesScreen';
 import { TravelScreen } from './components/TravelScreen';
+import { ConfirmDialog } from './components/ConfirmDialog';
 import { TransportScreen } from './components/TransportScreen';
 import { notificationService } from './services/notificationService';
 import { APP_VERSION } from './constants/version';
@@ -272,6 +273,7 @@ export default function App() {
   const [newFolderName, setNewFolderName] = useState('');
   const [editingFolderId, setEditingFolderId] = useState<string | null>(null);
   const [moduleToDelete, setModuleToDelete] = useState<Module | null>(null);
+  const [folderToDelete, setFolderToDelete] = useState<string | null>(null);
   const [isAddressBookOpen, setIsAddressBookOpen] = useState(false);
   const [isRecipesOpen, setIsRecipesOpen] = useState(false);
   const [autoFormStep, setAutoFormStep] = useState(0);
@@ -735,16 +737,21 @@ export default function App() {
 
   const handleDeleteFolder = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (confirm('Sei sicuro di voler eliminare questa cartella? I documenti al suo interno verranno spostati nella dashboard principale.')) {
-      const updatedFolders = folders.filter(f => f.id !== id);
-      const updatedModules = modules.map(m => m.folderId === id ? { ...m, folderId: undefined } : m);
+    setFolderToDelete(id);
+  };
+
+  const confirmDeleteFolder = async () => {
+    if (folderToDelete) {
+      const updatedFolders = folders.filter(f => f.id !== folderToDelete);
+      const updatedModules = modules.map(m => m.folderId === folderToDelete ? { ...m, folderId: undefined } : m);
 
       setFolders(updatedFolders);
       setModules(updatedModules);
       await saveAppState(updatedModules, updatedFolders);
-      if (selectedFolderId === id) {
+      if (selectedFolderId === folderToDelete) {
         setSelectedFolderId(null);
       }
+      setFolderToDelete(null);
     }
   };
 
@@ -2955,51 +2962,26 @@ export default function App() {
       </AnimatePresence>
 
 
-      {/* Delete Confirmation Modal */}
+      <ConfirmDialog
+        isOpen={!!moduleToDelete}
+        title="Elimina Elemento"
+        message={
+          <>
+            Sei sicuro di voler eliminare <span className="text-[var(--text-main)] font-bold">"{moduleToDelete?.title || 'questo elemento'}"</span>? 
+            Questa azione è irreversibile e i dati verranno rimossi permanentemente.
+          </>
+        }
+        onConfirm={() => { if(moduleToDelete) deleteModule(moduleToDelete.id); }}
+        onCancel={() => setModuleToDelete(null)}
+      />
 
-      <AnimatePresence>
-        {moduleToDelete && (
-          <div className="fixed inset-0 z-[10000] flex items-center justify-center p-6">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setModuleToDelete(null)}
-              className="absolute inset-0 bg-black/60 backdrop-blur-md"
-            />
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0, y: 20 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.9, opacity: 0, y: 20 }}
-              className="relative w-full max-w-sm bg-[var(--card-bg)] rounded-[2.5rem] p-8 shadow-2xl border border-[var(--border)] text-center overflow-hidden"
-            >
-              <div className="w-16 h-16 bg-red-500/10 rounded-2xl flex items-center justify-center text-red-500 mx-auto mb-6">
-                <Trash2 className="w-8 h-8" />
-              </div>
-              <h3 className="text-xl font-bold text-[var(--text-main)] mb-2">Elimina Elemento</h3>
-              <p className="text-[var(--text-muted)] text-sm mb-8">
-                Sei sicuro di voler eliminare <span className="text-[var(--text-main)] font-bold">"{moduleToDelete.title || 'questo elemento'}"</span>? 
-                Questa azione è irreversibile e i dati verranno rimossi permanentemente.
-              </p>
-              
-              <div className="flex flex-col gap-3">
-                <button
-                  onClick={() => deleteModule(moduleToDelete.id)}
-                  className="w-full py-4 bg-red-500 hover:bg-red-600 text-white rounded-2xl font-bold transition-all shadow-lg shadow-red-500/20 active:scale-[0.98]"
-                >
-                  Sì, Elimina
-                </button>
-                <button
-                  onClick={() => setModuleToDelete(null)}
-                  className="w-full py-4 bg-[var(--bg)] hover:bg-[var(--border)] text-[var(--text-muted)] hover:text-[var(--text-main)] rounded-2xl font-bold transition-all"
-                >
-                  Annulla
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+      <ConfirmDialog
+        isOpen={!!folderToDelete}
+        title="Elimina Cartella"
+        message="Sei sicuro di voler eliminare questa cartella? I documenti al suo interno verranno spostati nella dashboard principale."
+        onConfirm={confirmDeleteFolder}
+        onCancel={() => setFolderToDelete(null)}
+      />
 
 
       {/* Toast Notification */}

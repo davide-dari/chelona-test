@@ -5,6 +5,7 @@ import { SingleExpenseModule } from '../types';
 import { EXPENSE_CATEGORIES, CURRENCIES } from '../constants/expenses';
 import { DocumentScanner } from './DocumentScanner';
 import { DocumentViewer } from './DocumentViewer';
+import { ConfirmDialog } from './ConfirmDialog';
 
 interface SingleExpenseScreenProps {
   module: SingleExpenseModule;
@@ -29,6 +30,7 @@ export const SingleExpenseScreen = ({ module, onClose, onSave, onSaveToSandbox, 
   const [amountDisplay, setAmountDisplay] = useState(module.amount ? String(module.amount) : '');
   const [showScanner, setShowScanner] = useState(false);
   const [viewingAttachment, setViewingAttachment] = useState<string | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [shouldArchive, setShouldArchive] = useState(false);
 
@@ -74,8 +76,8 @@ export const SingleExpenseScreen = ({ module, onClose, onSave, onSaveToSandbox, 
         <div className="flex items-center gap-2">
           {onDelete && (
             <button 
-              onClick={() => { if(window.confirm('Eliminare definitivamente questa spesa?')) { onDelete(module.id); onClose(); } }}
-              className="p-3 bg-red-500/5 text-red-500 rounded-2xl hover:bg-red-500/10 transition-all shadow-sm"
+              onClick={() => setShowDeleteConfirm(true)}
+              className="p-3 bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white rounded-2xl transition-all"
               title="Elimina"
             >
               <Trash2 className="w-6 h-6" />
@@ -272,6 +274,13 @@ export const SingleExpenseScreen = ({ module, onClose, onSave, onSaveToSandbox, 
           />
         )}
       </AnimatePresence>
+      <ConfirmDialog
+        isOpen={showDeleteConfirm}
+        title="Elimina Spesa"
+        message="Eliminare definitivamente questa spesa?"
+        onConfirm={() => { onDelete?.(module.id); onClose(); }}
+        onCancel={() => setShowDeleteConfirm(false)}
+      />
     </div>
   );
 };

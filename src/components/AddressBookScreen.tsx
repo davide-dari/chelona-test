@@ -6,6 +6,7 @@ import { Share } from '@capacitor/share';
 import { storage } from '../services/storage';
 import { QrScanner } from './QrScanner';
 import { QRCodeSVG } from 'qrcode.react';
+import { ConfirmDialog } from './ConfirmDialog';
 
 interface Address {
   id: string;
@@ -26,6 +27,7 @@ export const AddressBookScreen = ({ onClose }: AddressBookScreenProps) => {
   const [newTitle, setNewTitle] = useState('');
   const [newQuery, setNewQuery] = useState('');
   const [isScanning, setIsScanning] = useState(false);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [sharingAddr, setSharingAddr] = useState<Address | null>(null);
   
   const [contextMenuId, setContextMenuId] = useState<string | null>(null);
@@ -118,9 +120,14 @@ export const AddressBookScreen = ({ onClose }: AddressBookScreenProps) => {
   };
 
   const handleDelete = (id: string) => {
-    if (confirm('Vuoi davvero eliminare questo indirizzo?')) {
-      saveAddresses(addresses.filter(a => a.id !== id));
-      setContextMenuId(null);
+    setDeleteConfirmId(id);
+    setContextMenuId(null);
+  };
+
+  const confirmDelete = () => {
+    if (deleteConfirmId) {
+      saveAddresses(addresses.filter(a => a.id !== deleteConfirmId));
+      setDeleteConfirmId(null);
     }
   };
 
@@ -435,6 +442,13 @@ export const AddressBookScreen = ({ onClose }: AddressBookScreenProps) => {
           </div>
         )}
       </AnimatePresence>
+      <ConfirmDialog
+        isOpen={!!deleteConfirmId}
+        title="Elimina Indirizzo"
+        message="Vuoi davvero eliminare questo indirizzo?"
+        onConfirm={confirmDelete}
+        onCancel={() => setDeleteConfirmId(null)}
+      />
     </motion.div>
   );
 };
