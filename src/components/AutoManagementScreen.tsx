@@ -73,6 +73,7 @@ export const AutoManagementScreen = ({ module, onSave, onCancel, onDelete, onSha
   const [quickKm, setQuickKm] = useState(data.currentKm || '');
   const [localPrefs, setLocalPrefs] = useState<Record<string, { enabled: boolean; offset: number }>>({});
   const [showCopiedToast, setShowCopiedToast] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const handleCopyPlate = () => {
     if (!data.plate) return;
