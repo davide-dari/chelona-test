@@ -16,6 +16,10 @@ export function RecipesScreen({ onClose }: RecipeScreenProps) {
   const [selectedMeal, setSelectedMeal] = useState<any | null>(null);
   const [favorites, setFavorites] = useState<any[]>([]);
 
+  // Fridge state
+  const [fridgeIngredients, setFridgeIngredients] = useState<string[]>([]);
+  const [fridgeInput, setFridgeInput] = useState('');
+
   useEffect(() => {
     const savedFavs = localStorage.getItem('chelona_gz_favorites');
     if (savedFavs) {
@@ -40,19 +44,33 @@ export function RecipesScreen({ onClose }: RecipeScreenProps) {
   }, [handleBack]);
 
   useEffect(() => {
-    // Load the static JSON containing GialloZafferano scraped recipes
-    fetch('/gz_recipes.json')
-      .then(res => res.json())
-      .then(data => {
-        if(Array.isArray(data)) {
-          setAllMeals(data);
-        }
-        setLoading(false);
-      })
-      .catch(e => {
-        console.error("Failed to load recipes", e);
-        setLoading(false);
-      });
+    Promise.all([
+      fetch('/gz_recipes.json').then(res => res.json().catch(() => [])),
+      fetch('/ricette_mondo.json').then(res => res.json().catch(() => []))
+    ])
+    .then(([gzData, mondoData]) => {
+      let combined: any[] = [];
+      if (Array.isArray(gzData)) {
+        combined = [...gzData];
+      }
+      if (Array.isArray(mondoData)) {
+        const formatted = mondoData.map((m: any, i: number) => ({
+          id: `mondo_${i}`,
+          title: m.nome,
+          image: '',
+          category: m.categoria || 'Dal Mondo',
+          ingredients: m.ingredienti || [],
+          steps: [m.procedimento]
+        }));
+        combined = [...combined, ...formatted];
+      }
+      setAllMeals(combined);
+      setLoading(false);
+    })
+    .catch(e => {
+      console.error("Failed to load recipes", e);
+      setLoading(false);
+    });
   }, []);
 
   const categories = useMemo(() => {
@@ -66,12 +84,30 @@ export function RecipesScreen({ onClose }: RecipeScreenProps) {
       return favorites.filter(m => m.title.toLowerCase().includes(searchQuery.toLowerCase()));
     }
 
+    if (selectedCategory === 'fridge') {
+      if (fridgeIngredients.length === 0) return [];
+      
+      const scored = allMeals.map(meal => {
+        let score = 0;
+        const recipeIngsText = meal.ingredients ? meal.ingredients.join(' ').toLowerCase() : meal.steps.join(' ').toLowerCase();
+        
+        fridgeIngredients.forEach(ing => {
+          if (recipeIngsText.includes(ing.toLowerCase())) {
+            score += 1;
+          }
+        });
+        return { ...meal, fridgeScore: score };
+      }).filter(m => m.fridgeScore > 0);
+      
+      return scored.sort((a, b) => b.fridgeScore - a.fridgeScore);
+    }
+
     return allMeals.filter(meal => {
       const matchCat = selectedCategory ? meal.category === selectedCategory : true;
       const matchSearch = searchQuery ? meal.title.toLowerCase().includes(searchQuery.toLowerCase()) : true;
       return matchCat && matchSearch;
     });
-  }, [allMeals, selectedCategory, searchQuery, favorites]);
+  }, [allMeals, selectedCategory, searchQuery, favorites, fridgeIngredients]);
 
   const toggleFavorite = (meal: any, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
@@ -144,6 +180,16 @@ export function RecipesScreen({ onClose }: RecipeScreenProps) {
                     <Star className="w-8 h-8 text-yellow-600 mb-2 fill-yellow-600" />
                     <span className="font-bold text-yellow-800 text-sm text-center">Le mie Preferite</span>
                   </motion.button>
+
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => setSelectedCategory('fridge')}
+                    className="flex flex-col items-center justify-center p-4 bg-gradient-to-br from-cyan-100 to-blue-200 border border-cyan-300 rounded-2xl transition-all shadow-sm group hover:shadow-md"
+                  >
+                    <div className="text-3xl mb-2">❄️</div>
+                    <span className="font-bold text-blue-800 text-sm text-center">Il mio Frigo</span>
+                  </motion.button>
                   
                   {categories.map((cat, i) => {
                     let emoji = "🍽️";
@@ -181,6 +227,8 @@ export function RecipesScreen({ onClose }: RecipeScreenProps) {
                 <h2 className="text-xl md:text-2xl font-bold text-[var(--text-main)] flex items-center gap-2 truncate">
                   {selectedCategory === 'favorites' ? (
                     <><Star className="w-6 h-6 text-yellow-500 fill-yellow-500" /> Le mie Preferite</>
+                  ) : selectedCategory === 'fridge' ? (
+                    <>❄️ Il mio Frigo</>
                   ) : searchQuery && !selectedCategory ? (
                     <>Ricerca: <span className="text-orange-500">{searchQuery}</span></>
                   ) : (
@@ -189,17 +237,67 @@ export function RecipesScreen({ onClose }: RecipeScreenProps) {
                 </h2>
               </div>
               
-              <div className="relative w-full sm:w-64">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] w-4 h-4" />
-                <input
-                  type="text"
-                  placeholder="Cerca tra queste..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full bg-[var(--surface-variant)] border border-[var(--border)] rounded-xl py-2 pl-9 pr-4 text-[var(--text-main)] outline-none text-sm"
-                />
-              </div>
+              {selectedCategory !== 'fridge' && (
+                <div className="relative w-full sm:w-64">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] w-4 h-4" />
+                  <input
+                    type="text"
+                    placeholder="Cerca tra queste..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full bg-[var(--surface-variant)] border border-[var(--border)] rounded-xl py-2 pl-9 pr-4 text-[var(--text-main)] outline-none text-sm"
+                  />
+                </div>
+              )}
             </div>
+
+            {selectedCategory === 'fridge' && (
+              <div className="bg-[var(--surface-variant)] p-4 rounded-2xl border border-[var(--border)]">
+                <div className="flex gap-2 mb-3">
+                  <input 
+                    type="text"
+                    placeholder="Aggiungi ingrediente (es: pollo, uova...)"
+                    value={fridgeInput}
+                    onChange={(e) => setFridgeInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && fridgeInput.trim()) {
+                        if (!fridgeIngredients.includes(fridgeInput.trim())) {
+                          setFridgeIngredients([...fridgeIngredients, fridgeInput.trim()]);
+                        }
+                        setFridgeInput('');
+                      }
+                    }}
+                    className="flex-1 bg-[var(--bg)] border border-[var(--border)] rounded-xl py-2 px-4 text-[var(--text-main)] outline-none focus:border-cyan-500"
+                  />
+                  <button 
+                    onClick={() => {
+                      if (fridgeInput.trim() && !fridgeIngredients.includes(fridgeInput.trim())) {
+                        setFridgeIngredients([...fridgeIngredients, fridgeInput.trim()]);
+                        setFridgeInput('');
+                      }
+                    }}
+                    className="px-4 py-2 bg-cyan-600 text-white rounded-xl font-bold hover:bg-cyan-700 transition-colors"
+                  >
+                    Aggiungi
+                  </button>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {fridgeIngredients.map(ing => (
+                    <div key={ing} className="flex items-center gap-1 bg-cyan-900/30 text-cyan-500 px-3 py-1 rounded-full border border-cyan-800/50 text-sm">
+                      {ing}
+                      <button onClick={() => setFridgeIngredients(fridgeIngredients.filter(i => i !== ing))} className="hover:text-cyan-300 ml-1">
+                        &times;
+                      </button>
+                    </div>
+                  ))}
+                  {fridgeIngredients.length > 0 && (
+                    <button onClick={() => setFridgeIngredients([])} className="text-xs text-[var(--text-muted)] hover:text-red-400 ml-2">
+                      Svuota
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
 
             {loading ? (
               <div className="flex items-center justify-center py-20">
@@ -237,7 +335,14 @@ export function RecipesScreen({ onClose }: RecipeScreenProps) {
                       </button>
                     </div>
                     <div className="p-4 flex-1 flex flex-col justify-center">
-                      <span className="text-xs font-bold text-orange-500 mb-1 uppercase tracking-wider">{meal.category}</span>
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-xs font-bold text-orange-500 uppercase tracking-wider">{meal.category}</span>
+                        {meal.fridgeScore > 0 && (
+                          <span className="text-xs font-bold text-cyan-400 bg-cyan-900/30 px-2 py-0.5 rounded-full">
+                            Match: {meal.fridgeScore} {meal.fridgeScore === 1 ? 'ingr.' : 'ingr.'}
+                          </span>
+                        )}
+                      </div>
                       <h3 className="font-bold text-[var(--text-main)] text-lg line-clamp-2 leading-tight group-hover:text-orange-500 transition-colors">{meal.title}</h3>
                     </div>
                   </motion.div>
