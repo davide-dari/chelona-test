@@ -124,22 +124,48 @@ export function RecipesScreen({ onClose }: RecipeScreenProps) {
 
   const availableIngredients = useMemo(() => {
     const commonSet = new Set([
-      'aglio', 'alloro', 'aneto', 'arachidi', 'arancia', 'asparagi', 'avena', 'avocado',
-      'bacon', 'basilico', 'bresaola', 'brodo', 'burro', 'cacao', 'caffe', 'calamari',
-      'cannella', 'capperi', 'carciofi', 'carne', 'carote', 'cavolfiore', 'cavolo',
-      'ceci', 'cedro', 'cetrioli', 'chiodi di garofano', 'cioccolato', 'cipolla', 'cipollotto',
-      'cozze', 'curcuma', 'curry', 'datteri', 'erba cipollina', 'fagioli', 'fagiolini',
-      'farina', 'farro', 'fave', 'fichi', 'finocchio', 'formaggio', 'fragole', 'funghi',
-      'gamberi', 'gorgonzola', 'grana', 'guanciale', 'kiwi', 'lampone', 'latte', 'lenticchie',
-      'lievito', 'limone', 'maiale', 'maionese', 'mais', 'mandorle', 'manzo', 'margarina',
-      'mascarpone', 'mela', 'melanzane', 'menta', 'miele', 'mirtilli', 'mozzarella', 'noce moscata',
-      'noci', 'olio', 'olive', 'origano', 'orzo', 'pancetta', 'pane', 'panna', 'parmigiano',
-      'patate', 'pepe', 'peperoncino', 'peperoni', 'pera', 'pesca', 'pesce', 'pinoli', 'piselli',
-      'pistacchi', 'pollo', 'pomodori', 'pomodorini', 'porri', 'prezzemolo', 'prosciutto',
-      'prugne', 'radicchio', 'ricotta', 'riso', 'rosmarino', 'rucola', 'sale', 'salmone',
-      'salsiccia', 'salvia', 'sedano', 'semi', 'senape', 'seppie', 'speck', 'spinaci',
-      'tacchino', 'timo', 'tonno', 'uova', 'uva', 'vaniglia', 'vitello', 'vongole', 'zabaione',
-      'zafferano', 'zenzero', 'zucca', 'zucchero', 'zucchine'
+      // Aromatiche e Spezie
+      'aglio', 'aglio orsino', 'aglio nero', 'alloro', 'aneto', 'basilico', 'cannella', 'capperi',
+      'chiodi di garofano', 'curcuma', 'curry', 'erba cipollina', 'finocchietto', 'menta',
+      'noce moscata', 'origano', 'pepe', 'peperoncino', 'peperoncino fresco', 'peperoncino secco',
+      'prezzemolo', 'rosmarino', 'sale', 'salvia', 'senape', 'timo', 'vaniglia', 'zafferano', 'zenzero',
+      
+      // Ortaggi e Verdure (con varianti)
+      'asparagi', 'asparagi verdi', 'asparagi bianchi', 'asparagi selvatici',
+      'carciofi', 'carciofi romaneschi', 'carciofi spinosi', 'carote',
+      'cavolfiore', 'cavolo', 'cavolo nero', 'cavolo verza', 'cavolo cappuccio', 'cavolini di bruxelles',
+      'cetrioli', 'cipolla', 'cipolla rossa', 'cipolla bianca', 'cipolla dorata', 'cipolla di tropea',
+      'cipollotto', 'cipolline borettane',
+      'fagiolini', 'taccole', 'finocchio',
+      'funghi', 'funghi porcini', 'funghi champignon', 'funghi chiodini', 'funghi finferli',
+      'insalata', 'lattuga', 'rucola', 'valeriana', 'indivia', 'scarola', 'iceberg', 'songino',
+      'melanzane', 'melanzane tonde', 'melanzane lunghe', 'melanzane perlina',
+      'olive', 'olive nere', 'olive verdi', 'olive taggiasche',
+      'patate', 'patate novelle', 'patate rosse', 'patate dolci', 'patate gialle',
+      'peperoni', 'peperoni rossi', 'peperoni gialli', 'peperoni verdi', 'peperoni cruschi', 'friggitelli',
+      'pomodori', 'pomodorini', 'pomodori secchi', 'pomodori pelati', 'pomodorini ciliegino', 'pomodorini datterini',
+      'pomodori ramati', 'pomodori cuore di bue', 'pomodori san marzano', 'passata di pomodoro',
+      'porri', 'radicchio', 'radicchio rosso', 'radicchio trevigiano',
+      'sedano', 'sedano rapa', 'spinaci', 'cime di rapa', 'broccoletti',
+      'zucca', 'zucca mantovana', 'zucca delica', 'zucca butternut', 'zucca napoletana', 'fiori di zucca',
+      'zucchine', 'zucchine tonde', 'zucchine chiare', 'zucchine romanesche', 'zucchine scure',
+      
+      // Legumi
+      'ceci', 'fagioli', 'fagioli borlotti', 'fagioli cannellini', 'fagioli neri', 'fave',
+      'lenticchie', 'lenticchie rosse', 'lenticchie nere', 'piselli', 'soia', 'lupini',
+      
+      // Frutta
+      'arachidi', 'arancia', 'avocado', 'cedro', 'datteri', 'fichi', 'fragole', 'kiwi',
+      'lampone', 'limone', 'mela', 'mirtilli', 'noci', 'nocciole', 'mandorle', 'pera', 'pesca',
+      'pinoli', 'pistacchi', 'prugne', 'uva', 'castagne',
+      
+      // Carne, Pesce e Latticini (Base)
+      'bacon', 'bresaola', 'brodo', 'burro', 'cacao', 'caffe', 'calamari', 'carne', 'cioccolato',
+      'cozze', 'farina', 'farro', 'formaggio', 'gamberi', 'gorgonzola', 'grana', 'guanciale',
+      'latte', 'lievito', 'maiale', 'maionese', 'mais', 'manzo', 'margarina', 'mascarpone',
+      'miele', 'mozzarella', 'olio', 'olio extravergine', 'orzo', 'pancetta', 'pane', 'panna', 'parmigiano',
+      'pesce', 'pollo', 'petto di pollo', 'prosciutto', 'ricotta', 'riso', 'salmone', 'salsiccia',
+      'seppie', 'speck', 'tacchino', 'tonno', 'uova', 'vitello', 'vongole', 'zabaione', 'zucchero'
     ]);
 
     const stopWords = new Set(['di', 'da', 'in', 'con', 'su', 'per', 'tra', 'fra', 'il', 'lo', 'la', 'i', 'gli', 'le', 'un', 'uno', 'una', 'q.b.', 'qb', 'g', 'ml', 'kg', 'litro', 'litri', 'cucchiaio', 'cucchiai', 'cucchiaino', 'cucchiaini', 'spicchio', 'spicchi', 'pizzico', 'pizzichi', 'foglia', 'foglie', 'fresco', 'freschi', 'fresche', 'tritato', 'tritati', 'tagliato', 'tagliati', 'a', 'al', 'alla', 'alle', 'agli', 'allo', 'del', 'della', 'delle', 'degli', 'dello', 'quanto', 'basta', 'circa', 'mezzo', 'mezza', 'intero', 'intera', 'temperatura', 'ambiente', 'caldo', 'freddo', 'tiepido', 'bollente', 'scaglie', 'gocce', 'cubetti', 'fette', 'pezzi', 'spolverata', 'macinata', 'q.b', 'qb.']);
