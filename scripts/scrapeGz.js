@@ -21,27 +21,42 @@ const extractRecipes = (html) => {
   return recipes;
 };
 
-const extractRecipeDetails = (html) => {
-  // Extract ingredients
-  const ingredients = [];
-  const ingRegex = /<dd class="gz-ingredient"><a[^>]*>(.*?)<\/a>.*?<span class="gz-name-featured-data">(.*?)<\/span>/gs;
-  let match;
-  while ((match = ingRegex.exec(html)) !== null) {
-    ingredients.push(`${match[1].trim()} ${match[2].trim()}`);
-  }
-
-  if (ingredients.length === 0) {
-    const ingRegex2 = /<dd class="gz-ingredient">.*?([^<>]+)<span class="gz-name-featured-data">(.*?)<\/span>/gs;
-    while ((match = ingRegex2.exec(html)) !== null) {
-      ingredients.push(`${match[1].trim()} ${match[2].trim()}`);
+function findRecipeInJsonLd(data) {
+  if (!data) return null;
+  if (Array.isArray(data)) {
+    for (const item of data) {
+      const found = findRecipeInJsonLd(item);
+      if (found) return found;
     }
+    return null;
   }
+  if (data['@type'] === 'Recipe') return data;
+  if (data['@graph']) return findRecipeInJsonLd(data['@graph']);
+  return null;
+}
 
-  // Extract steps
-  const steps = [];
-  const stepRegex = /<div class="gz-content-recipe-step">.*?<p>(.*?)<\/p>/gs;
-  while ((match = stepRegex.exec(html)) !== null) {
-    steps.push(match[1].replace(/<[^>]+>/g, '').trim());
+const extractRecipeDetails = (html) => {
+  let ingredients = [];
+  let steps = [];
+
+  const jsonLdRegex = /<script[^>]*type\s*=\s*["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi;
+  let match;
+  while ((match = jsonLdRegex.exec(html)) !== null) {
+    try {
+      const jsonData = JSON.parse(match[1]);
+      const recipe = findRecipeInJsonLd(jsonData);
+      if (recipe) {
+        ingredients = recipe.recipeIngredient || [];
+        
+        let rawSteps = recipe.recipeInstructions || '';
+        if (typeof rawSteps === 'string') {
+          steps = [rawSteps];
+        } else if (Array.isArray(rawSteps)) {
+          steps = rawSteps.map(step => (typeof step === 'string' ? step : step.text || '')).filter(Boolean);
+        }
+        break; // Found the recipe, no need to parse other json-ld scripts
+      }
+    } catch (e) {}
   }
 
   return { ingredients, steps };

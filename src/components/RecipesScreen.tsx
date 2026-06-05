@@ -44,7 +44,7 @@ export function RecipesScreen({ onClose }: RecipeScreenProps) {
   }, [handleBack]);
 
   useEffect(() => {
-    fetch('/gz_recipes.json').then(res => res.json().catch(() => []))
+    fetch('/ricette_mondo.json').then(res => res.json().catch(() => []))
     .then((mondoData) => {
       let combined: any[] = [];
       if (Array.isArray(mondoData)) {
