@@ -61,7 +61,7 @@ export function RecipesScreen({ onClose }: RecipeScreenProps) {
               image: m.image,
               category: cat,
               ingredients: m.ingredients || m.ingredienti || [],
-              steps: m.steps || (typeof m.procedimento === 'string' ? m.procedimento.split(/\\r?\\n/).filter((s: string) => s.trim() !== '') : (m.procedimento || []))
+              steps: m.steps || (typeof m.procedimento === 'string' ? m.procedimento.replace(/\\s+\\d+\\s*(?=[.,;:\\n])/g, '').replace(/\\s+([.,;:!?)])/g, '$1').split(/(?<=[.!?])\\s+(?=[A-Z])/).filter((s: string) => s.trim() !== '') : (m.procedimento || []))
             };
           });
         combined = [...formatted];
