@@ -99,10 +99,20 @@ export function RecipesScreen({ onClose }: RecipeScreenProps) {
             score += 1;
           }
         });
-        return { ...meal, fridgeScore: score };
-      }).filter(m => m.fridgeScore === fridgeIngredients.length);
+
+        const missingIngredients = (meal.ingredients || []).filter((ing: string) => {
+          return !fridgeIngredients.some(f => ing.toLowerCase().includes(f.toLowerCase()));
+        });
+
+        return { ...meal, fridgeScore: score, missingIngredients };
+      }).filter(m => m.fridgeScore > 0);
       
-      return scored.sort((a, b) => b.fridgeScore - a.fridgeScore);
+      return scored.sort((a, b) => {
+        if (b.fridgeScore !== a.fridgeScore) {
+          return b.fridgeScore - a.fridgeScore; // Most matched ingredients first
+        }
+        return a.missingIngredients.length - b.missingIngredients.length; // Least missing ingredients first
+      });
     }
 
     return allMeals.filter(meal => {
@@ -338,12 +348,18 @@ export function RecipesScreen({ onClose }: RecipeScreenProps) {
                       </button>
                     </div>
                     <div className="p-4 flex-1 flex flex-col justify-center">
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-xs font-bold text-orange-500 uppercase tracking-wider">{meal.category}</span>
-                        {meal.fridgeScore > 0 && (
-                          <span className="text-xs font-bold text-cyan-400 bg-cyan-900/30 px-2 py-0.5 rounded-full">
-                            Match: {meal.fridgeScore} {meal.fridgeScore === 1 ? 'ingr.' : 'ingr.'}
-                          </span>
+                      <div className="flex items-center justify-between mb-1 gap-2">
+                        <span className="text-xs font-bold text-orange-500 uppercase tracking-wider truncate">{meal.category}</span>
+                        {selectedCategory === 'fridge' && meal.missingIngredients !== undefined && (
+                          meal.missingIngredients.length === 0 ? (
+                            <span className="text-[10px] font-bold text-green-400 bg-green-900/30 px-2 py-0.5 rounded-full whitespace-nowrap">
+                              ✅ Hai tutto!
+                            </span>
+                          ) : (
+                            <span className="text-[10px] font-bold text-red-400 bg-red-900/30 px-2 py-0.5 rounded-full whitespace-nowrap">
+                              ❌ Mancano {meal.missingIngredients.length}
+                            </span>
+                          )
                         )}
                       </div>
                       <h3 className="font-bold text-[var(--text-main)] text-lg line-clamp-2 leading-tight group-hover:text-orange-500 transition-colors">{meal.title}</h3>
@@ -415,12 +431,16 @@ export function RecipesScreen({ onClose }: RecipeScreenProps) {
                     <section>
                       <h3 className="text-lg font-bold text-orange-500 mb-3 border-b border-[var(--border)] pb-2">Ingredienti</h3>
                       <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                        {selectedMeal.ingredients.map((ing: string, i: number) => (
-                          <li key={i} className="flex items-start gap-2 text-sm text-[var(--text-main)]">
-                            <span className="w-1.5 h-1.5 rounded-full bg-orange-400 mt-1.5 shrink-0" />
-                            <span dangerouslySetInnerHTML={{ __html: ing }} />
-                          </li>
-                        ))}
+                        {selectedMeal.ingredients.map((ing: string, i: number) => {
+                          const isMissing = selectedCategory === 'fridge' && selectedMeal.missingIngredients?.includes(ing);
+                          return (
+                            <li key={i} className={`flex items-start gap-2 text-sm ${isMissing ? 'text-red-400/80' : 'text-[var(--text-main)]'}`}>
+                              <span className={`w-1.5 h-1.5 rounded-full ${isMissing ? 'bg-red-500/50' : 'bg-orange-400'} mt-1.5 shrink-0`} />
+                              <span className="flex-1" dangerouslySetInnerHTML={{ __html: ing }} />
+                              {isMissing && <span className="text-[10px] font-bold bg-red-900/30 text-red-400 px-1.5 py-0.5 rounded ml-1 shrink-0">Manca</span>}
+                            </li>
+                          );
+                        })}
                       </ul>
                     </section>
                   )}
