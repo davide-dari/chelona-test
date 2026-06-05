@@ -122,6 +122,38 @@ export function RecipesScreen({ onClose }: RecipeScreenProps) {
     });
   }, [allMeals, selectedCategory, searchQuery, favorites, fridgeIngredients]);
 
+  const availableIngredients = useMemo(() => {
+    const commonSet = new Set([
+      'aglio', 'alloro', 'aneto', 'arachidi', 'arancia', 'asparagi', 'avena', 'avocado',
+      'bacon', 'basilico', 'bresaola', 'brodo', 'burro', 'cacao', 'caffe', 'calamari',
+      'cannella', 'capperi', 'carciofi', 'carne', 'carote', 'cavolfiore', 'cavolo',
+      'ceci', 'cedro', 'cetrioli', 'chiodi di garofano', 'cioccolato', 'cipolla', 'cipollotto',
+      'cozze', 'curcuma', 'curry', 'datteri', 'erba cipollina', 'fagioli', 'fagiolini',
+      'farina', 'farro', 'fave', 'fichi', 'finocchio', 'formaggio', 'fragole', 'funghi',
+      'gamberi', 'gorgonzola', 'grana', 'guanciale', 'kiwi', 'lampone', 'latte', 'lenticchie',
+      'lievito', 'limone', 'maiale', 'maionese', 'mais', 'mandorle', 'manzo', 'margarina',
+      'mascarpone', 'mela', 'melanzane', 'menta', 'miele', 'mirtilli', 'mozzarella', 'noce moscata',
+      'noci', 'olio', 'olive', 'origano', 'orzo', 'pancetta', 'pane', 'panna', 'parmigiano',
+      'patate', 'pepe', 'peperoncino', 'peperoni', 'pera', 'pesca', 'pesce', 'pinoli', 'piselli',
+      'pistacchi', 'pollo', 'pomodori', 'pomodorini', 'porri', 'prezzemolo', 'prosciutto',
+      'prugne', 'radicchio', 'ricotta', 'riso', 'rosmarino', 'rucola', 'sale', 'salmone',
+      'salsiccia', 'salvia', 'sedano', 'semi', 'senape', 'seppie', 'speck', 'spinaci',
+      'tacchino', 'timo', 'tonno', 'uova', 'uva', 'vaniglia', 'vitello', 'vongole', 'zabaione',
+      'zafferano', 'zenzero', 'zucca', 'zucchero', 'zucchine'
+    ]);
+
+    const stopWords = new Set(['di', 'da', 'in', 'con', 'su', 'per', 'tra', 'fra', 'il', 'lo', 'la', 'i', 'gli', 'le', 'un', 'uno', 'una', 'q.b.', 'qb', 'g', 'ml', 'kg', 'litro', 'litri', 'cucchiaio', 'cucchiai', 'cucchiaino', 'cucchiaini', 'spicchio', 'spicchi', 'pizzico', 'pizzichi', 'foglia', 'foglie', 'fresco', 'freschi', 'fresche', 'tritato', 'tritati', 'tagliato', 'tagliati', 'a', 'al', 'alla', 'alle', 'agli', 'allo', 'del', 'della', 'delle', 'degli', 'dello', 'quanto', 'basta', 'circa', 'mezzo', 'mezza', 'intero', 'intera', 'temperatura', 'ambiente', 'caldo', 'freddo', 'tiepido', 'bollente', 'scaglie', 'gocce', 'cubetti', 'fette', 'pezzi', 'spolverata', 'macinata', 'q.b', 'qb.']);
+
+    allMeals.forEach(meal => {
+      (meal.ingredients || []).forEach((ingStr: string) => {
+        const words = ingStr.toLowerCase().split(/[\s,()0-9'"+-]/).filter(w => w.length > 2 && !stopWords.has(w));
+        words.forEach(w => commonSet.add(w));
+      });
+    });
+
+    return Array.from(commonSet).sort();
+  }, [allMeals]);
+
   const toggleFavorite = (meal: any, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
     setFavorites(prev => {
@@ -267,29 +299,50 @@ export function RecipesScreen({ onClose }: RecipeScreenProps) {
             {selectedCategory === 'fridge' && (
               <div className="bg-[var(--surface-variant)] p-4 rounded-2xl border border-[var(--border)]">
                 <div className="flex gap-2 mb-3">
-                  <input 
-                    type="text"
-                    placeholder="Aggiungi ingrediente (es: pollo, uova...)"
-                    value={fridgeInput}
-                    onChange={(e) => setFridgeInput(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && fridgeInput.trim()) {
-                        if (!fridgeIngredients.includes(fridgeInput.trim())) {
-                          setFridgeIngredients([...fridgeIngredients, fridgeInput.trim()]);
+                  <div className="relative flex-1">
+                    <input 
+                      type="text"
+                      placeholder="Aggiungi ingrediente (es: pollo, uova...)"
+                      value={fridgeInput}
+                      onChange={(e) => setFridgeInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && fridgeInput.trim()) {
+                          if (!fridgeIngredients.includes(fridgeInput.trim().toLowerCase())) {
+                            setFridgeIngredients([...fridgeIngredients, fridgeInput.trim().toLowerCase()]);
+                          }
+                          setFridgeInput('');
                         }
-                        setFridgeInput('');
-                      }
-                    }}
-                    className="flex-1 bg-[var(--bg)] border border-[var(--border)] rounded-xl py-2 px-4 text-[var(--text-main)] outline-none focus:border-cyan-500"
-                  />
+                      }}
+                      className="w-full bg-[var(--bg)] border border-[var(--border)] rounded-xl py-2 px-4 text-[var(--text-main)] outline-none focus:border-cyan-500"
+                    />
+                    {fridgeInput.trim().length > 0 && (
+                      <div className="absolute top-full left-0 right-0 mt-1 bg-[var(--card-bg)] border border-[var(--border)] rounded-xl shadow-xl max-h-48 overflow-y-auto z-50 custom-scrollbar">
+                        {availableIngredients
+                          .filter(ing => ing.includes(fridgeInput.toLowerCase().trim()) && !fridgeIngredients.includes(ing))
+                          .slice(0, 50)
+                          .map(ing => (
+                            <button
+                              key={ing}
+                              onClick={() => {
+                                setFridgeIngredients([...fridgeIngredients, ing]);
+                                setFridgeInput('');
+                              }}
+                              className="w-full text-left px-4 py-2 hover:bg-cyan-500/10 text-[var(--text-main)] capitalize border-b border-[var(--border)] last:border-b-0"
+                            >
+                              {ing}
+                            </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                   <button 
                     onClick={() => {
-                      if (fridgeInput.trim() && !fridgeIngredients.includes(fridgeInput.trim())) {
-                        setFridgeIngredients([...fridgeIngredients, fridgeInput.trim()]);
+                      if (fridgeInput.trim() && !fridgeIngredients.includes(fridgeInput.trim().toLowerCase())) {
+                        setFridgeIngredients([...fridgeIngredients, fridgeInput.trim().toLowerCase()]);
                         setFridgeInput('');
                       }
                     }}
-                    className="px-4 py-2 bg-cyan-600 text-white rounded-xl font-bold hover:bg-cyan-700 transition-colors"
+                    className="px-4 py-2 bg-cyan-600 text-white rounded-xl font-bold hover:bg-cyan-700 transition-colors shrink-0 h-[42px]"
                   >
                     Aggiungi
                   </button>
