@@ -44,20 +44,26 @@ export function RecipesScreen({ onClose }: RecipeScreenProps) {
   }, [handleBack]);
 
   useEffect(() => {
-    fetch('/ricette_mondo.json').then(res => res.json().catch(() => []))
+    fetch('/gz_recipes.json').then(res => res.json().catch(() => []))
     .then((mondoData) => {
       let combined: any[] = [];
       if (Array.isArray(mondoData)) {
         const formatted = mondoData
           .filter((m: any) => m.image) // Only recipes with images
-          .map((m: any, i: number) => ({
-            id: `gz_${i}`,
-            title: m.nome,
-            image: m.image,
-            category: m.categoria || 'Primi',
-            ingredients: m.ingredienti || [],
-            steps: typeof m.procedimento === 'string' ? [m.procedimento] : (m.procedimento || [])
-          }));
+          .map((m: any, i: number) => {
+            let cat = m.category || m.categoria || 'Primi';
+            if (cat === 'Primi Piatti') cat = 'Primi';
+            if (cat === 'Secondi Piatti') cat = 'Secondi';
+            
+            return {
+              id: m.id || `gz_${i}`,
+              title: m.title || m.nome,
+              image: m.image,
+              category: cat,
+              ingredients: m.ingredients || m.ingredienti || [],
+              steps: m.steps || (typeof m.procedimento === 'string' ? [m.procedimento] : (m.procedimento || []))
+            };
+          });
         combined = [...formatted];
       }
       setAllMeals(combined);
@@ -86,7 +92,7 @@ export function RecipesScreen({ onClose }: RecipeScreenProps) {
       
       const scored = allMeals.map(meal => {
         let score = 0;
-        const recipeIngsText = meal.ingredients ? meal.ingredients.join(' ').toLowerCase() : meal.steps.join(' ').toLowerCase();
+        const recipeIngsText = meal.ingredients && meal.ingredients.length > 0 ? meal.ingredients.join(' ').toLowerCase() : meal.steps.join(' ').toLowerCase();
         
         fridgeIngredients.forEach(ing => {
           if (recipeIngsText.includes(ing.toLowerCase())) {
