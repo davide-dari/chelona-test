@@ -3,12 +3,12 @@ import {
   FileUp, FileDown, Layers, SplitSquareHorizontal, RotateCw, 
   Image as ImageIcon, Type, X, FileCheck, ArrowRight, Percent, 
   Scan, ArrowLeft, Book, Search as SearchIcon, Eye, Trash2,
-  Wrench, ClipboardList, Settings2, Minimize
+  Wrench, ClipboardList, Settings2, Minimize, Mic
 } from 'lucide-react';
+// Lazy load: GiorgioneTool non entra nel bundle principale, caricato solo quando serve
+const GiorgioneTool = lazy(() => import('./GiorgioneTool'));
 import { DocumentScanner } from './DocumentScanner';
 import { ImageFilterTool } from './ImageFilterTool';
-// Lazy loading: GiorgioneTool viene caricato solo quando serve, NON nel bundle principale
-const GiorgioneTool = lazy(() => import('./GiorgioneTool').then(m => ({ default: m.GiorgioneTool })));
 import { PDFDocument, rgb, degrees } from 'pdf-lib';
 import { Module } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
@@ -31,7 +31,7 @@ export const TOOLS_UTILITY = [
   { id: 'scanner', title: 'Scanner', desc: 'Scansiona e crea PDF.', icon: Scan, color: 'text-[var(--success)]', bg: 'bg-[var(--success)]/10', category: 'utility' },
   { id: 'percent', title: 'Percentuale', desc: 'Sconti e variazioni.', icon: Percent, color: 'text-indigo-500', bg: 'bg-indigo-500/10', category: 'utility' },
   { id: 'image-filter', title: 'Filtri Immagine', desc: 'Applica filtri stile Instagram.', icon: ImageIcon, color: 'text-pink-500', bg: 'bg-pink-500/10', category: 'utility' },
-  { id: 'giorgione', title: 'Giorgione', desc: 'Trascrizione audio offline.', icon: Mic, color: 'text-orange-500', bg: 'bg-orange-500/10', category: 'utility' }
+  { id: 'giorgione', title: 'Giorgione', desc: 'Trascrizione audio offline e privata.', icon: Mic, color: 'text-orange-500', bg: 'bg-orange-500/10', category: 'utility' }
 ];
 
 export const TOOLS = [...TOOLS_PDF, ...TOOLS_UTILITY];
@@ -439,11 +439,16 @@ export const ToolsScreen = ({ showToast, onSaveToSandbox, initialToolId, onReset
                       onSaveToSandbox={onSaveToSandbox}
                     />
                   ) : activeTool === 'giorgione' ? (
-                    <Suspense fallback={<div className="flex items-center justify-center p-12 text-orange-500"><svg className="animate-spin w-8 h-8" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/></svg><span className="ml-3 font-semibold">Caricamento Giorgione...</span></div>}>
-                      <GiorgioneTool
-                        showToast={showToast}
-                        onSaveToSandbox={onSaveToSandbox}
-                      />
+                    <Suspense fallback={
+                      <div className="flex flex-col items-center justify-center gap-4 py-16 text-orange-500">
+                        <svg className="animate-spin w-8 h-8" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+                        </svg>
+                        <span className="font-bold text-sm">Caricamento Giorgione...</span>
+                      </div>
+                    }>
+                      <GiorgioneTool showToast={showToast} onSaveToSandbox={onSaveToSandbox} />
                     </Suspense>
                   ) : activeTool === 'percent' ? (
                     <div className="bg-[var(--card-bg)] rounded-[2rem] p-6 lg:p-10 border border-[var(--border)] shadow-2xl animate-scale-up">
