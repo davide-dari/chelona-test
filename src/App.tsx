@@ -2616,7 +2616,7 @@ export default function App() {
                         {/* All Categories Grid (Main Entry Point) */}
                         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 pb-12">
                           {Object.entries(TEMPLATES)
-                            .filter(([key]) => key !== 'single-expense')
+                            .filter(([key]) => key !== 'single-expense' && key !== 'recipes' && key !== 'furniture')
                             .map(([key, t]) => {
                             return (
                               <button
@@ -2681,6 +2681,63 @@ export default function App() {
                               </button>
                             );
                           })}
+                        </div>
+                      </div>
+                    ) : selectedType === 'home' ? (
+                      <div className="px-4 lg:px-8 pb-32">
+                        <h3 className="text-xl font-bold text-[var(--text-main)] mb-6 flex items-center gap-2">
+                          <Home className="w-6 h-6 text-teal-500" />
+                          Sezione Casa
+                        </h3>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <button
+                            onClick={() => setIsRecipesOpen(true)}
+                            className="bg-[var(--card-bg)] p-6 lg:p-8 rounded-[2.5rem] border border-[var(--border)] shadow-sm hover:border-orange-500/50 hover:bg-orange-500/5 transition-all group flex flex-col items-center text-center gap-4"
+                          >
+                            <div className="w-16 h-16 bg-orange-500/10 text-orange-500 rounded-3xl flex items-center justify-center group-hover:scale-110 transition-transform shadow-inner">
+                              <BookOpen className="w-8 h-8" />
+                            </div>
+                            <div>
+                              <p className="font-black text-[var(--text-main)] text-lg">Ricette</p>
+                              <p className="text-sm text-[var(--text-muted)] mt-1">Il tuo ricettario personale</p>
+                            </div>
+                          </button>
+
+                          <button
+                            onClick={() => {
+                              const existingFurniture = modules.find(m => m.type === 'furniture') as import('./types').FurnitureModule;
+                              if (existingFurniture) {
+                                setEditingFurnitureModule(existingFurniture);
+                              } else {
+                                const newFurniture: import('./types').FurnitureModule = {
+                                  id: generateUUID(),
+                                  type: 'furniture',
+                                  title: 'Mobili',
+                                  rooms: [],
+                                  x: (modules.length * 2) % 12,
+                                  y: Infinity,
+                                  w: 3,
+                                  h: 3,
+                                  folderId: selectedFolderId || undefined
+                                };
+                                setModules(prev => {
+                                  const updated = [newFurniture, ...prev];
+                                  saveAppState(updated, folders).catch(console.error);
+                                  return updated;
+                                });
+                                setEditingFurnitureModule(newFurniture);
+                              }
+                            }}
+                            className="bg-[var(--card-bg)] p-6 lg:p-8 rounded-[2.5rem] border border-[var(--border)] shadow-sm hover:border-teal-500/50 hover:bg-teal-500/5 transition-all group flex flex-col items-center text-center gap-4"
+                          >
+                            <div className="w-16 h-16 bg-teal-500/10 text-teal-500 rounded-3xl flex items-center justify-center group-hover:scale-110 transition-transform shadow-inner">
+                              <Armchair className="w-8 h-8" />
+                            </div>
+                            <div>
+                              <p className="font-black text-[var(--text-main)] text-lg">Mobili</p>
+                              <p className="text-sm text-[var(--text-muted)] mt-1">Idee e acquisti per stanze</p>
+                            </div>
+                          </button>
                         </div>
                       </div>
                     ) : filteredModules.length === 0 ? (
