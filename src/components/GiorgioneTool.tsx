@@ -104,18 +104,27 @@ const GiorgioneTool: React.FC<GiorgioneToolProps> = ({ onSaveToSandbox, showToas
       setStatus('decoding');
       setProgressLabel('Decodifica audio...');
 
-      const arrayBuffer = await fileRef.current!.arrayBuffer();
-      const audioCtx    = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 16000 });
-      const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
-      const audioData   = audioBuffer.getChannelData(0);
+      // Strategia 1: passa l'URL direttamente a transformers.js
+      // (supporta M4A, AAC, OGG e altri formati non gestiti da WebAudio su Android)
+      let audioInput: any = audioUrl;
+
+      // Strategia 2 (fallback): decodifica manuale via WebAudio API
+      // usata solo se la Strategia 1 non è disponibile
+      if (!audioUrl) {
+        const arrayBuffer = await fileRef.current!.arrayBuffer();
+        const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 16000 });
+        const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+        audioInput = audioBuffer.getChannelData(0);
+      }
 
       setStatus('transcribing');
       setProgressLabel('Trascrizione in corso...');
 
-      const result = await transcriber(audioData, {
+      const result = await transcriber(audioInput, {
         chunk_length_s: 30,
         stride_length_s: 5,
         return_timestamps: false,
+        language: 'italian',
       });
 
       setTranscribedText(result.text?.trim() ?? '');
