@@ -30,7 +30,10 @@ export const GiorgioneTool: React.FC<GiorgioneToolProps> = ({ onSaveToSandbox, s
     
     setStatusText('Caricamento modello AI (Giorgione/Whisper)...');
     try {
-      const { pipeline, env } = await import('@xenova/transformers');
+      // Usiamo il CDN ignorando il bundler di Vite per evitare i crash di out-of-memory e CSP
+      const module = await import(/* @vite-ignore */ 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.16.0');
+      const { pipeline, env } = module;
+      
       // Disabilita i modelli locali se si vuole fare fetch remoto
       env.allowLocalModels = false;
       // Abilita la cache browser
