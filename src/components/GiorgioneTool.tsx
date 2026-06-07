@@ -34,8 +34,8 @@ async function decodeAudioTo16kHz(file: File, setProgressLabel?: (label: string)
   if (setProgressLabel) setProgressLabel('Caricamento decoder audio...');
 
   await ffmpeg.load({
-    coreURL: 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd/ffmpeg-core.js',
-    wasmURL: 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd/ffmpeg-core.wasm'
+    coreURL: '/ffmpeg/ffmpeg-core.js',
+    wasmURL: '/ffmpeg/ffmpeg-core.wasm'
   });
 
   const name = file.name.replace(/[^a-zA-Z0-9.]/g, '_') || 'input.audio';
@@ -173,7 +173,7 @@ const GiorgioneTool: React.FC<GiorgioneToolProps> = ({ onSaveToSandbox, showToas
     } catch (err: any) {
       console.error('[Giorgione]', err);
       setStatus('error');
-      showToast('Errore durante la trascrizione.', 'error');
+      showToast(`Errore: ${err.message || 'Trascrizione fallita'}`, 'error');
     }
   };
 
