@@ -10,6 +10,8 @@ const PROFILES_KEY = 'chelona_profiles';
 const LEGACY_AUTH_KEY = 'chelona_auth_config';
 
 const ENCRYPTION_PASSWORD = 'chelona_secure_vault_salt_2026';
+const PUBLIC_PASSWORD = 'chelona_public_vault_key_2026';
+const PUBLIC_SALT = 'public_salt_123';
 
 const encryptText = (text: string): string => {
   return CryptoJS.AES.encrypt(text, ENCRYPTION_PASSWORD).toString();
@@ -353,6 +355,62 @@ export const storage = {
       await saveToExternalFile(`state_${profileId}.enc`, encrypted);
     } else {
       localStorage.setItem(getStorageKey(profileId), encrypted);
+    }
+  },
+
+  getPublicKey: async (): Promise<CryptoKey> => {
+    return await encryption.deriveKey(PUBLIC_PASSWORD, PUBLIC_SALT);
+  },
+
+  savePublicState: async (state: AppState, profileId: string) => {
+    const key = await storage.getPublicKey();
+    const encrypted = await encryption.encrypt(state, key);
+    if (Capacitor.isNativePlatform()) {
+      await saveToExternalFile(`state_public_${profileId}.enc`, encrypted);
+    } else {
+      localStorage.setItem(`chelona_public_state_${profileId}`, encrypted);
+    }
+  },
+
+  loadPublicState: async (profileId: string): Promise<AppState> => {
+    let encrypted: string | null = null;
+    if (Capacitor.isNativePlatform()) {
+      encrypted = await loadFromExternalFile(`state_public_${profileId}.enc`);
+    } else {
+      encrypted = localStorage.getItem(`chelona_public_state_${profileId}`);
+    }
+    if (!encrypted) return { modules: [], folders: [] };
+    try {
+      const key = await storage.getPublicKey();
+      const decrypted = await encryption.decrypt(encrypted, key);
+      return (decrypted as AppState) || { modules: [], folders: [] };
+    } catch {
+      return { modules: [], folders: [] };
+    }
+  },
+
+  savePrivateState: async (privateModules: Module[], key: CryptoKey, profileId: string) => {
+    const encrypted = await encryption.encrypt(privateModules, key);
+    if (Capacitor.isNativePlatform()) {
+      await saveToExternalFile(`state_private_${profileId}.enc`, encrypted);
+    } else {
+      localStorage.setItem(`chelona_private_state_${profileId}`, encrypted);
+    }
+  },
+
+  loadPrivateState: async (key: CryptoKey, profileId: string): Promise<Module[]> => {
+    let encrypted: string | null = null;
+    if (Capacitor.isNativePlatform()) {
+      encrypted = await loadFromExternalFile(`state_private_${profileId}.enc`);
+    } else {
+      encrypted = localStorage.getItem(`chelona_private_state_${profileId}`);
+    }
+    if (!encrypted) return [];
+    try {
+      const decrypted = await encryption.decrypt(encrypted, key);
+      return (decrypted as Module[]) || [];
+    } catch {
+      return [];
     }
   },
 

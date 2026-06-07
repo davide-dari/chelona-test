@@ -17,9 +17,10 @@ interface LockScreenProps {
   onImportFile: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onOpenAddressBook?: () => void;
   onCheckUpdate?: () => void;
+  mode?: 'app-start' | 'vault-unlock';
 }
 
-export const LockScreen = ({ isVisible, onAuthenticated, onStartScan, onOpenTools, onImportFile, onOpenAddressBook, onCheckUpdate }: LockScreenProps) => {
+export const LockScreen = ({ isVisible, onAuthenticated, onStartScan, onOpenTools, onImportFile, onOpenAddressBook, onCheckUpdate, mode = 'app-start' }: LockScreenProps) => {
   const [profiles, setProfiles] = useState<ProfileConfig[]>([]);
   const [selectedProfile, setSelectedProfile] = useState<ProfileConfig | null>(null);
   const [view, setView] = useState<'selector' | 'login' | 'setup'>('selector');
@@ -111,9 +112,13 @@ export const LockScreen = ({ isVisible, onAuthenticated, onStartScan, onOpenTool
       if (activeView === 'setup') {
         setView('selector');
       } else if (activeView === 'selector' && loadedProfiles.length === 1) {
-        // If only 1 profile exists, go straight to login for it
-        setSelectedProfile(loadedProfiles[0]);
-        setView('login');
+        if (mode === 'app-start') {
+          // In app-start mode, bypass password and just select profile
+          onAuthenticated(null as any, loadedProfiles[0].id);
+        } else {
+          setSelectedProfile(loadedProfiles[0]);
+          setView('login');
+        }
       }
     }
   };
@@ -226,7 +231,11 @@ export const LockScreen = ({ isVisible, onAuthenticated, onStartScan, onOpenTool
       setPassword('');
       setConfirmPassword('');
       setUsername('');
-      onAuthenticated(key, newConfig.id);
+      if (mode === 'app-start') {
+        onAuthenticated(null as any, newConfig.id);
+      } else {
+        onAuthenticated(key, newConfig.id);
+      }
     } catch (err: any) {
       console.error(err);
       setError('Errore durante la configurazione: ' + (err?.message || String(err)));
@@ -374,7 +383,11 @@ export const LockScreen = ({ isVisible, onAuthenticated, onStartScan, onOpenTool
                       setSelectedProfile(p);
                       setError('');
                       setPassword('');
-                      setView('login');
+                      if (mode === 'app-start') {
+                        onAuthenticated(null as any, p.id);
+                      } else {
+                        setView('login');
+                      }
                     })}
                     onMouseDown={() => startPress(p.id)}
                     onMouseUp={() => endPress(() => {
@@ -382,7 +395,11 @@ export const LockScreen = ({ isVisible, onAuthenticated, onStartScan, onOpenTool
                       setSelectedProfile(p);
                       setError('');
                       setPassword('');
-                      setView('login');
+                      if (mode === 'app-start') {
+                        onAuthenticated(null as any, p.id);
+                      } else {
+                        setView('login');
+                      }
                     })}
                     onTouchMove={cancelPress}
                     onMouseLeave={cancelPress}
@@ -567,10 +584,10 @@ export const LockScreen = ({ isVisible, onAuthenticated, onStartScan, onOpenTool
                   </div>
                 )}
                 <h1 className="text-xl sm:text-2xl font-bold text-[var(--text-main)]">
-                  {view === 'login' ? `Bentornato, ${selectedProfile?.username}` : 'Nuovo Profilo'}
+                  {view === 'login' ? (mode === 'vault-unlock' ? 'Sblocco Sicuro' : `Bentornato, ${selectedProfile?.username}`) : 'Nuovo Profilo'}
                 </h1>
                 <p className="text-[var(--text-muted)] text-xs sm:text-sm text-center mt-2 px-2">
-                  {view === 'setup' ? 'Configura la tua chiave di accesso per il nuovo profilo' : 'Inserisci la password per accedere'}
+                  {view === 'setup' ? 'Configura la tua chiave di accesso per il nuovo profilo' : (mode === 'vault-unlock' ? 'Inserisci la password per accedere ai tuoi dati sensibili' : 'Inserisci la password per accedere')}
                 </p>
               </div>
 

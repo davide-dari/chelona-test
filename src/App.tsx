@@ -261,6 +261,8 @@ export default function App() {
   };
   const [encryptionKey, setEncryptionKey] = useState<CryptoKey | null>(null);
   const [currentProfileId, setCurrentProfileId] = useState<string | null>(null);
+  const [showVaultLock, setShowVaultLock] = useState(false);
+  const [pendingAction, setPendingAction] = useState<(() => void) | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [username, setUsername] = useState('Utente');
   const [avatar, setAvatar] = useState<string | undefined>(undefined);
@@ -401,7 +403,7 @@ export default function App() {
 
   useEffect(() => {
     const init = async () => {
-      if (encryptionKey && currentProfileId) {
+      if (currentProfileId) {
         const profiles = storage.loadProfiles();
         const profile = profiles.find(p => p.id === currentProfileId);
         if (profile) {
@@ -412,15 +414,42 @@ export default function App() {
           setPinnedToolIds(profile.pinnedToolIds || []);
         }
 
-        const saved = await storage.loadState(encryptionKey, currentProfileId);
+        let saved = await storage.loadPublicState(currentProfileId);
+        
+        // MIGRATION: fallback to old state if public state is totally empty
+        if (saved.modules.length === 0 && saved.folders.length === 0 && encryptionKey) {
+            try {
+                const oldSaved = await storage.loadState(encryptionKey, currentProfileId);
+                if (oldSaved && (oldSaved.modules?.length > 0 || oldSaved.folders?.length > 0)) {
+                    saved = oldSaved;
+                }
+            } catch (e) {
+                console.warn("Migration failed or no old state", e);
+            }
+        }
+
         let loadedModules = saved.modules || [];
+        
+        if (encryptionKey) {
+            try {
+                const privateModules = await storage.loadPrivateState(encryptionKey, currentProfileId);
+                loadedModules = loadedModules.map(pubMod => {
+                    if (pubMod.type === 'auto' || pubMod.type === 'document') {
+                        const priv = privateModules.find(p => p.id === pubMod.id);
+                        return priv ? { ...pubMod, ...priv } : pubMod;
+                    }
+                    return pubMod;
+                });
+            } catch (e) {
+                console.error("Failed to load private modules", e);
+            }
+        }
         
         setPendingImportModule(prev => {
           if (prev) {
             loadedModules = [prev, ...loadedModules];
             // save immediately with new modules
-            storage.saveState({ modules: loadedModules, folders: saved.folders || [] }, encryptionKey, currentProfileId)
-              .then(() => showToast('Appunto importato al login con successo!'));
+            saveAppState(loadedModules, saved.folders || []).then(() => showToast('Appunto importato al login con successo!'));
           }
           return null;
         });
@@ -490,8 +519,25 @@ export default function App() {
 
 
   const saveAppState = async (newModules: Module[], newFolders: Folder[]) => {
-    if (!encryptionKey || !currentProfileId) return;
-    await storage.saveState({ modules: newModules, folders: newFolders }, encryptionKey, currentProfileId);
+    if (!currentProfileId) return;
+    
+    // Create public modules by stripping sensitive info from 'auto' and 'document'
+    const publicModules = newModules.map(m => {
+        if (m.type === 'auto' || m.type === 'document') {
+            return {
+                id: m.id, type: m.type, title: m.title, x: m.x, y: m.y, w: m.w, h: m.h, folderId: m.folderId
+            } as Module;
+        }
+        return m;
+    });
+    
+    await storage.savePublicState({ modules: publicModules, folders: newFolders }, currentProfileId);
+    
+    // Save full data to private state if unlocked
+    if (encryptionKey) {
+        const privateModules = newModules.filter(m => m.type === 'auto' || m.type === 'document');
+        await storage.savePrivateState(privateModules, encryptionKey, currentProfileId);
+    }
   };
 
   useEffect(() => {
@@ -660,6 +706,11 @@ export default function App() {
 
 
   const openEditModal = (module: Module) => {
+    if ((module.type === 'auto' || module.type === 'document') && !encryptionKey) {
+      setPendingAction(() => () => openEditModal(module));
+      setShowVaultLock(true);
+      return;
+    }
     if (module.type === 'auto') {
       setEditingAutoModule(module as import('./types').AutoModule);
       return;
@@ -1535,14 +1586,14 @@ export default function App() {
           To completely bypass this, we NEVER unmount the LockScreen, we just hide it visually. */}
       <div 
         style={{ 
-          display: (!encryptionKey || !currentProfileId) && !isProfileOpen && !isPublicToolsOpen ? 'block' : 'none', 
+          display: !currentProfileId && !isProfileOpen && !isPublicToolsOpen ? 'block' : 'none', 
           position: 'absolute', inset: 0, zIndex: 99999 
         }}
       >
         <LockScreen 
-          isVisible={(!encryptionKey || !currentProfileId) && !isProfileOpen && !isPublicToolsOpen}
-          onAuthenticated={(key, profileId) => {
-            setEncryptionKey(key);
+          mode="app-start"
+          isVisible={!currentProfileId && !isProfileOpen && !isPublicToolsOpen}
+          onAuthenticated={(_key, profileId) => {
             setCurrentProfileId(profileId);
           }} 
           onStartScan={() => setIsScanning(true)}
@@ -1552,6 +1603,25 @@ export default function App() {
           onCheckUpdate={() => handleCheckUpdate(true)}
         />
       </div>
+
+      {showVaultLock && (
+        <div style={{ position: 'absolute', inset: 0, zIndex: 99999 }}>
+          <LockScreen 
+            mode="vault-unlock"
+            isVisible={showVaultLock}
+            onAuthenticated={(key, _profileId) => {
+              setEncryptionKey(key);
+              setShowVaultLock(false);
+              if (pendingAction) {
+                pendingAction();
+                setPendingAction(null);
+              }
+            }} 
+            onStartScan={() => {}}
+            onOpenTools={() => { setShowVaultLock(false); }}
+          />
+        </div>
+      )}
 
     <ErrorBoundary>
       <AnimatePresence>
@@ -1847,6 +1917,11 @@ export default function App() {
                       <button
                             key={key}
                             onClick={() => {
+                              if ((key === 'auto' || key === 'document') && !encryptionKey) {
+                                setPendingAction(() => () => setFormData({ ...formData, template: key, title: t.title, content: t.content }));
+                                setShowVaultLock(true);
+                                return;
+                              }
                               if (key === 'split') {
                                 setSpesaSubMenu(true);
                               } else if (key === 'home') {
