@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { DocumentScanner } from './DocumentScanner';
 import { ImageFilterTool } from './ImageFilterTool';
+import { GiorgioneTool } from './GiorgioneTool';
 import { PDFDocument, rgb, degrees } from 'pdf-lib';
 import { Module } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
@@ -28,7 +29,8 @@ export const TOOLS_PDF = [
 export const TOOLS_UTILITY = [
   { id: 'scanner', title: 'Scanner', desc: 'Scansiona e crea PDF.', icon: Scan, color: 'text-[var(--success)]', bg: 'bg-[var(--success)]/10', category: 'utility' },
   { id: 'percent', title: 'Percentuale', desc: 'Sconti e variazioni.', icon: Percent, color: 'text-indigo-500', bg: 'bg-indigo-500/10', category: 'utility' },
-  { id: 'image-filter', title: 'Filtri Immagine', desc: 'Applica filtri stile Instagram.', icon: ImageIcon, color: 'text-pink-500', bg: 'bg-pink-500/10', category: 'utility' }
+  { id: 'image-filter', title: 'Filtri Immagine', desc: 'Applica filtri stile Instagram.', icon: ImageIcon, color: 'text-pink-500', bg: 'bg-pink-500/10', category: 'utility' },
+  { id: 'giorgione', title: 'Giorgione', desc: 'Trascrizione audio offline.', icon: Mic, color: 'text-orange-500', bg: 'bg-orange-500/10', category: 'utility' }
 ];
 
 export const TOOLS = [...TOOLS_PDF, ...TOOLS_UTILITY];
@@ -433,6 +435,11 @@ export const ToolsScreen = ({ showToast, onSaveToSandbox, initialToolId, onReset
                   ) : activeTool === 'image-filter' ? (
                     <ImageFilterTool
                       onClose={reset}
+                      onSaveToSandbox={onSaveToSandbox}
+                    />
+                  ) : activeTool === 'giorgione' ? (
+                    <GiorgioneTool
+                      showToast={showToast}
                       onSaveToSandbox={onSaveToSandbox}
                     />
                   ) : activeTool === 'percent' ? (
