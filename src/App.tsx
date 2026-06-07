@@ -25,6 +25,7 @@ import { RecipesScreen } from './components/RecipesScreen';
 import { TravelScreen } from './components/TravelScreen';
 import { ConfirmDialog } from './components/ConfirmDialog';
 import { TransportScreen } from './components/TransportScreen';
+import { FurnitureScreen } from "./components/FurnitureScreen";
 import { notificationService } from './services/notificationService';
 import { APP_VERSION } from './constants/version';
 
