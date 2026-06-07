@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Sun, Moon, Wrench, Plus, LayoutDashboard, Settings, User, LogOut, Search, Mic, Bell, CreditCard, Fingerprint, ShieldCheck, Lock, Menu, X, StickyNote, FileText, Grid2X2, Car, QrCode, Folder as FolderIcon, Check, Edit2, Trash2, BookOpen, ArrowLeft, ArrowRight, Camera, FileDown, Hourglass, Users, Download, Receipt, MapPin, Image as ImageIcon, Lightbulb, Globe, ChevronLeft, Bus } from 'lucide-react';
+import { Sun, Moon, Wrench, Plus, LayoutDashboard, Settings, User, LogOut, Search, Mic, Bell, CreditCard, Fingerprint, ShieldCheck, Lock, Menu, X, StickyNote, FileText, Grid2X2, Car, QrCode, Folder as FolderIcon, Check, Edit2, Trash2, BookOpen, ArrowLeft, ArrowRight, Camera, FileDown, Hourglass, Users, Download, Receipt, MapPin, Image as ImageIcon, Lightbulb, Globe, ChevronLeft, Bus, Home, Armchair } from 'lucide-react';
 import { Module, ModuleType, Folder, DocumentModule } from './types';
 import { storage, AppState } from './services/storage';
 import { encryption } from './services/encryption';
@@ -137,6 +137,12 @@ const TEMPLATES = {
     content: '',
     icon: BookOpen,
     color: 'text-orange-500'
+  },
+  home: {
+    title: 'Casa',
+    content: '',
+    icon: Home,
+    color: 'text-teal-500'
   }
 };
 
@@ -165,6 +171,8 @@ export default function App() {
   const [selectedType, setSelectedType] = useState<ModuleType | null>(null);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
   const [isSplashScreenActive, setIsSplashScreenActive] = useState(true);
+  const [homeSubMenu, setHomeSubMenu] = useState(false);
+  const [editingFurnitureModule, setEditingFurnitureModule] = useState<import('./types').FurnitureModule | null>(null);
 
   useEffect(() => {
     // Show splash screen for 1.5s
@@ -1761,6 +1769,12 @@ export default function App() {
                 onSave={(mod) => { updateModuleDirect(mod); setEditingTravelModule(mod); }}
                 onClose={() => setEditingTravelModule(null)}
               />
+            ) : editingFurnitureModule ? (
+              <FurnitureScreen
+                module={editingFurnitureModule}
+                onSave={(mod) => { updateModuleDirect(mod); setEditingFurnitureModule(null); }}
+                onClose={() => setEditingFurnitureModule(null)}
+              />
             ) : editingTransportModule ? (
               <TransportScreen
                 module={editingTransportModule}
@@ -1813,7 +1827,7 @@ export default function App() {
             ) : isAdding ? (
               <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="max-w-3xl mx-auto h-full flex flex-col w-full">
                 <div className="flex items-center gap-4 mb-8">
-                  <button onClick={() => { setIsAdding(false); setEditingModuleId(null); setFormData({}); setAutoFormStep(0); setSpesaSubMenu(false); }} className="p-2 hover:bg-[var(--card-bg)] rounded-xl text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors">
+                  <button onClick={() => { setIsAdding(false); setEditingModuleId(null); setFormData({}); setAutoFormStep(0); setSpesaSubMenu(false); setHomeSubMenu(false); }} className="p-2 hover:bg-[var(--card-bg)] rounded-xl text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors">
                     <X className="w-6 h-6" />
                   </button>
                   <h2 className="text-2xl lg:text-3xl font-bold text-[var(--text-main)]">
@@ -1822,18 +1836,20 @@ export default function App() {
                 </div>
 
                 <div className="flex-1 overflow-y-auto pb-32">
-                  {!editingModuleId && !formData.template && !spesaSubMenu && (
+                  {!editingModuleId && !formData.template && !spesaSubMenu && !homeSubMenu && (
                     <div className="bg-[var(--card-bg)]/80 backdrop-blur-3xl rounded-[2.5rem] border border-[var(--border)] p-6 lg:p-10 shadow-[0_8px_40px_rgba(0,0,0,0.06)]">
                       <h3 className="text-lg font-bold text-[var(--text-main)] mb-8 uppercase tracking-widest text-center">Scegli un Template</h3>
                       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                         {Object.entries(TEMPLATES)
-                          .filter(([key]) => key !== 'single-expense' && key !== 'travel' && key !== 'transport' && key !== 'recipes')
+                          .filter(([key]) => key !== 'single-expense' && key !== 'travel' && key !== 'transport' && key !== 'recipes' && key !== 'furniture')
                           .map(([key, t]) => (
                       <button
                             key={key}
                             onClick={() => {
                               if (key === 'split') {
                                 setSpesaSubMenu(true);
+                              } else if (key === 'home') {
+                                setHomeSubMenu(true);
                               } else if (key === 'transport') {
                                 setIsAdding(false);
                                 const newTransport: import('./types').TransportModule = {
@@ -1906,6 +1922,61 @@ export default function App() {
                            <div className="text-center">
                              <span className="font-bold text-xs uppercase tracking-wider block">Spesa Singola</span>
                              <span className="text-[10px] text-[var(--text-muted)] mt-1 block">Traccia una spesa</span>
+                           </div>
+                         </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Sub-menu Casa */}
+                  {!editingModuleId && !formData.template && homeSubMenu && (
+                    <div className="bg-[var(--card-bg)]/80 backdrop-blur-3xl rounded-[2.5rem] border border-[var(--border)] p-6 lg:p-10 shadow-[0_8px_40px_rgba(0,0,0,0.06)]">
+                      <div className="flex items-center gap-3 mb-8">
+                        <h3 className="text-lg font-bold text-[var(--text-main)] uppercase tracking-widest">Casa</h3>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                         <button
+                           onClick={() => {
+                             setHomeSubMenu(false);
+                             setFormData({ ...formData, template: 'recipes', title: 'Ricette', content: '' });
+                             setAutoFormStep(0);
+                           }}
+                           className="flex flex-col items-center justify-center gap-4 p-8 rounded-2xl border border-[var(--border)] hover:border-orange-500/60 hover:bg-orange-500/10 transition-all group text-center h-full text-[var(--text-main)]"
+                         >
+                           <BookOpen className="w-8 h-8 text-orange-500 group-hover:scale-110 transition-transform" />
+                           <div className="text-center">
+                             <span className="font-bold text-xs uppercase tracking-wider block">Ricette</span>
+                             <span className="text-[10px] text-[var(--text-muted)] mt-1 block">Gestisci le tue ricette</span>
+                           </div>
+                         </button>
+                         <button
+                           onClick={() => {
+                             setHomeSubMenu(false);
+                             setIsAdding(false);
+                             const newFurniture: import('./types').FurnitureModule = {
+                               id: generateUUID(),
+                               type: 'furniture',
+                               title: 'Mobili',
+                               rooms: [],
+                               x: (modules.length * 2) % 12,
+                               y: Infinity,
+                               w: 3,
+                               h: 3,
+                               folderId: selectedFolderId || undefined
+                             };
+                             setModules(prev => {
+                               const updated = [newFurniture, ...prev];
+                               saveAppState(updated, folders).catch(console.error);
+                               return updated;
+                             });
+                             setEditingFurnitureModule(newFurniture);
+                           }}
+                           className="flex flex-col items-center justify-center gap-4 p-8 rounded-2xl border border-[var(--border)] hover:border-teal-500/60 hover:bg-teal-500/10 transition-all group text-center h-full text-[var(--text-main)]"
+                         >
+                           <Armchair className="w-8 h-8 text-teal-500 group-hover:scale-110 transition-transform" />
+                           <div className="text-center">
+                             <span className="font-bold text-xs uppercase tracking-wider block">Mobili</span>
+                             <span className="text-[10px] text-[var(--text-muted)] mt-1 block">Idee e acquisti per stanze</span>
                            </div>
                          </button>
                       </div>

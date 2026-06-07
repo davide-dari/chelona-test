@@ -1,4 +1,4 @@
-export type ModuleType = 'generic' | 'auto' | 'document' | 'split' | 'single-expense' | 'wallet' | 'gallery' | 'travel' | 'transport' | 'recipes';
+export type ModuleType = 'generic' | 'auto' | 'document' | 'split' | 'single-expense' | 'wallet' | 'gallery' | 'travel' | 'transport' | 'recipes' | 'furniture';
 export type FuelType = 'benzina' | 'diesel' | 'gpl' | 'metano' | 'ibrida' | 'elettrica';
 
 export interface Folder {
@@ -192,7 +192,7 @@ export interface TravelModule extends BaseModule {
   destinations: TravelDestination[];
 }
 
-export type Module = GenericModule | AutoModule | DocumentModule | SplitModule | SingleExpenseModule | WalletModule | GalleryModule | TravelModule | TransportModule;
+export type Module = GenericModule | AutoModule | DocumentModule | SplitModule | SingleExpenseModule | WalletModule | GalleryModule | TravelModule | TransportModule | FurnitureModule;
 
 export interface DashboardState {
   modules: Module[];
@@ -211,4 +211,23 @@ export interface ProfileConfig {
   avatar?: string; // Base64 encoded or URL for custom avatar
   pinnedCategoryIds?: string[]; // IDs of categories pinned to home
   pinnedToolIds?: string[]; // IDs of tools pinned to home
+}
+
+export interface FurnitureItem {
+  id: string;
+  title: string;
+  price?: string;
+  imageUrl?: string;
+  link: string;
+}
+
+export interface FurnitureRoom {
+  id: string;
+  name: string;
+  items: FurnitureItem[];
+}
+
+export interface FurnitureModule extends BaseModule {
+  type: 'furniture';
+  rooms: FurnitureRoom[];
 }
