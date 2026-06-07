@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, Suspense, lazy } from 'react';
 import { 
   FileUp, FileDown, Layers, SplitSquareHorizontal, RotateCw, 
   Image as ImageIcon, Type, X, FileCheck, ArrowRight, Percent, 
@@ -7,7 +7,8 @@ import {
 } from 'lucide-react';
 import { DocumentScanner } from './DocumentScanner';
 import { ImageFilterTool } from './ImageFilterTool';
-import { GiorgioneTool } from './GiorgioneTool';
+// Lazy loading: GiorgioneTool viene caricato solo quando serve, NON nel bundle principale
+const GiorgioneTool = lazy(() => import('./GiorgioneTool').then(m => ({ default: m.GiorgioneTool })));
 import { PDFDocument, rgb, degrees } from 'pdf-lib';
 import { Module } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
@@ -438,10 +439,12 @@ export const ToolsScreen = ({ showToast, onSaveToSandbox, initialToolId, onReset
                       onSaveToSandbox={onSaveToSandbox}
                     />
                   ) : activeTool === 'giorgione' ? (
-                    <GiorgioneTool
-                      showToast={showToast}
-                      onSaveToSandbox={onSaveToSandbox}
-                    />
+                    <Suspense fallback={<div className="flex items-center justify-center p-12 text-orange-500"><svg className="animate-spin w-8 h-8" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/></svg><span className="ml-3 font-semibold">Caricamento Giorgione...</span></div>}>
+                      <GiorgioneTool
+                        showToast={showToast}
+                        onSaveToSandbox={onSaveToSandbox}
+                      />
+                    </Suspense>
                   ) : activeTool === 'percent' ? (
                     <div className="bg-[var(--card-bg)] rounded-[2rem] p-6 lg:p-10 border border-[var(--border)] shadow-2xl animate-scale-up">
                       <div className="space-y-8">
