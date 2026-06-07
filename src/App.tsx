@@ -304,9 +304,8 @@ export default function App() {
   useEffect(() => {
     console.log('[App] Initializing Lifecycle Listener');
 
-    // Esponiamo un flag globale che altri componenti (es. GiorgioneTool) possono
-    // impostare a true per segnalare che stanno aprendo un file picker nativo.
-    // In quel caso il background è intenzionale e NON blocchiamo l'app.
+    // Esponiamo un flag globale che altri componenti possono
+    // usare per sapere quando non bloccare l'app (es. file picker)
     (window as any).__chelona_file_picker_open = false;
     
     if (CapApp && typeof CapApp.addListener === 'function') {
