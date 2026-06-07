@@ -303,11 +303,21 @@ export default function App() {
   // Banking-Style Auto-Lock: listen for app background/minimize events
   useEffect(() => {
     console.log('[App] Initializing Lifecycle Listener');
+
+    // Esponiamo un flag globale che altri componenti (es. GiorgioneTool) possono
+    // impostare a true per segnalare che stanno aprendo un file picker nativo.
+    // In quel caso il background è intenzionale e NON blocchiamo l'app.
+    (window as any).__chelona_file_picker_open = false;
     
     if (CapApp && typeof CapApp.addListener === 'function') {
       const stateListener = CapApp.addListener('appStateChange', ({ isActive }) => {
         console.log('[App] State changed, isActive:', isActive);
         if (!isActive) {
+          // Se un file picker è stato aperto non bloccare l'app
+          if ((window as any).__chelona_file_picker_open) {
+            console.log('[App] Backgrounding skipped: file picker is open.');
+            return;
+          }
           console.log('[App] Backgrounding: Locking application for security.');
           setEncryptionKey(null);
           setIsProfileOpen(false);
@@ -315,6 +325,9 @@ export default function App() {
           setIsAdding(false);
           setIsToolsOpen(false);
           setSelectedType(null);
+        } else {
+          // Quando torniamo in foreground resettiamo sempre il flag
+          (window as any).__chelona_file_picker_open = false;
         }
       });
       

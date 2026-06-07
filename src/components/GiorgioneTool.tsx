@@ -70,6 +70,8 @@ const GiorgioneTool: React.FC<GiorgioneToolProps> = ({ onSaveToSandbox, showToas
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) handleFile(file);
+    // Reset del flag — il file picker è stato chiuso
+    (window as any).__chelona_file_picker_open = false;
     e.target.value = '';
   };
 
@@ -77,6 +79,14 @@ const GiorgioneTool: React.FC<GiorgioneToolProps> = ({ onSaveToSandbox, showToas
     e.preventDefault();
     const file = e.dataTransfer.files?.[0];
     if (file) handleFile(file);
+  };
+
+  // Segnala che stiamo aprendo il file picker nativo (l'app andrà in background)
+  const handleFilePickerOpen = () => {
+    (window as any).__chelona_file_picker_open = true;
+    // Sicurezza: se l'utente chiude il picker senza scegliere niente,
+    // resettiamo il flag dopo 5 secondi
+    setTimeout(() => { (window as any).__chelona_file_picker_open = false; }, 5000);
   };
 
   /* ─── Avvia → vai alla schermata trascrizione e parte subito ─── */
@@ -175,6 +185,7 @@ const GiorgioneTool: React.FC<GiorgioneToolProps> = ({ onSaveToSandbox, showToas
             type="file"
             accept="audio/*,video/mp4,video/webm"
             onChange={handleInputChange}
+            onClick={handleFilePickerOpen}
             className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
           />
           <div className="flex flex-col items-center gap-3 pointer-events-none p-6">
