@@ -1,11 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Mic, Upload, FileAudio, Play, Pause, Download, StopCircle, RefreshCw } from 'lucide-react';
-import { pipeline, env } from '@xenova/transformers';
-
-// Disabilita i modelli locali se si vuole fare fetch remoto
-env.allowLocalModels = false;
-// Abilita la cache browser così si scarica una volta sola
-env.useBrowserCache = true;
 
 interface GiorgioneToolProps {
   onSaveToSandbox?: (title: string, content: string, folderName?: string) => void;
@@ -36,6 +30,12 @@ export const GiorgioneTool: React.FC<GiorgioneToolProps> = ({ onSaveToSandbox, s
     
     setStatusText('Caricamento modello AI (Giorgione/Whisper)...');
     try {
+      const { pipeline, env } = await import('@xenova/transformers');
+      // Disabilita i modelli locali se si vuole fare fetch remoto
+      env.allowLocalModels = false;
+      // Abilita la cache browser
+      env.useBrowserCache = true;
+
       // Usiamo Xenova/whisper-tiny che pesa solo ~40MB ed è perfetto per il web
       transcriberRef.current = await pipeline('automatic-speech-recognition', 'Xenova/whisper-tiny', {
         progress_callback: (data: any) => {
