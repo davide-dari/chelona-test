@@ -11,6 +11,138 @@ type Status = 'idle' | 'loading-model' | 'decoding' | 'transcribing' | 'done' | 
 
 const WHISPER_CDN = 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2';
 
+/* ══════════════════════════════════════════════════════════════
+   Decoder audio robusto con 2 strategie di fallback.
+   Restituisce sempre Float32Array mono a 16 kHz.
+   ══════════════════════════════════════════════════════════════ */
+
+async function decodeAudioTo16kHz(file: File, blobUrl: string | null): Promise<Float32Array> {
+  const TARGET_SR = 16000;
+
+  // ── Strategia 1: decodeAudioData a sample rate nativo + resample OfflineAudioContext ──
+  try {
+    const arrayBuffer = await file.arrayBuffer();
+    // Decodifica al sample rate nativo del sistema (più compatibile rispetto a forzare 16kHz)
+    const tmpCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const decoded = await tmpCtx.decodeAudioData(arrayBuffer);
+    const nativeSr = decoded.sampleRate;
+    const channelData = decoded.getChannelData(0); // mono
+    tmpCtx.close().catch(() => {});
+
+    if (nativeSr === TARGET_SR) return channelData;
+
+    // Resample a 16 kHz tramite OfflineAudioContext
+    const numFrames = Math.ceil(decoded.duration * TARGET_SR);
+    const offCtx = new OfflineAudioContext(1, numFrames, TARGET_SR);
+    const bufSrc = offCtx.createBufferSource();
+    bufSrc.buffer = decoded;
+    bufSrc.connect(offCtx.destination);
+    bufSrc.start();
+    const rendered = await offCtx.startRendering();
+    return rendered.getChannelData(0);
+  } catch (e) {
+    console.warn('[Giorgione] decodeAudioData fallito, uso fallback MediaElement:', e);
+  }
+
+  // ── Strategia 2: Cattura in tempo reale via <audio> + ScriptProcessor ──
+  // Funziona per QUALSIASI formato che il dispositivo sa riprodurre (M4A, AAC, OGG…)
+  if (blobUrl) {
+    try {
+      return await captureViaMediaElement(blobUrl, TARGET_SR);
+    } catch (e2) {
+      console.error('[Giorgione] Anche il fallback MediaElement ha fallito:', e2);
+    }
+  }
+
+  throw new Error('Impossibile decodificare il file audio.');
+}
+
+/**
+ * Riproduce l'audio tramite <audio> element e cattura i campioni PCM
+ * via MediaElementSource + ScriptProcessorNode.
+ * L'<audio> element supporta M4A/AAC su Android dove decodeAudioData no.
+ */
+function captureViaMediaElement(url: string, targetSr: number): Promise<Float32Array> {
+  return new Promise((resolve, reject) => {
+    const audio = new Audio();
+    audio.src = url;
+    audio.preload = 'auto';
+
+    const ctx = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: targetSr });
+    let source: MediaElementAudioSourceNode;
+    let processor: ScriptProcessorNode;
+    const chunks: Float32Array[] = [];
+    let resolved = false;
+
+    const cleanup = () => {
+      try { source?.disconnect(); } catch (_) {}
+      try { processor?.disconnect(); } catch (_) {}
+      try { ctx.close(); } catch (_) {}
+      audio.pause();
+      audio.removeAttribute('src');
+      audio.load();
+    };
+
+    audio.addEventListener('canplaythrough', () => {
+      try {
+        source = ctx.createMediaElementSource(audio);
+        processor = ctx.createScriptProcessor(4096, 1, 1);
+
+        // Cattura campioni silenziosa (GainNode a 0 per non riprodurre audio)
+        const silencer = ctx.createGain();
+        silencer.gain.value = 0;
+
+        processor.onaudioprocess = (e) => {
+          const input = e.inputBuffer.getChannelData(0);
+          chunks.push(new Float32Array(input));
+        };
+
+        source.connect(processor);
+        processor.connect(silencer);
+        silencer.connect(ctx.destination);
+
+        audio.play().catch((playErr) => {
+          cleanup();
+          reject(playErr);
+        });
+      } catch (setupErr) {
+        cleanup();
+        reject(setupErr);
+      }
+    }, { once: true });
+
+    audio.addEventListener('ended', () => {
+      if (resolved) return;
+      resolved = true;
+      const totalLen = chunks.reduce((acc, c) => acc + c.length, 0);
+      const result = new Float32Array(totalLen);
+      let offset = 0;
+      for (const c of chunks) {
+        result.set(c, offset);
+        offset += c.length;
+      }
+      cleanup();
+      resolve(result);
+    }, { once: true });
+
+    audio.addEventListener('error', () => {
+      if (resolved) return;
+      resolved = true;
+      cleanup();
+      reject(new Error('Formato audio non supportato dal dispositivo.'));
+    }, { once: true });
+
+    // Timeout sicurezza: se dopo 5 minuti non è finito, errore
+    setTimeout(() => {
+      if (!resolved) {
+        resolved = true;
+        cleanup();
+        reject(new Error('Timeout decodifica audio (max 5 min).'));
+      }
+    }, 5 * 60 * 1000);
+  });
+}
+
 const GiorgioneTool: React.FC<GiorgioneToolProps> = ({ onSaveToSandbox, showToast }) => {
   const [screen, setScreen]               = useState<Screen>('select');
   const [status, setStatus]               = useState<Status>('idle');
@@ -104,23 +236,12 @@ const GiorgioneTool: React.FC<GiorgioneToolProps> = ({ onSaveToSandbox, showToas
       setStatus('decoding');
       setProgressLabel('Decodifica audio...');
 
-      // Strategia 1: passa l'URL direttamente a transformers.js
-      // (supporta M4A, AAC, OGG e altri formati non gestiti da WebAudio su Android)
-      let audioInput: any = audioUrl;
-
-      // Strategia 2 (fallback): decodifica manuale via WebAudio API
-      // usata solo se la Strategia 1 non è disponibile
-      if (!audioUrl) {
-        const arrayBuffer = await fileRef.current!.arrayBuffer();
-        const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 16000 });
-        const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
-        audioInput = audioBuffer.getChannelData(0);
-      }
+      const audioData = await decodeAudioTo16kHz(fileRef.current!, audioUrl);
 
       setStatus('transcribing');
       setProgressLabel('Trascrizione in corso...');
 
-      const result = await transcriber(audioInput, {
+      const result = await transcriber(audioData, {
         chunk_length_s: 30,
         stride_length_s: 5,
         return_timestamps: false,
