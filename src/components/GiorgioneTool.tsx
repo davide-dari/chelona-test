@@ -11,7 +11,7 @@ interface GiorgioneToolProps {
 type Screen = 'select' | 'transcribing';
 type Status = 'idle' | 'loading-model' | 'decoding' | 'transcribing' | 'done' | 'error';
 
-const WHISPER_CDN = 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2';
+
 
 /* ══════════════════════════════════════════════════════════════
    Decoder audio basato su FFmpeg.wasm
@@ -81,10 +81,7 @@ const GiorgioneTool: React.FC<GiorgioneToolProps> = ({ onSaveToSandbox, showToas
     setProgress(0);
     setProgressLabel('Download modello Whisper...');
 
-    const { pipeline, env } = await import(
-      /* @vite-ignore */
-      `${WHISPER_CDN}/src/transformers.js`
-    );
+    const { pipeline, env } = await import('@huggingface/transformers');
 
     env.allowLocalModels = false;
     env.useBrowserCache  = true;
