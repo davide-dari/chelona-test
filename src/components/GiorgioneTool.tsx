@@ -82,7 +82,7 @@ const GiorgioneTool: React.FC<GiorgioneToolProps> = ({ onSaveToSandbox, showToas
     setProgressLabel('Caricamento modello Vosk Offline...');
 
     // Load Vosk model from public folder
-    const model = await Vosk.createModel('/vosk/vosk-model-small-it-0.22.tar.gz');
+    const model = await Vosk.createModel('/vosk/model.zip');
     pipelineRef.current = model;
     
     setProgressLabel('Modello pronto!');
