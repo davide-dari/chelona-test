@@ -8,7 +8,7 @@ interface GiorgioneToolProps {
   showToast: (m: string, t?: 'success' | 'error' | 'info') => void;
 }
 
-import * as Vosk from 'vosk-browser';
+import { pipeline, env } from '@huggingface/transformers';
 
 type Screen = 'select' | 'transcribing';
 type Status = 'idle' | 'loading-model' | 'decoding' | 'transcribing' | 'done' | 'error';
@@ -73,20 +73,34 @@ const GiorgioneTool: React.FC<GiorgioneToolProps> = ({ onSaveToSandbox, showToas
   const pipelineRef = useRef<any>(null);
   const fileRef     = useRef<File | null>(null);
 
-  /* ─── Caricamento modello Vosk ─── */
+  /* ─── Caricamento modello Whisper Tiny ─── */
   const loadModelIfNeeded = useCallback(async () => {
     if (pipelineRef.current) return pipelineRef.current;
 
     setStatus('loading-model');
     setProgress(0);
-    setProgressLabel('Caricamento modello Vosk Offline...');
+    setProgressLabel('Download modello Whisper Tiny (Leggero)...');
 
-    // Load Vosk model from public folder
-    const model = await Vosk.createModel('/vosk/model.zip');
-    pipelineRef.current = model;
-    
-    setProgressLabel('Modello pronto!');
-    return model;
+    env.allowLocalModels = false;
+    env.useBrowserCache  = true;
+
+    // Use WebGPU if available, fallback to WASM
+    pipelineRef.current = await pipeline(
+      'automatic-speech-recognition',
+      'onnx-community/whisper-tiny',
+      {
+        progress_callback: (p: any) => {
+          if (p.status === 'progress' && p.total > 0) {
+            const pct = Math.round((p.loaded / p.total) * 100);
+            setProgress(pct);
+            setProgressLabel(`Download modello: ${pct}%`);
+          }
+          if (p.status === 'ready') setProgressLabel('Modello pronto!');
+        },
+      }
+    );
+
+    return pipelineRef.current;
   }, []);
 
   /* ─── Gestione file ─── */
@@ -131,7 +145,7 @@ const GiorgioneTool: React.FC<GiorgioneToolProps> = ({ onSaveToSandbox, showToas
   /* ─── Trascrizione ─── */
   const startTranscription = async () => {
     try {
-      const model = await loadModelIfNeeded();
+      const transcriber = await loadModelIfNeeded();
 
       setStatus('decoding');
       setProgressLabel('Decodifica audio in corso...');
@@ -139,59 +153,16 @@ const GiorgioneTool: React.FC<GiorgioneToolProps> = ({ onSaveToSandbox, showToas
       const audioData = await decodeAudioTo16kHz(fileRef.current!, setProgressLabel);
 
       setStatus('transcribing');
-      setProgressLabel('Trascrizione in corso...');
+      setProgressLabel('Trascrizione in corso (potrebbe impiegare qualche minuto)...');
 
-      const recognizer = new model.KaldiRecognizer(16000);
-      recognizer.setWords(true);
-
-      let fullText = "";
-
-      // Promise for finishing transcription
-      const transcriptionPromise = new Promise<string>((resolve) => {
-        let textResult = "";
-        
-        recognizer.on("result", (msg: any) => {
-          if (msg.result && msg.result.text) {
-             textResult += msg.result.text + " ";
-             setTranscribedText(textResult);
-          }
-        });
-
-        recognizer.on("partialresult", (msg: any) => {
-          if (msg.result && msg.result.partial) {
-             setTranscribedText(textResult + msg.result.partial);
-          }
-        });
-
-        // We will resolve it manually after all chunks are sent and final result retrieved
-        // Wait for the final event? Actually `retrieveFinalResult` triggers a `result`.
-        // To intercept it, we wrap it in a setTimeout
-        (window as any)._resolveVosk = () => {
-           resolve(textResult.trim());
-        };
+      const result = await transcriber(audioData, {
+        chunk_length_s: 30,
+        stride_length_s: 5,
+        return_timestamps: false,
+        language: 'italian',
       });
 
-      // Send audio in chunks to avoid UI lock
-      const CHUNK_SIZE = 16000 * 2; // 2 seconds
-      const totalChunks = Math.ceil(audioData.length / CHUNK_SIZE);
-      for (let i = 0; i < audioData.length; i += CHUNK_SIZE) {
-        recognizer.acceptWaveformFloat(audioData.slice(i, i + CHUNK_SIZE), 16000);
-        setProgressLabel(`Trascrizione: ${Math.round((i / audioData.length) * 100)}%`);
-        await new Promise(r => setTimeout(r, 0)); // yield to UI
-      }
-
-      recognizer.retrieveFinalResult();
-      
-      // Wait a moment for worker to process retrieveFinalResult
-      setTimeout(() => {
-        (window as any)._resolveVosk();
-      }, 500);
-
-      fullText = await transcriptionPromise;
-      
-      recognizer.remove();
-
-      setTranscribedText(fullText);
+      setTranscribedText(result.text?.trim() ?? '');
       setStatus('done');
       showToast('Trascrizione completata!', 'success');
 

@@ -1,7 +1,7 @@
 {
   "name": "chelona",
   "private": true,
-  "version": "1.14.7",
+  "version": "1.14.8",
   "type": "module",
   "scripts": {
     "dev": "vite --port=3000 --host=0.0.0.0",
@@ -25,6 +25,7 @@
     "@capgo/capacitor-native-biometric": "^8.4.2",
     "@ffmpeg/ffmpeg": "^0.12.15",
     "@ffmpeg/util": "^0.12.2",
+    "@huggingface/transformers": "^4.2.0",
     "@react-three/drei": "^10.7.7",
     "@react-three/fiber": "^9.6.1",
     "@tailwindcss/vite": "^4.1.14",
@@ -52,8 +53,7 @@
     "react-globe.gl": "^2.37.1",
     "react-grid-layout": "^2.2.2",
     "recharts": "^3.8.1",
-    "three": "^0.184.0",
-    "vosk-browser": "^0.0.8"
+    "three": "^0.184.0"
   },
   "devDependencies": {
     "@capacitor/cli": "^8.3.0",
