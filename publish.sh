@@ -73,7 +73,7 @@ RELEASE_JSON=$(curl -s -X POST \
   -d "{
     \"tag_name\": \"$TAG\",
     \"name\": \"Release $TAG\",
-    \"body\": \"🚀 **Chelona v$VERSION**\\n\\n### ✨ Novità e Fix in questo Rilascio:\\n- **🪑 Fix Modulo Mobili (Casa)**: Risolto definitivamente un crash che si presentava quando si apriva una stanza vuota (causato dall'assenza dell'icona Armchair). Ora il messaggio di stato vuoto viene renderizzato correttamente con l'icona e l'invito ad aggiungere mobili.\\n- **🏢 Stanze pre-configurate**: Da ora, quando si crea o si accede per la prima volta al modulo Mobili, vengono generate automaticamente le stanze principali di base (Cucina, Salone, Camera da letto, Bagno), migliorando la velocità di organizzazione senza doverle creare manualmente.\",
+    \"body\": \"🚀 **Chelona v$VERSION**\\n\\n### ✨ Novità e Miglioramenti in questo Rilascio (Modulo Mobili):\\n- **🕸️ Scraping Intelligente Avanzato**: Il sistema per aggiungere mobili tramite link è stato completamente riscritto. Ora Chelona ispeziona approfonditamente la pagina (inclusi Amazon e IKEA) riuscendo a recuperare automaticamente nome, prezzo, immagine e **descrizione** del prodotto in maniera molto più affidabile.\\n- **👆 Modifica e Gestione Veloce (Long Press)**: Ora puoi tenere premuto a lungo (su mobile) o fare click col tasto destro (su PC) su un qualsiasi oggetto nella stanza per aprire il nuovo pannello 'Gestisci Elemento'. Da qui puoi modificare a mano il nome, la descrizione, il prezzo, l'immagine o eliminarlo del tutto.\\n- **📱 Layout Ottimizzato**: Risolti i fastidiosi problemi visivi di sovrapposizione della barra 'Incolla link' e del bottone 'Aggiungi' sugli schermi degli smartphone più stretti.\",
     \"draft\": false,
     \"prerelease\": false
   }")
