@@ -2036,7 +2036,12 @@ export default function App() {
                                id: generateUUID(),
                                type: 'furniture',
                                title: 'Mobili',
-                               rooms: [],
+                               rooms: [
+                                 { id: generateUUID(), name: 'Cucina', items: [] },
+                                 { id: generateUUID(), name: 'Salone', items: [] },
+                                 { id: generateUUID(), name: 'Camera da letto', items: [] },
+                                 { id: generateUUID(), name: 'Bagno', items: [] }
+                               ],
                                x: (modules.length * 2) % 12,
                                y: Infinity,
                                w: 3,
@@ -2792,7 +2797,12 @@ export default function App() {
                                   id: generateUUID(),
                                   type: 'furniture',
                                   title: 'Mobili',
-                                  rooms: [],
+                                  rooms: [
+                                    { id: generateUUID(), name: 'Cucina', items: [] },
+                                    { id: generateUUID(), name: 'Salone', items: [] },
+                                    { id: generateUUID(), name: 'Camera da letto', items: [] },
+                                    { id: generateUUID(), name: 'Bagno', items: [] }
+                                  ],
                                   x: (modules.length * 2) % 12,
                                   y: Infinity,
                                   w: 3,

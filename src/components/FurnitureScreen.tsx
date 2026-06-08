@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { FurnitureModule, FurnitureRoom, FurnitureItem } from '../types';
-import { ArrowLeft, Plus, Trash2, Link as LinkIcon, Image as ImageIcon, Loader2, Tag, ExternalLink } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, Link as LinkIcon, Image as ImageIcon, Loader2, Tag, ExternalLink, Armchair } from 'lucide-react';
 import { generateUUID } from '../utils/uuid';
 import { CapacitorHttp } from '@capacitor/core';
 import { ConfirmDialog } from './ConfirmDialog';
