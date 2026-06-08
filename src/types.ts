@@ -218,6 +218,7 @@ export interface FurnitureItem {
   title: string;
   price?: string;
   imageUrl?: string;
+  description?: string;
   link: string;
 }
 
