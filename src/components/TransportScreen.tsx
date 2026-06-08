@@ -3,6 +3,7 @@ import { ArrowLeft, RefreshCw, Bus, MapPin, ExternalLink, Calendar, Info, Clock,
 import { TransportModule } from '../types';
 import { fetchLiveAeginaTransport, AeginaTransportData, FALLBACK_TRANSPORT_DATA, BusRoute, BusTrip } from '../services/transportParser';
 import { AthensTransport } from './AthensTransport';
+import { RomeTransport } from './RomeTransport';
 
 
 interface TransportScreenProps {
@@ -103,7 +104,7 @@ export const TransportScreen = ({ module, onClose, onSave, onDelete }: Transport
           </button>
           <div className="flex flex-col">
             <h1 className="text-xl lg:text-2xl font-bold text-[var(--text-main)] outline-none">
-              {selectedRoute ? selectedRoute.title : selectedLocation === 'aegina' ? 'Egina - Orari Bus KTEL' : selectedLocation === 'athens' ? 'Atene - Metro e Bus' : 'Trasporti'}
+              {selectedRoute ? selectedRoute.title : selectedLocation === 'aegina' ? 'Egina - Orari Bus KTEL' : selectedLocation === 'athens' ? 'Atene - Metro e Bus' : selectedLocation === 'rome' ? 'Roma - Metro e Bus' : 'Trasporti'}
             </h1>
             <p className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider">
               {currentLevel === 'countries' && 'Seleziona Paese'}
@@ -147,15 +148,17 @@ export const TransportScreen = ({ module, onClose, onSave, onDelete }: Transport
                 <ChevronRight className="w-5 h-5 text-[var(--text-muted)] group-hover:translate-x-1 transition-transform shrink-0" />
               </button>
 
-              <div 
-                className="flex items-center gap-5 p-6 bg-[var(--card-bg)]/40 border border-dashed border-[var(--border)] rounded-[2rem] text-left opacity-60 cursor-not-allowed"
+              <button 
+                onClick={() => { setSelectedCountry('Italia'); setCurrentLevel('locations'); }}
+                className="flex items-center gap-5 p-6 bg-[var(--card-bg)] hover:bg-[var(--surface-variant)] border border-[var(--border)] hover:border-cyan-500/50 rounded-[2rem] text-left transition-all active:scale-[0.98] group shadow-sm"
               >
-                <span className="text-4xl filter grayscale">🇮🇹</span>
+                <span className="text-4xl">🇮🇹</span>
                 <div className="flex-1 min-w-0">
-                  <h4 className="font-black text-lg text-[var(--text-muted)]">Italia</h4>
-                  <p className="text-xs text-[var(--text-muted)] mt-1">Altre destinazioni in arrivo nei prossimi aggiornamenti.</p>
+                  <h4 className="font-black text-lg text-[var(--text-main)] group-hover:text-cyan-500 transition-colors">Italia</h4>
+                  <p className="text-xs text-[var(--text-muted)] mt-1">Orari bus locali e metropolitane.</p>
                 </div>
-              </div>
+                <ChevronRight className="w-5 h-5 text-[var(--text-muted)] group-hover:translate-x-1 transition-transform shrink-0" />
+              </button>
             </div>
           </div>
         )}
@@ -208,10 +211,43 @@ export const TransportScreen = ({ module, onClose, onSave, onDelete }: Transport
           </div>
         )}
 
+        {/* LIVELLO 2: LOCALITA' (ITALIA) */}
+        {currentLevel === 'locations' && selectedCountry === 'Italia' && (
+          <div className="space-y-6 fade-in">
+            <h3 className="text-sm font-bold text-[var(--text-muted)] uppercase tracking-wider text-center py-2">Seleziona una località</h3>
+            <div className="grid grid-cols-1 gap-4">
+              {/* ROMA */}
+              <button 
+                onClick={() => { setSelectedLocation('rome'); setCurrentLevel('schedule'); }}
+                className="flex flex-col sm:flex-row gap-5 p-6 bg-[var(--card-bg)] hover:bg-[var(--surface-variant)] border border-[var(--border)] hover:border-cyan-500/50 rounded-[2rem] text-left transition-all active:scale-[0.98] group shadow-sm"
+              >
+                <div className="w-full sm:w-28 aspect-[1.5] sm:aspect-square rounded-2xl bg-gradient-to-tr from-cyan-600 to-blue-800 flex items-center justify-center text-white shrink-0 relative overflow-hidden">
+                  <span className="text-4xl relative z-10">🏛️</span>
+                  <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_transparent_20%,_rgba(0,0,0,0.4)_100%)]" />
+                </div>
+                <div className="flex-1 min-w-0 flex flex-col justify-center">
+                  <h4 className="font-black text-xl text-[var(--text-main)] group-hover:text-cyan-500 transition-colors">Roma (Rome)</h4>
+                  <p className="text-xs text-[var(--text-muted)] mt-1.5 leading-relaxed">
+                    Mappa interattiva della metropolitana, calcolo percorsi offline, principali linee bus della città (compresi gli Express per l'aeroporto) e telemetria ATAC.
+                  </p>
+                </div>
+                <div className="self-center shrink-0 hidden sm:block">
+                  <ChevronRight className="w-6 h-6 text-[var(--text-muted)] group-hover:translate-x-1 transition-transform" />
+                </div>
+              </button>
+            </div>
+          </div>
+        )}
+
 
         {/* LIVELLO 3: SCHERMO ORARI E LINEE (ATENE) */}
         {currentLevel === 'schedule' && selectedLocation === 'athens' && (
           <AthensTransport />
+        )}
+
+        {/* LIVELLO 3: SCHERMO ORARI E LINEE (ROMA) */}
+        {currentLevel === 'schedule' && selectedLocation === 'rome' && (
+          <RomeTransport />
         )}
 
         {/* LIVELLO 3: SCHERMO ORARI E LINEE (EGINA) */}
