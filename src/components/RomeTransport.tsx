@@ -11,8 +11,7 @@ import {
 export interface MetroStation {
   id: string;
   nameIt: string;
-  nameEl: string;
-  lat: number;
+    lat: number;
   lng: number;
   lines: number[];
   attractions?: string[];
@@ -22,58 +21,74 @@ export interface MetroStation {
 // 1. MASTER LIST STATIONS CON COORDINATE REALI
 export const ROME_STATIONS: Record<string, MetroStation> = {
   // Linea A (Arancione)
-  battistini: { id: 'battistini', nameIt: 'Battistini', nameEl: 'Battistini', lat: 41.9062, lng: 12.4149, lines: [1] },
-  cornelia: { id: 'cornelia', nameIt: 'Cornelia', nameEl: 'Cornelia', lat: 41.9009, lng: 12.4262, lines: [1] },
-  valle_aurelia: { id: 'valle_aurelia', nameIt: 'Valle Aurelia', nameEl: 'Valle Aurelia', lat: 41.9025, lng: 12.4419, lines: [1], isTransfer: true },
-  cipro: { id: 'cipro', nameIt: 'Cipro', nameEl: 'Cipro', lat: 41.9075, lng: 12.4475, lines: [1], attractions: ['Musei Vaticani'] },
-  ottaviano: { id: 'ottaviano', nameIt: 'Ottaviano', nameEl: 'Ottaviano', lat: 41.9092, lng: 12.4578, lines: [1], attractions: ['Basilica di San Pietro', 'Vaticano'] },
-  lepanto: { id: 'lepanto', nameIt: 'Lepanto', nameEl: 'Lepanto', lat: 41.9116, lng: 12.4665, lines: [1] },
-  flaminio: { id: 'flaminio', nameIt: 'Flaminio', nameEl: 'Flaminio', lat: 41.9123, lng: 12.4761, lines: [1], attractions: ['Piazza del Popolo', 'Villa Borghese'] },
-  spagna: { id: 'spagna', nameIt: 'Spagna', nameEl: 'Spagna', lat: 41.9064, lng: 12.4828, lines: [1], attractions: ['Piazza di Spagna', 'Trinità dei Monti'] },
-  barberini: { id: 'barberini', nameIt: 'Barberini', nameEl: 'Barberini', lat: 41.9037, lng: 12.4886, lines: [1], attractions: ['Fontana di Trevi', 'Via Veneto'] },
-  repubblica: { id: 'repubblica', nameIt: 'Repubblica', nameEl: 'Repubblica', lat: 41.9026, lng: 12.4952, lines: [1], attractions: ['Teatro dell\'Opera', 'Via Nazionale'] },
-  termini: { id: 'termini', nameIt: 'Termini', nameEl: 'Termini', lat: 41.9014, lng: 12.5009, lines: [1, 2], isTransfer: true, attractions: ['Stazione Termini', 'Piazza dei Cinquecento'] },
-  vittorio_emanuele: { id: 'vittorio_emanuele', nameIt: 'Vittorio Emanuele', nameEl: 'Vittorio Emanuele', lat: 41.8953, lng: 12.5046, lines: [1], attractions: ['Piazza Vittorio'] },
-  manzoni: { id: 'manzoni', nameIt: 'Manzoni', nameEl: 'Manzoni', lat: 41.8906, lng: 12.5065, lines: [1] },
-  san_giovanni: { id: 'san_giovanni', nameIt: 'San Giovanni', nameEl: 'San Giovanni', lat: 41.8858, lng: 12.5097, lines: [1, 3], isTransfer: true, attractions: ['Basilica di San Giovanni in Laterano'] },
-  re_di_roma: { id: 're_di_roma', nameIt: 'Re di Roma', nameEl: 'Re di Roma', lat: 41.8814, lng: 12.5147, lines: [1] },
-  ponte_lungo: { id: 'ponte_lungo', nameIt: 'Ponte Lungo', nameEl: 'Ponte Lungo', lat: 41.8767, lng: 12.5209, lines: [1] },
-  furio_camillo: { id: 'furio_camillo', nameIt: 'Furio Camillo', nameEl: 'Furio Camillo', lat: 41.8732, lng: 12.5262, lines: [1] },
-  colli_albani: { id: 'colli_albani', nameIt: 'Colli Albani', nameEl: 'Colli Albani', lat: 41.8692, lng: 12.5312, lines: [1] },
-  arco_di_travertino: { id: 'arco_di_travertino', nameIt: 'Arco di Travertino', nameEl: 'Arco di Travertino', lat: 41.8655, lng: 12.5367, lines: [1] },
-  porta_furba: { id: 'porta_furba', nameIt: 'Porta Furba', nameEl: 'Porta Furba', lat: 41.8624, lng: 12.5414, lines: [1] },
-  numidio_quadrato: { id: 'numidio_quadrato', nameIt: 'Numidio Quadrato', nameEl: 'Numidio Quadrato', lat: 41.8595, lng: 12.5463, lines: [1] },
-  lucio_sestio: { id: 'lucio_sestio', nameIt: 'Lucio Sestio', nameEl: 'Lucio Sestio', lat: 41.8569, lng: 12.5511, lines: [1] },
-  giulio_agricola: { id: 'giulio_agricola', nameIt: 'Giulio Agricola', nameEl: 'Giulio Agricola', lat: 41.8541, lng: 12.5562, lines: [1] },
-  subaugusta: { id: 'subaugusta', nameIt: 'Subaugusta', nameEl: 'Subaugusta', lat: 41.8517, lng: 12.5606, lines: [1] },
-  cinecitta: { id: 'cinecitta', nameIt: 'Cinecittà', nameEl: 'Cinecittà', lat: 41.8485, lng: 12.5661, lines: [1], attractions: ['Cinecittà Studios'] },
-  anagnina: { id: 'anagnina', nameIt: 'Anagnina', nameEl: 'Anagnina', lat: 41.8418, lng: 12.5806, lines: [1] },
+  battistini: { id: 'battistini', nameIt: 'Battistini', lat: 41.9062, lng: 12.4149, lines: [1] },
+  cornelia: { id: 'cornelia', nameIt: 'Cornelia', lat: 41.9009, lng: 12.4262, lines: [1] },
+  valle_aurelia: { id: 'valle_aurelia', nameIt: 'Valle Aurelia', lat: 41.9025, lng: 12.4419, lines: [1], isTransfer: true },
+  cipro: { id: 'cipro', nameIt: 'Cipro', lat: 41.9075, lng: 12.4475, lines: [1], attractions: ['Musei Vaticani'] },
+  ottaviano: { id: 'ottaviano', nameIt: 'Ottaviano', lat: 41.9092, lng: 12.4578, lines: [1], attractions: ['Basilica di San Pietro', 'Vaticano'] },
+  lepanto: { id: 'lepanto', nameIt: 'Lepanto', lat: 41.9116, lng: 12.4665, lines: [1] },
+  flaminio: { id: 'flaminio', nameIt: 'Flaminio', lat: 41.9123, lng: 12.4761, lines: [1], attractions: ['Piazza del Popolo', 'Villa Borghese'] },
+  spagna: { id: 'spagna', nameIt: 'Spagna', lat: 41.9064, lng: 12.4828, lines: [1], attractions: ['Piazza di Spagna', 'Trinità dei Monti'] },
+  barberini: { id: 'barberini', nameIt: 'Barberini', lat: 41.9037, lng: 12.4886, lines: [1], attractions: ['Fontana di Trevi', 'Via Veneto'] },
+  repubblica: { id: 'repubblica', nameIt: 'Repubblica', lat: 41.9026, lng: 12.4952, lines: [1], attractions: ['Teatro dell\'Opera', 'Via Nazionale'] },
+  termini: { id: 'termini', nameIt: 'Termini', lat: 41.9014, lng: 12.5009, lines: [1, 2], isTransfer: true, attractions: ['Stazione Termini', 'Piazza dei Cinquecento'] },
+  vittorio_emanuele: { id: 'vittorio_emanuele', nameIt: 'Vittorio Emanuele', lat: 41.8953, lng: 12.5046, lines: [1], attractions: ['Piazza Vittorio'] },
+  manzoni: { id: 'manzoni', nameIt: 'Manzoni', lat: 41.8906, lng: 12.5065, lines: [1] },
+  san_giovanni: { id: 'san_giovanni', nameIt: 'San Giovanni', lat: 41.8858, lng: 12.5097, lines: [1, 3], isTransfer: true, attractions: ['Basilica di San Giovanni in Laterano'] },
+  re_di_roma: { id: 're_di_roma', nameIt: 'Re di Roma', lat: 41.8814, lng: 12.5147, lines: [1] },
+  ponte_lungo: { id: 'ponte_lungo', nameIt: 'Ponte Lungo', lat: 41.8767, lng: 12.5209, lines: [1] },
+  furio_camillo: { id: 'furio_camillo', nameIt: 'Furio Camillo', lat: 41.8732, lng: 12.5262, lines: [1] },
+  colli_albani: { id: 'colli_albani', nameIt: 'Colli Albani', lat: 41.8692, lng: 12.5312, lines: [1] },
+  arco_di_travertino: { id: 'arco_di_travertino', nameIt: 'Arco di Travertino', lat: 41.8655, lng: 12.5367, lines: [1] },
+  porta_furba: { id: 'porta_furba', nameIt: 'Porta Furba', lat: 41.8624, lng: 12.5414, lines: [1] },
+  numidio_quadrato: { id: 'numidio_quadrato', nameIt: 'Numidio Quadrato', lat: 41.8595, lng: 12.5463, lines: [1] },
+  lucio_sestio: { id: 'lucio_sestio', nameIt: 'Lucio Sestio', lat: 41.8569, lng: 12.5511, lines: [1] },
+  giulio_agricola: { id: 'giulio_agricola', nameIt: 'Giulio Agricola', lat: 41.8541, lng: 12.5562, lines: [1] },
+  subaugusta: { id: 'subaugusta', nameIt: 'Subaugusta', lat: 41.8517, lng: 12.5606, lines: [1] },
+  cinecitta: { id: 'cinecitta', nameIt: 'Cinecittà', lat: 41.8485, lng: 12.5661, lines: [1], attractions: ['Cinecittà Studios'] },
+  anagnina: { id: 'anagnina', nameIt: 'Anagnina', lat: 41.8418, lng: 12.5806, lines: [1] },
 
   // Linea B (Blu)
-  laurentina: { id: 'laurentina', nameIt: 'Laurentina', nameEl: 'Laurentina', lat: 41.8266, lng: 12.4806, lines: [2] },
-  eur_fermi: { id: 'eur_fermi', nameIt: 'EUR Fermi', nameEl: 'EUR Fermi', lat: 41.8285, lng: 12.4704, lines: [2], attractions: ['Laghetto dell\'EUR'] },
-  eur_palasport: { id: 'eur_palasport', nameIt: 'EUR Palasport', nameEl: 'EUR Palasport', lat: 41.8314, lng: 12.4665, lines: [2] },
-  eur_magliana: { id: 'eur_magliana', nameIt: 'EUR Magliana', nameEl: 'EUR Magliana', lat: 41.8383, lng: 12.4632, lines: [2], isTransfer: true },
-  marconi: { id: 'marconi', nameIt: 'Marconi', nameEl: 'Marconi', lat: 41.8475, lng: 12.4746, lines: [2] },
-  basilica_san_paolo: { id: 'basilica_san_paolo', nameIt: 'Basilica San Paolo', nameEl: 'Basilica San Paolo', lat: 41.8558, lng: 12.4789, lines: [2], isTransfer: true, attractions: ['Basilica di San Paolo fuori le Mura'] },
-  garbatella: { id: 'garbatella', nameIt: 'Garbatella', nameEl: 'Garbatella', lat: 41.8661, lng: 12.4836, lines: [2] },
-  piramide: { id: 'piramide', nameIt: 'Piramide', nameEl: 'Piramide', lat: 41.8755, lng: 12.4822, lines: [2], isTransfer: true, attractions: ['Piramide Cestia', 'Stazione Ostiense', 'Cimitero Acattolico'] },
-  circo_massimo: { id: 'circo_massimo', nameIt: 'Circo Massimo', nameEl: 'Circo Massimo', lat: 41.8833, lng: 12.4883, lines: [2], attractions: ['Circo Massimo', 'Aventino', 'FAO'] },
-  colosseo: { id: 'colosseo', nameIt: 'Colosseo', nameEl: 'Colosseo', lat: 41.8914, lng: 12.4912, lines: [2], attractions: ['Colosseo', 'Fori Imperiali', 'Arco di Costantino'] },
-  cavour: { id: 'cavour', nameIt: 'Cavour', nameEl: 'Cavour', lat: 41.8953, lng: 12.4939, lines: [2], attractions: ['Rione Monti'] },
-  castro_pretorio: { id: 'castro_pretorio', nameIt: 'Castro Pretorio', nameEl: 'Castro Pretorio', lat: 41.9056, lng: 12.5056, lines: [2] },
-  policlinico: { id: 'policlinico', nameIt: 'Policlinico', nameEl: 'Policlinico', lat: 41.9083, lng: 12.5122, lines: [2], attractions: ['Policlinico Umberto I', 'Università La Sapienza'] },
-  bologna: { id: 'bologna', nameIt: 'Bologna', nameEl: 'Bologna', lat: 41.9136, lng: 12.5206, lines: [2], isTransfer: true },
-  tiburtina: { id: 'tiburtina', nameIt: 'Tiburtina', nameEl: 'Tiburtina', lat: 41.9097, lng: 12.5303, lines: [2], attractions: ['Stazione Tiburtina'] },
-  rebibbia: { id: 'rebibbia', nameIt: 'Rebibbia', nameEl: 'Rebibbia', lat: 41.9261, lng: 12.5728, lines: [2] },
-  jonio: { id: 'jonio', nameIt: 'Jonio', nameEl: 'Jonio', lat: 41.9483, lng: 12.5275, lines: [2] },
+  laurentina: { id: 'laurentina', nameIt: 'Laurentina', lat: 41.8266, lng: 12.4806, lines: [2] },
+  eur_fermi: { id: 'eur_fermi', nameIt: 'EUR Fermi', lat: 41.8285, lng: 12.4704, lines: [2], attractions: ['Laghetto dell\'EUR'] },
+  eur_palasport: { id: 'eur_palasport', nameIt: 'EUR Palasport', lat: 41.8314, lng: 12.4665, lines: [2] },
+  eur_magliana: { id: 'eur_magliana', nameIt: 'EUR Magliana', lat: 41.8383, lng: 12.4632, lines: [2], isTransfer: true },
+  marconi: { id: 'marconi', nameIt: 'Marconi', lat: 41.8475, lng: 12.4746, lines: [2] },
+  basilica_san_paolo: { id: 'basilica_san_paolo', nameIt: 'Basilica San Paolo', lat: 41.8558, lng: 12.4789, lines: [2], isTransfer: true, attractions: ['Basilica di San Paolo fuori le Mura'] },
+  garbatella: { id: 'garbatella', nameIt: 'Garbatella', lat: 41.8661, lng: 12.4836, lines: [2] },
+  piramide: { id: 'piramide', nameIt: 'Piramide', lat: 41.8755, lng: 12.4822, lines: [2], isTransfer: true, attractions: ['Piramide Cestia', 'Stazione Ostiense', 'Cimitero Acattolico'] },
+  circo_massimo: { id: 'circo_massimo', nameIt: 'Circo Massimo', lat: 41.8833, lng: 12.4883, lines: [2], attractions: ['Circo Massimo', 'Aventino', 'FAO'] },
+  colosseo: { id: 'colosseo', nameIt: 'Colosseo', lat: 41.8914, lng: 12.4912, lines: [2], attractions: ['Colosseo', 'Fori Imperiali', 'Arco di Costantino'] },
+  cavour: { id: 'cavour', nameIt: 'Cavour', lat: 41.8953, lng: 12.4939, lines: [2], attractions: ['Rione Monti'] },
+  castro_pretorio: { id: 'castro_pretorio', nameIt: 'Castro Pretorio', lat: 41.9056, lng: 12.5056, lines: [2] },
+  policlinico: { id: 'policlinico', nameIt: 'Policlinico', lat: 41.9083, lng: 12.5122, lines: [2], attractions: ['Policlinico Umberto I', 'Università La Sapienza'] },
+  bologna: { id: 'bologna', nameIt: 'Bologna', lat: 41.9136, lng: 12.5206, lines: [2], isTransfer: true },
+  tiburtina: { id: 'tiburtina', nameIt: 'Tiburtina', lat: 41.9097, lng: 12.5303, lines: [2], attractions: ['Stazione Tiburtina'] },
+  rebibbia: { id: 'rebibbia', nameIt: 'Rebibbia', lat: 41.9261, lng: 12.5728, lines: [2] },
+  jonio: { id: 'jonio', nameIt: 'Jonio', lat: 41.9483, lng: 12.5275, lines: [2] },
 
   // Linea C (Verde)
-  lodi: { id: 'lodi', nameIt: 'Lodi', nameEl: 'Lodi', lat: 41.8864, lng: 12.5181, lines: [3] },
-  pigneto: { id: 'pigneto', nameIt: 'Pigneto', nameEl: 'Pigneto', lat: 41.8889, lng: 12.5261, lines: [3], attractions: ['Quartiere Pigneto'] },
-  malatesta: { id: 'malatesta', nameIt: 'Malatesta', nameEl: 'Malatesta', lat: 41.8867, lng: 12.5358, lines: [3] },
-  teano: { id: 'teano', nameIt: 'Teano', nameEl: 'Teano', lat: 41.8894, lng: 12.5511, lines: [3] },
-  pantano: { id: 'pantano', nameIt: 'Monte Compatri-Pantano', nameEl: 'Monte Compatri-Pantano', lat: 41.8656, lng: 12.7114, lines: [3] }
+  lodi: { id: 'lodi', nameIt: 'Lodi', lat: 41.8864, lng: 12.5181, lines: [3] },
+  pigneto: { id: 'pigneto', nameIt: 'Pigneto', lat: 41.8889, lng: 12.5261, lines: [3], attractions: ['Quartiere Pigneto'] },
+  malatesta: { id: 'malatesta', nameIt: 'Malatesta', lat: 41.8867, lng: 12.5358, lines: [3] },
+  teano: { id: 'teano', nameIt: 'Teano', lat: 41.8894, lng: 12.5511, lines: [3] },
+  gardenie: { id: 'gardenie', nameIt: 'Gardenie', lat: 41.8833, lng: 12.5647, lines: [3] },
+  mirti: { id: 'mirti', nameIt: 'Mirti', lat: 41.8801, lng: 12.5714, lines: [3] },
+  parco_di_centocelle: { id: 'parco_di_centocelle', nameIt: 'Parco di Centocelle', lat: 41.8741, lng: 12.5768, lines: [3] },
+  alessandrino: { id: 'alessandrino', nameIt: 'Alessandrino', lat: 41.8711, lng: 12.5833, lines: [3] },
+  torre_spaccata: { id: 'torre_spaccata', nameIt: 'Torre Spaccata', lat: 41.8698, lng: 12.5901, lines: [3] },
+  torre_maura: { id: 'torre_maura', nameIt: 'Torre Maura', lat: 41.8681, lng: 12.5956, lines: [3] },
+  giardinetti: { id: 'giardinetti', nameIt: 'Giardinetti', lat: 41.8658, lng: 12.6053, lines: [3] },
+  torrenova: { id: 'torrenova', nameIt: 'Torrenova', lat: 41.8631, lng: 12.6136, lines: [3] },
+  torre_angela: { id: 'torre_angela', nameIt: 'Torre Angela', lat: 41.8647, lng: 12.6253, lines: [3] },
+  torre_gaia: { id: 'torre_gaia', nameIt: 'Torre Gaia', lat: 41.8633, lng: 12.6364, lines: [3] },
+  grotte_celoni: { id: 'grotte_celoni', nameIt: 'Grotte Celoni', lat: 41.8647, lng: 12.6506, lines: [3] },
+  due_leoni_fontana_candida: { id: 'due_leoni_fontana_candida', nameIt: 'Due Leoni - Fontana Candida', lat: 41.8661, lng: 12.6631, lines: [3] },
+  borghesiana: { id: 'borghesiana', nameIt: 'Borghesiana', lat: 41.8664, lng: 12.6733, lines: [3] },
+  bolognetta: { id: 'bolognetta', nameIt: 'Bolognetta', lat: 41.8667, lng: 12.6842, lines: [3] },
+  finocchio: { id: 'finocchio', nameIt: 'Finocchio', lat: 41.8633, lng: 12.6953, lines: [3] },
+  graniti: { id: 'graniti', nameIt: 'Graniti', lat: 41.8636, lng: 12.7056, lines: [3] },
+  pantano: { id: 'pantano', nameIt: 'Monte Compatri - Pantano', lat: 41.8656, lng: 12.7114, lines: [3] }
 };
 
 export const LINE_SEQUENCES: Record<number, string[]> = {
@@ -89,7 +104,7 @@ export const LINE_SEQUENCES: Record<number, string[]> = {
     'policlinico', 'bologna', 'tiburtina', 'rebibbia', 'jonio'
   ],
   3: [
-    'san_giovanni', 'lodi', 'pigneto', 'malatesta', 'teano', 'pantano'
+    'san_giovanni', 'lodi', 'pigneto', 'malatesta', 'teano', 'gardenie', 'mirti', 'parco_di_centocelle', 'alessandrino', 'torre_spaccata', 'torre_maura', 'giardinetti', 'torrenova', 'torre_angela', 'torre_gaia', 'grotte_celoni', 'due_leoni_fontana_candida', 'borghesiana', 'bolognetta', 'finocchio', 'graniti', 'pantano'
   ]
 };
 
@@ -172,18 +187,17 @@ export const POPULAR_ROME_BUSES: BusLine[] = [
 export interface RomeStreet {
   id: string;
   nameIt: string;
-  nameEl: string;
-  lat: number;
+    lat: number;
   lng: number;
   type: 'street' | 'square' | 'monument';
 }
 
 export const ROME_STREETS: Record<string, RomeStreet> = {
-  via_del_corso: { id: 'via_del_corso', nameIt: 'Via del Corso', nameEl: 'Via del Corso', lat: 41.9038, lng: 12.4789, type: 'street' },
-  piazza_navona: { id: 'piazza_navona', nameIt: 'Piazza Navona', nameEl: 'Piazza Navona', lat: 41.8992, lng: 12.4731, type: 'square' },
-  campo_de_fiori: { id: 'campo_de_fiori', nameIt: 'Campo de Fiori', nameEl: 'Campo de Fiori', lat: 41.8956, lng: 12.4722, type: 'square' },
-  pantheon: { id: 'pantheon', nameIt: 'Pantheon', nameEl: 'Pantheon', lat: 41.8986, lng: 12.4769, type: 'monument' },
-  trastevere: { id: 'trastevere', nameIt: 'Trastevere', nameEl: 'Trastevere', lat: 41.8883, lng: 12.4694, type: 'street' }
+  via_del_corso: { id: 'via_del_corso', nameIt: 'Via del Corso', lat: 41.9038, lng: 12.4789, type: 'street' },
+  piazza_navona: { id: 'piazza_navona', nameIt: 'Piazza Navona', lat: 41.8992, lng: 12.4731, type: 'square' },
+  campo_de_fiori: { id: 'campo_de_fiori', nameIt: 'Campo de Fiori', lat: 41.8956, lng: 12.4722, type: 'square' },
+  pantheon: { id: 'pantheon', nameIt: 'Pantheon', lat: 41.8986, lng: 12.4769, type: 'monument' },
+  trastevere: { id: 'trastevere', nameIt: 'Trastevere', lat: 41.8883, lng: 12.4694, type: 'street' }
 };
 
 export const RomeTransport = () => {
@@ -342,11 +356,11 @@ export const RomeTransport = () => {
     }
     
     const matchedStations = Object.values(ROME_STATIONS)
-      .filter(s => s.nameIt.toLowerCase().includes(query) || s.nameEl.toLowerCase().includes(query))
+      .filter(s => s.nameIt.toLowerCase().includes(query))
       .map(s => ({ id: s.id, name: s.nameIt, isStation: true }));
 
     const matchedStreets = Object.values(ROME_STREETS)
-      .filter(s => s.nameIt.toLowerCase().includes(query) || s.nameEl.toLowerCase().includes(query))
+      .filter(s => s.nameIt.toLowerCase().includes(query))
       .map(s => ({ id: `street_${s.id}`, name: s.nameIt, isStation: false }));
 
     const apiMatched = originApiSuggestions.map(item => ({
@@ -369,11 +383,11 @@ export const RomeTransport = () => {
     }
     
     const matchedStations = Object.values(ROME_STATIONS)
-      .filter(s => s.nameIt.toLowerCase().includes(query) || s.nameEl.toLowerCase().includes(query))
+      .filter(s => s.nameIt.toLowerCase().includes(query))
       .map(s => ({ id: s.id, name: s.nameIt, isStation: true }));
 
     const matchedStreets = Object.values(ROME_STREETS)
-      .filter(s => s.nameIt.toLowerCase().includes(query) || s.nameEl.toLowerCase().includes(query))
+      .filter(s => s.nameIt.toLowerCase().includes(query))
       .map(s => ({ id: `street_${s.id}`, name: s.nameIt, isStation: false }));
 
     const apiMatched = destApiSuggestions.map(item => ({
@@ -626,8 +640,7 @@ export const RomeTransport = () => {
     // Aggiungiamo i nomi delle stazioni sul percorso metro
     calculatedRoute.path.forEach(station => {
       terms.add(station.nameIt.toLowerCase());
-      terms.add(station.nameEl.toLowerCase());
-      // Rimuoviamo eventuali dettagli tra parentesi se presenti, es. "Pireo (Porto)" -> "pireo"
+            // Rimuoviamo eventuali dettagli tra parentesi se presenti, es. "Pireo (Porto)" -> "pireo"
       const cleanIt = station.nameIt.split('(')[0].trim().toLowerCase();
       if (cleanIt.length > 2) terms.add(cleanIt);
     });
@@ -779,7 +792,7 @@ export const RomeTransport = () => {
                             {st.nameIt}
                           </h4>
                           <span className="text-[9px] text-[var(--text-muted)] block font-medium">
-                            {st.nameEl}
+                            
                           </span>
                         </div>
 
@@ -815,7 +828,7 @@ export const RomeTransport = () => {
                           {activeStationData.nameIt}
                         </h3>
                         <p className="text-xs text-[var(--text-muted)] mt-0.5 font-bold uppercase tracking-wider">
-                          Σταθμός: {activeStationData.nameEl}
+                          
                         </p>
                       </div>
 
@@ -1231,7 +1244,7 @@ export const RomeTransport = () => {
                                 {station.nameIt} {isFirst && '(Partenza)'} {isLast && '(Arrivo)'}
                               </h5>
                               <p className="text-[9px] text-[var(--text-muted)] font-bold uppercase mt-0.5">
-                                {station.nameEl}
+                                
                               </p>
                             </div>
                             
@@ -1471,7 +1484,7 @@ export const RomeTransport = () => {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1.5">
                 {/* Bottone PDF Ufficiale */}
                 <a 
-                  href="https://www.oasa.gr/wp-content/uploads/2021/04/afissa_metro_may2020.pdf" 
+                  href="https://www.atac.roma.it/docs/default-source/mappe-tpl/mappa-metro-e-ferrovie-metropolitane.pdf" 
                   target="_blank"
                   rel="noreferrer"
                   className="flex items-center justify-center gap-2 bg-[var(--bg)] hover:bg-[var(--border)] border border-[var(--border)] text-[var(--text-main)] py-3 rounded-xl text-xs font-black uppercase tracking-wider transition-all active:scale-[0.97]"
@@ -1481,7 +1494,7 @@ export const RomeTransport = () => {
                 
                 {/* Bottone Mappa Interattiva Web */}
                 <a 
-                  href="https://www.athensmap360.com/athens-metro-map" 
+                  href="https://romamap360.com/mappa-metro-roma" 
                   target="_blank"
                   rel="noreferrer"
                   className="flex items-center justify-center gap-2 bg-gradient-to-tr from-cyan-500 to-blue-500 text-white py-3 rounded-xl text-xs font-black uppercase tracking-wider shadow-md active:scale-[0.97] hover:brightness-110 transition-all text-center"
@@ -1583,7 +1596,7 @@ export const RomeTransport = () => {
                   <div>
                     <span className="text-[8px] font-black uppercase text-[var(--text-muted)] tracking-wider">Stazione selezionata</span>
                     <h4 className="text-xs font-black text-[var(--text-main)] mt-0.5">{ROME_STATIONS[selectedStation].nameIt}</h4>
-                    <p className="text-[9px] text-[var(--text-muted)] font-bold">{ROME_STATIONS[selectedStation].nameEl}</p>
+                    
                   </div>
                   <button
                     onClick={() => {
