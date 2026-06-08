@@ -18,9 +18,10 @@ interface LockScreenProps {
   onOpenAddressBook?: () => void;
   onCheckUpdate?: () => void;
   mode?: 'app-start' | 'vault-unlock';
+  targetProfileId?: string;
 }
 
-export const LockScreen = ({ isVisible, onAuthenticated, onStartScan, onOpenTools, onImportFile, onOpenAddressBook, onCheckUpdate, mode = 'app-start' }: LockScreenProps) => {
+export const LockScreen = ({ isVisible, onAuthenticated, onStartScan, onOpenTools, onImportFile, onOpenAddressBook, onCheckUpdate, mode = 'app-start', targetProfileId }: LockScreenProps) => {
   const [profiles, setProfiles] = useState<ProfileConfig[]>([]);
   const [selectedProfile, setSelectedProfile] = useState<ProfileConfig | null>(null);
   const [view, setView] = useState<'selector' | 'login' | 'setup'>('selector');
@@ -111,11 +112,16 @@ export const LockScreen = ({ isVisible, onAuthenticated, onStartScan, onOpenTool
       const activeView = currentView || view;
       if (activeView === 'setup') {
         setView('selector');
-      } else if (activeView === 'selector' && loadedProfiles.length === 1) {
-        if (mode === 'app-start') {
-          // In app-start mode, bypass password and just select profile
-          onAuthenticated(null as any, loadedProfiles[0].id);
-        } else {
+      } else {
+        if (targetProfileId) {
+          const target = loadedProfiles.find(p => p.id === targetProfileId);
+          if (target) {
+            setSelectedProfile(target);
+            setView('login');
+            return;
+          }
+        }
+        if (activeView === 'selector' && loadedProfiles.length === 1) {
           setSelectedProfile(loadedProfiles[0]);
           setView('login');
         }
@@ -231,11 +237,7 @@ export const LockScreen = ({ isVisible, onAuthenticated, onStartScan, onOpenTool
       setPassword('');
       setConfirmPassword('');
       setUsername('');
-      if (mode === 'app-start') {
-        onAuthenticated(null as any, newConfig.id);
-      } else {
-        onAuthenticated(key, newConfig.id);
-      }
+      onAuthenticated(key, newConfig.id);
     } catch (err: any) {
       console.error(err);
       setError('Errore durante la configurazione: ' + (err?.message || String(err)));
@@ -383,11 +385,7 @@ export const LockScreen = ({ isVisible, onAuthenticated, onStartScan, onOpenTool
                       setSelectedProfile(p);
                       setError('');
                       setPassword('');
-                      if (mode === 'app-start') {
-                        onAuthenticated(null as any, p.id);
-                      } else {
-                        setView('login');
-                      }
+                      setView('login');
                     })}
                     onMouseDown={() => startPress(p.id)}
                     onMouseUp={() => endPress(() => {
@@ -395,11 +393,7 @@ export const LockScreen = ({ isVisible, onAuthenticated, onStartScan, onOpenTool
                       setSelectedProfile(p);
                       setError('');
                       setPassword('');
-                      if (mode === 'app-start') {
-                        onAuthenticated(null as any, p.id);
-                      } else {
-                        setView('login');
-                      }
+                      setView('login');
                     })}
                     onTouchMove={cancelPress}
                     onMouseLeave={cancelPress}

@@ -330,6 +330,7 @@ export default function App() {
           }
           console.log('[App] Backgrounding: Locking application for security.');
           setEncryptionKey(null);
+          setShowVaultLock(true);
           setIsProfileOpen(false);
           setIsSettingsOpen(false);
           setIsAdding(false);
@@ -1593,7 +1594,8 @@ export default function App() {
         <LockScreen 
           mode="app-start"
           isVisible={!currentProfileId && !isProfileOpen && !isPublicToolsOpen}
-          onAuthenticated={(_key, profileId) => {
+          onAuthenticated={(key, profileId) => {
+            setEncryptionKey(key);
             setCurrentProfileId(profileId);
           }} 
           onStartScan={() => setIsScanning(true)}
@@ -1609,6 +1611,7 @@ export default function App() {
           <LockScreen 
             mode="vault-unlock"
             isVisible={showVaultLock}
+            targetProfileId={currentProfileId || undefined}
             onAuthenticated={(key, _profileId) => {
               setEncryptionKey(key);
               setShowVaultLock(false);
