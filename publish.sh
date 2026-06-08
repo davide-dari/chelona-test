@@ -73,7 +73,7 @@ RELEASE_JSON=$(curl -s -X POST \
   -d "{
     \"tag_name\": \"$TAG\",
     \"name\": \"Release $TAG\",
-    \"body\": \"🚀 **Chelona v$VERSION**\\n\\n### ✨ Novità in questo Rilascio:\\n- **🔓 Accesso Istantaneo (Passwordless Homepage)**: La dashboard si apre ora istantaneamente senza richiedere alcuna password o impronta digitale, mostrando immediatamente i tuoi moduli pubblici (Spese, Ricette, Trasporti, etc).\\n- **🔐 Cassaforte Intelligente (Vault)**: I moduli contenenti dati sensibili (come Auto e Documenti) sono ora protetti da un Vault integrato. L'app ti chiederà l'impronta digitale o la password *solo* quando proverai a visualizzare o aggiungere uno di questi elementi sensibili, garantendo il massimo della comodità e della sicurezza.\\n- **📦 Migrazione Automatica**: I tuoi vecchi dati criptati vengono migrati in totale trasparenza alla nuova architettura mista (pubblica/privata) al primo avvio, senza alcuna perdita di dati.\",
+    \"body\": \"🚀 **Chelona v$VERSION**\\n\\n### ✨ Novità e Fix in questo Rilascio:\\n- **🪑 Fix Modulo Mobili (Casa)**: Risolto definitivamente un crash che si presentava quando si apriva una stanza vuota (causato dall'assenza dell'icona Armchair). Ora il messaggio di stato vuoto viene renderizzato correttamente con l'icona e l'invito ad aggiungere mobili.\\n- **🏢 Stanze pre-configurate**: Da ora, quando si crea o si accede per la prima volta al modulo Mobili, vengono generate automaticamente le stanze principali di base (Cucina, Salone, Camera da letto, Bagno), migliorando la velocità di organizzazione senza doverle creare manualmente.\",
     \"draft\": false,
     \"prerelease\": false
   }")
