@@ -34,6 +34,7 @@ export const ROME_STATIONS: Record<string, MetroStation> = {
   termini: { id: 'termini', nameIt: 'Termini', lat: 41.9014, lng: 12.5009, lines: [1, 2], isTransfer: true, attractions: ['Stazione Termini', 'Piazza dei Cinquecento'] },
   vittorio_emanuele: { id: 'vittorio_emanuele', nameIt: 'Vittorio Emanuele', lat: 41.8953, lng: 12.5046, lines: [1], attractions: ['Piazza Vittorio'] },
   manzoni: { id: 'manzoni', nameIt: 'Manzoni', lat: 41.8906, lng: 12.5065, lines: [1] },
+  porta_metronia: { id: 'porta_metronia', nameIt: 'Porta Metronia', lat: 41.883, lng: 12.497, lines: [3] },
   san_giovanni: { id: 'san_giovanni', nameIt: 'San Giovanni', lat: 41.8858, lng: 12.5097, lines: [1, 3], isTransfer: true, attractions: ['Basilica di San Giovanni in Laterano'] },
   re_di_roma: { id: 're_di_roma', nameIt: 'Re di Roma', lat: 41.8814, lng: 12.5147, lines: [1] },
   ponte_lungo: { id: 'ponte_lungo', nameIt: 'Ponte Lungo', lat: 41.8767, lng: 12.5209, lines: [1] },
@@ -58,7 +59,7 @@ export const ROME_STATIONS: Record<string, MetroStation> = {
   garbatella: { id: 'garbatella', nameIt: 'Garbatella', lat: 41.8661, lng: 12.4836, lines: [2] },
   piramide: { id: 'piramide', nameIt: 'Piramide', lat: 41.8755, lng: 12.4822, lines: [2], isTransfer: true, attractions: ['Piramide Cestia', 'Stazione Ostiense', 'Cimitero Acattolico'] },
   circo_massimo: { id: 'circo_massimo', nameIt: 'Circo Massimo', lat: 41.8833, lng: 12.4883, lines: [2], attractions: ['Circo Massimo', 'Aventino', 'FAO'] },
-  colosseo: { id: 'colosseo', nameIt: 'Colosseo', lat: 41.8914, lng: 12.4912, lines: [2], attractions: ['Colosseo', 'Fori Imperiali', 'Arco di Costantino'] },
+  colosseo: { id: 'colosseo', nameIt: 'Colosseo', lat: 41.8914, lng: 12.4912, lines: [2, 3], isTransfer: true, attractions: ['Colosseo', 'Fori Imperiali', 'Arco di Costantino'] },
   cavour: { id: 'cavour', nameIt: 'Cavour', lat: 41.8953, lng: 12.4939, lines: [2], attractions: ['Rione Monti'] },
   castro_pretorio: { id: 'castro_pretorio', nameIt: 'Castro Pretorio', lat: 41.9056, lng: 12.5056, lines: [2] },
   policlinico: { id: 'policlinico', nameIt: 'Policlinico', lat: 41.9083, lng: 12.5122, lines: [2], attractions: ['Policlinico Umberto I', 'Università La Sapienza'] },
@@ -104,7 +105,7 @@ export const LINE_SEQUENCES: Record<number, string[]> = {
     'policlinico', 'bologna', 'tiburtina', 'rebibbia', 'jonio'
   ],
   3: [
-    'san_giovanni', 'lodi', 'pigneto', 'malatesta', 'teano', 'gardenie', 'mirti', 'parco_di_centocelle', 'alessandrino', 'torre_spaccata', 'torre_maura', 'giardinetti', 'torrenova', 'torre_angela', 'torre_gaia', 'grotte_celoni', 'due_leoni_fontana_candida', 'borghesiana', 'bolognetta', 'finocchio', 'graniti', 'pantano'
+    'colosseo', 'porta_metronia', 'san_giovanni', 'lodi', 'pigneto', 'malatesta', 'teano', 'gardenie', 'mirti', 'parco_di_centocelle', 'alessandrino', 'torre_spaccata', 'torre_maura', 'giardinetti', 'torrenova', 'torre_angela', 'torre_gaia', 'grotte_celoni', 'due_leoni_fontana_candida', 'borghesiana', 'bolognetta', 'finocchio', 'graniti', 'pantano'
   ]
 };
 
@@ -1532,54 +1533,54 @@ export const RomeTransport = () => {
 
                   {/* Stazioni di interscambio e principali */}
                   
-                  {/* Pireo (Linea 1 e 3) */}
+                  {/* Laurentina (Linea 2) */}
                   <g className="cursor-pointer" onClick={() => { setSelectedStation('laurentina'); setSelectedLine(2); }}>
                     <circle cx="50" cy="280" r="10" fill="white" stroke="#333" strokeWidth="3" />
                     <circle cx="50" cy="280" r="5" fill="#003DA5" />
-                    <text x="65" y="284" fontSize="8" fontWeight="bold" fill="var(--text-main)">Pireo (M1/M3)</text>
+                    <text x="65" y="284" fontSize="8" fontWeight="bold" fill="var(--text-main)">Laurentina (M2)</text>
                   </g>
 
-                  {/* Kifisia (Linea 1) */}
+                  {/* Battistini (Linea 1) */}
                   <g className="cursor-pointer" onClick={() => { setSelectedStation('battistini'); setSelectedLine(1); }}>
                     <circle cx="350" cy="40" r="8" fill="white" stroke="#007A33" strokeWidth="3" />
                     <text x="290" y="44" fontSize="8" fontWeight="bold" fill="var(--text-main)">Battistini (M1)</text>
                   </g>
 
-                  {/* Omonia (Linea 1 e 2) - Intersezione Verde/Rosso */}
+                  {/* Repubblica (Linea 1) */}
                   <g className="cursor-pointer" onClick={() => { setSelectedStation('repubblica'); setSelectedLine(1); }}>
                     <circle cx="188" cy="80" r="10" fill="white" stroke="#333" strokeWidth="3" />
                     <circle cx="188" cy="80" r="5" fill="#DA291C" />
-                    <text x="132" y="80" fontSize="8" fontWeight="bold" fill="var(--text-main)">Omonia (M1/M2)</text>
+                    <text x="132" y="80" fontSize="8" fontWeight="bold" fill="var(--text-main)">Repubblica (M1)</text>
                   </g>
 
-                  {/* Monastiraki (Linea 1 e 3) - Intersezione Verde/Blu */}
+                  {/* Spagna (Linea 1) */}
                   <g className="cursor-pointer" onClick={() => { setSelectedStation('spagna'); setSelectedLine(1); }}>
                     <circle cx="152" cy="150" r="10" fill="white" stroke="#333" strokeWidth="3" />
                     <circle cx="152" cy="150" r="5" fill="#003DA5" />
-                    <text x="80" y="152" fontSize="8" fontWeight="bold" fill="var(--text-main)">Monastiraki (M1/M3)</text>
+                    <text x="80" y="152" fontSize="8" fontWeight="bold" fill="var(--text-main)">Spagna (M1)</text>
                   </g>
 
-                  {/* Syntagma (Linea 2 e 3) - Intersezione Rosso/Blu */}
+                  {/* Termini (Linea 1 e 2) */}
                   <g className="cursor-pointer" onClick={() => { setSelectedStation('termini'); setSelectedLine(1); }}>
                     <circle cx="205" cy="140" r="12" fill="white" stroke="#333" strokeWidth="3" />
                     <circle cx="205" cy="140" r="6" fill="#DA291C" />
                     <circle cx="205" cy="140" r="3" fill="#003DA5" />
-                    <text x="222" y="143" fontSize="9" fontWeight="black" fill="var(--text-main)">Syntagma (M2/M3)</text>
+                    <text x="222" y="143" fontSize="9" fontWeight="black" fill="var(--text-main)">Termini (M1, M2)</text>
                   </g>
 
-                  {/* Acropoli (Linea 2) */}
+                  {/* Colosseo (Linea 2 e 3) */}
                   <g className="cursor-pointer" onClick={() => { setSelectedStation('colosseo'); setSelectedLine(2); }}>
                     <circle cx="212" cy="190" r="8" fill="white" stroke="#DA291C" strokeWidth="3" />
-                    <text x="225" y="194" fontSize="8" fontWeight="bold" fill="var(--text-main)">Acropoli (M2)</text>
+                    <text x="225" y="194" fontSize="8" fontWeight="bold" fill="var(--text-main)">Colosseo (M2, M3)</text>
                   </g>
 
-                  {/* Kerameikos (Linea 3) */}
+                  {/* San Giovanni (Linea 1 e 3) */}
                   <g className="cursor-pointer" onClick={() => { setSelectedStation('san_giovanni'); setSelectedLine(3); }}>
                     <circle cx="108" cy="162" r="8" fill="white" stroke="#003DA5" strokeWidth="3" />
                     <text x="70" y="180" fontSize="8" fontWeight="bold" fill="var(--text-main)">San Giovanni (M1, M3)</text>
                   </g>
 
-                  {/* Aeroporto (Linea 3) */}
+                  {/* Pantano (Linea 3) */}
                   <g className="cursor-pointer" onClick={() => { setSelectedStation('pantano'); setSelectedLine(3); }}>
                     <circle cx="360" cy="100" r="8" fill="white" stroke="#003DA5" strokeWidth="3" />
                     <text x="315" y="115" fontSize="8" fontWeight="bold" fill="var(--text-main)">Pantano (M3)</text>
