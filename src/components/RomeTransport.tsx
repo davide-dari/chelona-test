@@ -203,7 +203,7 @@ export const ROME_STREETS: Record<string, RomeStreet> = {
 export const RomeTransport = () => {
   const [activeTab, setActiveTab] = useState<'metro' | 'planner' | 'buses' | 'map'>('metro');
   const [selectedLine, setSelectedLine] = useState<number>(3);
-  const [selectedStation, setSelectedStation] = useState<string | null>('syntagma');
+  const [selectedStation, setSelectedStation] = useState<string | null>('termini');
 
   // Stato per calcolatore di percorsi
   const [origin, setOrigin] = useState<string>('piraeus');
@@ -1533,34 +1533,34 @@ export const RomeTransport = () => {
                   {/* Stazioni di interscambio e principali */}
                   
                   {/* Pireo (Linea 1 e 3) */}
-                  <g className="cursor-pointer" onClick={() => { setSelectedStation('piraeus'); setSelectedLine(3); }}>
+                  <g className="cursor-pointer" onClick={() => { setSelectedStation('laurentina'); setSelectedLine(2); }}>
                     <circle cx="50" cy="280" r="10" fill="white" stroke="#333" strokeWidth="3" />
                     <circle cx="50" cy="280" r="5" fill="#003DA5" />
                     <text x="65" y="284" fontSize="8" fontWeight="bold" fill="var(--text-main)">Pireo (M1/M3)</text>
                   </g>
 
                   {/* Kifisia (Linea 1) */}
-                  <g className="cursor-pointer" onClick={() => { setSelectedStation('kifisia'); setSelectedLine(1); }}>
+                  <g className="cursor-pointer" onClick={() => { setSelectedStation('battistini'); setSelectedLine(1); }}>
                     <circle cx="350" cy="40" r="8" fill="white" stroke="#007A33" strokeWidth="3" />
-                    <text x="290" y="44" fontSize="8" fontWeight="bold" fill="var(--text-main)">Kifisia (M1)</text>
+                    <text x="290" y="44" fontSize="8" fontWeight="bold" fill="var(--text-main)">Battistini (M1)</text>
                   </g>
 
                   {/* Omonia (Linea 1 e 2) - Intersezione Verde/Rosso */}
-                  <g className="cursor-pointer" onClick={() => { setSelectedStation('omonia'); setSelectedLine(2); }}>
+                  <g className="cursor-pointer" onClick={() => { setSelectedStation('repubblica'); setSelectedLine(1); }}>
                     <circle cx="188" cy="80" r="10" fill="white" stroke="#333" strokeWidth="3" />
                     <circle cx="188" cy="80" r="5" fill="#DA291C" />
                     <text x="132" y="80" fontSize="8" fontWeight="bold" fill="var(--text-main)">Omonia (M1/M2)</text>
                   </g>
 
                   {/* Monastiraki (Linea 1 e 3) - Intersezione Verde/Blu */}
-                  <g className="cursor-pointer" onClick={() => { setSelectedStation('monastiraki'); setSelectedLine(3); }}>
+                  <g className="cursor-pointer" onClick={() => { setSelectedStation('spagna'); setSelectedLine(1); }}>
                     <circle cx="152" cy="150" r="10" fill="white" stroke="#333" strokeWidth="3" />
                     <circle cx="152" cy="150" r="5" fill="#003DA5" />
                     <text x="80" y="152" fontSize="8" fontWeight="bold" fill="var(--text-main)">Monastiraki (M1/M3)</text>
                   </g>
 
                   {/* Syntagma (Linea 2 e 3) - Intersezione Rosso/Blu */}
-                  <g className="cursor-pointer" onClick={() => { setSelectedStation('syntagma'); setSelectedLine(3); }}>
+                  <g className="cursor-pointer" onClick={() => { setSelectedStation('termini'); setSelectedLine(1); }}>
                     <circle cx="205" cy="140" r="12" fill="white" stroke="#333" strokeWidth="3" />
                     <circle cx="205" cy="140" r="6" fill="#DA291C" />
                     <circle cx="205" cy="140" r="3" fill="#003DA5" />
@@ -1568,21 +1568,21 @@ export const RomeTransport = () => {
                   </g>
 
                   {/* Acropoli (Linea 2) */}
-                  <g className="cursor-pointer" onClick={() => { setSelectedStation('akropoli'); setSelectedLine(2); }}>
+                  <g className="cursor-pointer" onClick={() => { setSelectedStation('colosseo'); setSelectedLine(2); }}>
                     <circle cx="212" cy="190" r="8" fill="white" stroke="#DA291C" strokeWidth="3" />
                     <text x="225" y="194" fontSize="8" fontWeight="bold" fill="var(--text-main)">Acropoli (M2)</text>
                   </g>
 
                   {/* Kerameikos (Linea 3) */}
-                  <g className="cursor-pointer" onClick={() => { setSelectedStation('kerameikos'); setSelectedLine(3); }}>
+                  <g className="cursor-pointer" onClick={() => { setSelectedStation('san_giovanni'); setSelectedLine(3); }}>
                     <circle cx="108" cy="162" r="8" fill="white" stroke="#003DA5" strokeWidth="3" />
-                    <text x="70" y="180" fontSize="8" fontWeight="bold" fill="var(--text-main)">Kerameikos (M3)</text>
+                    <text x="70" y="180" fontSize="8" fontWeight="bold" fill="var(--text-main)">San Giovanni (M1, M3)</text>
                   </g>
 
                   {/* Aeroporto (Linea 3) */}
-                  <g className="cursor-pointer" onClick={() => { setSelectedStation('airport'); setSelectedLine(3); }}>
+                  <g className="cursor-pointer" onClick={() => { setSelectedStation('pantano'); setSelectedLine(3); }}>
                     <circle cx="360" cy="100" r="8" fill="white" stroke="#003DA5" strokeWidth="3" />
-                    <text x="315" y="115" fontSize="8" fontWeight="bold" fill="var(--text-main)">Airport (M3)</text>
+                    <text x="315" y="115" fontSize="8" fontWeight="bold" fill="var(--text-main)">Pantano (M3)</text>
                   </g>
                 </svg>
 
