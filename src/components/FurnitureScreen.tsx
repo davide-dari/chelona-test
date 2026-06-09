@@ -417,6 +417,7 @@ export const FurnitureScreen = ({ module, onSave, onClose }: FurnitureScreenProp
 
       {deleteItemConfirm && (
         <ConfirmDialog
+          isOpen={true}
           title="Elimina Acquisto"
           message="Sei sicuro di voler rimuovere questo elemento dalla stanza?"
           confirmText="Elimina"
