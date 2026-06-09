@@ -73,7 +73,7 @@ RELEASE_JSON=$(curl -s -X POST \
   -d "{
     \"tag_name\": \"$TAG\",
     \"name\": \"Release $TAG\",
-    \"body\": \"🚀 **Chelona v$VERSION**\\n\\n### ✨ Novità e Miglioramenti in questo Rilascio (Modulo Mobili):\\n- **🕸️ Scraping Intelligente Avanzato**: Il sistema per aggiungere mobili tramite link è stato completamente riscritto. Ora Chelona ispeziona approfonditamente la pagina (inclusi Amazon e IKEA) riuscendo a recuperare automaticamente nome, prezzo, immagine e **descrizione** del prodotto in maniera molto più affidabile.\\n- **👆 Modifica e Gestione Veloce (Long Press)**: Ora puoi tenere premuto a lungo (su mobile) o fare click col tasto destro (su PC) su un qualsiasi oggetto nella stanza per aprire il nuovo pannello 'Gestisci Elemento'. Da qui puoi modificare a mano il nome, la descrizione, il prezzo, l'immagine o eliminarlo del tutto.\\n- **📱 Layout Ottimizzato**: Risolti i fastidiosi problemi visivi di sovrapposizione della barra 'Incolla link' e del bottone 'Aggiungi' sugli schermi degli smartphone più stretti.\",
+    \"body\": \"🚀 **Chelona v$VERSION**\\n\\n### ✨ Novità e Fix in questo Rilascio:\\n- **🪟 Fix Sovrapposizione Interfaccia (Modulo Mobili)**: I pulsanti globali 'Nuovo' (+) e 'Scansiona QR' ora vengono disabilitati e nascosti temporaneamente mentre si visualizza o si modifica una stanza. In questo modo è stato risolto il fastidioso problema che impediva di cliccare sui tasti 'Salva' ed 'Elimina' all'interno del pannello di gestione di un acquisto.\",
     \"draft\": false,
     \"prerelease\": false
   }")
