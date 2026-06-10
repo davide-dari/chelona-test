@@ -95,6 +95,7 @@ export const FurnitureScreen = ({ module, onSave, onClose }: FurnitureScreenProp
   // Scraper State
   const [newItemLink, setNewItemLink] = useState('');
   const [isScraping, setIsScraping] = useState(false);
+  const [isAddLinkModalOpen, setIsAddLinkModalOpen] = useState(false);
 
   // Category Filtering
   const [activeCategory, setActiveCategory] = useState<string>('Tutti');
@@ -327,6 +328,7 @@ export const FurnitureScreen = ({ module, onSave, onClose }: FurnitureScreenProp
     setData(updatedData);
     setNewItemLink('');
     setIsScraping(false);
+    setIsAddLinkModalOpen(false);
     
     // Select the new item to open details immediately
     setSelectedDetailsItem(newItem);
@@ -648,31 +650,22 @@ export const FurnitureScreen = ({ module, onSave, onClose }: FurnitureScreenProp
                   </p>
                 )}
               </div>
-            </div>
-
-            {/* Link Scraping Box */}
-            <div className="p-4 border-b border-[var(--border)] bg-[var(--card-bg)] shadow-sm z-10 shrink-0">
-              <form onSubmit={handleScrapeAndAddItem} className="max-w-3xl mx-auto flex flex-col sm:flex-row gap-3 items-center">
-                <div className="relative flex-1 w-full flex items-center">
-                  <div className="absolute left-4 text-[var(--text-muted)] pointer-events-none">
-                    <LinkIcon className="w-5 h-5" />
-                  </div>
-                  <input
-                    type="url"
-                    placeholder="Incolla link prodotto (es. Amazon, IKEA...)"
-                    value={newItemLink}
-                    onChange={e => setNewItemLink(e.target.value)}
-                    className="w-full bg-[var(--surface-variant)] border-2 border-[var(--border)] rounded-2xl py-3.5 pl-12 pr-4 outline-none focus:border-teal-500 transition-colors text-[var(--text-main)] placeholder:text-[var(--text-muted)] font-bold text-sm"
-                  />
-                </div>
-                <button
-                  type="submit"
-                  disabled={!newItemLink.trim() || isScraping}
-                  className="w-full sm:w-auto px-6 py-3.5 bg-teal-500 hover:bg-teal-600 text-white rounded-2xl font-black text-sm tracking-wide transition-all disabled:opacity-50 disabled:hover:bg-teal-500 flex items-center justify-center gap-2 shrink-0 shadow-sm"
+              <div className="flex items-center gap-2">
+                <button 
+                  onClick={() => setIsAddLinkModalOpen(true)}
+                  className="text-xs font-bold text-white bg-teal-500 hover:bg-teal-600 px-3.5 py-2 rounded-full flex items-center gap-1.5 transition-all shadow-sm active:scale-95"
                 >
-                  {isScraping ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Aggiungi'}
+                  <LinkIcon className="w-4 h-4" />
+                  <span className="hidden sm:inline">Aggiungi da Link</span>
                 </button>
-              </form>
+                <button 
+                  onClick={handleOpenEditRoomModal}
+                  className="text-xs font-bold text-teal-600 hover:text-teal-700 bg-teal-50 hover:bg-teal-100 dark:bg-teal-500/10 dark:text-teal-400 px-3.5 py-2 rounded-full border border-teal-500/10 flex items-center gap-1.5 transition-all active:scale-95"
+                >
+                  <Settings className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Modifica Stanza</span>
+                </button>
+              </div>
             </div>
 
             {/* Category Filter Pills */}
@@ -703,7 +696,7 @@ export const FurnitureScreen = ({ module, onSave, onClose }: FurnitureScreenProp
                   <p className="font-extrabold text-lg text-[var(--text-main)]">Nessun oggetto trovato</p>
                   <p className="text-xs mt-1.5 opacity-70 max-w-sm">
                     {activeCategory === 'Tutti' 
-                      ? 'La stanza è ancora vuota! Incolla un link in alto per fare lo scraping e aggiungere il primo elemento.' 
+                      ? 'La stanza è ancora vuota! Fai clic su "Aggiungi da Link" in alto per fare lo scraping e aggiungere il primo elemento.' 
                       : `Non ci sono ancora oggetti della categoria "${activeCategory}" in questa stanza.`}
                   </p>
                 </div>
@@ -893,6 +886,78 @@ export const FurnitureScreen = ({ module, onSave, onClose }: FurnitureScreenProp
                     className="flex-1 py-3 bg-teal-500 text-white hover:bg-teal-600 rounded-2xl font-black text-sm transition-colors shadow-sm text-center"
                   >
                     Salva Stanza
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* ADD FROM LINK MODAL */}
+      <AnimatePresence>
+        {isAddLinkModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-[var(--card-bg)] w-full max-w-md rounded-3xl shadow-xl overflow-hidden flex flex-col border border-[var(--border)]"
+            >
+              <div className="p-4.5 border-b border-[var(--border)] flex items-center justify-between bg-[var(--surface-variant)]">
+                <h3 className="font-black text-base text-[var(--text-main)] uppercase tracking-wider">
+                  Aggiungi da Link
+                </h3>
+                <button 
+                  onClick={() => setIsAddLinkModalOpen(false)} 
+                  disabled={isScraping}
+                  className="p-2 text-[var(--text-muted)] hover:bg-[var(--bg)] rounded-full transition-colors disabled:opacity-50"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <form onSubmit={handleScrapeAndAddItem} className="p-5 flex flex-col gap-4.5">
+                <div>
+                  <label className="block text-[10px] font-black text-[var(--text-muted)] mb-1.5 uppercase tracking-wider">Link Prodotto</label>
+                  <div className="relative flex items-center">
+                    <div className="absolute left-4 text-[var(--text-muted)] pointer-events-none">
+                      <LinkIcon className="w-4 h-4" />
+                    </div>
+                    <input
+                      type="url"
+                      required
+                      disabled={isScraping}
+                      placeholder="Incolla link (es. Amazon, IKEA...)"
+                      value={newItemLink}
+                      onChange={e => setNewItemLink(e.target.value)}
+                      className="w-full bg-[var(--bg)] border border-[var(--border)] rounded-xl py-3 pl-10 pr-4 outline-none focus:border-teal-500 text-[var(--text-main)] font-semibold text-sm disabled:opacity-50"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3 mt-4 pt-4 border-t border-[var(--border)]">
+                  <button
+                    type="button"
+                    disabled={isScraping}
+                    onClick={() => setIsAddLinkModalOpen(false)}
+                    className="flex-1 py-3 bg-[var(--surface-variant)] text-[var(--text-muted)] hover:text-[var(--text-main)] rounded-2xl font-black text-sm transition-colors border border-[var(--border)] disabled:opacity-50 text-center"
+                  >
+                    Annulla
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={!newItemLink.trim() || isScraping}
+                    className="flex-1 py-3 bg-teal-500 hover:bg-teal-600 text-white rounded-2xl font-black text-sm transition-colors shadow-sm flex items-center justify-center gap-2 disabled:opacity-50"
+                  >
+                    {isScraping ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Scraping...
+                      </>
+                    ) : (
+                      'Aggiungi'
+                    )}
                   </button>
                 </div>
               </form>
@@ -1161,7 +1226,7 @@ export const FurnitureScreen = ({ module, onSave, onClose }: FurnitureScreenProp
                     <button
                       type="button"
                       onClick={() => setIsEditingItem(true)}
-                      className="px-4.5 py-3 bg-teal-500/10 text-teal-600 hover:bg-teal-500 hover:text-white rounded-2xl font-black text-sm transition-all flex items-center gap-1.5 shadow-sm"
+                      className="px-4.5 py-3 bg-teal-500/10 text-teal-600 hover:bg-teal-500 hover:text-white rounded-2xl font-black text-sm transition-all flex items-center gap-1.5 shadow-sm active:scale-95"
                     >
                       <Edit2 className="w-4 h-4" /> Modifica Dettagli
                     </button>

@@ -73,7 +73,7 @@ RELEASE_JSON=$(curl -s -X POST \
   -d "{
     \"tag_name\": \"$TAG\",
     \"name\": \"Release $TAG\",
-    \"body\": \"🚀 **Chelona v$VERSION**\\n\\n### ✨ Novità e Fix in questo Rilascio:\\n- **🔄 Sincronizzazione in Background**: Apertura di un oggetto avvia lo scraping automatico per aggiornare prezzo, descrizione, titolo e manuale direttamente dal sito sorgente in tempo reale.\\n- **📖 Modale Dettagli in Sola Lettura**: Modificato il modale dettagli per mostrare le informazioni in sola lettura per default, introducendo un indicatore animato di sincronizzazione ed evidenziando i collegamenti esterni.\\n- **📐 Modifica Separata**: Spostata la modifica manuale (misure, categoria) su una schermata di editing secondaria.\\n- **🎨 Miglioramento Spaziatura**: Aggiunto spazio inferiore alla griglia degli oggetti per evitare sovrapposizioni su mobile e aumentate le distanze all'interno delle schede prodotto.\",
+    \"body\": \"🚀 **Chelona v$VERSION**\\n\\n### ✨ Novità e Fix in questo Rilascio:\\n- **🔗 Inserimento Link in Modale**: Rimossa la barra di inserimento link statica dalla schermata e sostituita con un'icona link in testata. Cliccando l'icona si apre una modale popup da cui inserire e aggiungere il link per lo scraping.\",
     \"draft\": false,
     \"prerelease\": false
   }")
