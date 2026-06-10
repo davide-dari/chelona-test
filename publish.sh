@@ -73,7 +73,7 @@ RELEASE_JSON=$(curl -s -X POST \
   -d "{
     \"tag_name\": \"$TAG\",
     \"name\": \"Release $TAG\",
-    \"body\": \"🚀 **Chelona v$VERSION**\\n\\n### ✨ Novità e Fix in questo Rilascio:\\n- **🔗 Pulsante Floating +**: Rimossa la barra di inserimento link statica dalla schermata e inserito un pulsante + flottante in basso a destra. Cliccando il pulsante si apre una modale popup da cui inserire e aggiungere il link per lo scraping.\\n- **🔄 Fix Download Aggiornamenti**: Risolto il problema di download del file APK su Android pre-risolvendo il re-indirizzamento (redirect) dell'asset di GitHub prima di passarlo al plugin di download nativo.\",
+    \"body\": \"🚀 **Chelona v$VERSION**\\n\\n### ✨ Novità e Fix in questo Rilascio:\\n- **🔗 Pulsante Floating + Squircle**: Rinnovato esteticamente il pulsante flottante in basso a destra per allinearsi allo stile squircle degli altri moduli dell'app. Ora è visualizzato a livello di sezione Mobili.\\n- **🏢 Selettore Stanza di Destinazione**: Quando si inserisce un link di scraping, è possibile selezionare la stanza di destinazione direttamente da un menu a tendina e l'applicazione vi si reindirizzerà automaticamente.\",
     \"draft\": false,
     \"prerelease\": false
   }")

@@ -96,6 +96,13 @@ export const FurnitureScreen = ({ module, onSave, onClose }: FurnitureScreenProp
   const [newItemLink, setNewItemLink] = useState('');
   const [isScraping, setIsScraping] = useState(false);
   const [isAddLinkModalOpen, setIsAddLinkModalOpen] = useState(false);
+  const [targetRoomId, setTargetRoomId] = useState<string>('');
+
+  useEffect(() => {
+    if (isAddLinkModalOpen) {
+      setTargetRoomId(activeRoomId || (data.rooms.length > 0 ? data.rooms[0].id : ''));
+    }
+  }, [isAddLinkModalOpen, activeRoomId, data.rooms]);
 
   // Category Filtering
   const [activeCategory, setActiveCategory] = useState<string>('Tutti');
@@ -222,7 +229,7 @@ export const FurnitureScreen = ({ module, onSave, onClose }: FurnitureScreenProp
   // Scrape and add item
   const handleScrapeAndAddItem = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newItemLink.trim() || !activeRoomId || !activeRoom) return;
+    if (!newItemLink.trim() || !targetRoomId) return;
 
     let url = newItemLink.trim();
     if (!url.startsWith('http')) url = 'https://' + url;
@@ -318,7 +325,7 @@ export const FurnitureScreen = ({ module, onSave, onClose }: FurnitureScreenProp
     };
 
     const updatedRooms = data.rooms.map(r => {
-      if (r.id === activeRoomId) {
+      if (r.id === targetRoomId) {
         return { ...r, items: [newItem, ...r.items] };
       }
       return r;
@@ -330,6 +337,9 @@ export const FurnitureScreen = ({ module, onSave, onClose }: FurnitureScreenProp
     setIsScraping(false);
     setIsAddLinkModalOpen(false);
     
+    // Switch active room to the target room where the item was added
+    setActiveRoomId(targetRoomId);
+
     // Select the new item to open details immediately
     setSelectedDetailsItem(newItem);
     setDetailForm(newItem);
@@ -733,15 +743,6 @@ export const FurnitureScreen = ({ module, onSave, onClose }: FurnitureScreenProp
               )}
             </div>
 
-            {/* Pulsante Floating "+" per aggiungere da Link */}
-            <button
-              onClick={() => setIsAddLinkModalOpen(true)}
-              className="absolute bottom-6 right-6 w-14 h-14 bg-teal-500 hover:bg-teal-600 active:scale-95 text-white rounded-full flex items-center justify-center shadow-lg hover:shadow-xl transition-all z-40 border border-teal-400/20"
-              title="Aggiungi da Link"
-              id="fab-add-furniture-item"
-            >
-              <Plus className="w-8 h-8" />
-            </button>
             
           </div>
         ) : (
@@ -937,6 +938,22 @@ export const FurnitureScreen = ({ module, onSave, onClose }: FurnitureScreenProp
                       className="w-full bg-[var(--bg)] border border-[var(--border)] rounded-xl py-3 pl-10 pr-4 outline-none focus:border-teal-500 text-[var(--text-main)] font-semibold text-sm disabled:opacity-50"
                     />
                   </div>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-black text-[var(--text-muted)] mb-1 uppercase tracking-wider">Stanza di Destinazione</label>
+                  <select
+                    disabled={isScraping}
+                    value={targetRoomId}
+                    onChange={e => setTargetRoomId(e.target.value)}
+                    className="w-full bg-[var(--bg)] border border-[var(--border)] rounded-xl px-3.5 py-2.5 text-sm outline-none focus:border-teal-500 font-semibold text-[var(--text-main)]"
+                  >
+                    {data.rooms.map(room => (
+                      <option key={room.id} value={room.id}>
+                        {room.name}
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
                 <div className="flex items-center gap-3 mt-4 pt-4 border-t border-[var(--border)]">
@@ -1259,6 +1276,18 @@ export const FurnitureScreen = ({ module, onSave, onClose }: FurnitureScreenProp
           onConfirm={handleDeleteItem}
           onCancel={() => setIsDeletingItem(false)}
         />
+      )}
+
+      {/* Pulsante Floating "+" a livello di sezione Mobili (FAB estetico squircle) */}
+      {data.rooms.length > 0 && (
+        <button
+          onClick={() => setIsAddLinkModalOpen(true)}
+          className="absolute bottom-6 right-6 md:bottom-8 md:right-8 w-16 h-16 bg-gradient-to-tr from-teal-500 to-teal-600 hover:brightness-110 active:scale-95 text-white rounded-[1.5rem] flex items-center justify-center shadow-lg shadow-teal-500/30 hover:shadow-xl transition-all z-40 border border-white/20"
+          title="Aggiungi da Link"
+          id="fab-add-furniture-item"
+        >
+          <Plus className="w-8 h-8" />
+        </button>
       )}
     </motion.div>
   );
