@@ -125,6 +125,33 @@ export const FurnitureScreen = ({ module, onSave, onClose }: FurnitureScreenProp
   const [isEditingItem, setIsEditingItem] = useState(false);
   const [isDeletingItem, setIsDeletingItem] = useState(false);
 
+  // Long press logic
+  const [longPressTimer, setLongPressTimer] = useState<NodeJS.Timeout | null>(null);
+  const isLongPressTriggered = React.useRef(false);
+
+  const handlePointerDown = (item: FurnitureItem) => {
+    isLongPressTriggered.current = false;
+    const timer = setTimeout(() => {
+      isLongPressTriggered.current = true;
+      setSelectedDetailsItem(item);
+      setDetailForm(item);
+      setIsDeletingItem(true);
+    }, 600);
+    setLongPressTimer(timer);
+  };
+
+  const handlePointerUp = () => {
+    if (longPressTimer) clearTimeout(longPressTimer);
+  };
+
+  const handleClickItem = (item: FurnitureItem) => {
+    if (isLongPressTriggered.current) {
+      isLongPressTriggered.current = false;
+      return;
+    }
+    handleSelectItem(item);
+  };
+
   useEffect(() => {
     if (!activeRoomId && data.rooms.length > 0) {
       setActiveRoomId(data.rooms[0].id);
@@ -263,10 +290,19 @@ export const FurnitureScreen = ({ module, onSave, onClose }: FurnitureScreenProp
         const amzTitle = doc.querySelector('#productTitle')?.textContent?.trim();
         title = amzTitle || metaTitle || titleTag || url;
 
-        const metaImage = doc.querySelector('meta[property="og:image"]')?.getAttribute('content') || doc.querySelector('meta[name="image"]')?.getAttribute('content');
-        const amzImage = doc.querySelector('#landingImage')?.getAttribute('src');
+        const metaImage = doc.querySelector('meta[property="og:image"]')?.getAttribute('content') || 
+                          doc.querySelector('meta[name="twitter:image"]')?.getAttribute('content') ||
+                          doc.querySelector('meta[itemprop="image"]')?.getAttribute('content') ||
+                          doc.querySelector('meta[name="image"]')?.getAttribute('content');
+        const amzImage = doc.querySelector('#landingImage')?.getAttribute('data-old-hires') || 
+                         doc.querySelector('#landingImage')?.getAttribute('src');
         const ikeaImage = doc.querySelector('.pip-image')?.getAttribute('src');
-        image = amzImage || ikeaImage || metaImage || '';
+        const genericImg = doc.querySelector('img[src*="product"]')?.getAttribute('src') || 
+                           doc.querySelector('img[src*="item"]')?.getAttribute('src');
+        image = amzImage || ikeaImage || metaImage || genericImg || '';
+        if (image && image.startsWith('/')) {
+            try { image = new URL(image, url).toString(); } catch {}
+        }
 
         const metaDesc = doc.querySelector('meta[property="og:description"]')?.getAttribute('content') || doc.querySelector('meta[name="description"]')?.getAttribute('content');
         const amzDesc = doc.querySelector('#feature-bullets')?.textContent?.trim() || doc.querySelector('#productDescription')?.textContent?.trim();
@@ -383,10 +419,19 @@ export const FurnitureScreen = ({ module, onSave, onClose }: FurnitureScreenProp
         const amzTitle = doc.querySelector('#productTitle')?.textContent?.trim();
         const scrapedTitle = amzTitle || metaTitle || titleTag || url;
 
-        const metaImage = doc.querySelector('meta[property="og:image"]')?.getAttribute('content') || doc.querySelector('meta[name="image"]')?.getAttribute('content');
-        const amzImage = doc.querySelector('#landingImage')?.getAttribute('src');
+        const metaImage = doc.querySelector('meta[property="og:image"]')?.getAttribute('content') || 
+                          doc.querySelector('meta[name="twitter:image"]')?.getAttribute('content') ||
+                          doc.querySelector('meta[itemprop="image"]')?.getAttribute('content') ||
+                          doc.querySelector('meta[name="image"]')?.getAttribute('content');
+        const amzImage = doc.querySelector('#landingImage')?.getAttribute('data-old-hires') || 
+                         doc.querySelector('#landingImage')?.getAttribute('src');
         const ikeaImage = doc.querySelector('.pip-image')?.getAttribute('src');
-        const scrapedImage = amzImage || ikeaImage || metaImage || '';
+        const genericImg = doc.querySelector('img[src*="product"]')?.getAttribute('src') || 
+                           doc.querySelector('img[src*="item"]')?.getAttribute('src');
+        let scrapedImage = amzImage || ikeaImage || metaImage || genericImg || '';
+        if (scrapedImage && scrapedImage.startsWith('/')) {
+            try { scrapedImage = new URL(scrapedImage, url).toString(); } catch {}
+        }
 
         const metaDesc = doc.querySelector('meta[property="og:description"]')?.getAttribute('content') || doc.querySelector('meta[name="description"]')?.getAttribute('content');
         const amzDesc = doc.querySelector('#feature-bullets')?.textContent?.trim() || doc.querySelector('#productDescription')?.textContent?.trim();
@@ -712,7 +757,10 @@ export const FurnitureScreen = ({ module, onSave, onClose }: FurnitureScreenProp
                         initial={{ opacity: 0, scale: 0.95 }}
                         animate={{ opacity: 1, scale: 1 }}
                         exit={{ opacity: 0, scale: 0.95 }}
-                        onClick={() => handleSelectItem(item)}
+                        onClick={() => handleClickItem(item)}
+                        onPointerDown={() => handlePointerDown(item)}
+                        onPointerUp={handlePointerUp}
+                        onPointerLeave={handlePointerUp}
                         className="bg-[var(--card-bg)] border border-[var(--border)] rounded-3xl overflow-hidden shadow-sm hover:shadow-md transition-all cursor-pointer flex flex-col p-3.5 pb-5 group relative select-none"
                       >
                         <div className="aspect-square bg-[var(--surface-variant)] rounded-2xl flex items-center justify-center overflow-hidden relative border border-[var(--border)]/50">
@@ -940,21 +988,7 @@ export const FurnitureScreen = ({ module, onSave, onClose }: FurnitureScreenProp
                   </div>
                 </div>
 
-                <div>
-                  <label className="block text-[10px] font-black text-[var(--text-muted)] mb-1 uppercase tracking-wider">Stanza di Destinazione</label>
-                  <select
-                    disabled={isScraping}
-                    value={targetRoomId}
-                    onChange={e => setTargetRoomId(e.target.value)}
-                    className="w-full bg-[var(--bg)] border border-[var(--border)] rounded-xl px-3.5 py-2.5 text-sm outline-none focus:border-teal-500 font-semibold text-[var(--text-main)]"
-                  >
-                    {data.rooms.map(room => (
-                      <option key={room.id} value={room.id}>
-                        {room.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+
 
                 <div className="flex items-center gap-3 mt-4 pt-4 border-t border-[var(--border)]">
                   <button
@@ -1049,7 +1083,7 @@ export const FurnitureScreen = ({ module, onSave, onClose }: FurnitureScreenProp
                         
                         <div className="flex gap-2.5 mt-5 sm:mt-0">
                           <a
-                            href={detailForm.link}
+                            href={detailForm.link?.startsWith('http') ? detailForm.link : `https://${detailForm.link}`}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="flex-1 sm:flex-none px-4.5 py-2.5 bg-teal-500 hover:bg-teal-600 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-colors shadow-sm"
@@ -1282,7 +1316,7 @@ export const FurnitureScreen = ({ module, onSave, onClose }: FurnitureScreenProp
       {data.rooms.length > 0 && (
         <button
           onClick={() => setIsAddLinkModalOpen(true)}
-          className="fixed bottom-8 right-6 md:bottom-10 md:right-10 w-16 h-16 bg-gradient-to-tr from-teal-500 to-teal-600 hover:brightness-110 active:scale-95 text-white rounded-[1.5rem] flex items-center justify-center shadow-lg shadow-teal-500/30 hover:shadow-xl transition-all z-[9999] border border-white/20"
+          className="fixed bottom-[100px] right-6 md:bottom-10 md:right-10 w-16 h-16 bg-gradient-to-tr from-teal-500 to-teal-600 hover:brightness-110 active:scale-95 text-white rounded-[1.5rem] flex items-center justify-center shadow-lg shadow-teal-500/30 hover:shadow-xl transition-all z-[9999] border border-white/20"
           title="Aggiungi da Link"
           id="fab-add-furniture-item"
         >
