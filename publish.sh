@@ -73,7 +73,7 @@ RELEASE_JSON=$(curl -s -X POST \
   -d "{
     \"tag_name\": \"$TAG\",
     \"name\": \"Release $TAG\",
-    \"body\": \"🚀 **Chelona v$VERSION**\\n\\n### ✨ Novità e Fix in questo Rilascio:\\n- **🏠 Redesign Sezione Mobili**: Overhaul grafico completo con interfaccia dashboard moderna.\\n- **📐 Viewer 3D Isometrico**: Visualizzazione 3D in tempo reale delle stanze e della disposizione dei mobili basata su misure reali.\\n- **🧭 Navigazione Persistente**: Risolto il reset della schermata alla dashboard durante il salvataggio.\\n- **🏷️ Filtri e Categorie**: Introdotte categorie pill-based per organizzare gli oggetti, con auto-riconoscimento dei dati di scraping (misure, categoria e link ai manuali PDF).\\n- **🎛️ Modale Dettaglio e Posizionamento**: Nuova schermata di gestione con slider per muovere gli oggetti in 3D sul piano della stanza.\",
+    \"body\": \"🚀 **Chelona v$VERSION**\\n\\n### ✨ Novità e Fix in questo Rilascio:\\n- **🏠 Semplificazione Sezione Mobili**: Rimosso il visualizzatore 3D isometrico e i controlli associati per una navigazione più pulita e performante.\\n- **🛏️ Icone Personalizzate per Stanza**: Introdotta l'assegnazione automatica di icone grafiche specifiche in base alla tipologia selezionata (Soggiorno, Bagno, Cucina, Camera da letto, Studio, Ingresso, Giardino, Altro).\\n- **🎛️ Modale Dettagli Pulito**: Rimosse le coordinate di posizionamento X/Y e i colori 3D, lasciando una visualizzazione compatta delle informazioni di scraping (prezzo, descrizione, dimensioni WxDxH e link al manuale PDF).\\n- **🧭 Navigazione Persistente**: Mantenuto il fix che evita la chiusura automatica del modulo al salvataggio.\",
     \"draft\": false,
     \"prerelease\": false
   }")
