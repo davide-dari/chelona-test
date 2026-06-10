@@ -2,6 +2,7 @@
 import { Filesystem, Directory } from '@capacitor/filesystem';
 import { Device } from '@capacitor/device';
 import { ApkInstaller } from '@bixbyte/capacitor-apk-installer';
+import { CapacitorHttp } from '@capacitor/core';
 import { APP_VERSION } from '../constants/version';
 
 
@@ -85,22 +86,23 @@ class UpdateService {
       
       if (onProgress) onProgress(0);
 
-      // Pre-resolve redirect using fetch HEAD so Filesystem.downloadFile gets a direct link
+      // Pre-resolve redirect using CapacitorHttp HEAD so Filesystem.downloadFile gets a direct link
       let downloadUrl = updateInfo.downloadUrl;
       try {
         console.log(`[UpdateService] Pre-resolving redirect for: ${downloadUrl}`);
-        const response = await fetch(downloadUrl, { 
+        const response = await CapacitorHttp.request({ 
           method: 'HEAD',
+          url: downloadUrl,
           headers: {
             'User-Agent': 'Chelona-App-Updater'
           }
         });
         if (response.url) {
           downloadUrl = response.url;
-          console.log(`[UpdateService] Final URL resolved: ${downloadUrl}`);
+          console.log(`[UpdateService] Final URL resolved with CapacitorHttp: ${downloadUrl}`);
         }
       } catch (e) {
-        console.error('[UpdateService] Failed to pre-resolve redirect with fetch, using original url:', e);
+        console.error('[UpdateService] Failed to pre-resolve redirect with CapacitorHttp, using original url:', e);
       }
 
       try {

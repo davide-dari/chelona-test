@@ -73,7 +73,7 @@ RELEASE_JSON=$(curl -s -X POST \
   -d "{
     \"tag_name\": \"$TAG\",
     \"name\": \"Release $TAG\",
-    \"body\": \"🚀 **Chelona v$VERSION**\\n\\n### ✨ Novità e Fix in questo Rilascio:\\n- **🔗 Pulsante Floating + Squircle**: Rinnovato esteticamente il pulsante flottante in basso a destra per allinearsi allo stile squircle degli altri moduli dell'app. Ora è visualizzato a livello di sezione Mobili.\\n- **🏢 Selettore Stanza di Destinazione**: Quando si inserisce un link di scraping, è possibile selezionare la stanza di destinazione direttamente da un menu a tendina e l'applicazione vi si reindirizzerà automaticamente.\",
+    \"body\": \"🚀 **Chelona v$VERSION**\\n\\n### ✨ Novità e Fix in questo Rilascio:\\n- **📥 Risolto Download Aggiornamenti**: Risolto un problema di CORS e reindirizzamento HTTP durante il download dell'APK da GitHub Releases su Android, integrando CapacitorHttp per risolvere l'URL in modo nativo.\",
     \"draft\": false,
     \"prerelease\": false
   }")
