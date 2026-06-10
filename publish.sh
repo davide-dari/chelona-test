@@ -73,7 +73,7 @@ RELEASE_JSON=$(curl -s -X POST \
   -d "{
     \"tag_name\": \"$TAG\",
     \"name\": \"Release $TAG\",
-    \"body\": \"🚀 **Chelona v$VERSION**\\n\\n### ✨ Novità e Fix in questo Rilascio:\\n- **🏠 Semplificazione Sezione Mobili**: Rimosso il visualizzatore 3D isometrico e i controlli associati per una navigazione più pulita e performante.\\n- **🛏️ Icone Personalizzate per Stanza**: Introdotta l'assegnazione automatica di icone grafiche specifiche in base alla tipologia selezionata (Soggiorno, Bagno, Cucina, Camera da letto, Studio, Ingresso, Giardino, Altro).\\n- **🎛️ Modale Dettagli Pulito**: Rimosse le coordinate di posizionamento X/Y e i colori 3D, lasciando una visualizzazione compatta delle informazioni di scraping (prezzo, descrizione, dimensioni WxDxH e link al manuale PDF).\\n- **🧭 Navigazione Persistente**: Mantenuto il fix che evita la chiusura automatica del modulo al salvataggio.\",
+    \"body\": \"🚀 **Chelona v$VERSION**\\n\\n### ✨ Novità e Fix in questo Rilascio:\\n- **🔄 Sincronizzazione in Background**: Apertura di un oggetto avvia lo scraping automatico per aggiornare prezzo, descrizione, titolo e manuale direttamente dal sito sorgente in tempo reale.\\n- **📖 Modale Dettagli in Sola Lettura**: Modificato il modale dettagli per mostrare le informazioni in sola lettura per default, introducendo un indicatore animato di sincronizzazione ed evidenziando i collegamenti esterni.\\n- **📐 Modifica Separata**: Spostata la modifica manuale (misure, categoria) su una schermata di editing secondaria.\\n- **🎨 Miglioramento Spaziatura**: Aggiunto spazio inferiore alla griglia degli oggetti per evitare sovrapposizioni su mobile e aumentate le distanze all'interno delle schede prodotto.\",
     \"draft\": false,
     \"prerelease\": false
   }")

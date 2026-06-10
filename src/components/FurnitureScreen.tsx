@@ -110,9 +110,11 @@ export const FurnitureScreen = ({ module, onSave, onClose }: FurnitureScreenProp
     height: 270   // cm
   });
 
-  // Details Modal State
+  // Details Modal & Background Sync State
   const [selectedDetailsItem, setSelectedDetailsItem] = useState<FurnitureItem | null>(null);
   const [detailForm, setDetailForm] = useState<FurnitureItem | null>(null);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [isEditingItem, setIsEditingItem] = useState(false);
   const [isDeletingItem, setIsDeletingItem] = useState(false);
 
   useEffect(() => {
@@ -329,6 +331,8 @@ export const FurnitureScreen = ({ module, onSave, onClose }: FurnitureScreenProp
     // Select the new item to open details immediately
     setSelectedDetailsItem(newItem);
     setDetailForm(newItem);
+    setIsEditingItem(false);
+    setIsSyncing(false);
     
     onSave(updatedData);
   };
@@ -337,7 +341,137 @@ export const FurnitureScreen = ({ module, onSave, onClose }: FurnitureScreenProp
   const handleSelectItem = (item: FurnitureItem) => {
     setSelectedDetailsItem(item);
     setDetailForm({ ...item });
+    setIsEditingItem(false);
+    setIsSyncing(false);
   };
+
+  // Background Web Scraping Synchronization
+  const handleSyncItem = async (item: FurnitureItem) => {
+    if (!item.link || !activeRoomId) return;
+    setIsSyncing(true);
+
+    let url = item.link;
+    if (!url.startsWith('http')) url = 'https://' + url;
+
+    try {
+      const response = await CapacitorHttp.get({ 
+        url, 
+        headers: { 
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36' 
+        } 
+      });
+      const html = typeof response.data === 'string' ? response.data : '';
+
+      if (html) {
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, 'text/html');
+
+        const metaTitle = doc.querySelector('meta[property="og:title"]')?.getAttribute('content') || doc.querySelector('meta[name="title"]')?.getAttribute('content');
+        const titleTag = doc.querySelector('title')?.innerText;
+        const amzTitle = doc.querySelector('#productTitle')?.textContent?.trim();
+        const scrapedTitle = amzTitle || metaTitle || titleTag || url;
+
+        const metaImage = doc.querySelector('meta[property="og:image"]')?.getAttribute('content') || doc.querySelector('meta[name="image"]')?.getAttribute('content');
+        const amzImage = doc.querySelector('#landingImage')?.getAttribute('src');
+        const ikeaImage = doc.querySelector('.pip-image')?.getAttribute('src');
+        const scrapedImage = amzImage || ikeaImage || metaImage || '';
+
+        const metaDesc = doc.querySelector('meta[property="og:description"]')?.getAttribute('content') || doc.querySelector('meta[name="description"]')?.getAttribute('content');
+        const amzDesc = doc.querySelector('#feature-bullets')?.textContent?.trim() || doc.querySelector('#productDescription')?.textContent?.trim();
+        const scrapedDesc = amzDesc || metaDesc || '';
+
+        const ogPrice = doc.querySelector('meta[property="product:price:amount"]')?.getAttribute('content');
+        const amzPriceWhole = doc.querySelector('.a-price-whole')?.textContent?.trim()?.replace(/[^0-9,]/g, '');
+        const ikeaPrice = doc.querySelector('.pip-temp-price__integer')?.textContent?.trim();
+        
+        let scrapedPrice = '';
+        if (ogPrice) scrapedPrice = ogPrice;
+        else if (amzPriceWhole) scrapedPrice = amzPriceWhole;
+        else if (ikeaPrice) scrapedPrice = ikeaPrice;
+        else {
+          const genericPrice = html.match(/€\s*([0-9.,]+)/i);
+          if (genericPrice) scrapedPrice = genericPrice[1];
+        }
+
+        const pdfLink = Array.from(doc.querySelectorAll('a[href]'))
+          .map(a => a.getAttribute('href'))
+          .find(href => href && href.toLowerCase().endsWith('.pdf'));
+        let scrapedManualUrl = '';
+        if (pdfLink) {
+          if (pdfLink.startsWith('http')) {
+            scrapedManualUrl = pdfLink;
+          } else {
+            try {
+              scrapedManualUrl = new URL(pdfLink, url).toString();
+            } catch {
+              scrapedManualUrl = pdfLink;
+            }
+          }
+        }
+
+        let hasChanges = false;
+        const updatedItem = { ...item };
+
+        if (scrapedTitle && scrapedTitle !== item.title) {
+          updatedItem.title = scrapedTitle.substring(0, 100) + (scrapedTitle.length > 100 ? '...' : '');
+          hasChanges = true;
+        }
+        if (scrapedImage && scrapedImage !== item.imageUrl) {
+          updatedItem.imageUrl = scrapedImage;
+          hasChanges = true;
+        }
+        if (scrapedDesc && scrapedDesc !== item.description) {
+          updatedItem.description = scrapedDesc.substring(0, 500) + (scrapedDesc.length > 500 ? '...' : '');
+          hasChanges = true;
+        }
+        if (scrapedPrice && scrapedPrice !== item.price) {
+          updatedItem.price = scrapedPrice;
+          hasChanges = true;
+        }
+        if (scrapedManualUrl && scrapedManualUrl !== item.manualUrl) {
+          updatedItem.manualUrl = scrapedManualUrl;
+          hasChanges = true;
+        }
+
+        if (item.category === 'Altro' || !item.category) {
+          const newCat = guessCategory(updatedItem.title, updatedItem.description || '');
+          if (newCat !== 'Altro') {
+            updatedItem.category = newCat;
+            hasChanges = true;
+          }
+        }
+
+        if (hasChanges) {
+          setSelectedDetailsItem(updatedItem);
+          setDetailForm(updatedItem);
+
+          const updatedRooms = data.rooms.map(r => {
+            if (r.id === activeRoomId) {
+              return {
+                ...r,
+                items: r.items.map(i => i.id === item.id ? updatedItem : i)
+              };
+            }
+            return r;
+          });
+          const updatedData = { ...data, rooms: updatedRooms };
+          setData(updatedData);
+          onSave(updatedData);
+        }
+      }
+    } catch (err) {
+      console.error('Background sync failed', err);
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  // Trigger background sync when details modal opens
+  useEffect(() => {
+    if (selectedDetailsItem) {
+      handleSyncItem(selectedDetailsItem);
+    }
+  }, [selectedDetailsItem?.id]);
 
   // Handle updates in details form
   const handleDetailChange = (field: keyof FurnitureItem, val: any) => {
@@ -377,6 +511,7 @@ export const FurnitureScreen = ({ module, onSave, onClose }: FurnitureScreenProp
     setData(updatedData);
     setSelectedDetailsItem(null);
     setDetailForm(null);
+    setIsEditingItem(false);
     onSave(updatedData);
   };
 
@@ -385,6 +520,7 @@ export const FurnitureScreen = ({ module, onSave, onClose }: FurnitureScreenProp
     setData(module);
     setSelectedDetailsItem(null);
     setDetailForm(null);
+    setIsEditingItem(false);
   };
 
   // Delete furniture item
@@ -404,6 +540,7 @@ export const FurnitureScreen = ({ module, onSave, onClose }: FurnitureScreenProp
     setIsDeletingItem(false);
     setSelectedDetailsItem(null);
     setDetailForm(null);
+    setIsEditingItem(false);
   };
 
   return (
@@ -558,8 +695,8 @@ export const FurnitureScreen = ({ module, onSave, onClose }: FurnitureScreenProp
               })}
             </div>
 
-            {/* Items Grid */}
-            <div className="flex-1 overflow-y-auto p-4 lg:p-6 custom-scrollbar">
+            {/* Items Grid with bottom padding */}
+            <div className="flex-1 overflow-y-auto p-4 lg:p-6 pb-24 custom-scrollbar">
               {filteredItems.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-64 text-[var(--text-muted)] text-center px-4">
                   <Armchair className="w-16 h-16 mb-4 opacity-25 text-teal-600" />
@@ -580,7 +717,7 @@ export const FurnitureScreen = ({ module, onSave, onClose }: FurnitureScreenProp
                         animate={{ opacity: 1, scale: 1 }}
                         exit={{ opacity: 0, scale: 0.95 }}
                         onClick={() => handleSelectItem(item)}
-                        className="bg-[var(--card-bg)] border border-[var(--border)] rounded-3xl overflow-hidden shadow-sm hover:shadow-md transition-all cursor-pointer flex flex-col p-3 group relative select-none"
+                        className="bg-[var(--card-bg)] border border-[var(--border)] rounded-3xl overflow-hidden shadow-sm hover:shadow-md transition-all cursor-pointer flex flex-col p-3.5 pb-5 group relative select-none"
                       >
                         <div className="aspect-square bg-[var(--surface-variant)] rounded-2xl flex items-center justify-center overflow-hidden relative border border-[var(--border)]/50">
                           {item.imageUrl ? (
@@ -598,7 +735,7 @@ export const FurnitureScreen = ({ module, onSave, onClose }: FurnitureScreenProp
                           )}
                         </div>
                         
-                        <div className="mt-2.5 px-1 flex-1 flex flex-col justify-between">
+                        <div className="mt-3 px-1.5 flex-1 flex flex-col justify-between">
                           <h4 className="font-extrabold text-[var(--text-main)] text-xs line-clamp-2 leading-snug" title={item.title}>
                             {item.title}
                           </h4>
@@ -777,7 +914,7 @@ export const FurnitureScreen = ({ module, onSave, onClose }: FurnitureScreenProp
               {/* Modal Header */}
               <div className="p-4 border-b border-[var(--border)] flex items-center justify-between bg-[var(--surface-variant)] shrink-0">
                 <h3 className="font-black text-sm text-[var(--text-main)] uppercase tracking-wider">
-                  Dettagli Oggetto
+                  {isEditingItem ? 'Modifica Oggetto' : 'Dettagli Oggetto'}
                 </h3>
                 <button onClick={handleCloseItemDetails} className="p-2 text-[var(--text-muted)] hover:bg-[var(--bg)] rounded-full transition-colors">
                   <X className="w-5 h-5" />
@@ -787,165 +924,256 @@ export const FurnitureScreen = ({ module, onSave, onClose }: FurnitureScreenProp
               {/* Modal Body */}
               <div className="p-5 flex-1 overflow-y-auto custom-scrollbar flex flex-col gap-5">
                 
-                {/* Visual Overview */}
-                <div className="flex flex-col sm:flex-row gap-4 bg-[var(--surface-variant)]/30 p-4 rounded-2xl border border-[var(--border)]">
-                  <div className="w-full sm:w-32 h-32 rounded-xl bg-[var(--surface-variant)] border border-[var(--border)] flex-shrink-0 overflow-hidden relative flex items-center justify-center">
-                    {detailForm.imageUrl ? (
-                      <img src={detailForm.imageUrl} alt={detailForm.title} className="w-full h-full object-cover" />
-                    ) : (
-                      <ImageIcon className="w-10 h-10 text-[var(--text-muted)]/30" />
-                    )}
-                  </div>
-                  <div className="flex-1 flex flex-col justify-between">
-                    <div>
-                      <input 
-                        type="text" 
-                        value={detailForm.title} 
-                        onChange={e => handleDetailChange('title', e.target.value)} 
-                        className="text-base font-extrabold text-[var(--text-main)] w-full bg-transparent border-b border-transparent focus:border-teal-500 pb-1 outline-none"
-                      />
-                      <div className="flex items-center gap-2 mt-2">
-                        <span className="text-xs font-black uppercase text-[var(--text-muted)] bg-[var(--surface-variant)] px-2.5 py-1 rounded-full">
-                          {detailForm.category || 'Altro'}
-                        </span>
-                        {detailForm.price && (
-                          <span className="text-xs font-black text-teal-600 bg-teal-500/10 px-2.5 py-1 rounded-full flex items-center gap-1">
-                            <Tag className="w-3.5 h-3.5" /> €{detailForm.price}
-                          </span>
+                {/* 1. READ-ONLY VIEW (DEFAULT ON CLICK) */}
+                {!isEditingItem ? (
+                  <>
+                    {/* Visual Overview */}
+                    <div className="flex flex-col sm:flex-row gap-5 bg-[var(--surface-variant)]/30 p-5 rounded-2xl border border-[var(--border)] relative overflow-hidden">
+                      <div className="w-full sm:w-36 h-36 rounded-xl bg-[var(--surface-variant)] border border-[var(--border)] flex-shrink-0 overflow-hidden relative flex items-center justify-center">
+                        {detailForm.imageUrl ? (
+                          <img src={detailForm.imageUrl} alt={detailForm.title} className="w-full h-full object-cover" />
+                        ) : (
+                          <ImageIcon className="w-12 h-12 text-[var(--text-muted)]/30" />
                         )}
                       </div>
+                      <div className="flex-1 flex flex-col justify-between">
+                        <div>
+                          <h4 className="text-base font-black text-[var(--text-main)] leading-snug">
+                            {detailForm.title}
+                          </h4>
+                          <div className="flex flex-wrap items-center gap-2 mt-3">
+                            <span className="text-[10px] font-black uppercase text-[var(--text-muted)] bg-[var(--surface-variant)] px-2.5 py-1 rounded-full">
+                              {detailForm.category || 'Altro'}
+                            </span>
+                            {detailForm.price && (
+                              <span className="text-xs font-black text-teal-600 bg-teal-500/10 px-2.5 py-1 rounded-full flex items-center gap-1">
+                                <Tag className="w-3.5 h-3.5" /> €{detailForm.price}
+                              </span>
+                            )}
+                            {isSyncing ? (
+                              <span className="text-[10px] font-bold text-teal-600 bg-teal-500/5 px-2.5 py-1 rounded-full flex items-center gap-1 animate-pulse">
+                                <Loader2 className="w-3 h-3 animate-spin text-teal-500" /> Sincronizzazione...
+                              </span>
+                            ) : (
+                              <span className="text-[10px] font-bold text-emerald-600 bg-emerald-500/10 px-2.5 py-1 rounded-full flex items-center gap-1">
+                                ✓ Aggiornato
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        
+                        <div className="flex gap-2.5 mt-5 sm:mt-0">
+                          <a
+                            href={detailForm.link}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex-1 sm:flex-none px-4.5 py-2.5 bg-teal-500 hover:bg-teal-600 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-colors shadow-sm"
+                          >
+                            <ExternalLink className="w-3.5 h-3.5" /> Negozio
+                          </a>
+                          {detailForm.manualUrl && (
+                            <a
+                              href={detailForm.manualUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex-1 sm:flex-none px-4.5 py-2.5 bg-blue-500 hover:bg-blue-600 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-colors shadow-sm"
+                            >
+                              <FileText className="w-3.5 h-3.5" /> Manuale
+                            </a>
+                          )}
+                        </div>
+                      </div>
                     </div>
-                    
-                    <div className="flex gap-2.5 mt-3 sm:mt-0">
-                      <a
-                        href={detailForm.link}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex-1 sm:flex-none px-4 py-2 bg-teal-500 hover:bg-teal-600 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-colors shadow-sm"
-                      >
-                        <ExternalLink className="w-3.5 h-3.5" /> Negozio
-                      </a>
-                      {detailForm.manualUrl && (
-                        <a
-                          href={detailForm.manualUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex-1 sm:flex-none px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-colors shadow-sm"
+
+                    {/* Dimensions metadata display */}
+                    {(detailForm.width || detailForm.depth || detailForm.height) && (
+                      <div className="border-t border-[var(--border)] pt-4">
+                        <h4 className="text-xs font-black uppercase text-[var(--text-muted)] tracking-wider mb-2 flex items-center gap-1">
+                          Dimensioni Prodotto
+                        </h4>
+                        <div className="grid grid-cols-3 gap-3">
+                          <div className="bg-[var(--surface-variant)]/30 p-3 rounded-xl border border-[var(--border)] flex flex-col gap-0.5">
+                            <span className="text-[9px] font-bold uppercase text-[var(--text-muted)]">Larghezza</span>
+                            <span className="text-sm font-extrabold text-[var(--text-main)]">{detailForm.width || '--'} cm</span>
+                          </div>
+                          <div className="bg-[var(--surface-variant)]/30 p-3 rounded-xl border border-[var(--border)] flex flex-col gap-0.5">
+                            <span className="text-[9px] font-bold uppercase text-[var(--text-muted)]">Profondità</span>
+                            <span className="text-sm font-extrabold text-[var(--text-main)]">{detailForm.depth || '--'} cm</span>
+                          </div>
+                          <div className="bg-[var(--surface-variant)]/30 p-3 rounded-xl border border-[var(--border)] flex flex-col gap-0.5">
+                            <span className="text-[9px] font-bold uppercase text-[var(--text-muted)]">Altezza</span>
+                            <span className="text-sm font-extrabold text-[var(--text-main)]">{detailForm.height || '--'} cm</span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Description Display */}
+                    {detailForm.description && (
+                      <div className="border-t border-[var(--border)] pt-4 flex-1">
+                        <h4 className="text-xs font-black uppercase text-[var(--text-muted)] tracking-wider mb-2">
+                          Descrizione
+                        </h4>
+                        <p className="text-xs sm:text-sm text-[var(--text-muted)] leading-relaxed whitespace-pre-wrap max-h-48 overflow-y-auto custom-scrollbar bg-[var(--surface-variant)]/20 p-3.5 rounded-xl border border-[var(--border)]">
+                          {detailForm.description}
+                        </p>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  // 2. EDITING FORM (Toggled by "Modifica" button)
+                  <>
+                    {/* Visual Overview */}
+                    <div className="flex flex-col sm:flex-row gap-4 bg-[var(--surface-variant)]/30 p-4 rounded-2xl border border-[var(--border)]">
+                      <div className="w-full sm:w-32 h-32 rounded-xl bg-[var(--surface-variant)] border border-[var(--border)] flex-shrink-0 overflow-hidden relative flex items-center justify-center">
+                        {detailForm.imageUrl ? (
+                          <img src={detailForm.imageUrl} alt={detailForm.title} className="w-full h-full object-cover" />
+                        ) : (
+                          <ImageIcon className="w-10 h-10 text-[var(--text-muted)]/30" />
+                        )}
+                      </div>
+                      <div className="flex-1 flex flex-col justify-between">
+                        <div>
+                          <label className="block text-[9px] font-black text-[var(--text-muted)] mb-0.5 uppercase tracking-wider">Titolo Oggetto</label>
+                          <input 
+                            type="text" 
+                            value={detailForm.title} 
+                            onChange={e => handleDetailChange('title', e.target.value)} 
+                            className="text-sm font-extrabold text-[var(--text-main)] w-full bg-[var(--bg)] border border-[var(--border)] rounded-lg px-2.5 py-1.5 outline-none focus:border-teal-500"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {/* Category Selection */}
+                      <div>
+                        <label className="block text-[10px] font-black text-[var(--text-muted)] mb-1 uppercase tracking-wider">Tipologia Oggetto</label>
+                        <select
+                          value={detailForm.category || 'Altro'}
+                          onChange={e => handleDetailChange('category', e.target.value)}
+                          className="w-full bg-[var(--bg)] border border-[var(--border)] rounded-xl px-3.5 py-2.5 text-sm outline-none focus:border-teal-500 font-semibold text-[var(--text-main)]"
                         >
-                          <FileText className="w-3.5 h-3.5" /> Manuale
-                        </a>
-                      )}
+                          {CATEGORIES.map(cat => (
+                            <option key={cat} value={cat}>{cat}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      {/* Price */}
+                      <div>
+                        <label className="block text-[10px] font-black text-[var(--text-muted)] mb-1 uppercase tracking-wider">Prezzo (€)</label>
+                        <input
+                          type="text"
+                          value={detailForm.price || ''}
+                          onChange={e => handleDetailChange('price', e.target.value)}
+                          className="w-full bg-[var(--bg)] border border-[var(--border)] rounded-xl px-3.5 py-2.5 text-sm outline-none focus:border-teal-500 font-semibold text-[var(--text-main)]"
+                          placeholder="es. 149.99"
+                        />
+                      </div>
                     </div>
-                  </div>
-                </div>
 
-                {/* Edit Form */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Category Selection */}
-                  <div>
-                    <label className="block text-[10px] font-black text-[var(--text-muted)] mb-1 uppercase tracking-wider">Tipologia Oggetto</label>
-                    <select
-                      value={detailForm.category || 'Altro'}
-                      onChange={e => handleDetailChange('category', e.target.value)}
-                      className="w-full bg-[var(--bg)] border border-[var(--border)] rounded-xl px-3.5 py-2.5 text-sm outline-none focus:border-teal-500 font-semibold text-[var(--text-main)]"
-                    >
-                      {CATEGORIES.map(cat => (
-                        <option key={cat} value={cat}>{cat}</option>
-                      ))}
-                    </select>
-                  </div>
+                    {/* Dimensions (W, D, H) */}
+                    <div className="border-t border-[var(--border)] pt-4">
+                      <h4 className="text-xs font-black uppercase text-[var(--text-muted)] tracking-wider mb-2 flex items-center gap-1">
+                        <Sliders className="w-4 h-4 text-teal-500" /> Dimensioni Oggetto (in cm)
+                      </h4>
+                      <div className="grid grid-cols-3 gap-3">
+                        <div className="flex flex-col gap-1 bg-[var(--bg)] p-3 rounded-xl border border-[var(--border)]">
+                          <span className="text-[10px] font-bold text-[var(--text-muted)]">Larghezza</span>
+                          <input
+                            type="number"
+                            min="5"
+                            max="800"
+                            value={detailForm.width || 50}
+                            onChange={e => handleDetailChange('width', parseInt(e.target.value) || '')}
+                            className="bg-transparent text-sm font-extrabold text-teal-600 outline-none w-full"
+                          />
+                        </div>
+                        <div className="flex flex-col gap-1 bg-[var(--bg)] p-3 rounded-xl border border-[var(--border)]">
+                          <span className="text-[10px] font-bold text-[var(--text-muted)]">Profondità</span>
+                          <input
+                            type="number"
+                            min="5"
+                            max="800"
+                            value={detailForm.depth || 50}
+                            onChange={e => handleDetailChange('depth', parseInt(e.target.value) || '')}
+                            className="bg-transparent text-sm font-extrabold text-teal-600 outline-none w-full"
+                          />
+                        </div>
+                        <div className="flex flex-col gap-1 bg-[var(--bg)] p-3 rounded-xl border border-[var(--border)]">
+                          <span className="text-[10px] font-bold text-[var(--text-muted)]">Altezza</span>
+                          <input
+                            type="number"
+                            min="5"
+                            max="800"
+                            value={detailForm.height || 50}
+                            onChange={e => handleDetailChange('height', parseInt(e.target.value) || '')}
+                            className="bg-transparent text-sm font-extrabold text-teal-600 outline-none w-full"
+                          />
+                        </div>
+                      </div>
+                    </div>
 
-                  {/* Price */}
-                  <div>
-                    <label className="block text-[10px] font-black text-[var(--text-muted)] mb-1 uppercase tracking-wider">Prezzo (€)</label>
-                    <input
-                      type="text"
-                      value={detailForm.price || ''}
-                      onChange={e => handleDetailChange('price', e.target.value)}
-                      className="w-full bg-[var(--bg)] border border-[var(--border)] rounded-xl px-3.5 py-2.5 text-sm outline-none focus:border-teal-500 font-semibold text-[var(--text-main)]"
-                      placeholder="es. 149.99"
-                    />
-                  </div>
-                </div>
-
-                {/* Dimensions (W, D, H) */}
-                <div className="border-t border-[var(--border)] pt-4">
-                  <h4 className="text-xs font-black uppercase text-[var(--text-muted)] tracking-wider mb-2 flex items-center gap-1">
-                    <Sliders className="w-4 h-4 text-teal-500" /> Dimensioni Oggetto (in cm)
-                  </h4>
-                  <div className="grid grid-cols-3 gap-3">
-                    <div className="flex flex-col gap-1 bg-[var(--bg)] p-3 rounded-xl border border-[var(--border)]">
-                      <span className="text-[10px] font-bold text-[var(--text-muted)]">Larghezza</span>
-                      <input
-                        type="number"
-                        min="5"
-                        max="800"
-                        value={detailForm.width || 50}
-                        onChange={e => handleDetailChange('width', parseInt(e.target.value) || '')}
-                        className="bg-transparent text-sm font-extrabold text-teal-600 outline-none w-full"
+                    {/* Description */}
+                    <div>
+                      <label className="block text-[10px] font-black text-[var(--text-muted)] mb-1 uppercase tracking-wider">Descrizione</label>
+                      <textarea
+                        value={detailForm.description || ''}
+                        onChange={e => handleDetailChange('description', e.target.value)}
+                        className="w-full bg-[var(--bg)] border border-[var(--border)] rounded-xl px-3.5 py-2.5 text-sm outline-none focus:border-teal-500 font-semibold text-[var(--text-main)] resize-none h-24 custom-scrollbar"
                       />
                     </div>
-                    <div className="flex flex-col gap-1 bg-[var(--bg)] p-3 rounded-xl border border-[var(--border)]">
-                      <span className="text-[10px] font-bold text-[var(--text-muted)]">Profondità</span>
-                      <input
-                        type="number"
-                        min="5"
-                        max="800"
-                        value={detailForm.depth || 50}
-                        onChange={e => handleDetailChange('depth', parseInt(e.target.value) || '')}
-                        className="bg-transparent text-sm font-extrabold text-teal-600 outline-none w-full"
-                      />
-                    </div>
-                    <div className="flex flex-col gap-1 bg-[var(--bg)] p-3 rounded-xl border border-[var(--border)]">
-                      <span className="text-[10px] font-bold text-[var(--text-muted)]">Altezza</span>
-                      <input
-                        type="number"
-                        min="5"
-                        max="800"
-                        value={detailForm.height || 50}
-                        onChange={e => handleDetailChange('height', parseInt(e.target.value) || '')}
-                        className="bg-transparent text-sm font-extrabold text-teal-600 outline-none w-full"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Description */}
-                <div>
-                  <label className="block text-[10px] font-black text-[var(--text-muted)] mb-1 uppercase tracking-wider">Descrizione</label>
-                  <textarea
-                    value={detailForm.description || ''}
-                    onChange={e => handleDetailChange('description', e.target.value)}
-                    className="w-full bg-[var(--bg)] border border-[var(--border)] rounded-xl px-3.5 py-2.5 text-sm outline-none focus:border-teal-500 font-semibold text-[var(--text-main)] resize-none h-24 custom-scrollbar"
-                  />
-                </div>
+                  </>
+                )}
               </div>
 
               {/* Modal Footer */}
               <div className="p-4 border-t border-[var(--border)] flex items-center justify-between shrink-0 bg-[var(--sidebar-bg)]">
-                <button
-                  type="button"
-                  onClick={() => setIsDeletingItem(true)}
-                  className="px-4 py-3 bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white rounded-2xl font-black text-sm transition-all flex items-center gap-1.5 shadow-sm"
-                >
-                  <Trash2 className="w-4 h-4" /> Rimuovi
-                </button>
-                <div className="flex gap-3">
-                  <button
-                    type="button"
-                    onClick={handleCloseItemDetails}
-                    className="px-5 py-3 bg-[var(--surface-variant)] text-[var(--text-muted)] hover:text-[var(--text-main)] rounded-2xl font-black text-sm transition-all border border-[var(--border)]"
-                  >
-                    Annulla
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleSaveItemDetails}
-                    className="px-6 py-3 bg-teal-500 hover:bg-teal-600 text-white rounded-2xl font-black text-sm transition-all shadow-sm"
-                  >
-                    Salva Modifiche
-                  </button>
-                </div>
+                {isEditingItem ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => setIsDeletingItem(true)}
+                      className="px-4 py-3 bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white rounded-2xl font-black text-sm transition-all flex items-center gap-1.5 shadow-sm"
+                    >
+                      <Trash2 className="w-4 h-4" /> Rimuovi
+                    </button>
+                    <div className="flex gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setIsEditingItem(false)}
+                        className="px-5 py-3 bg-[var(--surface-variant)] text-[var(--text-muted)] hover:text-[var(--text-main)] rounded-2xl font-black text-sm transition-all border border-[var(--border)]"
+                      >
+                        Annulla
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleSaveItemDetails}
+                        className="px-6 py-3 bg-teal-500 hover:bg-teal-600 text-white rounded-2xl font-black text-sm transition-all shadow-sm"
+                      >
+                        Salva
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => setIsEditingItem(true)}
+                      className="px-4.5 py-3 bg-teal-500/10 text-teal-600 hover:bg-teal-500 hover:text-white rounded-2xl font-black text-sm transition-all flex items-center gap-1.5 shadow-sm"
+                    >
+                      <Edit2 className="w-4 h-4" /> Modifica Dettagli
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleCloseItemDetails}
+                      className="px-6 py-3 bg-[var(--surface-variant)] text-[var(--text-muted)] hover:text-[var(--text-main)] rounded-2xl font-black text-sm transition-all border border-[var(--border)]"
+                    >
+                      Chiudi
+                    </button>
+                  </>
+                )}
               </div>
             </motion.div>
           </div>
