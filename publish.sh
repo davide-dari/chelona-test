@@ -73,7 +73,7 @@ RELEASE_JSON=$(curl -s -X POST \
   -d "{
     \"tag_name\": \"$TAG\",
     \"name\": \"Release $TAG\",
-    \"body\": \"🚀 **Chelona v$VERSION**\\n\\n### ✨ Novità e Fix in questo Rilascio:\\n- **🔗 Inserimento Link in Modale**: Rimossa la barra di inserimento link statica dalla schermata e sostituita con un'icona link in testata. Cliccando l'icona si apre una modale popup da cui inserire e aggiungere il link per lo scraping.\",
+    \"body\": \"🚀 **Chelona v$VERSION**\\n\\n### ✨ Novità e Fix in questo Rilascio:\\n- **🔗 Pulsante Floating \\\"+\\\"\**: Rimossa la barra di inserimento link statica dalla schermata e inserito un pulsante \\\"+\\\" flottante in basso a destra. Cliccando il pulsante si apre una modale popup da cui inserire e aggiungere il link per lo scraping.\",
     \"draft\": false,
     \"prerelease\": false
   }")

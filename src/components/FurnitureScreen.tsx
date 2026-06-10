@@ -633,7 +633,7 @@ export const FurnitureScreen = ({ module, onSave, onClose }: FurnitureScreenProp
 
         {/* ACTIVE ROOM VIEWPORT */}
         {activeRoom ? (
-          <div className="flex-1 flex flex-col overflow-hidden bg-[var(--bg)]">
+          <div className="flex-1 flex flex-col overflow-hidden bg-[var(--bg)] relative">
             
             {/* Active Room Title and Info Header */}
             <div className="p-4 bg-[var(--sidebar-bg)] border-b border-[var(--border)] shrink-0 flex items-center justify-between">
@@ -651,13 +651,6 @@ export const FurnitureScreen = ({ module, onSave, onClose }: FurnitureScreenProp
                 )}
               </div>
               <div className="flex items-center gap-2">
-                <button 
-                  onClick={() => setIsAddLinkModalOpen(true)}
-                  className="text-xs font-bold text-white bg-teal-500 hover:bg-teal-600 px-3.5 py-2 rounded-full flex items-center gap-1.5 transition-all shadow-sm active:scale-95"
-                >
-                  <LinkIcon className="w-4 h-4" />
-                  <span className="hidden sm:inline">Aggiungi da Link</span>
-                </button>
                 <button 
                   onClick={handleOpenEditRoomModal}
                   className="text-xs font-bold text-teal-600 hover:text-teal-700 bg-teal-50 hover:bg-teal-100 dark:bg-teal-500/10 dark:text-teal-400 px-3.5 py-2 rounded-full border border-teal-500/10 flex items-center gap-1.5 transition-all active:scale-95"
@@ -696,7 +689,7 @@ export const FurnitureScreen = ({ module, onSave, onClose }: FurnitureScreenProp
                   <p className="font-extrabold text-lg text-[var(--text-main)]">Nessun oggetto trovato</p>
                   <p className="text-xs mt-1.5 opacity-70 max-w-sm">
                     {activeCategory === 'Tutti' 
-                      ? 'La stanza è ancora vuota! Fai clic su "Aggiungi da Link" in alto per fare lo scraping e aggiungere il primo elemento.' 
+                      ? 'La stanza è ancora vuota! Fai clic sul tasto + in basso a destra per inserire un link e aggiungere il primo elemento.' 
                       : `Non ci sono ancora oggetti della categoria "${activeCategory}" in questa stanza.`}
                   </p>
                 </div>
@@ -739,6 +732,16 @@ export const FurnitureScreen = ({ module, onSave, onClose }: FurnitureScreenProp
                 </div>
               )}
             </div>
+
+            {/* Pulsante Floating "+" per aggiungere da Link */}
+            <button
+              onClick={() => setIsAddLinkModalOpen(true)}
+              className="absolute bottom-6 right-6 w-14 h-14 bg-teal-500 hover:bg-teal-600 active:scale-95 text-white rounded-full flex items-center justify-center shadow-lg hover:shadow-xl transition-all z-40 border border-teal-400/20"
+              title="Aggiungi da Link"
+              id="fab-add-furniture-item"
+            >
+              <Plus className="w-8 h-8" />
+            </button>
             
           </div>
         ) : (
