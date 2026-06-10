@@ -97,6 +97,7 @@ class UpdateService {
             'User-Agent': 'Chelona-App-Updater'
           }
         });
+        console.log(`[UpdateService] CapacitorHttp response status: ${response.status}, url: ${response.url}`);
         if (response.url) {
           downloadUrl = response.url;
           console.log(`[UpdateService] Final URL resolved with CapacitorHttp: ${downloadUrl}`);
@@ -131,7 +132,10 @@ class UpdateService {
           url: downloadUrl,
           path: fileName,
           directory: Directory.Cache,
-          progress: true
+          progress: true,
+          headers: {
+            'User-Agent': 'Chelona-App-Updater'
+          }
         });
 
         if (progressListener) {
@@ -142,6 +146,14 @@ class UpdateService {
         console.log(`[UpdateService] Download finished: ${downloadResult.path}`);
 
         // 2. Install the APK
+        console.log('[UpdateService] Checking install permission...');
+        const { hasPermission } = await ApkInstaller.checkInstallPermission();
+        if (!hasPermission) {
+          console.log('[UpdateService] Requesting install permission...');
+          await ApkInstaller.requestInstallPermission();
+          throw new Error("Abilita l'installazione da questa sorgente nelle impostazioni del telefono e riprova.");
+        }
+
         console.log('[UpdateService] Starting installation...');
         await ApkInstaller.installApk({ filePath: downloadResult.path });
       } catch (innerError: any) {

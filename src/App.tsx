@@ -3290,7 +3290,7 @@ export default function App() {
               </div>
 
               {/* Footer / Actions */}
-              <div className="p-6 bg-[var(--card-bg)] border-t border-[var(--border)] shrink-0">
+              <div className="p-6 bg-[var(--card-bg)] border-t border-[var(--border)] shrink-0 flex flex-col gap-4">
                 {updateProgress !== null ? (
                   <div className="space-y-3 bg-[var(--surface-variant)] p-4 rounded-2xl">
                     <div className="flex justify-between items-center mb-1">
@@ -3304,14 +3304,6 @@ export default function App() {
                         className="h-full bg-[var(--accent)] shadow-[0_0_10px_var(--accent)]"
                       />
                     </div>
-                    {updateProgress < 10 && (
-                      <button 
-                        onClick={() => window.open(availableUpdate.downloadUrl, '_system')}
-                        className="w-full mt-2 text-[10px] font-bold text-[var(--accent)] hover:underline uppercase tracking-widest text-center"
-                      >
-                        Problemi col download? Scarica dal browser
-                      </button>
-                    )}
                   </div>
                 ) : (
                   <div className="flex gap-3">
@@ -3339,6 +3331,13 @@ export default function App() {
                     </button>
                   </div>
                 )}
+                
+                <button 
+                  onClick={() => window.open(availableUpdate.downloadUrl, '_system')}
+                  className="w-full text-[10px] font-bold text-[var(--accent)] hover:underline uppercase tracking-widest text-center py-2"
+                >
+                  Problemi col download? Scarica dal browser
+                </button>
               </div>
             </motion.div>
           </div>

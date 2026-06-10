@@ -73,7 +73,7 @@ RELEASE_JSON=$(curl -s -X POST \
   -d "{
     \"tag_name\": \"$TAG\",
     \"name\": \"Release $TAG\",
-    \"body\": \"🚀 **Chelona v$VERSION**\\n\\n### ✨ Novità e Fix in questo Rilascio:\\n- **📥 Risolto Download Aggiornamenti**: Risolto un problema di CORS e reindirizzamento HTTP durante il download dell'APK da GitHub Releases su Android, integrando CapacitorHttp per risolvere l'URL in modo nativo.\",
+    \"body\": \"🚀 **Chelona v$VERSION**\\n\\n### ✨ Novità e Fix in questo Rilascio:\\n- **📥 Risolto Download Aggiornamenti**: Risolto il problema di scaricamento ed errore negli aggiornamenti automatici su Android. Aggiunti controlli di permessi per installazione da sorgenti sconosciute, header User-Agent su Filesystem.downloadFile e un pulsante alternativo 'Scarica dal browser' sempre visibile a schermo.\",
     \"draft\": false,
     \"prerelease\": false
   }")
