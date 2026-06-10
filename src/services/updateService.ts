@@ -1,6 +1,6 @@
 import { Filesystem, Directory } from '@capacitor/filesystem';
 import { ApkInstaller } from '@bixbyte/capacitor-apk-installer';
-import { CapacitorHttp } from '@capacitor/core';
+import { CapacitorHttp, Capacitor } from '@capacitor/core';
 import { APP_VERSION } from '../constants/version';
 
 const GITHUB_OWNER = 'davide-dari';
@@ -76,18 +76,20 @@ class UpdateService {
     console.log(`[UpdateService] Starting update flow for v${updateInfo.latestVersion}`);
 
     // ── STEP 1: Check & request install permission ──────────────────────────
-    console.log('[UpdateService] Checking install permission...');
-    const { hasPermission } = await ApkInstaller.checkInstallPermission();
-    if (!hasPermission) {
-      console.log('[UpdateService] Permission not granted — redirecting to Settings...');
-      await ApkInstaller.requestInstallPermission();
-      throw new Error("Abilita l'installazione da questa sorgente nelle Impostazioni, poi premi di nuovo 'Installa Ora'.");
+    if (Capacitor.isNativePlatform()) {
+      console.log('[UpdateService] Checking install permission...');
+      const { hasPermission } = await ApkInstaller.checkInstallPermission();
+      if (!hasPermission) {
+        console.log('[UpdateService] Permission not granted — redirecting to Settings...');
+        await ApkInstaller.requestInstallPermission();
+        throw new Error("Abilita l'installazione da questa sorgente nelle Impostazioni, poi premi di nuovo 'Installa Ora'.");
+      }
+      console.log('[UpdateService] Install permission OK.');
     }
-    console.log('[UpdateService] Install permission OK.');
 
     if (onProgress) onProgress(5);
 
-    // ── STEP 2: Resolve redirect via native CapacitorHttp HEAD ──────────────
+    // ── STEP 2: Resolve the final direct download URL via HEAD ───────────────
     let downloadUrl = updateInfo.downloadUrl;
     try {
       console.log(`[UpdateService] Resolving redirect for: ${downloadUrl}`);
@@ -99,58 +101,65 @@ class UpdateService {
       console.log(`[UpdateService] HEAD status: ${headResp.status}, resolved: ${headResp.url}`);
       if (headResp.url && headResp.url !== downloadUrl) {
         downloadUrl = headResp.url;
+        console.log(`[UpdateService] Using resolved URL: ${downloadUrl}`);
       }
     } catch (headErr) {
       console.warn('[UpdateService] HEAD failed, using original URL:', headErr);
     }
 
-    if (onProgress) onProgress(10);
+    if (onProgress) onProgress(15);
 
-    // ── STEP 3: Download binary via CapacitorHttp GET (arraybuffer) ──────────
-    // Key fix: CapacitorHttp runs native (OkHttp on Android), bypasses WebView CORS
-    // and the deprecated+broken Filesystem.downloadFile.
+    // ── STEP 3: Download via Filesystem.downloadFile with resolved direct URL ──
+    // We use the direct Azure/S3 URL (no redirect) which Filesystem.downloadFile
+    // can handle reliably. The HEAD step above ensures we have the final URL.
     const fileName = `chelona_v${updateInfo.latestVersion}.apk`;
-    console.log(`[UpdateService] Downloading APK from: ${downloadUrl}`);
 
-    let base64Data: string;
-    const dlResp = await CapacitorHttp.request({
-      method: 'GET',
-      url: downloadUrl,
-      responseType: 'arraybuffer',
-      headers: { 'User-Agent': 'Chelona-App-Updater' }
-    });
-    console.log(`[UpdateService] GET status: ${dlResp.status}`);
-    if (dlResp.status < 200 || dlResp.status >= 300) {
-      throw new Error(`Il server ha risposto con errore ${dlResp.status}`);
+    // Pre-cleanup
+    await Filesystem.deleteFile({ path: fileName, directory: Directory.Cache }).catch(() => {});
+
+    console.log(`[UpdateService] Downloading APK via Filesystem from: ${downloadUrl}`);
+
+    // Progress via listener
+    let progressListener: any = null;
+    try {
+      progressListener = await (Filesystem as any).addListener('progress', (evt: any) => {
+        if (evt.bytes && evt.contentLength && evt.contentLength > 0) {
+          const pct = Math.min(95, 15 + Math.round((evt.bytes / evt.contentLength) * 80));
+          if (onProgress) onProgress(pct);
+        }
+      });
+    } catch (_) { /* listener not critical */ }
+
+    let downloadResult: { path?: string };
+    try {
+      downloadResult = await Filesystem.downloadFile({
+        url: downloadUrl,
+        path: fileName,
+        directory: Directory.Cache,
+        progress: true,
+        headers: { 'User-Agent': 'Chelona-App-Updater' }
+      });
+    } catch (dlErr: any) {
+      if (progressListener) progressListener.remove().catch(() => {});
+      const msg = dlErr.message || JSON.stringify(dlErr);
+      throw new Error(`Download fallito: ${msg}`);
     }
 
-    // On native Android, CapacitorHttp arraybuffer response comes back as a base64 string
-    base64Data = typeof dlResp.data === 'string'
-      ? dlResp.data
-      : btoa(String.fromCharCode(...new Uint8Array(dlResp.data as ArrayBuffer)));
+    if (progressListener) progressListener.remove().catch(() => {});
 
-    if (onProgress) onProgress(80);
-    console.log(`[UpdateService] Download complete. Writing to disk...`);
+    if (onProgress) onProgress(96);
 
-    // ── STEP 4: Write to cache using Filesystem.writeFile (stable, not deprecated) ──
-    await Filesystem.deleteFile({ path: fileName, directory: Directory.Cache }).catch(() => {});
-    await Filesystem.writeFile({
-      path: fileName,
-      data: base64Data,
-      directory: Directory.Cache
-      // No encoding property = base64 binary mode
-    });
-    if (onProgress) onProgress(95);
-    console.log(`[UpdateService] APK written to cache: ${fileName}`);
+    const filePath = downloadResult.path;
+    if (!filePath) {
+      throw new Error('Download completato ma il percorso del file non è disponibile.');
+    }
 
-    // ── STEP 5: Resolve absolute path & install ──────────────────────────────
-    const { uri } = await Filesystem.getUri({ path: fileName, directory: Directory.Cache });
-    // uri = "file:///data/.../cache/chelona_vX.apk" — strip scheme for ApkInstaller
-    const absolutePath = uri.replace(/^file:\/\//, '');
-    console.log(`[UpdateService] Installing from: ${absolutePath}`);
+    console.log(`[UpdateService] APK downloaded to: ${filePath}`);
 
+    // ── STEP 4: Install ──────────────────────────────────────────────────────
     if (onProgress) onProgress(98);
-    await ApkInstaller.installApk({ filePath: absolutePath });
+    console.log(`[UpdateService] Installing from: ${filePath}`);
+    await ApkInstaller.installApk({ filePath });
 
     if (onProgress) onProgress(100);
     console.log('[UpdateService] Installation triggered successfully.');

@@ -73,7 +73,7 @@ RELEASE_JSON=$(curl -s -X POST \
   -d "{
     \"tag_name\": \"$TAG\",
     \"name\": \"Release $TAG\",
-    \"body\": \"🚀 **Chelona v$VERSION**\\n\\n### ✨ Novità e Fix in questo Rilascio:\\n- **📥 Motore Download Riscritto**: Sostituito completamente il vecchio Filesystem.downloadFile (deprecato e non funzionante) con un nuovo motore basato su CapacitorHttp.request(arraybuffer) + Filesystem.writeFile. Il download ora funziona correttamente, mostra il progresso e installa l'APK automaticamente.\",
+    \"body\": \"🚀 **Chelona v$VERSION**\\n\\n### ✨ Novità e Fix:\\n- **🔧 FAB + Mobili Ripristinato**: Risolto il pulsante + nella sezione Mobili che non compariva a causa di un conflitto CSS (overflow-hidden del genitore). Ora usa posizione fixed con z-index elevato.\\n- **📥 Download Aggiornamenti Stabile**: Risolto il meccanismo di download. La pre-risoluzione del redirect (HEAD via CapacitorHttp) fornisce l'URL Azure/S3 diretto a Filesystem.downloadFile eliminando i fallimenti da redirect su Android.\",
     \"draft\": false,
     \"prerelease\": false
   }")

@@ -1282,7 +1282,7 @@ export const FurnitureScreen = ({ module, onSave, onClose }: FurnitureScreenProp
       {data.rooms.length > 0 && (
         <button
           onClick={() => setIsAddLinkModalOpen(true)}
-          className="absolute bottom-6 right-6 md:bottom-8 md:right-8 w-16 h-16 bg-gradient-to-tr from-teal-500 to-teal-600 hover:brightness-110 active:scale-95 text-white rounded-[1.5rem] flex items-center justify-center shadow-lg shadow-teal-500/30 hover:shadow-xl transition-all z-40 border border-white/20"
+          className="fixed bottom-8 right-6 md:bottom-10 md:right-10 w-16 h-16 bg-gradient-to-tr from-teal-500 to-teal-600 hover:brightness-110 active:scale-95 text-white rounded-[1.5rem] flex items-center justify-center shadow-lg shadow-teal-500/30 hover:shadow-xl transition-all z-[9999] border border-white/20"
           title="Aggiungi da Link"
           id="fab-add-furniture-item"
         >
