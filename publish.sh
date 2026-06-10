@@ -73,7 +73,7 @@ RELEASE_JSON=$(curl -s -X POST \
   -d "{
     \"tag_name\": \"$TAG\",
     \"name\": \"Release $TAG\",
-    \"body\": \"🚀 **Chelona v$VERSION**\\n\\n### ✨ Novità e Fix in questo Rilascio:\\n- **📥 Risolto Download Aggiornamenti**: Risolto il problema di scaricamento ed errore negli aggiornamenti automatici su Android. Aggiunti controlli di permessi per installazione da sorgenti sconosciute, header User-Agent su Filesystem.downloadFile e un pulsante alternativo 'Scarica dal browser' sempre visibile a schermo.\",
+    \"body\": \"🚀 **Chelona v$VERSION**\\n\\n### ✨ Novità e Fix in questo Rilascio:\\n- **📥 Motore Download Riscritto**: Sostituito completamente il vecchio Filesystem.downloadFile (deprecato e non funzionante) con un nuovo motore basato su CapacitorHttp.request(arraybuffer) + Filesystem.writeFile. Il download ora funziona correttamente, mostra il progresso e installa l'APK automaticamente.\",
     \"draft\": false,
     \"prerelease\": false
   }")

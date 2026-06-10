@@ -1,10 +1,7 @@
-
 import { Filesystem, Directory } from '@capacitor/filesystem';
-import { Device } from '@capacitor/device';
 import { ApkInstaller } from '@bixbyte/capacitor-apk-installer';
 import { CapacitorHttp } from '@capacitor/core';
 import { APP_VERSION } from '../constants/version';
-
 
 const GITHUB_OWNER = 'davide-dari';
 const GITHUB_REPO = 'chelona-test';
@@ -29,7 +26,7 @@ class UpdateService {
           'User-Agent': 'Chelona-App-Updater'
         }
       });
-      
+
       if (!response.ok) {
         const errorText = await response.text().catch(() => 'No error body');
         console.error(`[UpdateService] GitHub API error: ${response.status} ${response.statusText} - ${errorText}`);
@@ -43,24 +40,22 @@ class UpdateService {
       }
 
       const latestVersion = data.tag_name.replace('v', '');
-      console.log(`[UpdateService] Latest version available on GitHub: ${latestVersion}`);
-      
+      console.log(`[UpdateService] Latest version on GitHub: ${latestVersion}`);
+
       const comparison = this.compareVersions(latestVersion, this.currentVersion);
-      console.log(`[UpdateService] Comparison result: ${comparison} (1: update available, 0/ -1: up to date)`);
+      console.log(`[UpdateService] Comparison: ${comparison} (1=update available)`);
 
       if (comparison > 0) {
-        // Find APK in assets
         const apkAsset = data.assets?.find((asset: any) => asset.name.endsWith('.apk'));
         if (!apkAsset) {
-          console.warn('[UpdateService] Update available but no APK found in release assets.');
+          console.warn('[UpdateService] No APK found in release assets.');
           return null;
         }
-
-        console.log(`[UpdateService] New update found! Downloading from: ${apkAsset.browser_download_url}`);
+        console.log(`[UpdateService] Update found! APK URL: ${apkAsset.browser_download_url}`);
         return {
           available: true,
           currentVersion: this.currentVersion,
-          latestVersion: latestVersion,
+          latestVersion,
           releaseNotes: data.body || '',
           downloadUrl: apkAsset.browser_download_url
         };
@@ -69,114 +64,104 @@ class UpdateService {
       }
     } catch (error: any) {
       console.error('[UpdateService] Error checking for updates:', error);
-      // Optional: re-throw if you want the UI to handle it, but usually check is silent
     }
     return null;
   }
 
   async downloadAndInstall(updateInfo: UpdateInfo, onProgress?: (p: number) => void) {
-    try {
-      if (!updateInfo.downloadUrl) {
-        throw new Error("L'URL di download non è valido.");
-      }
-
-      console.log(`[UpdateService] Downloading update from: ${updateInfo.downloadUrl}`);
-      
-      const fileName = `chelona_v${updateInfo.latestVersion}.apk`;
-      
-      if (onProgress) onProgress(0);
-
-      // Pre-resolve redirect using CapacitorHttp HEAD so Filesystem.downloadFile gets a direct link
-      let downloadUrl = updateInfo.downloadUrl;
-      try {
-        console.log(`[UpdateService] Pre-resolving redirect for: ${downloadUrl}`);
-        const response = await CapacitorHttp.request({ 
-          method: 'HEAD',
-          url: downloadUrl,
-          headers: {
-            'User-Agent': 'Chelona-App-Updater'
-          }
-        });
-        console.log(`[UpdateService] CapacitorHttp response status: ${response.status}, url: ${response.url}`);
-        if (response.url) {
-          downloadUrl = response.url;
-          console.log(`[UpdateService] Final URL resolved with CapacitorHttp: ${downloadUrl}`);
-        }
-      } catch (e) {
-        console.error('[UpdateService] Failed to pre-resolve redirect with CapacitorHttp, using original url:', e);
-      }
-
-      try {
-        // Pre-delete to avoid "File already exists" or corrupted states
-        try {
-          await Filesystem.deleteFile({
-            path: fileName,
-            directory: Directory.Cache
-          }).catch(() => {});
-        } catch (e) {}
-
-        // 1. Download the APK
-        let progressListener: any = null;
-        if (onProgress) {
-          // Note: for Filesystem.downloadFile, the event is indeed 'progress'
-          progressListener = await (Filesystem as any).addListener('progress', (progress: any) => {
-            if (progress.bytes && progress.contentLength) {
-              const p = Math.round((progress.bytes / progress.contentLength) * 100);
-              onProgress(p);
-            }
-          });
-        }
-
-        console.log(`[UpdateService] Starting download from: ${downloadUrl}`);
-        const downloadResult = await Filesystem.downloadFile({
-          url: downloadUrl,
-          path: fileName,
-          directory: Directory.Cache,
-          progress: true,
-          headers: {
-            'User-Agent': 'Chelona-App-Updater'
-          }
-        });
-
-        if (progressListener) {
-          await progressListener.remove();
-        }
-
-        if (onProgress) onProgress(100);
-        console.log(`[UpdateService] Download finished: ${downloadResult.path}`);
-
-        // 2. Install the APK
-        console.log('[UpdateService] Checking install permission...');
-        const { hasPermission } = await ApkInstaller.checkInstallPermission();
-        if (!hasPermission) {
-          console.log('[UpdateService] Requesting install permission...');
-          await ApkInstaller.requestInstallPermission();
-          throw new Error("Abilita l'installazione da questa sorgente nelle impostazioni del telefono e riprova.");
-        }
-
-        console.log('[UpdateService] Starting installation...');
-        await ApkInstaller.installApk({ filePath: downloadResult.path });
-      } catch (innerError: any) {
-        console.error('[UpdateService] Native download/install failed:', innerError);
-        
-        // If it's a fetch-related error on Android, it might be due to CapacitorHttp interference.
-        // We throw a more descriptive error for the UI.
-        const msg = innerError.message || JSON.stringify(innerError);
-        throw new Error(`Errore durante il download: ${msg}`);
-      }
-
-    } catch (error: any) {
-      console.error('[UpdateService] Error during update installation:', error);
-      throw error;
+    if (!updateInfo.downloadUrl) {
+      throw new Error("L'URL di download non è valido.");
     }
+
+    console.log(`[UpdateService] Starting update flow for v${updateInfo.latestVersion}`);
+
+    // ── STEP 1: Check & request install permission ──────────────────────────
+    console.log('[UpdateService] Checking install permission...');
+    const { hasPermission } = await ApkInstaller.checkInstallPermission();
+    if (!hasPermission) {
+      console.log('[UpdateService] Permission not granted — redirecting to Settings...');
+      await ApkInstaller.requestInstallPermission();
+      throw new Error("Abilita l'installazione da questa sorgente nelle Impostazioni, poi premi di nuovo 'Installa Ora'.");
+    }
+    console.log('[UpdateService] Install permission OK.');
+
+    if (onProgress) onProgress(5);
+
+    // ── STEP 2: Resolve redirect via native CapacitorHttp HEAD ──────────────
+    let downloadUrl = updateInfo.downloadUrl;
+    try {
+      console.log(`[UpdateService] Resolving redirect for: ${downloadUrl}`);
+      const headResp = await CapacitorHttp.request({
+        method: 'HEAD',
+        url: downloadUrl,
+        headers: { 'User-Agent': 'Chelona-App-Updater' }
+      });
+      console.log(`[UpdateService] HEAD status: ${headResp.status}, resolved: ${headResp.url}`);
+      if (headResp.url && headResp.url !== downloadUrl) {
+        downloadUrl = headResp.url;
+      }
+    } catch (headErr) {
+      console.warn('[UpdateService] HEAD failed, using original URL:', headErr);
+    }
+
+    if (onProgress) onProgress(10);
+
+    // ── STEP 3: Download binary via CapacitorHttp GET (arraybuffer) ──────────
+    // Key fix: CapacitorHttp runs native (OkHttp on Android), bypasses WebView CORS
+    // and the deprecated+broken Filesystem.downloadFile.
+    const fileName = `chelona_v${updateInfo.latestVersion}.apk`;
+    console.log(`[UpdateService] Downloading APK from: ${downloadUrl}`);
+
+    let base64Data: string;
+    const dlResp = await CapacitorHttp.request({
+      method: 'GET',
+      url: downloadUrl,
+      responseType: 'arraybuffer',
+      headers: { 'User-Agent': 'Chelona-App-Updater' }
+    });
+    console.log(`[UpdateService] GET status: ${dlResp.status}`);
+    if (dlResp.status < 200 || dlResp.status >= 300) {
+      throw new Error(`Il server ha risposto con errore ${dlResp.status}`);
+    }
+
+    // On native Android, CapacitorHttp arraybuffer response comes back as a base64 string
+    base64Data = typeof dlResp.data === 'string'
+      ? dlResp.data
+      : btoa(String.fromCharCode(...new Uint8Array(dlResp.data as ArrayBuffer)));
+
+    if (onProgress) onProgress(80);
+    console.log(`[UpdateService] Download complete. Writing to disk...`);
+
+    // ── STEP 4: Write to cache using Filesystem.writeFile (stable, not deprecated) ──
+    await Filesystem.deleteFile({ path: fileName, directory: Directory.Cache }).catch(() => {});
+    await Filesystem.writeFile({
+      path: fileName,
+      data: base64Data,
+      directory: Directory.Cache
+      // No encoding property = base64 binary mode
+    });
+    if (onProgress) onProgress(95);
+    console.log(`[UpdateService] APK written to cache: ${fileName}`);
+
+    // ── STEP 5: Resolve absolute path & install ──────────────────────────────
+    const { uri } = await Filesystem.getUri({ path: fileName, directory: Directory.Cache });
+    // uri = "file:///data/.../cache/chelona_vX.apk" — strip scheme for ApkInstaller
+    const absolutePath = uri.replace(/^file:\/\//, '');
+    console.log(`[UpdateService] Installing from: ${absolutePath}`);
+
+    if (onProgress) onProgress(98);
+    await ApkInstaller.installApk({ filePath: absolutePath });
+
+    if (onProgress) onProgress(100);
+    console.log('[UpdateService] Installation triggered successfully.');
   }
 
   private compareVersions(v1: string, v2: string): number {
     const parts1 = v1.split('.').map(Number);
     const parts2 = v2.split('.').map(Number);
     for (let i = 0; i < 3; i++) {
-        const p1 = parts1[i] || 0;
-        const p2 = parts2[i] || 0;
+      const p1 = parts1[i] || 0;
+      const p2 = parts2[i] || 0;
       if (p1 > p2) return 1;
       if (p1 < p2) return -1;
     }
