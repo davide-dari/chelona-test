@@ -169,7 +169,7 @@ export default function App() {
   const [sharingModule, setSharingModule] = useState<Module | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [voiceResponse, setVoiceResponse] = useState<{ query: string; answer: string } | null>(null);
-  const [selectedType, setSelectedType] = useState<ModuleType | null>(null);
+  const [selectedType, setSelectedType] = useState<ModuleType | 'home' | null>(null);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
   const [isSplashScreenActive, setIsSplashScreenActive] = useState(true);
   const [homeSubMenu, setHomeSubMenu] = useState(false);
@@ -1846,7 +1846,7 @@ export default function App() {
             ) : editingFurnitureModule ? (
               <FurnitureScreen
                 module={editingFurnitureModule}
-                onSave={(mod) => { updateModuleDirect(mod); setEditingFurnitureModule(null); }}
+                onSave={(mod) => { updateModuleDirect(mod); setEditingFurnitureModule(mod); }}
                 onClose={() => setEditingFurnitureModule(null)}
               />
             ) : editingTransportModule ? (

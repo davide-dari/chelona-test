@@ -14,14 +14,14 @@ interface LockScreenProps {
   onAuthenticated: (key: CryptoKey, profileId: string) => void;
   onStartScan: () => void;
   onOpenTools: () => void;
-  onImportFile: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onImportFile?: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onOpenAddressBook?: () => void;
   onCheckUpdate?: () => void;
   mode?: 'app-start' | 'vault-unlock';
   targetProfileId?: string;
 }
 
-export const LockScreen = ({ isVisible, onAuthenticated, onStartScan, onOpenTools, onImportFile, onOpenAddressBook, onCheckUpdate, mode = 'app-start', targetProfileId }: LockScreenProps) => {
+export const LockScreen = ({ isVisible, onAuthenticated, onStartScan, onOpenTools, onImportFile = () => {}, onOpenAddressBook, onCheckUpdate, mode = 'app-start', targetProfileId }: LockScreenProps) => {
   const [profiles, setProfiles] = useState<ProfileConfig[]>([]);
   const [selectedProfile, setSelectedProfile] = useState<ProfileConfig | null>(null);
   const [view, setView] = useState<'selector' | 'login' | 'setup'>('selector');

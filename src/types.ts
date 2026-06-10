@@ -220,12 +220,24 @@ export interface FurnitureItem {
   imageUrl?: string;
   description?: string;
   link: string;
+  width?: number;       // in cm
+  depth?: number;       // in cm
+  height?: number;      // in cm
+  x?: number;           // in cm relative to room (floor)
+  y?: number;           // in cm relative to room (floor)
+  category?: string;    // e.g. "Sedie & Poltrone", "Tavoli & Scrivanie", etc.
+  color?: string;       // Custom hex/css color
+  manualUrl?: string;   // URL to manual (PDF)
 }
 
 export interface FurnitureRoom {
   id: string;
   name: string;
   items: FurnitureItem[];
+  width?: number;       // in cm
+  length?: number;      // in cm
+  height?: number;      // in cm
+  roomType?: string;    // 'Cucina' | 'Salone' | 'Camera da letto' | 'Bagno' | 'Altro'
 }
 
 export interface FurnitureModule extends BaseModule {

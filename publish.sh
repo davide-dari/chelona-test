@@ -73,7 +73,7 @@ RELEASE_JSON=$(curl -s -X POST \
   -d "{
     \"tag_name\": \"$TAG\",
     \"name\": \"Release $TAG\",
-    \"body\": \"🚀 **Chelona v$VERSION**\\n\\n### ✨ Novità e Fix in questo Rilascio:\\n- **🪟 Fix Sovrapposizione Interfaccia (Modulo Mobili)**: I pulsanti globali 'Nuovo' (+) e 'Scansiona QR' ora vengono disabilitati e nascosti temporaneamente mentre si visualizza o si modifica una stanza. In questo modo è stato risolto il fastidioso problema che impediva di cliccare sui tasti 'Salva' ed 'Elimina' all'interno del pannello di gestione di un acquisto.\",
+    \"body\": \"🚀 **Chelona v$VERSION**\\n\\n### ✨ Novità e Fix in questo Rilascio:\\n- **🏠 Redesign Sezione Mobili**: Overhaul grafico completo con interfaccia dashboard moderna.\\n- **📐 Viewer 3D Isometrico**: Visualizzazione 3D in tempo reale delle stanze e della disposizione dei mobili basata su misure reali.\\n- **🧭 Navigazione Persistente**: Risolto il reset della schermata alla dashboard durante il salvataggio.\\n- **🏷️ Filtri e Categorie**: Introdotte categorie pill-based per organizzare gli oggetti, con auto-riconoscimento dei dati di scraping (misure, categoria e link ai manuali PDF).\\n- **🎛️ Modale Dettaglio e Posizionamento**: Nuova schermata di gestione con slider per muovere gli oggetti in 3D sul piano della stanza.\",
     \"draft\": false,
     \"prerelease\": false
   }")
