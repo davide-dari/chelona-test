@@ -85,6 +85,24 @@ class UpdateService {
       
       if (onProgress) onProgress(0);
 
+      // Pre-resolve redirect using fetch HEAD so Filesystem.downloadFile gets a direct link
+      let downloadUrl = updateInfo.downloadUrl;
+      try {
+        console.log(`[UpdateService] Pre-resolving redirect for: ${downloadUrl}`);
+        const response = await fetch(downloadUrl, { 
+          method: 'HEAD',
+          headers: {
+            'User-Agent': 'Chelona-App-Updater'
+          }
+        });
+        if (response.url) {
+          downloadUrl = response.url;
+          console.log(`[UpdateService] Final URL resolved: ${downloadUrl}`);
+        }
+      } catch (e) {
+        console.error('[UpdateService] Failed to pre-resolve redirect with fetch, using original url:', e);
+      }
+
       try {
         // Pre-delete to avoid "File already exists" or corrupted states
         try {
@@ -106,9 +124,9 @@ class UpdateService {
           });
         }
 
-        console.log(`[UpdateService] Starting download from: ${updateInfo.downloadUrl}`);
+        console.log(`[UpdateService] Starting download from: ${downloadUrl}`);
         const downloadResult = await Filesystem.downloadFile({
-          url: updateInfo.downloadUrl,
+          url: downloadUrl,
           path: fileName,
           directory: Directory.Cache,
           progress: true
