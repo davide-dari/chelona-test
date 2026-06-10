@@ -1,6 +1,7 @@
 import { Filesystem, Directory } from '@capacitor/filesystem';
 import { ApkInstaller } from '@bixbyte/capacitor-apk-installer';
 import { CapacitorHttp, Capacitor } from '@capacitor/core';
+import { App as CapacitorApp } from '@capacitor/app';
 import { APP_VERSION } from '../constants/version';
 
 const GITHUB_OWNER = 'davide-dari';
@@ -89,80 +90,110 @@ class UpdateService {
 
     if (onProgress) onProgress(5);
 
-    // ── STEP 2: Resolve the final direct download URL via HEAD ───────────────
-    let downloadUrl = updateInfo.downloadUrl;
-    try {
-      console.log(`[UpdateService] Resolving redirect for: ${downloadUrl}`);
-      const headResp = await CapacitorHttp.request({
-        method: 'HEAD',
-        url: downloadUrl,
-        headers: { 'User-Agent': 'Chelona-App-Updater' }
-      });
-      console.log(`[UpdateService] HEAD status: ${headResp.status}, resolved: ${headResp.url}`);
-      if (headResp.url && headResp.url !== downloadUrl) {
-        downloadUrl = headResp.url;
-        console.log(`[UpdateService] Using resolved URL: ${downloadUrl}`);
-      }
-    } catch (headErr) {
-      console.warn('[UpdateService] HEAD failed, using original URL:', headErr);
-    }
-
-    if (onProgress) onProgress(15);
-
-    // ── STEP 3: Download via Filesystem.downloadFile with resolved direct URL ──
-    // We use the direct Azure/S3 URL (no redirect) which Filesystem.downloadFile
-    // can handle reliably. The HEAD step above ensures we have the final URL.
+    // ── STEP 2: Download APK via CapacitorHttp (native OkHttp, no CORS, no redirect issues) ──
+    // CapacitorHttp.request with responseType 'arraybuffer' downloads natively and
+    // returns the binary data as a base64 string. This bypasses WebView entirely and
+    // avoids the broken/deprecated Filesystem.downloadFile.
     const fileName = `chelona_v${updateInfo.latestVersion}.apk`;
+    const downloadUrl = updateInfo.downloadUrl;
 
-    // Pre-cleanup
-    await Filesystem.deleteFile({ path: fileName, directory: Directory.Cache }).catch(() => {});
+    console.log(`[UpdateService] Downloading APK via CapacitorHttp from: ${downloadUrl}`);
+    if (onProgress) onProgress(10);
 
-    console.log(`[UpdateService] Downloading APK via Filesystem from: ${downloadUrl}`);
-
-    // Progress via listener
-    let progressListener: any = null;
+    let base64Data: string;
     try {
-      progressListener = await (Filesystem as any).addListener('progress', (evt: any) => {
-        if (evt.bytes && evt.contentLength && evt.contentLength > 0) {
-          const pct = Math.min(95, 15 + Math.round((evt.bytes / evt.contentLength) * 80));
-          if (onProgress) onProgress(pct);
-        }
-      });
-    } catch (_) { /* listener not critical */ }
-
-    let downloadResult: { path?: string };
-    try {
-      downloadResult = await Filesystem.downloadFile({
+      // Race the download against a 2-minute timeout
+      const downloadPromise = CapacitorHttp.request({
+        method: 'GET',
         url: downloadUrl,
-        path: fileName,
-        directory: Directory.Cache,
-        progress: true,
-        headers: { 'User-Agent': 'Chelona-App-Updater' }
+        responseType: 'arraybuffer',
+        headers: { 'User-Agent': 'Chelona-App-Updater' },
+        connectTimeout: 30000,
+        readTimeout: 120000
       });
-    } catch (dlErr: any) {
-      if (progressListener) progressListener.remove().catch(() => {});
-      const msg = dlErr.message || JSON.stringify(dlErr);
-      throw new Error(`Download fallito: ${msg}`);
+
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error('TIMEOUT')), 150000); // 2.5 min total
+      });
+
+      const dlResp = await Promise.race([downloadPromise, timeoutPromise]);
+
+      console.log(`[UpdateService] CapacitorHttp GET status: ${dlResp.status}, url: ${dlResp.url}`);
+
+      if (dlResp.status < 200 || dlResp.status >= 300) {
+        throw new Error(`Server responded with ${dlResp.status}`);
+      }
+
+      // On native Android, CapacitorHttp returns arraybuffer data as base64 string
+      if (typeof dlResp.data === 'string' && dlResp.data.length > 0) {
+        base64Data = dlResp.data;
+      } else {
+        throw new Error('Response data is empty or not in expected format');
+      }
+
+      if (onProgress) onProgress(75);
+      console.log(`[UpdateService] Download complete (${Math.round(base64Data.length / 1024)}KB base64). Writing to cache...`);
+
+    } catch (dlError: any) {
+      console.error('[UpdateService] CapacitorHttp download failed:', dlError);
+
+      // ── FALLBACK: Open in system browser ──────────────────────────────────
+      // If the native download fails for any reason, open the URL in the system
+      // browser which uses Android's DownloadManager — always works.
+      console.log('[UpdateService] Falling back to system browser download...');
+      window.open(downloadUrl, '_system');
+      throw new Error(
+        "Il download in-app non è riuscito. " +
+        "L'APK si sta scaricando nel browser. " +
+        "Una volta completato, tocca la notifica per installarlo."
+      );
     }
 
-    if (progressListener) progressListener.remove().catch(() => {});
+    // ── STEP 3: Write to cache via Filesystem.writeFile (stable, NOT deprecated) ──
+    try {
+      await Filesystem.deleteFile({ path: fileName, directory: Directory.Cache }).catch(() => {});
 
-    if (onProgress) onProgress(96);
+      await Filesystem.writeFile({
+        path: fileName,
+        data: base64Data,
+        directory: Directory.Cache
+        // No encoding = base64 binary write mode
+      });
 
-    const filePath = downloadResult.path;
-    if (!filePath) {
-      throw new Error('Download completato ma il percorso del file non è disponibile.');
+      if (onProgress) onProgress(90);
+      console.log(`[UpdateService] APK written to cache: ${fileName}`);
+    } catch (writeErr: any) {
+      console.error('[UpdateService] writeFile failed:', writeErr);
+      window.open(downloadUrl, '_system');
+      throw new Error(
+        "Errore nella scrittura del file. " +
+        "L'APK si sta scaricando nel browser."
+      );
     }
 
-    console.log(`[UpdateService] APK downloaded to: ${filePath}`);
+    // ── STEP 4: Resolve absolute file path ──────────────────────────────────
+    let absolutePath: string;
+    try {
+      const { uri } = await Filesystem.getUri({ path: fileName, directory: Directory.Cache });
+      absolutePath = uri.replace(/^file:\/\//, '');
+      console.log(`[UpdateService] Resolved path: ${absolutePath}`);
+    } catch (uriErr: any) {
+      console.error('[UpdateService] getUri failed:', uriErr);
+      throw new Error("Impossibile trovare il file scaricato.");
+    }
 
-    // ── STEP 4: Install ──────────────────────────────────────────────────────
-    if (onProgress) onProgress(98);
-    console.log(`[UpdateService] Installing from: ${filePath}`);
-    await ApkInstaller.installApk({ filePath });
+    // ── STEP 5: Install APK ─────────────────────────────────────────────────
+    if (onProgress) onProgress(95);
+    console.log(`[UpdateService] Installing APK from: ${absolutePath}`);
 
-    if (onProgress) onProgress(100);
-    console.log('[UpdateService] Installation triggered successfully.');
+    try {
+      await ApkInstaller.installApk({ filePath: absolutePath });
+      if (onProgress) onProgress(100);
+      console.log('[UpdateService] Install intent triggered.');
+    } catch (installErr: any) {
+      console.error('[UpdateService] installApk failed:', installErr);
+      throw new Error(`Errore installazione: ${installErr.message || JSON.stringify(installErr)}`);
+    }
   }
 
   private compareVersions(v1: string, v2: string): number {
