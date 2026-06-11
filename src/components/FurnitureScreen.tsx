@@ -685,7 +685,7 @@ export const FurnitureScreen = ({ module, onSave, onClose }: FurnitureScreenProp
                 onSave(updated);
               }}
               className="text-xl lg:text-2xl font-black bg-transparent border-none outline-none text-[var(--text-main)] w-full placeholder:text-[var(--text-muted)] focus:ring-0"
-              placeholder="Nome Progetto Mobili..."
+              placeholder="Nome Progetto Arredamento..."
             />
           </div>
         </div>
@@ -803,20 +803,40 @@ export const FurnitureScreen = ({ module, onSave, onClose }: FurnitureScreenProp
               })}
             </div>
 
-            {/* Items Grid with bottom padding */}
-            <div className="flex-1 overflow-y-auto p-4 lg:p-6 pb-24 custom-scrollbar">
+            <div className="flex-1 overflow-y-auto p-4 lg:p-6 custom-scrollbar">
               {filteredItems.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-64 text-[var(--text-muted)] text-center px-4">
                   <Armchair className="w-16 h-16 mb-4 opacity-25 text-teal-600" />
                   <p className="font-extrabold text-lg text-[var(--text-main)]">Nessun oggetto trovato</p>
-                  <p className="text-xs mt-1.5 opacity-70 max-w-sm">
+                  <p className="text-xs mt-1.5 opacity-70 max-w-sm mb-6">
                     {activeCategory === 'Tutti' 
-                      ? 'La stanza è ancora vuota! Fai clic sul tasto + in basso a destra per inserire un link e aggiungere il primo elemento.' 
+                      ? 'La stanza è ancora vuota! Aggiungi il primo elemento incollando un link.' 
                       : `Non ci sono ancora oggetti della categoria "${activeCategory}" in questa stanza.`}
                   </p>
+                  {activeCategory === 'Tutti' && (
+                    <button 
+                      onClick={() => setIsAddLinkModalOpen(true)}
+                      className="px-6 py-3 bg-teal-500 hover:bg-teal-600 text-white font-extrabold text-sm rounded-2xl transition-all shadow-sm flex items-center gap-2"
+                    >
+                      <Plus className="w-5 h-5" /> Nuovo Oggetto
+                    </button>
+                  )}
                 </div>
               ) : (
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 lg:gap-6 max-w-7xl mx-auto">
+                <div className="flex overflow-x-auto snap-x gap-4 lg:gap-6 pb-6 pt-2 px-4 max-w-7xl mx-auto custom-scrollbar">
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    onClick={() => setIsAddLinkModalOpen(true)}
+                    className="w-40 sm:w-48 shrink-0 snap-start bg-[var(--card-bg)] border-2 border-dashed border-teal-500/50 rounded-3xl overflow-hidden hover:bg-teal-500/5 transition-all cursor-pointer flex flex-col items-center justify-center p-4 group select-none text-center min-h-[220px]"
+                  >
+                    <div className="w-16 h-16 bg-teal-500/10 rounded-2xl flex items-center justify-center text-teal-600 mb-4 group-hover:scale-110 transition-transform">
+                      <Plus className="w-8 h-8" />
+                    </div>
+                    <p className="font-extrabold text-teal-600 text-sm">Nuovo Oggetto</p>
+                    <p className="text-[10px] text-[var(--text-muted)] mt-1">Incolla link</p>
+                  </motion.div>
+
                   <AnimatePresence>
                     {filteredItems.map(item => (
                       <motion.div
@@ -828,7 +848,7 @@ export const FurnitureScreen = ({ module, onSave, onClose }: FurnitureScreenProp
                         onPointerDown={() => handlePointerDown(item)}
                         onPointerUp={handlePointerUp}
                         onPointerLeave={handlePointerUp}
-                        className="bg-[var(--card-bg)] border border-[var(--border)] rounded-3xl overflow-hidden shadow-sm hover:shadow-md transition-all cursor-pointer flex flex-col p-3.5 pb-5 group relative select-none"
+                        className="w-40 sm:w-48 shrink-0 snap-start bg-[var(--card-bg)] border border-[var(--border)] rounded-3xl overflow-hidden shadow-sm hover:shadow-md transition-all cursor-pointer flex flex-col p-3.5 pb-5 group relative select-none min-h-[220px]"
                       >
                         <div className="aspect-square bg-[var(--surface-variant)] rounded-2xl flex items-center justify-center overflow-hidden relative border border-[var(--border)]/50">
                           {item.imageUrl ? (
@@ -1090,12 +1110,12 @@ export const FurnitureScreen = ({ module, onSave, onClose }: FurnitureScreenProp
       {/* FURNITURE ITEM DETAILS MODAL */}
       <AnimatePresence>
         {selectedDetailsItem && detailForm && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pb-24 sm:pb-4 bg-black/60 backdrop-blur-sm">
             <motion.div
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-[var(--card-bg)] w-full max-w-xl rounded-3xl shadow-xl overflow-hidden flex flex-col border border-[var(--border)] max-h-[90vh]"
+              className="bg-[var(--card-bg)] w-full max-w-xl rounded-3xl shadow-xl overflow-hidden flex flex-col border border-[var(--border)] max-h-[calc(100vh-120px)] sm:max-h-[90vh]"
             >
               {/* Modal Header */}
               <div className="p-4 border-b border-[var(--border)] flex items-center justify-between bg-[var(--surface-variant)] shrink-0">
@@ -1385,17 +1405,6 @@ export const FurnitureScreen = ({ module, onSave, onClose }: FurnitureScreenProp
         />
       )}
 
-      {/* Pulsante Floating "+" a livello di sezione Mobili (FAB estetico squircle) */}
-      {data.rooms.length > 0 && (
-        <button
-          onClick={() => setIsAddLinkModalOpen(true)}
-          className="fixed bottom-[100px] right-6 md:bottom-10 md:right-10 w-16 h-16 bg-gradient-to-tr from-teal-500 to-teal-600 hover:brightness-110 active:scale-95 text-white rounded-[1.5rem] flex items-center justify-center shadow-lg shadow-teal-500/30 hover:shadow-xl transition-all z-[9999] border border-white/20"
-          title="Aggiungi da Link"
-          id="fab-add-furniture-item"
-        >
-          <Plus className="w-8 h-8" />
-        </button>
-      )}
     </motion.div>
   );
 };

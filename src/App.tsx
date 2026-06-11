@@ -366,6 +366,7 @@ export default function App() {
       if (editingTransportModule) { setEditingTransportModule(null); return; }
       if (editingDocumentModule) { setEditingDocumentModule(null); return; }
       if (editingGenericModule) { setEditingGenericModule(null); return; }
+      if (editingFurnitureModule) { setEditingFurnitureModule(null); return; }
       if (editingModuleId) { setEditingModuleId(null); setFormData({}); return; }
       if (isAdding) { setIsAdding(false); setFormData({}); setSpesaSubMenu(false); return; }
       if (isProfileOpen) { setIsProfileOpen(false); return; }
@@ -2035,7 +2036,7 @@ export default function App() {
                              const newFurniture: import('./types').FurnitureModule = {
                                id: generateUUID(),
                                type: 'furniture',
-                               title: 'Mobili',
+                               title: 'Arredamento',
                                rooms: [
                                  { id: generateUUID(), name: 'Cucina', items: [] },
                                  { id: generateUUID(), name: 'Salone', items: [] },
@@ -2059,7 +2060,7 @@ export default function App() {
                          >
                            <Armchair className="w-8 h-8 text-teal-500 group-hover:scale-110 transition-transform" />
                            <div className="text-center">
-                             <span className="font-bold text-xs uppercase tracking-wider block">Mobili</span>
+                             <span className="font-bold text-xs uppercase tracking-wider block">Arredamento</span>
                              <span className="text-[10px] text-[var(--text-muted)] mt-1 block">Idee e acquisti per stanze</span>
                            </div>
                          </button>
@@ -2796,7 +2797,7 @@ export default function App() {
                                 const newFurniture: import('./types').FurnitureModule = {
                                   id: generateUUID(),
                                   type: 'furniture',
-                                  title: 'Mobili',
+                                  title: 'Arredamento',
                                   rooms: [
                                     { id: generateUUID(), name: 'Cucina', items: [] },
                                     { id: generateUUID(), name: 'Salone', items: [] },
@@ -2823,7 +2824,7 @@ export default function App() {
                               <Armchair className="w-8 h-8" />
                             </div>
                             <div>
-                              <p className="font-black text-[var(--text-main)] text-lg">Mobili</p>
+                              <p className="font-black text-[var(--text-main)] text-lg">Arredamento</p>
                               <p className="text-sm text-[var(--text-muted)] mt-1">Idee e acquisti per stanze</p>
                             </div>
                           </button>
