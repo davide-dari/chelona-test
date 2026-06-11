@@ -88,6 +88,97 @@ const parseDimensions = (text: string): { width?: number; depth?: number; height
   return {};
 };
 
+const resolveUrl = (imgUrl: string, baseUrl: string): string => {
+  if (!imgUrl) return '';
+  if (imgUrl.startsWith('http')) return imgUrl;
+  try {
+    return new URL(imgUrl, baseUrl).toString();
+  } catch {
+    return imgUrl;
+  }
+};
+
+const extractImage = (doc: Document, baseUrl: string): string => {
+  let img = '';
+  
+  // 1. Meta tags
+  img = doc.querySelector('meta[property="og:image"]')?.getAttribute('content') || 
+        doc.querySelector('meta[name="twitter:image"]')?.getAttribute('content') ||
+        doc.querySelector('meta[itemprop="image"]')?.getAttribute('content') ||
+        doc.querySelector('meta[name="image"]')?.getAttribute('content') || '';
+  if (img) return resolveUrl(img, baseUrl);
+
+  // 2. JSON-LD (Schema.org)
+  const scripts = Array.from(doc.querySelectorAll('script[type="application/ld+json"]'));
+  for (const script of scripts) {
+    try {
+      const data = JSON.parse(script.textContent || '');
+      const schemas = Array.isArray(data) ? data : [data];
+      for (const schema of schemas) {
+        if (schema && (schema['@type'] === 'Product' || schema['@type'] === 'ItemPage' || schema['@type'] === 'Offer')) {
+          if (typeof schema.image === 'string') return resolveUrl(schema.image, baseUrl);
+          if (Array.isArray(schema.image) && schema.image.length > 0) {
+            if (typeof schema.image[0] === 'string') return resolveUrl(schema.image[0], baseUrl);
+            if (schema.image[0] && schema.image[0].url) return resolveUrl(schema.image[0].url, baseUrl);
+          }
+          if (schema.image && typeof schema.image === 'object' && schema.image.url) return resolveUrl(schema.image.url, baseUrl);
+        }
+      }
+    } catch(e) {}
+  }
+
+  // 3. E-commerce Specifics
+  img = doc.querySelector('#landingImage')?.getAttribute('data-old-hires') || 
+        doc.querySelector('#landingImage')?.getAttribute('src') || '';
+  if (img) return resolveUrl(img, baseUrl);
+
+  img = doc.querySelector('.pip-image')?.getAttribute('src') || '';
+  if (img) return resolveUrl(img, baseUrl);
+  
+  // 4. Generic product image selectors
+  const selectors = [
+    'link[rel="image_src"]',
+    'img[id*="main"]',
+    'img[id*="product"]',
+    'img[class*="main-image"]',
+    'img[class*="product-image"]',
+    'img[class*="primary"]',
+    'img[class*="gallery"]',
+    'img[src*="product"]',
+    'img[src*="item"]',
+    'img[src*="large"]',
+    'img[src*="zoom"]',
+    '[data-src*="product"]',
+    '.product-image img',
+    '.gallery-image img',
+    '.main-image img'
+  ];
+
+  for (const sel of selectors) {
+    const el = doc.querySelector(sel);
+    if (el) {
+      img = el.getAttribute('content') || el.getAttribute('href') || el.getAttribute('data-src') || el.getAttribute('src') || '';
+      if (img && !img.includes('logo') && !img.includes('icon') && !img.includes('spinner') && !img.includes('avatar')) {
+        return resolveUrl(img, baseUrl);
+      }
+    }
+  }
+
+  // 5. Fallback: Largest or first likely image
+  const allImgs = Array.from(doc.querySelectorAll('img'));
+  for (const el of allImgs) {
+    const src = el.getAttribute('data-src') || el.getAttribute('src');
+    const className = el.className || '';
+    if (src && src.match(/\.(jpeg|jpg|png|webp)/i) && 
+        !src.includes('logo') && !src.includes('icon') && !src.includes('avatar') &&
+        !className.includes('logo') && !className.includes('icon')) {
+      return resolveUrl(src, baseUrl);
+    }
+  }
+
+  return '';
+};
+
 export const FurnitureScreen = ({ module, onSave, onClose }: FurnitureScreenProps) => {
   const [data, setData] = useState<FurnitureModule>(module);
   const [activeRoomId, setActiveRoomId] = useState<string | null>(module.rooms.length > 0 ? module.rooms[0].id : null);
@@ -290,19 +381,7 @@ export const FurnitureScreen = ({ module, onSave, onClose }: FurnitureScreenProp
         const amzTitle = doc.querySelector('#productTitle')?.textContent?.trim();
         title = amzTitle || metaTitle || titleTag || url;
 
-        const metaImage = doc.querySelector('meta[property="og:image"]')?.getAttribute('content') || 
-                          doc.querySelector('meta[name="twitter:image"]')?.getAttribute('content') ||
-                          doc.querySelector('meta[itemprop="image"]')?.getAttribute('content') ||
-                          doc.querySelector('meta[name="image"]')?.getAttribute('content');
-        const amzImage = doc.querySelector('#landingImage')?.getAttribute('data-old-hires') || 
-                         doc.querySelector('#landingImage')?.getAttribute('src');
-        const ikeaImage = doc.querySelector('.pip-image')?.getAttribute('src');
-        const genericImg = doc.querySelector('img[src*="product"]')?.getAttribute('src') || 
-                           doc.querySelector('img[src*="item"]')?.getAttribute('src');
-        image = amzImage || ikeaImage || metaImage || genericImg || '';
-        if (image && image.startsWith('/')) {
-            try { image = new URL(image, url).toString(); } catch {}
-        }
+        image = extractImage(doc, url);
 
         const metaDesc = doc.querySelector('meta[property="og:description"]')?.getAttribute('content') || doc.querySelector('meta[name="description"]')?.getAttribute('content');
         const amzDesc = doc.querySelector('#feature-bullets')?.textContent?.trim() || doc.querySelector('#productDescription')?.textContent?.trim();
@@ -419,19 +498,7 @@ export const FurnitureScreen = ({ module, onSave, onClose }: FurnitureScreenProp
         const amzTitle = doc.querySelector('#productTitle')?.textContent?.trim();
         const scrapedTitle = amzTitle || metaTitle || titleTag || url;
 
-        const metaImage = doc.querySelector('meta[property="og:image"]')?.getAttribute('content') || 
-                          doc.querySelector('meta[name="twitter:image"]')?.getAttribute('content') ||
-                          doc.querySelector('meta[itemprop="image"]')?.getAttribute('content') ||
-                          doc.querySelector('meta[name="image"]')?.getAttribute('content');
-        const amzImage = doc.querySelector('#landingImage')?.getAttribute('data-old-hires') || 
-                         doc.querySelector('#landingImage')?.getAttribute('src');
-        const ikeaImage = doc.querySelector('.pip-image')?.getAttribute('src');
-        const genericImg = doc.querySelector('img[src*="product"]')?.getAttribute('src') || 
-                           doc.querySelector('img[src*="item"]')?.getAttribute('src');
-        let scrapedImage = amzImage || ikeaImage || metaImage || genericImg || '';
-        if (scrapedImage && scrapedImage.startsWith('/')) {
-            try { scrapedImage = new URL(scrapedImage, url).toString(); } catch {}
-        }
+        let scrapedImage = extractImage(doc, url);
 
         const metaDesc = doc.querySelector('meta[property="og:description"]')?.getAttribute('content') || doc.querySelector('meta[name="description"]')?.getAttribute('content');
         const amzDesc = doc.querySelector('#feature-bullets')?.textContent?.trim() || doc.querySelector('#productDescription')?.textContent?.trim();
