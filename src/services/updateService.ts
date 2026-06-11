@@ -101,11 +101,23 @@ class UpdateService {
       // Clean up any old file before downloading
       await Filesystem.deleteFile({ path: fileName, directory: Directory.Cache }).catch(() => {});
 
+      let progressListener: any;
+      if (onProgress) {
+        progressListener = await Filesystem.addListener('progress', (status: any) => {
+          if (status.url === downloadUrl && status.contentLength > 0) {
+            const percent = status.bytes / status.contentLength;
+            // Map 0-100% to our 10-90% range for the UI
+            onProgress(10 + Math.floor(percent * 80));
+          }
+        });
+      }
+
       // Race the download against a timeout
       const downloadPromise = Filesystem.downloadFile({
         url: downloadUrl,
         path: fileName,
         directory: Directory.Cache,
+        progress: true,
         headers: { 'User-Agent': 'Chelona-App-Updater' },
         connectTimeout: 30000,
         readTimeout: 120000
@@ -116,6 +128,11 @@ class UpdateService {
       });
 
       await Promise.race([downloadPromise, timeoutPromise]);
+      
+      if (progressListener) {
+        progressListener.remove();
+      }
+
       if (onProgress) onProgress(90);
       console.log(`[UpdateService] APK written to cache: ${fileName}`);
 
