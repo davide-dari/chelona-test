@@ -870,6 +870,18 @@ export const FurnitureScreen = ({ module, onSave, onClose }: FurnitureScreenProp
                           <h4 className="font-extrabold text-[var(--text-main)] text-xs line-clamp-2 leading-snug" title={item.title}>
                             {item.title}
                           </h4>
+                          <div className="mt-2.5">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const url = item.link?.startsWith('http') ? item.link : `https://${item.link}`;
+                                window.open(url, '_system');
+                              }}
+                              className="w-full py-1.5 bg-teal-500/10 hover:bg-teal-500 text-teal-600 hover:text-white rounded-xl font-black text-[10px] flex items-center justify-center gap-1 transition-colors"
+                            >
+                              <ExternalLink className="w-3 h-3" /> Negozio
+                            </button>
+                          </div>
                         </div>
                       </motion.div>
                     ))}

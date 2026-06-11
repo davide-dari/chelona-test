@@ -389,7 +389,7 @@ export default function App() {
     moduleToDelete, showGalleryViewer, gallerySelectedImage,
     editingAutoModule, editingSplitModule, editingSingleExpenseModule,
     editingTravelModule, editingTransportModule, editingDocumentModule,
-    editingGenericModule, editingModuleId, isAdding, isProfileOpen,
+    editingGenericModule, editingFurnitureModule, editingModuleId, isAdding, isProfileOpen,
     activeToolId, isToolsOpen, isArchiveOpen, isAddressBookOpen, isRecipesOpen,
     isSidebarOpen, selectedFolderId, selectedType, spesaSubMenu
   ]);
