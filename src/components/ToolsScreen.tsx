@@ -5,7 +5,6 @@ import {
   Scan, ArrowLeft, Book, Search as SearchIcon, Eye, Trash2,
   Wrench, ClipboardList, Settings2, Minimize, Mic
 } from 'lucide-react';
-// Removed GiorgioneTool
 import { DocumentScanner } from './DocumentScanner';
 import { ImageFilterTool } from './ImageFilterTool';
 import { PDFDocument, rgb, degrees } from 'pdf-lib';

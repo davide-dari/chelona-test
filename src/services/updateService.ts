@@ -90,23 +90,22 @@ class UpdateService {
 
     if (onProgress) onProgress(5);
 
-    // ── STEP 2: Download APK via CapacitorHttp (native OkHttp, no CORS, no redirect issues) ──
-    // CapacitorHttp.request with responseType 'arraybuffer' downloads natively and
-    // returns the binary data as a base64 string. This bypasses WebView entirely and
-    // avoids the broken/deprecated Filesystem.downloadFile.
+    // ── STEP 2: Download APK via Filesystem.downloadFile ──
     const fileName = `chelona_v${updateInfo.latestVersion}.apk`;
     const downloadUrl = updateInfo.downloadUrl;
 
-    console.log(`[UpdateService] Downloading APK via CapacitorHttp from: ${downloadUrl}`);
+    console.log(`[UpdateService] Downloading APK via Filesystem.downloadFile from: ${downloadUrl}`);
     if (onProgress) onProgress(10);
 
-    let base64Data: string;
     try {
-      // Race the download against a 2-minute timeout
-      const downloadPromise = CapacitorHttp.request({
-        method: 'GET',
+      // Clean up any old file before downloading
+      await Filesystem.deleteFile({ path: fileName, directory: Directory.Cache }).catch(() => {});
+
+      // Race the download against a timeout
+      const downloadPromise = Filesystem.downloadFile({
         url: downloadUrl,
-        responseType: 'arraybuffer',
+        path: fileName,
+        directory: Directory.Cache,
         headers: { 'User-Agent': 'Chelona-App-Updater' },
         connectTimeout: 30000,
         readTimeout: 120000
@@ -116,58 +115,20 @@ class UpdateService {
         setTimeout(() => reject(new Error('TIMEOUT')), 150000); // 2.5 min total
       });
 
-      const dlResp = await Promise.race([downloadPromise, timeoutPromise]);
-
-      console.log(`[UpdateService] CapacitorHttp GET status: ${dlResp.status}, url: ${dlResp.url}`);
-
-      if (dlResp.status < 200 || dlResp.status >= 300) {
-        throw new Error(`Server responded with ${dlResp.status}`);
-      }
-
-      // On native Android, CapacitorHttp returns arraybuffer data as base64 string
-      if (typeof dlResp.data === 'string' && dlResp.data.length > 0) {
-        base64Data = dlResp.data;
-      } else {
-        throw new Error('Response data is empty or not in expected format');
-      }
-
-      if (onProgress) onProgress(75);
-      console.log(`[UpdateService] Download complete (${Math.round(base64Data.length / 1024)}KB base64). Writing to cache...`);
+      await Promise.race([downloadPromise, timeoutPromise]);
+      if (onProgress) onProgress(90);
+      console.log(`[UpdateService] APK written to cache: ${fileName}`);
 
     } catch (dlError: any) {
-      console.error('[UpdateService] CapacitorHttp download failed:', dlError);
+      console.error('[UpdateService] Filesystem.downloadFile failed:', dlError);
 
       // ── FALLBACK: Open in system browser ──────────────────────────────────
-      // If the native download fails for any reason, open the URL in the system
-      // browser which uses Android's DownloadManager — always works.
       console.log('[UpdateService] Falling back to system browser download...');
       window.open(downloadUrl, '_system');
       throw new Error(
         "Il download in-app non è riuscito. " +
         "L'APK si sta scaricando nel browser. " +
         "Una volta completato, tocca la notifica per installarlo."
-      );
-    }
-
-    // ── STEP 3: Write to cache via Filesystem.writeFile (stable, NOT deprecated) ──
-    try {
-      await Filesystem.deleteFile({ path: fileName, directory: Directory.Cache }).catch(() => {});
-
-      await Filesystem.writeFile({
-        path: fileName,
-        data: base64Data,
-        directory: Directory.Cache
-        // No encoding = base64 binary write mode
-      });
-
-      if (onProgress) onProgress(90);
-      console.log(`[UpdateService] APK written to cache: ${fileName}`);
-    } catch (writeErr: any) {
-      console.error('[UpdateService] writeFile failed:', writeErr);
-      window.open(downloadUrl, '_system');
-      throw new Error(
-        "Errore nella scrittura del file. " +
-        "L'APK si sta scaricando nel browser."
       );
     }
 
