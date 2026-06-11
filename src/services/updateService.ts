@@ -101,12 +101,22 @@ class UpdateService {
       // Clean up any old file before downloading
       await Filesystem.deleteFile({ path: fileName, directory: Directory.Cache }).catch(() => {});
 
+      let actualUrl = downloadUrl;
+      try {
+        // Try to resolve the redirect natively
+        const headRes = await CapacitorHttp.request({ url: downloadUrl, method: 'HEAD' });
+        if (headRes.url && headRes.url !== downloadUrl) actualUrl = headRes.url;
+        else if (headRes.headers?.Location) actualUrl = headRes.headers.Location;
+        else if (headRes.headers?.location) actualUrl = headRes.headers.location;
+      } catch (e) {
+        console.warn('[UpdateService] Redirect resolution failed:', e);
+      }
+
       let progressListener: any;
       if (onProgress) {
         progressListener = await Filesystem.addListener('progress', (status: any) => {
-          if (status.url === downloadUrl && status.contentLength > 0) {
+          if (status.contentLength > 0) {
             const percent = status.bytes / status.contentLength;
-            // Map 0-100% to our 10-90% range for the UI
             onProgress(10 + Math.floor(percent * 80));
           }
         });
@@ -114,20 +124,44 @@ class UpdateService {
 
       // Race the download against a timeout
       const downloadPromise = Filesystem.downloadFile({
-        url: downloadUrl,
+        url: actualUrl,
         path: fileName,
         directory: Directory.Cache,
         progress: true,
-        headers: { 'User-Agent': 'Chelona-App-Updater' },
         connectTimeout: 30000,
         readTimeout: 120000
       });
 
       const timeoutPromise = new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error('TIMEOUT')), 150000); // 2.5 min total
+        setTimeout(() => reject(new Error('TIMEOUT')), 300000); // 5 minutes total
       });
 
-      await Promise.race([downloadPromise, timeoutPromise]);
+      try {
+        await Promise.race([downloadPromise, timeoutPromise]);
+      } catch (primaryDlError) {
+        console.warn('[UpdateService] Filesystem.downloadFile failed, trying fetch fallback...', primaryDlError);
+        
+        // Base64 Fetch Fallback
+        const response = await fetch(downloadUrl);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        
+        const blob = await response.blob();
+        const reader = new FileReader();
+        const base64Data = await new Promise<string>((resolve, reject) => {
+          reader.onloadend = () => {
+            const result = reader.result as string;
+            resolve(result.split(',')[1]);
+          };
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        });
+
+        await Filesystem.writeFile({
+          path: fileName,
+          directory: Directory.Cache,
+          data: base64Data
+        });
+      }
       
       if (progressListener) {
         progressListener.remove();
@@ -137,7 +171,7 @@ class UpdateService {
       console.log(`[UpdateService] APK written to cache: ${fileName}`);
 
     } catch (dlError: any) {
-      console.error('[UpdateService] Filesystem.downloadFile failed:', dlError);
+      console.error('[UpdateService] All download methods failed:', dlError);
 
       // ── FALLBACK: Open in system browser ──────────────────────────────────
       console.log('[UpdateService] Falling back to system browser download...');
