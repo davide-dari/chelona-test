@@ -1149,23 +1149,29 @@ export const FurnitureScreen = ({ module, onSave, onClose }: FurnitureScreenProp
                         </div>
                         
                         <div className="flex gap-2.5 mt-5 sm:mt-0">
-                          <a
-                            href={detailForm.link?.startsWith('http') ? detailForm.link : `https://${detailForm.link}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const url = detailForm.link?.startsWith('http') ? detailForm.link : `https://${detailForm.link}`;
+                              window.open(url, '_system');
+                            }}
                             className="flex-1 sm:flex-none px-4.5 py-2.5 bg-teal-500 hover:bg-teal-600 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-colors shadow-sm"
                           >
                             <ExternalLink className="w-3.5 h-3.5" /> Negozio
-                          </a>
+                          </button>
                           {detailForm.manualUrl && (
-                            <a
-                              href={detailForm.manualUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const url = detailForm.manualUrl?.startsWith('http') ? detailForm.manualUrl : `https://${detailForm.manualUrl}`;
+                                window.open(url, '_system');
+                              }}
                               className="flex-1 sm:flex-none px-4.5 py-2.5 bg-blue-500 hover:bg-blue-600 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-colors shadow-sm"
                             >
                               <FileText className="w-3.5 h-3.5" /> Manuale
-                            </a>
+                            </button>
                           )}
                         </div>
                       </div>
