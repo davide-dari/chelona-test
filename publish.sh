@@ -73,7 +73,7 @@ RELEASE_JSON=$(curl -s -X POST \
   -d "{
     \"tag_name\": \"$TAG\",
     \"name\": \"Release $TAG\",
-    \"body\": \"🚀 **Chelona v$VERSION**\\n\\n### ✨ Novità e Fix:\\n- **🔧 Fix Auto-Lock Link Esterni**: Previene il blocco automatico dell'app (schermata login con impronta/pin) quando si clicca su link esterni (come il pulsante Negozio) che aprono il browser.\",
+    \"body\": \"🚀 **Chelona v$VERSION**\\n\\n### ✨ Rollback:\\n- **🔙 Rollback alla 1.15.36**: Questa versione è esattamente identica alla 1.15.36 per ripristinare il corretto funzionamento precedente e rimuovere le modifiche sperimentali inserite nella 1.15.37.\",
     \"draft\": false,
     \"prerelease\": false
   }")

@@ -72,16 +72,7 @@ export const AutoManagementScreen = ({ module, onSave, onCancel, onDelete, onSha
   const [isQuickKmEdit, setIsQuickKmEdit] = useState(false);
   const [quickKm, setQuickKm] = useState(data.currentKm || '');
   const [localPrefs, setLocalPrefs] = useState<Record<string, { enabled: boolean; offset: number }>>({});
-  const [showCopiedToast, setShowCopiedToast] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-
-  const handleCopyPlate = () => {
-    if (!data.plate) return;
-    navigator.clipboard.writeText(data.plate);
-    setShowCopiedToast(true);
-    setTimeout(() => setShowCopiedToast(false), 2000);
-    if (navigator.vibrate) navigator.vibrate(80);
-  };
 
   useEffect(() => {
     const handleOpenKm = () => {
@@ -308,9 +299,7 @@ export const AutoManagementScreen = ({ module, onSave, onCancel, onDelete, onSha
                <div>
                   <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40 mb-1">Dettagli Targa</p>
                    <div 
-                     onClick={handleCopyPlate}
-                     className="inline-flex items-center border border-white/20 rounded-lg bg-white/10 hover:bg-white/20 backdrop-blur-md px-3 py-1.5 gap-3 shadow-lg cursor-pointer active:scale-95 transition-all"
-                     title="Clicca per copiare la targa"
+                     className="inline-flex items-center border border-white/20 rounded-lg bg-white/10 backdrop-blur-md px-3 py-1.5 gap-3 shadow-lg"
                    >
                      <div className="w-1.5 h-6 bg-blue-600 rounded-sm" />
                      <span className="text-2xl font-black font-mono tracking-[0.2em]">{data.plate || '---'}</span>
@@ -724,17 +713,6 @@ export const AutoManagementScreen = ({ module, onSave, onCancel, onDelete, onSha
             }}
             onClose={() => setPicker(null)}
           />
-        )}
-        {showCopiedToast && (
-          <motion.div 
-            initial={{ opacity: 0, y: -20, scale: 0.9 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -20, scale: 0.9 }}
-            className="fixed top-6 left-1/2 -translate-x-1/2 z-[200] bg-emerald-500 text-white px-6 py-3 rounded-2xl shadow-xl flex items-center gap-2 border border-emerald-400 font-bold text-sm"
-          >
-            <Check className="w-4 h-4" />
-            <span>Targa copiata!</span>
-          </motion.div>
         )}
       </AnimatePresence>
       <ConfirmDialog

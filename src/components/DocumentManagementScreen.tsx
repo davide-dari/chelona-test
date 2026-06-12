@@ -189,22 +189,22 @@ export const DocumentManagementScreen = ({ module, onSave, onCancel, onDelete, o
               {/* Middle Section: Smart-Card Chip & Codice Fiscale */}
               <div className="absolute inset-x-4 top-1/2 -translate-y-1/2 flex items-center justify-center gap-4 z-10 w-[calc(100%-2rem)]">
                 {/* Tactile strip containing the text-code - Enlarged with larger font */}
-                <div className="w-full bg-emerald-50/95 rounded-2xl border border-emerald-600/30 shadow-[inset_0_2px_6px_rgba(0,0,0,0.08)] px-4 py-3.5 flex items-center justify-between min-w-0">
+                <div 
+                  onClick={handleCopy}
+                  className="w-full bg-emerald-50/95 rounded-2xl border border-emerald-600/30 shadow-[inset_0_2px_6px_rgba(0,0,0,0.08)] px-4 py-3.5 flex items-center justify-between min-w-0 cursor-pointer hover:bg-emerald-100/95 transition-colors group/copy"
+                  title="Tocca per copiare il codice fiscale"
+                >
                   <div className="flex-1 text-center">
-                    <span className="text-emerald-950 font-mono font-black text-sm sm:text-lg md:text-xl tracking-[0.15em] uppercase select-all truncate">
+                    <span className="text-emerald-950 font-mono font-black text-sm sm:text-lg md:text-xl tracking-[0.15em] uppercase truncate">
                       {data.number || 'RSSMRA80A01F205X'}
                     </span>
                   </div>
                   {data.number && (
-                    <button
-                      onClick={handleCopy}
-                      className="p-1.5 rounded-xl hover:bg-emerald-500/10 text-emerald-800 hover:text-emerald-950 transition-colors active:scale-90 relative z-30 shrink-0 border border-emerald-800/10 ml-2"
-                      title="Copia codice fiscale"
-                    >
+                    <div className="p-1.5 rounded-xl bg-emerald-500/10 text-emerald-800 transition-colors relative z-30 shrink-0 border border-emerald-800/10 ml-2">
                       {copied
                         ? <CheckCheck className="w-4 h-4 text-emerald-600" />
-                        : <Copy className="w-4 h-4" />}
-                    </button>
+                        : <Copy className="w-4 h-4 opacity-50 group-hover/copy:opacity-100 transition-opacity" />}
+                    </div>
                   )}
                 </div>
               </div>
@@ -285,11 +285,6 @@ export const DocumentManagementScreen = ({ module, onSave, onCancel, onDelete, o
                     <p className="text-[7px] text-white/50 uppercase tracking-widest mt-1">NUMERO / NUMBER</p>
                     <div className="flex items-center gap-1">
                       <p className="text-[11px] font-black text-white font-mono tracking-wider">{data.number || '---'}</p>
-                      {data.number && (
-                        <button onClick={handleCopy} className="p-1 rounded hover:bg-white/20 transition-colors relative z-30" title="Copia">
-                          {copied ? <CheckCheck className="w-3 h-3 text-emerald-300" /> : <Copy className="w-3 h-3 text-white/60" />}
-                        </button>
-                      )}
                     </div>
                   </div>
                   {/* Chip NFC simulato */}
@@ -355,13 +350,7 @@ export const DocumentManagementScreen = ({ module, onSave, onCancel, onDelete, o
                   <p className="text-2xl font-black text-white font-mono tracking-[0.2em] drop-shadow-lg">
                     {data.number || '--- --- ---'}
                   </p>
-                  {data.number && (
-                    <button onClick={handleCopy} className="p-1.5 rounded-lg hover:bg-white/20 transition-colors relative z-30" title="Copia">
-                      {copied ? <CheckCheck className="w-4 h-4 text-purple-200" /> : <Copy className="w-4 h-4 text-white/60" />}
-                    </button>
-                  )}
                 </div>
-                {copied && <p className="text-[9px] text-purple-300 font-bold mt-1 animate-pulse">Copiato!</p>}
               </div>
 
               {/* Barra bassa */}
@@ -405,11 +394,6 @@ export const DocumentManagementScreen = ({ module, onSave, onCancel, onDelete, o
                       <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--text-muted)]">{getDocTypeLabel(data.documentType)}</p>
                       <div className="flex items-center gap-2">
                         <h3 className="text-xl font-black tracking-tight text-[var(--text-main)]">{data.number || '--- --- ---'}</h3>
-                        {data.number && (
-                          <button onClick={handleCopy} className="p-1.5 rounded-lg hover:bg-[var(--bg)] transition-colors relative z-30" title="Copia">
-                            {copied ? <CheckCheck className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4 text-[var(--text-muted)]" />}
-                          </button>
-                        )}
                       </div>
                     </div>
                   </div>

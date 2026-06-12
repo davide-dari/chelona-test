@@ -316,25 +316,16 @@ export default function App() {
     console.log('[App] Initializing Lifecycle Listener');
 
     // Esponiamo un flag globale che altri componenti possono
-    // usare per sapere quando non bloccare l'app (es. file picker o link esterni)
-    (window as any).__chelona_skip_lock = false;
-
-    const handleGlobalClick = (e: MouseEvent) => {
-      const target = e.target as HTMLElement;
-      const anchor = target.closest('a');
-      if (anchor && anchor.getAttribute('target') === '_blank') {
-        (window as any).__chelona_skip_lock = true;
-      }
-    };
-    document.addEventListener('click', handleGlobalClick);
+    // usare per sapere quando non bloccare l'app (es. file picker)
+    (window as any).__chelona_file_picker_open = false;
     
     if (CapApp && typeof CapApp.addListener === 'function') {
       const stateListener = CapApp.addListener('appStateChange', ({ isActive }) => {
         console.log('[App] State changed, isActive:', isActive);
         if (!isActive) {
-          // Se un file picker o link esterno è stato aperto non bloccare l'app
-          if ((window as any).__chelona_skip_lock) {
-            console.log('[App] Backgrounding skipped: skip_lock is true.');
+          // Se un file picker è stato aperto non bloccare l'app
+          if ((window as any).__chelona_file_picker_open) {
+            console.log('[App] Backgrounding skipped: file picker is open.');
             return;
           }
           console.log('[App] Backgrounding: Locking application for security.');
@@ -347,19 +338,15 @@ export default function App() {
           setSelectedType(null);
         } else {
           // Quando torniamo in foreground resettiamo sempre il flag
-          (window as any).__chelona_skip_lock = false;
+          (window as any).__chelona_file_picker_open = false;
         }
       });
       
       return () => {
         stateListener.then(l => l.remove());
-        document.removeEventListener('click', handleGlobalClick);
       };
     } else {
       console.warn('[App] Capacitor App plugin not available or addListener missing.');
-      return () => {
-        document.removeEventListener('click', handleGlobalClick);
-      };
     }
   }, []);
 
@@ -379,6 +366,7 @@ export default function App() {
       if (editingTransportModule) { setEditingTransportModule(null); return; }
       if (editingDocumentModule) { setEditingDocumentModule(null); return; }
       if (editingGenericModule) { setEditingGenericModule(null); return; }
+      if (editingFurnitureModule) { setEditingFurnitureModule(null); return; }
       if (editingModuleId) { setEditingModuleId(null); setFormData({}); return; }
       if (isAdding) { setIsAdding(false); setFormData({}); setSpesaSubMenu(false); return; }
       if (isProfileOpen) { setIsProfileOpen(false); return; }
@@ -401,7 +389,7 @@ export default function App() {
     moduleToDelete, showGalleryViewer, gallerySelectedImage,
     editingAutoModule, editingSplitModule, editingSingleExpenseModule,
     editingTravelModule, editingTransportModule, editingDocumentModule,
-    editingGenericModule, editingModuleId, isAdding, isProfileOpen,
+    editingGenericModule, editingFurnitureModule, editingModuleId, isAdding, isProfileOpen,
     activeToolId, isToolsOpen, isArchiveOpen, isAddressBookOpen, isRecipesOpen,
     isSidebarOpen, selectedFolderId, selectedType, spesaSubMenu
   ]);
@@ -2048,7 +2036,7 @@ export default function App() {
                              const newFurniture: import('./types').FurnitureModule = {
                                id: generateUUID(),
                                type: 'furniture',
-                               title: 'Mobili',
+                               title: 'Arredamento',
                                rooms: [
                                  { id: generateUUID(), name: 'Cucina', items: [] },
                                  { id: generateUUID(), name: 'Salone', items: [] },
@@ -2072,7 +2060,7 @@ export default function App() {
                          >
                            <Armchair className="w-8 h-8 text-teal-500 group-hover:scale-110 transition-transform" />
                            <div className="text-center">
-                             <span className="font-bold text-xs uppercase tracking-wider block">Mobili</span>
+                             <span className="font-bold text-xs uppercase tracking-wider block">Arredamento</span>
                              <span className="text-[10px] text-[var(--text-muted)] mt-1 block">Idee e acquisti per stanze</span>
                            </div>
                          </button>
@@ -2809,7 +2797,7 @@ export default function App() {
                                 const newFurniture: import('./types').FurnitureModule = {
                                   id: generateUUID(),
                                   type: 'furniture',
-                                  title: 'Mobili',
+                                  title: 'Arredamento',
                                   rooms: [
                                     { id: generateUUID(), name: 'Cucina', items: [] },
                                     { id: generateUUID(), name: 'Salone', items: [] },
@@ -2836,7 +2824,7 @@ export default function App() {
                               <Armchair className="w-8 h-8" />
                             </div>
                             <div>
-                              <p className="font-black text-[var(--text-main)] text-lg">Mobili</p>
+                              <p className="font-black text-[var(--text-main)] text-lg">Arredamento</p>
                               <p className="text-sm text-[var(--text-muted)] mt-1">Idee e acquisti per stanze</p>
                             </div>
                           </button>

@@ -13,7 +13,6 @@ interface NoteManagementScreenProps {
 
 export const NoteManagementScreen = ({ module, onSave, onCancel, onDelete }: NoteManagementScreenProps) => {
   const [data, setData] = useState<GenericModule>({ ...module });
-  const [copied, setCopied] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const handleSave = () => {
@@ -24,11 +23,6 @@ export const NoteManagementScreen = ({ module, onSave, onCancel, onDelete }: Not
     onCancel();
   };
 
-  const handleCopy = () => {
-    navigator.clipboard.writeText(data.content);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
 
   return (
     <motion.div
@@ -78,10 +72,7 @@ export const NoteManagementScreen = ({ module, onSave, onCancel, onDelete }: Not
                     <Edit3 className="w-4 h-4 text-[var(--text-muted)]" />
                     <span className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--text-muted)]">Contenuto Nota</span>
                  </div>
-                 <div className="flex items-center gap-2">
-                    <button onClick={handleCopy} className="p-2 hover:bg-[var(--bg)] rounded-xl transition-colors text-[var(--text-muted)]" title="Copia">
-                       {copied ? <Check className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}
-                    </button>
+                  <div className="flex items-center gap-2">
                  </div>
               </div>
               <textarea 
