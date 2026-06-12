@@ -73,7 +73,7 @@ RELEASE_JSON=$(curl -s -X POST \
   -d "{
     \"tag_name\": \"$TAG\",
     \"name\": \"Release $TAG\",
-    \"body\": \"🚀 **Chelona v$VERSION**\\n\\n### ✨ Novità e Fix:\\n- **🔧 FAB + Mobili Ripristinato**: Risolto il pulsante + nella sezione Mobili che non compariva a causa di un conflitto CSS (overflow-hidden del genitore). Ora usa posizione fixed con z-index elevato.\\n- **📥 Download Aggiornamenti Stabile**: Risolto il meccanismo di download. La pre-risoluzione del redirect (HEAD via CapacitorHttp) fornisce l'URL Azure/S3 diretto a Filesystem.downloadFile eliminando i fallimenti da redirect su Android.\",
+    \"body\": \"🚀 **Chelona v$VERSION**\\n\\n### ✨ Novità e Fix:\\n- **🔧 Fix Auto-Lock Link Esterni**: Previene il blocco automatico dell'app (schermata login con impronta/pin) quando si clicca su link esterni (come il pulsante Negozio) che aprono il browser.\",
     \"draft\": false,
     \"prerelease\": false
   }")

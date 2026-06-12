@@ -32,7 +32,8 @@ export const ShareScreen = ({ module, onClose }: ShareScreenProps) => {
   const [isExporting, setIsExporting] = useState(false);
   const [exportDone, setExportDone] = useState(false);
   const [qrKey, setQrKey] = useState(0); 
-
+  const [passwordCopied, setPasswordCopied] = useState(false);
+  
   // Stati per il timer di autodistruzione avanzato
   const [startTime, setStartTime] = useState(Date.now());
   const [timeLeft, setTimeLeft] = useState(0);
@@ -57,6 +58,12 @@ export const ShareScreen = ({ module, onClose }: ShareScreenProps) => {
 
   const typeLabel = module.type === 'document' ? 'Documento'
     : module.type === 'auto' ? 'Auto' : module.type === 'split' ? 'Spese' : 'Modulo';
+
+  const handleCopyPassword = () => {
+    navigator.clipboard.writeText(zipPassword);
+    setPasswordCopied(true);
+    setTimeout(() => setPasswordCopied(false), 2000);
+  };
 
   // Calcola la durata totale in ms dai selettori
   const totalDurationMs = useMemo(() => (
@@ -582,6 +589,13 @@ export const ShareScreen = ({ module, onClose }: ShareScreenProps) => {
                     >
                         <Eye className="w-4 h-4" />
                     </button>
+                    <button
+                        onClick={handleCopyPassword}
+                        className={`p-2 rounded-xl transition-all ${passwordCopied ? 'bg-emerald-500 text-white shadow-md' : 'text-emerald-500 hover:bg-emerald-500/10'}`}
+                        title="Copia chiave"
+                    >
+                        {passwordCopied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                    </button>
                 </div>
               </div>
             </div>
@@ -623,6 +637,13 @@ export const ShareScreen = ({ module, onClose }: ShareScreenProps) => {
                     <p className="text-[10px] text-amber-500/80 leading-relaxed font-medium">
                         Copia la chiave qui sopra e consegnala al destinatario. Senza di essa, lo ZIP rimarrà inaccessibile.
                     </p>
+                    <button 
+                        onClick={handleCopyPassword}
+                        className="w-full mt-3 flex items-center justify-center gap-2 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-[11px] font-bold transition-all shadow-sm"
+                    >
+                        <Copy className="w-3.5 h-3.5" />
+                        Copia Chiave per il Destinatario
+                    </button>
                 </motion.div>
             )}
           </div>

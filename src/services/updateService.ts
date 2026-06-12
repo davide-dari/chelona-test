@@ -19,25 +19,12 @@ class UpdateService {
   private currentVersion = APP_VERSION;
 
   async checkForUpdates(): Promise<UpdateInfo | null> {
-    if (Capacitor.isNativePlatform()) {
-      try {
-        const info = await CapacitorApp.getInfo();
-        if (info && info.version) {
-          this.currentVersion = info.version;
-        }
-      } catch (e) {
-        console.warn('[UpdateService] Impossibile recuperare versione nativa', e);
-      }
-    }
-
     console.log(`[UpdateService] Checking for updates... Current version: ${this.currentVersion}`);
     try {
       const response = await fetch(`https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/releases/latest`, {
-        cache: 'no-store',
         headers: {
           'Accept': 'application/vnd.github.v3+json',
-          'User-Agent': 'Chelona-App-Updater',
-          'Cache-Control': 'no-cache'
+          'User-Agent': 'Chelona-App-Updater'
         }
       });
 
