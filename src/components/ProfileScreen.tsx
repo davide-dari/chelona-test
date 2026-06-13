@@ -132,6 +132,7 @@ export function ProfileScreen({
             });
             
             const { Share } = await import('@capacitor/share');
+            (window as any).__chelona_bypass_lock = true;
             await Share.share({
               title: 'Esporta Backup Chelona',
               url: fileUri.uri,

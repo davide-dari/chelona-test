@@ -316,16 +316,40 @@ export default function App() {
     console.log('[App] Initializing Lifecycle Listener');
 
     // Esponiamo un flag globale che altri componenti possono
-    // usare per sapere quando non bloccare l'app (es. file picker)
-    (window as any).__chelona_file_picker_open = false;
+    // usare per sapere quando non bloccare l'app (es. file picker, link esterni, maps)
+    (window as any).__chelona_bypass_lock = false;
+
+    // Intercept all window.open calls globally to prevent lock screen when opening links
+    const originalOpen = window.open;
+    window.open = function(...args) {
+      (window as any).__chelona_bypass_lock = true;
+      return originalOpen.apply(this, args);
+    };
+
+    // Intercept clicks on anchor tags and file inputs globally
+    const handleGlobalClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (!target) return;
+      
+      const anchor = target.closest('a');
+      if (anchor && (anchor.target === '_blank' || anchor.href.startsWith('http'))) {
+        (window as any).__chelona_bypass_lock = true;
+      }
+      
+      const input = target.closest('input');
+      if (input && input.type === 'file') {
+        (window as any).__chelona_bypass_lock = true;
+      }
+    };
+    document.addEventListener('click', handleGlobalClick, true);
     
     if (CapApp && typeof CapApp.addListener === 'function') {
       const stateListener = CapApp.addListener('appStateChange', ({ isActive }) => {
         console.log('[App] State changed, isActive:', isActive);
         if (!isActive) {
-          // Se un file picker è stato aperto non bloccare l'app
-          if ((window as any).__chelona_file_picker_open) {
-            console.log('[App] Backgrounding skipped: file picker is open.');
+          // Se un bypass è attivo (file picker, link esterno, maps) non bloccare l'app
+          if ((window as any).__chelona_bypass_lock || (window as any).__chelona_file_picker_open) {
+            console.log('[App] Backgrounding skipped: bypass lock is active.');
             return;
           }
           console.log('[App] Backgrounding: Locking application for security.');
@@ -337,13 +361,16 @@ export default function App() {
           setIsToolsOpen(false);
           setSelectedType(null);
         } else {
-          // Quando torniamo in foreground resettiamo sempre il flag
+          // Quando torniamo in foreground resettiamo sempre i flag
+          (window as any).__chelona_bypass_lock = false;
           (window as any).__chelona_file_picker_open = false;
         }
       });
       
       return () => {
         stateListener.then(l => l.remove());
+        window.open = originalOpen;
+        document.removeEventListener('click', handleGlobalClick, true);
       };
     } else {
       console.warn('[App] Capacitor App plugin not available or addListener missing.');

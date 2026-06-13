@@ -158,6 +158,7 @@ export const SplitScreen = ({ module, onClose, onSave, onAutoSave, onSaveToSandb
           encoding: Encoding.UTF8
         });
         
+        (window as any).__chelona_bypass_lock = true;
         await Share.share({
           title: 'Condivisione Chelona',
           url: result.uri,

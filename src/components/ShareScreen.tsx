@@ -142,6 +142,7 @@ export const ShareScreen = ({ module, onClose }: ShareScreenProps) => {
           encoding: Encoding.UTF8
         });
         
+        (window as any).__chelona_bypass_lock = true;
         await Share.share({
           title: 'Condivisione Chelona',
           url: result.uri,

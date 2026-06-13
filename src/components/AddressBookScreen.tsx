@@ -265,6 +265,7 @@ export const AddressBookScreen = ({ onClose }: AddressBookScreenProps) => {
                                 const mapUrl = `https://maps.google.com/?q=${encodeURIComponent(addr.query)}`;
                                 const shareText = `📍 ${addr.title}\n${addr.query}\n\n${mapUrl}`;
                                 try {
+                                  (window as any).__chelona_bypass_lock = true;
                                   await Share.share({
                                     title: addr.title,
                                     text: shareText,
