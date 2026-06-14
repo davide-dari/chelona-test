@@ -26,6 +26,8 @@ import { TravelScreen } from './components/TravelScreen';
 import { ConfirmDialog } from './components/ConfirmDialog';
 import { TransportScreen } from './components/TransportScreen';
 import { FurnitureScreen } from "./components/FurnitureScreen";
+import { InstallmentsCard } from './components/InstallmentsCard';
+import { InstallmentsScreen } from './components/InstallmentsScreen';
 import { notificationService } from './services/notificationService';
 import { APP_VERSION } from './constants/version';
 
@@ -174,6 +176,7 @@ export default function App() {
   const [isSplashScreenActive, setIsSplashScreenActive] = useState(true);
   const [homeSubMenu, setHomeSubMenu] = useState(false);
   const [editingFurnitureModule, setEditingFurnitureModule] = useState<import('./types').FurnitureModule | null>(null);
+  const [editingInstallmentsModule, setEditingInstallmentsModule] = useState<import('./types').InstallmentsModule | null>(null);
 
   useEffect(() => {
     // Show splash screen for 1.5s
@@ -394,6 +397,7 @@ export default function App() {
       if (editingDocumentModule) { setEditingDocumentModule(null); return; }
       if (editingGenericModule) { setEditingGenericModule(null); return; }
       if (editingFurnitureModule) { setEditingFurnitureModule(null); return; }
+      if (editingInstallmentsModule) { setEditingInstallmentsModule(null); return; }
       if (editingModuleId) { setEditingModuleId(null); setFormData({}); return; }
       if (isAdding) { setIsAdding(false); setFormData({}); setSpesaSubMenu(false); return; }
       if (isProfileOpen) { setIsProfileOpen(false); return; }
@@ -416,7 +420,7 @@ export default function App() {
     moduleToDelete, showGalleryViewer, gallerySelectedImage,
     editingAutoModule, editingSplitModule, editingSingleExpenseModule,
     editingTravelModule, editingTransportModule, editingDocumentModule,
-    editingGenericModule, editingFurnitureModule, editingModuleId, isAdding, isProfileOpen,
+    editingGenericModule, editingFurnitureModule, editingInstallmentsModule, editingModuleId, isAdding, isProfileOpen,
     activeToolId, isToolsOpen, isArchiveOpen, isAddressBookOpen, isRecipesOpen,
     isSidebarOpen, selectedFolderId, selectedType, spesaSubMenu
   ]);
@@ -1999,7 +2003,7 @@ export default function App() {
                       <div className="flex items-center gap-3 mb-8">
                         <h3 className="text-lg font-bold text-[var(--text-main)] uppercase tracking-widest">Spese</h3>
                       </div>
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
 
                          <button
                            onClick={() => {
@@ -2029,6 +2033,34 @@ export default function App() {
                            <div className="text-center">
                              <span className="font-bold text-xs uppercase tracking-wider block">Spesa Singola</span>
                              <span className="text-[10px] text-[var(--text-muted)] mt-1 block">Traccia una spesa</span>
+                           </div>
+                         </button>
+                         <button
+                           onClick={() => {
+                             setSpesaSubMenu(false);
+                             setIsAdding(false);
+                             const newInstallments: import('./types').InstallmentsModule = {
+                               id: generateUUID(),
+                               type: 'installments',
+                               title: 'Rate',
+                               targetAmount: 0,
+                               finalDueDate: new Date().toISOString().substring(0, 10),
+                               payments: [],
+                               x: (modules.length * 2) % 12,
+                               y: Infinity,
+                               w: 3,
+                               h: 3,
+                               folderId: selectedFolderId || undefined
+                             };
+                             setModules(prev => [newInstallments, ...prev]);
+                             setEditingInstallmentsModule(newInstallments);
+                           }}
+                           className="flex flex-col items-center justify-center gap-4 p-8 rounded-2xl border border-[var(--border)] hover:border-amber-500/60 hover:bg-amber-500/10 transition-all group text-center h-full text-[var(--text-main)]"
+                         >
+                           <Hourglass className="w-8 h-8 text-amber-500 group-hover:scale-110 transition-transform" />
+                           <div className="text-center">
+                             <span className="font-bold text-xs uppercase tracking-wider block">Rate</span>
+                             <span className="text-[10px] text-[var(--text-muted)] mt-1 block">Pianifica pagamenti</span>
                            </div>
                          </button>
                       </div>
@@ -2901,6 +2933,8 @@ export default function App() {
                                 <SplitCard module={module as import('./types').SplitModule} onDelete={requestDelete} onEdit={openEditModal} onShare={setSharingModule as any} />
                               ) : module.type === 'single-expense' ? (
                                 <SingleExpenseCard module={module as import('./types').SingleExpenseModule} onDelete={requestDelete} onEdit={openEditModal} />
+                              ) : module.type === 'installments' ? (
+                                <InstallmentsCard module={module as import('./types').InstallmentsModule} onDelete={requestDelete} onEdit={openEditModal} />
                               ) : module.type === 'gallery' ? (
                                 <GalleryCard module={module as import('./types').GalleryModule} onEdit={openEditModal} />
                               ) : module.type === 'transport' ? (
@@ -2922,7 +2956,7 @@ export default function App() {
           </div>
           
           {/* Global FAB (Only on main dashboard and specific categories except gallery/travel) */}
-          {(selectedType !== 'gallery') && !editingTravelModule && !editingTransportModule && !isAdding && !editingModuleId && !isArchiveOpen && !isToolsOpen && !editingAutoModule && !editingSplitModule && !editingSingleExpenseModule && !editingDocumentModule && !editingGenericModule && !editingFurnitureModule && (
+          {(selectedType !== 'gallery') && !editingTravelModule && !editingTransportModule && !isAdding && !editingModuleId && !isArchiveOpen && !isToolsOpen && !editingAutoModule && !editingSplitModule && !editingSingleExpenseModule && !editingDocumentModule && !editingGenericModule && !editingFurnitureModule && !editingInstallmentsModule && (
             <>
               {/* Scan QR Button next to Plus button */}
               <motion.button
@@ -3428,6 +3462,27 @@ export default function App() {
               setEditingSingleExpenseModule(null);
             }}
             onClose={() => setEditingSingleExpenseModule(null)}
+            onDelete={deleteModule}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {editingInstallmentsModule && (
+          <InstallmentsScreen
+            module={editingInstallmentsModule}
+            onSave={(updated) => {
+              const updatedModules = modules.map(m => m.id === updated.id ? updated : m);
+              setModules(updatedModules);
+              saveAppState(updatedModules, folders);
+              setEditingInstallmentsModule(null);
+            }}
+            onClose={() => {
+              if (editingInstallmentsModule.targetAmount === 0 && editingInstallmentsModule.payments.length === 0) {
+                 deleteModule(editingInstallmentsModule.id);
+              }
+              setEditingInstallmentsModule(null);
+            }}
             onDelete={deleteModule}
           />
         )}

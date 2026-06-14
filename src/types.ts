@@ -1,4 +1,4 @@
-export type ModuleType = 'generic' | 'auto' | 'document' | 'split' | 'single-expense' | 'wallet' | 'gallery' | 'travel' | 'transport' | 'recipes' | 'furniture';
+export type ModuleType = 'generic' | 'auto' | 'document' | 'split' | 'single-expense' | 'wallet' | 'gallery' | 'travel' | 'transport' | 'recipes' | 'furniture' | 'installments';
 export type FuelType = 'benzina' | 'diesel' | 'gpl' | 'metano' | 'ibrida' | 'elettrica';
 
 export interface Folder {
@@ -192,7 +192,22 @@ export interface TravelModule extends BaseModule {
   destinations: TravelDestination[];
 }
 
-export type Module = GenericModule | AutoModule | DocumentModule | SplitModule | SingleExpenseModule | WalletModule | GalleryModule | TravelModule | TransportModule | FurnitureModule;
+export interface InstallmentPayment {
+  id: string;
+  amount: number;
+  dueDate: string; // ISO date YYYY-MM-DD
+  isPaid: boolean;
+  paidDate?: string;
+}
+
+export interface InstallmentsModule extends BaseModule {
+  type: 'installments';
+  targetAmount: number;
+  finalDueDate: string; // ISO date YYYY-MM-DD
+  payments: InstallmentPayment[];
+}
+
+export type Module = GenericModule | AutoModule | DocumentModule | SplitModule | SingleExpenseModule | WalletModule | GalleryModule | TravelModule | TransportModule | FurnitureModule | InstallmentsModule;
 
 export interface DashboardState {
   modules: Module[];
