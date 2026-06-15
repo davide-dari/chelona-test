@@ -9,11 +9,12 @@ interface InstallmentsCardProps {
 }
 
 export const InstallmentsCard = ({ module, onEdit, onDelete }: InstallmentsCardProps) => {
-  const paidAmount = module.payments.filter(p => p.isPaid).reduce((acc, curr) => acc + curr.amount, 0);
+  const payments = module.payments || [];
+  const paidAmount = payments.filter(p => p.isPaid).reduce((acc, curr) => acc + curr.amount, 0);
   const progress = module.targetAmount > 0 ? (paidAmount / module.targetAmount) * 100 : 0;
   
   // Trova la prossima rata in scadenza
-  const nextPayment = module.payments.find(p => !p.isPaid);
+  const nextPayment = payments.find(p => !p.isPaid);
 
   return (
     <div 
@@ -62,7 +63,7 @@ export const InstallmentsCard = ({ module, onEdit, onDelete }: InstallmentsCardP
               </p>
             </div>
           </div>
-        ) : module.payments.length > 0 ? (
+        ) : payments.length > 0 ? (
           <div className="mt-4 p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl flex items-center gap-2 text-emerald-600">
             <CheckCircle2 className="w-4 h-4" />
             <span className="text-xs font-bold uppercase tracking-widest">Saldato!</span>
