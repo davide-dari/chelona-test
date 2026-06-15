@@ -14,6 +14,14 @@ export default defineConfig({
   },
   build: {
     target: 'chrome80',
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ['react', 'react-dom', 'motion', 'lucide-react'],
+          pdf: ['jspdf', 'pdf-lib'],
+        }
+      }
+    }
   },
   server: {
     hmr: true,
