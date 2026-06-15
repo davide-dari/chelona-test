@@ -19,24 +19,28 @@ export const InstallmentsScreen = ({ module, onClose, onSave, onDelete }: Instal
     payments: module.payments || []
   });
 
-  const [installmentsCount, setInstallmentsCount] = useState(
-    module.payments?.length > 0 ? module.payments.length : 3
-  );
-
   const [amountDisplay, setAmountDisplay] = useState(module.targetAmount ? String(module.targetAmount) : '');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
-  const generateInstallments = () => {
-    if (formData.targetAmount <= 0 || installmentsCount <= 0) return;
+  React.useEffect(() => {
+    if (formData.targetAmount <= 0) return;
     
-    const amountPerInstallment = formData.targetAmount / installmentsCount;
+    // Non ricalcolare se ci sono già rate pagate (per evitare di sovrascriverle)
+    const hasPaid = formData.payments.some(p => p.isPaid);
+    if (hasPaid) return;
+
+    const today = new Date();
     const dueDateObj = new Date(formData.finalDueDate);
+    
+    let monthsDiff = (dueDateObj.getFullYear() - today.getFullYear()) * 12 + dueDateObj.getMonth() - today.getMonth();
+    const count = Math.max(1, monthsDiff + 1);
+    
+    const amountPerInstallment = formData.targetAmount / count;
     const newPayments: InstallmentPayment[] = [];
     
-    // Genera a ritroso a partire dalla data finale
-    for (let i = 0; i < installmentsCount; i++) {
+    for (let i = 0; i < count; i++) {
       const pDate = new Date(dueDateObj);
-      pDate.setMonth(pDate.getMonth() - (installmentsCount - 1 - i));
+      pDate.setMonth(pDate.getMonth() - (count - 1 - i));
       
       newPayments.push({
         id: generateUUID(),
@@ -47,7 +51,7 @@ export const InstallmentsScreen = ({ module, onClose, onSave, onDelete }: Instal
     }
     
     setFormData(prev => ({ ...prev, payments: newPayments }));
-  };
+  }, [formData.targetAmount, formData.finalDueDate]);
 
   const togglePayment = (id: string) => {
     setFormData(prev => ({
@@ -153,40 +157,17 @@ export const InstallmentsScreen = ({ module, onClose, onSave, onDelete }: Instal
             />
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-            <div className="space-y-2">
-              <label className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] ml-1">
-                <Calendar className="w-3.5 h-3.5" /> Scadenza Finale
-              </label>
-              <input 
-                type="date"
-                value={formData.finalDueDate}
-                onChange={e => setFormData(prev => ({ ...prev, finalDueDate: e.target.value }))}
-                className="w-full p-5 bg-[var(--card-bg)] border border-[var(--border)] rounded-3xl outline-none focus:border-indigo-500 transition-all font-bold text-[var(--text-main)]"
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] ml-1">
-                <Target className="w-3.5 h-3.5" /> Numero di Rate
-              </label>
-              <div className="flex gap-2">
-                <input 
-                  type="number"
-                  min="1"
-                  max="120"
-                  value={installmentsCount}
-                  onChange={e => setInstallmentsCount(Number(e.target.value))}
-                  className="w-full p-5 bg-[var(--card-bg)] border border-[var(--border)] rounded-3xl outline-none focus:border-indigo-500 transition-all font-bold text-[var(--text-main)]"
-                />
-                <button 
-                  onClick={generateInstallments}
-                  className="bg-indigo-500 text-white px-5 rounded-3xl font-bold hover:bg-indigo-600 active:scale-95 transition-all shadow-sm flex items-center justify-center shrink-0"
-                  title="Genera Rate"
-                >
-                  <RefreshCw className="w-5 h-5" />
-                </button>
-              </div>
-            </div>
+          <div className="space-y-2">
+            <label className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] ml-1">
+              <Calendar className="w-3.5 h-3.5" /> Scadenza Finale
+            </label>
+            <input 
+              type="date"
+              value={formData.finalDueDate}
+              onChange={e => setFormData(prev => ({ ...prev, finalDueDate: e.target.value }))}
+              className="w-full p-5 bg-[var(--card-bg)] border border-[var(--border)] rounded-3xl outline-none focus:border-indigo-500 transition-all font-bold text-[var(--text-main)]"
+            />
+            <p className="text-[10px] text-[var(--text-muted)] ml-2 mt-2">Le rate verranno calcolate in automatico in base ai mesi rimanenti ({formData.payments.length} rate previste).</p>
           </div>
         </div>
 

@@ -4,7 +4,7 @@ import { InstallmentsModule } from '../types';
 
 interface InstallmentsCardProps {
   module: InstallmentsModule;
-  onEdit: (id: string) => void;
+  onEdit: (module: import('../types').Module) => void;
   onDelete: (module: import('../types').Module) => void;
 }
 
@@ -18,7 +18,7 @@ export const InstallmentsCard = ({ module, onEdit, onDelete }: InstallmentsCardP
   return (
     <div 
       className="bg-[var(--card-bg)] rounded-[2.5rem] p-6 shadow-sm border border-[var(--border)] hover:shadow-lg hover:shadow-indigo-500/10 hover:border-indigo-500/30 transition-all cursor-pointer group h-full flex flex-col relative overflow-hidden"
-      onClick={() => onEdit(module.id)}
+      onClick={() => onEdit(module)}
     >
       <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/5 rounded-bl-[100px] -z-10 transition-transform group-hover:scale-110" />
       
