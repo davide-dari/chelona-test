@@ -5,7 +5,7 @@ import { InstallmentsModule } from '../types';
 interface InstallmentsCardProps {
   module: InstallmentsModule;
   onEdit: (module: import('../types').Module) => void;
-  onDelete: (module: import('../types').Module) => void;
+  onDelete: (id: string) => void;
 }
 
 export const InstallmentsCard = ({ module, onEdit, onDelete }: InstallmentsCardProps) => {

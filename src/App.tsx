@@ -992,7 +992,7 @@ export default function App() {
       // Type (Category) filter - Disabled when a folder/group is selected
       if (!selectedFolderId && selectedType) {
         if (selectedType === 'split') {
-          if (m.type !== 'split' && m.type !== 'single-expense') return false;
+          if (m.type !== 'split' && m.type !== 'single-expense' && m.type !== 'installments') return false;
         } else if (m.type !== selectedType) {
           return false;
         }
