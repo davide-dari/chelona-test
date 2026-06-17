@@ -222,8 +222,10 @@ class UpdateService {
   }
 
   private compareVersions(v1: string, v2: string): number {
-    const parts1 = v1.split('.').map(Number);
-    const parts2 = v2.split('.').map(Number);
+    const cleanV1 = v1.replace(/[^0-9.]/g, '');
+    const cleanV2 = v2.replace(/[^0-9.]/g, '');
+    const parts1 = cleanV1.split('.').map(Number);
+    const parts2 = cleanV2.split('.').map(Number);
     for (let i = 0; i < 3; i++) {
       const p1 = parts1[i] || 0;
       const p2 = parts2[i] || 0;
