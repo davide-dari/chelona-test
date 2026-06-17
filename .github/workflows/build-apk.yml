@@ -46,8 +46,7 @@ jobs:
           chmod +x gradlew
           ./gradlew assembleRelease
           cd ..
-          VERSION=$(node -p "require('./package.json').version")
-          cp android/app/build/outputs/apk/release/app-release-unsigned.apk "Chelona_v$VERSION.apk" || cp android/app/build/outputs/apk/release/app-release.apk "Chelona_v$VERSION.apk"
+          cp android/app/build/outputs/apk/release/app-release-unsigned.apk "Chelona_${{ github.ref_name }}.apk" || cp android/app/build/outputs/apk/release/app-release.apk "Chelona_${{ github.ref_name }}.apk"
 
       - name: Extract Release Notes
         id: release_notes
