@@ -23,16 +23,19 @@ interface ChatSettings {
 }
 
 const DEFAULT_SETTINGS: ChatSettings = {
-  model: 'gemini-2.5-flash',
+  model: 'gemini-3.5-flash',
   systemPrompt: 'Sei Antigravity AI, un assistente virtuale hacker e super intelligente integrato dentro l\'app Chelona. Rispondi in italiano in modo chiaro, utile e conciso.'
 };
 
 const AVAILABLE_MODELS = [
-  { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash (Veloce)' },
-  { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro (Avanzato)' },
-  { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash' },
-  { id: 'gemini-2.0-pro-exp-02-05', name: 'Gemini 2.0 Pro Exp' },
-  { id: 'gemini-2.0-flash-thinking-exp-01-21', name: 'Gemini 2.0 Thinking (Ragionamento)' }
+  { id: 'gemini-3.5-flash', name: 'Gemini 3.5 Flash (Medium)' },
+  { id: 'gemini-3.5-flash-high', name: 'Gemini 3.5 Flash (High)' },
+  { id: 'gemini-3.5-flash-low', name: 'Gemini 3.5 Flash (Low)' },
+  { id: 'gemini-3.1-pro-low', name: 'Gemini 3.1 Pro (Low)' },
+  { id: 'gemini-3.1-pro', name: 'Gemini 3.1 Pro (High)' },
+  { id: 'claude-4-6-sonnet', name: 'Claude Sonnet 4.6 (Thinking)' },
+  { id: 'claude-4-6-opus', name: 'Claude Opus 4.6 (Thinking)' },
+  { id: 'gpt-oss-120b', name: 'GPT-OSS 120B (Medium)' }
 ];
 
 export function ChatInterface({ currentProfileId }: { currentProfileId: string }) {
