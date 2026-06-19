@@ -1798,7 +1798,7 @@ export default function App() {
               <div className="flex-1 overflow-y-auto w-full custom-scrollbar">
 
                   {isAssistantOpen ? (
-              <AntigravityAssistant onClose={() => setIsAssistantOpen(false)} />
+              <AntigravityAssistant currentProfileId={currentProfileId} onClose={() => setIsAssistantOpen(false)} />
             ) : isProfileOpen ? (
               <ProfileScreen
                 onClose={() => setIsProfileOpen(false)}

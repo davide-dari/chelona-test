@@ -5,7 +5,7 @@ import { FileExplorer } from './FileExplorer';
 import { Layers, Terminal, MessageSquare, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-export function AntigravityAssistant({ onClose }: { onClose: () => void }) {
+export function AntigravityAssistant({ currentProfileId, onClose }: { currentProfileId: string, onClose: () => void }) {
   const [activeTab, setActiveTab] = useState<'chat' | 'terminal' | 'files'>('chat');
 
   return (
@@ -98,7 +98,7 @@ export function AntigravityAssistant({ onClose }: { onClose: () => void }) {
 
         {/* Right Panel: Chat Interface */}
         <div className={`${activeTab === 'chat' ? 'flex' : 'hidden'} md:flex flex-1 h-full p-4 md:p-0`}>
-          <ChatInterface />
+          <ChatInterface currentProfileId={currentProfileId} />
         </div>
       </div>
     </motion.div>

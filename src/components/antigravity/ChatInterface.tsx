@@ -1,88 +1,247 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Bot, User, Code } from 'lucide-react';
+import { Send, Bot, User, Code, Key, Trash2, Settings, AlertCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface Message {
   id: string;
-  role: 'user' | 'assistant';
+  role: 'user' | 'assistant' | 'system';
   content: string;
   timestamp: Date;
   isAction?: boolean;
 }
 
-export function ChatInterface() {
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: '1',
-      role: 'assistant',
-      content: 'Hello! I am your Antigravity Assistant. I can help you understand your codebase, write code, and execute terminal commands. How can I assist you today?',
-      timestamp: new Date()
-    }
-  ]);
+export function ChatInterface({ currentProfileId }: { currentProfileId: string }) {
+  const apiKeyStorageKey = `chelona_antigravity_key_${currentProfileId}`;
+  const historyStorageKey = `chelona_antigravity_history_${currentProfileId}`;
+
+  const [apiKey, setApiKey] = useState<string>(() => localStorage.getItem(apiKeyStorageKey) || '');
+  const [inputKey, setInputKey] = useState('');
+  
+  const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    // Load history on mount
+    const saved = localStorage.getItem(historyStorageKey);
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        setMessages(parsed.map((m: any) => ({ ...m, timestamp: new Date(m.timestamp) })));
+      } catch (e) {
+        console.error("Failed to load chat history", e);
+      }
+    } else {
+      setMessages([
+        {
+          id: '1',
+          role: 'assistant',
+          content: 'Ciao! Sono il tuo assistente Antigravity integrato in Chelona. Come posso aiutarti oggi?',
+          timestamp: new Date()
+        }
+      ]);
+    }
+  }, [historyStorageKey]);
+
+  useEffect(() => {
+    if (messages.length > 0) {
+      localStorage.setItem(historyStorageKey, JSON.stringify(messages));
+      scrollToBottom();
+    }
+  }, [messages, historyStorageKey]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
+  const handleSaveKey = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (inputKey.trim()) {
+      localStorage.setItem(apiKeyStorageKey, inputKey.trim());
+      setApiKey(inputKey.trim());
+      setInputKey('');
+    }
+  };
 
-  const handleSend = () => {
-    if (!input.trim()) return;
+  const clearHistory = () => {
+    if (confirm('Vuoi davvero cancellare tutta la cronologia della chat?')) {
+      const initial = [{
+        id: Date.now().toString(),
+        role: 'assistant',
+        content: 'Cronologia cancellata. Come posso aiutarti ora?',
+        timestamp: new Date()
+      } as Message];
+      setMessages(initial);
+      localStorage.setItem(historyStorageKey, JSON.stringify(initial));
+      setShowSettings(false);
+    }
+  };
 
+  const removeKey = () => {
+    if (confirm('Vuoi rimuovere la chiave API di Gemini? Non potrai più usare l\'assistente finché non ne inserirai una nuova.')) {
+      localStorage.removeItem(apiKeyStorageKey);
+      setApiKey('');
+      setShowSettings(false);
+    }
+  };
+
+  const callGeminiAPI = async (userText: string, chatHistory: Message[]) => {
+    try {
+      // Convert history to Gemini format (user and model roles)
+      const contents = chatHistory
+        .filter(m => m.role === 'user' || m.role === 'assistant')
+        .map(m => ({
+          role: m.role === 'assistant' ? 'model' : 'user',
+          parts: [{ text: m.content }]
+        }));
+
+      // Append current message
+      contents.push({ role: 'user', parts: [{ text: userText }] });
+
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents,
+          generationConfig: { temperature: 0.7 },
+          systemInstruction: {
+             parts: [{ text: "Sei Antigravity AI, un assistente virtuale hacker e super intelligente integrato dentro l'app Chelona. Rispondi in italiano in modo chiaro, utile e conciso." }]
+          }
+        })
+      });
+
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.error?.message || `HTTP error ${response.status}`);
+      }
+
+      const data = await response.json();
+      if (data.candidates && data.candidates[0]?.content?.parts?.[0]?.text) {
+        return data.candidates[0].content.parts[0].text;
+      }
+      throw new Error("Invalid response format from Gemini");
+    } catch (err: any) {
+      console.error("Gemini API Error:", err);
+      throw err;
+    }
+  };
+
+  const handleSend = async () => {
+    if (!input.trim() || !apiKey) return;
+
+    const userText = input.trim();
     const newUserMsg: Message = {
       id: Date.now().toString(),
       role: 'user',
-      content: input.trim(),
+      content: userText,
       timestamp: new Date()
     };
 
+    const currentHistory = [...messages];
     setMessages(prev => [...prev, newUserMsg]);
     setInput('');
     setIsTyping(true);
+    setError(null);
 
-    // Mock response
-    setTimeout(() => {
-      setIsTyping(false);
+    try {
+      const reply = await callGeminiAPI(userText, currentHistory);
+      
       setMessages(prev => [
         ...prev,
         {
-          id: (Date.now() + 1).toString(),
+          id: Date.now().toString(),
           role: 'assistant',
-          content: 'Analyzing the codebase and preparing an execution plan...',
-          timestamp: new Date(),
-          isAction: true
-        },
-        {
-          id: (Date.now() + 2).toString(),
-          role: 'assistant',
-          content: `I've analyzed your request regarding "${newUserMsg.content}". I can help with that by exploring the relevant files and executing the necessary scripts.`,
+          content: reply,
           timestamp: new Date()
         }
       ]);
-    }, 1500);
+    } catch (err: any) {
+      setMessages(prev => [
+        ...prev,
+        {
+          id: Date.now().toString(),
+          role: 'system',
+          content: `Errore di connessione a Gemini API: ${err.message}`,
+          timestamp: new Date()
+        }
+      ]);
+    } finally {
+      setIsTyping(false);
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
       handleSend();
     }
   };
 
+  // Login Screen
+  if (!apiKey) {
+    return (
+      <div className="flex flex-col h-full rounded-2xl glass-panel overflow-hidden relative items-center justify-center p-6">
+         <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none -z-10">
+          <div className="absolute top-[-10%] right-[-5%] w-96 h-96 bg-blue-600/10 rounded-full blur-[100px] animate-pulse-glow"></div>
+          <div className="absolute bottom-[-10%] left-[-5%] w-80 h-80 bg-purple-600/10 rounded-full blur-[80px]"></div>
+        </div>
+
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="bg-gray-900/80 backdrop-blur-xl border border-gray-700/50 rounded-3xl p-8 max-w-md w-full shadow-2xl text-center"
+        >
+          <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full p-[2px] mx-auto mb-6">
+            <div className="bg-gray-900 w-full h-full rounded-full flex items-center justify-center">
+              <Key size={32} className="text-blue-400" />
+            </div>
+          </div>
+          <h2 className="text-2xl font-bold text-white mb-2">Connetti Gemini API</h2>
+          <p className="text-sm text-gray-400 mb-8">
+            Antigravity Assistant utilizza l'intelligenza artificiale di Google. 
+            Inserisci la tua chiave API di Gemini per abilitare la chat.
+          </p>
+
+          <form onSubmit={handleSaveKey} className="space-y-4">
+            <input
+              type="password"
+              value={inputKey}
+              onChange={(e) => setInputKey(e.target.value)}
+              placeholder="AIzaSy..."
+              className="w-full bg-black/40 border border-gray-700 rounded-xl px-4 py-3 text-white placeholder-gray-600 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-center font-mono"
+              required
+            />
+            <button 
+              type="submit"
+              className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-4 rounded-xl transition-colors shadow-lg shadow-blue-600/20"
+            >
+              Connetti Assistant
+            </button>
+          </form>
+
+          <p className="mt-6 text-xs text-gray-500">
+            La chiave viene salvata in sicurezza solo sul tuo dispositivo e associata a questo profilo.
+            Puoi ottenerne una gratuita da <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer" className="text-blue-400 hover:underline">Google AI Studio</a>.
+          </p>
+        </motion.div>
+      </div>
+    );
+  }
+
+  // Main Chat Interface
   return (
     <div className="flex flex-col h-full rounded-2xl glass-panel overflow-hidden relative">
-      {/* Decorative gradient background */}
       <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none -z-10">
         <div className="absolute top-[-10%] right-[-5%] w-96 h-96 bg-blue-600/10 rounded-full blur-[100px] animate-pulse-glow"></div>
         <div className="absolute bottom-[-10%] left-[-5%] w-80 h-80 bg-purple-600/10 rounded-full blur-[80px]"></div>
       </div>
 
       {/* Header */}
-      <div className="px-6 py-4 border-b border-[rgba(255,255,255,0.05)] flex items-center justify-between bg-black/20 backdrop-blur-md">
+      <div className="px-4 md:px-6 py-4 border-b border-[rgba(255,255,255,0.05)] flex items-center justify-between bg-black/20 backdrop-blur-md shrink-0">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center p-[2px]">
             <div className="bg-gray-900 w-full h-full rounded-full flex items-center justify-center">
@@ -93,42 +252,80 @@ export function ChatInterface() {
             <h2 className="text-lg font-semibold text-white tracking-wide">Antigravity AI</h2>
             <div className="flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
-              <span className="text-xs text-gray-400">Agent Online</span>
+              <span className="text-xs text-gray-400">Gemini Online</span>
             </div>
           </div>
+        </div>
+        
+        <div className="relative">
+          <button 
+            onClick={() => setShowSettings(!showSettings)}
+            className="p-2 hover:bg-gray-800 rounded-xl text-gray-400 transition-colors"
+          >
+            <Settings size={20} />
+          </button>
+
+          <AnimatePresence>
+            {showSettings && (
+              <motion.div 
+                initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                className="absolute right-0 top-12 w-56 bg-gray-900 border border-gray-700 rounded-xl shadow-2xl overflow-hidden z-50"
+              >
+                <div className="p-2">
+                  <button 
+                    onClick={clearHistory}
+                    className="w-full text-left px-3 py-2 text-sm text-gray-300 hover:bg-gray-800 hover:text-white rounded-lg flex items-center gap-2 transition-colors"
+                  >
+                    <Trash2 size={16} className="text-red-400" />
+                    Svuota Chat
+                  </button>
+                  <button 
+                    onClick={removeKey}
+                    className="w-full text-left px-3 py-2 text-sm text-gray-300 hover:bg-gray-800 hover:text-white rounded-lg flex items-center gap-2 transition-colors mt-1"
+                  >
+                    <Key size={16} className="text-blue-400" />
+                    Cambia Chiave API
+                  </button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </div>
 
       {/* Messages Area */}
-      <div className="flex-1 overflow-y-auto p-6 space-y-6">
-        <AnimatePresence>
+      <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6">
+        <AnimatePresence initial={false}>
           {messages.map((msg) => (
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3 }}
               key={msg.id}
-              className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} gap-4`}
+              className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} gap-3 md:gap-4`}
             >
-              {msg.role === 'assistant' && (
-                <div className="w-8 h-8 rounded-full bg-gray-800 flex items-center justify-center shrink-0 border border-gray-700">
-                  <Bot size={16} className={msg.isAction ? "text-purple-400" : "text-blue-400"} />
+              {msg.role !== 'user' && (
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 border ${msg.role === 'system' ? 'bg-red-900/30 border-red-700/50' : 'bg-gray-800 border-gray-700'}`}>
+                  {msg.role === 'system' ? <AlertCircle size={16} className="text-red-400" /> : <Bot size={16} className={msg.isAction ? "text-purple-400" : "text-blue-400"} />}
                 </div>
               )}
               
-              <div className={`max-w-[80%] rounded-2xl p-4 shadow-sm ${
+              <div className={`max-w-[85%] md:max-w-[80%] rounded-2xl p-4 shadow-sm ${
                 msg.role === 'user' 
                   ? 'bg-blue-600 text-white rounded-tr-sm' 
-                  : msg.isAction
-                    ? 'bg-purple-900/30 text-purple-200 border border-purple-500/30 rounded-tl-sm text-sm font-mono'
-                    : 'bg-gray-800/80 text-gray-200 border border-gray-700/50 rounded-tl-sm'
+                  : msg.role === 'system'
+                    ? 'bg-red-900/20 text-red-200 border border-red-500/30 rounded-tl-sm text-sm'
+                    : msg.isAction
+                      ? 'bg-purple-900/30 text-purple-200 border border-purple-500/30 rounded-tl-sm text-sm font-mono'
+                      : 'bg-gray-800/80 text-gray-200 border border-gray-700/50 rounded-tl-sm'
               }`}>
                 {msg.isAction && (
                   <div className="flex items-center gap-2 mb-2 text-xs font-semibold uppercase tracking-wider text-purple-400">
                     <Code size={14} /> Action Plan
                   </div>
                 )}
-                <p className="leading-relaxed whitespace-pre-wrap">{msg.content}</p>
+                <div className="leading-relaxed whitespace-pre-wrap break-words">{msg.content}</div>
                 <span className={`text-[10px] mt-2 block opacity-50 ${msg.role === 'user' ? 'text-right' : 'text-left'}`}>
                   {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                 </span>
@@ -159,15 +356,15 @@ export function ChatInterface() {
       </div>
 
       {/* Input Area */}
-      <div className="p-4 bg-black/20 border-t border-[rgba(255,255,255,0.05)] backdrop-blur-md">
+      <div className="p-3 md:p-4 bg-black/20 border-t border-[rgba(255,255,255,0.05)] backdrop-blur-md shrink-0">
         <div className="relative flex items-center">
           <input
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Type a command or ask a question..."
-            className="w-full bg-gray-900/50 text-gray-100 placeholder-gray-500 rounded-xl py-4 pl-4 pr-12 focus:outline-none focus:ring-2 focus:ring-blue-500/50 border border-gray-700/50 transition-all shadow-inner"
+            placeholder="Scrivi un messaggio per l'intelligenza artificiale..."
+            className="w-full bg-gray-900/50 text-gray-100 placeholder-gray-500 rounded-xl py-3 md:py-4 pl-4 pr-12 focus:outline-none focus:ring-2 focus:ring-blue-500/50 border border-gray-700/50 transition-all shadow-inner text-sm md:text-base"
           />
           <button 
             onClick={handleSend}
@@ -176,17 +373,6 @@ export function ChatInterface() {
           >
             <Send size={18} />
           </button>
-        </div>
-        <div className="mt-3 flex gap-2 overflow-x-auto pb-1 no-scrollbar">
-          {['Analyze src/', 'Run build', 'Find TODOs', 'List processes'].map(suggestion => (
-            <button 
-              key={suggestion} 
-              onClick={() => { setInput(suggestion); }}
-              className="text-xs px-3 py-1.5 rounded-full bg-gray-800 border border-gray-700 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors whitespace-nowrap"
-            >
-              {suggestion}
-            </button>
-          ))}
         </div>
       </div>
     </div>
