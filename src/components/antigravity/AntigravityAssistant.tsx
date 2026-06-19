@@ -13,7 +13,11 @@ export function AntigravityAssistant({ currentProfileId, onClose }: { currentPro
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: 20 }}
-      className="absolute inset-0 z-[100] flex flex-col bg-[#0b0f19] text-white overflow-hidden"
+      className="fixed inset-0 z-[100] flex flex-col bg-[#0b0f19] text-white overflow-hidden"
+      style={{
+        paddingTop: 'var(--safe-top)',
+        paddingBottom: 'env(safe-area-inset-bottom)'
+      }}
     >
       {/* Decorative Background Elements */}
       <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-blue-600/5 rounded-full blur-[120px] pointer-events-none z-0"></div>
