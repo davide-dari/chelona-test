@@ -28,3 +28,6 @@ project(':capawesome-team-capacitor-file-opener').projectDir = new File('../node
 
 include ':capgo-capacitor-native-biometric'
 project(':capgo-capacitor-native-biometric').projectDir = new File('../node_modules/@capgo/capacitor-native-biometric/android')
+
+include ':choreruiz-capacitor-node-js'
+project(':choreruiz-capacitor-node-js').projectDir = new File('../node_modules/@choreruiz/capacitor-node-js/android')
