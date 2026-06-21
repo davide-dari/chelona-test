@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, Bot, User, Code, Key, Trash2, Settings, AlertCircle, Menu, Plus, X, MessageSquare, Save } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { SignJWT, importPKCS8 } from 'jose';
 
 interface Message {
   id: string;
@@ -20,11 +21,15 @@ interface ChatSession {
 interface ChatSettings {
   model: string;
   systemPrompt: string;
+  provider: 'aistudio' | 'vertex';
+  vertexLocation: string;
 }
 
 const DEFAULT_SETTINGS: ChatSettings = {
   model: 'gemini-3.5-flash',
-  systemPrompt: 'Sei Antigravity AI, un assistente virtuale hacker e super intelligente integrato dentro l\'app Chelona. Rispondi in italiano in modo chiaro, utile e conciso.'
+  systemPrompt: 'Sei Antigravity AI, un assistente virtuale hacker e super intelligente integrato dentro l\'app Chelona. Rispondi in italiano in modo chiaro, utile e conciso.',
+  provider: 'aistudio',
+  vertexLocation: 'us-central1'
 };
 
 const AVAILABLE_MODELS = [
@@ -168,6 +173,32 @@ export function ChatInterface({ currentProfileId }: { currentProfileId: string }
     }
   };
 
+  const getVertexToken = async (serviceAccountJson: string): Promise<string> => {
+    const creds = JSON.parse(serviceAccountJson);
+    const privateKey = await importPKCS8(creds.private_key, 'RS256');
+    
+    const jwt = await new SignJWT({
+      iss: creds.client_email,
+      sub: creds.client_email,
+      aud: 'https://oauth2.googleapis.com/token',
+      scope: 'https://www.googleapis.com/auth/cloud-platform'
+    })
+      .setProtectedHeader({ alg: 'RS256', typ: 'JWT' })
+      .setIssuedAt()
+      .setExpirationTime('1h')
+      .sign(privateKey);
+
+    const res = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: `grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer&assertion=${jwt}`
+    });
+    
+    if (!res.ok) throw new Error('Failed to get Google Cloud OAuth token');
+    const data = await res.json();
+    return data.access_token;
+  };
+
   const callGeminiAPI = async (userText: string, chatHistory: Message[]) => {
     try {
       const contents = chatHistory
@@ -179,13 +210,32 @@ export function ChatInterface({ currentProfileId }: { currentProfileId: string }
 
       contents.push({ role: 'user', parts: [{ text: userText }] });
 
-      let url = `https://generativelanguage.googleapis.com/v1beta/models/${settings.model}:generateContent`;
+      let url = '';
       const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-      
-      if (apiKey.startsWith('AIza')) {
-        url += `?key=${apiKey}`;
+
+      if (settings.provider === 'vertex') {
+        let token = apiKey;
+        let projectId = '';
+        
+        // Se l'utente ha incollato un JSON Service Account
+        if (apiKey.trim().startsWith('{')) {
+          token = await getVertexToken(apiKey);
+          const creds = JSON.parse(apiKey);
+          projectId = creds.project_id;
+        } else {
+          throw new Error('Per Vertex AI è necessario incollare il file JSON del Service Account.');
+        }
+
+        url = `https://${settings.vertexLocation}-aiplatform.googleapis.com/v1/projects/${projectId}/locations/${settings.vertexLocation}/publishers/google/models/${settings.model}:generateContent`;
+        headers['Authorization'] = `Bearer ${token}`;
       } else {
-        headers['Authorization'] = `Bearer ${apiKey}`;
+        // AI Studio
+        url = `https://generativelanguage.googleapis.com/v1beta/models/${settings.model}:generateContent`;
+        if (apiKey.startsWith('AIza')) {
+          url += `?key=${apiKey}`;
+        } else {
+          headers['Authorization'] = `Bearer ${apiKey}`;
+        }
       }
 
       const response = await fetch(url, {
@@ -332,14 +382,41 @@ export function ChatInterface({ currentProfileId }: { currentProfileId: string }
           </div>
 
           <form onSubmit={handleSaveKey} className="space-y-4">
-            <input
-              type="password"
-              value={inputKey}
-              onChange={(e) => setInputKey(e.target.value)}
-              placeholder="ya29... o AIzaSy..."
-              className="w-full bg-black/40 border border-gray-700 rounded-xl px-4 py-3 text-white placeholder-gray-600 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-center font-mono text-sm sm:text-base"
-              required
-            />
+            <div className="flex bg-black/40 rounded-xl p-1 mb-4 border border-gray-700">
+              <button 
+                type="button"
+                onClick={() => setSettings({...settings, provider: 'aistudio'})}
+                className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-colors ${settings.provider === 'aistudio' ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-white'}`}
+              >
+                AI Studio
+              </button>
+              <button 
+                type="button"
+                onClick={() => setSettings({...settings, provider: 'vertex'})}
+                className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-colors ${settings.provider === 'vertex' ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-white'}`}
+              >
+                Vertex AI
+              </button>
+            </div>
+
+            {settings.provider === 'vertex' ? (
+              <textarea
+                value={inputKey}
+                onChange={(e) => setInputKey(e.target.value)}
+                placeholder="Incolla il JSON del Service Account..."
+                className="w-full bg-black/40 border border-gray-700 rounded-xl px-4 py-3 text-white placeholder-gray-600 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all font-mono text-xs sm:text-sm h-32 resize-none custom-scrollbar"
+                required
+              />
+            ) : (
+              <input
+                type="password"
+                value={inputKey}
+                onChange={(e) => setInputKey(e.target.value)}
+                placeholder="ya29... o AIzaSy..."
+                className="w-full bg-black/40 border border-gray-700 rounded-xl px-4 py-3 text-white placeholder-gray-600 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-center font-mono text-sm sm:text-base"
+                required
+              />
+            )}
             <button 
               type="submit"
               className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-4 rounded-xl transition-colors shadow-lg shadow-blue-600/20 text-sm sm:text-base"
@@ -349,7 +426,9 @@ export function ChatInterface({ currentProfileId }: { currentProfileId: string }
           </form>
 
           <p className="mt-6 text-[10px] sm:text-xs text-gray-500">
-            La chiave viene salvata in sicurezza solo sul tuo dispositivo e associata a questo profilo.
+            {settings.provider === 'vertex' 
+              ? "Il file JSON viene usato localmente sul tuo dispositivo per firmare i token OAuth a Vertex AI. Non viene inviato a terzi." 
+              : "La chiave viene salvata in sicurezza solo sul tuo dispositivo e associata a questo profilo."}
           </p>
         </motion.div>
       </div>
@@ -600,6 +679,22 @@ export function ChatInterface({ currentProfileId }: { currentProfileId: string }
                   />
                   <p className="mt-2 text-[10px] text-gray-500">Queste istruzioni definiscono il comportamento base dell'assistente.</p>
                 </div>
+
+                {/* Vertex AI Settings */}
+                {settings.provider === 'vertex' && (
+                  <div className="pt-4 border-t border-gray-800">
+                    <h3 className="text-sm font-medium text-gray-300 mb-3">Opzioni Vertex AI</h3>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">Google Cloud Location</label>
+                    <input 
+                      type="text"
+                      value={settings.vertexLocation}
+                      onChange={(e) => setSettings({...settings, vertexLocation: e.target.value})}
+                      placeholder="es. us-central1"
+                      className="w-full bg-gray-800 border border-gray-700 text-white rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors text-sm mb-2"
+                    />
+                    <p className="text-[10px] text-gray-500 mb-4">La regione del tuo progetto Google Cloud.</p>
+                  </div>
+                )}
 
                 {/* API Key Management */}
                 <div className="pt-4 border-t border-gray-800">
