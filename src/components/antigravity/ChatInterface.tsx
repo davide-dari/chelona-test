@@ -316,7 +316,7 @@ export function ChatInterface({ currentProfileId }: { currentProfileId: string }
           </p>
 
           <a 
-            href="https://antigravity.google/oauth" 
+            href="https://aistudio.google.com/app/apikey" 
             target="_blank" 
             rel="noreferrer"
             className="w-full flex items-center justify-center gap-3 bg-white text-gray-900 font-semibold py-3 px-4 rounded-xl hover:bg-gray-100 transition-colors mb-6 shadow-lg text-sm sm:text-base"
