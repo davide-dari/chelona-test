@@ -444,7 +444,7 @@ export function ChatInterface({ currentProfileId }: { currentProfileId: string }
       </div>
 
       {/* Header */}
-      <div className="px-4 py-3 sm:py-4 border-b border-[rgba(255,255,255,0.05)] flex items-center justify-between bg-black/20 backdrop-blur-md shrink-0">
+      <div className="px-4 py-3 sm:py-4 border-b border-gray-800 flex items-center justify-between bg-gray-900 shrink-0">
         <div className="flex items-center gap-3">
           <button 
             onClick={() => setShowHistory(true)}
@@ -452,16 +452,14 @@ export function ChatInterface({ currentProfileId }: { currentProfileId: string }
           >
             <Menu size={20} />
           </button>
-          <div className="hidden sm:flex w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 items-center justify-center p-[2px]">
-            <div className="bg-gray-900 w-full h-full rounded-full flex items-center justify-center">
-               <Bot size={20} className="text-blue-400" />
-            </div>
+          <div className="hidden sm:flex items-center justify-center">
+            <Terminal size={20} className="text-green-400" />
           </div>
           <div>
-            <h2 className="text-base sm:text-lg font-semibold text-white tracking-wide">Antigravity AI</h2>
+            <h2 className="text-base sm:text-lg font-mono font-bold text-green-400 tracking-wide">Antigravity CLI</h2>
             <div className="flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
-              <span className="text-[10px] sm:text-xs text-gray-400">Gemini Online ({settings.model})</span>
+              <span className="text-[10px] sm:text-xs text-gray-400 font-mono">v1.15.55 ({settings.model})</span>
             </div>
           </div>
         </div>
@@ -470,7 +468,7 @@ export function ChatInterface({ currentProfileId }: { currentProfileId: string }
           <button 
             onClick={() => setShowHistory(true)}
             className="hidden sm:flex p-2 hover:bg-gray-800 rounded-xl text-gray-400 transition-colors"
-            title="Storico Chat"
+            title="Storico Comandi"
           >
             <MessageSquare size={20} />
           </button>
@@ -546,45 +544,32 @@ export function ChatInterface({ currentProfileId }: { currentProfileId: string }
         </AnimatePresence>
 
         {/* Messages List */}
-        <div className="flex-1 flex flex-col h-full relative">
-          <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6">
+        <div className="flex-1 flex flex-col h-full relative bg-[#0d1117]">
+          <div className="flex-1 overflow-y-auto p-4 md:p-6 custom-scrollbar">
             <AnimatePresence initial={false}>
               {messages.map((msg) => (
                 <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
                   key={msg.id}
-                  className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} gap-3 md:gap-4`}
+                  className="mb-4 font-mono text-sm"
                 >
-                  {msg.role !== 'user' && (
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 border ${msg.role === 'system' ? 'bg-red-900/30 border-red-700/50' : 'bg-gray-800 border-gray-700'}`}>
-                      {msg.role === 'system' ? <AlertCircle size={16} className="text-red-400" /> : <Bot size={16} className={msg.isAction ? "text-purple-400" : "text-blue-400"} />}
+                  {msg.role === 'user' ? (
+                    <div className="text-gray-300">
+                      <span className="text-green-400 mr-2">user@antigravity:~$</span>
+                      {msg.content}
                     </div>
-                  )}
-                  
-                  <div className={`max-w-[85%] md:max-w-[80%] rounded-2xl p-4 shadow-sm ${
-                    msg.role === 'user' 
-                      ? 'bg-blue-600 text-white rounded-tr-sm' 
-                      : msg.role === 'system'
-                        ? 'bg-red-900/20 text-red-200 border border-red-500/30 rounded-tl-sm text-sm'
-                        : msg.isAction
-                          ? 'bg-purple-900/30 text-purple-200 border border-purple-500/30 rounded-tl-sm text-sm font-mono'
-                          : 'bg-gray-800/80 text-gray-200 border border-gray-700/50 rounded-tl-sm'
-                  }`}>
-                    {msg.isAction && (
-                      <div className="flex items-center gap-2 mb-2 text-xs font-semibold uppercase tracking-wider text-purple-400">
-                        <Code size={14} /> Action Plan
+                  ) : msg.role === 'system' ? (
+                    <div className="text-red-400">
+                      <span className="font-bold mr-2">[ERROR]</span>
+                      {msg.content}
+                    </div>
+                  ) : (
+                    <div className="text-blue-300">
+                      <div className="text-purple-400 font-bold mb-1">[Antigravity] &gt;</div>
+                      <div className="leading-relaxed whitespace-pre-wrap break-words pl-4 border-l-2 border-gray-800">
+                        {msg.content}
                       </div>
-                    )}
-                    <div className="leading-relaxed whitespace-pre-wrap break-words">{msg.content}</div>
-                    <span className={`text-[10px] mt-2 block opacity-50 ${msg.role === 'user' ? 'text-right' : 'text-left'}`}>
-                      {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </span>
-                  </div>
-
-                  {msg.role === 'user' && (
-                    <div className="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center shrink-0 border border-gray-600">
-                      <User size={16} className="text-gray-300" />
                     </div>
                   )}
                 </motion.div>
@@ -592,35 +577,30 @@ export function ChatInterface({ currentProfileId }: { currentProfileId: string }
             </AnimatePresence>
             
             {isTyping && (
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex gap-4">
-                 <div className="w-8 h-8 rounded-full bg-gray-800 flex items-center justify-center shrink-0 border border-gray-700">
-                    <Bot size={16} className="text-blue-400" />
-                  </div>
-                  <div className="bg-gray-800/80 border border-gray-700/50 rounded-2xl rounded-tl-sm p-4 flex items-center gap-2">
-                    <span className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
-                    <span className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
-                    <span className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
-                  </div>
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="font-mono text-sm text-gray-500 flex items-center gap-2">
+                 <span className="text-purple-400 font-bold">[Antigravity] &gt;</span> Elaborazione in corso<span className="animate-pulse">...</span>
               </motion.div>
             )}
             <div ref={messagesEndRef} />
           </div>
 
           {/* Input Area */}
-          <div className="p-3 md:p-4 bg-black/20 border-t border-[rgba(255,255,255,0.05)] backdrop-blur-md shrink-0">
-            <div className="relative flex items-center">
+          <div className="p-3 md:p-4 bg-gray-900 border-t border-gray-800 shrink-0">
+            <div className="relative flex items-center font-mono">
+              <span className="absolute left-4 text-green-400 text-sm hidden sm:inline">user@antigravity:~$</span>
+              <span className="absolute left-4 text-green-400 text-sm sm:hidden">~$</span>
               <input
                 type="text"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="Scrivi un messaggio per l'intelligenza artificiale..."
-                className="w-full bg-gray-900/50 text-gray-100 placeholder-gray-500 rounded-xl py-3 md:py-4 pl-4 pr-12 focus:outline-none focus:ring-2 focus:ring-blue-500/50 border border-gray-700/50 transition-all shadow-inner text-sm md:text-base"
+                placeholder=""
+                className="w-full bg-transparent text-gray-100 placeholder-gray-600 py-2 pl-12 sm:pl-48 pr-12 focus:outline-none transition-all text-sm md:text-base"
               />
               <button 
                 onClick={handleSend}
                 disabled={!input.trim() || isTyping}
-                className="absolute right-2 p-2 rounded-lg bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:hover:bg-blue-600 text-white transition-colors"
+                className="absolute right-2 p-2 rounded-lg text-green-400 hover:text-green-300 disabled:opacity-50 transition-colors"
               >
                 <Send size={18} />
               </button>
