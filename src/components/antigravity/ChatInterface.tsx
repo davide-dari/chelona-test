@@ -2,6 +2,10 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Send, Bot, User, Code, Key, Trash2, Settings, AlertCircle, Menu, Plus, X, MessageSquare, Save } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { SignJWT, importPKCS8 } from 'jose';
+import { Device } from '@capacitor/device';
+import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
+import { LocalNotifications } from '@capacitor/local-notifications';
+import { Share } from '@capacitor/share';
 
 interface Message {
   id: string;
@@ -199,37 +203,53 @@ export function ChatInterface({ currentProfileId }: { currentProfileId: string }
     return data.access_token;
   };
 
-  const callGeminiAPI = async (userText: string, chatHistory: Message[]) => {
-    try {
-      const contents = chatHistory
-        .filter(m => m.role === 'user' || m.role === 'assistant')
-        .map(m => ({
-          role: m.role === 'assistant' ? 'model' : 'user',
-          parts: [{ text: m.content }]
-        }));
+  const callGeminiAPI = async (initialContents: any[], onAction: (msg: string) => void): Promise<string> => {
+    let contents = [...initialContents];
+    
+    const tools = [{
+      functionDeclarations: [
+        { name: 'get_device_info', description: 'Ottiene informazioni sul dispositivo corrente (batteria, os, piattaforma)' },
+        { name: 'list_directory', description: 'Elenca i file presenti nella cartella Documenti del telefono' },
+        { 
+          name: 'read_file', 
+          description: 'Legge il contenuto di un file testuale dalla cartella Documenti',
+          parameters: { type: 'OBJECT', properties: { filename: { type: 'STRING' } }, required: ['filename'] }
+        },
+        { 
+          name: 'write_file', 
+          description: 'Crea o sovrascrive un file testuale nella cartella Documenti',
+          parameters: { type: 'OBJECT', properties: { filename: { type: 'STRING' }, data: { type: 'STRING' } }, required: ['filename', 'data'] }
+        },
+        { 
+          name: 'push_notification', 
+          description: 'Invia una notifica push locale al dispositivo',
+          parameters: { type: 'OBJECT', properties: { title: { type: 'STRING' }, body: { type: 'STRING' } }, required: ['title', 'body'] }
+        },
+        { 
+          name: 'share_content', 
+          description: 'Apre la schermata di condivisione nativa del telefono per condividere testo',
+          parameters: { type: 'OBJECT', properties: { title: { type: 'STRING' }, text: { type: 'STRING' }, url: { type: 'STRING' } }, required: ['text'] }
+        }
+      ]
+    }];
 
-      contents.push({ role: 'user', parts: [{ text: userText }] });
-
+    // Function Execution Loop (max 5 iterations to prevent infinite loops)
+    for (let iteration = 0; iteration < 5; iteration++) {
       let url = '';
       const headers: Record<string, string> = { 'Content-Type': 'application/json' };
 
       if (settings.provider === 'vertex') {
         let token = apiKey;
         let projectId = '';
-        
-        // Se l'utente ha incollato un JSON Service Account
         if (apiKey.trim().startsWith('{')) {
           token = await getVertexToken(apiKey);
-          const creds = JSON.parse(apiKey);
-          projectId = creds.project_id;
+          projectId = JSON.parse(apiKey).project_id;
         } else {
           throw new Error('Per Vertex AI è necessario incollare il file JSON del Service Account.');
         }
-
         url = `https://${settings.vertexLocation}-aiplatform.googleapis.com/v1/projects/${projectId}/locations/${settings.vertexLocation}/publishers/google/models/${settings.model}:generateContent`;
         headers['Authorization'] = `Bearer ${token}`;
       } else {
-        // AI Studio
         url = `https://generativelanguage.googleapis.com/v1beta/models/${settings.model}:generateContent`;
         if (apiKey.startsWith('AIza')) {
           url += `?key=${apiKey}`;
@@ -243,10 +263,9 @@ export function ChatInterface({ currentProfileId }: { currentProfileId: string }
         headers,
         body: JSON.stringify({
           contents,
+          tools,
           generationConfig: { temperature: 0.7 },
-          systemInstruction: {
-             parts: [{ text: settings.systemPrompt }]
-          }
+          systemInstruction: { parts: [{ text: settings.systemPrompt }] }
         })
       });
 
@@ -256,14 +275,64 @@ export function ChatInterface({ currentProfileId }: { currentProfileId: string }
       }
 
       const data = await response.json();
-      if (data.candidates && data.candidates[0]?.content?.parts?.[0]?.text) {
-        return data.candidates[0].content.parts[0].text;
+      const part = data.candidates?.[0]?.content?.parts?.[0];
+      
+      if (!part) throw new Error("Invalid response format from Gemini");
+
+      if (part.functionCall) {
+        const call = part.functionCall;
+        onAction(`Esecuzione comando di sistema: ${call.name}...`);
+        
+        // Execute local Capacitor tool
+        let toolResult: any;
+        try {
+          switch (call.name) {
+            case 'get_device_info':
+              const info = await Device.getInfo();
+              const batt = await Device.getBatteryInfo();
+              toolResult = { platform: info.platform, os: info.osVersion, model: info.model, battery: batt.batteryLevel };
+              break;
+            case 'list_directory':
+              const dirRes = await Filesystem.readdir({ path: '', directory: Directory.Documents }).catch(() => ({ files: [] }));
+              toolResult = { files: dirRes.files.map((f:any) => f.name) };
+              break;
+            case 'read_file':
+              const readRes = await Filesystem.readFile({ path: call.args.filename, directory: Directory.Documents, encoding: Encoding.UTF8 });
+              toolResult = { content: readRes.data };
+              break;
+            case 'write_file':
+              await Filesystem.writeFile({ path: call.args.filename, data: call.args.data, directory: Directory.Documents, encoding: Encoding.UTF8 });
+              toolResult = { success: true };
+              break;
+            case 'push_notification':
+              await LocalNotifications.requestPermissions();
+              await LocalNotifications.schedule({
+                notifications: [{ title: call.args.title || 'Antigravity', body: call.args.body, id: Date.now(), schedule: { at: new Date(Date.now() + 1000) } }]
+              });
+              toolResult = { success: true };
+              break;
+            case 'share_content':
+              await Share.share({ title: call.args.title, text: call.args.text, url: call.args.url });
+              toolResult = { success: true };
+              break;
+            default:
+              toolResult = { error: 'Comando non supportato' };
+          }
+        } catch (e:any) {
+          toolResult = { error: e.message };
+        }
+
+        // Update conversation with tool call and result
+        contents.push({ role: 'model', parts: [{ functionCall: call }] });
+        contents.push({ role: 'function', parts: [{ functionResponse: { name: call.name, response: toolResult } }] });
+        // Continue loop...
+      } else if (part.text) {
+        return part.text;
+      } else {
+        throw new Error("Empty response");
       }
-      throw new Error("Invalid response format from Gemini");
-    } catch (err: any) {
-      console.error("Gemini API Error:", err);
-      throw err;
     }
+    throw new Error("Too many tool iterations");
   };
 
   const handleSend = async () => {
@@ -297,7 +366,33 @@ export function ChatInterface({ currentProfileId }: { currentProfileId: string }
     setIsTyping(true);
 
     try {
-      const reply = await callGeminiAPI(userText, currentHistory);
+      const apiContents = currentHistory
+        .filter(m => m.role === 'user' || m.role === 'assistant')
+        .map(m => ({
+          role: m.role === 'assistant' ? 'model' : 'user',
+          parts: [{ text: m.content }]
+        }));
+      apiContents.push({ role: 'user', parts: [{ text: userText }] });
+
+      const onAction = (actionMsg: string) => {
+        setSessions(prev => prev.map(s => {
+          if (s.id === activeSessionId) {
+            return {
+              ...s,
+              messages: [...s.messages, {
+                id: Date.now().toString() + Math.random(),
+                role: 'assistant',
+                content: actionMsg,
+                timestamp: new Date(),
+                isAction: true
+              }]
+            };
+          }
+          return s;
+        }));
+      };
+
+      const reply = await callGeminiAPI(apiContents, onAction);
       
       setSessions(prev => prev.map(s => {
         if (s.id === activeSessionId) {
@@ -566,8 +661,10 @@ export function ChatInterface({ currentProfileId }: { currentProfileId: string }
                     </div>
                   ) : (
                     <div className="text-blue-300">
-                      <div className="text-purple-400 font-bold mb-1">[Antigravity] &gt;</div>
-                      <div className="leading-relaxed whitespace-pre-wrap break-words pl-4 border-l-2 border-gray-800">
+                      <div className="text-purple-400 font-bold mb-1">
+                        {msg.isAction ? '[Antigravity Core]' : '[Antigravity] >'}
+                      </div>
+                      <div className={`leading-relaxed whitespace-pre-wrap break-words pl-4 border-l-2 ${msg.isAction ? 'border-purple-500 text-purple-300 italic' : 'border-gray-800'}`}>
                         {msg.content}
                       </div>
                     </div>
