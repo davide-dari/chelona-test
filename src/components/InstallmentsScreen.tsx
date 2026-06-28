@@ -21,6 +21,7 @@ export const InstallmentsScreen = ({ module, onClose, onSave, onDelete }: Instal
 
   const [amountDisplay, setAmountDisplay] = useState(module.targetAmount ? String(module.targetAmount) : '');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [selectedPayment, setSelectedPayment] = useState<InstallmentPayment | null>(null);
 
   React.useEffect(() => {
     if (formData.targetAmount <= 0) return;
@@ -28,6 +29,9 @@ export const InstallmentsScreen = ({ module, onClose, onSave, onDelete }: Instal
     // Non ricalcolare se ci sono già rate pagate (per evitare di sovrascriverle)
     const hasPaid = formData.payments.some(p => p.isPaid);
     if (hasPaid) return;
+
+    // Se ci sono rate e la data finale non è cambiata, evita ricalcoli distruttivi non voluti
+    if (formData.payments.length > 0 && formData.finalDueDate === module.finalDueDate) return;
 
     const today = new Date();
     const dueDateObj = new Date(formData.finalDueDate);
@@ -60,6 +64,31 @@ export const InstallmentsScreen = ({ module, onClose, onSave, onDelete }: Instal
         p.id === id ? { ...p, isPaid: !p.isPaid, paidDate: !p.isPaid ? new Date().toISOString() : undefined } : p
       )
     }));
+  };
+
+  const handleContextMenu = (e: React.MouseEvent | React.TouchEvent, p: InstallmentPayment) => {
+    e.preventDefault();
+    setSelectedPayment({ ...p });
+  };
+
+  const handleUpdatePayment = () => {
+    if (!selectedPayment) return;
+    setFormData(prev => ({
+      ...prev,
+      payments: prev.payments.map(p => p.id === selectedPayment.id ? selectedPayment : p)
+    }));
+    setSelectedPayment(null);
+  };
+
+  const handleDeletePayment = () => {
+    if (!selectedPayment) return;
+    if (confirm('Vuoi davvero eliminare questa rata?')) {
+      setFormData(prev => ({
+        ...prev,
+        payments: prev.payments.filter(p => p.id !== selectedPayment.id)
+      }));
+      setSelectedPayment(null);
+    }
   };
 
   const handleSave = () => {
@@ -181,13 +210,14 @@ export const InstallmentsScreen = ({ module, onClose, onSave, onDelete }: Instal
                 <div 
                   key={p.id}
                   onClick={() => togglePayment(p.id)}
-                  className={`flex items-center justify-between p-5 rounded-3xl border transition-all cursor-pointer ${
+                  onContextMenu={(e) => handleContextMenu(e, p)}
+                  className={`flex items-center justify-between p-5 rounded-3xl border transition-all cursor-pointer select-none ${
                     p.isPaid 
                       ? 'bg-emerald-500/10 border-emerald-500/30' 
                       : 'bg-[var(--card-bg)] border-[var(--border)] hover:border-indigo-500/50'
                   }`}
                 >
-                  <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-4 pointer-events-none">
                     {p.isPaid ? (
                       <CheckCircle2 className="w-6 h-6 text-emerald-500" />
                     ) : (
@@ -202,7 +232,7 @@ export const InstallmentsScreen = ({ module, onClose, onSave, onDelete }: Instal
                       </p>
                     </div>
                   </div>
-                  <div className={`text-lg font-black ${p.isPaid ? 'text-emerald-600' : 'text-indigo-600'}`}>
+                  <div className={`text-lg font-black pointer-events-none ${p.isPaid ? 'text-emerald-600' : 'text-indigo-600'}`}>
                     €{p.amount.toFixed(2)}
                   </div>
                 </div>
@@ -213,11 +243,64 @@ export const InstallmentsScreen = ({ module, onClose, onSave, onDelete }: Instal
 
       </div>
 
+      {selectedPayment && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 p-4">
+          <div className="bg-[var(--card-bg)] rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-[var(--border)] space-y-4">
+            <h3 className="text-lg font-bold text-[var(--text-main)]">Modifica Rata</h3>
+            
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-[var(--text-muted)]">Importo (€)</label>
+              <input 
+                type="number"
+                step="0.01"
+                value={selectedPayment.amount}
+                onChange={e => setSelectedPayment({ ...selectedPayment, amount: Number(e.target.value) || 0 })}
+                className="w-full p-4 bg-[var(--bg)] border border-[var(--border)] rounded-2xl outline-none focus:border-indigo-500 font-bold text-[var(--text-main)]"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-[var(--text-muted)]">Data Scadenza</label>
+              <input 
+                type="date"
+                value={selectedPayment.dueDate}
+                onChange={e => setSelectedPayment({ ...selectedPayment, dueDate: e.target.value })}
+                className="w-full p-4 bg-[var(--bg)] border border-[var(--border)] rounded-2xl outline-none focus:border-indigo-500 font-bold text-[var(--text-main)]"
+              />
+            </div>
+
+            <div className="pt-2">
+              <button 
+                onClick={handleDeletePayment}
+                className="w-full py-3 bg-red-500/10 text-red-500 rounded-xl font-bold mb-3 hover:bg-red-500/20 transition-colors"
+              >
+                Elimina Rata
+              </button>
+              
+              <div className="flex gap-3">
+                <button 
+                  onClick={() => setSelectedPayment(null)} 
+                  className="flex-1 py-3 bg-[var(--surface-variant)] rounded-xl font-bold text-[var(--text-main)]"
+                >
+                  Annulla
+                </button>
+                <button 
+                  onClick={handleUpdatePayment} 
+                  className="flex-1 py-3 bg-indigo-500 text-white rounded-xl font-bold"
+                >
+                  Salva
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showDeleteConfirm && onDelete && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 p-4">
           <div className="bg-[var(--card-bg)] rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-[var(--border)]">
             <h3 className="text-lg font-bold text-[var(--text-main)] mb-2">Elimina Rateizzazione</h3>
-            <p className="text-sm text-[var(--text-muted)] mb-6">Vuoi davvero eliminare questo piano di pagamento? L'azione è irreversibile.</p>
+            <p className="text-sm text-[var(--text-muted)] mb-6">Vuoi davvero eliminare questo piano di pagamento? L'action è irreversibile.</p>
             <div className="flex gap-3">
               <button onClick={() => setShowDeleteConfirm(false)} className="flex-1 py-3 bg-[var(--surface-variant)] rounded-xl font-bold text-[var(--text-main)]">Annulla</button>
               <button onClick={() => onDelete(module.id)} className="flex-1 py-3 bg-red-500 text-white rounded-xl font-bold">Elimina</button>
