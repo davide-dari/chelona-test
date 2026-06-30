@@ -15,44 +15,108 @@ interface ModuleWrapperProps {
   children: React.ReactNode;
 }
 
-const ModuleWrapper = ({ module, onDelete, onEdit, onShare, children }: ModuleWrapperProps) => (
-  <div className="module-card relative group flex flex-col bg-[var(--card-bg)] backdrop-blur-3xl rounded-[2.5rem] border border-[var(--border)] shadow-[0_8px_30px_rgba(0,0,0,0.04)] hover:shadow-[0_20px_50px_rgba(0,0,0,0.12)] transition-all p-5 sm:p-6 overflow-hidden">
-    <div className="flex items-center justify-end mb-3 shrink-0">
-      <div className="flex items-center gap-1.5 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all shrink-0">
-        {onShare && (
-          <button
-            onClick={(e) => { e.stopPropagation(); onShare(module); }}
-            className="p-2 sm:p-1.5 hover:bg-[var(--bg)] text-[var(--text-muted)] hover:text-indigo-500 rounded-lg transition-all"
-            title="Condividi via QR"
-          >
-            <QrCode className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
-          </button>
-        )}
-        {onEdit && (
-          <button
-            onClick={() => onEdit(module)}
-            className="p-2 sm:p-1.5 hover:bg-[var(--bg)] text-[var(--text-muted)] hover:text-[var(--accent)] rounded-lg transition-all"
-            title="Gestisci"
-          >
-            <Pencil className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
-          </button>
-        )}
-        {onDelete && (
-          <button
-            onClick={() => onDelete(module.id)}
-            className="p-2 sm:p-1.5 hover:bg-red-500/10 text-[var(--text-muted)] hover:text-red-500 rounded-lg transition-all"
-            title="Elimina"
-          >
-            <Trash2 className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
-          </button>
-        )}
+const ModuleWrapper = ({ module, onDelete, onEdit, onShare, children }: ModuleWrapperProps) => {
+  const [showMenu, setShowMenu] = useState(false);
+
+  const handleContextMenu = (e: React.MouseEvent | React.TouchEvent) => {
+    e.preventDefault();
+    setShowMenu(true);
+  };
+
+  return (
+    <div 
+      className="module-card relative group flex flex-col bg-[var(--card-bg)] backdrop-blur-3xl rounded-[2.5rem] border border-[var(--border)] shadow-[0_8px_30px_rgba(0,0,0,0.04)] hover:shadow-[0_20px_50px_rgba(0,0,0,0.12)] transition-all p-5 sm:p-6 overflow-hidden"
+      onContextMenu={handleContextMenu}
+    >
+      <div className="flex items-center justify-end mb-3 shrink-0">
+        <div className="flex items-center gap-1.5 opacity-0 md:group-hover:opacity-100 transition-all shrink-0">
+          {onShare && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onShare(module); }}
+              className="p-2 sm:p-1.5 hover:bg-[var(--bg)] text-[var(--text-muted)] hover:text-indigo-500 rounded-lg transition-all"
+              title="Condividi via QR"
+            >
+              <QrCode className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
+            </button>
+          )}
+          {onEdit && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onEdit(module); }}
+              className="p-2 sm:p-1.5 hover:bg-[var(--bg)] text-[var(--text-muted)] hover:text-[var(--accent)] rounded-lg transition-all"
+              title="Gestisci"
+            >
+              <Pencil className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
+            </button>
+          )}
+          {onDelete && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onDelete(module.id); }}
+              className="p-2 sm:p-1.5 hover:bg-red-500/10 text-[var(--text-muted)] hover:text-red-500 rounded-lg transition-all"
+              title="Elimina"
+            >
+              <Trash2 className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
+            </button>
+          )}
+        </div>
       </div>
+      
+      <div className="flex-1 min-h-0 pointer-events-auto">
+        {children}
+      </div>
+
+      <AnimatePresence>
+        {showMenu && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="absolute inset-0 z-50 bg-black/80 backdrop-blur-md flex flex-col items-center justify-center p-6 gap-3"
+            onClick={(e) => { e.stopPropagation(); setShowMenu(false); }}
+          >
+            <h4 className="text-white font-bold text-lg mb-2 text-center line-clamp-1">{module.title || 'Opzioni'}</h4>
+            
+            {onEdit && (
+              <button 
+                onClick={(e) => { e.stopPropagation(); setShowMenu(false); onEdit(module); }}
+                className="w-full flex items-center justify-center gap-2 bg-indigo-500 text-white py-3 px-4 rounded-xl font-bold shadow-lg active:scale-95 transition-transform"
+              >
+                <Pencil className="w-5 h-5" />
+                <span>Modifica</span>
+              </button>
+            )}
+
+            {onShare && (
+              <button 
+                onClick={(e) => { e.stopPropagation(); setShowMenu(false); onShare(module); }}
+                className="w-full flex items-center justify-center gap-2 bg-emerald-500 text-white py-3 px-4 rounded-xl font-bold shadow-lg active:scale-95 transition-transform"
+              >
+                <QrCode className="w-5 h-5" />
+                <span>Condividi</span>
+              </button>
+            )}
+
+            {onDelete && (
+              <button 
+                onClick={(e) => { e.stopPropagation(); setShowMenu(false); onDelete(module.id); }}
+                className="w-full flex items-center justify-center gap-2 bg-red-500/20 text-red-500 py-3 px-4 rounded-xl font-bold border border-red-500/30 active:scale-95 transition-transform"
+              >
+                <Trash2 className="w-5 h-5" />
+                <span>Elimina</span>
+              </button>
+            )}
+            
+            <button 
+              onClick={(e) => { e.stopPropagation(); setShowMenu(false); }}
+              className="mt-4 p-3 bg-white/10 hover:bg-white/20 text-white rounded-full transition-colors"
+            >
+              <X className="w-6 h-6" />
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
-    <div className="flex-1 min-h-0">
-      {children}
-    </div>
-  </div>
-);
+  );
+};
 
 export const DocumentCard = ({ module, onDelete, onEdit, onShare }: { module: DocumentModule; onDelete: (id: string) => void; onEdit: (m: Module) => void; onShare: (m: Module) => void; }) => {
   const isTaxCode = module.documentType === 'tax_code';

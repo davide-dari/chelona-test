@@ -1,5 +1,6 @@
 import React from 'react';
-import { Target, CheckCircle2 } from 'lucide-react';
+import { Target, CheckCircle2, Pencil, Trash2, X } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 import { InstallmentsModule } from '../types';
 
 interface InstallmentsCardProps {
@@ -9,6 +10,7 @@ interface InstallmentsCardProps {
 }
 
 export const InstallmentsCard = ({ module, onEdit, onDelete }: InstallmentsCardProps) => {
+  const [showMenu, setShowMenu] = React.useState(false);
   const payments = module.payments || [];
   const paidAmount = payments.filter(p => p.isPaid).reduce((acc, curr) => acc + curr.amount, 0);
   const progress = module.targetAmount > 0 ? (paidAmount / module.targetAmount) * 100 : 0;
@@ -16,10 +18,16 @@ export const InstallmentsCard = ({ module, onEdit, onDelete }: InstallmentsCardP
   // Trova la prossima rata in scadenza
   const nextPayment = payments.find(p => !p.isPaid);
 
+  const handleContextMenu = (e: React.MouseEvent | React.TouchEvent) => {
+    e.preventDefault();
+    setShowMenu(true);
+  };
+
   return (
     <div 
       className="bg-[var(--card-bg)] rounded-[2.5rem] p-6 shadow-sm border border-[var(--border)] hover:shadow-lg hover:shadow-indigo-500/10 hover:border-indigo-500/30 transition-all cursor-pointer group h-full flex flex-col relative overflow-hidden"
       onClick={() => onEdit(module)}
+      onContextMenu={handleContextMenu}
     >
       <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/5 rounded-bl-[100px] -z-10 transition-transform group-hover:scale-110" />
       
@@ -70,6 +78,43 @@ export const InstallmentsCard = ({ module, onEdit, onDelete }: InstallmentsCardP
           </div>
         ) : null}
       </div>
+
+      <AnimatePresence>
+        {showMenu && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="absolute inset-0 z-50 bg-black/80 backdrop-blur-md flex flex-col items-center justify-center p-6 gap-3"
+            onClick={(e) => { e.stopPropagation(); setShowMenu(false); }}
+          >
+            <h4 className="text-white font-bold text-lg mb-2 text-center line-clamp-1">{module.title || 'Opzioni'}</h4>
+            
+            <button 
+              onClick={(e) => { e.stopPropagation(); setShowMenu(false); onEdit(module); }}
+              className="w-full flex items-center justify-center gap-2 bg-indigo-500 text-white py-3 px-4 rounded-xl font-bold shadow-lg active:scale-95 transition-transform"
+            >
+              <Pencil className="w-5 h-5" />
+              <span>Modifica</span>
+            </button>
+
+            <button 
+              onClick={(e) => { e.stopPropagation(); setShowMenu(false); onDelete(module.id); }}
+              className="w-full flex items-center justify-center gap-2 bg-red-500/20 text-red-500 py-3 px-4 rounded-xl font-bold border border-red-500/30 active:scale-95 transition-transform"
+            >
+              <Trash2 className="w-5 h-5" />
+              <span>Elimina</span>
+            </button>
+            
+            <button 
+              onClick={(e) => { e.stopPropagation(); setShowMenu(false); }}
+              className="mt-4 p-3 bg-white/10 hover:bg-white/20 text-white rounded-full transition-colors"
+            >
+              <X className="w-6 h-6" />
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
