@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Wallet, Receipt, Calendar, Tag, FileText, Camera, Paperclip, Check, X, Trash2, Eye, RefreshCw } from 'lucide-react';
+import { ArrowLeft, Wallet, Receipt, Calendar, Tag, FileText, Camera, Paperclip, Check, X, Trash2, Eye, RefreshCw, Pencil } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { SingleExpenseModule } from '../types';
 import { EXPENSE_CATEGORIES, CURRENCIES } from '../constants/expenses';
@@ -33,6 +33,7 @@ export const SingleExpenseScreen = ({ module, onClose, onSave, onSaveToSandbox, 
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [shouldArchive, setShouldArchive] = useState(false);
+  const [isEditing, setIsEditing] = useState(module.amount === 0);
 
   const handleSave = async () => {
     if (formData.amount <= 0 || !formData.description) {
@@ -83,178 +84,273 @@ export const SingleExpenseScreen = ({ module, onClose, onSave, onSaveToSandbox, 
               <Trash2 className="w-6 h-6" />
             </button>
           )}
-          <button 
-            onClick={handleSave}
-            disabled={isProcessing}
-            className="flex items-center gap-2 bg-emerald-500 text-white px-6 py-3 rounded-2xl font-bold shadow-lg shadow-emerald-500/20 active:scale-95 transition-all disabled:opacity-50"
-          >
-            {isProcessing ? <RefreshCw className="w-5 h-5 animate-spin" /> : <Check className="w-5 h-5" />}
-            <span>Salva</span>
-          </button>
+          {isEditing ? (
+            <button 
+              onClick={() => {
+                if (formData.amount <= 0 || !formData.description) {
+                  alert("Inserisci un importo valido e una descrizione.");
+                  return;
+                }
+                setIsEditing(false);
+              }}
+              className="flex items-center gap-2 bg-emerald-500 text-white px-6 py-3 rounded-2xl font-bold shadow-lg shadow-emerald-500/20 active:scale-95 transition-all"
+            >
+              <Check className="w-5 h-5" />
+              <span>Fine Modifica</span>
+            </button>
+          ) : (
+            <button 
+              onClick={handleSave}
+              disabled={isProcessing}
+              className="flex items-center gap-2 bg-emerald-500 text-white px-6 py-3 rounded-2xl font-bold shadow-lg shadow-emerald-500/20 active:scale-95 transition-all disabled:opacity-50"
+            >
+              {isProcessing ? <RefreshCw className="w-5 h-5 animate-spin" /> : <Check className="w-5 h-5" />}
+              <span>Salva</span>
+            </button>
+          )}
         </div>
       </header>
 
       {/* Main Content */}
       <div className="flex-1 overflow-y-auto w-full max-w-2xl mx-auto p-6 space-y-8 custom-scrollbar">
         
-        {/* Amount Section */}
-        <div className="bg-[var(--card-bg)] p-8 rounded-[2.5rem] border border-[var(--border)] shadow-sm text-center">
-          <label className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--text-muted)] mb-4 block">Importo Spesa</label>
-          <div className="relative flex items-center justify-center gap-3">
-            <select 
-              value={formData.currency}
-              onChange={e => setFormData(prev => ({ ...prev, currency: e.target.value }))}
-              className="bg-[var(--bg)] border border-[var(--border)] rounded-xl px-2 py-1 text-xs font-black text-amber-500 outline-none focus:border-amber-500 transition-all"
-            >
-              {CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}
-            </select>
-            <input 
-              type="number" 
-              step="0.01"
-              value={amountDisplay}
-              onChange={e => {
-                const val = e.target.value;
-                setAmountDisplay(val);
-                setFormData(prev => ({ ...prev, amount: val === '' ? 0 : Number(val) }));
-              }}
-              className="bg-transparent border-none text-5xl font-black text-[var(--text-main)] text-center outline-none w-48 placeholder:text-[var(--text-muted)]"
-              placeholder="0"
-            />
-          </div>
-        </div>
-
-        {/* Details Form */}
-        <div className="space-y-6">
-          {/* Description */}
-          <div className="space-y-2">
-            <label className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] ml-1">
-              <FileText className="w-3.5 h-3.5" /> Descrizione
-            </label>
-            <input 
-              type="text"
-              value={formData.description}
-              onChange={e => setFormData(prev => ({ ...prev, description: e.target.value }))}
-              placeholder="Cosa hai comprato?"
-              className="w-full p-5 bg-[var(--card-bg)] border border-[var(--border)] rounded-3xl outline-none focus:border-[var(--accent)] transition-all font-bold text-[var(--text-main)] placeholder:text-[var(--text-muted)]"
-            />
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {/* Category */}
-            <div className="space-y-2">
-              <label className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] ml-1">
-                <Tag className="w-3.5 h-3.5" /> Categoria
-              </label>
-              <select 
-                value={formData.category}
-                onChange={e => setFormData(prev => ({ ...prev, category: e.target.value }))}
-                className="w-full p-5 bg-[var(--card-bg)] border border-[var(--border)] rounded-3xl outline-none focus:border-[var(--accent)] transition-all font-bold text-[var(--text-main)] appearance-none"
-              >
-                {EXPENSE_CATEGORIES.map(c => (
-                  <option key={c.id} value={c.id}>{c.icon} {c.label}</option>
-                ))}
-              </select>
-            </div>
-
-            {/* Date */}
-            <div className="space-y-2">
-              <label className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] ml-1">
-                <Calendar className="w-3.5 h-3.5" /> Data Spesa
-              </label>
-              <input 
-                type="date"
-                value={formData.date}
-                onChange={e => setFormData(prev => ({ ...prev, date: e.target.value }))}
-                className="w-full p-5 bg-[var(--card-bg)] border border-[var(--border)] rounded-3xl outline-none focus:border-[var(--accent)] transition-all font-bold text-[var(--text-main)]"
-              />
-            </div>
-
-            {/* Expiry Date */}
-            <div className="space-y-2">
-              <label className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-amber-500 ml-1">
-                <Calendar className="w-3.5 h-3.5" /> Scadenza (Opz.)
-              </label>
-              <input 
-                type="date"
-                value={formData.expiryDate || ''}
-                onChange={e => setFormData(prev => ({ ...prev, expiryDate: e.target.value }))}
-                className="w-full p-5 bg-[var(--card-bg)] border border-[var(--border)] rounded-3xl outline-none focus:border-amber-500 transition-all font-bold text-[var(--text-main)]"
-              />
-            </div>
-          </div>
-
-          {/* Attachments Section */}
-          <div className="space-y-4">
-            <label className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] ml-1">
-              <Paperclip className="w-3.5 h-3.5" /> Documenti e Scontrini
-            </label>
-            
+        {!isEditing ? (
+          // VIEW MODE (Default)
+          <div className="space-y-6">
+            {/* Title / Description Card */}
             <div className="bg-[var(--card-bg)] p-6 rounded-[2.5rem] border border-[var(--border)] shadow-sm">
-              {formData.attachment ? (
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between p-4 bg-[var(--bg)] rounded-3xl border border-[var(--border)]">
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 flex items-center justify-center text-emerald-500">
-                        <Check className="w-6 h-6" />
-                      </div>
-                      <div>
-                        <p className="text-sm font-bold text-[var(--text-main)]">Documento Allegato</p>
-                        <p className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider">Pronto per il salvataggio</p>
-                      </div>
-                    </div>
-                    <div className="flex gap-2">
-                      <button 
-                        onClick={() => setViewingAttachment(formData.attachment!)}
-                        className="p-3 bg-white/5 hover:bg-white/10 rounded-xl transition-all text-[var(--text-main)]"
-                      >
-                        <Eye className="w-5 h-5" />
-                      </button>
-                      <button 
-                        onClick={() => setFormData(prev => ({ ...prev, attachment: undefined }))}
-                        className="p-3 bg-red-500/5 hover:bg-red-500/10 rounded-xl transition-all text-red-500"
-                      >
-                        <Trash2 className="w-5 h-5" />
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-3 p-4 bg-amber-500/5 rounded-3xl border border-amber-500/20">
-                    <input 
-                      type="checkbox"
-                      id="singleArchive"
-                      checked={shouldArchive}
-                      onChange={e => setShouldArchive(e.target.checked)}
-                      className="w-5 h-5 rounded-lg border-[var(--border)] text-amber-500 focus:ring-amber-500"
-                    />
-                    <label htmlFor="singleArchive" className="text-xs font-bold text-[var(--text-main)] cursor-pointer select-none">
-                      Salva una copia nell'archivio documenti (Sandbox)
-                    </label>
-                  </div>
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <p className="text-[10px] uppercase tracking-widest text-[var(--text-muted)] font-black">Descrizione Spesa</p>
+                  <h3 className="text-2xl font-black text-[var(--text-main)] mt-1">{formData.description || 'Senza Descrizione'}</h3>
                 </div>
-              ) : (
-                <div className="grid grid-cols-2 gap-4">
-                  <button 
-                    onClick={() => setShowScanner(true)}
-                    className="flex flex-col items-center justify-center gap-3 p-8 bg-[var(--bg)] border-2 border-dashed border-[var(--border)] hover:border-amber-500/50 hover:bg-amber-500/5 rounded-3xl transition-all group"
-                  >
-                    <div className="w-12 h-12 rounded-2xl bg-amber-500/10 flex items-center justify-center text-amber-500 group-hover:scale-110 transition-transform">
-                      <Camera className="w-6 h-6" />
-                    </div>
-                    <span className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)]">Scansiona</span>
-                  </button>
+                <button 
+                  onClick={() => setIsEditing(true)}
+                  className="flex items-center gap-1.5 text-xs font-bold text-emerald-500 bg-emerald-500/10 px-4 py-2.5 rounded-2xl hover:bg-emerald-500/20 active:scale-95 transition-all"
+                >
+                  <Pencil className="w-3.5 h-3.5" />
+                  <span>Modifica</span>
+                </button>
+              </div>
+            </div>
 
-                  <label className="flex flex-col items-center justify-center gap-3 p-8 bg-[var(--bg)] border-2 border-dashed border-[var(--border)] hover:border-amber-500/50 hover:bg-amber-500/5 rounded-3xl transition-all group cursor-pointer">
-                    <div className="w-12 h-12 rounded-2xl bg-blue-500/10 flex items-center justify-center text-blue-500 group-hover:scale-110 transition-transform">
-                      <Paperclip className="w-6 h-6" />
-                    </div>
-                    <span className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)]">Allega</span>
-                    <input type="file" accept="image/*,application/pdf" className="hidden" onChange={handleFileUpload} />
-                  </label>
+            {/* Info Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="bg-[var(--card-bg)] p-6 rounded-[2.5rem] border border-[var(--border)] shadow-sm">
+                <p className="text-[10px] uppercase tracking-widest text-[var(--text-muted)] font-black mb-1">Importo Spesa</p>
+                <span className="text-3xl font-black text-[var(--text-main)]">
+                  {formData.currency} {formData.amount.toFixed(2)}
+                </span>
+              </div>
+              <div className="bg-[var(--card-bg)] p-6 rounded-[2.5rem] border border-[var(--border)] shadow-sm">
+                <p className="text-[10px] uppercase tracking-widest text-[var(--text-muted)] font-black mb-1">Categoria</p>
+                <span className="text-xl font-bold text-[var(--text-main)]">
+                  {EXPENSE_CATEGORIES.find(c => c.id === formData.category)?.icon || '✨'} {EXPENSE_CATEGORIES.find(c => c.id === formData.category)?.label || formData.category}
+                </span>
+              </div>
+              <div className="bg-[var(--card-bg)] p-6 rounded-[2.5rem] border border-[var(--border)] shadow-sm">
+                <p className="text-[10px] uppercase tracking-widest text-[var(--text-muted)] font-black mb-1">Data Spesa</p>
+                <span className="text-lg font-bold text-[var(--text-main)]">
+                  {new Date(formData.date).toLocaleDateString('it-IT')}
+                </span>
+              </div>
+              {formData.expiryDate && (
+                <div className="bg-[var(--card-bg)] p-6 rounded-[2.5rem] border border-[var(--border)] shadow-sm">
+                  <p className="text-[10px] uppercase tracking-widest text-amber-500 font-black mb-1">Data Scadenza</p>
+                  <span className="text-lg font-bold text-amber-500">
+                    {new Date(formData.expiryDate).toLocaleDateString('it-IT')}
+                  </span>
                 </div>
               )}
             </div>
+
+            {/* Attachments (View only) */}
+            {formData.attachment && (
+              <div className="space-y-3">
+                <p className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] ml-1">Documenti Allegati</p>
+                <div className="flex items-center justify-between p-5 bg-[var(--card-bg)] rounded-[2rem] border border-[var(--border)]">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 flex items-center justify-center text-emerald-500">
+                      <Check className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-[var(--text-main)]">Ricevuta / Scontrino</p>
+                      <p className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider">Allegato Disponibile</p>
+                    </div>
+                  </div>
+                  <button 
+                    onClick={() => setViewingAttachment(formData.attachment!)}
+                    className="p-4 bg-emerald-500/10 hover:bg-emerald-500/20 rounded-2xl text-emerald-600 active:scale-95 transition-all"
+                  >
+                    <Eye className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
-        </div>
+        ) : (
+          // EDIT MODE (Inputs for Configuration)
+          <div className="space-y-6 animate-fade-in">
+            {/* Amount Section */}
+            <div className="bg-[var(--card-bg)] p-8 rounded-[2.5rem] border border-[var(--border)] shadow-sm text-center">
+              <label className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--text-muted)] mb-4 block">Importo Spesa</label>
+              <div className="relative flex items-center justify-center gap-3">
+                <select 
+                  value={formData.currency}
+                  onChange={e => setFormData(prev => ({ ...prev, currency: e.target.value }))}
+                  className="bg-[var(--bg)] border border-[var(--border)] rounded-xl px-2 py-1 text-xs font-black text-amber-500 outline-none focus:border-amber-500 transition-all"
+                >
+                  {CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+                <input 
+                  type="number" 
+                  step="0.01"
+                  value={amountDisplay}
+                  onChange={e => {
+                    const val = e.target.value;
+                    setAmountDisplay(val);
+                    setFormData(prev => ({ ...prev, amount: val === '' ? 0 : Number(val) }));
+                  }}
+                  className="bg-transparent border-none text-5xl font-black text-[var(--text-main)] text-center outline-none w-48 placeholder:text-[var(--text-muted)]"
+                  placeholder="0"
+                />
+              </div>
+            </div>
+
+            {/* Details Form */}
+            <div className="space-y-6">
+              {/* Description */}
+              <div className="space-y-2">
+                <label className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] ml-1">
+                  <FileText className="w-3.5 h-3.5" /> Descrizione
+                </label>
+                <input 
+                  type="text"
+                  value={formData.description}
+                  onChange={e => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                  placeholder="Cosa hai comprato?"
+                  className="w-full p-5 bg-[var(--card-bg)] border border-[var(--border)] rounded-3xl outline-none focus:border-[var(--accent)] transition-all font-bold text-[var(--text-main)] placeholder:text-[var(--text-muted)]"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {/* Category */}
+                <div className="space-y-2">
+                  <label className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] ml-1">
+                    <Tag className="w-3.5 h-3.5" /> Categoria
+                  </label>
+                  <select 
+                    value={formData.category}
+                    onChange={e => setFormData(prev => ({ ...prev, category: e.target.value }))}
+                    className="w-full p-5 bg-[var(--card-bg)] border border-[var(--border)] rounded-3xl outline-none focus:border-[var(--accent)] transition-all font-bold text-[var(--text-main)] appearance-none"
+                  >
+                    {EXPENSE_CATEGORIES.map(c => (
+                      <option key={c.id} value={c.id}>{c.icon} {c.label}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Date */}
+                <div className="space-y-2">
+                  <label className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] ml-1">
+                    <Calendar className="w-3.5 h-3.5" /> Data Spesa
+                  </label>
+                  <input 
+                    type="date"
+                    value={formData.date}
+                    onChange={e => setFormData(prev => ({ ...prev, date: e.target.value }))}
+                    className="w-full p-5 bg-[var(--card-bg)] border border-[var(--border)] rounded-3xl outline-none focus:border-[var(--accent)] transition-all font-bold text-[var(--text-main)]"
+                  />
+                </div>
+
+                {/* Expiry Date */}
+                <div className="space-y-2">
+                  <label className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-amber-500 ml-1">
+                    <Calendar className="w-3.5 h-3.5" /> Scadenza (Opz.)
+                  </label>
+                  <input 
+                    type="date"
+                    value={formData.expiryDate || ''}
+                    onChange={e => setFormData(prev => ({ ...prev, expiryDate: e.target.value }))}
+                    className="w-full p-5 bg-[var(--card-bg)] border border-[var(--border)] rounded-3xl outline-none focus:border-amber-500 transition-all font-bold text-[var(--text-main)]"
+                  />
+                </div>
+              </div>
+
+              {/* Attachments Section */}
+              <div className="space-y-4">
+                <label className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] ml-1">
+                  <Paperclip className="w-3.5 h-3.5" /> Documenti e Scontrini
+                </label>
+                
+                <div className="bg-[var(--card-bg)] p-6 rounded-[2.5rem] border border-[var(--border)] shadow-sm">
+                  {formData.attachment ? (
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between p-4 bg-[var(--bg)] rounded-3xl border border-[var(--border)]">
+                        <div className="flex items-center gap-4">
+                          <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 flex items-center justify-center text-emerald-500">
+                            <Check className="w-6 h-6" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-bold text-[var(--text-main)]">Documento Allegato</p>
+                            <p className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider">Pronto per il salvataggio</p>
+                          </div>
+                        </div>
+                        <div className="flex gap-2">
+                          <button 
+                            onClick={() => setViewingAttachment(formData.attachment!)}
+                            className="p-3 bg-white/5 hover:bg-white/10 rounded-xl transition-all text-[var(--text-main)]"
+                          >
+                            <Eye className="w-5 h-5" />
+                          </button>
+                          <button 
+                            onClick={() => setFormData(prev => ({ ...prev, attachment: undefined }))}
+                            className="p-3 bg-red-500/5 hover:bg-red-500/10 rounded-xl transition-all text-red-500"
+                          >
+                            <Trash2 className="w-5 h-5" />
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-3 p-4 bg-amber-500/5 rounded-3xl border border-amber-500/20">
+                        <input 
+                          type="checkbox"
+                          id="singleArchive"
+                          checked={shouldArchive}
+                          onChange={e => setShouldArchive(e.target.checked)}
+                          className="w-5 h-5 rounded-lg border-[var(--border)] text-amber-500 focus:ring-amber-500"
+                        />
+                        <label htmlFor="singleArchive" className="text-xs font-bold text-[var(--text-main)] cursor-pointer select-none">
+                          Salva una copia nell'archivio documenti (Sandbox)
+                        </label>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-2 gap-4">
+                      <button 
+                        onClick={() => setShowScanner(true)}
+                        className="flex flex-col items-center justify-center gap-3 p-8 bg-[var(--bg)] border-2 border-dashed border-[var(--border)] hover:border-amber-500/50 hover:bg-amber-500/5 rounded-3xl transition-all group"
+                      >
+                        <div className="w-12 h-12 rounded-2xl bg-amber-500/10 flex items-center justify-center text-amber-500 group-hover:scale-110 transition-transform">
+                          <Camera className="w-6 h-6" />
+                        </div>
+                        <span className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)]">Scansiona</span>
+                      </button>
+
+                      <label className="flex flex-col items-center justify-center gap-3 p-8 bg-[var(--bg)] border-2 border-dashed border-[var(--border)] hover:border-amber-500/50 hover:bg-amber-500/5 rounded-3xl transition-all group cursor-pointer">
+                        <div className="w-12 h-12 rounded-2xl bg-blue-500/10 flex items-center justify-center text-blue-500 group-hover:scale-110 transition-transform">
+                          <Paperclip className="w-6 h-6" />
+                        </div>
+                        <span className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)]">Allega</span>
+                        <input type="file" accept="image/*,application/pdf" className="hidden" onChange={handleFileUpload} />
+                      </label>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Modals */}

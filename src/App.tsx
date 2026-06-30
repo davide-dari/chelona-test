@@ -806,6 +806,14 @@ export default function App() {
       setEditingTransportModule(module as import('./types').TransportModule);
       return;
     }
+    if (module.type === 'installments') {
+      setEditingInstallmentsModule(module as import('./types').InstallmentsModule);
+      return;
+    }
+    if (module.type === 'furniture') {
+      setEditingFurnitureModule(module as import('./types').FurnitureModule);
+      return;
+    }
     setEditingModuleId(module.id);
     setFormData({ ...module });
     setAutoFormStep(0);
