@@ -180,10 +180,10 @@ export default function App() {
   const [editingInstallmentsModule, setEditingInstallmentsModule] = useState<import('./types').InstallmentsModule | null>(null);
 
   useEffect(() => {
-    // Show splash screen for 1.5s
+    // Show splash screen briefly, then go to lock screen immediately
     const timer = setTimeout(() => {
       setIsSplashScreenActive(false);
-    }, 1500);
+    }, 400);
     storage.initStorage().then(() => {
       try {
         const loadedAddresses = storage.loadAddressBook();

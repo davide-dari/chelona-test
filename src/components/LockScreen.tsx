@@ -164,10 +164,10 @@ export const LockScreen = ({ isVisible, onAuthenticated, onStartScan, onOpenTool
       if (autoBioTriggered.current !== selectedProfile.id) {
         console.log('[LockScreen] Auto-triggering biometrics for:', selectedProfile.username);
         autoBioTriggered.current = selectedProfile.id;
-        // Small delay to ensure the UI is rendered before the native prompt appears
+        // Minimal delay to ensure the UI is rendered before the native prompt appears
         bioTimeoutRef.current = setTimeout(() => {
           handleBiometricLogin();
-        }, 300);
+        }, 100);
       }
     } else if (view !== 'login') {
       // Reset trigger tracker when leaving login view so it triggers again on next entry
