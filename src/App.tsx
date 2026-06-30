@@ -490,6 +490,32 @@ export default function App() {
           return null;
         });
 
+        // Auto-pay installments when due date is reached
+        const todayStr = new Date().toISOString().substring(0, 10);
+        let hasChanges = false;
+        loadedModules = loadedModules.map(m => {
+          if (m.type === 'installments') {
+            const inst = m as import('./types').InstallmentsModule;
+            let paymentsChanged = false;
+            const updatedPayments = (inst.payments || []).map(p => {
+              if (!p.isPaid && p.dueDate <= todayStr) {
+                paymentsChanged = true;
+                return { ...p, isPaid: true, paidDate: new Date().toISOString() };
+              }
+              return p;
+            });
+            if (paymentsChanged) {
+              hasChanges = true;
+              return { ...inst, payments: updatedPayments };
+            }
+          }
+          return m;
+        });
+
+        if (hasChanges) {
+          saveAppState(loadedModules, saved.folders || []);
+        }
+
         setModules(loadedModules);
         setFolders(saved.folders || []);
 
