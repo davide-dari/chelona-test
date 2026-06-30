@@ -40,19 +40,14 @@
         </provider>
 
         <!-- Android Auto Service -->
-        <service
-            android:name=".ChelonaCarAppService"
-            android:exported="true"
-            android:label="Chelona">
+        <service android:name=".ChelonaCarAppService" android:exported="true" android:label="Chelona">
             <intent-filter>
                 <action android:name="androidx.car.app.CarAppService" />
                 <category android:name="androidx.car.app.category.POI" />
             </intent-filter>
         </service>
 
-        <meta-data
-            android:name="com.google.android.gms.car.application"
-            android:resource="@xml/automotive_app_desc" />
+        <meta-data android:name="com.google.android.gms.car.application" android:resource="@xml/automotive_app_desc" />
     </application>
 
     <!-- Permissions -->
