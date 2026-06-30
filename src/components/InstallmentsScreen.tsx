@@ -120,6 +120,7 @@ export const InstallmentsScreen = ({ module, onClose, onSave, onDelete }: Instal
   const paidAmount = formData.payments.filter(p => p.isPaid).reduce((acc, curr) => acc + curr.amount, 0);
   const remainingAmount = formData.targetAmount - paidAmount;
   const progress = formData.targetAmount > 0 ? (paidAmount / formData.targetAmount) * 100 : 0;
+  const nextPayment = formData.payments.find(p => !p.isPaid);
 
   return (
     <div className="fixed inset-0 z-[150] bg-[var(--bg)] flex flex-col h-[100dvh] overflow-hidden font-sans transition-colors duration-300">
