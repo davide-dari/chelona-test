@@ -748,6 +748,8 @@ export function StudyScreen({ module, onClose, onSave }: StudyScreenProps) {
     topics: module.topics || []
   });
 
+  const [currentView, setCurrentView] = useState<'catalog' | 'course'>('catalog');
+
   const [expandedTopicId, setExpandedTopicId] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [selectedCourseId, setSelectedCourseId] = useState<string | null>(
@@ -757,8 +759,8 @@ export function StudyScreen({ module, onClose, onSave }: StudyScreenProps) {
   const [selectedSubcategory, setSelectedSubcategory] = useState<string | null>(null);
 
   const handleBack = () => {
-    if (formData.status === 'study') {
-      onClose();
+    if (currentView === 'course') {
+      setCurrentView('catalog');
     } else if (search.trim().length > 0) {
       setSearch('');
     } else if (selectedSubcategory) {
@@ -771,10 +773,18 @@ export function StudyScreen({ module, onClose, onSave }: StudyScreenProps) {
   };
 
   const handleSelectCourse = (course: BuiltinCourse) => {
-    const topics: StudyTopic[] = course.topics.map(t => ({
-      ...t,
-      isCompleted: false,
-    }));
+    let topics: StudyTopic[];
+
+    // Se stiamo selezionando il corso già salvato nella card, mantieni il progresso!
+    if (formData.targetSubject === course.id && formData.topics.length > 0) {
+      topics = formData.topics;
+    } else {
+      // Altrimenti inizia da zero
+      topics = course.topics.map(t => ({
+        ...t,
+        isCompleted: false,
+      }));
+    }
 
     const updatedModule: StudyModule = {
       ...formData,
@@ -786,6 +796,7 @@ export function StudyScreen({ module, onClose, onSave }: StudyScreenProps) {
     };
 
     setFormData(updatedModule);
+    setCurrentView('course');
     onSave(updatedModule);
   };
 
@@ -802,12 +813,14 @@ export function StudyScreen({ module, onClose, onSave }: StudyScreenProps) {
     if (confirm("Vuoi davvero cancellare questo piano di studi e tornare alla selezione del corso?")) {
       const resetModule: StudyModule = {
         ...formData,
+        title: 'Studio',
         status: 'wizard',
         topics: [],
         teacherIntro: undefined,
         targetSubject: undefined,
       };
       setFormData(resetModule);
+      setCurrentView('catalog');
       onSave(resetModule);
     }
   };
@@ -853,11 +866,11 @@ export function StudyScreen({ module, onClose, onSave }: StudyScreenProps) {
           <div>
             <h2 className="text-xl font-bold text-[var(--text-main)]">{formData.title}</h2>
             <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--text-muted)]">
-              {formData.status === 'study' ? `${completedCount}/${totalTopics} Argomenti Completati` : 'Seleziona un Corso'}
+              {currentView === 'course' ? `${completedCount}/${totalTopics} Argomenti Completati` : 'Seleziona un Corso'}
             </p>
           </div>
         </div>
-        {formData.status === 'study' && (
+        {currentView === 'course' && (
           <button
             onClick={handleReset}
             className="p-3 bg-red-500/10 text-red-500 hover:bg-red-500/20 border border-red-500/20 rounded-2xl transition-all"
@@ -872,7 +885,7 @@ export function StudyScreen({ module, onClose, onSave }: StudyScreenProps) {
       <div className="flex-1 overflow-y-auto pb-32">
 
         {/* WIZARD: Selezione Corso */}
-        {formData.status === 'wizard' && (
+        {currentView === 'catalog' && (
           <div className="px-6 py-8">
             <div className="max-w-2xl mx-auto space-y-6">
               
@@ -993,7 +1006,7 @@ export function StudyScreen({ module, onClose, onSave }: StudyScreenProps) {
         )}
 
         {/* STUDY VIEW: Corso Attivo */}
-        {formData.status === 'study' && (
+        {currentView === 'course' && (
           <div className="px-6 py-8">
             <div className="max-w-2xl mx-auto space-y-8">
 
