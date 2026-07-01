@@ -43,6 +43,8 @@ interface StudyScreenProps {
 
 interface BuiltinCourse {
   id: string;
+  category: string;
+  subcategory: string;
   subject: string;
   emoji: string;
   color: string;
@@ -55,6 +57,8 @@ interface BuiltinCourse {
 const BUILTIN_COURSES: BuiltinCourse[] = [
   {
     id: 'python',
+    category: 'Informatica',
+    subcategory: 'Programmazione',
     subject: 'Python 3',
     emoji: '🐍',
     color: 'text-yellow-500',
@@ -685,6 +689,8 @@ git push origin main`,
   // ─── Qui si possono aggiungere altri corsi in futuro ───
   {
     id: 'javascript',
+    category: 'Informatica',
+    subcategory: 'Programmazione',
     subject: 'JavaScript ES2025',
     emoji: '🌐',
     color: 'text-amber-400',
@@ -747,6 +753,22 @@ export function StudyScreen({ module, onClose, onSave }: StudyScreenProps) {
   const [selectedCourseId, setSelectedCourseId] = useState<string | null>(
     module.targetSubject ? (BUILTIN_COURSES.find(c => c.id === module.targetSubject)?.id ?? null) : null
   );
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [selectedSubcategory, setSelectedSubcategory] = useState<string | null>(null);
+
+  const handleBack = () => {
+    if (formData.status === 'study') {
+      onClose();
+    } else if (search.trim().length > 0) {
+      setSearch('');
+    } else if (selectedSubcategory) {
+      setSelectedSubcategory(null);
+    } else if (selectedCategory) {
+      setSelectedCategory(null);
+    } else {
+      onClose();
+    }
+  };
 
   const handleSelectCourse = (course: BuiltinCourse) => {
     const topics: StudyTopic[] = course.topics.map(t => ({
@@ -794,9 +816,30 @@ export function StudyScreen({ module, onClose, onSave }: StudyScreenProps) {
   const totalTopics = formData.topics.length;
   const progress = totalTopics > 0 ? (completedCount / totalTopics) * 100 : 0;
 
-  const filteredCourses = BUILTIN_COURSES.filter(c =>
-    c.subject.toLowerCase().includes(search.toLowerCase())
-  );
+  const isSearching = search.trim().length > 0;
+  
+  const categories = Array.from(new Set(BUILTIN_COURSES.map(c => c.category)));
+  
+  const subcategories = selectedCategory 
+    ? Array.from(new Set(BUILTIN_COURSES.filter(c => c.category === selectedCategory).map(c => c.subcategory)))
+    : [];
+
+  const coursesToDisplay = isSearching 
+    ? BUILTIN_COURSES.filter(c => 
+        c.subject.toLowerCase().includes(search.toLowerCase()) || 
+        c.category.toLowerCase().includes(search.toLowerCase()) || 
+        c.subcategory.toLowerCase().includes(search.toLowerCase())
+      )
+    : BUILTIN_COURSES.filter(c => c.category === selectedCategory && c.subcategory === selectedSubcategory);
+
+  let viewMode: 'categories' | 'subcategories' | 'courses' = 'categories';
+  if (isSearching) {
+    viewMode = 'courses';
+  } else if (selectedCategory && selectedSubcategory) {
+    viewMode = 'courses';
+  } else if (selectedCategory) {
+    viewMode = 'subcategories';
+  }
 
   return (
     <div className="fixed inset-0 z-[150] bg-[var(--bg)] flex flex-col h-[100dvh] overflow-hidden font-sans transition-colors duration-300">
@@ -804,7 +847,7 @@ export function StudyScreen({ module, onClose, onSave }: StudyScreenProps) {
       {/* Header */}
       <header className="h-20 border-b border-[var(--border)] bg-[var(--header-bg)] backdrop-blur-2xl px-6 flex items-center justify-between shrink-0 z-20 safe-area-header">
         <div className="flex items-center gap-4">
-          <button onClick={onClose} className="p-3 bg-[var(--card-bg)] border border-[var(--border)] hover:bg-[var(--border)] rounded-2xl transition-all shadow-sm">
+          <button onClick={handleBack} className="p-3 bg-[var(--card-bg)] border border-[var(--border)] hover:bg-[var(--border)] rounded-2xl transition-all shadow-sm">
             <ArrowLeft className="w-6 h-6 text-[var(--text-main)]" />
           </button>
           <div>
@@ -836,7 +879,33 @@ export function StudyScreen({ module, onClose, onSave }: StudyScreenProps) {
               <div className="text-center space-y-2">
                 <div className="w-16 h-16 bg-indigo-500/10 rounded-3xl flex items-center justify-center text-4xl mx-auto">📚</div>
                 <h3 className="text-2xl font-black text-[var(--text-main)]">Scegli cosa studiare</h3>
-                <p className="text-xs font-bold text-[var(--text-muted)]">Piani didattici curati con la migliore documentazione disponibile</p>
+                
+                {/* Breadcrumbs */}
+                <div className="flex items-center justify-center gap-2 text-xs font-bold text-[var(--text-muted)]">
+                  <span 
+                    className={`cursor-pointer hover:text-indigo-500 transition-colors ${!selectedCategory ? 'text-indigo-500' : ''}`}
+                    onClick={() => { setSelectedCategory(null); setSelectedSubcategory(null); }}
+                  >
+                    Home
+                  </span>
+                  {selectedCategory && (
+                    <>
+                      <span>/</span>
+                      <span 
+                        className={`cursor-pointer hover:text-indigo-500 transition-colors ${!selectedSubcategory ? 'text-indigo-500' : ''}`}
+                        onClick={() => setSelectedSubcategory(null)}
+                      >
+                        {selectedCategory}
+                      </span>
+                    </>
+                  )}
+                  {selectedSubcategory && (
+                    <>
+                      <span>/</span>
+                      <span className="text-indigo-500">{selectedSubcategory}</span>
+                    </>
+                  )}
+                </div>
               </div>
 
               {/* Search */}
@@ -846,39 +915,73 @@ export function StudyScreen({ module, onClose, onSave }: StudyScreenProps) {
                   type="text"
                   value={search}
                   onChange={e => setSearch(e.target.value)}
-                  placeholder="Cerca corso..."
+                  placeholder="Cerca un corso, categoria o argomento..."
                   className="w-full pl-12 pr-5 py-4 bg-[var(--card-bg)] border border-[var(--border)] rounded-3xl outline-none focus:border-indigo-500 transition-all font-bold text-[var(--text-main)] placeholder:text-[var(--text-muted)]"
                 />
               </div>
 
-              {/* Courses Grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {filteredCourses.map(course => (
-                  <button
-                    key={course.id}
-                    onClick={() => handleSelectCourse(course)}
-                    className="p-6 bg-[var(--card-bg)] border border-[var(--border)] rounded-[2rem] text-left hover:border-indigo-500/50 hover:shadow-lg hover:-translate-y-0.5 transition-all group"
-                  >
-                    <div className="flex items-start gap-4">
-                      <div className={`w-14 h-14 ${course.bgColor} rounded-2xl flex items-center justify-center text-3xl shrink-0`}>
-                        {course.emoji}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <h4 className={`text-base font-black ${course.color}`}>{course.subject}</h4>
-                        <p className="text-[11px] text-[var(--text-muted)] font-semibold mt-1">{course.topics.length} Argomenti</p>
-                        <div className="flex flex-wrap gap-1 mt-3">
-                          {course.levels.map(l => (
-                            <span key={l.label} className="text-[9px] font-black px-2 py-0.5 bg-[var(--border)] text-[var(--text-muted)] rounded-full">{l.label}</span>
-                          ))}
-                        </div>
-                      </div>
-                      <Play className="w-5 h-5 text-[var(--text-muted)] group-hover:text-indigo-500 transition-colors shrink-0 mt-1" />
-                    </div>
-                  </button>
-                ))}
-              </div>
+              {/* View: Categories */}
+              {viewMode === 'categories' && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {categories.map(cat => (
+                    <button
+                      key={cat}
+                      onClick={() => setSelectedCategory(cat)}
+                      className="p-6 bg-[var(--card-bg)] border border-[var(--border)] rounded-[2rem] text-left hover:border-indigo-500/50 hover:shadow-lg hover:-translate-y-0.5 transition-all flex items-center justify-between group"
+                    >
+                      <h4 className="text-lg font-black text-[var(--text-main)] group-hover:text-indigo-500 transition-colors">{cat}</h4>
+                      <ChevronDown className="w-5 h-5 text-[var(--text-muted)] group-hover:text-indigo-500 transition-colors shrink-0 -rotate-90" />
+                    </button>
+                  ))}
+                </div>
+              )}
 
-              {filteredCourses.length === 0 && (
+              {/* View: Subcategories */}
+              {viewMode === 'subcategories' && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {subcategories.map(sub => (
+                    <button
+                      key={sub}
+                      onClick={() => setSelectedSubcategory(sub)}
+                      className="p-6 bg-[var(--card-bg)] border border-[var(--border)] rounded-[2rem] text-left hover:border-indigo-500/50 hover:shadow-lg hover:-translate-y-0.5 transition-all flex items-center justify-between group"
+                    >
+                      <h4 className="text-lg font-black text-[var(--text-main)] group-hover:text-indigo-500 transition-colors">{sub}</h4>
+                      <ChevronDown className="w-5 h-5 text-[var(--text-muted)] group-hover:text-indigo-500 transition-colors shrink-0 -rotate-90" />
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {/* View: Courses */}
+              {viewMode === 'courses' && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {coursesToDisplay.map(course => (
+                    <button
+                      key={course.id}
+                      onClick={() => handleSelectCourse(course)}
+                      className="p-6 bg-[var(--card-bg)] border border-[var(--border)] rounded-[2rem] text-left hover:border-indigo-500/50 hover:shadow-lg hover:-translate-y-0.5 transition-all group"
+                    >
+                      <div className="flex items-start gap-4">
+                        <div className={`w-14 h-14 ${course.bgColor} rounded-2xl flex items-center justify-center text-3xl shrink-0`}>
+                          {course.emoji}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <h4 className={`text-base font-black ${course.color}`}>{course.subject}</h4>
+                          <p className="text-[11px] text-[var(--text-muted)] font-semibold mt-1">{course.topics.length} Argomenti</p>
+                          <div className="flex flex-wrap gap-1 mt-3">
+                            {course.levels.map(l => (
+                              <span key={l.label} className="text-[9px] font-black px-2 py-0.5 bg-[var(--border)] text-[var(--text-muted)] rounded-full">{l.label}</span>
+                            ))}
+                          </div>
+                        </div>
+                        <Play className="w-5 h-5 text-[var(--text-muted)] group-hover:text-indigo-500 transition-colors shrink-0 mt-1" />
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {viewMode === 'courses' && coursesToDisplay.length === 0 && (
                 <div className="text-center py-12 space-y-2">
                   <p className="text-4xl">🔍</p>
                   <p className="font-bold text-[var(--text-muted)]">Nessun corso trovato per "{search}"</p>
