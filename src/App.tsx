@@ -1933,7 +1933,7 @@ export default function App() {
             ) : editingStudyModule ? (
               <StudyScreen
                 module={editingStudyModule}
-                onSave={(mod) => { updateModuleDirect(mod); setEditingStudyModule(null); }}
+                onSave={(mod) => { updateModuleDirect(mod); setEditingStudyModule(mod); }}
                 onClose={() => setEditingStudyModule(null)}
                 currentProfileId={currentProfileId || ''}
               />
@@ -3499,7 +3499,7 @@ export default function App() {
             module={editingStudyModule}
             onSave={(updated) => {
               updateModuleDirect(updated);
-              setEditingStudyModule(null);
+              setEditingStudyModule(updated);
             }}
             onClose={() => setEditingStudyModule(null)}
             currentProfileId={currentProfileId || ''}
