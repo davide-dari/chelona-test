@@ -550,27 +550,46 @@ export const TravelCard = ({ module, onDelete, onEdit }: { module: TravelModule;
   );
 };
 
-export const TransportCard = ({ module, onDelete, onEdit }: { module: TransportModule; onDelete?: (id: string) => void; onEdit?: (m: Module) => void; }) => {
+export const StudyCard = ({ module, onDelete, onEdit }: { module: any; onDelete?: (id: string) => void; onEdit?: (m: Module) => void; }) => {
+  const topics = module.topics || [];
+  const completed = topics.filter((t: any) => t.isCompleted).length;
+  const progress = topics.length > 0 ? (completed / topics.length) * 100 : 0;
+
   return (
-    <ModuleWrapper module={module} onDelete={undefined} onEdit={onEdit}>
+    <ModuleWrapper module={module} onDelete={onDelete} onEdit={onEdit}>
       <div
         className="h-full flex flex-col cursor-pointer group/card hover:bg-[var(--bg)] transition-colors p-4 -m-4 rounded-2xl active:scale-[0.98]"
         onClick={() => onEdit?.(module)}
       >
-        <div className="relative aspect-square rounded-2xl overflow-hidden bg-[#06181a] border border-cyan-500/20 mb-3 flex items-center justify-center shadow-inner">
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_#0f3c44_0%,_#06181a_80%)]" />
-          <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: 'radial-gradient(circle, var(--text-main) 1px, transparent 1px)', backgroundSize: '10px 10px' }} />
+        <div className="relative aspect-square rounded-2xl overflow-hidden bg-[#0d0f1e] border border-indigo-500/20 mb-3 flex items-center justify-center shadow-inner">
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_#181a30_0%,_#0d0f1e_80%)]" />
           
-          <div className="relative z-10 w-16 h-16 rounded-full bg-gradient-to-br from-cyan-600/80 to-teal-900 border border-cyan-400/30 flex items-center justify-center shadow-lg shadow-cyan-500/20 group-hover/card:scale-110 transition-transform">
-            <Bus className="w-8 h-8 text-cyan-200" />
+          <div className="relative z-10 w-16 h-16 rounded-full bg-gradient-to-br from-indigo-600/80 to-purple-900 border border-indigo-400/30 flex items-center justify-center shadow-lg shadow-indigo-500/20 group-hover/card:scale-110 transition-transform">
+            <BookOpen className="w-8 h-8 text-indigo-200" />
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          <div className="w-7 h-7 bg-cyan-500/10 rounded-lg flex items-center justify-center text-cyan-400">
-            <Bus className="w-4 h-4" />
+        <div className="flex-1 space-y-2 min-w-0">
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 bg-indigo-500/10 rounded-lg flex items-center justify-center text-indigo-400 shrink-0">
+              <BookOpen className="w-4 h-4" />
+            </div>
+            <span className="text-[12px] font-bold text-[var(--text-main)] truncate">{module.title || 'Studio'}</span>
           </div>
-          <span className="text-[12px] font-bold text-[var(--text-main)] truncate">{module.title || 'Trasporti'}</span>
+
+          {topics.length > 0 ? (
+            <div className="space-y-1">
+              <div className="flex justify-between text-[10px] font-bold text-[var(--text-muted)]">
+                <span>{completed}/{topics.length} Argomenti</span>
+                <span>{Math.round(progress)}%</span>
+              </div>
+              <div className="h-1.5 w-full bg-[var(--border)] rounded-full overflow-hidden">
+                <div className="h-full bg-indigo-500 transition-all duration-300" style={{ width: `${Math.min(100, progress)}%` }} />
+              </div>
+            </div>
+          ) : (
+            <p className="text-[10px] text-[var(--text-muted)] italic font-semibold">Nessun piano avviato</p>
+          )}
         </div>
       </div>
     </ModuleWrapper>

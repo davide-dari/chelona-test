@@ -58,14 +58,24 @@ export const notificationService = {
 
   /** Restituisce true se l'utente ha già concesso il permesso */
   isGranted(): boolean {
+    // Per semplicità e compatibilità sincrona, consideriamo true e lasciamo che la chiamata nativa fallisca o gestisca i permessi internamente,
+    // oppure controlliamo web permissions.
     if ((window as any).Capacitor?.isNativePlatform?.()) return true;
     if (!('Notification' in window)) return false;
     return Notification.permission === 'granted';
   },
 
   async requestPermission(): Promise<boolean> {
-    // 🤖 Capacitor: il plugin gestisce i permessi nativi — sempre true
-    if ((window as any).Capacitor?.isNativePlatform?.()) return true;
+    if ((window as any).Capacitor?.isNativePlatform?.()) {
+      try {
+        const { LocalNotifications } = await import('@capacitor/local-notifications');
+        const perm = await LocalNotifications.requestPermissions();
+        return perm.display === 'granted';
+      } catch (e) {
+        console.error('Errore richiesta permessi nativi:', e);
+        return false;
+      }
+    }
     if (!('Notification' in window)) return false;
     if (Notification.permission === 'granted') return true;
     if (Notification.permission === 'denied') return false;

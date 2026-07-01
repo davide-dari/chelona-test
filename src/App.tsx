@@ -9,7 +9,7 @@ import { AntigravityAssistant } from './components/antigravity/AntigravityAssist
 import { Module, ModuleType, Folder, DocumentModule } from './types';
 import { storage, AppState } from './services/storage';
 import { encryption } from './services/encryption';
-import { GenericCard, AutoCard, DocumentCard, SplitCard, SingleExpenseCard, GalleryCard, TravelCard, TransportCard } from './components/Modules';
+import { GenericCard, AutoCard, DocumentCard, SplitCard, SingleExpenseCard, GalleryCard, TravelCard, StudyCard } from './components/Modules';
 import { LockScreen } from './components/LockScreen';
 import { QrScanner } from './components/QrScanner';
 import { DocumentScanner } from './components/DocumentScanner';
@@ -25,7 +25,7 @@ import { AddressBookScreen } from './components/AddressBookScreen';
 import { RecipesScreen } from './components/RecipesScreen';
 import { TravelScreen } from './components/TravelScreen';
 import { ConfirmDialog } from './components/ConfirmDialog';
-import { TransportScreen } from './components/TransportScreen';
+import { StudyScreen } from './components/StudyScreen';
 import { FurnitureScreen } from "./components/FurnitureScreen";
 import { InstallmentsCard } from './components/InstallmentsCard';
 import { InstallmentsScreen } from './components/InstallmentsScreen';
@@ -130,11 +130,11 @@ const TEMPLATES = {
     icon: Globe,
     color: 'text-indigo-400'
   },
-  transport: {
-    title: 'Trasporti',
+  study: {
+    title: 'Studio',
     content: '',
-    icon: Bus,
-    color: 'text-cyan-500'
+    icon: BookOpen,
+    color: 'text-indigo-500'
   },
   recipes: {
     title: 'Ricette',
@@ -168,7 +168,7 @@ export default function App() {
   const [editingDocumentModule, setEditingDocumentModule] = useState<import('./types').DocumentModule | null>(null);
   const [editingGenericModule, setEditingGenericModule] = useState<import('./types').GenericModule | null>(null);
   const [editingTravelModule, setEditingTravelModule] = useState<import('./types').TravelModule | null>(null);
-  const [editingTransportModule, setEditingTransportModule] = useState<import('./types').TransportModule | null>(null);
+  const [editingStudyModule, setEditingStudyModule] = useState<any | null>(null);
   const [sharingModule, setSharingModule] = useState<Module | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [voiceResponse, setVoiceResponse] = useState<{ query: string; answer: string } | null>(null);
@@ -395,7 +395,7 @@ export default function App() {
       if (editingSplitModule) { setEditingSplitModule(null); return; }
       if (editingSingleExpenseModule) { setEditingSingleExpenseModule(null); return; }
       if (editingTravelModule) { setEditingTravelModule(null); return; }
-      if (editingTransportModule) { setEditingTransportModule(null); return; }
+      if (editingStudyModule) { setEditingStudyModule(null); return; }
       if (editingDocumentModule) { setEditingDocumentModule(null); return; }
       if (editingGenericModule) { setEditingGenericModule(null); return; }
       if (editingFurnitureModule) { setEditingFurnitureModule(null); return; }
@@ -422,7 +422,7 @@ export default function App() {
   }, [
     moduleToDelete, showGalleryViewer, gallerySelectedImage,
     editingAutoModule, editingSplitModule, editingSingleExpenseModule,
-    editingTravelModule, editingTransportModule, editingDocumentModule,
+    editingTravelModule, editingStudyModule, editingDocumentModule,
     editingGenericModule, editingFurnitureModule, editingInstallmentsModule, editingModuleId, isAdding, isProfileOpen, isAssistantOpen,
     activeToolId, isToolsOpen, isArchiveOpen, isAddressBookOpen, isRecipesOpen,
     isSidebarOpen, selectedFolderId, selectedType, spesaSubMenu
@@ -524,6 +524,10 @@ export default function App() {
           .filter(m => m.type === 'auto')
           .map(m => ({ id: m.id, brand: (m as any).brand, model: (m as any).model, currentKm: (m as any).currentKm }));
         notificationService.checkAndFire(autoMods);
+        
+        // Richiedi i permessi delle notifiche all'avvio
+        notificationService.requestPermission().catch(console.error);
+
         // Trigger automatic update check upon successful unlock
         handleCheckUpdate(true);
       }
@@ -640,7 +644,7 @@ export default function App() {
       updated = modules.map(m => m.id === editingModuleId ? { ...m, ...processedData, folderId: processedData.folderId || undefined } : m);
     } else {
       const id = Math.random().toString(36).substr(2, 9);
-      const type = processedData.template === 'auto' ? 'auto' : processedData.template === 'document' ? 'document' : processedData.template === 'split' ? 'split' : processedData.template === 'transport' ? 'transport' : 'generic';
+      const type = processedData.template === 'auto' ? 'auto' : processedData.template === 'document' ? 'document' : processedData.template === 'split' ? 'split' : processedData.template === 'study' ? 'study' : 'generic';
       const newModule: Module = {
         id,
         type,
@@ -802,8 +806,8 @@ export default function App() {
       setEditingTravelModule(module as import('./types').TravelModule);
       return;
     }
-    if (module.type === 'transport') {
-      setEditingTransportModule(module as import('./types').TransportModule);
+    if (module.type === 'study') {
+      setEditingStudyModule(module);
       return;
     }
     if (module.type === 'installments') {
@@ -1926,11 +1930,12 @@ export default function App() {
                 onSave={(mod) => { updateModuleDirect(mod); setEditingFurnitureModule(mod); }}
                 onClose={() => setEditingFurnitureModule(null)}
               />
-            ) : editingTransportModule ? (
-              <TransportScreen
-                module={editingTransportModule}
-                onSave={(mod) => { updateModuleDirect(mod); setEditingTransportModule(null); }}
-                onClose={() => setEditingTransportModule(null)}
+            ) : editingStudyModule ? (
+              <StudyScreen
+                module={editingStudyModule}
+                onSave={(mod) => { updateModuleDirect(mod); setEditingStudyModule(null); }}
+                onClose={() => setEditingStudyModule(null)}
+                currentProfileId={currentProfileId || ''}
               />
             ) : editingSplitModule ? (
               <SplitScreen
@@ -1992,7 +1997,7 @@ export default function App() {
                       <h3 className="text-lg font-bold text-[var(--text-main)] mb-8 uppercase tracking-widest text-center">Scegli un Template</h3>
                       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                         {Object.entries(TEMPLATES)
-                          .filter(([key]) => key !== 'single-expense' && key !== 'travel' && key !== 'transport' && key !== 'recipes' && key !== 'furniture')
+                          .filter(([key]) => key !== 'single-expense' && key !== 'travel' && key !== 'study' && key !== 'recipes' && key !== 'furniture')
                           .map(([key, t]) => (
                       <button
                             key={key}
@@ -2006,12 +2011,14 @@ export default function App() {
                                 setSpesaSubMenu(true);
                               } else if (key === 'home') {
                                 setHomeSubMenu(true);
-                              } else if (key === 'transport') {
+                              } else if (key === 'study') {
                                 setIsAdding(false);
-                                const newTransport: import('./types').TransportModule = {
+                                const newStudy: any = {
                                   id: generateUUID(),
-                                  type: 'transport',
-                                  title: 'Trasporti',
+                                  type: 'study',
+                                  title: 'Studio',
+                                  status: 'wizard',
+                                  topics: [],
                                   x: (modules.length * 2) % 12,
                                   y: Infinity,
                                   w: 3,
@@ -2019,11 +2026,11 @@ export default function App() {
                                   folderId: selectedFolderId || undefined
                                 };
                                 setModules(prev => {
-                                  const updated = [newTransport, ...prev];
+                                  const updated = [newStudy, ...prev];
                                   saveAppState(updated, folders).catch(console.error);
                                   return updated;
                                 });
-                                setEditingTransportModule(newTransport);
+                                setEditingStudyModule(newStudy);
                               } else {
                                 setFormData({ ...formData, template: key, title: t.title, content: t.content });
                                 setAutoFormStep(0);
@@ -2833,15 +2840,17 @@ export default function App() {
                                       });
                                       setEditingTravelModule(newTravel);
                                     }
-                                  } else if (key === 'transport') {
-                                    const existingTransport = modules.find(m => m.type === 'transport') as import('./types').TransportModule;
-                                    if (existingTransport) {
-                                      setEditingTransportModule(existingTransport);
+                                  } else if (key === 'study') {
+                                    const existingStudy = modules.find(m => m.type === 'study');
+                                    if (existingStudy) {
+                                      setEditingStudyModule(existingStudy);
                                     } else {
-                                      const newTransport: import('./types').TransportModule = {
+                                      const newStudy: any = {
                                         id: generateUUID(),
-                                        type: 'transport',
-                                        title: 'Trasporti',
+                                        type: 'study',
+                                        title: 'Studio',
+                                        status: 'wizard',
+                                        topics: [],
                                         x: (modules.length * 2) % 12,
                                         y: Infinity,
                                         w: 3,
@@ -2849,11 +2858,11 @@ export default function App() {
                                         folderId: selectedFolderId || undefined
                                       };
                                       setModules(prev => {
-                                        const updated = [newTransport, ...prev];
+                                        const updated = [newStudy, ...prev];
                                         saveAppState(updated, folders).catch(console.error);
                                         return updated;
                                       });
-                                      setEditingTransportModule(newTransport);
+                                      setEditingStudyModule(newStudy);
                                     }
                                   } else {
                                     setSelectedType(key as ModuleType);
@@ -2982,8 +2991,8 @@ export default function App() {
                                 <InstallmentsCard module={module as import('./types').InstallmentsModule} onDelete={requestDelete} onEdit={openEditModal} />
                               ) : module.type === 'gallery' ? (
                                 <GalleryCard module={module as import('./types').GalleryModule} onEdit={openEditModal} />
-                              ) : module.type === 'transport' ? (
-                                <TransportCard module={module as import('./types').TransportModule} onDelete={requestDelete} onEdit={openEditModal} />
+                              ) : module.type === 'study' ? (
+                                <StudyCard module={module} onDelete={requestDelete} onEdit={openEditModal} />
                               ) : module.type === 'travel' ? (
                                 <TravelCard module={module as import('./types').TravelModule} onDelete={requestDelete} onEdit={openEditModal} />
                               ) : (
@@ -3001,7 +3010,7 @@ export default function App() {
           </div>
           
           {/* Global FAB (Only on main dashboard and specific categories except gallery/travel) */}
-          {(selectedType !== 'gallery') && !editingTravelModule && !editingTransportModule && !isAdding && !editingModuleId && !isArchiveOpen && !isToolsOpen && !editingAutoModule && !editingSplitModule && !editingSingleExpenseModule && !editingDocumentModule && !editingGenericModule && !editingFurnitureModule && !editingInstallmentsModule && (
+          {(selectedType !== 'gallery') && !editingTravelModule && !editingStudyModule && !isAdding && !editingModuleId && !isArchiveOpen && !isToolsOpen && !editingAutoModule && !editingSplitModule && !editingSingleExpenseModule && !editingDocumentModule && !editingGenericModule && !editingFurnitureModule && !editingInstallmentsModule && (
             <>
               {/* Scan QR Button next to Plus button */}
               <motion.button
@@ -3038,12 +3047,14 @@ export default function App() {
                       return updated;
                     });
                     setEditingTravelModule(newTravel);
-                  } else if (selectedType === 'transport') {
-                    // Create new transport module directly
-                    const newTransport: import('./types').TransportModule = {
+                  } else if (selectedType === 'study') {
+                    // Create new study module directly
+                    const newStudy: any = {
                       id: generateUUID(),
-                      type: 'transport',
-                      title: 'Trasporti',
+                      type: 'study',
+                      title: 'Studio',
+                      status: 'wizard',
+                      topics: [],
                       x: (modules.length * 2) % 12,
                       y: Infinity,
                       w: 3,
@@ -3051,11 +3062,11 @@ export default function App() {
                       folderId: selectedFolderId || undefined
                     };
                     setModules(prev => {
-                      const updated = [newTransport, ...prev];
+                      const updated = [newStudy, ...prev];
                       saveAppState(updated, folders).catch(console.error);
                       return updated;
                     });
-                    setEditingTransportModule(newTransport);
+                    setEditingStudyModule(newStudy);
                   } else if (selectedType === 'split' || selectedType === 'single-expense') {
                     setSpesaSubMenu(true);
                     setIsAdding(true);
@@ -3483,15 +3494,15 @@ export default function App() {
       </AnimatePresence>
 
       <AnimatePresence>
-        {editingTransportModule && (
-          <TransportScreen
-            module={editingTransportModule}
+        {editingStudyModule && (
+          <StudyScreen
+            module={editingStudyModule}
             onSave={(updated) => {
               updateModuleDirect(updated);
-              setEditingTransportModule(null);
+              setEditingStudyModule(null);
             }}
-            onClose={() => setEditingTransportModule(null)}
-            onDelete={deleteModule}
+            onClose={() => setEditingStudyModule(null)}
+            currentProfileId={currentProfileId || ''}
           />
         )}
       </AnimatePresence>

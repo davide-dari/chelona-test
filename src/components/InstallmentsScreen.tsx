@@ -24,6 +24,18 @@ export const InstallmentsScreen = ({ module, onClose, onSave, onDelete }: Instal
   const [selectedPayment, setSelectedPayment] = useState<InstallmentPayment | null>(null);
   const [isEditing, setIsEditing] = useState(module.targetAmount === 0);
 
+  const calculateMonthsDiff = (dateStr: string) => {
+    const today = new Date();
+    const dueDateObj = new Date(dateStr || new Date());
+    let monthsDiff = (dueDateObj.getFullYear() - today.getFullYear()) * 12 + dueDateObj.getMonth() - today.getMonth();
+    return Math.max(1, monthsDiff + 1);
+  };
+
+  const [installmentCount, setInstallmentCount] = useState(() => {
+    if (module.payments && module.payments.length > 0) return module.payments.length;
+    return calculateMonthsDiff(module.finalDueDate);
+  });
+
   // Auto-pay installments when due date is reached
   React.useEffect(() => {
     const todayStr = new Date().toISOString().substring(0, 10);
@@ -41,23 +53,9 @@ export const InstallmentsScreen = ({ module, onClose, onSave, onDelete }: Instal
     }
   }, [formData.payments]);
 
-  React.useEffect(() => {
-    if (formData.targetAmount <= 0) return;
-    
-    // Non ricalcolare se ci sono già rate pagate (per evitare di sovrascriverle)
-    const hasPaid = formData.payments.some(p => p.isPaid);
-    if (hasPaid) return;
-
-    // Se ci sono rate e la data finale non è cambiata, evita ricalcoli distruttivi non voluti
-    if (formData.payments.length > 0 && formData.finalDueDate === module.finalDueDate) return;
-
-    const today = new Date();
-    const dueDateObj = new Date(formData.finalDueDate);
-    
-    let monthsDiff = (dueDateObj.getFullYear() - today.getFullYear()) * 12 + dueDateObj.getMonth() - today.getMonth();
-    const count = Math.max(1, monthsDiff + 1);
-    
-    const amountPerInstallment = formData.targetAmount / count;
+  const generateInstallments = (count: number, target: number, finalDate: string) => {
+    const dueDateObj = new Date(finalDate);
+    const amountPerInstallment = target / count;
     const newPayments: InstallmentPayment[] = [];
     
     for (let i = 0; i < count; i++) {
@@ -71,9 +69,45 @@ export const InstallmentsScreen = ({ module, onClose, onSave, onDelete }: Instal
         isPaid: false
       });
     }
-    
-    setFormData(prev => ({ ...prev, payments: newPayments }));
-  }, [formData.targetAmount, formData.finalDueDate]);
+    return newPayments;
+  };
+
+  const handleRegenerate = (count: number, date: string) => {
+    const newPayments = generateInstallments(count, formData.targetAmount, date);
+    setFormData(prev => ({ ...prev, payments: newPayments, finalDueDate: date }));
+  };
+
+  // Adjust unpaid installments proportionally when targetAmount changes
+  React.useEffect(() => {
+    if (formData.targetAmount <= 0) return;
+
+    if (formData.payments.length > 0) {
+      const unpaidPayments = formData.payments.filter(p => !p.isPaid);
+      const paidAmount = formData.payments.filter(p => p.isPaid).reduce((acc, curr) => acc + curr.amount, 0);
+      const remainingToDistribute = formData.targetAmount - paidAmount;
+
+      if (unpaidPayments.length > 0 && remainingToDistribute >= 0) {
+        const amountPerUnpaid = remainingToDistribute / unpaidPayments.length;
+        const hasDifference = unpaidPayments.some(p => Math.abs(p.amount - amountPerUnpaid) > 0.01);
+        
+        if (hasDifference) {
+          setFormData(prev => ({
+            ...prev,
+            payments: prev.payments.map(p => {
+              if (!p.isPaid) {
+                return { ...p, amount: Number(amountPerUnpaid.toFixed(2)) };
+              }
+              return p;
+            })
+          }));
+        }
+      }
+    } else {
+      // Generate new installments if list is empty
+      const newPayments = generateInstallments(installmentCount, formData.targetAmount, formData.finalDueDate);
+      setFormData(prev => ({ ...prev, payments: newPayments }));
+    }
+  }, [formData.targetAmount]);
 
   const togglePayment = (id: string) => {
     setFormData(prev => ({
@@ -280,17 +314,36 @@ export const InstallmentsScreen = ({ module, onClose, onSave, onDelete }: Instal
                 />
               </div>
 
-              <div className="space-y-2">
-                <label className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] ml-1">
-                  <Calendar className="w-3.5 h-3.5" /> Scadenza Finale
-                </label>
-                <input 
-                  type="date"
-                  value={formData.finalDueDate}
-                  onChange={e => setFormData(prev => ({ ...prev, finalDueDate: e.target.value }))}
-                  className="w-full p-5 bg-[var(--card-bg)] border border-[var(--border)] rounded-3xl outline-none focus:border-indigo-500 transition-all font-bold text-[var(--text-main)]"
-                />
-                <p className="text-[10px] text-[var(--text-muted)] ml-2 mt-2">Le rate verranno calcolate in automatico in base ai mesi rimanenti ({formData.payments.length} rate previste).</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <label className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] ml-1">
+                    <Calendar className="w-3.5 h-3.5" /> Scadenza Finale
+                  </label>
+                  <input 
+                    type="date"
+                    value={formData.finalDueDate}
+                    onChange={e => handleRegenerate(installmentCount, e.target.value)}
+                    className="w-full p-5 bg-[var(--card-bg)] border border-[var(--border)] rounded-3xl outline-none focus:border-indigo-500 transition-all font-bold text-[var(--text-main)]"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] ml-1">
+                    <RefreshCw className="w-3.5 h-3.5" /> Numero di Rate
+                  </label>
+                  <input 
+                    type="number"
+                    min="1"
+                    max="120"
+                    value={installmentCount}
+                    onChange={e => {
+                      const count = Math.max(1, Number(e.target.value) || 1);
+                      setInstallmentCount(count);
+                      handleRegenerate(count, formData.finalDueDate);
+                    }}
+                    className="w-full p-5 bg-[var(--card-bg)] border border-[var(--border)] rounded-3xl outline-none focus:border-indigo-500 transition-all font-bold text-[var(--text-main)]"
+                  />
+                </div>
               </div>
             </div>
           </div>
