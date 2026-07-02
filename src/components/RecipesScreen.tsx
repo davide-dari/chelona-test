@@ -45,7 +45,7 @@ export function RecipesScreen({ onClose, initialSearchQuery }: RecipeScreenProps
   }, [handleBack]);
 
   useEffect(() => {
-    fetch('/ricette_mondo.json').then(res => res.json().catch(() => []))
+    fetch('ricette_mondo.json').then(res => res.json().catch(() => []))
     .then((mondoData) => {
       let combined: any[] = [];
       if (Array.isArray(mondoData)) {
@@ -66,7 +66,7 @@ export function RecipesScreen({ onClose, initialSearchQuery }: RecipeScreenProps
                 .filter(s => s.length > 0)
                 .reduce((acc: string[], curr) => {
                   if (curr.length > 200) {
-                    const sentences = curr.split(/(?<=[.!?])\s+(?=[A-Z])/);
+                    const sentences = curr.replace(/([.!?])\s+([A-Z])/g, '$1|SPLIT|$2').split('|SPLIT|');
                     acc.push(...sentences);
                   } else {
                     acc.push(curr);

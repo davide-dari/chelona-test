@@ -73,7 +73,7 @@ RELEASE_JSON=$(curl -s -X POST \
   -d "{
     \"tag_name\": \"$TAG\",
     \"name\": \"Release $TAG\",
-    \"body\": \"🚀 **Chelona v$VERSION**\\n\\n### ✨ Rollback:\\n- **🔙 Rollback alla 1.15.36**: Questa versione è esattamente identica alla 1.15.36 per ripristinare il corretto funzionamento precedente e rimuovere le modifiche sperimentali inserite nella 1.15.37.\",
+    \"body\": \"🚀 **Chelona v$VERSION**\\n\\n### ✨ Bug Fixes:\\n- **🛠️ Fix Schermata Ricette (Dieta)**: Risolto un bug critico che causava una schermata bianca sui browser più datati a causa di un'espressione regolare non supportata.\\n- **🛠️ Fix Caricamento Ricette**: Corretto il percorso del file delle ricette per garantire il corretto caricamento anche in ambienti Capacitor.\",
     \"draft\": false,
     \"prerelease\": false
   }")
