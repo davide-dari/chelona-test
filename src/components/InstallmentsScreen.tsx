@@ -55,16 +55,19 @@ export const InstallmentsScreen = ({ module, onClose, onSave, onDelete }: Instal
 
   const generateInstallments = (count: number, target: number, finalDate: string) => {
     const dueDateObj = new Date(finalDate);
-    const amountPerInstallment = target / count;
+    const amountPerInstallment = Math.floor((target / count) * 100) / 100;
+    let remainder = target - (amountPerInstallment * count);
+    remainder = Math.round(remainder * 100) / 100;
     const newPayments: InstallmentPayment[] = [];
     
     for (let i = 0; i < count; i++) {
       const pDate = new Date(dueDateObj);
       pDate.setMonth(pDate.getMonth() - (count - 1 - i));
       
+      const isLast = i === count - 1;
       newPayments.push({
         id: generateUUID(),
-        amount: Number(amountPerInstallment.toFixed(2)),
+        amount: Number((amountPerInstallment + (isLast ? remainder : 0)).toFixed(2)),
         dueDate: pDate.toISOString().substring(0, 10),
         isPaid: false
       });
@@ -72,8 +75,8 @@ export const InstallmentsScreen = ({ module, onClose, onSave, onDelete }: Instal
     return newPayments;
   };
 
-  const handleRegenerate = (count: number, date: string) => {
-    const newPayments = generateInstallments(count, formData.targetAmount, date);
+  const handleRegenerate = (count: number, date: string, target: number) => {
+    const newPayments = generateInstallments(count, target, date);
     setFormData(prev => ({ ...prev, payments: newPayments, finalDueDate: date }));
   };
 
@@ -87,20 +90,20 @@ export const InstallmentsScreen = ({ module, onClose, onSave, onDelete }: Instal
       const remainingToDistribute = formData.targetAmount - paidAmount;
 
       if (unpaidPayments.length > 0 && remainingToDistribute >= 0) {
-        const amountPerUnpaid = remainingToDistribute / unpaidPayments.length;
-        const hasDifference = unpaidPayments.some(p => Math.abs(p.amount - amountPerUnpaid) > 0.01);
+        const amountPerUnpaid = Math.floor((remainingToDistribute / unpaidPayments.length) * 100) / 100;
+        let remainder = remainingToDistribute - (amountPerUnpaid * unpaidPayments.length);
+        remainder = Math.round(remainder * 100) / 100;
         
-        if (hasDifference) {
-          setFormData(prev => ({
-            ...prev,
-            payments: prev.payments.map(p => {
-              if (!p.isPaid) {
-                return { ...p, amount: Number(amountPerUnpaid.toFixed(2)) };
-              }
-              return p;
-            })
-          }));
-        }
+        setFormData(prev => ({
+          ...prev,
+          payments: prev.payments.map((p, idx, arr) => {
+            if (!p.isPaid) {
+              const isLastUnpaid = arr.slice(idx + 1).filter(x => !x.isPaid).length === 0;
+              return { ...p, amount: Number((amountPerUnpaid + (isLastUnpaid ? remainder : 0)).toFixed(2)) };
+            }
+            return p;
+          })
+        }));
       }
     } else {
       // Generate new installments if list is empty
@@ -322,7 +325,12 @@ export const InstallmentsScreen = ({ module, onClose, onSave, onDelete }: Instal
                   <input 
                     type="date"
                     value={formData.finalDueDate}
-                    onChange={e => handleRegenerate(installmentCount, e.target.value)}
+                    onChange={e => {
+                      const newDate = e.target.value;
+                      const newCount = calculateMonthsDiff(newDate);
+                      setInstallmentCount(newCount);
+                      handleRegenerate(newCount, newDate, formData.targetAmount);
+                    }}
                     className="w-full p-5 bg-[var(--card-bg)] border border-[var(--border)] rounded-3xl outline-none focus:border-indigo-500 transition-all font-bold text-[var(--text-main)]"
                   />
                 </div>
@@ -339,7 +347,7 @@ export const InstallmentsScreen = ({ module, onClose, onSave, onDelete }: Instal
                     onChange={e => {
                       const count = Math.max(1, Number(e.target.value) || 1);
                       setInstallmentCount(count);
-                      handleRegenerate(count, formData.finalDueDate);
+                      handleRegenerate(count, formData.finalDueDate, formData.targetAmount);
                     }}
                     className="w-full p-5 bg-[var(--card-bg)] border border-[var(--border)] rounded-3xl outline-none focus:border-indigo-500 transition-all font-bold text-[var(--text-main)]"
                   />

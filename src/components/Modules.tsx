@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { CreditCard, ShieldCheck, Wallet, Fingerprint, Plus, Trash2, Calendar, DollarSign, Pencil, StickyNote, Copy, Check, GripVertical, Car, Wrench, AlertCircle, FileText, QrCode, FileDown, X, Clock, Eye, Lock, ChevronRight, Bell, BellOff, Gauge, Users, Paperclip, Receipt, Image as ImageIcon, MapPin, ChevronLeft, Bus } from 'lucide-react';
+import { CreditCard, ShieldCheck, Wallet, Fingerprint, Plus, Trash2, Calendar, DollarSign, Pencil, StickyNote, Copy, Check, GripVertical, Car, Wrench, AlertCircle, FileText, QrCode, FileDown, X, Clock, Eye, Lock, ChevronRight, Bell, BellOff, Gauge, Users, Paperclip, Receipt, Image as ImageIcon, MapPin, ChevronLeft, Bus, Activity, BookOpen } from 'lucide-react';
 import { Module, GenericModule, AutoModule, DocumentModule, SplitModule, SingleExpenseModule, WalletModule, GalleryModule, TravelModule, TransportModule } from '../types';
 import { EXPENSE_CATEGORIES } from '../constants/expenses';
 import { motion, AnimatePresence } from 'motion/react';
@@ -587,6 +587,56 @@ export const StudyCard = ({ module, onDelete, onEdit }: { module: any; onDelete?
                 <div className="h-full bg-indigo-500 transition-all duration-300" style={{ width: `${Math.min(100, progress)}%` }} />
               </div>
             </div>
+          ) : (
+            <p className="text-[10px] text-[var(--text-muted)] italic font-semibold">Nessun piano avviato</p>
+          )}
+        </div>
+      </div>
+    </ModuleWrapper>
+  );
+};
+
+export const FitnessCard = ({ module, onDelete, onEdit }: { module: any; onDelete?: (id: string) => void; onEdit?: (m: Module) => void; }) => {
+  const workoutPlan = module.workoutPlan || [];
+  const completedDays = workoutPlan.filter((d: any) => d.isCompleted).length;
+  const hasFitness = workoutPlan.length > 0;
+  const hasDiet = !!module.mealPlan;
+  const progress = workoutPlan.length > 0 ? (completedDays / workoutPlan.length) * 100 : 0;
+
+  return (
+    <ModuleWrapper module={module} onDelete={onDelete} onEdit={onEdit}>
+      <div
+        className="h-full flex flex-col cursor-pointer group/card hover:bg-[var(--bg)] transition-colors p-4 -m-4 rounded-2xl active:scale-[0.98]"
+        onClick={() => onEdit?.(module)}
+      >
+        <div className="relative aspect-square rounded-2xl overflow-hidden bg-[#0a1a12] border border-emerald-500/20 mb-3 flex items-center justify-center shadow-inner">
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_#0f2a1a_0%,_#0a1a12_80%)]" />
+          
+          <div className="relative z-10 w-16 h-16 rounded-full bg-gradient-to-br from-emerald-600/80 to-teal-900 border border-emerald-400/30 flex items-center justify-center shadow-lg shadow-emerald-500/20 group-hover/card:scale-110 transition-transform">
+            <Activity className="w-8 h-8 text-emerald-200" />
+          </div>
+        </div>
+
+        <div className="flex-1 space-y-2 min-w-0">
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 bg-emerald-500/10 rounded-lg flex items-center justify-center text-emerald-400 shrink-0">
+              <Activity className="w-4 h-4" />
+            </div>
+            <span className="text-[12px] font-bold text-[var(--text-main)] truncate">{module.title || 'Fitness & Dieta'}</span>
+          </div>
+
+          {hasFitness ? (
+            <div className="space-y-1">
+              <div className="flex justify-between text-[10px] font-bold text-[var(--text-muted)]">
+                <span>{completedDays}/{workoutPlan.length} Allenamenti</span>
+                <span>{Math.round(progress)}%</span>
+              </div>
+              <div className="h-1.5 w-full bg-[var(--border)] rounded-full overflow-hidden">
+                <div className="h-full bg-emerald-500 transition-all duration-300" style={{ width: `${Math.min(100, progress)}%` }} />
+              </div>
+            </div>
+          ) : hasDiet ? (
+            <p className="text-[10px] text-emerald-400 font-semibold">🥗 Piano alimentare attivo</p>
           ) : (
             <p className="text-[10px] text-[var(--text-muted)] italic font-semibold">Nessun piano avviato</p>
           )}

@@ -1,4 +1,4 @@
-export type ModuleType = 'generic' | 'auto' | 'document' | 'split' | 'single-expense' | 'wallet' | 'gallery' | 'travel' | 'transport' | 'recipes' | 'furniture' | 'installments';
+export type ModuleType = 'generic' | 'auto' | 'document' | 'split' | 'single-expense' | 'wallet' | 'gallery' | 'travel' | 'transport' | 'recipes' | 'furniture' | 'installments' | 'fitness';
 export type FuelType = 'benzina' | 'diesel' | 'gpl' | 'metano' | 'ibrida' | 'elettrica';
 
 export interface Folder {
@@ -207,7 +207,55 @@ export interface InstallmentsModule extends BaseModule {
   payments: InstallmentPayment[];
 }
 
-export type Module = GenericModule | AutoModule | DocumentModule | SplitModule | SingleExpenseModule | WalletModule | GalleryModule | TravelModule | TransportModule | FurnitureModule | InstallmentsModule;
+export interface FitnessProfile {
+  gender: 'male' | 'female';
+  age: number;
+  height: number;
+  weight: number;
+  level: 'beginner' | 'intermediate' | 'advanced';
+  goal: 'mass' | 'cut' | 'strength' | 'endurance' | 'tone';
+  daysPerWeek: number;
+  equipment: 'gym' | 'home' | 'bodyweight';
+}
+
+export interface WorkoutDay {
+  dayLabel: string;
+  focus: string;
+  exercises: any[];
+  isCompleted: boolean;
+}
+
+export interface DietProfile {
+  gender: 'male' | 'female';
+  age: number;
+  height: number;
+  weight: number;
+  activityLevel: 'sedentary' | 'light' | 'active' | 'very_active';
+  goal: 'cut' | 'maintain' | 'bulk';
+  restrictions: string[];
+  mealsPerDay: number;
+}
+
+export interface MealDay {
+  meals: any[];
+  totalCalories: number;
+  totalProtein: number;
+  totalCarbs: number;
+  totalFat: number;
+}
+
+export interface FitnessModule extends BaseModule {
+  type: 'fitness';
+  fitnessProfile?: FitnessProfile;
+  workoutPlan?: WorkoutDay[];
+  dietProfile?: DietProfile;
+  mealPlan?: MealDay;
+  bmr?: number;
+  tdee?: number;
+  targetCalories?: number;
+}
+
+export type Module = GenericModule | AutoModule | DocumentModule | SplitModule | SingleExpenseModule | WalletModule | GalleryModule | TravelModule | TransportModule | FurnitureModule | InstallmentsModule | FitnessModule;
 
 export interface DashboardState {
   modules: Module[];

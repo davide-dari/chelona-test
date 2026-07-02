@@ -4,12 +4,12 @@
  */
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Sun, Moon, Wrench, Plus, LayoutDashboard, Settings, User, LogOut, Search, Mic, Bell, CreditCard, Fingerprint, ShieldCheck, Lock, Menu, X, StickyNote, FileText, Grid2X2, Car, QrCode, Folder as FolderIcon, Check, Edit2, Trash2, BookOpen, ArrowLeft, ArrowRight, Camera, FileDown, Hourglass, Users, Download, Receipt, MapPin, Image as ImageIcon, Lightbulb, Globe, ChevronLeft, Bus, Home, Armchair, Bot } from 'lucide-react';
+import { Sun, Moon, Wrench, Plus, LayoutDashboard, Settings, User, LogOut, Search, Mic, Bell, CreditCard, Fingerprint, ShieldCheck, Lock, Menu, X, StickyNote, FileText, Grid2X2, Car, QrCode, Folder as FolderIcon, Check, Edit2, Trash2, BookOpen, ArrowLeft, ArrowRight, Camera, FileDown, Hourglass, Users, Download, Receipt, MapPin, Image as ImageIcon, Lightbulb, Globe, ChevronLeft, Bus, Home, Armchair, Bot, Activity } from 'lucide-react';
 import { AntigravityAssistant } from './components/antigravity/AntigravityAssistant';
 import { Module, ModuleType, Folder, DocumentModule } from './types';
 import { storage, AppState } from './services/storage';
 import { encryption } from './services/encryption';
-import { GenericCard, AutoCard, DocumentCard, SplitCard, SingleExpenseCard, GalleryCard, TravelCard, StudyCard } from './components/Modules';
+import { GenericCard, AutoCard, DocumentCard, SplitCard, SingleExpenseCard, GalleryCard, TravelCard, StudyCard, FitnessCard } from './components/Modules';
 import { LockScreen } from './components/LockScreen';
 import { QrScanner } from './components/QrScanner';
 import { DocumentScanner } from './components/DocumentScanner';
@@ -29,6 +29,7 @@ import { StudyScreen } from './components/StudyScreen';
 import { FurnitureScreen } from "./components/FurnitureScreen";
 import { InstallmentsCard } from './components/InstallmentsCard';
 import { InstallmentsScreen } from './components/InstallmentsScreen';
+import { FitnessScreen } from './components/FitnessScreen';
 import { notificationService } from './services/notificationService';
 import { APP_VERSION } from './constants/version';
 
@@ -142,6 +143,12 @@ const TEMPLATES = {
     icon: BookOpen,
     color: 'text-orange-500'
   },
+  fitness: {
+    title: 'Fitness & Dieta',
+    content: '',
+    icon: Activity,
+    color: 'text-emerald-500'
+  },
   home: {
     title: 'Casa',
     content: '',
@@ -178,6 +185,8 @@ export default function App() {
   const [homeSubMenu, setHomeSubMenu] = useState(false);
   const [editingFurnitureModule, setEditingFurnitureModule] = useState<import('./types').FurnitureModule | null>(null);
   const [editingInstallmentsModule, setEditingInstallmentsModule] = useState<import('./types').InstallmentsModule | null>(null);
+  const [editingFitnessModule, setEditingFitnessModule] = useState<import('./types').FitnessModule | null>(null);
+  const [showNotificationPrompt, setShowNotificationPrompt] = useState(false);
 
   useEffect(() => {
     // Show splash screen briefly, then go to lock screen immediately
@@ -400,6 +409,7 @@ export default function App() {
       if (editingGenericModule) { setEditingGenericModule(null); return; }
       if (editingFurnitureModule) { setEditingFurnitureModule(null); return; }
       if (editingInstallmentsModule) { setEditingInstallmentsModule(null); return; }
+      if (editingFitnessModule) { setEditingFitnessModule(null); return; }
       if (editingModuleId) { setEditingModuleId(null); setFormData({}); return; }
       if (isAdding) { setIsAdding(false); setFormData({}); setSpesaSubMenu(false); return; }
       if (isProfileOpen) { setIsProfileOpen(false); return; }
@@ -422,7 +432,7 @@ export default function App() {
   }, [
     moduleToDelete, showGalleryViewer, gallerySelectedImage,
     editingAutoModule, editingSplitModule, editingSingleExpenseModule,
-    editingTravelModule, editingStudyModule, editingDocumentModule,
+    editingTravelModule, editingStudyModule, editingFitnessModule, editingDocumentModule,
     editingGenericModule, editingFurnitureModule, editingInstallmentsModule, editingModuleId, isAdding, isProfileOpen, isAssistantOpen,
     activeToolId, isToolsOpen, isArchiveOpen, isAddressBookOpen, isRecipesOpen,
     isSidebarOpen, selectedFolderId, selectedType, spesaSubMenu
@@ -525,8 +535,14 @@ export default function App() {
           .map(m => ({ id: m.id, brand: (m as any).brand, model: (m as any).model, currentKm: (m as any).currentKm }));
         notificationService.checkAndFire(autoMods);
         
-        // Richiedi i permessi delle notifiche all'avvio
-        notificationService.requestPermission().catch(console.error);
+        // Richiedi i permessi delle notifiche all'avvio o mostra prompt
+        if (!notificationService.isGranted() && Notification.permission !== 'denied') {
+          if (!localStorage.getItem('chelona_notif_prompt_seen')) {
+            setShowNotificationPrompt(true);
+          }
+        } else {
+          notificationService.requestPermission().catch(console.error);
+        }
 
         // Trigger automatic update check upon successful unlock
         handleCheckUpdate(true);
@@ -816,6 +832,10 @@ export default function App() {
     }
     if (module.type === 'furniture') {
       setEditingFurnitureModule(module as import('./types').FurnitureModule);
+      return;
+    }
+    if (module.type === 'fitness') {
+      setEditingFitnessModule(module as import('./types').FitnessModule);
       return;
     }
     setEditingModuleId(module.id);
@@ -2864,6 +2884,28 @@ export default function App() {
                                       });
                                       setEditingStudyModule(newStudy);
                                     }
+                                  } else if (key === 'fitness') {
+                                    const existingFitness = modules.find(m => m.type === 'fitness');
+                                    if (existingFitness) {
+                                      setEditingFitnessModule(existingFitness as import('./types').FitnessModule);
+                                    } else {
+                                      const newFitness: import('./types').FitnessModule = {
+                                        id: generateUUID(),
+                                        type: 'fitness',
+                                        title: 'Fitness & Dieta',
+                                        x: (modules.length * 2) % 12,
+                                        y: Infinity,
+                                        w: 3,
+                                        h: 2,
+                                        folderId: selectedFolderId || undefined
+                                      };
+                                      setModules(prev => {
+                                        const updated = [newFitness, ...prev];
+                                        saveAppState(updated, folders).catch(console.error);
+                                        return updated;
+                                      });
+                                      setEditingFitnessModule(newFitness);
+                                    }
                                   } else {
                                     setSelectedType(key as ModuleType);
                                   }
@@ -2993,6 +3035,8 @@ export default function App() {
                                 <GalleryCard module={module as import('./types').GalleryModule} onEdit={openEditModal} />
                               ) : module.type === 'study' ? (
                                 <StudyCard module={module} onDelete={requestDelete} onEdit={openEditModal} />
+                              ) : module.type === 'fitness' ? (
+                                <FitnessCard module={module as import('./types').FitnessModule} onDelete={requestDelete} onEdit={openEditModal} />
                               ) : module.type === 'travel' ? (
                                 <TravelCard module={module as import('./types').TravelModule} onDelete={requestDelete} onEdit={openEditModal} />
                               ) : (
@@ -3010,7 +3054,7 @@ export default function App() {
           </div>
           
           {/* Global FAB (Only on main dashboard and specific categories except gallery/travel) */}
-          {(selectedType !== 'gallery') && !editingTravelModule && !editingStudyModule && !isAdding && !editingModuleId && !isArchiveOpen && !isToolsOpen && !editingAutoModule && !editingSplitModule && !editingSingleExpenseModule && !editingDocumentModule && !editingGenericModule && !editingFurnitureModule && !editingInstallmentsModule && (
+          {(selectedType !== 'gallery') && !editingTravelModule && !editingStudyModule && !editingFitnessModule && !isAdding && !editingModuleId && !isArchiveOpen && !isToolsOpen && !editingAutoModule && !editingSplitModule && !editingSingleExpenseModule && !editingDocumentModule && !editingGenericModule && !editingFurnitureModule && !editingInstallmentsModule && (
             <>
               {/* Scan QR Button next to Plus button */}
               <motion.button
@@ -3067,6 +3111,20 @@ export default function App() {
                       return updated;
                     });
                     setEditingStudyModule(newStudy);
+                  } else if (selectedType === 'fitness') {
+                    const newFitness: import('./types').FitnessModule = {
+                      id: generateUUID(),
+                      type: 'fitness',
+                      title: 'Fitness & Dieta',
+                      x: 0, y: 0, w: 3, h: 3,
+                      folderId: selectedFolderId || undefined
+                    };
+                    setModules(prev => {
+                      const updated = [newFitness, ...prev];
+                      saveAppState(updated, folders).catch(console.error);
+                      return updated;
+                    });
+                    setEditingFitnessModule(newFitness);
                   } else if (selectedType === 'split' || selectedType === 'single-expense') {
                     setSpesaSubMenu(true);
                     setIsAdding(true);
@@ -3508,6 +3566,19 @@ export default function App() {
       </AnimatePresence>
 
       <AnimatePresence>
+        {editingFitnessModule && (
+          <FitnessScreen
+            module={editingFitnessModule}
+            onSave={(updated) => {
+              updateModuleDirect(updated);
+              setEditingFitnessModule(updated);
+            }}
+            onClose={() => setEditingFitnessModule(null)}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
         {editingSingleExpenseModule && (
           <SingleExpenseScreen
             module={editingSingleExpenseModule}
@@ -3922,6 +3993,23 @@ export default function App() {
       </AnimatePresence>
 
       </div>
+      <ConfirmDialog
+        isOpen={showNotificationPrompt}
+        title="Attiva Notifiche"
+        message="Per sfruttare al meglio Chelona e ricordarti scadenze importanti (rate, bollo, assicurazioni, ecc.), abbiamo bisogno del tuo permesso per inviare notifiche."
+        confirmText="Attiva"
+        cancelText="Non ora"
+        icon="alert"
+        onConfirm={async () => {
+          setShowNotificationPrompt(false);
+          localStorage.setItem('chelona_notif_prompt_seen', 'true');
+          await notificationService.requestPermission();
+        }}
+        onCancel={() => {
+          setShowNotificationPrompt(false);
+          localStorage.setItem('chelona_notif_prompt_seen', 'true');
+        }}
+      />
     </ErrorBoundary>
     </div>
   );
