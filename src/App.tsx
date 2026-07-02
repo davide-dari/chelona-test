@@ -301,6 +301,22 @@ export default function App() {
   const [folderToDelete, setFolderToDelete] = useState<string | null>(null);
   const [isAddressBookOpen, setIsAddressBookOpen] = useState(false);
   const [isRecipesOpen, setIsRecipesOpen] = useState(false);
+  const [initialRecipesSearch, setInitialRecipesSearch] = useState('');
+
+  // Listen for open-recipes event from other modules (like Fitness/Diet)
+  useEffect(() => {
+    const handleOpenRecipes = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      if (customEvent.detail && customEvent.detail.search) {
+        setInitialRecipesSearch(customEvent.detail.search);
+      } else {
+        setInitialRecipesSearch('');
+      }
+      setIsRecipesOpen(true);
+    };
+    window.addEventListener('open-recipes', handleOpenRecipes);
+    return () => window.removeEventListener('open-recipes', handleOpenRecipes);
+  }, []);
   const [autoFormStep, setAutoFormStep] = useState(0);
   const [picker, setPicker] = useState<'brand' | 'model' | null>(null);
   const [pendingImportModule, setPendingImportModule] = useState<Module | null>(null);
@@ -3410,9 +3426,18 @@ export default function App() {
 
       <AnimatePresence>
          {isRecipesOpen && (
-           <div className="absolute inset-0 z-[100] bg-[var(--bg)] flex flex-col h-[100dvh] safe-area-inset-bottom safe-area-header overflow-hidden">
-             <RecipesScreen onClose={() => setIsRecipesOpen(false)} />
-           </div>
+           <motion.div
+             initial={{ opacity: 0, y: '100%' }}
+             animate={{ opacity: 1, y: 0 }}
+             exit={{ opacity: 0, y: '100%' }}
+             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+             className="fixed inset-0 z-[100]"
+           >
+             <RecipesScreen onClose={() => {
+               setIsRecipesOpen(false);
+               setInitialRecipesSearch('');
+             }} initialSearchQuery={initialRecipesSearch} />
+           </motion.div>
          )}
          {isAddressBookOpen && (
             <AddressBookScreen onClose={() => setIsAddressBookOpen(false)} />

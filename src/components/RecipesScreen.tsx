@@ -4,14 +4,15 @@ import { ArrowLeft, Search, X, BookOpen, Star, ChefHat } from 'lucide-react';
 
 interface RecipeScreenProps {
   onClose: () => void;
+  initialSearchQuery?: string;
 }
 
-export function RecipesScreen({ onClose }: RecipeScreenProps) {
+export function RecipesScreen({ onClose, initialSearchQuery }: RecipeScreenProps) {
   const [allMeals, setAllMeals] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState(initialSearchQuery || '');
   
   const [selectedMeal, setSelectedMeal] = useState<any | null>(null);
   const [favorites, setFavorites] = useState<any[]>([]);
@@ -55,13 +56,32 @@ export function RecipesScreen({ onClose }: RecipeScreenProps) {
             if (cat === 'Primi Piatti') cat = 'Primi';
             if (cat === 'Secondi Piatti') cat = 'Secondi';
             
+            let parsedSteps: string[] = [];
+            if (Array.isArray(m.steps)) parsedSteps = m.steps;
+            else if (Array.isArray(m.procedimento)) parsedSteps = m.procedimento;
+            else if (typeof m.procedimento === 'string') {
+              parsedSteps = m.procedimento
+                .split(/\n+/)
+                .map(s => s.trim())
+                .filter(s => s.length > 0)
+                .reduce((acc: string[], curr) => {
+                  if (curr.length > 200) {
+                    const sentences = curr.split(/(?<=[.!?])\s+(?=[A-Z])/);
+                    acc.push(...sentences);
+                  } else {
+                    acc.push(curr);
+                  }
+                  return acc;
+                }, []);
+            }
+
             return {
               id: m.id || `gz_${i}`,
               title: m.title || m.nome,
               image: m.image,
               category: cat,
               ingredients: m.ingredients || m.ingredienti || [],
-              steps: m.steps || (typeof m.procedimento === 'string' ? m.procedimento.replace(/\\s+\\d+\\s*(?=[.,;:\\n])/g, '').replace(/\\s+([.,;:!?)])/g, '$1').split(/(?<=[.!?])\\s+(?=[A-Z])/).filter((s: string) => s.trim() !== '') : (m.procedimento || []))
+              steps: parsedSteps
             };
           });
         combined = [...formatted];
@@ -527,13 +547,13 @@ export function RecipesScreen({ onClose }: RecipeScreenProps) {
                   {selectedMeal.steps && selectedMeal.steps.length > 0 && (
                     <section>
                       <h3 className="text-lg font-bold text-orange-500 mb-3 border-b border-[var(--border)] pb-2">Preparazione</h3>
-                      <div className="space-y-4">
+                      <div className="space-y-6 mt-4">
                         {selectedMeal.steps.map((step: string, i: number) => (
-                          <div key={i} className="flex gap-4">
-                            <div className="w-8 h-8 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center font-bold shrink-0 mt-1">
+                          <div key={i} className="flex gap-4 items-start">
+                            <div className="w-8 h-8 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center font-bold shrink-0 mt-1 shadow-sm">
                               {i + 1}
                             </div>
-                            <p className="text-[var(--text-main)] leading-relaxed flex-1" dangerouslySetInnerHTML={{ __html: step }} />
+                            <p className="text-[var(--text-main)] text-[15px] leading-relaxed flex-1" dangerouslySetInnerHTML={{ __html: step }} />
                           </div>
                         ))}
                       </div>

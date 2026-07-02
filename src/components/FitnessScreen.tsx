@@ -373,7 +373,7 @@ function getRandomMeal(type: 'breakfast' | 'lunch' | 'dinner' | 'snack', restric
   return options[Math.floor(Math.random() * options.length)];
 }
 
-function generateMealPlan(profile: DietProfile, targetCalories: number): MealDay {
+function generateMealPlanWeekly(profile: DietProfile, targetCalories: number): MealDay[] {
   const macros = {
     protein: profile.goal === 'bulk' ? profile.weight * 2.2 : profile.weight * 2.0,
     fat: (targetCalories * 0.25) / 9,
@@ -381,52 +381,58 @@ function generateMealPlan(profile: DietProfile, targetCalories: number): MealDay
   const remainingCals = targetCalories - (macros.protein * 4) - (macros.fat * 9);
   macros.carbs = remainingCals / 4;
 
-  const mealDay: MealDay = {
-    meals: [],
-    totalCalories: 0,
-    totalProtein: 0,
-    totalCarbs: 0,
-    totalFat: 0
-  };
-
-  const addMeal = (type: 'breakfast' | 'lunch' | 'dinner' | 'snack', targetCalFraction: number) => {
-    const template = getRandomMeal(type, profile.restrictions);
-    if (!template) return;
-    
-    const scale = (targetCalories * targetCalFraction) / template.baseCalories;
-    const meal: Meal = {
-      name: template.name,
-      description: template.description,
-      calories: Math.round(template.baseCalories * scale),
-      protein: Math.round(template.baseProtein * scale),
-      carbs: Math.round(template.baseCarbs * scale),
-      fat: Math.round(template.baseFat * scale)
+  const week: MealDay[] = [];
+  
+  for (let i = 0; i < 7; i++) {
+    const mealDay: MealDay = {
+      meals: [],
+      totalCalories: 0,
+      totalProtein: 0,
+      totalCarbs: 0,
+      totalFat: 0
     };
-    mealDay.meals.push(meal);
-    mealDay.totalCalories += meal.calories;
-    mealDay.totalProtein += meal.protein;
-    mealDay.totalCarbs += meal.carbs;
-    mealDay.totalFat += meal.fat;
-  };
 
-  if (profile.mealsPerDay === 3) {
-    addMeal('breakfast', 0.25);
-    addMeal('lunch', 0.40);
-    addMeal('dinner', 0.35);
-  } else if (profile.mealsPerDay === 4) {
-    addMeal('breakfast', 0.25);
-    addMeal('lunch', 0.35);
-    addMeal('snack', 0.10);
-    addMeal('dinner', 0.30);
-  } else {
-    addMeal('breakfast', 0.20);
-    addMeal('snack', 0.10);
-    addMeal('lunch', 0.30);
-    addMeal('snack', 0.10);
-    addMeal('dinner', 0.30);
+    const addMeal = (type: 'breakfast' | 'lunch' | 'dinner' | 'snack', targetCalFraction: number) => {
+      const template = getRandomMeal(type, profile.restrictions);
+      if (!template) return;
+      
+      const scale = (targetCalories * targetCalFraction) / template.baseCalories;
+      const meal: Meal = {
+        name: template.name,
+        description: template.description,
+        calories: Math.round(template.baseCalories * scale),
+        protein: Math.round(template.baseProtein * scale),
+        carbs: Math.round(template.baseCarbs * scale),
+        fat: Math.round(template.baseFat * scale)
+      };
+      mealDay.meals.push(meal);
+      mealDay.totalCalories += meal.calories;
+      mealDay.totalProtein += meal.protein;
+      mealDay.totalCarbs += meal.carbs;
+      mealDay.totalFat += meal.fat;
+    };
+
+    if (profile.mealsPerDay === 3) {
+      addMeal('breakfast', 0.25);
+      addMeal('lunch', 0.40);
+      addMeal('dinner', 0.35);
+    } else if (profile.mealsPerDay === 4) {
+      addMeal('breakfast', 0.25);
+      addMeal('lunch', 0.35);
+      addMeal('snack', 0.10);
+      addMeal('dinner', 0.30);
+    } else {
+      addMeal('breakfast', 0.20);
+      addMeal('snack', 0.10);
+      addMeal('lunch', 0.30);
+      addMeal('snack', 0.10);
+      addMeal('dinner', 0.30);
+    }
+    
+    week.push(mealDay);
   }
 
-  return mealDay;
+  return week;
 }
 
 // --- MAIN COMPONENT ---
@@ -495,12 +501,12 @@ export function FitnessScreen({ module, onClose, onSave }: FitnessScreenProps) {
     if (dietProfile.goal === 'cut') targetCalories -= 400;
     else if (dietProfile.goal === 'bulk') targetCalories += 300;
     
-    const mealPlan = generateMealPlan(dietProfile, targetCalories);
+    const mealPlanWeekly = generateMealPlanWeekly(dietProfile, targetCalories);
     
     const updated = {
       ...formData,
       dietProfile,
-      mealPlan,
+      mealPlanWeekly,
       bmr: Math.round(bmr),
       tdee: Math.round(tdee),
       targetCalories: Math.round(targetCalories)
@@ -635,15 +641,15 @@ export function FitnessScreen({ module, onClose, onSave }: FitnessScreenProps) {
                   <div className="space-y-4">
                     <div>
                       <label className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider mb-2 block">Età (anni)</label>
-                      <input type="number" value={fitProfile.age} onChange={e => setFitProfile({...fitProfile, age: parseInt(e.target.value)||0})} className="w-full bg-[var(--card-bg)] border border-[var(--border)] rounded-2xl p-4 text-[var(--text-main)] font-bold outline-none focus:border-emerald-500" />
+                      <input type="number" value={fitProfile.age || ''} onChange={e => setFitProfile({...fitProfile, age: parseInt(e.target.value)||0})} className="w-full bg-[var(--card-bg)] border border-[var(--border)] rounded-2xl p-4 text-[var(--text-main)] font-bold outline-none focus:border-emerald-500" />
                     </div>
                     <div>
                       <label className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider mb-2 block">Altezza (cm)</label>
-                      <input type="number" value={fitProfile.height} onChange={e => setFitProfile({...fitProfile, height: parseInt(e.target.value)||0})} className="w-full bg-[var(--card-bg)] border border-[var(--border)] rounded-2xl p-4 text-[var(--text-main)] font-bold outline-none focus:border-emerald-500" />
+                      <input type="number" value={fitProfile.height || ''} onChange={e => setFitProfile({...fitProfile, height: parseInt(e.target.value)||0})} className="w-full bg-[var(--card-bg)] border border-[var(--border)] rounded-2xl p-4 text-[var(--text-main)] font-bold outline-none focus:border-emerald-500" />
                     </div>
                     <div>
                       <label className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider mb-2 block">Peso (kg)</label>
-                      <input type="number" value={fitProfile.weight} onChange={e => setFitProfile({...fitProfile, weight: parseInt(e.target.value)||0})} className="w-full bg-[var(--card-bg)] border border-[var(--border)] rounded-2xl p-4 text-[var(--text-main)] font-bold outline-none focus:border-emerald-500" />
+                      <input type="number" value={fitProfile.weight || ''} onChange={e => setFitProfile({...fitProfile, weight: parseInt(e.target.value)||0})} className="w-full bg-[var(--card-bg)] border border-[var(--border)] rounded-2xl p-4 text-[var(--text-main)] font-bold outline-none focus:border-emerald-500" />
                     </div>
                   </div>
                   <button onClick={() => setFitWizardStep(3)} className="w-full py-4 bg-emerald-500 text-white font-bold rounded-2xl">Avanti</button>
@@ -758,15 +764,15 @@ export function FitnessScreen({ module, onClose, onSave }: FitnessScreenProps) {
                   <div className="space-y-4">
                     <div>
                       <label className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider mb-2 block">Età (anni)</label>
-                      <input type="number" value={dietProfile.age} onChange={e => setDietProfile({...dietProfile, age: parseInt(e.target.value)||0})} className="w-full bg-[var(--card-bg)] border border-[var(--border)] rounded-2xl p-4 text-[var(--text-main)] font-bold outline-none focus:border-amber-500" />
+                      <input type="number" value={dietProfile.age || ''} onChange={e => setDietProfile({...dietProfile, age: parseInt(e.target.value)||0})} className="w-full bg-[var(--card-bg)] border border-[var(--border)] rounded-2xl p-4 text-[var(--text-main)] font-bold outline-none focus:border-amber-500" />
                     </div>
                     <div>
                       <label className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider mb-2 block">Altezza (cm)</label>
-                      <input type="number" value={dietProfile.height} onChange={e => setDietProfile({...dietProfile, height: parseInt(e.target.value)||0})} className="w-full bg-[var(--card-bg)] border border-[var(--border)] rounded-2xl p-4 text-[var(--text-main)] font-bold outline-none focus:border-amber-500" />
+                      <input type="number" value={dietProfile.height || ''} onChange={e => setDietProfile({...dietProfile, height: parseInt(e.target.value)||0})} className="w-full bg-[var(--card-bg)] border border-[var(--border)] rounded-2xl p-4 text-[var(--text-main)] font-bold outline-none focus:border-amber-500" />
                     </div>
                     <div>
                       <label className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider mb-2 block">Peso (kg)</label>
-                      <input type="number" value={dietProfile.weight} onChange={e => setDietProfile({...dietProfile, weight: parseInt(e.target.value)||0})} className="w-full bg-[var(--card-bg)] border border-[var(--border)] rounded-2xl p-4 text-[var(--text-main)] font-bold outline-none focus:border-amber-500" />
+                      <input type="number" value={dietProfile.weight || ''} onChange={e => setDietProfile({...dietProfile, weight: parseInt(e.target.value)||0})} className="w-full bg-[var(--card-bg)] border border-[var(--border)] rounded-2xl p-4 text-[var(--text-main)] font-bold outline-none focus:border-amber-500" />
                     </div>
                   </div>
                   <button onClick={() => setDietWizardStep(3)} className="w-full py-4 bg-amber-500 text-white font-bold rounded-2xl">Avanti</button>
@@ -906,15 +912,25 @@ export function FitnessScreen({ module, onClose, onSave }: FitnessScreenProps) {
                           <div className="px-6 pb-6 pt-2 border-t border-[var(--border)]">
                             <div className="space-y-4">
                               {day.exercises.map((ex, eIdx) => (
-                                <div key={eIdx} className="flex items-center justify-between bg-[var(--bg)] p-4 rounded-2xl">
-                                  <div>
+                                <div key={eIdx} className="flex items-center justify-between bg-[var(--bg)] p-4 rounded-2xl gap-4">
+                                  <div className="flex-1">
                                     <p className="font-bold text-sm text-[var(--text-main)]">{ex.name}</p>
                                     <p className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] mt-1">{ex.muscleGroup}</p>
                                   </div>
                                   <div className="text-right">
                                     <p className="font-black text-emerald-500">{ex.sets} × {ex.reps}</p>
-                                    <p className="text-[10px] font-bold text-[var(--text-muted)] mt-1">Recupero: {ex.rest}</p>
+                                    <p className="text-[10px] font-bold text-[var(--text-muted)] mt-1">Rec: {ex.rest}</p>
                                   </div>
+                                  <button 
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      window.open(`https://www.youtube.com/results?search_query=${encodeURIComponent(ex.name + ' tutorial esercizio esecuzione')}`, '_blank');
+                                    }}
+                                    className="p-3 bg-emerald-500/10 text-emerald-500 rounded-xl hover:bg-emerald-500/20 transition-colors shrink-0"
+                                    title="Vedi Esecuzione"
+                                  >
+                                    <Play className="w-5 h-5 fill-current" />
+                                  </button>
                                 </div>
                               ))}
                             </div>
@@ -925,13 +941,12 @@ export function FitnessScreen({ module, onClose, onSave }: FitnessScreenProps) {
                   </div>
                 ))}
               </div>
-
             </div>
           </div>
         )}
 
         {/* DIET PLAN VIEW */}
-        {currentView === 'diet-plan' && formData.mealPlan && (
+        {currentView === 'diet-plan' && formData.mealPlanWeekly && formData.mealPlanWeekly.length > 0 && (
           <div className="px-6 py-8">
             <div className="max-w-3xl mx-auto space-y-6">
               
@@ -955,24 +970,41 @@ export function FitnessScreen({ module, onClose, onSave }: FitnessScreenProps) {
 
                 <div className="grid grid-cols-3 gap-4">
                   <div className="bg-[var(--bg)] p-4 rounded-2xl text-center border-b-4 border-blue-500">
-                    <p className="text-lg font-black text-[var(--text-main)]">{Math.round(formData.mealPlan.totalCarbs)}g</p>
+                    <p className="text-lg font-black text-[var(--text-main)]">{Math.round(formData.mealPlanWeekly[expandedDayIndex || 0].totalCarbs)}g</p>
                     <p className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest mt-1">Carboidrati</p>
                   </div>
                   <div className="bg-[var(--bg)] p-4 rounded-2xl text-center border-b-4 border-red-500">
-                    <p className="text-lg font-black text-[var(--text-main)]">{Math.round(formData.mealPlan.totalProtein)}g</p>
+                    <p className="text-lg font-black text-[var(--text-main)]">{Math.round(formData.mealPlanWeekly[expandedDayIndex || 0].totalProtein)}g</p>
                     <p className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest mt-1">Proteine</p>
                   </div>
                   <div className="bg-[var(--bg)] p-4 rounded-2xl text-center border-b-4 border-yellow-500">
-                    <p className="text-lg font-black text-[var(--text-main)]">{Math.round(formData.mealPlan.totalFat)}g</p>
+                    <p className="text-lg font-black text-[var(--text-main)]">{Math.round(formData.mealPlanWeekly[expandedDayIndex || 0].totalFat)}g</p>
                     <p className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest mt-1">Grassi</p>
                   </div>
                 </div>
               </div>
 
-              {/* Meals */}
+              {/* Day Selector */}
+              <div className="flex gap-2 overflow-x-auto custom-scrollbar pb-2">
+                {['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'].map((day, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => setExpandedDayIndex(idx)}
+                    className={`px-4 py-3 rounded-2xl font-bold whitespace-nowrap transition-all flex-1 text-center ${
+                      (expandedDayIndex || 0) === idx
+                        ? 'bg-amber-500 text-white shadow-lg shadow-amber-500/20'
+                        : 'bg-[var(--card-bg)] text-[var(--text-muted)] border border-[var(--border)] hover:bg-[var(--surface-variant)]'
+                    }`}
+                  >
+                    {day}
+                  </button>
+                ))}
+              </div>
+
+              {/* Meals for selected day */}
               <div className="space-y-4">
-                <h4 className="font-bold text-[var(--text-muted)] uppercase tracking-widest text-xs ml-2">Pasti Consigliati</h4>
-                {formData.mealPlan.meals.map((meal, idx) => (
+                <h4 className="font-bold text-[var(--text-muted)] uppercase tracking-widest text-xs ml-2">Pasti Consigliati del Giorno</h4>
+                {formData.mealPlanWeekly[expandedDayIndex || 0].meals.map((meal, idx) => (
                   <div key={idx} className="bg-[var(--card-bg)] border border-[var(--border)] p-6 rounded-[2rem]">
                     <div className="flex justify-between items-start mb-4">
                       <div>
@@ -986,19 +1018,28 @@ export function FitnessScreen({ module, onClose, onSave }: FitnessScreenProps) {
                     </div>
                     <p className="text-sm font-semibold text-[var(--text-muted)] mb-4">{meal.description}</p>
                     
-                    <div className="flex items-center gap-3 text-xs font-bold">
-                      <span className="bg-blue-500/10 text-blue-500 px-3 py-1 rounded-lg">C: {meal.carbs}g</span>
-                      <span className="bg-red-500/10 text-red-500 px-3 py-1 rounded-lg">P: {meal.protein}g</span>
-                      <span className="bg-yellow-500/10 text-yellow-500 px-3 py-1 rounded-lg">G: {meal.fat}g</span>
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                      <div className="flex items-center gap-3 text-xs font-bold">
+                        <span className="bg-blue-500/10 text-blue-500 px-3 py-1 rounded-lg">C: {meal.carbs}g</span>
+                        <span className="bg-red-500/10 text-red-500 px-3 py-1 rounded-lg">P: {meal.protein}g</span>
+                        <span className="bg-yellow-500/10 text-yellow-500 px-3 py-1 rounded-lg">G: {meal.fat}g</span>
+                      </div>
+                      <button 
+                        onClick={() => {
+                          const query = meal.name.split(' ').slice(0, 2).join(' '); // Cerca le prime due parole per massimizzare i risultati
+                          window.dispatchEvent(new CustomEvent('open-recipes', { detail: { search: query } }));
+                        }}
+                        className="px-4 py-2 bg-[var(--surface-variant)] text-[var(--text-main)] hover:bg-[var(--border)] rounded-xl text-xs font-bold transition-colors flex items-center gap-2"
+                      >
+                        🍽️ Cerca nel Ricettario
+                      </button>
                     </div>
                   </div>
                 ))}
               </div>
-
             </div>
           </div>
         )}
-
       </div>
     </div>
   );

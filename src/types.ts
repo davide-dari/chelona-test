@@ -246,10 +246,11 @@ export interface MealDay {
 
 export interface FitnessModule extends BaseModule {
   type: 'fitness';
-  fitnessProfile?: FitnessProfile;
-  workoutPlan?: WorkoutDay[];
-  dietProfile?: DietProfile;
-  mealPlan?: MealDay;
+  fitnessProfile?: import('./components/FitnessScreen').FitnessProfile;
+  workoutPlan?: import('./components/FitnessScreen').WorkoutDay[];
+  dietProfile?: import('./components/FitnessScreen').DietProfile;
+  mealPlan?: import('./components/FitnessScreen').MealDay; // deprecated, use mealPlanWeekly
+  mealPlanWeekly?: import('./components/FitnessScreen').MealDay[];
   bmr?: number;
   tdee?: number;
   targetCalories?: number;
