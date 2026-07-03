@@ -367,11 +367,7 @@ function getMealsByType(type: 'breakfast' | 'lunch' | 'dinner' | 'snack', restri
   });
 }
 
-function getRandomMeal(type: 'breakfast' | 'lunch' | 'dinner' | 'snack', restrictions: string[]): MealTemplate | null {
-  const options = getMealsByType(type, restrictions);
-  if (options.length === 0) return null;
-  return options[Math.floor(Math.random() * options.length)];
-}
+// Removed getRandomMeal, logic moved inside generateMealPlanWeekly
 
 function generateMealPlanWeekly(profile: DietProfile, targetCalories: number): MealDay[] {
   const macros = {
@@ -381,6 +377,7 @@ function generateMealPlanWeekly(profile: DietProfile, targetCalories: number): M
   const remainingCals = targetCalories - (macros.protein * 4) - (macros.fat * 9);
   macros.carbs = remainingCals / 4;
 
+  const usedMeals = new Set<string>();
   const week: MealDay[] = [];
   
   for (let i = 0; i < 7; i++) {
@@ -393,8 +390,17 @@ function generateMealPlanWeekly(profile: DietProfile, targetCalories: number): M
     };
 
     const addMeal = (type: 'breakfast' | 'lunch' | 'dinner' | 'snack', targetCalFraction: number) => {
-      const template = getRandomMeal(type, profile.restrictions);
-      if (!template) return;
+      const options = getMealsByType(type, profile.restrictions);
+      if (options.length === 0) return;
+      
+      let unusedOptions = options.filter(m => !usedMeals.has(m.name));
+      if (unusedOptions.length === 0) {
+        options.forEach(m => usedMeals.delete(m.name));
+        unusedOptions = options;
+      }
+      
+      const template = unusedOptions[Math.floor(Math.random() * unusedOptions.length)];
+      usedMeals.add(template.name);
       
       const scale = (targetCalories * targetCalFraction) / template.baseCalories;
       const meal: Meal = {
@@ -450,6 +456,42 @@ export function FitnessScreen({ module, onClose, onSave }: FitnessScreenProps) {
   const [fitWizardStep, setFitWizardStep] = useState(1);
   const [dietWizardStep, setDietWizardStep] = useState(1);
   const [expandedDayIndex, setExpandedDayIndex] = useState<number | null>(null);
+
+  const [inlineRecipes, setInlineRecipes] = useState<{[key: string]: any}>({});
+  const [isSearchingRecipe, setIsSearchingRecipe] = useState<{[key: string]: boolean}>({});
+
+  const loadAndFindRecipe = async (mealName: string, key: string) => {
+    if (inlineRecipes[key]) {
+      const updated = {...inlineRecipes};
+      delete updated[key];
+      setInlineRecipes(updated);
+      return;
+    }
+
+    setIsSearchingRecipe(prev => ({...prev, [key]: true}));
+    try {
+      const res = await fetch('/ricette_mondo.json');
+      const db = await res.json();
+      
+      const query = mealName.toLowerCase().replace(/[^a-z0-9àèéìòù ]/g, '').split(' ').filter(w => w.length > 2).slice(0, 2).join(' ');
+      
+      let match = db.find((r: any) => r.titolo.toLowerCase() === mealName.toLowerCase());
+      if (!match) {
+        match = db.find((r: any) => r.titolo.toLowerCase().includes(query) || (r.categoria && r.categoria.toLowerCase().includes(query)));
+      }
+      
+      if (match) {
+        setInlineRecipes(prev => ({...prev, [key]: match}));
+      } else {
+        setInlineRecipes(prev => ({...prev, [key]: { notFound: true }}));
+      }
+    } catch (e) {
+      console.error(e);
+      setInlineRecipes(prev => ({...prev, [key]: { notFound: true }}));
+    } finally {
+      setIsSearchingRecipe(prev => ({...prev, [key]: false}));
+    }
+  };
 
   const [fitProfile, setFitProfile] = useState<FitnessProfile>(module.fitnessProfile || {
     gender: 'male', age: 25, height: 175, weight: 70, level: 'beginner', goal: 'mass', daysPerWeek: 3, equipment: 'gym'
@@ -1010,38 +1052,76 @@ export function FitnessScreen({ module, onClose, onSave }: FitnessScreenProps) {
               {/* Meals for selected day */}
               <div className="space-y-4">
                 <h4 className="font-bold text-[var(--text-muted)] uppercase tracking-widest text-xs ml-2">Pasti Consigliati del Giorno</h4>
-                {activeMealPlanWeekly[expandedDayIndex || 0].meals.map((meal, idx) => (
-                  <div key={idx} className="bg-[var(--card-bg)] border border-[var(--border)] rounded-[2rem] p-5 flex gap-4">
-                    <div className="flex justify-between items-start mb-4">
+                {activeMealPlanWeekly[expandedDayIndex || 0].meals.map((meal, idx) => {
+                  const key = `${expandedDayIndex || 0}_${idx}`;
+                  const recipe = inlineRecipes[key];
+                  const isSearching = isSearchingRecipe[key];
+                  
+                  return (
+                  <div key={idx} className="bg-[var(--card-bg)] border border-[var(--border)] rounded-[2rem] p-5 flex flex-col gap-4 overflow-hidden shadow-sm">
+                    <div className="flex justify-between items-start">
                       <div>
                         <p className="text-[10px] font-black uppercase tracking-widest text-amber-500 mb-1">Pasto {idx + 1}</p>
                         <h5 className="font-bold text-lg text-[var(--text-main)] leading-tight">{meal.name}</h5>
                       </div>
-                      <div className="text-right">
+                      <div className="text-right shrink-0">
                         <p className="font-black text-lg text-[var(--text-main)]">{meal.calories}</p>
                         <p className="text-[10px] font-bold text-[var(--text-muted)] uppercase">kcal</p>
                       </div>
                     </div>
-                    <p className="text-sm font-semibold text-[var(--text-muted)] mb-4">{meal.description}</p>
+                    <p className="text-sm font-semibold text-[var(--text-muted)]">{meal.description}</p>
                     
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                      <div className="flex items-center gap-3 text-xs font-bold">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mt-auto pt-2">
+                      <div className="flex items-center gap-3 text-xs font-bold shrink-0">
                         <span className="bg-blue-500/10 text-blue-500 px-3 py-1 rounded-lg">C: {meal.carbs}g</span>
                         <span className="bg-red-500/10 text-red-500 px-3 py-1 rounded-lg">P: {meal.protein}g</span>
                         <span className="bg-yellow-500/10 text-yellow-500 px-3 py-1 rounded-lg">G: {meal.fat}g</span>
                       </div>
                       <button 
-                        onClick={() => {
-                          const query = meal.name.split(' ').slice(0, 2).join(' '); // Cerca le prime due parole per massimizzare i risultati
-                          window.dispatchEvent(new CustomEvent('open-recipes', { detail: { search: query } }));
-                        }}
-                        className="px-4 py-2 bg-[var(--surface-variant)] text-[var(--text-main)] hover:bg-[var(--border)] rounded-xl text-xs font-bold transition-colors flex items-center gap-2"
+                        onClick={() => loadAndFindRecipe(meal.name, key)}
+                        disabled={isSearching}
+                        className="px-4 py-2 bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 rounded-xl text-xs font-bold transition-colors flex items-center gap-2"
                       >
-                        🍽️ Cerca nel Ricettario
+                        {isSearching ? 'Ricerca in corso...' : recipe ? 'Nascondi Ricetta' : '🍽️ Vedi Ricetta'}
                       </button>
                     </div>
+
+                    {/* INLINE RECIPE DISPLAY */}
+                    <AnimatePresence>
+                      {recipe && (
+                        <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="border-t border-[var(--border)] pt-5 mt-2 overflow-hidden">
+                          {recipe.notFound ? (
+                            <div className="text-center py-6 bg-[var(--surface-variant)] rounded-2xl">
+                              <p className="text-sm font-bold text-[var(--text-muted)]">Nessuna ricetta trovata nel database.</p>
+                              <button onClick={() => window.dispatchEvent(new CustomEvent('open-recipes', { detail: { search: meal.name } }))} className="text-amber-500 text-xs font-bold mt-2 hover:underline">Apri Ricettario Globale</button>
+                            </div>
+                          ) : (
+                            <div className="space-y-4">
+                              {recipe.immagine && (
+                                <img src={recipe.immagine} alt={recipe.titolo} className="w-full h-48 object-cover rounded-2xl shadow-sm" />
+                              )}
+                              <div>
+                                <h6 className="font-black text-lg text-[var(--text-main)] mb-1">{recipe.titolo}</h6>
+                                {recipe.difficolta && <p className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider">Difficoltà: {recipe.difficolta}</p>}
+                              </div>
+                              <div className="bg-[var(--surface-variant)] p-4 rounded-2xl">
+                                <p className="font-black text-[10px] uppercase tracking-widest text-amber-500 mb-2">Ingredienti principali:</p>
+                                <p className="text-sm font-semibold text-[var(--text-main)]">{recipe.ingredienti?.slice(0, 8).map((i: any) => i.nome).join(', ')} {recipe.ingredienti?.length > 8 ? '...' : ''}</p>
+                              </div>
+                              <div className="text-sm text-[var(--text-main)] leading-relaxed space-y-3 max-h-64 overflow-y-auto custom-scrollbar pr-2">
+                                <p className="font-black text-[10px] uppercase tracking-widest text-amber-500">Preparazione:</p>
+                                {recipe.preparazione?.split(/(?<=[.?!])\s+/).filter((s: string) => s.trim().length > 0).map((step: string, i: number) => (
+                                  <p key={i} className="text-sm font-semibold text-[var(--text-muted)] mb-3">{step.trim()}</p>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           </div>
