@@ -4,8 +4,8 @@
  */
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Sun, Moon, Wrench, Plus, LayoutDashboard, Settings, User, LogOut, Search, Mic, Bell, CreditCard, Fingerprint, ShieldCheck, Lock, Menu, X, StickyNote, FileText, Grid2X2, Car, QrCode, Folder as FolderIcon, Check, Edit2, Trash2, BookOpen, ArrowLeft, ArrowRight, Camera, FileDown, Hourglass, Users, Download, Receipt, MapPin, Image as ImageIcon, Lightbulb, Globe, ChevronLeft, Bus, Home, Armchair, Bot, Activity } from 'lucide-react';
-import { AntigravityAssistant } from './components/antigravity/AntigravityAssistant';
+import { Sun, Moon, Wrench, Plus, LayoutDashboard, Settings, User, LogOut, Search, Mic, Bell, CreditCard, Fingerprint, ShieldCheck, Lock, Menu, X, StickyNote, FileText, Grid2X2, Car, QrCode, Folder as FolderIcon, Check, Edit2, Trash2, BookOpen, ArrowLeft, ArrowRight, Camera, FileDown, Hourglass, Users, Download, Receipt, MapPin, Image as ImageIcon, Lightbulb, Globe, ChevronLeft, Bus, Home, Armchair, Activity } from 'lucide-react';
+
 import { Module, ModuleType, Folder, DocumentModule } from './types';
 import { storage, AppState } from './services/storage';
 import { encryption } from './services/encryption';
@@ -283,7 +283,7 @@ export default function App() {
   const [isBioSupported, setIsBioSupported] = useState(false);
   const [isBioEnabled, setIsBioEnabled] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [isAssistantOpen, setIsAssistantOpen] = useState(false);
+
   // isSandboxMode removed as per user request
 
   const [bioError, setBioError] = useState<string | null>(null);
@@ -429,7 +429,7 @@ export default function App() {
       if (editingModuleId) { setEditingModuleId(null); setFormData({}); return; }
       if (isAdding) { setIsAdding(false); setFormData({}); setSpesaSubMenu(false); return; }
       if (isProfileOpen) { setIsProfileOpen(false); return; }
-      if (isAssistantOpen) { setIsAssistantOpen(false); return; }
+
       if (activeToolId) { setActiveToolId(null); return; }
       if (isToolsOpen) { setIsToolsOpen(false); return; }
       if (isArchiveOpen) { setIsArchiveOpen(false); return; }
@@ -449,7 +449,7 @@ export default function App() {
     moduleToDelete, showGalleryViewer, gallerySelectedImage,
     editingAutoModule, editingSplitModule, editingSingleExpenseModule,
     editingTravelModule, editingStudyModule, editingFitnessModule, editingDocumentModule,
-    editingGenericModule, editingFurnitureModule, editingInstallmentsModule, editingModuleId, isAdding, isProfileOpen, isAssistantOpen,
+    editingGenericModule, editingFurnitureModule, editingInstallmentsModule, editingModuleId, isAdding, isProfileOpen,
     activeToolId, isToolsOpen, isArchiveOpen, isAddressBookOpen, isRecipesOpen,
     isSidebarOpen, selectedFolderId, selectedType, spesaSubMenu
   ]);
@@ -1837,13 +1837,7 @@ export default function App() {
 
                 {/* Right side: Avatar (Lock and Theme moved to Profile) */}
                 <div className="flex items-center gap-2 sm:gap-4">
-                  <button 
-                    onClick={() => { setIsAssistantOpen(true); setIsProfileOpen(false); setSelectedType(null); setIsToolsOpen(false); }}
-                    className="p-2 sm:p-2.5 bg-[var(--surface-variant)] hover:bg-[var(--border)] rounded-full text-[var(--accent)] transition-all flex items-center justify-center shadow-sm"
-                    title="Antigravity AI"
-                  >
-                    <Bot className="w-5 h-5 sm:w-6 sm:h-6" />
-                  </button>
+
                   <button 
                     onClick={() => { setIsToolsOpen(true); setIsProfileOpen(false); setSelectedType(null); }}
                     className="p-2 sm:p-2.5 bg-[var(--surface-variant)] hover:bg-[var(--border)] rounded-full text-[var(--accent)] transition-all flex items-center justify-center shadow-sm hidden md:flex"
@@ -1871,9 +1865,7 @@ export default function App() {
 
               <div className="flex-1 overflow-y-auto w-full custom-scrollbar">
 
-                  {isAssistantOpen ? (
-              <AntigravityAssistant currentProfileId={currentProfileId} onClose={() => setIsAssistantOpen(false)} />
-            ) : isProfileOpen ? (
+                  {isProfileOpen ? (
               <ProfileScreen
                 onClose={() => setIsProfileOpen(false)}
                 username={username}
