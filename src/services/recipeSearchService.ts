@@ -588,17 +588,7 @@ export async function findRecipeForMeal(mealName: string, fallbackDesc?: string)
     }
     
     if (mapped.englishQuery) {
-      // 2. GialloZafferano Scraper
-      const gzQuery = mapped.localQuery || mealName;
-      const gzResult = await searchGialloZafferano(gzQuery);
-      if (gzResult) {
-        cache[cacheKey] = gzResult;
-        setSessionCache(cache);
-        saveAsCustomRecipe(gzResult, mealName);
-        return gzResult;
-      }
-
-      // 3. TheMealDB come fallback
+      // 2. TheMealDB (in inglese, poi tradotto) come preferenza principale
       const mealdb = await searchTheMealDB(mapped.englishQuery);
       if (mealdb) {
         const translated = await translateRecipeToItalian(mealdb);
@@ -607,6 +597,16 @@ export async function findRecipeForMeal(mealName: string, fallbackDesc?: string)
         saveAsCustomRecipe(translated, mealName);
         return translated;
       }
+
+      // 3. GialloZafferano Scraper come fallback
+      const gzQuery = mapped.localQuery || mealName;
+      const gzResult = await searchGialloZafferano(gzQuery);
+      if (gzResult) {
+        cache[cacheKey] = gzResult;
+        setSessionCache(cache);
+        saveAsCustomRecipe(gzResult, mealName);
+        return gzResult;
+      }
     }
   }
 
@@ -614,7 +614,33 @@ export async function findRecipeForMeal(mealName: string, fallbackDesc?: string)
   const local = await searchLocalDB(mealName);
   if (local) { cache[cacheKey] = local; setSessionCache(cache); return local; }
 
-  // 3. Prova GialloZafferano con il nome completo in italiano!
+  // 3. Fallback in Inglese su TheMealDB
+  const engQuery = translateToEnglish(mealName);
+  if (engQuery) {
+    const mealdb = await searchTheMealDB(engQuery);
+    if (mealdb) {
+      const translated = await translateRecipeToItalian(mealdb);
+      cache[cacheKey] = translated;
+      setSessionCache(cache);
+      saveAsCustomRecipe(translated, mealName);
+      return translated;
+    }
+    
+    // Broad fallback per TheMealDB: prova solo con la prima parola
+    const firstWord = engQuery.split(' ')[0];
+    if (firstWord && firstWord.length > 2) {
+      const mealdbFallback = await searchTheMealDB(firstWord);
+      if (mealdbFallback) {
+        const translated = await translateRecipeToItalian(mealdbFallback);
+        cache[cacheKey] = translated;
+        setSessionCache(cache);
+        saveAsCustomRecipe(translated, mealName);
+        return translated;
+      }
+    }
+  }
+
+  // 4. Prova GialloZafferano con il nome completo in italiano
   const gzDirect = await searchGialloZafferano(mealName);
   if (gzDirect) {
     cache[cacheKey] = gzDirect;
@@ -632,32 +658,6 @@ export async function findRecipeForMeal(mealName: string, fallbackDesc?: string)
       setSessionCache(cache);
       saveAsCustomRecipe(gzBroad, mealName);
       return gzBroad;
-    }
-  }
-
-  // 4. Fallback in Inglese su TheMealDB
-  const engQuery = translateToEnglish(mealName);
-  if (engQuery) {
-    const mealdb = await searchTheMealDB(engQuery);
-    if (mealdb) {
-      const translated = await translateRecipeToItalian(mealdb);
-      cache[cacheKey] = translated;
-      setSessionCache(cache);
-      saveAsCustomRecipe(translated, mealName);
-      return translated;
-    }
-    
-    // Broad fallback: try first word only
-    const firstWord = engQuery.split(' ')[0];
-    if (firstWord && firstWord.length > 2) {
-      const mealdbFallback = await searchTheMealDB(firstWord);
-      if (mealdbFallback) {
-        const translated = await translateRecipeToItalian(mealdbFallback);
-        cache[cacheKey] = translated;
-        setSessionCache(cache);
-        saveAsCustomRecipe(translated, mealName);
-        return translated;
-      }
     }
   }
 
