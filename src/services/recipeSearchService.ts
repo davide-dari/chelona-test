@@ -437,36 +437,15 @@ async function searchTheMealDB(query: string): Promise<RecipeResult | null> {
 }
 
 // ── 3. GialloZafferano Scraper (via CORS Proxy) ────────────────────────────────
-async function searchGialloZafferano(query: string): Promise<RecipeResult | null> {
+async function fetchRecipeFromGZUrl(recipeUrl: string): Promise<RecipeResult | null> {
   try {
-    const gzSearchUrl = `https://www.giallozafferano.it/ricerca-ricette/${encodeURIComponent(query)}/`;
-    const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(gzSearchUrl)}`;
-    
-    const searchRes = await fetch(proxyUrl);
-    if (!searchRes.ok) return null;
-    const searchData = await searchRes.json();
-    const searchHtml = searchData.contents;
-    
-    const parser = new DOMParser();
-    const searchDoc = parser.parseFromString(searchHtml, 'text/html');
-    
-    // Trova il primo link a una ricetta nei risultati
-    const firstRecipeAnchor = searchDoc.querySelector('.gz-title a, article.gz-card a') as HTMLAnchorElement;
-    if (!firstRecipeAnchor) return null;
-    
-    let recipeUrl = firstRecipeAnchor.getAttribute('href');
-    if (!recipeUrl) return null;
-    
-    if (recipeUrl.startsWith('/')) {
-      recipeUrl = 'https://www.giallozafferano.it' + recipeUrl;
-    }
-    
     const recipeProxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(recipeUrl)}`;
     const recipeRes = await fetch(recipeProxyUrl);
     if (!recipeRes.ok) return null;
     const recipeData = await recipeRes.json();
     const recipeHtml = recipeData.contents;
     
+    const parser = new DOMParser();
     const doc = parser.parseFromString(recipeHtml, 'text/html');
     
     const title = doc.querySelector('h1.gz-title-recipe, h1')?.textContent?.trim();
@@ -516,11 +495,41 @@ async function searchGialloZafferano(query: string): Promise<RecipeResult | null
       notFound: false
     };
   } catch (e) {
-    console.error("GZ Scrape error:", e);
+    console.error("GZ fetch error:", e);
     return null;
   }
 }
 
+async function searchGialloZafferano(query: string): Promise<RecipeResult | null> {
+  try {
+    const gzSearchUrl = `https://www.giallozafferano.it/ricerca-ricette/${encodeURIComponent(query)}/`;
+    const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(gzSearchUrl)}`;
+    
+    const searchRes = await fetch(proxyUrl);
+    if (!searchRes.ok) return null;
+    const searchData = await searchRes.json();
+    const searchHtml = searchData.contents;
+    
+    const parser = new DOMParser();
+    const searchDoc = parser.parseFromString(searchHtml, 'text/html');
+    
+    // Trova il primo link a una ricetta nei risultati
+    const firstRecipeAnchor = searchDoc.querySelector('.gz-title a, article.gz-card a') as HTMLAnchorElement;
+    if (!firstRecipeAnchor) return null;
+    
+    let recipeUrl = firstRecipeAnchor.getAttribute('href');
+    if (!recipeUrl) return null;
+    
+    if (recipeUrl.startsWith('/')) {
+      recipeUrl = 'https://www.giallozafferano.it' + recipeUrl;
+    }
+    
+    return await fetchRecipeFromGZUrl(recipeUrl);
+  } catch (e) {
+    console.error("GZ search error:", e);
+    return null;
+  }
+}
 
 function getSessionCache(): Record<string, any> {
   try {
@@ -569,10 +578,20 @@ function saveAsCustomRecipe(recipe: RecipeResult, originalQuery: string) {
 }
 
 // ── PUBLIC CASCADE ────────────────────────────────────────────────────────────
-export async function findRecipeForMeal(mealName: string, fallbackDesc?: string): Promise<RecipeResult> {
+export async function findRecipeForMeal(mealName: string, fallbackDesc?: string, recipeUrl?: string): Promise<RecipeResult> {
   const cacheKey = mealName.toLowerCase().trim();
   const cache = getSessionCache();
   if (cache[cacheKey]) return cache[cacheKey];
+
+  if (recipeUrl) {
+    const directResult = await fetchRecipeFromGZUrl(recipeUrl);
+    if (directResult) {
+      cache[cacheKey] = directResult;
+      setSessionCache(cache);
+      saveAsCustomRecipe(directResult, mealName);
+      return directResult;
+    }
+  }
 
   // 1. Controlla la mappatura predefinita per trovare la migliore corrispondenza
   const mapped = MEAL_TO_QUERY_MAP[mealName] || MEAL_TO_QUERY_MAP[Object.keys(MEAL_TO_QUERY_MAP).find(k => k.toLowerCase() === mealName.toLowerCase()) || ''];
