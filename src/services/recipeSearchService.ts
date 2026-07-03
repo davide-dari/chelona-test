@@ -602,15 +602,43 @@ export async function findRecipeForMeal(mealName: string, fallbackDesc?: string)
   const local = await searchLocalDB(mealName);
   if (local) { cache[cacheKey] = local; setSessionCache(cache); return local; }
 
-  // 3. Prova GialloZafferano con le prime due parole (parole chiavi)
-  const firstWords = mealName.split(' ').slice(0, 2).join(' ');
-  if (firstWords.length > 3) {
-    const gzBroad = await searchGialloZafferano(firstWords);
-    if (gzBroad) {
-      cache[cacheKey] = gzBroad;
+  // 3. Estrazione intelligente delle parole chiavi per una ricerca allargata
+  const stopWords = new Set(['con', 'e', 'al', 'alla', 'di', 'in', 'da', 'per', 'su', 'il', 'la', 'lo', 'i', 'gli', 'le', 'un', 'uno', 'una', 'dei', 'delle', 'degli', 'ai', 'agli', 'alle', 'ed']);
+  const words = mealName.toLowerCase().split(/[\s,]+/);
+  const meaningfulWords = words.filter(w => w.length > 2 && !stopWords.has(w));
+  
+  // Proviamo prima con le prime 3 parole significative (es. "couscous verdure grigliate")
+  const threeWords = meaningfulWords.slice(0, 3).join(' ');
+  if (threeWords.length > 5) {
+    const gzThree = await searchGialloZafferano(threeWords);
+    if (gzThree) {
+      cache[cacheKey] = gzThree;
       setSessionCache(cache);
-      saveAsCustomRecipe(gzBroad, mealName);
-      return gzBroad;
+      saveAsCustomRecipe(gzThree, mealName);
+      return gzThree;
+    }
+  }
+
+  // Se fallisce, proviamo con solo le prime 2 parole (es. "couscous verdure")
+  const twoWords = meaningfulWords.slice(0, 2).join(' ');
+  if (twoWords.length > 3 && twoWords !== threeWords) {
+    const gzTwo = await searchGialloZafferano(twoWords);
+    if (gzTwo) {
+      cache[cacheKey] = gzTwo;
+      setSessionCache(cache);
+      saveAsCustomRecipe(gzTwo, mealName);
+      return gzTwo;
+    }
+  }
+  // Se fallisce anche con 2 parole, proviamo solo la prima (es. "couscous")
+  const oneWord = meaningfulWords.slice(0, 1).join(' ');
+  if (oneWord.length > 3 && oneWord !== twoWords) {
+    const gzOne = await searchGialloZafferano(oneWord);
+    if (gzOne) {
+      cache[cacheKey] = gzOne;
+      setSessionCache(cache);
+      saveAsCustomRecipe(gzOne, mealName);
+      return gzOne;
     }
   }
 
