@@ -10,6 +10,7 @@ export interface ExerciseTemplate {
   muscleGroup: 'chest' | 'back' | 'shoulders' | 'biceps' | 'triceps' | 'quads' | 'hamstrings' | 'glutes' | 'calves' | 'abs' | 'full_body';
   equipment: ('gym' | 'home' | 'bodyweight')[];
   compound: boolean;
+  gifUrl?: string;
 }
 
 export interface Exercise {
@@ -18,6 +19,7 @@ export interface Exercise {
   reps: string;
   rest: string;
   muscleGroup: string;
+  gifUrl?: string;
 }
 
 export interface WorkoutDay {
@@ -107,100 +109,100 @@ interface FitnessScreenProps {
 // --- DATA: EXERCISE LIBRARY ---
 const EXERCISE_LIBRARY: ExerciseTemplate[] = [
   // Chest
-  { name: 'Panca Piana con Bilanciere', muscleGroup: 'chest', equipment: ['gym', 'home'], compound: true },
-  { name: 'Panca Inclinata con Manubri', muscleGroup: 'chest', equipment: ['gym', 'home'], compound: true },
-  { name: 'Croci ai Cavi', muscleGroup: 'chest', equipment: ['gym'], compound: false },
-  { name: 'Chest Press', muscleGroup: 'chest', equipment: ['gym'], compound: true },
-  { name: 'Push-up', muscleGroup: 'chest', equipment: ['gym', 'home', 'bodyweight'], compound: true },
-  { name: 'Push-up Diamante', muscleGroup: 'chest', equipment: ['gym', 'home', 'bodyweight'], compound: true },
-  { name: 'Dip alle Parallele', muscleGroup: 'chest', equipment: ['gym', 'home'], compound: true },
-  { name: 'Panca Declinata', muscleGroup: 'chest', equipment: ['gym'], compound: true },
-  { name: 'Croci con Manubri', muscleGroup: 'chest', equipment: ['gym', 'home'], compound: false },
-  { name: 'Pectoral Machine', muscleGroup: 'chest', equipment: ['gym'], compound: false },
+  { name: 'Panca Piana con Bilanciere', muscleGroup: 'chest', equipment: ['gym', 'home'], gifUrl: 'https://raw.githubusercontent.com/omercotkd/exercises-gifs/main/assets/0025.gif', compound: true },
+  { name: 'Panca Inclinata con Manubri', muscleGroup: 'chest', equipment: ['gym', 'home'], gifUrl: 'https://raw.githubusercontent.com/omercotkd/exercises-gifs/main/assets/0314.gif', compound: true },
+  { name: 'Croci ai Cavi', muscleGroup: 'chest', equipment: ['gym'], gifUrl: 'https://raw.githubusercontent.com/omercotkd/exercises-gifs/main/assets/1320.gif', compound: false },
+  { name: 'Chest Press', muscleGroup: 'chest', equipment: ['gym'], gifUrl: 'https://raw.githubusercontent.com/omercotkd/exercises-gifs/main/assets/1301.gif', compound: true },
+  { name: 'Push-up', muscleGroup: 'chest', equipment: ['gym', 'home', 'bodyweight'], gifUrl: 'https://raw.githubusercontent.com/omercotkd/exercises-gifs/main/assets/0662.gif', compound: true },
+  { name: 'Push-up Diamante', muscleGroup: 'chest', equipment: ['gym', 'home', 'bodyweight'], gifUrl: 'https://raw.githubusercontent.com/omercotkd/exercises-gifs/main/assets/0283.gif', compound: true },
+  { name: 'Dip alle Parallele', muscleGroup: 'chest', equipment: ['gym', 'home'], gifUrl: 'https://raw.githubusercontent.com/omercotkd/exercises-gifs/main/assets/0251.gif', compound: true },
+  { name: 'Panca Declinata', muscleGroup: 'chest', equipment: ['gym'], gifUrl: 'https://raw.githubusercontent.com/omercotkd/exercises-gifs/main/assets/0033.gif', compound: true },
+  { name: 'Croci con Manubri', muscleGroup: 'chest', equipment: ['gym', 'home'], gifUrl: 'https://raw.githubusercontent.com/omercotkd/exercises-gifs/main/assets/0308.gif', compound: false },
+  { name: 'Pectoral Machine', muscleGroup: 'chest', equipment: ['gym'], gifUrl: 'https://raw.githubusercontent.com/omercotkd/exercises-gifs/main/assets/0335.gif', compound: false },
   // Back
-  { name: 'Trazioni alla Sbarra', muscleGroup: 'back', equipment: ['gym', 'home', 'bodyweight'], compound: true },
-  { name: 'Lat Machine', muscleGroup: 'back', equipment: ['gym'], compound: true },
-  { name: 'Rematore con Bilanciere', muscleGroup: 'back', equipment: ['gym', 'home'], compound: true },
-  { name: 'Rematore con Manubrio', muscleGroup: 'back', equipment: ['gym', 'home'], compound: true },
-  { name: 'Pulley Basso', muscleGroup: 'back', equipment: ['gym'], compound: true },
-  { name: 'T-Bar Row', muscleGroup: 'back', equipment: ['gym'], compound: true },
-  { name: 'Pull-up Presa Larga', muscleGroup: 'back', equipment: ['gym', 'home', 'bodyweight'], compound: true },
-  { name: 'Rematore ai Cavi', muscleGroup: 'back', equipment: ['gym'], compound: true },
-  { name: 'Pullover con Manubrio', muscleGroup: 'back', equipment: ['gym', 'home'], compound: false },
-  { name: 'Australian Pull-up', muscleGroup: 'back', equipment: ['gym', 'home', 'bodyweight'], compound: true },
+  { name: 'Trazioni alla Sbarra', muscleGroup: 'back', equipment: ['gym', 'home', 'bodyweight'], gifUrl: 'https://raw.githubusercontent.com/omercotkd/exercises-gifs/main/assets/0652.gif', compound: true },
+  { name: 'Lat Machine', muscleGroup: 'back', equipment: ['gym'], gifUrl: 'https://raw.githubusercontent.com/omercotkd/exercises-gifs/main/assets/2330.gif', compound: true },
+  { name: 'Rematore con Bilanciere', muscleGroup: 'back', equipment: ['gym', 'home'], gifUrl: 'https://raw.githubusercontent.com/omercotkd/exercises-gifs/main/assets/0027.gif', compound: true },
+  { name: 'Rematore con Manubrio', muscleGroup: 'back', equipment: ['gym', 'home'], gifUrl: 'https://raw.githubusercontent.com/omercotkd/exercises-gifs/main/assets/0293.gif', compound: true },
+  { name: 'Pulley Basso', muscleGroup: 'back', equipment: ['gym'], gifUrl: 'https://raw.githubusercontent.com/omercotkd/exercises-gifs/main/assets/0159.gif', compound: true },
+  { name: 'T-Bar Row', muscleGroup: 'back', equipment: ['gym'], gifUrl: 'https://raw.githubusercontent.com/omercotkd/exercises-gifs/main/assets/1349.gif', compound: true },
+  { name: 'Pull-up Presa Larga', muscleGroup: 'back', equipment: ['gym', 'home', 'bodyweight'], gifUrl: 'https://raw.githubusercontent.com/omercotkd/exercises-gifs/main/assets/1429.gif', compound: true },
+  { name: 'Rematore ai Cavi', muscleGroup: 'back', equipment: ['gym'], gifUrl: 'https://raw.githubusercontent.com/omercotkd/exercises-gifs/main/assets/0159.gif', compound: true },
+  { name: 'Pullover con Manubrio', muscleGroup: 'back', equipment: ['gym', 'home'], gifUrl: 'https://raw.githubusercontent.com/omercotkd/exercises-gifs/main/assets/0375.gif', compound: false },
+  { name: 'Australian Pull-up', muscleGroup: 'back', equipment: ['gym', 'home', 'bodyweight'], gifUrl: 'https://raw.githubusercontent.com/omercotkd/exercises-gifs/main/assets/0499.gif', compound: true },
   // Shoulders
-  { name: 'Military Press con Bilanciere', muscleGroup: 'shoulders', equipment: ['gym', 'home'], compound: true },
-  { name: 'Alzate Laterali', muscleGroup: 'shoulders', equipment: ['gym', 'home'], compound: false },
-  { name: 'Arnold Press', muscleGroup: 'shoulders', equipment: ['gym', 'home'], compound: true },
-  { name: 'Face Pull', muscleGroup: 'shoulders', equipment: ['gym'], compound: false },
-  { name: 'Alzate Frontali', muscleGroup: 'shoulders', equipment: ['gym', 'home'], compound: false },
-  { name: 'Shoulder Press con Manubri', muscleGroup: 'shoulders', equipment: ['gym', 'home'], compound: true },
-  { name: 'Tirate al Mento', muscleGroup: 'shoulders', equipment: ['gym', 'home'], compound: true },
-  { name: 'Alzate a 90 Gradi', muscleGroup: 'shoulders', equipment: ['gym', 'home'], compound: false },
-  { name: 'Lateral Raise al Cavo', muscleGroup: 'shoulders', equipment: ['gym'], compound: false },
+  { name: 'Military Press con Bilanciere', muscleGroup: 'shoulders', equipment: ['gym', 'home'], gifUrl: 'https://raw.githubusercontent.com/omercotkd/exercises-gifs/main/assets/0086.gif', compound: true },
+  { name: 'Alzate Laterali', muscleGroup: 'shoulders', equipment: ['gym', 'home'], gifUrl: 'https://raw.githubusercontent.com/omercotkd/exercises-gifs/main/assets/0334.gif', compound: false },
+  { name: 'Arnold Press', muscleGroup: 'shoulders', equipment: ['gym', 'home'], gifUrl: 'https://raw.githubusercontent.com/omercotkd/exercises-gifs/main/assets/2137.gif', compound: true },
+  { name: 'Face Pull', muscleGroup: 'shoulders', equipment: ['gym'], gifUrl: 'https://raw.githubusercontent.com/omercotkd/exercises-gifs/main/assets/0182.gif', compound: false },
+  { name: 'Alzate Frontali', muscleGroup: 'shoulders', equipment: ['gym', 'home'], gifUrl: 'https://raw.githubusercontent.com/omercotkd/exercises-gifs/main/assets/0310.gif', compound: false },
+  { name: 'Shoulder Press con Manubri', muscleGroup: 'shoulders', equipment: ['gym', 'home'], gifUrl: 'https://raw.githubusercontent.com/omercotkd/exercises-gifs/main/assets/0361.gif', compound: true },
+  { name: 'Tirate al Mento', muscleGroup: 'shoulders', equipment: ['gym', 'home'], gifUrl: 'https://raw.githubusercontent.com/omercotkd/exercises-gifs/main/assets/0120.gif', compound: true },
+  { name: 'Alzate a 90 Gradi', muscleGroup: 'shoulders', equipment: ['gym', 'home'], gifUrl: 'https://raw.githubusercontent.com/omercotkd/exercises-gifs/main/assets/0993.gif', compound: false },
+  { name: 'Lateral Raise al Cavo', muscleGroup: 'shoulders', equipment: ['gym'], gifUrl: 'https://raw.githubusercontent.com/omercotkd/exercises-gifs/main/assets/0178.gif', compound: false },
   // Biceps
-  { name: 'Curl con Bilanciere', muscleGroup: 'biceps', equipment: ['gym', 'home'], compound: false },
-  { name: 'Curl con Manubri', muscleGroup: 'biceps', equipment: ['gym', 'home'], compound: false },
-  { name: 'Curl Martello', muscleGroup: 'biceps', equipment: ['gym', 'home'], compound: false },
-  { name: 'Curl Concentrato', muscleGroup: 'biceps', equipment: ['gym', 'home'], compound: false },
-  { name: 'Curl alla Panca Scott', muscleGroup: 'biceps', equipment: ['gym'], compound: false },
-  { name: 'Curl ai Cavi', muscleGroup: 'biceps', equipment: ['gym'], compound: false },
-  { name: 'Curl Inverso', muscleGroup: 'biceps', equipment: ['gym', 'home'], compound: false },
+  { name: 'Curl con Bilanciere', muscleGroup: 'biceps', equipment: ['gym', 'home'], gifUrl: 'https://raw.githubusercontent.com/omercotkd/exercises-gifs/main/assets/0031.gif', compound: false },
+  { name: 'Curl con Manubri', muscleGroup: 'biceps', equipment: ['gym', 'home'], gifUrl: 'https://raw.githubusercontent.com/omercotkd/exercises-gifs/main/assets/0285.gif', compound: false },
+  { name: 'Curl Martello', muscleGroup: 'biceps', equipment: ['gym', 'home'], gifUrl: 'https://raw.githubusercontent.com/omercotkd/exercises-gifs/main/assets/0165.gif', compound: false },
+  { name: 'Curl Concentrato', muscleGroup: 'biceps', equipment: ['gym', 'home'], gifUrl: 'https://raw.githubusercontent.com/omercotkd/exercises-gifs/main/assets/0976.gif', compound: false },
+  { name: 'Curl alla Panca Scott', muscleGroup: 'biceps', equipment: ['gym'], gifUrl: 'https://raw.githubusercontent.com/omercotkd/exercises-gifs/main/assets/0059.gif', compound: false },
+  { name: 'Curl ai Cavi', muscleGroup: 'biceps', equipment: ['gym'], gifUrl: 'https://raw.githubusercontent.com/omercotkd/exercises-gifs/main/assets/0868.gif', compound: false },
+  { name: 'Curl Inverso', muscleGroup: 'biceps', equipment: ['gym', 'home'], gifUrl: 'https://raw.githubusercontent.com/omercotkd/exercises-gifs/main/assets/0080.gif', compound: false },
   // Triceps
-  { name: 'French Press', muscleGroup: 'triceps', equipment: ['gym', 'home'], compound: false },
-  { name: 'Push-down ai Cavi', muscleGroup: 'triceps', equipment: ['gym'], compound: false },
-  { name: 'Dip su Panca', muscleGroup: 'triceps', equipment: ['gym', 'home', 'bodyweight'], compound: true },
-  { name: 'Tricipiti ai Cavi con Corda', muscleGroup: 'triceps', equipment: ['gym'], compound: false },
-  { name: 'Kickback con Manubrio', muscleGroup: 'triceps', equipment: ['gym', 'home'], compound: false },
-  { name: 'Estensioni Overhead', muscleGroup: 'triceps', equipment: ['gym', 'home'], compound: false },
-  { name: 'Skull Crusher', muscleGroup: 'triceps', equipment: ['gym', 'home'], compound: false },
+  { name: 'French Press', muscleGroup: 'triceps', equipment: ['gym', 'home'], gifUrl: 'https://raw.githubusercontent.com/omercotkd/exercises-gifs/main/assets/1736.gif', compound: false },
+  { name: 'Push-down ai Cavi', muscleGroup: 'triceps', equipment: ['gym'], gifUrl: 'https://raw.githubusercontent.com/omercotkd/exercises-gifs/main/assets/0241.gif', compound: false },
+  { name: 'Dip su Panca', muscleGroup: 'triceps', equipment: ['gym', 'home', 'bodyweight'], gifUrl: 'https://raw.githubusercontent.com/omercotkd/exercises-gifs/main/assets/0129.gif', compound: true },
+  { name: 'Tricipiti ai Cavi con Corda', muscleGroup: 'triceps', equipment: ['gym'], gifUrl: 'https://raw.githubusercontent.com/omercotkd/exercises-gifs/main/assets/0242.gif', compound: false },
+  { name: 'Kickback con Manubrio', muscleGroup: 'triceps', equipment: ['gym', 'home'], gifUrl: 'https://raw.githubusercontent.com/omercotkd/exercises-gifs/main/assets/0393.gif', compound: false },
+  { name: 'Estensioni Overhead', muscleGroup: 'triceps', equipment: ['gym', 'home'], gifUrl: 'https://raw.githubusercontent.com/omercotkd/exercises-gifs/main/assets/0092.gif', compound: false },
+  { name: 'Skull Crusher', muscleGroup: 'triceps', equipment: ['gym', 'home'], gifUrl: 'https://raw.githubusercontent.com/omercotkd/exercises-gifs/main/assets/0060.gif', compound: false },
   // Quads
-  { name: 'Squat con Bilanciere', muscleGroup: 'quads', equipment: ['gym', 'home'], compound: true },
-  { name: 'Pressa', muscleGroup: 'quads', equipment: ['gym'], compound: true },
-  { name: 'Leg Extension', muscleGroup: 'quads', equipment: ['gym'], compound: false },
-  { name: 'Affondi con Manubri', muscleGroup: 'quads', equipment: ['gym', 'home'], compound: true },
-  { name: 'Squat Frontale', muscleGroup: 'quads', equipment: ['gym', 'home'], compound: true },
-  { name: 'Hack Squat', muscleGroup: 'quads', equipment: ['gym'], compound: true },
-  { name: 'Goblet Squat', muscleGroup: 'quads', equipment: ['gym', 'home'], compound: true },
-  { name: 'Squat a Corpo Libero', muscleGroup: 'quads', equipment: ['gym', 'home', 'bodyweight'], compound: true },
-  { name: 'Sissy Squat', muscleGroup: 'quads', equipment: ['gym', 'home', 'bodyweight'], compound: false },
+  { name: 'Squat con Bilanciere', muscleGroup: 'quads', equipment: ['gym', 'home'], gifUrl: 'https://raw.githubusercontent.com/omercotkd/exercises-gifs/main/assets/0102.gif', compound: true },
+  { name: 'Pressa', muscleGroup: 'quads', equipment: ['gym'], gifUrl: 'https://raw.githubusercontent.com/omercotkd/exercises-gifs/main/assets/2287.gif', compound: true },
+  { name: 'Leg Extension', muscleGroup: 'quads', equipment: ['gym'], gifUrl: 'https://raw.githubusercontent.com/omercotkd/exercises-gifs/main/assets/0585.gif', compound: false },
+  { name: 'Affondi con Manubri', muscleGroup: 'quads', equipment: ['gym', 'home'], gifUrl: 'https://raw.githubusercontent.com/omercotkd/exercises-gifs/main/assets/0336.gif', compound: true },
+  { name: 'Squat Frontale', muscleGroup: 'quads', equipment: ['gym', 'home'], gifUrl: 'https://raw.githubusercontent.com/omercotkd/exercises-gifs/main/assets/0042.gif', compound: true },
+  { name: 'Hack Squat', muscleGroup: 'quads', equipment: ['gym'], gifUrl: 'https://raw.githubusercontent.com/omercotkd/exercises-gifs/main/assets/0046.gif', compound: true },
+  { name: 'Goblet Squat', muscleGroup: 'quads', equipment: ['gym', 'home'], gifUrl: 'https://raw.githubusercontent.com/omercotkd/exercises-gifs/main/assets/1760.gif', compound: true },
+  { name: 'Squat a Corpo Libero', muscleGroup: 'quads', equipment: ['gym', 'home', 'bodyweight'], gifUrl: 'https://raw.githubusercontent.com/omercotkd/exercises-gifs/main/assets/3168.gif', compound: true },
+  { name: 'Sissy Squat', muscleGroup: 'quads', equipment: ['gym', 'home', 'bodyweight'], gifUrl: 'https://raw.githubusercontent.com/omercotkd/exercises-gifs/main/assets/1489.gif', compound: false },
   // Hamstrings
-  { name: 'Stacco Rumeno', muscleGroup: 'hamstrings', equipment: ['gym', 'home'], compound: true },
-  { name: 'Leg Curl Sdraiato', muscleGroup: 'hamstrings', equipment: ['gym'], compound: false },
-  { name: 'Leg Curl Seduto', muscleGroup: 'hamstrings', equipment: ['gym'], compound: false },
-  { name: 'Stacco a Gamba Singola', muscleGroup: 'hamstrings', equipment: ['gym', 'home'], compound: true },
-  { name: 'Nordic Curl', muscleGroup: 'hamstrings', equipment: ['gym', 'home', 'bodyweight'], compound: true },
-  { name: 'Good Morning', muscleGroup: 'hamstrings', equipment: ['gym', 'home'], compound: true },
+  { name: 'Stacco Rumeno', muscleGroup: 'hamstrings', equipment: ['gym', 'home'], gifUrl: 'https://raw.githubusercontent.com/omercotkd/exercises-gifs/main/assets/0085.gif', compound: true },
+  { name: 'Leg Curl Sdraiato', muscleGroup: 'hamstrings', equipment: ['gym'], gifUrl: 'https://raw.githubusercontent.com/omercotkd/exercises-gifs/main/assets/0586.gif', compound: false },
+  { name: 'Leg Curl Seduto', muscleGroup: 'hamstrings', equipment: ['gym'], gifUrl: 'https://raw.githubusercontent.com/omercotkd/exercises-gifs/main/assets/0599.gif', compound: false },
+  { name: 'Stacco a Gamba Singola', muscleGroup: 'hamstrings', equipment: ['gym', 'home'], gifUrl: 'https://raw.githubusercontent.com/omercotkd/exercises-gifs/main/assets/1756.gif', compound: true },
+  { name: 'Nordic Curl', muscleGroup: 'hamstrings', equipment: ['gym', 'home', 'bodyweight'], gifUrl: 'https://raw.githubusercontent.com/omercotkd/exercises-gifs/main/assets/3389.gif', compound: true },
+  { name: 'Good Morning', muscleGroup: 'hamstrings', equipment: ['gym', 'home'], gifUrl: 'https://raw.githubusercontent.com/omercotkd/exercises-gifs/main/assets/0044.gif', compound: true },
   // Glutes
-  { name: 'Hip Thrust con Bilanciere', muscleGroup: 'glutes', equipment: ['gym', 'home'], compound: true },
-  { name: 'Ponte Glutei', muscleGroup: 'glutes', equipment: ['gym', 'home', 'bodyweight'], compound: true },
-  { name: 'Squat Sumo', muscleGroup: 'glutes', equipment: ['gym', 'home'], compound: true },
-  { name: 'Kick-back ai Cavi', muscleGroup: 'glutes', equipment: ['gym'], compound: false },
-  { name: 'Step-up', muscleGroup: 'glutes', equipment: ['gym', 'home', 'bodyweight'], compound: true },
-  { name: 'Abduzioni', muscleGroup: 'glutes', equipment: ['gym'], compound: false },
-  { name: 'Hip Thrust a Corpo Libero', muscleGroup: 'glutes', equipment: ['gym', 'home', 'bodyweight'], compound: true },
+  { name: 'Hip Thrust con Bilanciere', muscleGroup: 'glutes', equipment: ['gym', 'home'], gifUrl: 'https://raw.githubusercontent.com/omercotkd/exercises-gifs/main/assets/1062.gif', compound: true },
+  { name: 'Ponte Glutei', muscleGroup: 'glutes', equipment: ['gym', 'home', 'bodyweight'], gifUrl: 'https://raw.githubusercontent.com/omercotkd/exercises-gifs/main/assets/1409.gif', compound: true },
+  { name: 'Squat Sumo', muscleGroup: 'glutes', equipment: ['gym', 'home'], gifUrl: 'https://raw.githubusercontent.com/omercotkd/exercises-gifs/main/assets/3142.gif', compound: true },
+  { name: 'Kick-back ai Cavi', muscleGroup: 'glutes', equipment: ['gym'], gifUrl: 'https://raw.githubusercontent.com/omercotkd/exercises-gifs/main/assets/0172.gif', compound: false },
+  { name: 'Step-up', muscleGroup: 'glutes', equipment: ['gym', 'home', 'bodyweight'], gifUrl: 'https://raw.githubusercontent.com/omercotkd/exercises-gifs/main/assets/1008.gif', compound: true },
+  { name: 'Abduzioni', muscleGroup: 'glutes', equipment: ['gym'], gifUrl: 'https://raw.githubusercontent.com/omercotkd/exercises-gifs/main/assets/1427.gif', compound: false },
+  { name: 'Hip Thrust a Corpo Libero', muscleGroup: 'glutes', equipment: ['gym', 'home', 'bodyweight'], gifUrl: 'https://raw.githubusercontent.com/omercotkd/exercises-gifs/main/assets/3236.gif', compound: true },
   // Calves
-  { name: 'Calf Raise in Piedi', muscleGroup: 'calves', equipment: ['gym', 'home', 'bodyweight'], compound: false },
-  { name: 'Calf Raise Seduto', muscleGroup: 'calves', equipment: ['gym'], compound: false },
-  { name: 'Calf Raise su Gradino', muscleGroup: 'calves', equipment: ['gym', 'home', 'bodyweight'], compound: false },
-  { name: 'Calf Raise alla Pressa', muscleGroup: 'calves', equipment: ['gym'], compound: false },
+  { name: 'Calf Raise in Piedi', muscleGroup: 'calves', equipment: ['gym', 'home', 'bodyweight'], gifUrl: 'https://raw.githubusercontent.com/omercotkd/exercises-gifs/main/assets/1372.gif', compound: false },
+  { name: 'Calf Raise Seduto', muscleGroup: 'calves', equipment: ['gym'], gifUrl: 'https://raw.githubusercontent.com/omercotkd/exercises-gifs/main/assets/0088.gif', compound: false },
+  { name: 'Calf Raise su Gradino', muscleGroup: 'calves', equipment: ['gym', 'home', 'bodyweight'], gifUrl: 'https://raw.githubusercontent.com/omercotkd/exercises-gifs/main/assets/0999.gif', compound: false },
+  { name: 'Calf Raise alla Pressa', muscleGroup: 'calves', equipment: ['gym'], gifUrl: 'https://raw.githubusercontent.com/omercotkd/exercises-gifs/main/assets/1385.gif', compound: false },
   // Abs
-  { name: 'Crunch', muscleGroup: 'abs', equipment: ['gym', 'home', 'bodyweight'], compound: false },
-  { name: 'Plank', muscleGroup: 'abs', equipment: ['gym', 'home', 'bodyweight'], compound: true },
-  { name: 'Leg Raise', muscleGroup: 'abs', equipment: ['gym', 'home', 'bodyweight'], compound: false },
-  { name: 'Russian Twist', muscleGroup: 'abs', equipment: ['gym', 'home', 'bodyweight'], compound: false },
-  { name: 'Mountain Climber', muscleGroup: 'abs', equipment: ['gym', 'home', 'bodyweight'], compound: true },
-  { name: 'Bicycle Crunch', muscleGroup: 'abs', equipment: ['gym', 'home', 'bodyweight'], compound: false },
-  { name: 'Ab Wheel', muscleGroup: 'abs', equipment: ['gym', 'home'], compound: true },
-  { name: 'Crunch Inverso', muscleGroup: 'abs', equipment: ['gym', 'home', 'bodyweight'], compound: false },
-  { name: 'V-up', muscleGroup: 'abs', equipment: ['gym', 'home', 'bodyweight'], compound: false },
-  { name: 'Dead Bug', muscleGroup: 'abs', equipment: ['gym', 'home', 'bodyweight'], compound: false },
+  { name: 'Crunch', muscleGroup: 'abs', equipment: ['gym', 'home', 'bodyweight'], gifUrl: 'https://raw.githubusercontent.com/omercotkd/exercises-gifs/main/assets/0972.gif', compound: false },
+  { name: 'Plank', muscleGroup: 'abs', equipment: ['gym', 'home', 'bodyweight'], gifUrl: 'https://raw.githubusercontent.com/omercotkd/exercises-gifs/main/assets/3544.gif', compound: true },
+  { name: 'Leg Raise', muscleGroup: 'abs', equipment: ['gym', 'home', 'bodyweight'], gifUrl: 'https://raw.githubusercontent.com/omercotkd/exercises-gifs/main/assets/0012.gif', compound: false },
+  { name: 'Russian Twist', muscleGroup: 'abs', equipment: ['gym', 'home', 'bodyweight'], gifUrl: 'https://raw.githubusercontent.com/omercotkd/exercises-gifs/main/assets/0687.gif', compound: false },
+  { name: 'Mountain Climber', muscleGroup: 'abs', equipment: ['gym', 'home', 'bodyweight'], gifUrl: 'https://raw.githubusercontent.com/omercotkd/exercises-gifs/main/assets/0630.gif', compound: true },
+  { name: 'Bicycle Crunch', muscleGroup: 'abs', equipment: ['gym', 'home', 'bodyweight'], gifUrl: 'https://raw.githubusercontent.com/omercotkd/exercises-gifs/main/assets/0972.gif', compound: false },
+  { name: 'Ab Wheel', muscleGroup: 'abs', equipment: ['gym', 'home'], gifUrl: 'https://raw.githubusercontent.com/omercotkd/exercises-gifs/main/assets/0103.gif', compound: true },
+  { name: 'Crunch Inverso', muscleGroup: 'abs', equipment: ['gym', 'home', 'bodyweight'], gifUrl: 'https://raw.githubusercontent.com/omercotkd/exercises-gifs/main/assets/0872.gif', compound: false },
+  { name: 'V-up', muscleGroup: 'abs', equipment: ['gym', 'home', 'bodyweight'], gifUrl: 'https://raw.githubusercontent.com/omercotkd/exercises-gifs/main/assets/0969.gif', compound: false },
+  { name: 'Dead Bug', muscleGroup: 'abs', equipment: ['gym', 'home', 'bodyweight'], gifUrl: 'https://raw.githubusercontent.com/omercotkd/exercises-gifs/main/assets/0276.gif', compound: false },
   // Full Body
-  { name: 'Burpee', muscleGroup: 'full_body', equipment: ['gym', 'home', 'bodyweight'], compound: true },
-  { name: 'Clean and Press', muscleGroup: 'full_body', equipment: ['gym', 'home'], compound: true },
-  { name: 'Thruster', muscleGroup: 'full_body', equipment: ['gym', 'home'], compound: true },
-  { name: 'Turkish Get-up', muscleGroup: 'full_body', equipment: ['gym', 'home'], compound: true },
-  { name: 'Bear Crawl', muscleGroup: 'full_body', equipment: ['gym', 'home', 'bodyweight'], compound: true }
+  { name: 'Burpee', muscleGroup: 'full_body', equipment: ['gym', 'home', 'bodyweight'], gifUrl: 'https://raw.githubusercontent.com/omercotkd/exercises-gifs/main/assets/1160.gif', compound: true },
+  { name: 'Clean and Press', muscleGroup: 'full_body', equipment: ['gym', 'home'], gifUrl: 'https://raw.githubusercontent.com/omercotkd/exercises-gifs/main/assets/0028.gif', compound: true },
+  { name: 'Thruster', muscleGroup: 'full_body', equipment: ['gym', 'home'], gifUrl: 'https://raw.githubusercontent.com/omercotkd/exercises-gifs/main/assets/3305.gif', compound: true },
+  { name: 'Turkish Get-up', muscleGroup: 'full_body', equipment: ['gym', 'home'], gifUrl: 'https://raw.githubusercontent.com/omercotkd/exercises-gifs/main/assets/3374.gif', compound: true },
+  { name: 'Bear Crawl', muscleGroup: 'full_body', equipment: ['gym', 'home', 'bodyweight'], gifUrl: 'https://raw.githubusercontent.com/omercotkd/exercises-gifs/main/assets/3360.gif', compound: true }
 ];
 
 // --- DATA: MEAL LIBRARY ---
@@ -306,7 +308,8 @@ function generateWorkoutPlan(profile: FitnessProfile): WorkoutDay[] {
       sets: scheme.sets,
       reps: scheme.reps,
       rest: scheme.rest,
-      muscleGroup: t.muscleGroup
+      muscleGroup: t.muscleGroup,
+      gifUrl: t.gifUrl
     }));
     return { dayLabel: label, focus, exercises, isCompleted: false };
   };
@@ -948,25 +951,34 @@ export function FitnessScreen({ module, onClose, onSave }: FitnessScreenProps) {
                           <div className="px-6 pb-6 pt-2 border-t border-[var(--border)]">
                             <div className="space-y-4">
                               {day.exercises.map((ex, eIdx) => (
-                                <div key={eIdx} className="flex items-center justify-between bg-[var(--bg)] p-4 rounded-2xl gap-4">
-                                  <div className="flex-1">
-                                    <p className="font-bold text-sm text-[var(--text-main)]">{ex.name}</p>
-                                    <p className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] mt-1">{ex.muscleGroup}</p>
+                                <div key={eIdx} className="flex flex-col sm:flex-row items-start sm:items-center justify-between bg-[var(--bg)] p-4 rounded-2xl gap-4 border border-transparent hover:border-[var(--border)] transition-colors">
+                                  <div className="flex items-center gap-4 flex-1 w-full">
+                                    {ex.gifUrl && (
+                                      <div className="w-16 h-16 sm:w-20 sm:h-20 shrink-0 bg-white rounded-xl overflow-hidden shadow-sm flex items-center justify-center p-1">
+                                        <img src={ex.gifUrl} alt={ex.name} className="max-w-full max-h-full object-contain" />
+                                      </div>
+                                    )}
+                                    <div className="flex-1">
+                                      <p className="font-bold text-sm text-[var(--text-main)]">{ex.name}</p>
+                                      <p className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] mt-1">{ex.muscleGroup}</p>
+                                    </div>
                                   </div>
-                                  <div className="text-right">
-                                    <p className="font-black text-emerald-500">{ex.sets} × {ex.reps}</p>
-                                    <p className="text-[10px] font-bold text-[var(--text-muted)] mt-1">Rec: {ex.rest}</p>
+                                  <div className="flex items-center w-full sm:w-auto justify-between sm:justify-end gap-6 border-t border-[var(--border)] sm:border-0 pt-4 sm:pt-0 mt-2 sm:mt-0 shrink-0">
+                                    <div className="text-left sm:text-right">
+                                      <p className="font-black text-emerald-500">{ex.sets} × {ex.reps}</p>
+                                      <p className="text-[10px] font-bold text-[var(--text-muted)] mt-1">Rec: {ex.rest}</p>
+                                    </div>
+                                    <button 
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        window.open(`https://www.youtube.com/results?search_query=${encodeURIComponent(ex.name + ' tutorial esercizio esecuzione')}`, '_blank');
+                                      }}
+                                      className="p-3 bg-emerald-500/10 text-emerald-500 rounded-xl hover:bg-emerald-500/20 transition-colors shrink-0"
+                                      title="Vedi Esecuzione su YouTube"
+                                    >
+                                      <Play className="w-5 h-5 fill-current" />
+                                    </button>
                                   </div>
-                                  <button 
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      window.open(`https://www.youtube.com/results?search_query=${encodeURIComponent(ex.name + ' tutorial esercizio esecuzione')}`, '_blank');
-                                    }}
-                                    className="p-3 bg-emerald-500/10 text-emerald-500 rounded-xl hover:bg-emerald-500/20 transition-colors shrink-0"
-                                    title="Vedi Esecuzione"
-                                  >
-                                    <Play className="w-5 h-5 fill-current" />
-                                  </button>
                                 </div>
                               ))}
                             </div>
