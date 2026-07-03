@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { ArrowLeft, ArrowRight, Check, ChevronDown, ChevronUp, RefreshCw, Play, Award, TrendingUp, Target, Activity, Heart, Dumbbell, Utensils } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, ChevronDown, ChevronUp, RefreshCw, Play, Award, TrendingUp, Target, Activity, Heart, Dumbbell, Utensils, ExternalLink } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { findRecipeForMeal } from '../services/recipeSearchService';
 
 // --- INTERFACES ---
 
@@ -470,24 +471,11 @@ export function FitnessScreen({ module, onClose, onSave }: FitnessScreenProps) {
 
     setIsSearchingRecipe(prev => ({...prev, [key]: true}));
     try {
-      const res = await fetch('/ricette_mondo.json');
-      const db = await res.json();
-      
-      const query = mealName.toLowerCase().replace(/[^a-z0-9àèéìòù ]/g, '').split(' ').filter(w => w.length > 2).slice(0, 2).join(' ');
-      
-      let match = db.find((r: any) => r.titolo.toLowerCase() === mealName.toLowerCase());
-      if (!match) {
-        match = db.find((r: any) => r.titolo.toLowerCase().includes(query) || (r.categoria && r.categoria.toLowerCase().includes(query)));
-      }
-      
-      if (match) {
-        setInlineRecipes(prev => ({...prev, [key]: match}));
-      } else {
-        setInlineRecipes(prev => ({...prev, [key]: { notFound: true }}));
-      }
+      const result = await findRecipeForMeal(mealName);
+      setInlineRecipes(prev => ({...prev, [key]: result}));
     } catch (e) {
       console.error(e);
-      setInlineRecipes(prev => ({...prev, [key]: { notFound: true }}));
+      setInlineRecipes(prev => ({...prev, [key]: { source: 'local', titolo: mealName, notFound: true }}));
     } finally {
       setIsSearchingRecipe(prev => ({...prev, [key]: false}));
     }
@@ -1094,29 +1082,77 @@ export function FitnessScreen({ module, onClose, onSave }: FitnessScreenProps) {
                       {recipe && (
                         <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="border-t border-[var(--border)] pt-5 mt-2 overflow-hidden">
                           {recipe.notFound ? (
-                            <div className="text-center py-6 bg-[var(--surface-variant)] rounded-2xl">
-                              <p className="text-sm font-bold text-[var(--text-muted)]">Nessuna ricetta trovata nel database.</p>
-                              <button onClick={() => window.dispatchEvent(new CustomEvent('open-recipes', { detail: { search: meal.name } }))} className="text-amber-500 text-xs font-bold mt-2 hover:underline">Apri Ricettario Globale</button>
+                            <div className="text-center py-6 bg-[var(--surface-variant)] rounded-2xl space-y-2">
+                              <p className="text-2xl">🍽️</p>
+                              <p className="text-sm font-bold text-[var(--text-muted)]">Nessuna ricetta trovata.</p>
+                              <p className="text-xs text-[var(--text-muted)]">Prova ad aggiungere le chiavi Edamam nelle impostazioni profilo per risultati migliori.</p>
+                              <button onClick={() => window.dispatchEvent(new CustomEvent('open-recipes', { detail: { search: meal.name } }))} className="text-amber-500 text-xs font-bold mt-1 hover:underline">
+                                Apri Ricettario Globale
+                              </button>
                             </div>
                           ) : (
                             <div className="space-y-4">
+                              {/* Source badge */}
+                              <div className="flex items-center gap-2">
+                                <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded-lg ${
+                                  recipe.source === 'themealdb' ? 'bg-green-500/10 text-green-500' :
+                                  recipe.source === 'edamam' ? 'bg-blue-500/10 text-blue-500' :
+                                  'bg-amber-500/10 text-amber-500'
+                                }`}>
+                                  {recipe.source === 'themealdb' ? '🌍 TheMealDB' : recipe.source === 'edamam' ? '⚡ Edamam' : '🍋 Ricettario'}
+                                </span>
+                                {recipe.difficolta && <span className="text-[10px] text-[var(--text-muted)] font-semibold">{recipe.difficolta}</span>}
+                              </div>
+
                               {recipe.immagine && (
-                                <img src={recipe.immagine} alt={recipe.titolo} className="w-full h-48 object-cover rounded-2xl shadow-sm" />
+                                <img src={recipe.immagine} alt={recipe.titolo} className="w-full h-52 object-cover rounded-2xl shadow-sm" />
                               )}
-                              <div>
-                                <h6 className="font-black text-lg text-[var(--text-main)] mb-1">{recipe.titolo}</h6>
-                                {recipe.difficolta && <p className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider">Difficoltà: {recipe.difficolta}</p>}
-                              </div>
-                              <div className="bg-[var(--surface-variant)] p-4 rounded-2xl">
-                                <p className="font-black text-[10px] uppercase tracking-widest text-amber-500 mb-2">Ingredienti principali:</p>
-                                <p className="text-sm font-semibold text-[var(--text-main)]">{recipe.ingredienti?.slice(0, 8).map((i: any) => i.nome).join(', ')} {recipe.ingredienti?.length > 8 ? '...' : ''}</p>
-                              </div>
-                              <div className="text-sm text-[var(--text-main)] leading-relaxed space-y-3 max-h-64 overflow-y-auto custom-scrollbar pr-2">
-                                <p className="font-black text-[10px] uppercase tracking-widest text-amber-500">Preparazione:</p>
-                                {recipe.preparazione?.split(/(?<=[.?!])\s+/).filter((s: string) => s.trim().length > 0).map((step: string, i: number) => (
-                                  <p key={i} className="text-sm font-semibold text-[var(--text-muted)] mb-3">{step.trim()}</p>
-                                ))}
-                              </div>
+
+                              <h6 className="font-black text-base text-[var(--text-main)]">{recipe.titolo}</h6>
+
+                              {/* Macros from Edamam */}
+                              {(recipe.calorie || recipe.proteine) && (
+                                <div className="grid grid-cols-4 gap-2">
+                                  {recipe.calorie && <div className="bg-amber-500/10 rounded-xl p-2 text-center"><p className="text-sm font-black text-amber-500">{recipe.calorie}</p><p className="text-[9px] text-[var(--text-muted)] font-bold uppercase">kcal</p></div>}
+                                  {recipe.proteine && <div className="bg-red-500/10 rounded-xl p-2 text-center"><p className="text-sm font-black text-red-500">{recipe.proteine}g</p><p className="text-[9px] text-[var(--text-muted)] font-bold uppercase">Proteine</p></div>}
+                                  {recipe.carbs && <div className="bg-blue-500/10 rounded-xl p-2 text-center"><p className="text-sm font-black text-blue-500">{recipe.carbs}g</p><p className="text-[9px] text-[var(--text-muted)] font-bold uppercase">Carbs</p></div>}
+                                  {recipe.grassi && <div className="bg-yellow-500/10 rounded-xl p-2 text-center"><p className="text-sm font-black text-yellow-500">{recipe.grassi}g</p><p className="text-[9px] text-[var(--text-muted)] font-bold uppercase">Grassi</p></div>}
+                                </div>
+                              )}
+
+                              {/* Ingredienti */}
+                              {recipe.ingredienti && recipe.ingredienti.length > 0 && (
+                                <div className="bg-[var(--surface-variant)] p-4 rounded-2xl">
+                                  <p className="font-black text-[10px] uppercase tracking-widest text-amber-500 mb-2">Ingredienti ({recipe.ingredienti.length}):</p>
+                                  <div className="flex flex-wrap gap-1.5">
+                                    {recipe.ingredienti.slice(0, 10).map((ing: any, i: number) => (
+                                      <span key={i} className="text-xs bg-[var(--card-bg)] border border-[var(--border)] rounded-lg px-2 py-0.5 text-[var(--text-main)] font-medium">
+                                        {ing.quantita ? `${ing.quantita} ${ing.nome}` : ing.nome}
+                                      </span>
+                                    ))}
+                                    {recipe.ingredienti.length > 10 && <span className="text-xs text-[var(--text-muted)] font-semibold">+{recipe.ingredienti.length - 10} altri...</span>}
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Preparazione */}
+                              {recipe.preparazione && recipe.preparazione.length > 10 && (
+                                <div className="space-y-2 max-h-56 overflow-y-auto custom-scrollbar pr-1">
+                                  <p className="font-black text-[10px] uppercase tracking-widest text-amber-500">Preparazione:</p>
+                                  {recipe.preparazione.split(/(?<=[.!?])\s+/).filter((s: string) => s.trim().length > 10).slice(0, 8).map((step: string, i: number) => (
+                                    <p key={i} className="text-xs text-[var(--text-muted)] font-medium leading-relaxed">• {step.trim()}</p>
+                                  ))}
+                                </div>
+                              )}
+
+                              {/* Link esterno */}
+                              {recipe.url && (
+                                <a href={recipe.url} target="_blank" rel="noopener noreferrer"
+                                   className="flex items-center justify-center gap-2 w-full py-3 bg-[var(--surface-variant)] hover:bg-[var(--border)] rounded-2xl text-xs font-bold text-[var(--text-muted)] transition-colors">
+                                  <ExternalLink className="w-3.5 h-3.5" />
+                                  Vedi ricetta completa
+                                </a>
+                              )}
                             </div>
                           )}
                         </motion.div>
