@@ -15,7 +15,7 @@ export function RecipesScreen({ onClose, initialSearchQuery, initialRecipe }: Re
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState(initialSearchQuery || '');
   
-  const [selectedMeal, setSelectedMeal] = useState<any | null>(initialRecipe || null);
+  const [selectedMeal, setSelectedMeal] = useState<any | null>(null);
   const [favorites, setFavorites] = useState<any[]>([]);
 
   // Fridge state
@@ -40,16 +40,49 @@ export function RecipesScreen({ onClose, initialSearchQuery, initialRecipe }: Re
     }
   }, []);
 
+  useEffect(() => {
+    if (initialRecipe) {
+      if (initialRecipe.titolo) {
+        setSelectedMeal({
+          id: `initial_${Date.now()}`,
+          title: initialRecipe.titolo,
+          image: initialRecipe.immagine || '',
+          category: 'Ricerca',
+          ingredients: initialRecipe.ingredienti ? initialRecipe.ingredienti.map((i: any) => `${i.quantita} ${i.nome}`.trim()) : [],
+          steps: initialRecipe.preparazione ? initialRecipe.preparazione.split('\n').filter((s: string) => s.trim().length > 0) : []
+        });
+      } else {
+        setSelectedMeal(initialRecipe);
+      }
+    } else {
+      setSelectedMeal(null);
+    }
+  }, [initialRecipe]);
+
+  useEffect(() => {
+    if (initialSearchQuery !== undefined) {
+      setSearchQuery(initialSearchQuery);
+    }
+  }, [initialSearchQuery]);
+
   const handleBack = useCallback(() => {
     if (selectedMeal) {
-      setSelectedMeal(null);
+      if (initialRecipe) {
+        onClose();
+      } else {
+        setSelectedMeal(null);
+      }
     } else if (selectedCategory || searchQuery) {
-      setSelectedCategory(null);
-      setSearchQuery('');
+      if (initialSearchQuery) {
+        onClose();
+      } else {
+        setSelectedCategory(null);
+        setSearchQuery('');
+      }
     } else {
       onClose();
     }
-  }, [selectedMeal, selectedCategory, searchQuery, onClose]);
+  }, [selectedMeal, selectedCategory, searchQuery, onClose, initialRecipe, initialSearchQuery]);
 
   useEffect(() => {
     window.addEventListener('recipes-back', handleBack);
