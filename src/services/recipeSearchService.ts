@@ -481,6 +481,41 @@ function setSessionCache(cache: Record<string, any>) {
   try { sessionStorage.setItem('chelona_recipe_cache', JSON.stringify(cache)); } catch {}
 }
 
+function saveAsCustomRecipe(recipe: RecipeResult, originalQuery: string) {
+  try {
+    const existing = localStorage.getItem('chelona_custom_recipes');
+    let customRecipes = existing ? JSON.parse(existing) : [];
+    
+    // Check if already exists
+    if (customRecipes.some((r: any) => r.title.toLowerCase() === recipe.titolo.toLowerCase())) {
+      return;
+    }
+
+    let cat = 'Secondi';
+    const q = originalQuery.toLowerCase();
+    if (q.includes('porridge') || q.includes('pancake') || q.includes('yogurt') || q.includes('toast') || q.includes('uova')) cat = 'Colazione';
+    else if (q.includes('pasta') || q.includes('riso') || q.includes('quinoa')) cat = 'Primi';
+    else if (q.includes('pollo') || q.includes('salmone') || q.includes('merluzzo') || q.includes('manzo') || q.includes('hamburger')) cat = 'Secondi';
+
+    const newRecipe = {
+      id: `custom_${Date.now()}_${Math.floor(Math.random()*1000)}`,
+      title: recipe.titolo,
+      image: recipe.immagine || '',
+      category: cat,
+      ingredients: recipe.ingredienti ? recipe.ingredienti.map(i => `${i.quantita} ${i.nome}`.trim()) : [],
+      steps: recipe.preparazione ? recipe.preparazione.split('\n').filter(s => s.trim().length > 0) : []
+    };
+
+    customRecipes.push(newRecipe);
+    localStorage.setItem('chelona_custom_recipes', JSON.stringify(customRecipes));
+    
+    // Dispatch an event so RecipesScreen can reload if it's open
+    window.dispatchEvent(new Event('recipes-updated'));
+  } catch (e) {
+    console.error("Failed to save custom recipe", e);
+  }
+}
+
 // ── PUBLIC CASCADE ────────────────────────────────────────────────────────────
 export async function findRecipeForMeal(mealName: string): Promise<RecipeResult> {
   const cacheKey = mealName.toLowerCase().trim();
@@ -506,6 +541,7 @@ export async function findRecipeForMeal(mealName: string): Promise<RecipeResult>
         const translated = await translateRecipeToItalian(mealdb);
         cache[cacheKey] = translated;
         setSessionCache(cache);
+        saveAsCustomRecipe(translated, mealName);
         return translated;
       }
       const edamam = await searchEdamam(mapped.englishQuery);
@@ -513,6 +549,7 @@ export async function findRecipeForMeal(mealName: string): Promise<RecipeResult>
         const translated = await translateRecipeToItalian(edamam);
         cache[cacheKey] = translated;
         setSessionCache(cache);
+        saveAsCustomRecipe(translated, mealName);
         return translated;
       }
     }
@@ -529,6 +566,7 @@ export async function findRecipeForMeal(mealName: string): Promise<RecipeResult>
       const translated = await translateRecipeToItalian(mealdb);
       cache[cacheKey] = translated;
       setSessionCache(cache);
+      saveAsCustomRecipe(translated, mealName);
       return translated;
     }
 
@@ -537,6 +575,7 @@ export async function findRecipeForMeal(mealName: string): Promise<RecipeResult>
       const translated = await translateRecipeToItalian(edamam);
       cache[cacheKey] = translated;
       setSessionCache(cache);
+      saveAsCustomRecipe(translated, mealName);
       return translated;
     }
   }

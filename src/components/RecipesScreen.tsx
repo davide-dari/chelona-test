@@ -56,7 +56,7 @@ export function RecipesScreen({ onClose, initialSearchQuery, initialRecipe }: Re
     return () => window.removeEventListener('recipes-back', handleBack);
   }, [handleBack]);
 
-  useEffect(() => {
+  const loadRecipes = useCallback(() => {
     fetch('ricette_mondo.json').then(res => res.json().catch(() => []))
     .then((mondoData) => {
       let combined: any[] = [];
@@ -98,6 +98,18 @@ export function RecipesScreen({ onClose, initialSearchQuery, initialRecipe }: Re
           });
         combined = [...formatted];
       }
+
+      try {
+        const custom = localStorage.getItem('chelona_custom_recipes');
+        if (custom) {
+          const customRecipes = JSON.parse(custom);
+          // prepend custom recipes so they appear first
+          combined = [...customRecipes, ...combined];
+        }
+      } catch (e) {
+        console.error('Failed to load custom recipes from localStorage', e);
+      }
+
       setAllMeals(combined);
       setLoading(false);
     })
@@ -106,6 +118,15 @@ export function RecipesScreen({ onClose, initialSearchQuery, initialRecipe }: Re
       setLoading(false);
     });
   }, []);
+
+  useEffect(() => {
+    loadRecipes();
+  }, [loadRecipes]);
+
+  useEffect(() => {
+    window.addEventListener('recipes-updated', loadRecipes);
+    return () => window.removeEventListener('recipes-updated', loadRecipes);
+  }, [loadRecipes]);
 
   const FIXED_CATEGORIES = ['Antipasti', 'Primi', 'Secondi', 'Dolci', 'Colazione'];
 
