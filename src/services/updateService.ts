@@ -3,6 +3,7 @@ import { ApkInstaller } from '@bixbyte/capacitor-apk-installer';
 import { CapacitorHttp, Capacitor } from '@capacitor/core';
 import { App as CapacitorApp } from '@capacitor/app';
 import { APP_VERSION } from '../constants/version';
+import { notificationService } from './notificationService';
 
 const GITHUB_OWNER = 'davide-dari';
 const GITHUB_REPO = 'chelona-test';
@@ -66,6 +67,13 @@ class UpdateService {
           return null;
         }
         console.log(`[UpdateService] Update found! APK URL: ${apkAsset.browser_download_url}`);
+        
+        const lastNotified = localStorage.getItem('chelona_last_notified_update');
+        if (lastNotified !== latestVersion) {
+          notificationService.fire('Aggiornamento Disponibile', `La versione ${latestVersion} di Chelona è ora disponibile!`);
+          localStorage.setItem('chelona_last_notified_update', latestVersion);
+        }
+
         return {
           available: true,
           currentVersion: this.currentVersion,

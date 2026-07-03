@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { ArrowLeft, ArrowRight, Check, ChevronDown, ChevronUp, RefreshCw, Play, Award, TrendingUp, Target, Activity, Heart, Dumbbell, Utensils } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -518,6 +518,12 @@ export function FitnessScreen({ module, onClose, onSave }: FitnessScreenProps) {
 
   // --- RENDERERS ---
 
+  const activeMealPlanWeekly = useMemo(() => {
+    if (formData.mealPlanWeekly && formData.mealPlanWeekly.length > 0) return formData.mealPlanWeekly;
+    if (formData.mealPlan) return Array(7).fill(formData.mealPlan);
+    return null;
+  }, [formData.mealPlanWeekly, formData.mealPlan]);
+
   return (
     <div className="fixed inset-0 z-[150] bg-[var(--bg)] flex flex-col h-[100dvh] overflow-hidden font-sans transition-colors duration-300">
       
@@ -579,7 +585,7 @@ export function FitnessScreen({ module, onClose, onSave }: FitnessScreenProps) {
 
                 {/* Diet Card */}
                 <button
-                  onClick={() => formData.mealPlan ? setCurrentView('diet-plan') : setCurrentView('diet-wizard')}
+                  onClick={() => activeMealPlanWeekly ? setCurrentView('diet-plan') : setCurrentView('diet-wizard')}
                   className="p-8 bg-[var(--card-bg)] border border-[var(--border)] rounded-[2.5rem] text-left hover:border-amber-500/50 hover:shadow-lg hover:-translate-y-1 transition-all group relative overflow-hidden"
                 >
                   <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/10 rounded-full blur-3xl -mr-10 -mt-10 transition-opacity opacity-50 group-hover:opacity-100" />
@@ -590,7 +596,7 @@ export function FitnessScreen({ module, onClose, onSave }: FitnessScreenProps) {
                   <h4 className="text-2xl font-black text-[var(--text-main)] mb-2">Dieta</h4>
                   <p className="text-sm font-semibold text-[var(--text-muted)] mb-6">Nutrizionista virtuale. Calcola BMR, TDEE e genera il tuo piano alimentare.</p>
                   
-                  {formData.mealPlan ? (
+                  {activeMealPlanWeekly ? (
                     <div className="flex items-center gap-2 text-amber-500 bg-amber-500/10 px-4 py-2 rounded-xl w-fit">
                       <Check className="w-4 h-4" />
                       <span className="text-xs font-bold">Piano Attivo</span>
@@ -946,7 +952,7 @@ export function FitnessScreen({ module, onClose, onSave }: FitnessScreenProps) {
         )}
 
         {/* DIET PLAN VIEW */}
-        {currentView === 'diet-plan' && formData.mealPlanWeekly && formData.mealPlanWeekly.length > 0 && (
+        {currentView === 'diet-plan' && activeMealPlanWeekly && (
           <div className="px-6 py-8">
             <div className="max-w-3xl mx-auto space-y-6">
               
@@ -970,15 +976,15 @@ export function FitnessScreen({ module, onClose, onSave }: FitnessScreenProps) {
 
                 <div className="grid grid-cols-3 gap-4">
                   <div className="bg-[var(--bg)] p-4 rounded-2xl text-center border-b-4 border-blue-500">
-                    <p className="text-lg font-black text-[var(--text-main)]">{Math.round(formData.mealPlanWeekly[expandedDayIndex || 0].totalCarbs)}g</p>
+                    <p className="text-lg font-black text-[var(--text-main)]">{Math.round(activeMealPlanWeekly[expandedDayIndex || 0].totalCarbs)}g</p>
                     <p className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest mt-1">Carboidrati</p>
                   </div>
                   <div className="bg-[var(--bg)] p-4 rounded-2xl text-center border-b-4 border-red-500">
-                    <p className="text-lg font-black text-[var(--text-main)]">{Math.round(formData.mealPlanWeekly[expandedDayIndex || 0].totalProtein)}g</p>
+                    <p className="text-lg font-black text-[var(--text-main)]">{Math.round(activeMealPlanWeekly[expandedDayIndex || 0].totalProtein)}g</p>
                     <p className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest mt-1">Proteine</p>
                   </div>
                   <div className="bg-[var(--bg)] p-4 rounded-2xl text-center border-b-4 border-yellow-500">
-                    <p className="text-lg font-black text-[var(--text-main)]">{Math.round(formData.mealPlanWeekly[expandedDayIndex || 0].totalFat)}g</p>
+                    <p className="text-lg font-black text-[var(--text-main)]">{Math.round(activeMealPlanWeekly[expandedDayIndex || 0].totalFat)}g</p>
                     <p className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest mt-1">Grassi</p>
                   </div>
                 </div>
@@ -1004,8 +1010,8 @@ export function FitnessScreen({ module, onClose, onSave }: FitnessScreenProps) {
               {/* Meals for selected day */}
               <div className="space-y-4">
                 <h4 className="font-bold text-[var(--text-muted)] uppercase tracking-widest text-xs ml-2">Pasti Consigliati del Giorno</h4>
-                {formData.mealPlanWeekly[expandedDayIndex || 0].meals.map((meal, idx) => (
-                  <div key={idx} className="bg-[var(--card-bg)] border border-[var(--border)] p-6 rounded-[2rem]">
+                {activeMealPlanWeekly[expandedDayIndex || 0].meals.map((meal, idx) => (
+                  <div key={idx} className="bg-[var(--card-bg)] border border-[var(--border)] rounded-[2rem] p-5 flex gap-4">
                     <div className="flex justify-between items-start mb-4">
                       <div>
                         <p className="text-[10px] font-black uppercase tracking-widest text-amber-500 mb-1">Pasto {idx + 1}</p>
