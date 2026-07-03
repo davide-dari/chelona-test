@@ -1,4 +1,4 @@
-export type ModuleType = 'generic' | 'auto' | 'document' | 'split' | 'single-expense' | 'wallet' | 'gallery' | 'travel' | 'transport' | 'recipes' | 'furniture' | 'installments' | 'fitness';
+export type ModuleType = 'generic' | 'auto' | 'document' | 'split' | 'single-expense' | 'wallet' | 'gallery' | 'travel' | 'transport' | 'recipes' | 'furniture' | 'installments' | 'fitness' | 'study';
 export type FuelType = 'benzina' | 'diesel' | 'gpl' | 'metano' | 'ibrida' | 'elettrica';
 
 export interface Folder {
@@ -256,7 +256,20 @@ export interface FitnessModule extends BaseModule {
   targetCalories?: number;
 }
 
-export type Module = GenericModule | AutoModule | DocumentModule | SplitModule | SingleExpenseModule | WalletModule | GalleryModule | TravelModule | TransportModule | FurnitureModule | InstallmentsModule | FitnessModule;
+export interface StudyModule extends BaseModule {
+  type: 'study';
+  status: 'wizard' | 'study';
+  targetSubject?: string;
+  level?: string;
+  teacherIntro?: string;
+  topics: any[];
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+export type Module = GenericModule | AutoModule | DocumentModule | SplitModule | SingleExpenseModule | WalletModule | GalleryModule | TravelModule | TransportModule | FurnitureModule | InstallmentsModule | FitnessModule | StudyModule;
 
 export interface DashboardState {
   modules: Module[];

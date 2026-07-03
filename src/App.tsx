@@ -302,15 +302,21 @@ export default function App() {
   const [isAddressBookOpen, setIsAddressBookOpen] = useState(false);
   const [isRecipesOpen, setIsRecipesOpen] = useState(false);
   const [initialRecipesSearch, setInitialRecipesSearch] = useState('');
+  const [initialRecipeToOpen, setInitialRecipeToOpen] = useState<any>(null);
 
   // Listen for open-recipes event from other modules (like Fitness/Diet)
   useEffect(() => {
     const handleOpenRecipes = (e: Event) => {
       const customEvent = e as CustomEvent;
-      if (customEvent.detail && customEvent.detail.search) {
+      if (customEvent.detail && customEvent.detail.recipe) {
+        setInitialRecipeToOpen(customEvent.detail.recipe);
+        setInitialRecipesSearch('');
+      } else if (customEvent.detail && customEvent.detail.search) {
         setInitialRecipesSearch(customEvent.detail.search);
+        setInitialRecipeToOpen(null);
       } else {
         setInitialRecipesSearch('');
+        setInitialRecipeToOpen(null);
       }
       setIsRecipesOpen(true);
     };
@@ -3428,7 +3434,8 @@ export default function App() {
              <RecipesScreen onClose={() => {
                setIsRecipesOpen(false);
                setInitialRecipesSearch('');
-             }} initialSearchQuery={initialRecipesSearch} />
+               setInitialRecipeToOpen(null);
+             }} initialSearchQuery={initialRecipesSearch} initialRecipe={initialRecipeToOpen} />
            </motion.div>
          )}
          {isAddressBookOpen && (

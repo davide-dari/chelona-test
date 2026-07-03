@@ -5,21 +5,33 @@ import { ArrowLeft, Search, X, BookOpen, Star, ChefHat } from 'lucide-react';
 interface RecipeScreenProps {
   onClose: () => void;
   initialSearchQuery?: string;
+  initialRecipe?: any;
 }
 
-export function RecipesScreen({ onClose, initialSearchQuery }: RecipeScreenProps) {
+export function RecipesScreen({ onClose, initialSearchQuery, initialRecipe }: RecipeScreenProps) {
   const [allMeals, setAllMeals] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState(initialSearchQuery || '');
   
-  const [selectedMeal, setSelectedMeal] = useState<any | null>(null);
+  const [selectedMeal, setSelectedMeal] = useState<any | null>(initialRecipe || null);
   const [favorites, setFavorites] = useState<any[]>([]);
 
   // Fridge state
-  const [fridgeIngredients, setFridgeIngredients] = useState<string[]>([]);
+  const [fridgeIngredients, setFridgeIngredients] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem('chelona_fridge_ingredients');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
   const [fridgeInput, setFridgeInput] = useState('');
+
+  useEffect(() => {
+    localStorage.setItem('chelona_fridge_ingredients', JSON.stringify(fridgeIngredients));
+  }, [fridgeIngredients]);
 
   useEffect(() => {
     const savedFavs = localStorage.getItem('chelona_gz_favorites');

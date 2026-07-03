@@ -85,13 +85,14 @@ export interface FitnessModule {
   workoutPlan?: WorkoutDay[];
   dietProfile?: DietProfile;
   mealPlan?: MealDay;
+  mealPlanWeekly?: MealDay[];
   bmr?: number;
   tdee?: number;
   targetCalories?: number;
-  x?: number;
-  y?: number;
-  w?: number;
-  h?: number;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
   folderId?: string;
 }
 
@@ -374,6 +375,7 @@ function generateMealPlanWeekly(profile: DietProfile, targetCalories: number): M
   const macros = {
     protein: profile.goal === 'bulk' ? profile.weight * 2.2 : profile.weight * 2.0,
     fat: (targetCalories * 0.25) / 9,
+    carbs: 0
   };
   const remainingCals = targetCalories - (macros.protein * 4) - (macros.fat * 9);
   macros.carbs = remainingCals / 4;
@@ -458,24 +460,21 @@ export function FitnessScreen({ module, onClose, onSave }: FitnessScreenProps) {
   const [dietWizardStep, setDietWizardStep] = useState(1);
   const [expandedDayIndex, setExpandedDayIndex] = useState<number | null>(null);
 
-  const [inlineRecipes, setInlineRecipes] = useState<{[key: string]: any}>({});
+
   const [isSearchingRecipe, setIsSearchingRecipe] = useState<{[key: string]: boolean}>({});
 
   const loadAndFindRecipe = async (mealName: string, key: string) => {
-    if (inlineRecipes[key]) {
-      const updated = {...inlineRecipes};
-      delete updated[key];
-      setInlineRecipes(updated);
-      return;
-    }
-
     setIsSearchingRecipe(prev => ({...prev, [key]: true}));
     try {
       const result = await findRecipeForMeal(mealName);
-      setInlineRecipes(prev => ({...prev, [key]: result}));
+      if (result && !result.notFound) {
+        window.dispatchEvent(new CustomEvent('open-recipes', { detail: { recipe: result } }));
+      } else {
+        window.dispatchEvent(new CustomEvent('open-recipes', { detail: { search: mealName } }));
+      }
     } catch (e) {
       console.error(e);
-      setInlineRecipes(prev => ({...prev, [key]: { source: 'local', titolo: mealName, notFound: true }}));
+      window.dispatchEvent(new CustomEvent('open-recipes', { detail: { search: mealName } }));
     } finally {
       setIsSearchingRecipe(prev => ({...prev, [key]: false}));
     }
@@ -1042,7 +1041,7 @@ export function FitnessScreen({ module, onClose, onSave }: FitnessScreenProps) {
                 <h4 className="font-bold text-[var(--text-muted)] uppercase tracking-widest text-xs ml-2">Pasti Consigliati del Giorno</h4>
                 {activeMealPlanWeekly[expandedDayIndex || 0].meals.map((meal, idx) => {
                   const key = `${expandedDayIndex || 0}_${idx}`;
-                  const recipe = inlineRecipes[key];
+
                   const isSearching = isSearchingRecipe[key];
                   
                   return (
@@ -1073,91 +1072,9 @@ export function FitnessScreen({ module, onClose, onSave }: FitnessScreenProps) {
                         disabled={isSearching}
                         className="shrink-0 px-3 py-1.5 bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5"
                       >
-                        {isSearching ? '⏳ Cerco...' : recipe ? '✕ Chiudi' : '🍽️ Ricetta'}
+                        {isSearching ? '⏳ Cerco...' : '🍽️ Ricetta'}
                       </button>
                     </div>
-
-                    {/* INLINE RECIPE DISPLAY */}
-                    <AnimatePresence>
-                      {recipe && (
-                        <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="border-t border-[var(--border)] pt-5 mt-2 overflow-hidden">
-                          {recipe.notFound ? (
-                            <div className="text-center py-6 bg-[var(--surface-variant)] rounded-2xl space-y-2">
-                              <p className="text-2xl">🍽️</p>
-                              <p className="text-sm font-bold text-[var(--text-muted)]">Nessuna ricetta trovata.</p>
-                              <p className="text-xs text-[var(--text-muted)]">Prova ad aggiungere le chiavi Edamam nelle impostazioni profilo per risultati migliori.</p>
-                              <button onClick={() => window.dispatchEvent(new CustomEvent('open-recipes', { detail: { search: meal.name } }))} className="text-amber-500 text-xs font-bold mt-1 hover:underline">
-                                Apri Ricettario Globale
-                              </button>
-                            </div>
-                          ) : (
-                            <div className="space-y-4">
-                              {/* Source badge */}
-                              <div className="flex items-center gap-2">
-                                <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded-lg ${
-                                  recipe.source === 'themealdb' ? 'bg-green-500/10 text-green-500' :
-                                  recipe.source === 'edamam' ? 'bg-blue-500/10 text-blue-500' :
-                                  'bg-amber-500/10 text-amber-500'
-                                }`}>
-                                  {recipe.source === 'themealdb' ? '🌍 TheMealDB' : recipe.source === 'edamam' ? '⚡ Edamam' : '🍋 Ricettario'}
-                                </span>
-                                {recipe.difficolta && <span className="text-[10px] text-[var(--text-muted)] font-semibold">{recipe.difficolta}</span>}
-                              </div>
-
-                              {recipe.immagine && (
-                                <img src={recipe.immagine} alt={recipe.titolo} className="w-full h-52 object-cover rounded-2xl shadow-sm" />
-                              )}
-
-                              <h6 className="font-black text-base text-[var(--text-main)]">{recipe.titolo}</h6>
-
-                              {/* Macros from Edamam */}
-                              {(recipe.calorie || recipe.proteine) && (
-                                <div className="grid grid-cols-4 gap-2">
-                                  {recipe.calorie && <div className="bg-amber-500/10 rounded-xl p-2 text-center"><p className="text-sm font-black text-amber-500">{recipe.calorie}</p><p className="text-[9px] text-[var(--text-muted)] font-bold uppercase">kcal</p></div>}
-                                  {recipe.proteine && <div className="bg-red-500/10 rounded-xl p-2 text-center"><p className="text-sm font-black text-red-500">{recipe.proteine}g</p><p className="text-[9px] text-[var(--text-muted)] font-bold uppercase">Proteine</p></div>}
-                                  {recipe.carbs && <div className="bg-blue-500/10 rounded-xl p-2 text-center"><p className="text-sm font-black text-blue-500">{recipe.carbs}g</p><p className="text-[9px] text-[var(--text-muted)] font-bold uppercase">Carbs</p></div>}
-                                  {recipe.grassi && <div className="bg-yellow-500/10 rounded-xl p-2 text-center"><p className="text-sm font-black text-yellow-500">{recipe.grassi}g</p><p className="text-[9px] text-[var(--text-muted)] font-bold uppercase">Grassi</p></div>}
-                                </div>
-                              )}
-
-                              {/* Ingredienti */}
-                              {recipe.ingredienti && recipe.ingredienti.length > 0 && (
-                                <div className="bg-[var(--surface-variant)] p-4 rounded-2xl">
-                                  <p className="font-black text-[10px] uppercase tracking-widest text-amber-500 mb-2">Ingredienti ({recipe.ingredienti.length}):</p>
-                                  <div className="flex flex-wrap gap-1.5">
-                                    {recipe.ingredienti.slice(0, 10).map((ing: any, i: number) => (
-                                      <span key={i} className="text-xs bg-[var(--card-bg)] border border-[var(--border)] rounded-lg px-2 py-0.5 text-[var(--text-main)] font-medium">
-                                        {ing.quantita ? `${ing.quantita} ${ing.nome}` : ing.nome}
-                                      </span>
-                                    ))}
-                                    {recipe.ingredienti.length > 10 && <span className="text-xs text-[var(--text-muted)] font-semibold">+{recipe.ingredienti.length - 10} altri...</span>}
-                                  </div>
-                                </div>
-                              )}
-
-                              {/* Preparazione */}
-                              {recipe.preparazione && recipe.preparazione.length > 10 && (
-                                <div className="space-y-2 max-h-56 overflow-y-auto custom-scrollbar pr-1">
-                                  <p className="font-black text-[10px] uppercase tracking-widest text-amber-500">Preparazione:</p>
-                                  {recipe.preparazione.split(/(?<=[.!?])\s+/).filter((s: string) => s.trim().length > 10).slice(0, 8).map((step: string, i: number) => (
-                                    <p key={i} className="text-xs text-[var(--text-muted)] font-medium leading-relaxed">• {step.trim()}</p>
-                                  ))}
-                                </div>
-                              )}
-
-                              {/* Link esterno */}
-                              {recipe.url && (
-                                <a href={recipe.url} target="_blank" rel="noopener noreferrer"
-                                   className="flex items-center justify-center gap-2 w-full py-3 bg-[var(--surface-variant)] hover:bg-[var(--border)] rounded-2xl text-xs font-bold text-[var(--text-muted)] transition-colors">
-                                  <ExternalLink className="w-3.5 h-3.5" />
-                                  Vedi ricetta completa
-                                </a>
-                              )}
-                            </div>
-                          )}
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
                   </div>
                   );
                 })}

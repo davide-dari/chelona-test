@@ -22,10 +22,10 @@ interface StudyModule {
   level?: string;
   teacherIntro?: string;
   topics: StudyTopic[];
-  x?: number;
-  y?: number;
-  w?: number;
-  h?: number;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
   folderId?: string;
 }
 

@@ -470,6 +470,17 @@ async function searchEdamam(query: string): Promise<RecipeResult | null> {
   } catch { return null; }
 }
 
+function getSessionCache(): Record<string, any> {
+  try {
+    const data = sessionStorage.getItem('chelona_recipe_cache');
+    return data ? JSON.parse(data) : {};
+  } catch { return {}; }
+}
+
+function setSessionCache(cache: Record<string, any>) {
+  try { sessionStorage.setItem('chelona_recipe_cache', JSON.stringify(cache)); } catch {}
+}
+
 // ── PUBLIC CASCADE ────────────────────────────────────────────────────────────
 export async function findRecipeForMeal(mealName: string): Promise<RecipeResult> {
   const cacheKey = mealName.toLowerCase().trim();
