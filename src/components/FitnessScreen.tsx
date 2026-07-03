@@ -463,10 +463,10 @@ export function FitnessScreen({ module, onClose, onSave }: FitnessScreenProps) {
 
   const [isSearchingRecipe, setIsSearchingRecipe] = useState<{[key: string]: boolean}>({});
 
-  const loadAndFindRecipe = async (mealName: string, key: string) => {
+  const loadAndFindRecipe = async (mealName: string, fallbackDesc: string, key: string) => {
     setIsSearchingRecipe(prev => ({...prev, [key]: true}));
     try {
-      const result = await findRecipeForMeal(mealName);
+      const result = await findRecipeForMeal(mealName, fallbackDesc);
       if (result && !result.notFound) {
         window.dispatchEvent(new CustomEvent('open-recipes', { detail: { recipe: result } }));
       } else {
@@ -1068,7 +1068,7 @@ export function FitnessScreen({ module, onClose, onSave }: FitnessScreenProps) {
                         <span className="bg-yellow-500/10 text-yellow-500 px-2.5 py-1 rounded-lg">🫒 {meal.fat}g</span>
                       </div>
                       <button 
-                        onClick={() => loadAndFindRecipe(meal.name, key)}
+                        onClick={() => loadAndFindRecipe(meal.name, meal.description, key)}
                         disabled={isSearching}
                         className="shrink-0 px-3 py-1.5 bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5"
                       >

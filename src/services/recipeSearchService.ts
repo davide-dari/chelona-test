@@ -1,6 +1,6 @@
 /**
  * recipeSearchService.ts
- * Cascade search: Local GZ DB → TheMealDB (free) → Edamam (optional, with user key)
+ * Cascade search: Local GZ DB → GialloZafferano Scraper → TheMealDB (free fallback)
  * Offline/Rate-limit proof Translation using MyMemory & local dictionaries.
  */
 
@@ -436,39 +436,91 @@ async function searchTheMealDB(query: string): Promise<RecipeResult | null> {
   } catch { return null; }
 }
 
-// ── 3. Edamam Recipe API (opzionale, con chiavi utente) ──────────────────────
-async function searchEdamam(query: string): Promise<RecipeResult | null> {
-  const appId = localStorage.getItem('chelona_edamam_app_id');
-  const appKey = localStorage.getItem('chelona_edamam_app_key');
-  if (!appId || !appKey) return null;
-
+// ── 3. GialloZafferano Scraper (via CORS Proxy) ────────────────────────────────
+async function searchGialloZafferano(query: string): Promise<RecipeResult | null> {
   try {
-    const url = `https://api.edamam.com/api/recipes/v2?type=public&q=${encodeURIComponent(query)}&app_id=${encodeURIComponent(appId)}&app_key=${encodeURIComponent(appKey)}&to=1`;
-    const res = await fetch(url);
-    if (!res.ok) return null;
-    const data = await res.json();
-    if (!data.hits || data.hits.length === 0) return null;
-
-    const hit = data.hits[0].recipe;
-    const servings = hit.yield || 1;
-    const n = hit.totalNutrients || {};
-    const ingredienti = hit.ingredientLines?.map((line: string) => ({ nome: line, quantita: '' })) || [];
-
+    const gzSearchUrl = `https://www.giallozafferano.it/ricerca-ricette/${encodeURIComponent(query)}/`;
+    const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(gzSearchUrl)}`;
+    
+    const searchRes = await fetch(proxyUrl);
+    if (!searchRes.ok) return null;
+    const searchData = await searchRes.json();
+    const searchHtml = searchData.contents;
+    
+    const parser = new DOMParser();
+    const searchDoc = parser.parseFromString(searchHtml, 'text/html');
+    
+    // Trova il primo link a una ricetta nei risultati
+    const firstRecipeAnchor = searchDoc.querySelector('.gz-title a, article.gz-card a') as HTMLAnchorElement;
+    if (!firstRecipeAnchor) return null;
+    
+    let recipeUrl = firstRecipeAnchor.getAttribute('href');
+    if (!recipeUrl) return null;
+    
+    if (recipeUrl.startsWith('/')) {
+      recipeUrl = 'https://www.giallozafferano.it' + recipeUrl;
+    }
+    
+    const recipeProxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(recipeUrl)}`;
+    const recipeRes = await fetch(recipeProxyUrl);
+    if (!recipeRes.ok) return null;
+    const recipeData = await recipeRes.json();
+    const recipeHtml = recipeData.contents;
+    
+    const doc = parser.parseFromString(recipeHtml, 'text/html');
+    
+    const title = doc.querySelector('h1.gz-title-recipe, h1')?.textContent?.trim();
+    if (!title) return null;
+    
+    const image = doc.querySelector('picture img')?.getAttribute('src') || doc.querySelector('.gz-featured-image img')?.getAttribute('src') || '';
+    
+    const ingredienti: { nome: string; quantita: string }[] = [];
+    const ingElements = doc.querySelectorAll('.gz-ingredient');
+    ingElements.forEach(el => {
+      // Nome ingrediente
+      const anchor = el.querySelector('a');
+      let nome = '';
+      if (anchor) {
+        nome = anchor.textContent?.trim() || '';
+      } else {
+        // Se non c'è il link, prendi il testo del nodo text
+        const textNode = Array.from(el.childNodes).find(n => n.nodeType === 3 && n.textContent?.trim() !== '');
+        nome = textNode?.textContent?.trim() || '';
+      }
+      
+      const quantita = el.querySelector('span')?.textContent?.trim() || '';
+      if (nome) ingredienti.push({ nome, quantita });
+    });
+    
+    let preparazione = '';
+    const stepElements = doc.querySelectorAll('.gz-content-recipe-step');
+    stepElements.forEach((el, index) => {
+      const stepText = el.textContent?.trim();
+      if (stepText) {
+        preparazione += `${index + 1}. ${stepText}\n\n`;
+      }
+    });
+    
+    if (!preparazione) {
+      preparazione = doc.querySelector('.gz-content-recipe')?.textContent?.trim() || 'Vedi la ricetta sul sito di GialloZafferano.';
+    }
+    
     return {
-      source: 'edamam',
-      titolo: hit.label,
-      immagine: hit.image,
-      difficolta: hit.cuisineType?.[0] ? `Cucina ${hit.cuisineType[0]}` : undefined,
+      source: 'local', // Manteniamo 'local' per non mostrare loghi esterni
+      titolo: title,
+      immagine: image,
+      difficolta: 'Ricetta Originale GialloZafferano',
       ingredienti,
-      preparazione: `Clicca "Vedi ricetta completa" per le istruzioni di preparazione.`,
-      url: hit.url,
-      calorie: Math.round((n.ENERC_KCAL?.quantity || 0) / servings),
-      proteine: Math.round((n.PROCNT?.quantity || 0) / servings),
-      carbs: Math.round((n.CHOCDF?.quantity || 0) / servings),
-      grassi: Math.round((n.FAT?.quantity || 0) / servings),
+      preparazione: preparazione.trim(),
+      url: recipeUrl,
+      notFound: false
     };
-  } catch { return null; }
+  } catch (e) {
+    console.error("GZ Scrape error:", e);
+    return null;
+  }
 }
+
 
 function getSessionCache(): Record<string, any> {
   try {
@@ -517,7 +569,7 @@ function saveAsCustomRecipe(recipe: RecipeResult, originalQuery: string) {
 }
 
 // ── PUBLIC CASCADE ────────────────────────────────────────────────────────────
-export async function findRecipeForMeal(mealName: string): Promise<RecipeResult> {
+export async function findRecipeForMeal(mealName: string, fallbackDesc?: string): Promise<RecipeResult> {
   const cacheKey = mealName.toLowerCase().trim();
   const cache = getSessionCache();
   if (cache[cacheKey]) return cache[cacheKey];
@@ -536,17 +588,20 @@ export async function findRecipeForMeal(mealName: string): Promise<RecipeResult>
     }
     
     if (mapped.englishQuery) {
+      // 2. GialloZafferano Scraper
+      const gzQuery = mapped.localQuery || mealName;
+      const gzResult = await searchGialloZafferano(gzQuery);
+      if (gzResult) {
+        cache[cacheKey] = gzResult;
+        setSessionCache(cache);
+        saveAsCustomRecipe(gzResult, mealName);
+        return gzResult;
+      }
+
+      // 3. TheMealDB come fallback
       const mealdb = await searchTheMealDB(mapped.englishQuery);
       if (mealdb) {
         const translated = await translateRecipeToItalian(mealdb);
-        cache[cacheKey] = translated;
-        setSessionCache(cache);
-        saveAsCustomRecipe(translated, mealName);
-        return translated;
-      }
-      const edamam = await searchEdamam(mapped.englishQuery);
-      if (edamam) {
-        const translated = await translateRecipeToItalian(edamam);
         cache[cacheKey] = translated;
         setSessionCache(cache);
         saveAsCustomRecipe(translated, mealName);
@@ -559,6 +614,28 @@ export async function findRecipeForMeal(mealName: string): Promise<RecipeResult>
   const local = await searchLocalDB(mealName);
   if (local) { cache[cacheKey] = local; setSessionCache(cache); return local; }
 
+  // 3. Prova GialloZafferano con il nome completo in italiano!
+  const gzDirect = await searchGialloZafferano(mealName);
+  if (gzDirect) {
+    cache[cacheKey] = gzDirect;
+    setSessionCache(cache);
+    saveAsCustomRecipe(gzDirect, mealName);
+    return gzDirect;
+  }
+  
+  // Se GZ fallisce con il nome completo, proviamo con le prime due parole
+  const firstWords = mealName.split(' ').slice(0, 2).join(' ');
+  if (firstWords.length > 3) {
+    const gzBroad = await searchGialloZafferano(firstWords);
+    if (gzBroad) {
+      cache[cacheKey] = gzBroad;
+      setSessionCache(cache);
+      saveAsCustomRecipe(gzBroad, mealName);
+      return gzBroad;
+    }
+  }
+
+  // 4. Fallback in Inglese su TheMealDB
   const engQuery = translateToEnglish(mealName);
   if (engQuery) {
     const mealdb = await searchTheMealDB(engQuery);
@@ -569,16 +646,34 @@ export async function findRecipeForMeal(mealName: string): Promise<RecipeResult>
       saveAsCustomRecipe(translated, mealName);
       return translated;
     }
-
-    const edamam = await searchEdamam(engQuery);
-    if (edamam) {
-      const translated = await translateRecipeToItalian(edamam);
-      cache[cacheKey] = translated;
-      setSessionCache(cache);
-      saveAsCustomRecipe(translated, mealName);
-      return translated;
+    
+    // Broad fallback: try first word only
+    const firstWord = engQuery.split(' ')[0];
+    if (firstWord && firstWord.length > 2) {
+      const mealdbFallback = await searchTheMealDB(firstWord);
+      if (mealdbFallback) {
+        const translated = await translateRecipeToItalian(mealdbFallback);
+        cache[cacheKey] = translated;
+        setSessionCache(cache);
+        saveAsCustomRecipe(translated, mealName);
+        return translated;
+      }
     }
   }
 
-  return { source: 'local', titolo: mealName, notFound: true };
+  // Se non troviamo ASSOLUTAMENTE nulla, generiamo una ricetta fittizia
+  // per non lasciare l'utente con una schermata vuota
+  const dummyRecipe: RecipeResult = {
+    source: 'local',
+    titolo: mealName,
+    difficolta: 'Facile',
+    ingredienti: fallbackDesc ? [{ nome: fallbackDesc, quantita: 'Q.b.' }] : [{ nome: mealName, quantita: '1 porzione' }],
+    preparazione: "1. Prepara gli ingredienti indicati.\n2. Cucina in modo semplice (al vapore, alla griglia o al forno) per mantenere intatte le proprietà nutrizionali.\n3. Condisci con un filo d'olio a crudo e spezie a piacere.\n\n(Ricetta generata automaticamente per il tuo piano alimentare).",
+    notFound: false
+  };
+  
+  cache[cacheKey] = dummyRecipe;
+  setSessionCache(cache);
+  saveAsCustomRecipe(dummyRecipe, mealName);
+  return dummyRecipe;
 }

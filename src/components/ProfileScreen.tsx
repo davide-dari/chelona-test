@@ -497,48 +497,6 @@ export function ProfileScreen({
                   </button>
                 </div>
               </div>
-
-              {/* Edamam Integration */}
-              <div className="bg-[var(--card-bg)] rounded-[2rem] border border-[var(--border)] p-6 space-y-4">
-                <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 bg-green-500/10 rounded-2xl flex items-center justify-center shrink-0">
-                    <span className="text-xl">🌿</span>
-                  </div>
-                  <div>
-                    <h3 className="text-base font-bold text-[var(--text-main)] leading-tight">Integrazione Edamam</h3>
-                    <p className="text-[10px] text-[var(--text-muted)]">Ricette avanzate per la sezione Dieta</p>
-                  </div>
-                </div>
-                <div className="space-y-3">
-                  <div>
-                    <label className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] mb-1 block">App ID</label>
-                    <input
-                      type="text"
-                      placeholder="es. 1a2b3c4d"
-                      defaultValue={localStorage.getItem('chelona_edamam_app_id') || ''}
-                      onChange={(e) => localStorage.setItem('chelona_edamam_app_id', e.target.value.trim())}
-                      className="w-full bg-[var(--bg)] border border-[var(--border)] rounded-xl px-4 py-2.5 text-sm text-[var(--text-main)] font-mono focus:outline-none focus:border-green-500/50"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] mb-1 block">App Key</label>
-                    <input
-                      type="password"
-                      placeholder="La tua chiave segreta Edamam"
-                      defaultValue={localStorage.getItem('chelona_edamam_app_key') || ''}
-                      onChange={(e) => localStorage.setItem('chelona_edamam_app_key', e.target.value.trim())}
-                      className="w-full bg-[var(--bg)] border border-[var(--border)] rounded-xl px-4 py-2.5 text-sm text-[var(--text-main)] font-mono focus:outline-none focus:border-green-500/50"
-                    />
-                  </div>
-                  <p className="text-[10px] text-[var(--text-muted)] leading-relaxed">
-                    Registrati gratis su{' '}
-                    <a href="https://developer.edamam.com" target="_blank" rel="noopener noreferrer" className="text-green-500 font-bold hover:underline">
-                      developer.edamam.com
-                    </a>{' '}
-                    → Recipe Search API → Free (10.000 chiamate/mese). Le ricette funzionano anche senza grazie a TheMealDB.
-                  </p>
-                </div>
-              </div>
             </div>
           </div>
         </div>
