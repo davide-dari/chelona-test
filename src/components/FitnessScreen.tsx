@@ -47,6 +47,7 @@ export interface MealTemplate {
   baseFat: number;
   restrictions: string[];
   description: string;
+  isSimple?: boolean;
 }
 
 export interface Meal {
@@ -56,6 +57,7 @@ export interface Meal {
   protein: number;
   carbs: number;
   fat: number;
+  isSimple?: boolean;
 }
 
 export interface MealDay {
@@ -204,47 +206,47 @@ const EXERCISE_LIBRARY: ExerciseTemplate[] = [
 // --- DATA: MEAL LIBRARY ---
 const MEAL_LIBRARY: MealTemplate[] = [
   // Breakfast
-  { name: 'Porridge di Avena con Banana e Miele', type: 'breakfast', baseCalories: 400, baseProtein: 15, baseCarbs: 65, baseFat: 8, restrictions: ['vegetarian'], description: 'Avena, latte, banana e miele.' },
-  { name: 'Yogurt Greco con Frutta Secca e Mirtilli', type: 'breakfast', baseCalories: 350, baseProtein: 20, baseCarbs: 30, baseFat: 15, restrictions: ['vegetarian', 'gluten-free'], description: 'Yogurt greco intero con noci e mirtilli freschi.' },
-  { name: 'Uova Strapazzate con Pane Integrale', type: 'breakfast', baseCalories: 450, baseProtein: 25, baseCarbs: 35, baseFat: 20, restrictions: ['vegetarian'], description: '3 uova, 2 fette di pane integrale tostato.' },
-  { name: 'Pancake Proteici con Sciroppo d\'Acero', type: 'breakfast', baseCalories: 380, baseProtein: 30, baseCarbs: 45, baseFat: 6, restrictions: ['vegetarian'], description: 'Pancake fatti con avena e proteine in polvere.' },
-  { name: 'Toast Avocado e Uovo', type: 'breakfast', baseCalories: 420, baseProtein: 18, baseCarbs: 30, baseFat: 24, restrictions: ['vegetarian'], description: 'Pane integrale, mezzo avocado, 1 uovo in camicia.' },
-  { name: 'Smoothie Proteico alla Frutta', type: 'breakfast', baseCalories: 300, baseProtein: 25, baseCarbs: 40, baseFat: 4, restrictions: ['vegetarian', 'gluten-free'], description: 'Latte, proteine whey, banana e frutti di bosco.' },
-  { name: 'Fette Biscottate con Marmellata e Ricotta', type: 'breakfast', baseCalories: 320, baseProtein: 12, baseCarbs: 50, baseFat: 8, restrictions: ['vegetarian'], description: '4 fette biscottate integrali, ricotta fresca e marmellata.' },
-  { name: 'Bowl di Acai', type: 'breakfast', baseCalories: 360, baseProtein: 8, baseCarbs: 60, baseFat: 10, restrictions: ['vegetarian', 'vegan'], description: 'Acai, granola, cocco e frutta fresca.' },
-  { name: 'Müsli con Latte di Mandorla', type: 'breakfast', baseCalories: 340, baseProtein: 10, baseCarbs: 55, baseFat: 12, restrictions: ['vegetarian', 'vegan'], description: 'Müsli croccante con latte vegetale.' },
+  { name: 'Porridge di Avena con Banana e Miele', type: 'breakfast', baseCalories: 400, baseProtein: 15, baseCarbs: 65, baseFat: 8, restrictions: ['vegetarian'], description: 'Avena, latte, banana e miele.', isSimple: true },
+  { name: 'Yogurt Greco con Frutta Secca e Mirtilli', type: 'breakfast', baseCalories: 350, baseProtein: 20, baseCarbs: 30, baseFat: 15, restrictions: ['vegetarian', 'gluten-free'], description: 'Yogurt greco intero con noci e mirtilli freschi.', isSimple: true },
+  { name: 'Uova Strapazzate con Pane Integrale', type: 'breakfast', baseCalories: 450, baseProtein: 25, baseCarbs: 35, baseFat: 20, restrictions: ['vegetarian'], description: '3 uova, 2 fette di pane integrale tostato.', isSimple: true },
+  { name: 'Pancake Proteici con Sciroppo d\'Acero', type: 'breakfast', baseCalories: 380, baseProtein: 30, baseCarbs: 45, baseFat: 6, restrictions: ['vegetarian'], description: 'Pancake fatti con avena e proteine in polvere.', isSimple: false },
+  { name: 'Toast Avocado e Uovo', type: 'breakfast', baseCalories: 420, baseProtein: 18, baseCarbs: 30, baseFat: 24, restrictions: ['vegetarian'], description: 'Pane integrale, mezzo avocado, 1 uovo in camicia.', isSimple: true },
+  { name: 'Smoothie Proteico alla Frutta', type: 'breakfast', baseCalories: 300, baseProtein: 25, baseCarbs: 40, baseFat: 4, restrictions: ['vegetarian', 'gluten-free'], description: 'Latte, proteine whey, banana e frutti di bosco.', isSimple: true },
+  { name: 'Fette Biscottate con Marmellata e Ricotta', type: 'breakfast', baseCalories: 320, baseProtein: 12, baseCarbs: 50, baseFat: 8, restrictions: ['vegetarian'], description: '4 fette biscottate integrali, ricotta fresca e marmellata.', isSimple: true },
+  { name: 'Bowl di Acai', type: 'breakfast', baseCalories: 360, baseProtein: 8, baseCarbs: 60, baseFat: 10, restrictions: ['vegetarian', 'vegan'], description: 'Acai, granola, cocco e frutta fresca.', isSimple: true },
+  { name: 'Müsli con Latte di Mandorla', type: 'breakfast', baseCalories: 340, baseProtein: 10, baseCarbs: 55, baseFat: 12, restrictions: ['vegetarian', 'vegan'], description: 'Müsli croccante con latte vegetale.', isSimple: true },
   
   // Lunch
-  { name: 'Petto di Pollo alla Griglia con Riso Basmati', type: 'lunch', baseCalories: 600, baseProtein: 45, baseCarbs: 70, baseFat: 10, restrictions: ['gluten-free', 'lactose-free'], description: 'Pollo alla griglia, riso basmati e un filo d\'olio EVO.' },
-  { name: 'Pasta Integrale al Tonno', type: 'lunch', baseCalories: 650, baseProtein: 35, baseCarbs: 85, baseFat: 15, restrictions: ['lactose-free'], description: 'Pasta integrale con tonno al naturale e pomodorini.' },
-  { name: 'Insalatona con Quinoa e Feta', type: 'lunch', baseCalories: 550, baseProtein: 20, baseCarbs: 60, baseFat: 25, restrictions: ['vegetarian', 'gluten-free'], description: 'Quinoa, feta, pomodorini, olive e cetrioli.' },
-  { name: 'Bowl di Riso con Salmone e Avocado', type: 'lunch', baseCalories: 700, baseProtein: 35, baseCarbs: 65, baseFat: 30, restrictions: ['gluten-free', 'lactose-free'], description: 'Riso da sushi, salmone crudo, avocado e salsa di soia.' },
-  { name: 'Wrap Integrale con Tacchino', type: 'lunch', baseCalories: 500, baseProtein: 35, baseCarbs: 50, baseFat: 15, restrictions: ['lactose-free'], description: 'Piadina integrale, fesa di tacchino, insalata e maionese leggera.' },
-  { name: 'Pasta con Ragù di Lenticchie', type: 'lunch', baseCalories: 620, baseProtein: 25, baseCarbs: 90, baseFat: 12, restrictions: ['vegetarian', 'vegan'], description: 'Pasta integrale con sugo di pomodoro e lenticchie.' },
-  { name: 'Poke Bowl con Riso e Edamame', type: 'lunch', baseCalories: 580, baseProtein: 25, baseCarbs: 75, baseFat: 18, restrictions: ['vegetarian', 'vegan'], description: 'Riso, edamame, tofu marinato, carote e cavolo rosso.' },
-  { name: 'Risotto ai Funghi', type: 'lunch', baseCalories: 600, baseProtein: 15, baseCarbs: 85, baseFat: 20, restrictions: ['vegetarian', 'gluten-free'], description: 'Riso Carnaroli con funghi porcini e parmigiano.' },
-  { name: 'Couscous con Verdure Grigliate e Ceci', type: 'lunch', baseCalories: 550, baseProtein: 20, baseCarbs: 80, baseFat: 15, restrictions: ['vegetarian', 'vegan'], description: 'Couscous integrale con verdure miste e ceci.' },
+  { name: 'Petto di Pollo alla Griglia con Riso Basmati', type: 'lunch', baseCalories: 600, baseProtein: 45, baseCarbs: 70, baseFat: 10, restrictions: ['gluten-free', 'lactose-free'], description: 'Pollo alla griglia, riso basmati e un filo d\'olio EVO.', isSimple: true },
+  { name: 'Pasta Integrale al Tonno', type: 'lunch', baseCalories: 650, baseProtein: 35, baseCarbs: 85, baseFat: 15, restrictions: ['lactose-free'], description: 'Pasta integrale con tonno al naturale e pomodorini.', isSimple: true },
+  { name: 'Insalatona con Quinoa e Feta', type: 'lunch', baseCalories: 550, baseProtein: 20, baseCarbs: 60, baseFat: 25, restrictions: ['vegetarian', 'gluten-free'], description: 'Quinoa, feta, pomodorini, olive e cetrioli.', isSimple: true },
+  { name: 'Bowl di Riso con Salmone e Avocado', type: 'lunch', baseCalories: 700, baseProtein: 35, baseCarbs: 65, baseFat: 30, restrictions: ['gluten-free', 'lactose-free'], description: 'Riso da sushi, salmone crudo, avocado e salsa di soia.', isSimple: true },
+  { name: 'Wrap Integrale con Tacchino', type: 'lunch', baseCalories: 500, baseProtein: 35, baseCarbs: 50, baseFat: 15, restrictions: ['lactose-free'], description: 'Piadina integrale, fesa di tacchino, insalata e maionese leggera.', isSimple: true },
+  { name: 'Pasta con Ragù di Lenticchie', type: 'lunch', baseCalories: 620, baseProtein: 25, baseCarbs: 90, baseFat: 12, restrictions: ['vegetarian', 'vegan'], description: 'Pasta integrale con sugo di pomodoro e lenticchie.', isSimple: false },
+  { name: 'Poke Bowl con Riso e Edamame', type: 'lunch', baseCalories: 580, baseProtein: 25, baseCarbs: 75, baseFat: 18, restrictions: ['vegetarian', 'vegan'], description: 'Riso, edamame, tofu marinato, carote e cavolo rosso.', isSimple: false },
+  { name: 'Risotto ai Funghi', type: 'lunch', baseCalories: 600, baseProtein: 15, baseCarbs: 85, baseFat: 20, restrictions: ['vegetarian', 'gluten-free'], description: 'Riso Carnaroli con funghi porcini e parmigiano.', isSimple: false },
+  { name: 'Couscous con Verdure Grigliate e Ceci', type: 'lunch', baseCalories: 550, baseProtein: 20, baseCarbs: 80, baseFat: 15, restrictions: ['vegetarian', 'vegan'], description: 'Couscous integrale con verdure miste e ceci.', isSimple: true },
 
   // Dinner
-  { name: 'Salmone al Forno con Patate Dolci', type: 'dinner', baseCalories: 650, baseProtein: 40, baseCarbs: 50, baseFat: 28, restrictions: ['gluten-free', 'lactose-free'], description: 'Trancio di salmone al forno, patate dolci arrosto.' },
-  { name: 'Petto di Tacchino con Verdure al Vapore', type: 'dinner', baseCalories: 450, baseProtein: 45, baseCarbs: 20, baseFat: 18, restrictions: ['gluten-free', 'lactose-free'], description: 'Tacchino ai ferri con broccoli e carote al vapore, olio EVO.' },
-  { name: 'Omelette con Spinaci e Feta', type: 'dinner', baseCalories: 400, baseProtein: 25, baseCarbs: 10, baseFat: 28, restrictions: ['vegetarian', 'gluten-free'], description: '3 uova sbattute con spinaci freschi e formaggio feta.' },
-  { name: 'Merluzzo al Cartoccio con Zucchine', type: 'dinner', baseCalories: 420, baseProtein: 35, baseCarbs: 15, baseFat: 20, restrictions: ['gluten-free', 'lactose-free'], description: 'Filetto di merluzzo cotto al forno con zucchine e pomodorini.' },
-  { name: 'Pollo al Curry con Riso', type: 'dinner', baseCalories: 680, baseProtein: 45, baseCarbs: 75, baseFat: 20, restrictions: ['gluten-free'], description: 'Bocconcini di pollo al curry con latte di cocco e riso basmati.' },
-  { name: 'Hamburger di Tacchino con Insalata', type: 'dinner', baseCalories: 500, baseProtein: 40, baseCarbs: 35, baseFat: 20, restrictions: ['lactose-free'], description: 'Hamburger di tacchino fatto in casa, panino integrale, abbondante insalata.' },
-  { name: 'Zuppa di Legumi', type: 'dinner', baseCalories: 450, baseProtein: 25, baseCarbs: 65, baseFat: 10, restrictions: ['vegetarian', 'vegan', 'gluten-free'], description: 'Zuppa calda di ceci, fagioli e lenticchie con crostini.' },
-  { name: 'Filetto di Orata con Ratatouille', type: 'dinner', baseCalories: 480, baseProtein: 38, baseCarbs: 25, baseFat: 22, restrictions: ['gluten-free', 'lactose-free'], description: 'Orata al forno con mix di verdure in padella.' },
-  { name: 'Tofu Saltato con Verdure e Riso', type: 'dinner', baseCalories: 550, baseProtein: 25, baseCarbs: 70, baseFat: 18, restrictions: ['vegetarian', 'vegan', 'gluten-free'], description: 'Tofu marinato saltato con verdure croccanti e riso.' },
+  { name: 'Salmone al Forno con Patate Dolci', type: 'dinner', baseCalories: 650, baseProtein: 40, baseCarbs: 50, baseFat: 28, restrictions: ['gluten-free', 'lactose-free'], description: 'Trancio di salmone al forno, patate dolci arrosto.', isSimple: true },
+  { name: 'Petto di Tacchino con Verdure al Vapore', type: 'dinner', baseCalories: 450, baseProtein: 45, baseCarbs: 20, baseFat: 18, restrictions: ['gluten-free', 'lactose-free'], description: 'Tacchino ai ferri con broccoli e carote al vapore, olio EVO.', isSimple: true },
+  { name: 'Omelette con Spinaci e Feta', type: 'dinner', baseCalories: 400, baseProtein: 25, baseCarbs: 10, baseFat: 28, restrictions: ['vegetarian', 'gluten-free'], description: '3 uova sbattute con spinaci freschi e formaggio feta.', isSimple: true },
+  { name: 'Merluzzo al Cartoccio con Zucchine', type: 'dinner', baseCalories: 420, baseProtein: 35, baseCarbs: 15, baseFat: 20, restrictions: ['gluten-free', 'lactose-free'], description: 'Filetto di merluzzo cotto al forno con zucchine e pomodorini.', isSimple: true },
+  { name: 'Pollo al Curry con Riso', type: 'dinner', baseCalories: 680, baseProtein: 45, baseCarbs: 75, baseFat: 20, restrictions: ['gluten-free'], description: 'Bocconcini di pollo al curry con latte di cocco e riso basmati.', isSimple: false },
+  { name: 'Hamburger di Tacchino con Insalata', type: 'dinner', baseCalories: 500, baseProtein: 40, baseCarbs: 35, baseFat: 20, restrictions: ['lactose-free'], description: 'Hamburger di tacchino fatto in casa, panino integrale, abbondante insalata.', isSimple: false },
+  { name: 'Zuppa di Legumi', type: 'dinner', baseCalories: 450, baseProtein: 25, baseCarbs: 65, baseFat: 10, restrictions: ['vegetarian', 'vegan', 'gluten-free'], description: 'Zuppa calda di ceci, fagioli e lenticchie con crostini.', isSimple: false },
+  { name: 'Filetto di Orata con Ratatouille', type: 'dinner', baseCalories: 480, baseProtein: 38, baseCarbs: 25, baseFat: 22, restrictions: ['gluten-free', 'lactose-free'], description: 'Orata al forno con mix di verdure in padella.', isSimple: true },
+  { name: 'Tofu Saltato con Verdure e Riso', type: 'dinner', baseCalories: 550, baseProtein: 25, baseCarbs: 70, baseFat: 18, restrictions: ['vegetarian', 'vegan', 'gluten-free'], description: 'Tofu marinato saltato con verdure croccanti e riso.', isSimple: false },
 
   // Snacks
-  { name: 'Mix di Frutta Secca', type: 'snack', baseCalories: 200, baseProtein: 5, baseCarbs: 8, baseFat: 18, restrictions: ['vegetarian', 'vegan', 'gluten-free', 'lactose-free'], description: 'Noci, mandorle e nocciole (circa 30g).' },
-  { name: 'Barretta Proteica Fatta in Casa', type: 'snack', baseCalories: 250, baseProtein: 15, baseCarbs: 30, baseFat: 8, restrictions: ['vegetarian'], description: 'Barretta con avena, burro di arachidi e proteine.' },
-  { name: 'Mela con Burro di Arachidi', type: 'snack', baseCalories: 220, baseProtein: 6, baseCarbs: 25, baseFat: 12, restrictions: ['vegetarian', 'vegan', 'gluten-free', 'lactose-free'], description: 'Una mela media tagliata a fette con un cucchiaio di burro di arachidi.' },
-  { name: 'Crackers Integrali con Hummus', type: 'snack', baseCalories: 240, baseProtein: 8, baseCarbs: 30, baseFat: 10, restrictions: ['vegetarian', 'vegan', 'lactose-free'], description: 'Crackers di segale con hummus di ceci.' },
-  { name: 'Cottage Cheese con Miele', type: 'snack', baseCalories: 180, baseProtein: 18, baseCarbs: 15, baseFat: 6, restrictions: ['vegetarian', 'gluten-free'], description: 'Fiocchi di latte con un cucchiaino di miele.' },
-  { name: 'Banana con Cioccolato Fondente', type: 'snack', baseCalories: 200, baseProtein: 3, baseCarbs: 35, baseFat: 7, restrictions: ['vegetarian', 'vegan', 'gluten-free'], description: 'Una banana con 15g di cioccolato fondente >75%.' },
-  { name: 'Edamame', type: 'snack', baseCalories: 150, baseProtein: 12, baseCarbs: 10, baseFat: 6, restrictions: ['vegetarian', 'vegan', 'gluten-free', 'lactose-free'], description: 'Baccelli di soia bolliti e salati.' },
-  { name: 'Carote con Guacamole', type: 'snack', baseCalories: 180, baseProtein: 3, baseCarbs: 15, baseFat: 14, restrictions: ['vegetarian', 'vegan', 'gluten-free', 'lactose-free'], description: 'Bastoncini di carota cruda con salsa guacamole.' }
+  { name: 'Mix di Frutta Secca', type: 'snack', baseCalories: 200, baseProtein: 5, baseCarbs: 8, baseFat: 18, restrictions: ['vegetarian', 'vegan', 'gluten-free', 'lactose-free'], description: 'Noci, mandorle e nocciole (circa 30g).', isSimple: true },
+  { name: 'Barretta Proteica Fatta in Casa', type: 'snack', baseCalories: 250, baseProtein: 15, baseCarbs: 30, baseFat: 8, restrictions: ['vegetarian'], description: 'Barretta con avena, burro di arachidi e proteine.', isSimple: false },
+  { name: 'Mela con Burro di Arachidi', type: 'snack', baseCalories: 220, baseProtein: 6, baseCarbs: 25, baseFat: 12, restrictions: ['vegetarian', 'vegan', 'gluten-free', 'lactose-free'], description: 'Una mela media tagliata a fette con un cucchiaio di burro di arachidi.', isSimple: true },
+  { name: 'Crackers Integrali con Hummus', type: 'snack', baseCalories: 240, baseProtein: 8, baseCarbs: 30, baseFat: 10, restrictions: ['vegetarian', 'vegan', 'lactose-free'], description: 'Crackers di segale con hummus di ceci.', isSimple: true },
+  { name: 'Cottage Cheese con Miele', type: 'snack', baseCalories: 180, baseProtein: 18, baseCarbs: 15, baseFat: 6, restrictions: ['vegetarian', 'gluten-free'], description: 'Fiocchi di latte con un cucchiaino di miele.', isSimple: true },
+  { name: 'Banana con Cioccolato Fondente', type: 'snack', baseCalories: 200, baseProtein: 3, baseCarbs: 35, baseFat: 7, restrictions: ['vegetarian', 'vegan', 'gluten-free'], description: 'Una banana con 15g di cioccolato fondente >75%.', isSimple: true },
+  { name: 'Edamame', type: 'snack', baseCalories: 150, baseProtein: 12, baseCarbs: 10, baseFat: 6, restrictions: ['vegetarian', 'vegan', 'gluten-free', 'lactose-free'], description: 'Baccelli di soia bolliti e salati.', isSimple: true },
+  { name: 'Carote con Guacamole', type: 'snack', baseCalories: 180, baseProtein: 3, baseCarbs: 15, baseFat: 14, restrictions: ['vegetarian', 'vegan', 'gluten-free', 'lactose-free'], description: 'Bastoncini di carota cruda con salsa guacamole.', isSimple: true }
 ];
 
 // --- LOGIC: WORKOUT GENERATOR ---
@@ -369,8 +371,6 @@ function getMealsByType(type: 'breakfast' | 'lunch' | 'dinner' | 'snack', restri
   });
 }
 
-// Removed getRandomMeal, logic moved inside generateMealPlanWeekly
-
 function generateMealPlanWeekly(profile: DietProfile, targetCalories: number): MealDay[] {
   const macros = {
     protein: profile.goal === 'bulk' ? profile.weight * 2.2 : profile.weight * 2.0,
@@ -412,7 +412,8 @@ function generateMealPlanWeekly(profile: DietProfile, targetCalories: number): M
         calories: Math.round(template.baseCalories * scale),
         protein: Math.round(template.baseProtein * scale),
         carbs: Math.round(template.baseCarbs * scale),
-        fat: Math.round(template.baseFat * scale)
+        fat: Math.round(template.baseFat * scale),
+        isSimple: template.isSimple
       };
       mealDay.meals.push(meal);
       mealDay.totalCalories += meal.calories;
@@ -1067,13 +1068,15 @@ export function FitnessScreen({ module, onClose, onSave }: FitnessScreenProps) {
                         <span className="bg-red-500/10 text-red-500 px-2.5 py-1 rounded-lg">💪 {meal.protein}g</span>
                         <span className="bg-yellow-500/10 text-yellow-500 px-2.5 py-1 rounded-lg">🫒 {meal.fat}g</span>
                       </div>
-                      <button 
-                        onClick={() => loadAndFindRecipe(meal.name, meal.description, key)}
-                        disabled={isSearching}
-                        className="shrink-0 px-3 py-1.5 bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5"
-                      >
-                        {isSearching ? '⏳ Cerco...' : '🍽️ Ricetta'}
-                      </button>
+                      {!meal.isSimple && (
+                        <button 
+                          onClick={() => loadAndFindRecipe(meal.name, meal.description, key)}
+                          disabled={isSearching}
+                          className="shrink-0 px-3 py-1.5 bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5"
+                        >
+                          {isSearching ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <span>Ricetta</span>}
+                        </button>
+                      )}
                     </div>
                   </div>
                   );
