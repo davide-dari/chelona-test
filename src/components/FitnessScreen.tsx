@@ -1058,31 +1058,34 @@ export function FitnessScreen({ module, onClose, onSave }: FitnessScreenProps) {
                   const isSearching = isSearchingRecipe[key];
                   
                   return (
-                  <div key={idx} className="bg-[var(--card-bg)] border border-[var(--border)] rounded-[2rem] p-5 flex flex-col gap-4 overflow-hidden shadow-sm">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <p className="text-[10px] font-black uppercase tracking-widest text-amber-500 mb-1">Pasto {idx + 1}</p>
-                        <h5 className="font-bold text-lg text-[var(--text-main)] leading-tight">{meal.name}</h5>
+                  <div key={idx} className="bg-[var(--card-bg)] border border-[var(--border)] rounded-[2rem] overflow-hidden shadow-sm">
+                    {/* Card Header */}
+                    <div className="p-5 flex flex-col gap-3">
+                      <div className="flex justify-between items-start">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[10px] font-black uppercase tracking-widest text-amber-500 mb-1">Pasto {idx + 1}</p>
+                          <h5 className="font-bold text-base text-[var(--text-main)] leading-tight">{meal.name}</h5>
+                        </div>
+                        <div className="text-right shrink-0 ml-3 bg-amber-500/10 rounded-2xl px-3 py-2">
+                          <p className="font-black text-lg text-amber-500 leading-none">{meal.calories}</p>
+                          <p className="text-[10px] font-bold text-amber-500/70 uppercase">kcal</p>
+                        </div>
                       </div>
-                      <div className="text-right shrink-0">
-                        <p className="font-black text-lg text-[var(--text-main)]">{meal.calories}</p>
-                        <p className="text-[10px] font-bold text-[var(--text-muted)] uppercase">kcal</p>
-                      </div>
+                      <p className="text-sm text-[var(--text-muted)] font-medium leading-relaxed">{meal.description}</p>
                     </div>
-                    <p className="text-sm font-semibold text-[var(--text-muted)]">{meal.description}</p>
-                    
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mt-auto pt-2">
-                      <div className="flex items-center gap-3 text-xs font-bold shrink-0">
-                        <span className="bg-blue-500/10 text-blue-500 px-3 py-1 rounded-lg">C: {meal.carbs}g</span>
-                        <span className="bg-red-500/10 text-red-500 px-3 py-1 rounded-lg">P: {meal.protein}g</span>
-                        <span className="bg-yellow-500/10 text-yellow-500 px-3 py-1 rounded-lg">G: {meal.fat}g</span>
+                    {/* Card Footer */}
+                    <div className="border-t border-[var(--border)] bg-[var(--bg)] px-5 py-3 flex items-center justify-between gap-3 flex-wrap">
+                      <div className="flex items-center gap-2 text-xs font-bold flex-wrap">
+                        <span className="bg-blue-500/10 text-blue-500 px-2.5 py-1 rounded-lg">🍞 {meal.carbs}g</span>
+                        <span className="bg-red-500/10 text-red-500 px-2.5 py-1 rounded-lg">💪 {meal.protein}g</span>
+                        <span className="bg-yellow-500/10 text-yellow-500 px-2.5 py-1 rounded-lg">🫒 {meal.fat}g</span>
                       </div>
                       <button 
                         onClick={() => loadAndFindRecipe(meal.name, key)}
                         disabled={isSearching}
-                        className="px-4 py-2 bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 rounded-xl text-xs font-bold transition-colors flex items-center gap-2"
+                        className="shrink-0 px-3 py-1.5 bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5"
                       >
-                        {isSearching ? 'Ricerca in corso...' : recipe ? 'Nascondi Ricetta' : '🍽️ Vedi Ricetta'}
+                        {isSearching ? '⏳ Cerco...' : recipe ? '✕ Chiudi' : '🍽️ Ricetta'}
                       </button>
                     </div>
 

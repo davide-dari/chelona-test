@@ -20,6 +20,10 @@ class UpdateService {
   private currentVersion = APP_VERSION;
 
   async checkForUpdates(): Promise<UpdateInfo | null> {
+    // --- Anti-loop guard: se l'utente ha già visto questo banner nelle ultime 24h, non mostrarlo ancora ---
+    const snoozedVersion = localStorage.getItem('chelona_update_snoozed_version');
+    const snoozedUntil = parseInt(localStorage.getItem('chelona_update_snoozed_until') || '0', 10);
+    
     if (Capacitor.isNativePlatform()) {
       try {
         const info = await CapacitorApp.getInfo();
@@ -61,6 +65,12 @@ class UpdateService {
       console.log(`[UpdateService] Comparison: ${comparison} (1=update available)`);
 
       if (comparison > 0) {
+        // --- Se l'utente ha già snoozato questa versione e il timer non è scaduto, non mostrare ---
+        if (snoozedVersion === latestVersion && Date.now() < snoozedUntil) {
+          console.log(`[UpdateService] Update ${latestVersion} snoozed until ${new Date(snoozedUntil).toISOString()}`);
+          return null;
+        }
+
         const apkAsset = data.assets?.find((asset: any) => asset.name.endsWith('.apk'));
         if (!apkAsset) {
           console.warn('[UpdateService] No APK found in release assets.');
@@ -83,11 +93,22 @@ class UpdateService {
         };
       } else {
         console.log('[UpdateService] App is up to date.');
+        // Pulisci eventuali snooze datati se già aggiornati
+        localStorage.removeItem('chelona_update_snoozed_version');
+        localStorage.removeItem('chelona_update_snoozed_until');
       }
     } catch (error: any) {
       console.error('[UpdateService] Error checking for updates:', error);
     }
     return null;
+  }
+
+  /** Chiama questo metodo quando l'utente chiude/rimanda il banner di aggiornamento */
+  snoozeUpdate(version: string, hours = 24) {
+    const until = Date.now() + hours * 3600 * 1000;
+    localStorage.setItem('chelona_update_snoozed_version', version);
+    localStorage.setItem('chelona_update_snoozed_until', String(until));
+    console.log(`[UpdateService] Snoozed update ${version} for ${hours}h`);
   }
 
   async downloadAndInstall(updateInfo: UpdateInfo, onProgress?: (p: number) => void) {

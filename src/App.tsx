@@ -3525,7 +3525,10 @@ export default function App() {
                       Installa Ora
                     </button>
                     <button
-                      onClick={() => setAvailableUpdate(null)}
+                      onClick={() => {
+                        updateService.snoozeUpdate(availableUpdate.latestVersion, 24);
+                        setAvailableUpdate(null);
+                      }}
                       className="flex-1 px-4 py-4 bg-[var(--surface-variant)] text-[var(--text-muted)] rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-[var(--border)] transition-all"
                     >
                       Dopo
