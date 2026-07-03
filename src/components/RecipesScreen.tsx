@@ -48,7 +48,7 @@ export function RecipesScreen({ onClose, initialSearchQuery, initialRecipe }: Re
           title: initialRecipe.titolo,
           image: initialRecipe.immagine || '',
           category: 'Ricerca',
-          ingredients: initialRecipe.ingredienti ? initialRecipe.ingredienti.map((i: any) => `${i.quantita} ${i.nome}`.trim()) : [],
+          ingredients: initialRecipe.ingredienti ? initialRecipe.ingredienti.map((i: any) => `${i.quantita || ''} ${i.nome || ''}`.trim()) : [],
           steps: initialRecipe.preparazione ? initialRecipe.preparazione.split('\n').filter((s: string) => s.trim().length > 0) : []
         });
       } else {
@@ -560,7 +560,7 @@ export function RecipesScreen({ onClose, initialSearchQuery, initialRecipe }: Re
                   className="w-full h-full object-cover"
                 />
                 <button 
-                  onClick={() => setSelectedMeal(null)}
+                  onClick={handleBack}
                   className="absolute top-4 left-4 w-10 h-10 bg-black/50 backdrop-blur-md rounded-full text-white flex items-center justify-center hover:bg-black/70 md:hidden"
                 >
                   <X className="w-5 h-5" />
@@ -584,7 +584,7 @@ export function RecipesScreen({ onClose, initialSearchQuery, initialRecipe }: Re
                     </h2>
                   </div>
                   <button 
-                    onClick={() => setSelectedMeal(null)}
+                    onClick={handleBack}
                     className="w-10 h-10 bg-[var(--surface-variant)] rounded-full text-[var(--text-muted)] flex items-center justify-center hover:bg-[var(--border)] hidden md:flex shrink-0"
                   >
                     <X className="w-5 h-5" />
