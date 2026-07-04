@@ -273,8 +273,9 @@ export interface FidelityCard {
   id: string;
   name: string; // Es. "Conad", "IKEA Family", "Esselunga"
   code: string;
-  format: 'CODE128' | 'CODE39' | 'EAN13' | 'EAN8' | 'UPC' | 'QR';
+  format: 'CODE128' | 'CODE39' | 'EAN13' | 'EAN8' | 'UPC' | 'QR' | 'MANUAL';
   color: string;
+  logo?: string; // base64 image
 }
 
 export interface FidelityModule extends BaseModule {

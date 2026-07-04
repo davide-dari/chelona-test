@@ -857,7 +857,7 @@ export default function App() {
     
     // Check if biometric lock is required for sensitive modules
     const profiles = storage.loadProfiles();
-    if (module.type === 'auto' || module.type === 'document' || module.type === 'password' || module.type === 'finance') {
+    if (module.type === 'auto' || module.type === 'document') {
       const profile = profiles.find(p => p.id === currentProfileId);
       if (profile?.isBiometricEnabled && (profile.biometricLevel === 'sensitive' || profile.biometricLevel === 'both')) {
         const m = await import('./services/biometricService');
@@ -2118,12 +2118,27 @@ export default function App() {
                           .map(([key, t]) => (
                       <button
                             key={key}
-                            onClick={() => {
+                            onClick={async () => {
                               if ((key === 'auto' || key === 'document') && !encryptionKey) {
                                 setPendingAction(() => () => setFormData({ ...formData, template: key, title: t.title, content: t.content }));
                                 setShowVaultLock(true);
                                 return;
                               }
+                              
+                              const profiles = storage.loadProfiles();
+                              const profile = profiles.find(p => p.id === currentProfileId);
+                              if ((key === 'auto' || key === 'document') && profile?.isBiometricEnabled && (profile.biometricLevel === 'sensitive' || profile.biometricLevel === 'both')) {
+                                const m = await import('./services/biometricService');
+                                const supported = await m.biometricService.isSupported();
+                                if (supported) {
+                                  const success = await m.biometricService.verifyIdentity('Sblocca creazione modulo protetto');
+                                  if (!success) {
+                                    console.warn('[App] Biometric verification failed or canceled for sensitive template');
+                                    return;
+                                  }
+                                }
+                              }
+
                               if (key === 'split') {
                                 setSpesaSubMenu(true);
                               } else if (key === 'home') {

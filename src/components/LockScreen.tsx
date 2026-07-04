@@ -36,6 +36,7 @@ export const LockScreen = ({ isVisible, onAuthenticated, onStartScan, onOpenTool
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [profileToDelete, setProfileToDelete] = useState<{id: string, username: string} | null>(null);
   const [isBioSupported, setIsBioSupported] = useState(false);
+  const [setupBiometricLevel, setSetupBiometricLevel] = useState<'app' | 'sensitive' | 'both'>('app');
   const [onboardingStep, setOnboardingStep] = useState(0); // 0: Welcome, 1: Privacy, 2: Setup
   const autoBioTriggered = useRef<string | null>(null);
   const bioTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -260,6 +261,7 @@ export const LockScreen = ({ isVisible, onAuthenticated, onStartScan, onOpenTool
             // Update the profile to indicate biometrics are enabled
             newConfig.isBiometricEnabled = true;
             newConfig.biometricServerKey = serverKey;
+            newConfig.biometricLevel = setupBiometricLevel;
             storage.saveProfiles(updatedProfiles);
           }
         } catch (bioErr) {
@@ -703,6 +705,36 @@ export const LockScreen = ({ isVisible, onAuthenticated, onStartScan, onOpenTool
                         />
                       </button>
                     </div>
+
+                    <AnimatePresence>
+                      {isBioRequested && (
+                        <motion.div
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: 'auto' }}
+                          exit={{ opacity: 0, height: 0 }}
+                          className="mt-4 pt-4 border-t border-[var(--accent)]/10"
+                        >
+                          <label className="block text-xs font-bold text-[var(--accent)] mb-1">
+                            Livello di Protezione
+                          </label>
+                          <p className="text-[10px] text-[var(--text-muted)] mb-2">Scegli dove richiedere l'autenticazione biometrica.</p>
+                          <select
+                            value={setupBiometricLevel}
+                            onChange={(e) => setSetupBiometricLevel(e.target.value as 'app' | 'sensitive' | 'both')}
+                            className="w-full bg-[var(--bg)] border border-[var(--border)] text-[var(--text-main)] rounded-xl px-3 py-2 font-medium text-xs focus:outline-none focus:border-amber-500"
+                          >
+                            <option value="app">Sblocca solo l'App all'avvio</option>
+                            <option value="both">Sblocca App + Moduli Sensibili</option>
+                            <option value="sensitive">Sblocca SOLO i Moduli Sensibili</option>
+                          </select>
+                          {setupBiometricLevel === 'sensitive' && (
+                            <p className="mt-2 text-[10px] text-amber-600 font-medium leading-relaxed bg-amber-500/10 p-2 rounded-lg">
+                              ⚠️ L'app si avvierà automaticamente senza chiedere password. L'impronta sarà richiesta SOLO per i moduli sensibili.
+                            </p>
+                          )}
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                   </motion.div>
                 )}
 
