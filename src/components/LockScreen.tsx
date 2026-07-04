@@ -160,15 +160,31 @@ export const LockScreen = ({ isVisible, onAuthenticated, onStartScan, onOpenTool
       bioTimeoutRef.current = null;
     }
 
-    if (view === 'login' && selectedProfile?.isBiometricEnabled && selectedProfile?.biometricLevel !== 'sensitive') {
-      const timer = setTimeout(() => {
-        console.log('[LockScreen] Auto-triggering biometrics for:', selectedProfile.username);
-        autoBioTriggered.current = selectedProfile.id;
-        // Minimal delay to ensure the UI is rendered before the native prompt appears
-        bioTimeoutRef.current = setTimeout(() => {
-          handleBiometricLogin();
+    if (view === 'login' && selectedProfile) {
+      // Se è impostato 'sensitive', l'app deve saltare la password all'avvio
+      if (selectedProfile.biometricLevel === 'sensitive') {
+        const autoKey = localStorage.getItem('chelona_auto_key_' + selectedProfile.id);
+        if (autoKey) {
+          encryption.importKey(autoKey).then(key => {
+            console.log('[LockScreen] Auto-login via stored key for sensitive profile');
+            onAuthenticated(key, selectedProfile.id);
+          }).catch(e => {
+            console.error('[LockScreen] Auto-login failed', e);
+          });
+          return;
+        }
+      }
+
+      if (selectedProfile.isBiometricEnabled && selectedProfile.biometricLevel !== 'sensitive') {
+        const timer = setTimeout(() => {
+          console.log('[LockScreen] Auto-triggering biometrics for:', selectedProfile.username);
+          autoBioTriggered.current = selectedProfile.id;
+          // Minimal delay to ensure the UI is rendered before the native prompt appears
+          bioTimeoutRef.current = setTimeout(() => {
+            handleBiometricLogin();
+          }, 100);
         }, 100);
-      }, 100);
+      }
     } else if (view !== 'login') {
       // Reset trigger tracker when leaving login view so it triggers again on next entry
       autoBioTriggered.current = null;

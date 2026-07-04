@@ -253,9 +253,13 @@ export function ProfileScreen({
         bioSalt: undefined
       };
       
-      storage.saveProfiles(profiles.map(p => p.id === currentProfileId ? updatedProfile : p));
+      const updatedProfiles = profiles.map(p => p.id === currentProfileId ? updatedProfile : p);
+      storage.saveProfiles(updatedProfiles);
+      
+      // Se c'era una chiave di auto-login per la modalità sensitive, va rimossa perché la chiave è cambiata
+      localStorage.removeItem('chelona_auto_key_' + currentProfileId);
 
-      // Risalva lo stato con la nuova chiave
+      // Re-cifra lo stato con la nuova chiave
       await storage.saveState({ modules, folders }, newKey, currentProfileId);
 
       // Aggiorna chiave in App

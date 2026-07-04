@@ -1005,6 +1005,15 @@ export default function App() {
         p.id === currentProfileId ? { ...p, biometricLevel: level } : p
       );
       storage.saveProfiles(updatedProfiles);
+      
+      if (level === 'sensitive') {
+        if (encryptionKey && currentProfileId) {
+          const keyStr = await encryption.exportKey(encryptionKey);
+          localStorage.setItem('chelona_auto_key_' + currentProfileId, keyStr);
+        }
+      } else if (currentProfileId) {
+        localStorage.removeItem('chelona_auto_key_' + currentProfileId);
+      }
     } catch (e) {
       console.error('[App] Failed to update biometric level', e);
     }
