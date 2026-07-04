@@ -113,16 +113,34 @@ export const LockScreen = ({ isVisible, onAuthenticated, onStartScan, onOpenTool
       if (activeView === 'setup') {
         setView('selector');
       } else {
+        // Determina quale profilo verrebbe auto-selezionato
+        let autoProfile: ProfileConfig | null = null;
         if (targetProfileId) {
-          const target = loadedProfiles.find(p => p.id === targetProfileId);
-          if (target) {
-            setSelectedProfile(target);
-            setView('login');
+          autoProfile = loadedProfiles.find(p => p.id === targetProfileId) || null;
+        } else if (activeView === 'selector' && loadedProfiles.length === 1) {
+          autoProfile = loadedProfiles[0];
+        }
+
+        // Se il profilo ha biometricLevel 'sensitive' e siamo in modalità app-start,
+        // esegui l'auto-login immediato senza mostrare la schermata password
+        if (autoProfile && mode === 'app-start' && autoProfile.biometricLevel === 'sensitive') {
+          const autoKey = localStorage.getItem('chelona_auto_key_' + autoProfile.id);
+          if (autoKey) {
+            const profileToLogin = autoProfile;
+            encryption.importKey(autoKey).then(key => {
+              console.log('[LockScreen] Auto-login immediato per profilo sensitive:', profileToLogin.username);
+              onAuthenticated(key, profileToLogin.id);
+            }).catch(e => {
+              console.error('[LockScreen] Auto-login fallito, mostro schermata password:', e);
+              setSelectedProfile(profileToLogin);
+              setView('login');
+            });
             return;
           }
         }
-        if (activeView === 'selector' && loadedProfiles.length === 1) {
-          setSelectedProfile(loadedProfiles[0]);
+
+        if (autoProfile) {
+          setSelectedProfile(autoProfile);
           setView('login');
         }
       }
