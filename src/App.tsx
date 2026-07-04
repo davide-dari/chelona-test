@@ -669,6 +669,20 @@ export default function App() {
     });
   };
 
+  // Sincronizza la chiave di auto-login per la modalità "sensitive"
+  useEffect(() => {
+    if (encryptionKey && currentProfileId) {
+      const profile = storage.loadProfiles().find(p => p.id === currentProfileId);
+      if (profile?.biometricLevel === 'sensitive') {
+        encryption.exportKey(encryptionKey).then(keyStr => {
+          localStorage.setItem('chelona_auto_key_' + currentProfileId, keyStr);
+        }).catch(e => console.error('[App] Failed to export auto key', e));
+      } else {
+        localStorage.removeItem('chelona_auto_key_' + currentProfileId);
+      }
+    }
+  }, [encryptionKey, currentProfileId]);
+
   useEffect(() => {
     if (!encryptionKey || modules.length === 0) return;
 
@@ -1005,15 +1019,7 @@ export default function App() {
         p.id === currentProfileId ? { ...p, biometricLevel: level } : p
       );
       storage.saveProfiles(updatedProfiles);
-      
-      if (level === 'sensitive') {
-        if (encryptionKey && currentProfileId) {
-          const keyStr = await encryption.exportKey(encryptionKey);
-          localStorage.setItem('chelona_auto_key_' + currentProfileId, keyStr);
-        }
-      } else if (currentProfileId) {
-        localStorage.removeItem('chelona_auto_key_' + currentProfileId);
-      }
+      // L'effetto useEffect si occuperà di salvare/rimuovere la chiave da localStorage
     } catch (e) {
       console.error('[App] Failed to update biometric level', e);
     }
