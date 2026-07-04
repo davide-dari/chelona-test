@@ -160,15 +160,15 @@ export const LockScreen = ({ isVisible, onAuthenticated, onStartScan, onOpenTool
       bioTimeoutRef.current = null;
     }
 
-    if (view === 'login' && selectedProfile?.isBiometricEnabled) {
-      if (autoBioTriggered.current !== selectedProfile.id) {
+    if (view === 'login' && selectedProfile?.isBiometricEnabled && selectedProfile?.biometricLevel !== 'sensitive') {
+      const timer = setTimeout(() => {
         console.log('[LockScreen] Auto-triggering biometrics for:', selectedProfile.username);
         autoBioTriggered.current = selectedProfile.id;
         // Minimal delay to ensure the UI is rendered before the native prompt appears
         bioTimeoutRef.current = setTimeout(() => {
           handleBiometricLogin();
         }, 100);
-      }
+      }, 100);
     } else if (view !== 'login') {
       // Reset trigger tracker when leaving login view so it triggers again on next entry
       autoBioTriggered.current = null;
@@ -270,8 +270,8 @@ export const LockScreen = ({ isVisible, onAuthenticated, onStartScan, onOpenTool
   };
 
   const handleBiometricLogin = async () => {
-    if (!selectedProfile?.isBiometricEnabled) {
-      setError('Biometria non abilitata per questo profilo.');
+    if (!selectedProfile?.isBiometricEnabled || selectedProfile?.biometricLevel === 'sensitive') {
+      console.warn('[LockScreen] Biometrics not enabled for app login on this profile');
       return;
     }
     
@@ -704,7 +704,7 @@ export const LockScreen = ({ isVisible, onAuthenticated, onStartScan, onOpenTool
 
               {view === 'login' && (
                 <div className="mt-6 sm:mt-8 pt-6 sm:pt-8 border-t border-[var(--border)] flex flex-col items-center gap-4">
-                  {isBioSupported && selectedProfile?.isBiometricEnabled && (
+                  {isBioSupported && selectedProfile?.isBiometricEnabled && selectedProfile?.biometricLevel !== 'sensitive' && (
                     <div className="flex flex-col items-center gap-4">
                       <div className="flex items-center gap-3 w-full">
                         <div className="flex-1 h-[1px] bg-[var(--border)]" />

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { CreditCard, ShieldCheck, Wallet, Fingerprint, Plus, Trash2, Calendar, DollarSign, Pencil, StickyNote, Copy, Check, GripVertical, Car, Wrench, AlertCircle, FileText, QrCode, FileDown, X, Clock, Eye, Lock, ChevronRight, Bell, BellOff, Gauge, Users, Paperclip, Receipt, Image as ImageIcon, MapPin, ChevronLeft, Bus, Activity, BookOpen } from 'lucide-react';
-import { Module, GenericModule, AutoModule, DocumentModule, SplitModule, SingleExpenseModule, WalletModule, GalleryModule, TravelModule, TransportModule } from '../types';
+import { Module, GenericModule, AutoModule, DocumentModule, SplitModule, SingleExpenseModule, WalletModule, GalleryModule, TravelModule, TransportModule, FidelityModule } from '../types';
 import { EXPENSE_CATEGORIES } from '../constants/expenses';
 import { motion, AnimatePresence } from 'motion/react';
 import { CAR_BRANDS } from '../utils/carBrands';
@@ -645,3 +645,44 @@ export const FitnessCard = ({ module, onDelete, onEdit }: { module: any; onDelet
     </ModuleWrapper>
   );
 };
+
+interface FidelityCardProps {
+  module: FidelityModule;
+  onEdit: (m: FidelityModule) => void;
+  onDelete?: (id: string) => void;
+}
+
+export function FidelityCard({ module, onEdit, onDelete }: FidelityCardProps) {
+  const cardsCount = module.cards?.length || 0;
+  
+  return (
+    <ModuleWrapper 
+      module={module} 
+      onEdit={onEdit as any} 
+      onDelete={onDelete}
+      className="bg-gradient-to-br from-indigo-500 to-purple-600 border-none group relative overflow-hidden"
+    >
+      <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-2xl -mr-10 -mt-10 pointer-events-none group-hover:scale-110 transition-transform duration-500" />
+      
+      <div className="relative z-10 h-full flex flex-col justify-between">
+        <div className="flex justify-between items-start">
+          <div className="flex gap-2">
+            <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center backdrop-blur-sm shadow-inner shadow-white/20">
+              <CreditCard className="w-5 h-5 text-white" />
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-4">
+          <h3 className="font-bold text-lg text-white mb-1 tracking-tight leading-tight">{module.title || 'Carte Fedeltà'}</h3>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] font-black uppercase tracking-wider text-white/70 bg-black/20 px-2 py-0.5 rounded flex items-center gap-1.5">
+              <QrCode className="w-3 h-3" />
+              {cardsCount} Carte
+            </span>
+          </div>
+        </div>
+      </div>
+    </ModuleWrapper>
+  );
+}

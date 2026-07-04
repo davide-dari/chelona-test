@@ -4,12 +4,19 @@
  */
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Sun, Moon, Wrench, Plus, LayoutDashboard, Settings, User, LogOut, Search, Mic, Bell, CreditCard, Fingerprint, ShieldCheck, Lock, Menu, X, StickyNote, FileText, Grid2X2, Car, QrCode, Folder as FolderIcon, Check, Edit2, Trash2, BookOpen, ArrowLeft, ArrowRight, Camera, FileDown, Hourglass, Users, Download, Receipt, MapPin, Image as ImageIcon, Lightbulb, Globe, ChevronLeft, Bus, Home, Armchair, Activity } from 'lucide-react';
+import { Sun, Moon, Wrench, Plus, LayoutDashboard, Settings, User, LogOut, Search, Mic, Bell, CreditCard, Fingerprint, ShieldCheck, Lock, Menu, X, StickyNote, FileText, Grid2X2, Car, QrCode, Folder as FolderIcon, Check, Edit2, Trash2, BookOpen, ArrowLeft, ArrowRight, Camera, FileDown, Hourglass, Users, Download, Receipt, MapPin, Image as ImageIcon, Lightbulb, Globe, ChevronLeft, Bus, Home, Armchair, Activity, Calendar } from 'lucide-react';
 
 import { Module, ModuleType, Folder, DocumentModule } from './types';
 import { storage, AppState } from './services/storage';
 import { encryption } from './services/encryption';
-import { GenericCard, AutoCard, DocumentCard, SplitCard, SingleExpenseCard, GalleryCard, TravelCard, StudyCard, FitnessCard } from './components/Modules';
+import { TransportScreen } from './components/TransportScreen';
+import { FurnitureScreen } from './components/FurnitureScreen';
+import { InstallmentsScreen } from './components/InstallmentsScreen';
+import { FitnessScreen } from './components/FitnessScreen';
+import { StudyScreen } from './components/StudyScreen';
+import { FidelityScreen } from './components/FidelityScreen';
+import { GenericCard, AutoCard, DocumentCard, SplitCard, SingleExpenseCard, GalleryCard, TravelCard, StudyCard, FitnessCard, FidelityCard } from './components/Modules';
+import { NoteDialog } from './components/NoteDialog';
 import { LockScreen } from './components/LockScreen';
 import { QrScanner } from './components/QrScanner';
 import { DocumentScanner } from './components/DocumentScanner';
@@ -25,13 +32,12 @@ import { AddressBookScreen } from './components/AddressBookScreen';
 import { RecipesScreen } from './components/RecipesScreen';
 import { TravelScreen } from './components/TravelScreen';
 import { ConfirmDialog } from './components/ConfirmDialog';
-import { StudyScreen } from './components/StudyScreen';
-import { FurnitureScreen } from "./components/FurnitureScreen";
-import { InstallmentsCard } from './components/InstallmentsCard';
-import { InstallmentsScreen } from './components/InstallmentsScreen';
-import { FitnessScreen } from './components/FitnessScreen';
 import { notificationService } from './services/notificationService';
 import { APP_VERSION } from './constants/version';
+import { FurnitureScreen } from "./components/FurnitureScreen";
+import { InstallmentsCard } from './components/InstallmentsCard';
+import { FurnitureCard } from './components/FurnitureCard';
+import { TransportCard } from './components/TransportCard';
 
 import { motion, AnimatePresence } from 'motion/react';
 import JSZip from 'jszip';
@@ -154,6 +160,12 @@ const TEMPLATES = {
     content: '',
     icon: Home,
     color: 'text-teal-500'
+  },
+  fidelity: {
+    title: 'Carte Fedeltà',
+    content: '',
+    icon: QrCode,
+    color: 'text-purple-500'
   }
 };
 
@@ -175,8 +187,8 @@ export default function App() {
   const [editingDocumentModule, setEditingDocumentModule] = useState<import('./types').DocumentModule | null>(null);
   const [editingGenericModule, setEditingGenericModule] = useState<import('./types').GenericModule | null>(null);
   const [editingTravelModule, setEditingTravelModule] = useState<import('./types').TravelModule | null>(null);
-  const [editingStudyModule, setEditingStudyModule] = useState<any | null>(null);
-  const [sharingModule, setSharingModule] = useState<Module | null>(null);
+  const [editingStudyModule, setEditingStudyModule] = useState<import('./types').StudyModule | null>(null);
+  const [sharingModule, setSharingModule] = useState<import('./types').Module | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [voiceResponse, setVoiceResponse] = useState<{ query: string; answer: string } | null>(null);
   const [selectedType, setSelectedType] = useState<ModuleType | 'home' | null>(null);
@@ -186,6 +198,7 @@ export default function App() {
   const [editingFurnitureModule, setEditingFurnitureModule] = useState<import('./types').FurnitureModule | null>(null);
   const [editingInstallmentsModule, setEditingInstallmentsModule] = useState<import('./types').InstallmentsModule | null>(null);
   const [editingFitnessModule, setEditingFitnessModule] = useState<import('./types').FitnessModule | null>(null);
+  const [editingFidelityModule, setEditingFidelityModule] = useState<import('./types').FidelityModule | null>(null);
   const [showNotificationPrompt, setShowNotificationPrompt] = useState(false);
 
   useEffect(() => {
@@ -374,7 +387,7 @@ export default function App() {
       
       const input = target.closest('input');
       if (input && input.type === 'file') {
-        (window as any).__chelona_bypass_lock = true;
+        (window as any).__chelona_file_picker_open = true;
       }
     };
     document.addEventListener('click', handleGlobalClick, true);
@@ -432,6 +445,7 @@ export default function App() {
       if (editingFurnitureModule) { setEditingFurnitureModule(null); return; }
       if (editingInstallmentsModule) { setEditingInstallmentsModule(null); return; }
       if (editingFitnessModule) { setEditingFitnessModule(null); return; }
+      if (editingFidelityModule) { setEditingFidelityModule(null); return; }
       if (editingModuleId) { setEditingModuleId(null); setFormData({}); return; }
       if (isAdding) { setIsAdding(false); setFormData({}); setSpesaSubMenu(false); return; }
       if (isProfileOpen) { setIsProfileOpen(false); return; }
@@ -455,7 +469,7 @@ export default function App() {
     moduleToDelete, showGalleryViewer, gallerySelectedImage,
     editingAutoModule, editingSplitModule, editingSingleExpenseModule,
     editingTravelModule, editingStudyModule, editingFitnessModule, editingDocumentModule,
-    editingGenericModule, editingFurnitureModule, editingInstallmentsModule, editingModuleId, isAdding, isProfileOpen,
+    editingGenericModule, editingFurnitureModule, editingInstallmentsModule, editingFidelityModule, editingModuleId, isAdding, isProfileOpen,
     activeToolId, isToolsOpen, isArchiveOpen, isAddressBookOpen, isRecipesOpen,
     isSidebarOpen, selectedFolderId, selectedType, spesaSubMenu
   ]);
@@ -644,6 +658,17 @@ export default function App() {
     }
   };
 
+  const saveModule = async (updatedModule: Module) => {
+    if (!encryptionKey) return;
+    setModules(prev => {
+        const updated = prev.find(m => m.id === updatedModule.id)
+            ? prev.map(m => m.id === updatedModule.id ? updatedModule : m)
+            : [updatedModule, ...prev];
+        saveAppState(updated, folders).catch(console.error);
+        return updated;
+    });
+  };
+
   useEffect(() => {
     if (!encryptionKey || modules.length === 0) return;
 
@@ -809,11 +834,28 @@ export default function App() {
   };
 
 
-  const openEditModal = (module: Module) => {
+  const openEditModal = async (module: Module) => {
     if ((module.type === 'auto' || module.type === 'document') && !encryptionKey) {
       setPendingAction(() => () => openEditModal(module));
       setShowVaultLock(true);
       return;
+    }
+    
+    // Check if biometric lock is required for sensitive modules
+    const profiles = storage.loadProfiles();
+    if (module.type === 'auto' || module.type === 'document' || module.type === 'password' || module.type === 'finance') {
+      const profile = profiles.find(p => p.id === currentProfileId);
+      if (profile?.isBiometricEnabled && (profile.biometricLevel === 'sensitive' || profile.biometricLevel === 'both')) {
+        const m = await import('./services/biometricService');
+        const supported = await m.biometricService.isSupported();
+        if (supported) {
+          const success = await m.biometricService.verifyIdentity('Sblocca modulo protetto');
+          if (!success) {
+            console.warn('[App] Biometric verification failed or canceled for sensitive module');
+            return;
+          }
+        }
+      }
     }
     if (module.type === 'auto') {
       setEditingAutoModule(module as import('./types').AutoModule);
@@ -845,7 +887,7 @@ export default function App() {
       return;
     }
     if (module.type === 'study') {
-      setEditingStudyModule(module);
+      setEditingStudyModule(module as import('./types').StudyModule);
       return;
     }
     if (module.type === 'installments') {
@@ -858,6 +900,10 @@ export default function App() {
     }
     if (module.type === 'fitness') {
       setEditingFitnessModule(module as import('./types').FitnessModule);
+      return;
+    }
+    if (module.type === 'fidelity') {
+      setEditingFidelityModule(module as import('./types').FidelityModule);
       return;
     }
     setEditingModuleId(module.id);
@@ -950,6 +996,18 @@ export default function App() {
     setUsername(name);
     setAvatar(avatarUrl);
     showToast('Profilo aggiornato!');
+  };
+
+  const handleUpdateBiometricLevel = async (level: 'app' | 'sensitive' | 'both') => {
+    try {
+      const profiles = storage.loadProfiles();
+      const updatedProfiles = profiles.map(p => 
+        p.id === currentProfileId ? { ...p, biometricLevel: level } : p
+      );
+      storage.saveProfiles(updatedProfiles);
+    } catch (e) {
+      console.error('[App] Failed to update biometric level', e);
+    }
   };
 
   const handleEnableBiometrics = async () => {
@@ -1880,6 +1938,8 @@ export default function App() {
                 onUpdateProfile={handleUpdateProfile}
                 isBioSupported={isBioSupported}
                 isBioEnabled={isBioEnabled}
+                biometricLevel={storage.loadProfiles().find(p => p.id === currentProfileId)?.biometricLevel}
+                onChangeBiometricLevel={handleUpdateBiometricLevel}
                 onEnableBiometrics={handleEnableBiometrics}
                 onDisableBiometrics={handleDisableBiometrics}
                 bioError={bioError}
@@ -1967,9 +2027,17 @@ export default function App() {
             ) : editingStudyModule ? (
               <StudyScreen
                 module={editingStudyModule}
-                onSave={(mod) => { updateModuleDirect(mod); setEditingStudyModule(mod); }}
                 onClose={() => setEditingStudyModule(null)}
-                currentProfileId={currentProfileId || ''}
+                onSave={(module) => {
+                  saveModule(module);
+                  setEditingStudyModule(null);
+                }}
+              />
+            ) : editingFidelityModule ? (
+              <FidelityScreen
+                module={editingFidelityModule}
+                onClose={() => setEditingFidelityModule(null)}
+                onSave={saveModule}
               />
             ) : editingSplitModule ? (
               <SplitScreen
@@ -2065,6 +2133,25 @@ export default function App() {
                                   return updated;
                                 });
                                 setEditingStudyModule(newStudy);
+                              } else if (key === 'fidelity') {
+                                setIsAdding(false);
+                                const newFidelity: import('./types').FidelityModule = {
+                                  id: generateUUID(),
+                                  type: 'fidelity',
+                                  title: 'Carte Fedeltà',
+                                  cards: [],
+                                  x: (modules.length * 2) % 12,
+                                  y: Infinity,
+                                  w: 3,
+                                  h: 2,
+                                  folderId: selectedFolderId || undefined
+                                };
+                                setModules(prev => {
+                                  const updated = [newFidelity, ...prev];
+                                  saveAppState(updated, folders).catch(console.error);
+                                  return updated;
+                                });
+                                setEditingFidelityModule(newFidelity);
                               } else {
                                 setFormData({ ...formData, template: key, title: t.title, content: t.content });
                                 setAutoFormStep(0);
@@ -2079,9 +2166,6 @@ export default function App() {
                       </div>
                     </div>
                   )}
-
-                  {/* Single Expense Screen (Edit/Create) - Spostato sopra isAdding per accessibilità globale */}
-
 
                   {/* Sub-menu Spese */}
                   {!editingModuleId && !formData.template && spesaSubMenu && (
@@ -3030,8 +3114,6 @@ export default function App() {
                       )
                     ) : (
                       <>
-
-
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6 3xl:grid-cols-8 gap-6 stagger-fade-in px-4 lg:px-8 pb-32 md:pb-8">
                           {filteredModules.map((module) => (
                             <div key={module.id} className="w-full">
@@ -3053,6 +3135,8 @@ export default function App() {
                                 <FitnessCard module={module as import('./types').FitnessModule} onDelete={requestDelete} onEdit={openEditModal} />
                               ) : module.type === 'travel' ? (
                                 <TravelCard module={module as import('./types').TravelModule} onDelete={requestDelete} onEdit={openEditModal} />
+                              ) : module.type === 'fidelity' ? (
+                                <FidelityCard module={module as import('./types').FidelityModule} onDelete={requestDelete} onEdit={openEditModal} />
                               ) : (
                                 <GenericCard module={module as import('./types').GenericModule} onDelete={requestDelete} onEdit={openEditModal} />
                               )}

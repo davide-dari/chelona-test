@@ -1,7 +1,7 @@
 {
   "name": "chelona",
   "private": true,
-  "version": "1.15.86",
+  "version": "1.15.87",
   "type": "module",
   "scripts": {
     "dev": "vite --port=3000 --host=0.0.0.0",
@@ -48,6 +48,7 @@
     "pdfjs-dist": "^5.6.205",
     "qrcode.react": "^4.2.0",
     "react": "^19.0.0",
+    "react-barcode": "^1.6.1",
     "react-dom": "^19.0.0",
     "react-globe.gl": "^2.37.1",
     "react-grid-layout": "^2.2.2",
