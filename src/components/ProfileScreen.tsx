@@ -475,7 +475,7 @@ export function ProfileScreen({
                   </select>
                   {biometricLevel === 'sensitive' && (
                     <p className="mt-3 text-[11px] text-amber-500 font-medium leading-relaxed bg-amber-500/10 p-3 rounded-xl">
-                      ⚠️ Attenzione: con questa opzione disabiliti l'accesso biometrico per l'apertura principale dell'app. Dovrai inserire il PIN ad ogni avvio.
+                      ⚠️ Attenzione: con questa opzione l'app si avvierà <strong>automaticamente senza chiedere password o impronta</strong>. L'impronta sarà richiesta <strong>SOLO</strong> per aprire i moduli sensibili (Auto, Documenti, ecc).
                     </p>
                   )}
                 </div>
