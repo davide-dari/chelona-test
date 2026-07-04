@@ -2926,7 +2926,24 @@ export default function App() {
                                 return (
                                   <button
                                     key={`pinned-cat-${catId}`}
-                                    onClick={() => setSelectedType(catId as ModuleType)}
+                                    onClick={async () => {
+                                      if (catId === 'auto' || catId === 'document') {
+                                        const profiles = storage.loadProfiles();
+                                        const profile = profiles.find(p => p.id === currentProfileId);
+                                        if (profile?.isBiometricEnabled && (profile.biometricLevel === 'sensitive' || profile.biometricLevel === 'both')) {
+                                          const m = await import('./services/biometricService');
+                                          const supported = await m.biometricService.isSupported();
+                                          if (supported) {
+                                            const success = await m.biometricService.verifyIdentity('Sblocca sezione protetta');
+                                            if (!success) {
+                                              console.warn('[App] Biometric verification failed for sensitive category');
+                                              return;
+                                            }
+                                          }
+                                        }
+                                      }
+                                      setSelectedType(catId as ModuleType);
+                                    }}
                                     className="bg-[var(--card-bg)] p-5 rounded-3xl border border-[var(--border)] shadow-sm hover:border-[var(--accent)] transition-all flex items-center gap-4 group"
                                   >
                                     <div className={`w-12 h-12 bg-[var(--bg)] rounded-2xl flex items-center justify-center ${t.color} group-hover:scale-110 transition-transform shadow-inner`}>
@@ -2965,7 +2982,7 @@ export default function App() {
                             return (
                               <button
                                 key={key}
-                                onClick={() => {
+                                onClick={async () => {
                                   if (key === 'recipes') {
                                     setIsRecipesOpen(true);
                                   } else if (key === 'travel') {
@@ -3034,7 +3051,21 @@ export default function App() {
                                       });
                                       setEditingFitnessModule(newFitness);
                                     }
-                                  } else {
+                                    if (key === 'auto' || key === 'document') {
+                                      const profiles = storage.loadProfiles();
+                                      const profile = profiles.find(p => p.id === currentProfileId);
+                                      if (profile?.isBiometricEnabled && (profile.biometricLevel === 'sensitive' || profile.biometricLevel === 'both')) {
+                                        const m = await import('./services/biometricService');
+                                        const supported = await m.biometricService.isSupported();
+                                        if (supported) {
+                                          const success = await m.biometricService.verifyIdentity('Sblocca sezione protetta');
+                                          if (!success) {
+                                            console.warn('[App] Biometric verification failed for sensitive category');
+                                            return;
+                                          }
+                                        }
+                                      }
+                                    }
                                     setSelectedType(key as ModuleType);
                                   }
                                 }}
