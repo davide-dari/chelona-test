@@ -850,7 +850,8 @@ export default function App() {
 
   const openEditModal = async (module: Module, providedKey?: string, skipBioCheck?: boolean) => {
     const activeKey = providedKey || encryptionKey;
-    if ((module.type === 'auto' || module.type === 'document') && !activeKey) {
+    const sensitiveTypes = ['auto', 'document', 'split', 'single-expense', 'furniture', 'fidelity'];
+    if (sensitiveTypes.includes(module.type) && !activeKey) {
       setPendingAction(() => (newKey?: string) => openEditModal(module, newKey, true));
       setShowVaultLock(true);
       return;
@@ -858,7 +859,7 @@ export default function App() {
     
     // Check if biometric lock is required for sensitive modules
     const profiles = storage.loadProfiles();
-    if (!skipBioCheck && (module.type === 'auto' || module.type === 'document')) {
+    if (!skipBioCheck && sensitiveTypes.includes(module.type)) {
       const profile = profiles.find(p => p.id === currentProfileId);
       if (profile?.isBiometricEnabled && (profile.biometricLevel === 'sensitive' || profile.biometricLevel === 'both')) {
         const m = await import('./services/biometricService');
@@ -2020,6 +2021,41 @@ export default function App() {
                   </div>
                 </div>
               </motion.div>
+            ) : editingAutoModule ? (
+              <AutoManagementScreen
+                module={editingAutoModule}
+                onSave={handleSaveAutoEdit}
+                onCancel={() => setEditingAutoModule(null)}
+                onDelete={deleteModule}
+                onShare={setSharingModule as any}
+              />
+            ) : editingTravelModule ? (
+              <TravelScreen
+                module={editingTravelModule}
+                onSave={(mod) => { updateModuleDirect(mod); setEditingTravelModule(mod); }}
+                onClose={() => setEditingTravelModule(null)}
+              />
+            ) : editingFurnitureModule ? (
+              <FurnitureScreen
+                module={editingFurnitureModule}
+                onSave={(mod) => { updateModuleDirect(mod); setEditingFurnitureModule(mod); }}
+                onClose={() => setEditingFurnitureModule(null)}
+              />
+            ) : editingStudyModule ? (
+              <StudyScreen
+                module={editingStudyModule}
+                onClose={() => setEditingStudyModule(null)}
+                onSave={(module) => {
+                  saveModule(module);
+                  setEditingStudyModule(null);
+                }}
+              />
+            ) : editingFidelityModule ? (
+              <FidelityScreen
+                module={editingFidelityModule}
+                onClose={() => setEditingFidelityModule(null)}
+                onSave={saveModule}
+              />
             ) : editingSplitModule ? (
               <SplitScreen
                 module={editingSplitModule}
@@ -2085,7 +2121,8 @@ export default function App() {
                       <button
                             key={key}
                             onClick={async () => {
-                              if ((key === 'auto' || key === 'document') && !encryptionKey) {
+                              const sensitiveTypes = ['auto', 'document', 'split', 'single-expense', 'furniture', 'fidelity'];
+                              if (sensitiveTypes.includes(key) && !encryptionKey) {
                                 setPendingAction(() => () => {
                                   setFormData({ ...formData, template: key, title: t.title, content: t.content });
                                   setAutoFormStep(1);
@@ -2097,7 +2134,7 @@ export default function App() {
                               
                               const profiles = storage.loadProfiles();
                               const profile = profiles.find(p => p.id === currentProfileId);
-                              if ((key === 'auto' || key === 'document') && profile?.isBiometricEnabled && (profile.biometricLevel === 'sensitive' || profile.biometricLevel === 'both')) {
+                              if (sensitiveTypes.includes(key) && profile?.isBiometricEnabled && (profile.biometricLevel === 'sensitive' || profile.biometricLevel === 'both')) {
                                 const m = await import('./services/biometricService');
                                 const supported = await m.biometricService.isSupported();
                                 if (supported) {
@@ -3022,7 +3059,8 @@ export default function App() {
                                       });
                                       setEditingFitnessModule(newFitness);
                                     }
-                                    if (key === 'auto' || key === 'document') {
+                                    const sensitiveTypes = ['auto', 'document', 'split', 'single-expense', 'furniture', 'fidelity'];
+                                    if (sensitiveTypes.includes(key)) {
                                       const profiles = storage.loadProfiles();
                                       const profile = profiles.find(p => p.id === currentProfileId);
                                       if (profile?.isBiometricEnabled && (profile.biometricLevel === 'sensitive' || profile.biometricLevel === 'both')) {
