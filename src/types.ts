@@ -269,21 +269,7 @@ export interface StudyModule extends BaseModule {
   h: number;
 }
 
-export interface FidelityCard {
-  id: string;
-  name: string; // Es. "Conad", "IKEA Family", "Esselunga"
-  code: string;
-  format: 'CODE128' | 'CODE39' | 'EAN13' | 'EAN8' | 'UPC' | 'QR' | 'MANUAL';
-  color: string;
-  logo?: string; // base64 image
-}
-
-export interface FidelityModule extends BaseModule {
-  type: 'fidelity';
-  cards: FidelityCard[];
-}
-
-export type Module = GenericModule | AutoModule | DocumentModule | SplitModule | SingleExpenseModule | WalletModule | GalleryModule | TravelModule | TransportModule | FurnitureModule | InstallmentsModule | FitnessModule | StudyModule | FidelityModule;
+export type Module = GenericModule | AutoModule | DocumentModule | SplitModule | SingleExpenseModule | WalletModule | GalleryModule | TravelModule | TransportModule | FurnitureModule | InstallmentsModule | FitnessModule | StudyModule;
 
 export interface DashboardState {
   modules: Module[];
@@ -295,7 +281,6 @@ export interface ProfileConfig {
   passwordHash: string;
   salt: string;
   isBiometricEnabled: boolean;
-  biometricLevel?: 'app' | 'sensitive' | 'both';
   biometricServerKey?: string;
   credentialId?: string; // For WebAuthn
   encryptedMasterKey?: string; // Master key encrypted for biometric recovery

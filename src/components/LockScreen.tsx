@@ -36,7 +36,6 @@ export const LockScreen = ({ isVisible, onAuthenticated, onStartScan, onOpenTool
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [profileToDelete, setProfileToDelete] = useState<{id: string, username: string} | null>(null);
   const [isBioSupported, setIsBioSupported] = useState(false);
-  const [setupBiometricLevel, setSetupBiometricLevel] = useState<'app' | 'sensitive' | 'both'>('app');
   const [onboardingStep, setOnboardingStep] = useState(0); // 0: Welcome, 1: Privacy, 2: Setup
   const autoBioTriggered = useRef<string | null>(null);
   const bioTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -114,34 +113,16 @@ export const LockScreen = ({ isVisible, onAuthenticated, onStartScan, onOpenTool
       if (activeView === 'setup') {
         setView('selector');
       } else {
-        // Determina quale profilo verrebbe auto-selezionato
-        let autoProfile: ProfileConfig | null = null;
         if (targetProfileId) {
-          autoProfile = loadedProfiles.find(p => p.id === targetProfileId) || null;
-        } else if (activeView === 'selector' && loadedProfiles.length === 1) {
-          autoProfile = loadedProfiles[0];
-        }
-
-        // Se il profilo ha biometricLevel 'sensitive' e siamo in modalità app-start,
-        // esegui l'auto-login immediato senza mostrare la schermata password
-        if (autoProfile && mode === 'app-start' && autoProfile.biometricLevel === 'sensitive') {
-          const autoKey = localStorage.getItem('chelona_auto_key_' + autoProfile.id);
-          if (autoKey) {
-            const profileToLogin = autoProfile;
-            encryption.importKey(autoKey).then(key => {
-              console.log('[LockScreen] Auto-login immediato per profilo sensitive:', profileToLogin.username);
-              onAuthenticated(key, profileToLogin.id);
-            }).catch(e => {
-              console.error('[LockScreen] Auto-login fallito, mostro schermata password:', e);
-              setSelectedProfile(profileToLogin);
-              setView('login');
-            });
+          const target = loadedProfiles.find(p => p.id === targetProfileId);
+          if (target) {
+            setSelectedProfile(target);
+            setView('login');
             return;
           }
         }
-
-        if (autoProfile) {
-          setSelectedProfile(autoProfile);
+        if (activeView === 'selector' && loadedProfiles.length === 1) {
+          setSelectedProfile(loadedProfiles[0]);
           setView('login');
         }
       }
@@ -179,29 +160,13 @@ export const LockScreen = ({ isVisible, onAuthenticated, onStartScan, onOpenTool
       bioTimeoutRef.current = null;
     }
 
-    if (view === 'login' && selectedProfile) {
-      // Se è impostato 'sensitive', l'app deve saltare la password all'avvio
-      if (selectedProfile.biometricLevel === 'sensitive') {
-        const autoKey = localStorage.getItem('chelona_auto_key_' + selectedProfile.id);
-        if (autoKey) {
-          encryption.importKey(autoKey).then(key => {
-            console.log('[LockScreen] Auto-login via stored key for sensitive profile');
-            onAuthenticated(key, selectedProfile.id);
-          }).catch(e => {
-            console.error('[LockScreen] Auto-login failed', e);
-          });
-          return;
-        }
-      }
-
-      if (selectedProfile.isBiometricEnabled && selectedProfile.biometricLevel !== 'sensitive') {
-        const timer = setTimeout(() => {
-          console.log('[LockScreen] Auto-triggering biometrics for:', selectedProfile.username);
-          autoBioTriggered.current = selectedProfile.id;
-          // Minimal delay to ensure the UI is rendered before the native prompt appears
-          bioTimeoutRef.current = setTimeout(() => {
-            handleBiometricLogin();
-          }, 100);
+    if (view === 'login' && selectedProfile?.isBiometricEnabled) {
+      if (autoBioTriggered.current !== selectedProfile.id) {
+        console.log('[LockScreen] Auto-triggering biometrics for:', selectedProfile.username);
+        autoBioTriggered.current = selectedProfile.id;
+        // Minimal delay to ensure the UI is rendered before the native prompt appears
+        bioTimeoutRef.current = setTimeout(() => {
+          handleBiometricLogin();
         }, 100);
       }
     } else if (view !== 'login') {
@@ -261,7 +226,6 @@ export const LockScreen = ({ isVisible, onAuthenticated, onStartScan, onOpenTool
             // Update the profile to indicate biometrics are enabled
             newConfig.isBiometricEnabled = true;
             newConfig.biometricServerKey = serverKey;
-            newConfig.biometricLevel = setupBiometricLevel;
             storage.saveProfiles(updatedProfiles);
           }
         } catch (bioErr) {
@@ -306,8 +270,8 @@ export const LockScreen = ({ isVisible, onAuthenticated, onStartScan, onOpenTool
   };
 
   const handleBiometricLogin = async () => {
-    if (!selectedProfile?.isBiometricEnabled || selectedProfile?.biometricLevel === 'sensitive') {
-      console.warn('[LockScreen] Biometrics not enabled for app login on this profile');
+    if (!selectedProfile?.isBiometricEnabled) {
+      setError('Biometria non abilitata per questo profilo.');
       return;
     }
     
@@ -705,36 +669,6 @@ export const LockScreen = ({ isVisible, onAuthenticated, onStartScan, onOpenTool
                         />
                       </button>
                     </div>
-
-                    <AnimatePresence>
-                      {isBioRequested && (
-                        <motion.div
-                          initial={{ opacity: 0, height: 0 }}
-                          animate={{ opacity: 1, height: 'auto' }}
-                          exit={{ opacity: 0, height: 0 }}
-                          className="mt-4 pt-4 border-t border-[var(--accent)]/10"
-                        >
-                          <label className="block text-xs font-bold text-[var(--accent)] mb-1">
-                            Livello di Protezione
-                          </label>
-                          <p className="text-[10px] text-[var(--text-muted)] mb-2">Scegli dove richiedere l'autenticazione biometrica.</p>
-                          <select
-                            value={setupBiometricLevel}
-                            onChange={(e) => setSetupBiometricLevel(e.target.value as 'app' | 'sensitive' | 'both')}
-                            className="w-full bg-[var(--bg)] border border-[var(--border)] text-[var(--text-main)] rounded-xl px-3 py-2 font-medium text-xs focus:outline-none focus:border-amber-500"
-                          >
-                            <option value="app">Sblocca solo l'App all'avvio</option>
-                            <option value="both">Sblocca App + Moduli Sensibili</option>
-                            <option value="sensitive">Sblocca SOLO i Moduli Sensibili</option>
-                          </select>
-                          {setupBiometricLevel === 'sensitive' && (
-                            <p className="mt-2 text-[10px] text-amber-600 font-medium leading-relaxed bg-amber-500/10 p-2 rounded-lg">
-                              ⚠️ L'app si avvierà automaticamente senza chiedere password. L'impronta sarà richiesta SOLO per i moduli sensibili.
-                            </p>
-                          )}
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
                   </motion.div>
                 )}
 
@@ -770,7 +704,7 @@ export const LockScreen = ({ isVisible, onAuthenticated, onStartScan, onOpenTool
 
               {view === 'login' && (
                 <div className="mt-6 sm:mt-8 pt-6 sm:pt-8 border-t border-[var(--border)] flex flex-col items-center gap-4">
-                  {isBioSupported && selectedProfile?.isBiometricEnabled && selectedProfile?.biometricLevel !== 'sensitive' && (
+                  {isBioSupported && selectedProfile?.isBiometricEnabled && (
                     <div className="flex flex-col items-center gap-4">
                       <div className="flex items-center gap-3 w-full">
                         <div className="flex-1 h-[1px] bg-[var(--border)]" />

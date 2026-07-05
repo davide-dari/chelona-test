@@ -22,8 +22,6 @@ interface ProfileScreenProps {
   onEnableBiometrics: () => Promise<void>;
   onDisableBiometrics: () => Promise<void>;
   bioError: string | null;
-  biometricLevel?: 'app' | 'sensitive' | 'both';
-  onChangeBiometricLevel: (level: 'app' | 'sensitive' | 'both') => void;
   onLogout: () => void;
   encryptionKey: CryptoKey;
   modules: Module[];
@@ -49,8 +47,6 @@ export function ProfileScreen({
   onEnableBiometrics,
   onDisableBiometrics,
   bioError,
-  biometricLevel = 'app',
-  onChangeBiometricLevel,
   onLogout,
   encryptionKey,
   modules,
@@ -253,13 +249,9 @@ export function ProfileScreen({
         bioSalt: undefined
       };
       
-      const updatedProfiles = profiles.map(p => p.id === currentProfileId ? updatedProfile : p);
-      storage.saveProfiles(updatedProfiles);
-      
-      // Se c'era una chiave di auto-login per la modalità sensitive, va rimossa perché la chiave è cambiata
-      localStorage.removeItem('chelona_auto_key_' + currentProfileId);
+      storage.saveProfiles(profiles.map(p => p.id === currentProfileId ? updatedProfile : p));
 
-      // Re-cifra lo stato con la nuova chiave
+      // Risalva lo stato con la nuova chiave
       await storage.saveState({ modules, folders }, newKey, currentProfileId);
 
       // Aggiorna chiave in App
@@ -457,29 +449,6 @@ export function ProfileScreen({
                   </div>
                 )}
               </div>
-
-              {isBioSupported && isBioEnabled && (
-                <div className="bg-[var(--card-bg)] rounded-[var(--radius-lg)] p-5 border border-[var(--border)] shadow-sm">
-                  <label className="block text-sm font-bold text-[var(--text-main)] mb-1">
-                    Livello di Protezione
-                  </label>
-                  <p className="text-[10px] text-[var(--text-muted)] mb-3">Scegli dove richiedere l'autenticazione biometrica.</p>
-                  <select
-                    value={biometricLevel}
-                    onChange={(e) => onChangeBiometricLevel(e.target.value as 'app' | 'sensitive' | 'both')}
-                    className="w-full bg-[var(--surface-variant)] border border-[var(--border)] text-[var(--text-main)] rounded-xl px-4 py-3 font-medium text-sm focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
-                  >
-                    <option value="app">Sblocca solo l'App all'avvio (Predefinito)</option>
-                    <option value="both">Sblocca App + Moduli Sensibili</option>
-                    <option value="sensitive">Sblocca SOLO i Moduli Sensibili</option>
-                  </select>
-                  {biometricLevel === 'sensitive' && (
-                    <p className="mt-3 text-[11px] text-amber-500 font-medium leading-relaxed bg-amber-500/10 p-3 rounded-xl">
-                      ⚠️ Attenzione: con questa opzione l'app si avvierà <strong>automaticamente senza chiedere password o impronta</strong>. L'impronta sarà richiesta <strong>SOLO</strong> per aprire i moduli sensibili (Auto, Documenti, ecc).
-                    </p>
-                  )}
-                </div>
-              )}
 
               <div className="bg-[var(--card-bg)] rounded-[var(--radius-lg)] p-5 border border-[var(--border)] shadow-sm">
                 <div className="flex items-center gap-3 mb-4">
