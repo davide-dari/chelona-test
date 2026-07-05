@@ -848,17 +848,17 @@ export default function App() {
   };
 
 
-  const openEditModal = async (module: Module, providedKey?: string) => {
+  const openEditModal = async (module: Module, providedKey?: string, skipBioCheck?: boolean) => {
     const activeKey = providedKey || encryptionKey;
     if ((module.type === 'auto' || module.type === 'document') && !activeKey) {
-      setPendingAction(() => (newKey?: string) => openEditModal(module, newKey));
+      setPendingAction(() => (newKey?: string) => openEditModal(module, newKey, true));
       setShowVaultLock(true);
       return;
     }
     
     // Check if biometric lock is required for sensitive modules
     const profiles = storage.loadProfiles();
-    if (module.type === 'auto' || module.type === 'document') {
+    if (!skipBioCheck && (module.type === 'auto' || module.type === 'document')) {
       const profile = profiles.find(p => p.id === currentProfileId);
       if (profile?.isBiometricEnabled && (profile.biometricLevel === 'sensitive' || profile.biometricLevel === 'both')) {
         const m = await import('./services/biometricService');
@@ -2020,41 +2020,6 @@ export default function App() {
                   </div>
                 </div>
               </motion.div>
-            ) : editingAutoModule ? (
-              <AutoManagementScreen
-                module={editingAutoModule}
-                onSave={handleSaveAutoEdit}
-                onCancel={() => setEditingAutoModule(null)}
-                onDelete={deleteModule}
-                onShare={setSharingModule as any}
-              />
-            ) : editingTravelModule ? (
-              <TravelScreen
-                module={editingTravelModule}
-                onSave={(mod) => { updateModuleDirect(mod); setEditingTravelModule(mod); }}
-                onClose={() => setEditingTravelModule(null)}
-              />
-            ) : editingFurnitureModule ? (
-              <FurnitureScreen
-                module={editingFurnitureModule}
-                onSave={(mod) => { updateModuleDirect(mod); setEditingFurnitureModule(mod); }}
-                onClose={() => setEditingFurnitureModule(null)}
-              />
-            ) : editingStudyModule ? (
-              <StudyScreen
-                module={editingStudyModule}
-                onClose={() => setEditingStudyModule(null)}
-                onSave={(module) => {
-                  saveModule(module);
-                  setEditingStudyModule(null);
-                }}
-              />
-            ) : editingFidelityModule ? (
-              <FidelityScreen
-                module={editingFidelityModule}
-                onClose={() => setEditingFidelityModule(null)}
-                onSave={saveModule}
-              />
             ) : editingSplitModule ? (
               <SplitScreen
                 module={editingSplitModule}
@@ -2124,6 +2089,7 @@ export default function App() {
                                 setPendingAction(() => () => {
                                   setFormData({ ...formData, template: key, title: t.title, content: t.content });
                                   setAutoFormStep(1);
+                                  setIsToolsOpen(false);
                                 });
                                 setShowVaultLock(true);
                                 return;
@@ -2188,7 +2154,8 @@ export default function App() {
                                 setEditingFidelityModule(newFidelity);
                               } else {
                                 setFormData({ ...formData, template: key, title: t.title, content: t.content });
-                                setAutoFormStep(0);
+                                setAutoFormStep(1);
+                                setIsToolsOpen(false);
                               }
                             }}
                             className="flex flex-col items-center justify-center gap-4 p-8 rounded-2xl border border-[var(--border)] hover:border-[var(--accent)] hover:bg-[var(--accent)]/10 transition-all group text-center h-full text-[var(--text-main)]"
@@ -3071,6 +3038,7 @@ export default function App() {
                                       }
                                     }
                                     setSelectedType(key as ModuleType);
+                                    setIsToolsOpen(false);
                                   }
                                 }}
                                 className="bg-[var(--card-bg)] p-6 lg:p-8 rounded-[2.5rem] border border-[var(--border)] shadow-sm hover:border-[var(--accent)] hover:shadow-lg hover:-translate-y-1 transition-all group flex flex-col items-center text-center gap-4"
@@ -3293,7 +3261,7 @@ export default function App() {
                     setIsAdding(true);
                   } else {
                     setFormData(selectedType ? { template: selectedType } : {});
-                    setAutoFormStep(0);
+                    setAutoFormStep(selectedType ? 1 : 0);
                     setIsAdding(true);
                   }
                 }}
