@@ -288,7 +288,7 @@ export default function App() {
   const [encryptionKey, setEncryptionKey] = useState<CryptoKey | null>(null);
   const [currentProfileId, setCurrentProfileId] = useState<string | null>(null);
   const [showVaultLock, setShowVaultLock] = useState(false);
-  const [pendingAction, setPendingAction] = useState<(() => void) | null>(null);
+  const [pendingAction, setPendingAction] = useState<((key?: string) => void) | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [username, setUsername] = useState('Utente');
   const [avatar, setAvatar] = useState<string | undefined>(undefined);
@@ -848,9 +848,10 @@ export default function App() {
   };
 
 
-  const openEditModal = async (module: Module) => {
-    if ((module.type === 'auto' || module.type === 'document') && !encryptionKey) {
-      setPendingAction(() => () => openEditModal(module));
+  const openEditModal = async (module: Module, providedKey?: string) => {
+    const activeKey = providedKey || encryptionKey;
+    if ((module.type === 'auto' || module.type === 'document') && !activeKey) {
+      setPendingAction(() => (newKey?: string) => openEditModal(module, newKey));
       setShowVaultLock(true);
       return;
     }
@@ -1804,7 +1805,7 @@ export default function App() {
               setEncryptionKey(key);
               setShowVaultLock(false);
               if (pendingAction) {
-                pendingAction();
+                pendingAction(key);
                 setPendingAction(null);
               }
             }} 
@@ -2120,7 +2121,10 @@ export default function App() {
                             key={key}
                             onClick={async () => {
                               if ((key === 'auto' || key === 'document') && !encryptionKey) {
-                                setPendingAction(() => () => setFormData({ ...formData, template: key, title: t.title, content: t.content }));
+                                setPendingAction(() => () => {
+                                  setFormData({ ...formData, template: key, title: t.title, content: t.content });
+                                  setAutoFormStep(1);
+                                });
                                 setShowVaultLock(true);
                                 return;
                               }
@@ -3817,6 +3821,36 @@ export default function App() {
             }}
             onCancel={() => setEditingGenericModule(null)}
             onDelete={deleteModule}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {editingTravelModule && (
+          <TravelScreen
+            module={editingTravelModule}
+            onSave={(mod) => { updateModuleDirect(mod); setEditingTravelModule(mod); }}
+            onClose={() => setEditingTravelModule(null)}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {editingFurnitureModule && (
+          <FurnitureScreen
+            module={editingFurnitureModule}
+            onSave={(mod) => { updateModuleDirect(mod); setEditingFurnitureModule(mod); }}
+            onClose={() => setEditingFurnitureModule(null)}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {editingFidelityModule && (
+          <FidelityScreen
+            module={editingFidelityModule}
+            onClose={() => setEditingFidelityModule(null)}
+            onSave={saveModule}
           />
         )}
       </AnimatePresence>
