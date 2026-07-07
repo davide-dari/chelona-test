@@ -466,6 +466,7 @@ export function FitnessScreen({ module, onClose, onSave }: FitnessScreenProps) {
   const [fitWizardStep, setFitWizardStep] = useState(1);
   const [dietWizardStep, setDietWizardStep] = useState(1);
   const [expandedDayIndex, setExpandedDayIndex] = useState<number | null>(null);
+  const [enlargedGifUrl, setEnlargedGifUrl] = useState<string | null>(null);
 
 
   const [isSearchingRecipe, setIsSearchingRecipe] = useState<{[key: string]: boolean}>({});
@@ -957,8 +958,11 @@ export function FitnessScreen({ module, onClose, onSave }: FitnessScreenProps) {
                                 <div key={eIdx} className="flex flex-col sm:flex-row items-start sm:items-center justify-between bg-[var(--bg)] p-4 rounded-2xl gap-4 border border-transparent hover:border-[var(--border)] transition-colors">
                                   <div className="flex items-center gap-4 flex-1 w-full">
                                     {ex.gifUrl && (
-                                      <div className="w-16 h-16 sm:w-20 sm:h-20 shrink-0 bg-white rounded-xl overflow-hidden shadow-sm flex items-center justify-center p-1">
-                                        <img src={ex.gifUrl} alt={ex.name} className="max-w-full max-h-full object-contain" />
+                                      <div 
+                                        className="w-16 h-16 sm:w-20 sm:h-20 shrink-0 bg-white rounded-xl overflow-hidden shadow-sm flex items-center justify-center p-1 cursor-pointer hover:ring-2 hover:ring-emerald-500 transition-all"
+                                        onClick={(e) => { e.stopPropagation(); setEnlargedGifUrl(ex.gifUrl || null); }}
+                                      >
+                                        <img src={ex.gifUrl} alt={ex.name} className="max-w-full max-h-full object-contain pointer-events-none" />
                                       </div>
                                     )}
                                     <div className="flex-1">
@@ -995,6 +999,34 @@ export function FitnessScreen({ module, onClose, onSave }: FitnessScreenProps) {
             </div>
           </div>
         )}
+
+        <AnimatePresence>
+          {enlargedGifUrl && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setEnlargedGifUrl(null)}
+              className="fixed inset-0 z-[200] bg-black/90 backdrop-blur-sm flex items-center justify-center p-4 cursor-pointer"
+            >
+              <button 
+                onClick={(e) => { e.stopPropagation(); setEnlargedGifUrl(null); }}
+                className="absolute top-6 right-6 w-12 h-12 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center text-white transition-colors z-[210]"
+              >
+                <X className="w-6 h-6" />
+              </button>
+              <motion.div
+                initial={{ scale: 0.9 }}
+                animate={{ scale: 1 }}
+                exit={{ scale: 0.9 }}
+                onClick={(e) => e.stopPropagation()}
+                className="bg-white rounded-[2rem] p-4 max-w-lg w-full max-h-[80vh] flex flex-col items-center justify-center shadow-2xl relative overflow-hidden"
+              >
+                <img src={enlargedGifUrl} alt="Esercizio ingrandito" className="w-full h-auto max-h-[70vh] object-contain rounded-xl" />
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* DIET PLAN VIEW */}
         {currentView === 'diet-plan' && activeMealPlanWeekly && (
