@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { ArrowLeft, ArrowRight, Check, ChevronDown, ChevronUp, RefreshCw, Play, Award, TrendingUp, Target, Activity, Heart, Dumbbell, Utensils, ExternalLink } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, ChevronDown, ChevronUp, RefreshCw, Play, Award, TrendingUp, Target, Activity, Heart, Dumbbell, Utensils, ExternalLink, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { findRecipeForMeal } from '../services/recipeSearchService';
 
