@@ -24,16 +24,16 @@ class UpdateService {
     const snoozedVersion = localStorage.getItem('chelona_update_snoozed_version');
     const snoozedUntil = parseInt(localStorage.getItem('chelona_update_snoozed_until') || '0', 10);
     
-    // if (Capacitor.isNativePlatform()) {
-    //   try {
-    //     const info = await CapacitorApp.getInfo();
-    //     if (info && info.version) {
-    //       this.currentVersion = info.version;
-    //     }
-    //   } catch (e) {
-    //     console.warn('[UpdateService] Impossibile recuperare versione nativa', e);
-    //   }
-    // }
+    if (Capacitor.isNativePlatform()) {
+      try {
+        const info = await CapacitorApp.getInfo();
+        if (info && info.version) {
+          this.currentVersion = info.version;
+        }
+      } catch (e) {
+        console.warn('[UpdateService] Impossibile recuperare versione nativa', e);
+      }
+    }
 
     console.log(`[UpdateService] Checking for updates... Current version: ${this.currentVersion}`);
     try {
