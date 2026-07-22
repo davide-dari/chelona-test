@@ -31,9 +31,9 @@ export const InstallmentsScreen = ({ module, onClose, onSave, onDelete }: Instal
     return Math.max(1, monthsDiff + 1);
   };
 
-  const [installmentCount, setInstallmentCount] = useState(() => {
+  const [installmentCount, setInstallmentCount] = useState<number | ''>(() => {
     if (module.payments && module.payments.length > 0) return module.payments.length;
-    return calculateMonthsDiff(module.finalDueDate);
+    return '';
   });
 
   // Auto-pay installments when due date is reached
@@ -107,8 +107,10 @@ export const InstallmentsScreen = ({ module, onClose, onSave, onDelete }: Instal
       }
     } else {
       // Generate new installments if list is empty
-      const newPayments = generateInstallments(installmentCount, formData.targetAmount, formData.finalDueDate);
-      setFormData(prev => ({ ...prev, payments: newPayments }));
+      if (typeof installmentCount === 'number' && installmentCount > 0) {
+        const newPayments = generateInstallments(installmentCount, formData.targetAmount, formData.finalDueDate);
+        setFormData(prev => ({ ...prev, payments: newPayments }));
+      }
     }
   }, [formData.targetAmount]);
 
@@ -328,7 +330,11 @@ export const InstallmentsScreen = ({ module, onClose, onSave, onDelete }: Instal
                     onChange={e => {
                       const newDate = e.target.value;
                       // When they change the date, we regenerate keeping the current count
-                      handleRegenerate(installmentCount, newDate, formData.targetAmount);
+                      if (typeof installmentCount === 'number' && installmentCount > 0) {
+                        handleRegenerate(installmentCount, newDate, formData.targetAmount);
+                      } else {
+                        setFormData(prev => ({ ...prev, finalDueDate: newDate }));
+                      }
                     }}
                     className="w-full p-5 bg-[var(--card-bg)] border border-[var(--border)] rounded-3xl outline-none focus:border-indigo-500 transition-all font-bold text-[var(--text-main)]"
                   />
@@ -344,9 +350,15 @@ export const InstallmentsScreen = ({ module, onClose, onSave, onDelete }: Instal
                     max="120"
                     value={installmentCount}
                     onChange={e => {
-                      const count = Math.max(1, Number(e.target.value) || 1);
-                      setInstallmentCount(count);
-                      handleRegenerate(count, formData.finalDueDate, formData.targetAmount);
+                      const val = e.target.value;
+                      if (val === '') {
+                        setInstallmentCount('');
+                        setFormData(prev => ({ ...prev, payments: [] }));
+                      } else {
+                        const count = Math.max(1, Number(val));
+                        setInstallmentCount(count);
+                        handleRegenerate(count, formData.finalDueDate, formData.targetAmount);
+                      }
                     }}
                     className="w-full p-5 bg-[var(--card-bg)] border border-[var(--border)] rounded-3xl outline-none focus:border-indigo-500 transition-all font-bold text-[var(--text-main)]"
                   />
