@@ -161,12 +161,20 @@ export const InstallmentsScreen = ({ module, onClose, onSave, onDelete }: Instal
   const progress = formData.targetAmount > 0 ? (paidAmount / formData.targetAmount) * 100 : 0;
   const nextPayment = formData.payments.find(p => !p.isPaid);
 
+  const handleBack = () => {
+    if (formData.title && formData.targetAmount > 0) {
+      onSave(formData);
+    } else {
+      onClose();
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-[150] bg-[var(--bg)] flex flex-col h-[100dvh] overflow-hidden font-sans transition-colors duration-300">
       {/* Header */}
       <header className="h-20 border-b border-[var(--border)] bg-[var(--header-bg)] backdrop-blur-2xl px-6 flex items-center justify-between shrink-0 z-20 safe-area-header">
         <div className="flex items-center gap-4">
-          <button onClick={onClose} className="p-3 bg-[var(--card-bg)] border border-[var(--border)] hover:bg-[var(--border)] rounded-2xl transition-all shadow-sm">
+          <button onClick={handleBack} className="p-3 bg-[var(--card-bg)] border border-[var(--border)] hover:bg-[var(--border)] rounded-2xl transition-all shadow-sm">
             <ArrowLeft className="w-6 h-6 text-[var(--text-main)]" />
           </button>
           <div>
@@ -191,6 +199,7 @@ export const InstallmentsScreen = ({ module, onClose, onSave, onDelete }: Instal
                   alert("Inserisci un nome e un importo valido.");
                   return;
                 }
+                onSave(formData);
                 setIsEditing(false);
               }}
               className="flex items-center gap-2 bg-emerald-500 text-white px-6 py-3 rounded-2xl font-bold shadow-lg shadow-emerald-500/20 active:scale-95 transition-all"

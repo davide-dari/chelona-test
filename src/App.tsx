@@ -3610,9 +3610,11 @@ export default function App() {
           <SingleExpenseScreen
             module={editingSingleExpenseModule}
             onSave={(updated) => {
-              const updatedModules = modules.map(m => m.id === updated.id ? updated : m);
-              setModules(updatedModules);
-              saveAppState(updatedModules, folders);
+              setModules(prev => {
+                const updatedModules = prev.map(m => m.id === updated.id ? updated : m);
+                saveAppState(updatedModules, folders).catch(console.error);
+                return updatedModules;
+              });
               setEditingSingleExpenseModule(null);
             }}
             onClose={() => setEditingSingleExpenseModule(null)}
@@ -3626,9 +3628,11 @@ export default function App() {
           <InstallmentsScreen
             module={editingInstallmentsModule}
             onSave={(updated) => {
-              const updatedModules = modules.map(m => m.id === updated.id ? updated : m);
-              setModules(updatedModules);
-              saveAppState(updatedModules, folders);
+              setModules(prev => {
+                const updatedModules = prev.map(m => m.id === updated.id ? updated : m);
+                saveAppState(updatedModules, folders).catch(console.error);
+                return updatedModules;
+              });
               setEditingInstallmentsModule(null);
             }}
             onClose={() => {
