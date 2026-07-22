@@ -2093,6 +2093,7 @@ export default function App() {
 
                          <button
                            onClick={() => {
+                             setSelectedType('split');
                              setSplitModalTitle('Gruppo Spese');
                              setSplitModalCurrency('EUR');
                              setSplitModalBudget('');
@@ -2109,6 +2110,7 @@ export default function App() {
                          </button>
                          <button
                            onClick={() => {
+                             setSelectedType('split');
                              setSpesaSubMenu(false);
                              setFormData({ ...formData, template: 'single-expense', title: 'Spesa Singola', content: '' });
                              setAutoFormStep(0);
@@ -2123,6 +2125,7 @@ export default function App() {
                          </button>
                          <button
                            onClick={() => {
+                             setSelectedType('split');
                              setSpesaSubMenu(false);
                              setIsAdding(false);
                              const newInstallments: import('./types').InstallmentsModule = {
@@ -2138,7 +2141,11 @@ export default function App() {
                                h: 3,
                                folderId: selectedFolderId || undefined
                              };
-                             setModules(prev => [newInstallments, ...prev]);
+                             setModules(prev => {
+                               const updated = [newInstallments, ...prev];
+                               saveAppState(updated, folders).catch(console.error);
+                               return updated;
+                             });
                              setEditingInstallmentsModule(newInstallments);
                            }}
                            className="flex flex-col items-center justify-center gap-4 p-8 rounded-2xl border border-[var(--border)] hover:border-amber-500/60 hover:bg-amber-500/10 transition-all group text-center h-full text-[var(--text-main)]"
@@ -3636,7 +3643,8 @@ export default function App() {
               setEditingInstallmentsModule(null);
             }}
             onClose={() => {
-              if (editingInstallmentsModule.targetAmount === 0 && editingInstallmentsModule.payments.length === 0) {
+              const currentModule = modules.find(m => m.id === editingInstallmentsModule.id) as import('./types').InstallmentsModule;
+              if (currentModule && currentModule.targetAmount === 0 && (!currentModule.payments || currentModule.payments.length === 0)) {
                  deleteModule(editingInstallmentsModule.id);
               }
               setEditingInstallmentsModule(null);
