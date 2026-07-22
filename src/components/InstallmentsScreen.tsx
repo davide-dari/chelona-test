@@ -53,16 +53,16 @@ export const InstallmentsScreen = ({ module, onClose, onSave, onDelete }: Instal
     }
   }, [formData.payments]);
 
-  const generateInstallments = (count: number, target: number, finalDate: string) => {
-    const dueDateObj = new Date(finalDate);
+  const generateInstallments = (count: number, target: number, startDate: string) => {
+    const startDateObj = new Date(startDate);
     const amountPerInstallment = Math.floor((target / count) * 100) / 100;
     let remainder = target - (amountPerInstallment * count);
     remainder = Math.round(remainder * 100) / 100;
     const newPayments: InstallmentPayment[] = [];
     
     for (let i = 0; i < count; i++) {
-      const pDate = new Date(dueDateObj);
-      pDate.setMonth(pDate.getMonth() - (count - 1 - i));
+      const pDate = new Date(startDateObj);
+      pDate.setMonth(pDate.getMonth() + i);
       
       const isLast = i === count - 1;
       newPayments.push({
@@ -320,16 +320,15 @@ export const InstallmentsScreen = ({ module, onClose, onSave, onDelete }: Instal
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 <div className="space-y-2">
                   <label className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] ml-1">
-                    <Calendar className="w-3.5 h-3.5" /> Scadenza Finale
+                    <Calendar className="w-3.5 h-3.5" /> Data Prima Rata
                   </label>
                   <input 
                     type="date"
                     value={formData.finalDueDate}
                     onChange={e => {
                       const newDate = e.target.value;
-                      const newCount = calculateMonthsDiff(newDate);
-                      setInstallmentCount(newCount);
-                      handleRegenerate(newCount, newDate, formData.targetAmount);
+                      // When they change the date, we regenerate keeping the current count
+                      handleRegenerate(installmentCount, newDate, formData.targetAmount);
                     }}
                     className="w-full p-5 bg-[var(--card-bg)] border border-[var(--border)] rounded-3xl outline-none focus:border-indigo-500 transition-all font-bold text-[var(--text-main)]"
                   />
@@ -363,37 +362,45 @@ export const InstallmentsScreen = ({ module, onClose, onSave, onDelete }: Instal
             <h3 className="text-xs font-black uppercase tracking-widest text-[var(--text-muted)] ml-1 mb-4">Piano di Ammortamento</h3>
             
             <div className="flex flex-col gap-3">
-              {formData.payments.map((p, idx) => (
-                <div 
-                  key={p.id}
-                  onClick={() => togglePayment(p.id)}
-                  onContextMenu={(e) => handleContextMenu(e, p)}
-                  className={`flex items-center justify-between p-5 rounded-3xl border transition-all cursor-pointer select-none ${
-                    p.isPaid 
-                      ? 'bg-emerald-500/10 border-emerald-500/30' 
-                      : 'bg-[var(--card-bg)] border-[var(--border)] hover:border-indigo-500/50'
-                  }`}
-                >
-                  <div className="flex items-center gap-4 pointer-events-none">
-                    {p.isPaid ? (
-                      <CheckCircle2 className="w-6 h-6 text-emerald-500" />
-                    ) : (
-                      <Circle className="w-6 h-6 text-[var(--text-muted)]" />
-                    )}
-                    <div>
-                      <p className={`font-bold text-sm ${p.isPaid ? 'text-emerald-700 dark:text-emerald-400' : 'text-[var(--text-main)]'}`}>
-                        Rata {idx + 1} di {formData.payments.length}
-                      </p>
-                      <p className="text-[10px] text-[var(--text-muted)] font-semibold mt-0.5">
-                        Scadenza: {new Date(p.dueDate).toLocaleDateString()}
-                      </p>
+              {formData.payments.map((p, idx) => {
+                const amountPaidUpToThis = formData.payments.slice(0, idx + 1).reduce((sum, curr) => sum + curr.amount, 0);
+                const amountLeftAfterThis = formData.targetAmount - amountPaidUpToThis;
+                
+                return (
+                  <div 
+                    key={p.id}
+                    onClick={() => togglePayment(p.id)}
+                    onContextMenu={(e) => handleContextMenu(e, p)}
+                    className={`flex items-center justify-between p-5 rounded-3xl border transition-all cursor-pointer select-none ${
+                      p.isPaid 
+                        ? 'bg-emerald-500/10 border-emerald-500/30' 
+                        : 'bg-[var(--card-bg)] border-[var(--border)] hover:border-indigo-500/50'
+                    }`}
+                  >
+                    <div className="flex items-center gap-4 pointer-events-none">
+                      {p.isPaid ? (
+                        <CheckCircle2 className="w-6 h-6 text-emerald-500" />
+                      ) : (
+                        <Circle className="w-6 h-6 text-[var(--text-muted)]" />
+                      )}
+                      <div>
+                        <p className={`font-bold text-sm ${p.isPaid ? 'text-emerald-700 dark:text-emerald-400' : 'text-[var(--text-main)]'}`}>
+                          Rata {idx + 1} di {formData.payments.length}
+                        </p>
+                        <p className="text-[10px] text-[var(--text-muted)] font-semibold mt-0.5">
+                          Estinzione: {new Date(p.dueDate).toLocaleDateString('it-IT')}
+                        </p>
+                        <p className="text-[10px] text-[var(--text-muted)] font-semibold mt-0.5">
+                          Rimanente: €{Math.max(0, amountLeftAfterThis).toFixed(2)}
+                        </p>
+                      </div>
+                    </div>
+                    <div className={`text-lg font-black pointer-events-none ${p.isPaid ? 'text-emerald-600' : 'text-indigo-600'}`}>
+                      €{p.amount.toFixed(2)}
                     </div>
                   </div>
-                  <div className={`text-lg font-black pointer-events-none ${p.isPaid ? 'text-emerald-600' : 'text-indigo-600'}`}>
-                    €{p.amount.toFixed(2)}
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}
