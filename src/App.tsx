@@ -186,7 +186,6 @@ export default function App() {
   const [editingFurnitureModule, setEditingFurnitureModule] = useState<import('./types').FurnitureModule | null>(null);
   const [editingInstallmentsModule, setEditingInstallmentsModule] = useState<import('./types').InstallmentsModule | null>(null);
   const [editingFitnessModule, setEditingFitnessModule] = useState<import('./types').FitnessModule | null>(null);
-  const [showNotificationPrompt, setShowNotificationPrompt] = useState(false);
 
   useEffect(() => {
     // Show splash screen briefly, then go to lock screen immediately
@@ -551,14 +550,10 @@ export default function App() {
         setModules(loadedModules);
         setFolders(saved.folders || []);
 
-        // Inizializza canale e controlla/schedula notifiche per TUTTI i moduli (Auto, Documenti, Rate, Spese)
+        // Inizializza canale e richiedi i permessi del sistema Android/Web per schedulare notifiche in background
         notificationService.requestPermission().then(() => {
           notificationService.checkAndFire(loadedModules);
         }).catch(console.error);
-
-        if (!localStorage.getItem('chelona_notif_prompt_seen')) {
-          setShowNotificationPrompt(true);
-        }
 
         // Trigger automatic update check upon successful unlock
         handleCheckUpdate(true);
@@ -4029,23 +4024,6 @@ export default function App() {
       </AnimatePresence>
 
       </div>
-      <ConfirmDialog
-        isOpen={showNotificationPrompt}
-        title="Attiva Notifiche"
-        message="Per sfruttare al meglio Chelona e ricordarti scadenze importanti (rate, bollo, assicurazioni, ecc.), abbiamo bisogno del tuo permesso per inviare notifiche."
-        confirmText="Attiva"
-        cancelText="Non ora"
-        icon="alert"
-        onConfirm={async () => {
-          setShowNotificationPrompt(false);
-          localStorage.setItem('chelona_notif_prompt_seen', 'true');
-          await notificationService.requestPermission();
-        }}
-        onCancel={() => {
-          setShowNotificationPrompt(false);
-          localStorage.setItem('chelona_notif_prompt_seen', 'true');
-        }}
-      />
     </ErrorBoundary>
     </div>
   );

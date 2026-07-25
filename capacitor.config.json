@@ -5,6 +5,10 @@
   "plugins": {
     "CapacitorHttp": {
       "enabled": true
+    },
+    "LocalNotifications": {
+      "iconColor": "#6366F1",
+      "sound": "default"
     }
   }
 }
