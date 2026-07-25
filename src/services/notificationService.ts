@@ -1,17 +1,5 @@
 /**
  * Notification Service — Chelona
- *
- * Browser: usa la Web Notifications API (notifiche quando l'app è aperta).
- *
- * 🤖 Capacitor APK migration path:
- *   npm install @capacitor/local-notifications
- *   Sostituire il body di `fire()` con:
- *     import { LocalNotifications } from '@capacitor/local-notifications';
- *     await LocalNotifications.schedule({ notifications: [{
- *       title, body, id: Date.now(),
- *       schedule: { at: new Date() }
- *     }]});
- *   E schedulare le notifiche future con date precise anziché controllare al launch.
  */
 
 import { storage } from './storage';
@@ -25,10 +13,17 @@ export interface NotificationPref {
   targetValue: string;  // ISO date string OPPURE km soglia (numero come stringa)
   reminderOffset: number; // giorni prima (date) o km prima della soglia (km)
   enabled: boolean;
-  lastFiredDate?: string; // YYYY-MM-DD — evita di sparare due volte nello stesso giorno
+  lastFiredDate?: string; // YYYY-MM-DD
 }
 
-const STORAGE_KEY = 'diari_notification_prefs';
+function stringToNumericId(str: string): number {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = ((hash << 5) - hash) + str.charCodeAt(i);
+    hash |= 0;
+  }
+  return (Math.abs(hash) % 2000000000) + 1;
+}
 
 export const notificationService = {
   getAll(): NotificationPref[] {
@@ -56,71 +51,222 @@ export const notificationService = {
     this.save(this.getAll().filter(p => p.moduleId !== moduleId));
   },
 
-  /** Restituisce true se l'utente ha già concesso il permesso */
+  async ensurePermissionsAndChannel(): Promise<boolean> {
+    if ((window as any).Capacitor?.isNativePlatform?.()) {
+      try {
+        const { LocalNotifications } = await import('@capacitor/local-notifications');
+        
+        // Android High Importance Channel
+        await LocalNotifications.createChannel({
+          id: 'chelona_reminders',
+          name: 'Scadenze e Promemoria Chelona',
+          description: 'Notifiche per scadenze auto, documenti, rate e spese',
+          importance: 5, // max (sound + banner)
+          visibility: 1,
+          sound: 'default',
+          vibration: true
+        });
+
+        const perm = await LocalNotifications.requestPermissions();
+        return perm.display === 'granted';
+      } catch (e) {
+        console.error('[NotificationService] Errore permessi nativi:', e);
+        return false;
+      }
+    }
+
+    if (!('Notification' in window)) return false;
+    if (Notification.permission === 'granted') return true;
+    if (Notification.permission === 'denied') return false;
+    const res = await Notification.requestPermission();
+    return res === 'granted';
+  },
+
   isGranted(): boolean {
-    // Per semplicità e compatibilità sincrona, consideriamo true e lasciamo che la chiamata nativa fallisca o gestisca i permessi internamente,
-    // oppure controlliamo web permissions.
     if ((window as any).Capacitor?.isNativePlatform?.()) return true;
     if (!('Notification' in window)) return false;
     return Notification.permission === 'granted';
   },
 
   async requestPermission(): Promise<boolean> {
-    if ((window as any).Capacitor?.isNativePlatform?.()) {
-      try {
-        const { LocalNotifications } = await import('@capacitor/local-notifications');
-        const perm = await LocalNotifications.requestPermissions();
-        return perm.display === 'granted';
-      } catch (e) {
-        console.error('Errore richiesta permessi nativi:', e);
-        return false;
-      }
-    }
-    if (!('Notification' in window)) return false;
-    if (Notification.permission === 'granted') return true;
-    if (Notification.permission === 'denied') return false;
-    const result = await Notification.requestPermission();
-    return result === 'granted';
+    return this.ensurePermissionsAndChannel();
   },
 
-  fire(title: string, body: string) {
+  async fire(title: string, body: string) {
     if ((window as any).Capacitor?.isNativePlatform?.()) {
       try {
-        import('@capacitor/local-notifications').then(({ LocalNotifications }) => {
-          LocalNotifications.schedule({
-            notifications: [{
-              title,
-              body,
-              id: Math.floor(Math.random() * 1000000),
-              schedule: { at: new Date() }
-            }]
-          });
+        await this.ensurePermissionsAndChannel();
+        const { LocalNotifications } = await import('@capacitor/local-notifications');
+        await LocalNotifications.schedule({
+          notifications: [{
+            title,
+            body,
+            id: Math.floor(Math.random() * 1000000) + 1,
+            schedule: { at: new Date(Date.now() + 500) },
+            channelId: 'chelona_reminders'
+          }]
         });
       } catch (e) {
-        console.error('Failed to fire native notification:', e);
+        console.error('[NotificationService] Errore notifica nativa:', e);
       }
       return;
     }
-    if (!this.isGranted()) return;
+
+    const granted = await this.ensurePermissionsAndChannel();
+    if (!granted) return;
     try {
       const notif = new Notification(title, { body, icon: '/icon-192.png' });
       notif.onclick = () => {
         window.focus();
-        window.dispatchEvent(new CustomEvent('trigger-auto-km-page'));
       };
     } catch (e) {
-      console.warn('Notification failed:', e);
+      console.warn('[NotificationService] Notifica fallita:', e);
     }
   },
 
-  /**
-   * Controlla tutti i pref abilitati e notifica quelli scaduti/in scadenza.
-   * Chiamare all'avvio dell'app dopo il login.
-   */
-  checkAndFire(modules: any[]) {
-    if (!this.isGranted()) return;
+  async syncAllModuleNotifications(modules: any[]) {
+    if (!modules || !Array.isArray(modules)) return;
+    const isGranted = await this.ensurePermissionsAndChannel();
+    if (!isGranted) return;
 
-    // Controllo notifiche standard
+    const now = new Date();
+    const scheduledNotifs: Array<{ id: number; title: string; body: string; at: Date }> = [];
+
+    modules.forEach(m => {
+      // 1. AUTO
+      if (m.type === 'auto') {
+        const fields = [
+          { key: 'lastInsurance', label: 'Assicurazione Auto' },
+          { key: 'lastTax', label: 'Bollo Auto' },
+          { key: 'lastRevision', label: 'Revisione Auto' },
+          { key: 'battery12vExpiryDate', label: 'Batteria 12V' },
+          { key: 'hybridBatteryExpiryDate', label: 'Batteria Ibrida' },
+          { key: 'lastGplCylinder', label: 'Bombola GPL' },
+          { key: 'lastMethaneCylinder', label: 'Bombola Metano' },
+        ];
+        const carName = `${m.brand || ''} ${m.model || ''}`.trim() || 'Auto';
+
+        fields.forEach(f => {
+          const val = m[f.key];
+          if (val) {
+            const pref = this.get(m.id, f.key);
+            const enabled = pref ? pref.enabled : true;
+            const offset = pref ? pref.reminderOffset : 7;
+            if (enabled) {
+              const targetDate = new Date(val);
+              const remindDate = new Date(targetDate.getTime() - offset * 86400000);
+              remindDate.setHours(9, 0, 0, 0);
+
+              if (remindDate.getTime() > now.getTime()) {
+                scheduledNotifs.push({
+                  id: stringToNumericId(`auto_${m.id}_${f.key}`),
+                  title: `⏰ Scadenza ${f.label}`,
+                  body: `La scadenza per ${carName} è il ${new Date(val).toLocaleDateString('it-IT')}!`,
+                  at: remindDate
+                });
+              }
+            }
+          }
+        });
+      }
+
+      // 2. DOCUMENTI
+      if (m.type === 'document' && m.expiryDate) {
+        const docName = m.title || m.documentType || 'Documento';
+        const targetDate = new Date(m.expiryDate);
+
+        // 7 giorni prima
+        const remindDate = new Date(targetDate.getTime() - 7 * 86400000);
+        remindDate.setHours(9, 0, 0, 0);
+        if (remindDate.getTime() > now.getTime()) {
+          scheduledNotifs.push({
+            id: stringToNumericId(`doc_${m.id}_7d`),
+            title: `📄 Scadenza Documento`,
+            body: `Il documento "${docName}" scade tra 7 giorni (${new Date(m.expiryDate).toLocaleDateString('it-IT')})!`,
+            at: remindDate
+          });
+        }
+
+        // Il giorno stesso
+        const dayOfRemind = new Date(targetDate);
+        dayOfRemind.setHours(9, 0, 0, 0);
+        if (dayOfRemind.getTime() > now.getTime()) {
+          scheduledNotifs.push({
+            id: stringToNumericId(`doc_${m.id}_0d`),
+            title: `⚠️ Documento in Scadenza Oggi`,
+            body: `Il documento "${docName}" scade oggi (${new Date(m.expiryDate).toLocaleDateString('it-IT')})!`,
+            at: dayOfRemind
+          });
+        }
+      }
+
+      // 3. RATE / INSTALLMENTS
+      if (m.type === 'installments' && m.payments && Array.isArray(m.payments)) {
+        const title = m.title || 'Rata';
+        m.payments.forEach((p: any, idx: number) => {
+          if (!p.isPaid && p.dueDate) {
+            const targetDate = new Date(p.dueDate);
+            const remindDate = new Date(targetDate.getTime() - 3 * 86400000);
+            remindDate.setHours(9, 0, 0, 0);
+
+            if (remindDate.getTime() > now.getTime()) {
+              scheduledNotifs.push({
+                id: stringToNumericId(`inst_${m.id}_${idx}_3d`),
+                title: `💳 Scadenza Rata: ${title}`,
+                body: `Rata ${idx + 1} di €${Number(p.amount || 0).toFixed(2)} in scadenza il ${new Date(p.dueDate).toLocaleDateString('it-IT')}!`,
+                at: remindDate
+              });
+            }
+          }
+        });
+      }
+
+      // 4. SPESA SINGOLA
+      if (m.type === 'single-expense' && m.expiryDate) {
+        const title = m.description || 'Spesa';
+        const targetDate = new Date(m.expiryDate);
+        const remindDate = new Date(targetDate.getTime() - 3 * 86400000);
+        remindDate.setHours(9, 0, 0, 0);
+
+        if (remindDate.getTime() > now.getTime()) {
+          scheduledNotifs.push({
+            id: stringToNumericId(`exp_${m.id}_3d`),
+            title: `🏷️ Scadenza Spesa: ${title}`,
+            body: `La spesa "${title}" ha una scadenza prevista per il ${new Date(m.expiryDate).toLocaleDateString('it-IT')}!`,
+            at: remindDate
+          });
+        }
+      }
+    });
+
+    if ((window as any).Capacitor?.isNativePlatform?.()) {
+      try {
+        const { LocalNotifications } = await import('@capacitor/local-notifications');
+        const pending = await LocalNotifications.getPending();
+        if (pending && pending.notifications && pending.notifications.length > 0) {
+          await LocalNotifications.cancel(pending);
+        }
+
+        if (scheduledNotifs.length > 0) {
+          await LocalNotifications.schedule({
+            notifications: scheduledNotifs.map(n => ({
+              id: n.id,
+              title: n.title,
+              body: n.body,
+              schedule: { at: n.at },
+              channelId: 'chelona_reminders'
+            }))
+          });
+        }
+      } catch (e) {
+        console.error('[NotificationService] Errore schedulazione nativa:', e);
+      }
+    }
+  },
+
+  async checkAndFire(modules: any[]) {
+    await this.ensurePermissionsAndChannel();
+
     const prefs = this.getAll().filter(p => p.enabled);
     if (prefs.length > 0) {
       const today = new Date();
@@ -132,7 +278,7 @@ export const notificationService = {
 
         const mod = modules.find(m => m.id === pref.moduleId);
         if (!mod) return pref;
-        const carName = `${mod.brand || ''} ${mod.model || ''}`.trim();
+        const carName = `${mod.brand || ''} ${mod.model || ''}`.trim() || 'Auto';
 
         if (pref.type === 'date') {
           const target = new Date(pref.targetValue);
@@ -173,35 +319,35 @@ export const notificationService = {
       this.save([...rest, ...updated]);
     }
 
-    // Controlli Custom
     this.checkAutoKmReminders(modules);
+    await this.syncAllModuleNotifications(modules);
   },
 
   async scheduleNotification(title: string, body: string, at: Date) {
     if ((window as any).Capacitor?.isNativePlatform?.()) {
       try {
+        await this.ensurePermissionsAndChannel();
         const { LocalNotifications } = await import('@capacitor/local-notifications');
         await LocalNotifications.schedule({
           notifications: [{
             title,
             body,
-            id: Math.floor(Math.random() * 1000000),
-            schedule: { at }
+            id: Math.floor(Math.random() * 1000000) + 1,
+            schedule: { at },
+            channelId: 'chelona_reminders'
           }]
         });
       } catch (e) {
-        console.error('Failed to schedule native notification:', e);
+        console.error('[NotificationService] Errore schedulazione nativa:', e);
       }
       return;
     }
-    
-    // Fallback browser timeout if within current session
+
     const delay = at.getTime() - Date.now();
-    if (delay > 0 && delay < 86400000) { // Solo se entro le prossime 24h
+    if (delay > 0 && delay < 86400000) {
       setTimeout(() => this.fire(title, body), delay);
     }
   },
-
 
   checkAutoKmReminders(modules: any[]) {
     const today = new Date();
@@ -232,7 +378,6 @@ export const notificationService = {
   }
 };
 
-// Registra l'azione click su Capacitor per portare alla pagina km
 try {
   import('@capacitor/local-notifications').then(({ LocalNotifications }) => {
     LocalNotifications.addListener('localNotificationActionPerformed', () => {
@@ -242,4 +387,3 @@ try {
 } catch (e) {
   // Ignora se non in ambiente nativo
 }
-

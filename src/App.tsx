@@ -551,19 +551,13 @@ export default function App() {
         setModules(loadedModules);
         setFolders(saved.folders || []);
 
-        // Controlla notifiche all'apertura dell'app
-        const autoMods = loadedModules
-          .filter(m => m.type === 'auto')
-          .map(m => ({ id: m.id, brand: (m as any).brand, model: (m as any).model, currentKm: (m as any).currentKm }));
-        notificationService.checkAndFire(autoMods);
-        
-        // Richiedi i permessi delle notifiche all'avvio o mostra prompt
-        if (!notificationService.isGranted() && Notification.permission !== 'denied') {
-          if (!localStorage.getItem('chelona_notif_prompt_seen')) {
-            setShowNotificationPrompt(true);
-          }
-        } else {
-          notificationService.requestPermission().catch(console.error);
+        // Inizializza canale e controlla/schedula notifiche per TUTTI i moduli (Auto, Documenti, Rate, Spese)
+        notificationService.requestPermission().then(() => {
+          notificationService.checkAndFire(loadedModules);
+        }).catch(console.error);
+
+        if (!localStorage.getItem('chelona_notif_prompt_seen')) {
+          setShowNotificationPrompt(true);
         }
 
         // Trigger automatic update check upon successful unlock
@@ -642,6 +636,9 @@ export default function App() {
         const privateModules = newModules.filter(m => m.type === 'auto' || m.type === 'document');
         await storage.savePrivateState(privateModules, encryptionKey, currentProfileId);
     }
+
+    // Sincronizza le notifiche nativa di tutti i moduli in background
+    notificationService.syncAllModuleNotifications(newModules).catch(console.error);
   };
 
   useEffect(() => {

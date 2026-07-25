@@ -1,9 +1,10 @@
 import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, User, Lock, Fingerprint, LogOut, Camera, Check, AlertCircle, Share2, Download, Copy, ShieldCheck, QrCode, SunDim, RefreshCw, LayoutDashboard, Plus, Sun, Moon, FileArchive } from 'lucide-react';
+import { X, User, Lock, Fingerprint, LogOut, Camera, Check, AlertCircle, Share2, Download, Copy, ShieldCheck, QrCode, SunDim, RefreshCw, LayoutDashboard, Plus, Sun, Moon, FileArchive, Bell } from 'lucide-react';
 import { storage } from '../services/storage';
 import { encryption } from '../services/encryption';
 import { updateService } from '../services/updateService';
+import { notificationService } from '../services/notificationService';
 import { Module, Folder } from '../types';
 import { QRCodeSVG } from 'qrcode.react';
 import packageJson from '../../package.json';
@@ -448,6 +449,47 @@ export function ProfileScreen({
                     )}
                   </div>
                 )}
+              </div>
+
+              {/* Notifiche & Promemoria */}
+              <div className="bg-[var(--card-bg)] rounded-[var(--radius-lg)] p-5 border border-[var(--border)] shadow-sm">
+                <div className="flex items-center justify-between gap-4 mb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-indigo-500/10 rounded-2xl flex items-center justify-center text-indigo-500 shadow-inner shrink-0">
+                      <Bell className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h3 className="text-base font-bold text-[var(--text-main)] leading-tight">Notifiche & Promemoria</h3>
+                      <p className="text-[10px] text-[var(--text-muted)] font-medium mt-0.5">Scadenze auto, documenti, rate e spese</p>
+                    </div>
+                  </div>
+                </div>
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <button
+                    onClick={async () => {
+                      const ok = await notificationService.requestPermission();
+                      if (ok) {
+                        showToast('Notifiche abilitate con successo! 🔔', 'success');
+                      } else {
+                        showToast('Permesso notifiche non concesso nelle impostazioni di sistema.', 'error');
+                      }
+                    }}
+                    className="flex-1 py-3 bg-[var(--bg)] text-[var(--text-main)] border border-[var(--border)] rounded-xl font-bold hover:bg-[var(--border)] transition-all flex items-center justify-center gap-2 text-sm"
+                  >
+                    <Bell className="w-4 h-4 text-indigo-500" />
+                    Attiva / Permessi
+                  </button>
+                  <button
+                    onClick={async () => {
+                      await notificationService.fire('Test Notifiche Chelona 🔔', 'Le notifiche funzionano perfettamente sul tuo dispositivo!');
+                      showToast('Notifica di prova inviata!', 'success');
+                    }}
+                    className="flex-1 py-3 bg-indigo-500 text-white rounded-xl font-bold hover:bg-indigo-600 transition-all flex items-center justify-center gap-2 shadow-md shadow-indigo-500/20 text-sm"
+                  >
+                    <Check className="w-4 h-4" />
+                    Notifica di Prova
+                  </button>
+                </div>
               </div>
 
               <div className="bg-[var(--card-bg)] rounded-[var(--radius-lg)] p-5 border border-[var(--border)] shadow-sm">
