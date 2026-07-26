@@ -14,11 +14,34 @@ export default defineConfig({
   },
   build: {
     target: 'chrome80',
+    cssCodeSplit: true,
+    chunkSizeWarningLimit: 1000,
     rollupOptions: {
       output: {
-        manualChunks: {
-          vendor: ['react', 'react-dom', 'motion', 'lucide-react'],
-          pdf: ['jspdf', 'pdf-lib'],
+        manualChunks(id) {
+          if (id.includes('node_modules')) {
+            if (id.includes('three') || id.includes('@react-three') || id.includes('globe.gl')) {
+              return 'vendor-3d';
+            }
+            if (id.includes('jspdf') || id.includes('pdf-lib') || id.includes('pdfjs-dist')) {
+              return 'vendor-pdf';
+            }
+            if (id.includes('html5-qrcode') || id.includes('jscanify') || id.includes('html2canvas')) {
+              return 'vendor-scanner';
+            }
+            if (id.includes('recharts')) {
+              return 'vendor-charts';
+            }
+            if (id.includes('lucide-react')) {
+              return 'vendor-icons';
+            }
+            if (id.includes('motion')) {
+              return 'vendor-animation';
+            }
+            if (id.includes('react') || id.includes('react-dom')) {
+              return 'vendor-core';
+            }
+          }
         }
       }
     }

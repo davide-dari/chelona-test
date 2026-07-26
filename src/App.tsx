@@ -10,26 +10,10 @@ import { Module, ModuleType, Folder, DocumentModule } from './types';
 import { storage, AppState } from './services/storage';
 import { encryption } from './services/encryption';
 import { GenericCard, AutoCard, DocumentCard, SplitCard, SingleExpenseCard, GalleryCard, TravelCard, StudyCard, FitnessCard } from './components/Modules';
-import { LockScreen } from './components/LockScreen';
-import { QrScanner } from './components/QrScanner';
-import { DocumentScanner } from './components/DocumentScanner';
-import { ProfileScreen } from './components/ProfileScreen';
-import { ToolsScreen, TOOLS, TOOLS_UTILITY } from './components/ToolsScreen';
-import { AutoManagementScreen } from './components/AutoManagementScreen';
-import { DocumentManagementScreen } from './components/DocumentManagementScreen';
-import { NoteManagementScreen } from './components/NoteManagementScreen';
-import { SplitScreen } from './components/SplitScreen';
-import { DocumentArchive } from './components/DocumentArchive';
-import { SingleExpenseScreen } from './components/SingleExpenseScreen';
-import { AddressBookScreen } from './components/AddressBookScreen';
-import { RecipesScreen } from './components/RecipesScreen';
-import { TravelScreen } from './components/TravelScreen';
-import { ConfirmDialog } from './components/ConfirmDialog';
-import { StudyScreen } from './components/StudyScreen';
-import { FurnitureScreen } from "./components/FurnitureScreen";
 import { InstallmentsCard } from './components/InstallmentsCard';
-import { InstallmentsScreen } from './components/InstallmentsScreen';
-import { FitnessScreen } from './components/FitnessScreen';
+import { LockScreen } from './components/LockScreen';
+import { TOOLS, TOOLS_UTILITY } from './constants/tools';
+import { ConfirmDialog } from './components/ConfirmDialog';
 import { notificationService } from './services/notificationService';
 import { APP_VERSION } from './constants/version';
 
@@ -39,7 +23,28 @@ import { lzw } from './utils/lzw';
 import { updateService, UpdateInfo } from './services/updateService';
 import { App as CapApp } from '@capacitor/app';
 import { generateUUID } from './utils/uuid';
-import { ShareScreen } from './components/ShareScreen';
+import { SpeechRecognition } from '@capacitor-community/speech-recognition';
+import { Device } from '@capacitor/device';
+
+// Lazy loaded components for code-splitting & download size optimization
+const QrScanner = React.lazy(() => import('./components/QrScanner').then(m => ({ default: m.QrScanner })));
+const DocumentScanner = React.lazy(() => import('./components/DocumentScanner').then(m => ({ default: m.DocumentScanner })));
+const ProfileScreen = React.lazy(() => import('./components/ProfileScreen').then(m => ({ default: m.ProfileScreen })));
+const ToolsScreen = React.lazy(() => import('./components/ToolsScreen').then(m => ({ default: m.ToolsScreen })));
+const AutoManagementScreen = React.lazy(() => import('./components/AutoManagementScreen').then(m => ({ default: m.AutoManagementScreen })));
+const DocumentManagementScreen = React.lazy(() => import('./components/DocumentManagementScreen').then(m => ({ default: m.DocumentManagementScreen })));
+const NoteManagementScreen = React.lazy(() => import('./components/NoteManagementScreen').then(m => ({ default: m.NoteManagementScreen })));
+const SplitScreen = React.lazy(() => import('./components/SplitScreen').then(m => ({ default: m.SplitScreen })));
+const DocumentArchive = React.lazy(() => import('./components/DocumentArchive').then(m => ({ default: m.DocumentArchive })));
+const SingleExpenseScreen = React.lazy(() => import('./components/SingleExpenseScreen').then(m => ({ default: m.SingleExpenseScreen })));
+const AddressBookScreen = React.lazy(() => import('./components/AddressBookScreen').then(m => ({ default: m.AddressBookScreen })));
+const RecipesScreen = React.lazy(() => import('./components/RecipesScreen').then(m => ({ default: m.RecipesScreen })));
+const TravelScreen = React.lazy(() => import('./components/TravelScreen').then(m => ({ default: m.TravelScreen })));
+const StudyScreen = React.lazy(() => import('./components/StudyScreen').then(m => ({ default: m.StudyScreen })));
+const FurnitureScreen = React.lazy(() => import('./components/FurnitureScreen').then(m => ({ default: m.FurnitureScreen })));
+const InstallmentsScreen = React.lazy(() => import('./components/InstallmentsScreen').then(m => ({ default: m.InstallmentsScreen })));
+const FitnessScreen = React.lazy(() => import('./components/FitnessScreen').then(m => ({ default: m.FitnessScreen })));
+const ShareScreen = React.lazy(() => import('./components/ShareScreen').then(m => ({ default: m.ShareScreen })));
 import { SpeechRecognition } from '@capacitor-community/speech-recognition';
 import { Device } from '@capacitor/device';
 // UI Libraries removed as per request (CSS Grid migration)
@@ -1862,33 +1867,32 @@ export default function App() {
 
 
               <div className="flex-1 overflow-y-auto w-full custom-scrollbar">
-
-                  {isProfileOpen ? (
-              <ProfileScreen
-                onClose={() => setIsProfileOpen(false)}
-                username={username}
-                avatar={avatar}
-                currentProfileId={currentProfileId!}
-                onUpdateProfile={handleUpdateProfile}
-                isBioSupported={isBioSupported}
-                isBioEnabled={isBioEnabled}
-                onEnableBiometrics={handleEnableBiometrics}
-                onDisableBiometrics={handleDisableBiometrics}
-                bioError={bioError}
-                onLogout={handleLogout}
-                encryptionKey={encryptionKey!}
-                modules={modules}
-                folders={folders}
-                onEncryptionKeyChanged={setEncryptionKey}
-                showToast={showToast}
-                pinnedCategoryIds={pinnedCategoryIds}
-                pinnedToolIds={pinnedToolIds}
-                onUpdateWidgets={handleUpdateWidgets}
-                // isSandboxMode removed
-
-                theme={theme}
-                onToggleTheme={toggleTheme}
-              />
+                {isProfileOpen ? (
+              <React.Suspense fallback={<div className="flex items-center justify-center p-20"><div className="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div></div>}>
+                <ProfileScreen
+                  onClose={() => setIsProfileOpen(false)}
+                  username={username}
+                  avatar={avatar}
+                  currentProfileId={currentProfileId!}
+                  onUpdateProfile={handleUpdateProfile}
+                  isBioSupported={isBioSupported}
+                  isBioEnabled={isBioEnabled}
+                  onEnableBiometrics={handleEnableBiometrics}
+                  onDisableBiometrics={handleDisableBiometrics}
+                  bioError={bioError}
+                  onLogout={handleLogout}
+                  encryptionKey={encryptionKey!}
+                  modules={modules}
+                  folders={folders}
+                  onEncryptionKeyChanged={setEncryptionKey}
+                  showToast={showToast}
+                  pinnedCategoryIds={pinnedCategoryIds}
+                  pinnedToolIds={pinnedToolIds}
+                  onUpdateWidgets={handleUpdateWidgets}
+                  theme={theme}
+                  onToggleTheme={toggleTheme}
+                />
+              </React.Suspense>
             ) : isToolsOpen ? (
               <ToolsScreen 
                 showToast={showToast} 
@@ -3547,6 +3551,7 @@ export default function App() {
       </AnimatePresence>
 
       {/* Document Archive View */}
+      <React.Suspense fallback={null}>
       <AnimatePresence>
         {editingAutoModule && (
           <AutoManagementScreen 
@@ -4022,6 +4027,7 @@ export default function App() {
           </div>
         )}
       </AnimatePresence>
+      </React.Suspense>
 
       </div>
     </ErrorBoundary>
