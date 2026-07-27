@@ -467,6 +467,48 @@ export function FitnessScreen({ module, onClose, onSave }: FitnessScreenProps) {
   const [dietWizardStep, setDietWizardStep] = useState(1);
   const [expandedDayIndex, setExpandedDayIndex] = useState<number | null>(null);
   const [enlargedGifUrl, setEnlargedGifUrl] = useState<string | null>(null);
+  const [swappingMealInfo, setSwappingMealInfo] = useState<{ dayIndex: number; mealIndex: number; meal: Meal } | null>(null);
+
+  const handleSwapMeal = (alternativeTemplate: MealTemplate) => {
+    if (!swappingMealInfo || !activeMealPlanWeekly) return;
+    const { dayIndex, mealIndex, meal: currentMeal } = swappingMealInfo;
+
+    const targetCalories = currentMeal.calories || alternativeTemplate.baseCalories;
+    const factor = targetCalories / alternativeTemplate.baseCalories;
+
+    const newMeal: Meal = {
+      name: alternativeTemplate.name,
+      description: alternativeTemplate.description,
+      calories: Math.round(alternativeTemplate.baseCalories * factor),
+      protein: Math.round(alternativeTemplate.baseProtein * factor),
+      carbs: Math.round(alternativeTemplate.baseCarbs * factor),
+      fat: Math.round(alternativeTemplate.baseFat * factor),
+      isSimple: alternativeTemplate.isSimple,
+      recipeUrl: alternativeTemplate.recipeUrl
+    };
+
+    const updatedPlanWeekly = [...activeMealPlanWeekly];
+    const targetDay = { ...updatedPlanWeekly[dayIndex] };
+    const updatedMeals = [...targetDay.meals];
+    updatedMeals[mealIndex] = newMeal;
+
+    targetDay.meals = updatedMeals;
+    targetDay.totalCalories = updatedMeals.reduce((acc, m) => acc + m.calories, 0);
+    targetDay.totalProtein = updatedMeals.reduce((acc, m) => acc + m.protein, 0);
+    targetDay.totalCarbs = updatedMeals.reduce((acc, m) => acc + m.carbs, 0);
+    targetDay.totalFat = updatedMeals.reduce((acc, m) => acc + m.fat, 0);
+
+    updatedPlanWeekly[dayIndex] = targetDay;
+
+    const updatedModule: FitnessModule = {
+      ...formData,
+      mealPlanWeekly: updatedPlanWeekly
+    };
+
+    setFormData(updatedModule);
+    onSave(updatedModule);
+    setSwappingMealInfo(null);
+  };
 
 
   const [isSearchingRecipe, setIsSearchingRecipe] = useState<{[key: string]: boolean}>({});
@@ -1115,15 +1157,26 @@ export function FitnessScreen({ module, onClose, onSave }: FitnessScreenProps) {
                         <span className="bg-red-500/10 text-red-500 px-2.5 py-1 rounded-lg">💪 {meal.protein}g</span>
                         <span className="bg-yellow-500/10 text-yellow-500 px-2.5 py-1 rounded-lg">🫒 {meal.fat}g</span>
                       </div>
-                      {!meal.isSimple && (
-                        <button 
-                          onClick={() => loadAndFindRecipe(meal.name, meal.description, key, meal.recipeUrl)}
-                          disabled={isSearching}
-                          className="shrink-0 px-3 py-1.5 bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5"
+                      <div className="flex items-center gap-2 shrink-0">
+                        <button
+                          onClick={() => setSwappingMealInfo({ dayIndex: expandedDayIndex || 0, mealIndex: idx, meal })}
+                          className="px-3 py-1.5 bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5"
+                          title="Sostituisci questo piatto con un'alternativa"
                         >
-                          {isSearching ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <span>Ricetta</span>}
+                          <RefreshCw className="w-3.5 h-3.5" />
+                          <span>Cambia Piatto</span>
                         </button>
-                      )}
+
+                        {!meal.isSimple && (
+                          <button 
+                            onClick={() => loadAndFindRecipe(meal.name, meal.description, key, meal.recipeUrl)}
+                            disabled={isSearching}
+                            className="px-3 py-1.5 bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5"
+                          >
+                            {isSearching ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <span>Ricetta 📖</span>}
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
                   );
@@ -1132,6 +1185,96 @@ export function FitnessScreen({ module, onClose, onSave }: FitnessScreenProps) {
             </div>
           </div>
         )}
+
+        {/* Dish Swap Modal */}
+        <AnimatePresence>
+          {swappingMealInfo && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setSwappingMealInfo(null)}
+              className="fixed inset-0 z-[200] bg-black/70 backdrop-blur-md flex items-center justify-center p-4"
+            >
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0, y: 20 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                exit={{ scale: 0.9, opacity: 0, y: 20 }}
+                onClick={(e) => e.stopPropagation()}
+                className="bg-[var(--card-bg)] border border-[var(--border)] rounded-[2.5rem] p-6 lg:p-8 max-w-xl w-full max-h-[85vh] flex flex-col shadow-2xl overflow-hidden"
+              >
+                {/* Modal Header */}
+                <div className="flex items-center justify-between pb-4 border-b border-[var(--border)] shrink-0">
+                  <div>
+                    <h3 className="text-xl font-black text-[var(--text-main)] flex items-center gap-2">
+                      <span>🍽️</span> Cambia Piatto
+                    </h3>
+                    <p className="text-xs font-semibold text-[var(--text-muted)] mt-1">
+                      Sostituisci <span className="text-amber-500 font-bold">{swappingMealInfo.meal.name}</span> con un'alternativa bilanciata
+                    </p>
+                  </div>
+                  <button 
+                    onClick={() => setSwappingMealInfo(null)}
+                    className="p-2.5 bg-[var(--surface-variant)] hover:bg-[var(--border)] rounded-xl text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                {/* Alternatives List */}
+                <div className="flex-1 overflow-y-auto py-4 space-y-3 custom-scrollbar">
+                  {(() => {
+                    const currentTemplate = MEAL_LIBRARY.find(m => m.name === swappingMealInfo.meal.name);
+                    const targetType = currentTemplate ? currentTemplate.type : (swappingMealInfo.mealIndex === 0 ? 'breakfast' : swappingMealInfo.mealIndex === 3 ? 'snack' : 'lunch');
+                    
+                    const alternatives = getMealsByType(targetType, dietProfile.restrictions)
+                      .filter(m => m.name !== swappingMealInfo.meal.name);
+
+                    if (alternatives.length === 0) {
+                      return (
+                        <div className="py-12 text-center text-[var(--text-muted)]">
+                          <p className="font-bold">Nessun'altra alternativa disponibile per i tuoi filtri dietetici.</p>
+                        </div>
+                      );
+                    }
+
+                    return alternatives.map((alt, i) => (
+                      <div 
+                        key={i}
+                        className="bg-[var(--bg)] border border-[var(--border)] rounded-2xl p-4 flex flex-col gap-3 hover:border-amber-500/50 transition-all group shadow-sm"
+                      >
+                        <div className="flex justify-between items-start">
+                          <div className="flex-1 min-w-0 pr-3">
+                            <h4 className="font-bold text-base text-[var(--text-main)] group-hover:text-amber-500 transition-colors leading-tight">{alt.name}</h4>
+                            <p className="text-xs text-[var(--text-muted)] mt-1 font-medium leading-relaxed">{alt.description}</p>
+                          </div>
+                          <div className="text-right shrink-0 bg-amber-500/10 px-3 py-1.5 rounded-xl">
+                            <span className="font-black text-sm text-amber-500">{alt.baseCalories}</span>
+                            <span className="text-[10px] font-bold text-amber-500/70 ml-1">kcal</span>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-between gap-3 pt-2 border-t border-[var(--border)]">
+                          <div className="flex items-center gap-2 text-xs font-bold">
+                            <span className="text-blue-500">🍞 {alt.baseCarbs}g</span>
+                            <span className="text-red-500">💪 {alt.baseProtein}g</span>
+                            <span className="text-yellow-500">🫒 {alt.baseFat}g</span>
+                          </div>
+                          <button
+                            onClick={() => handleSwapMeal(alt)}
+                            className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-amber-500/20 active:scale-95 shrink-0"
+                          >
+                            Scegli Questo ✨
+                          </button>
+                        </div>
+                      </div>
+                    ));
+                  })()}
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );

@@ -409,39 +409,67 @@ export function RecipesScreen({ onClose, initialSearchQuery, initialRecipe }: Re
             </div>
 
             {selectedCategory === 'fridge' && (
-              <div className="bg-[var(--surface-variant)] p-4 rounded-2xl border border-[var(--border)]">
-                <div className="flex gap-2 mb-3">
+              <div className="bg-[var(--card-bg)] p-6 rounded-[2.5rem] border border-[var(--border)] shadow-xl space-y-6">
+                {/* Frigo Header & Count Banner */}
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-[var(--border)]">
+                  <div>
+                    <h3 className="text-xl font-black text-[var(--text-main)] flex items-center gap-2">
+                      <span className="text-2xl">❄️</span> Il Mio Frigo Virtus
+                    </h3>
+                    <p className="text-xs font-semibold text-[var(--text-muted)] mt-1">
+                      {fridgeIngredients.length === 0 
+                        ? 'Seleziona gli ingredienti che hai in casa per trovare ricette su misura' 
+                        : `Hai ${fridgeIngredients.length} ingredienti salvati nel frigo • ${filteredMeals.length} ricette abbinabili trovate!`}
+                    </p>
+                  </div>
+                  {fridgeIngredients.length > 0 && (
+                    <button 
+                      onClick={() => {
+                        setFridgeIngredients([]);
+                        localStorage.removeItem('chelona_fridge_ingredients');
+                      }} 
+                      className="px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-xl text-xs font-bold transition-all border border-red-500/20 shrink-0"
+                    >
+                      🗑️ Svuota Frigo
+                    </button>
+                  )}
+                </div>
+
+                {/* Input & Search Autocomplete */}
+                <div className="flex gap-2 relative">
                   <div className="relative flex-1">
                     <input 
                       type="text"
-                      placeholder="Aggiungi ingrediente (es: pollo, uova...)"
+                      placeholder="Cerca o aggiungi ingrediente (es: pollo, uova, zucchine...)"
                       value={fridgeInput}
                       onChange={(e) => setFridgeInput(e.target.value)}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter' && fridgeInput.trim()) {
-                          if (!fridgeIngredients.includes(fridgeInput.trim().toLowerCase())) {
-                            setFridgeIngredients([...fridgeIngredients, fridgeInput.trim().toLowerCase()]);
+                          const val = fridgeInput.trim().toLowerCase();
+                          if (!fridgeIngredients.includes(val)) {
+                            setFridgeIngredients(prev => [...prev, val]);
                           }
                           setFridgeInput('');
                         }
                       }}
-                      className="w-full bg-[var(--bg)] border border-[var(--border)] rounded-xl py-2 px-4 text-[var(--text-main)] outline-none focus:border-cyan-500"
+                      className="w-full bg-[var(--bg)] border border-[var(--border)] rounded-2xl py-3.5 px-5 text-[var(--text-main)] outline-none focus:border-cyan-500 font-medium text-sm transition-colors shadow-inner"
                     />
                     {fridgeInput.trim().length > 0 && (
-                      <div className="absolute top-full left-0 right-0 mt-1 bg-[var(--card-bg)] border border-[var(--border)] rounded-xl shadow-xl max-h-48 overflow-y-auto z-50 custom-scrollbar">
+                      <div className="absolute top-full left-0 right-0 mt-2 bg-[var(--card-bg)] border border-[var(--border)] rounded-2xl shadow-2xl max-h-56 overflow-y-auto z-[100] custom-scrollbar">
                         {availableIngredients
                           .filter(ing => ing.includes(fridgeInput.toLowerCase().trim()) && !fridgeIngredients.includes(ing))
-                          .slice(0, 50)
+                          .slice(0, 30)
                           .map(ing => (
                             <button
                               key={ing}
                               onClick={() => {
-                                setFridgeIngredients([...fridgeIngredients, ing]);
+                                setFridgeIngredients(prev => [...prev, ing]);
                                 setFridgeInput('');
                               }}
-                              className="w-full text-left px-4 py-2 hover:bg-cyan-500/10 text-[var(--text-main)] capitalize border-b border-[var(--border)] last:border-b-0"
+                              className="w-full text-left px-5 py-2.5 hover:bg-cyan-500/10 text-[var(--text-main)] capitalize font-semibold text-sm border-b border-[var(--border)] last:border-b-0 flex items-center justify-between"
                             >
-                              {ing}
+                              <span>{ing}</span>
+                              <span className="text-xs text-cyan-500 font-bold">+ Aggiungi</span>
                             </button>
                         ))}
                       </div>
@@ -449,30 +477,99 @@ export function RecipesScreen({ onClose, initialSearchQuery, initialRecipe }: Re
                   </div>
                   <button 
                     onClick={() => {
-                      if (fridgeInput.trim() && !fridgeIngredients.includes(fridgeInput.trim().toLowerCase())) {
-                        setFridgeIngredients([...fridgeIngredients, fridgeInput.trim().toLowerCase()]);
+                      if (fridgeInput.trim()) {
+                        const val = fridgeInput.trim().toLowerCase();
+                        if (!fridgeIngredients.includes(val)) {
+                          setFridgeIngredients(prev => [...prev, val]);
+                        }
                         setFridgeInput('');
                       }
                     }}
-                    className="px-4 py-2 bg-cyan-600 text-white rounded-xl font-bold hover:bg-cyan-700 transition-colors shrink-0 h-[42px]"
+                    className="px-6 py-3.5 bg-cyan-500 hover:bg-cyan-600 text-white rounded-2xl font-bold text-sm transition-all shadow-lg shadow-cyan-500/20 active:scale-95 shrink-0"
                   >
-                    Aggiungi
+                    + Aggiungi
                   </button>
                 </div>
-                <div className="flex flex-wrap gap-2">
-                  {fridgeIngredients.map(ing => (
-                    <div key={ing} className="flex items-center gap-1 bg-cyan-900/30 text-cyan-500 px-3 py-1 rounded-full border border-cyan-800/50 text-sm">
-                      {ing}
-                      <button onClick={() => setFridgeIngredients(fridgeIngredients.filter(i => i !== ing))} className="hover:text-cyan-300 ml-1">
-                        &times;
-                      </button>
+
+                {/* Active Stock Chips */}
+                {fridgeIngredients.length > 0 && (
+                  <div className="bg-[var(--bg)] p-4 rounded-2xl border border-[var(--border)]">
+                    <p className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest mb-3">Ingredienti attualmente nel frigo ({fridgeIngredients.length})</p>
+                    <div className="flex flex-wrap gap-2">
+                      {fridgeIngredients.map(ing => (
+                        <span key={ing} className="inline-flex items-center gap-1.5 bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 px-3.5 py-1.5 rounded-xl text-xs font-extrabold capitalize shadow-sm">
+                          <span>✓ {ing}</span>
+                          <button 
+                            onClick={() => setFridgeIngredients(prev => prev.filter(i => i !== ing))} 
+                            className="w-4 h-4 rounded-full bg-emerald-500/20 hover:bg-red-500/30 hover:text-red-500 text-emerald-600 flex items-center justify-center text-xs transition-colors ml-1"
+                            title="Rimuovi"
+                          >
+                            ×
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Quick Add Ingredient Categories */}
+                <div className="space-y-4 pt-2">
+                  <p className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest">Tocca gli ingredienti per aggiungerli o rimuoverli rapidamente</p>
+                  
+                  {[
+                    {
+                      name: '🥛 Latticini & Uova',
+                      items: ['uova', 'ricotta', 'mozzarella', 'yogurt greco', 'feta', 'latte', 'parmigiano', 'fiocchi di latte']
+                    },
+                    {
+                      name: '🥩 Carne & Pesce',
+                      items: ['pollo', 'tacchino', 'salmone', 'tonno', 'merluzzo', 'orata', 'hamburger']
+                    },
+                    {
+                      name: '🥦 Verdure & Ortica',
+                      items: ['pomodorini', 'zucchine', 'spinaci', 'broccoli', 'carote', 'cetriolo', 'avocado', 'funghi', 'melanzane']
+                    },
+                    {
+                      name: '🍚 Cereali & Legumi',
+                      items: ['riso basmati', 'pasta integrale', 'avena', 'quinoa', 'ceci', 'lenticchie', 'edamame', 'pane integrale', 'couscous', 'tofu']
+                    },
+                    {
+                      name: '🍎 Frutta & Secca',
+                      items: ['banana', 'mirtilli', 'mela', 'noci', 'mandorle', 'frutta secca']
+                    },
+                    {
+                      name: '🧂 Condimenti & Altro',
+                      items: ['olio evo', 'miele', 'burro di arachidi', 'sciroppo d\'acero', 'limone', 'cioccolato fondente', 'guacamole', 'hummus']
+                    }
+                  ].map((catGroup, idx) => (
+                    <div key={idx} className="space-y-2">
+                      <p className="text-xs font-bold text-[var(--text-main)]">{catGroup.name}</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {catGroup.items.map(item => {
+                          const isSelected = fridgeIngredients.includes(item.toLowerCase());
+                          return (
+                            <button
+                              key={item}
+                              onClick={() => {
+                                if (isSelected) {
+                                  setFridgeIngredients(prev => prev.filter(i => i !== item.toLowerCase()));
+                                } else {
+                                  setFridgeIngredients(prev => [...prev, item.toLowerCase()]);
+                                }
+                              }}
+                              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all active:scale-95 border ${
+                                isSelected
+                                  ? 'bg-emerald-500 text-white border-emerald-500 shadow-md shadow-emerald-500/20'
+                                  : 'bg-[var(--bg)] text-[var(--text-muted)] border-[var(--border)] hover:border-cyan-500 hover:text-[var(--text-main)]'
+                              }`}
+                            >
+                              {isSelected ? `✓ ${item}` : `+ ${item}`}
+                            </button>
+                          );
+                        })}
+                      </div>
                     </div>
                   ))}
-                  {fridgeIngredients.length > 0 && (
-                    <button onClick={() => setFridgeIngredients([])} className="text-xs text-[var(--text-muted)] hover:text-red-400 ml-2">
-                      Svuota
-                    </button>
-                  )}
                 </div>
               </div>
             )}
