@@ -8,7 +8,7 @@ import { findRecipeForMeal } from '../services/recipeSearchService';
 export interface ExerciseTemplate {
   name: string;
   muscleGroup: 'chest' | 'back' | 'shoulders' | 'biceps' | 'triceps' | 'quads' | 'hamstrings' | 'glutes' | 'calves' | 'abs' | 'full_body';
-  equipment: ('gym' | 'home' | 'bodyweight')[];
+  equipment: ('gym' | 'home' | 'bands' | 'bodyweight')[];
   compound: boolean;
   gifUrl?: string;
 }
@@ -37,7 +37,7 @@ export interface FitnessProfile {
   level: 'beginner' | 'intermediate' | 'advanced';
   goal: 'mass' | 'cut' | 'strength' | 'endurance' | 'tone';
   daysPerWeek: number;
-  equipment: 'gym' | 'home' | 'bodyweight';
+  equipment: 'gym' | 'home' | 'bands' | 'bodyweight';
 }
 
 export interface MealTemplate {
@@ -204,7 +204,22 @@ const EXERCISE_LIBRARY: ExerciseTemplate[] = [
   { name: 'Clean and Press', muscleGroup: 'full_body', equipment: ['gym', 'home'], gifUrl: 'https://raw.githubusercontent.com/omercotkd/exercises-gifs/main/assets/0028.gif', compound: true },
   { name: 'Thruster', muscleGroup: 'full_body', equipment: ['gym', 'home'], gifUrl: 'https://raw.githubusercontent.com/omercotkd/exercises-gifs/main/assets/3305.gif', compound: true },
   { name: 'Turkish Get-up', muscleGroup: 'full_body', equipment: ['gym', 'home'], gifUrl: 'https://raw.githubusercontent.com/omercotkd/exercises-gifs/main/assets/3374.gif', compound: true },
-  { name: 'Bear Crawl', muscleGroup: 'full_body', equipment: ['gym', 'home', 'bodyweight'], gifUrl: 'https://raw.githubusercontent.com/omercotkd/exercises-gifs/main/assets/3360.gif', compound: true }
+  { name: 'Bear Crawl', muscleGroup: 'full_body', equipment: ['gym', 'home', 'bodyweight'], gifUrl: 'https://raw.githubusercontent.com/omercotkd/exercises-gifs/main/assets/3360.gif', compound: true },
+  // Esercizi con Elastici & Mini-Band
+  { name: 'Chest Press con Elastico', muscleGroup: 'chest', equipment: ['bands', 'home'], gifUrl: 'https://raw.githubusercontent.com/omercotkd/exercises-gifs/main/assets/0662.gif', compound: true },
+  { name: 'Croci con Elastico', muscleGroup: 'chest', equipment: ['bands', 'home'], gifUrl: 'https://raw.githubusercontent.com/omercotkd/exercises-gifs/main/assets/0308.gif', compound: false },
+  { name: 'Rematore con Elastico', muscleGroup: 'back', equipment: ['bands', 'home'], gifUrl: 'https://raw.githubusercontent.com/omercotkd/exercises-gifs/main/assets/0027.gif', compound: true },
+  { name: 'Lat Pulldown con Elastico', muscleGroup: 'back', equipment: ['bands', 'home'], gifUrl: 'https://raw.githubusercontent.com/omercotkd/exercises-gifs/main/assets/2330.gif', compound: true },
+  { name: 'Face Pull con Elastico', muscleGroup: 'shoulders', equipment: ['bands', 'home'], gifUrl: 'https://raw.githubusercontent.com/omercotkd/exercises-gifs/main/assets/0182.gif', compound: false },
+  { name: 'Alzate Laterali con Elastico', muscleGroup: 'shoulders', equipment: ['bands', 'home'], gifUrl: 'https://raw.githubusercontent.com/omercotkd/exercises-gifs/main/assets/0334.gif', compound: false },
+  { name: 'Shoulder Press con Elastico', muscleGroup: 'shoulders', equipment: ['bands', 'home'], gifUrl: 'https://raw.githubusercontent.com/omercotkd/exercises-gifs/main/assets/0361.gif', compound: true },
+  { name: 'Curl Bicipiti con Elastico', muscleGroup: 'biceps', equipment: ['bands', 'home'], gifUrl: 'https://raw.githubusercontent.com/omercotkd/exercises-gifs/main/assets/0031.gif', compound: false },
+  { name: 'Pushdown Tricipiti con Elastico', muscleGroup: 'triceps', equipment: ['bands', 'home'], gifUrl: 'https://raw.githubusercontent.com/omercotkd/exercises-gifs/main/assets/0241.gif', compound: false },
+  { name: 'Squat con Elastico', muscleGroup: 'quads', equipment: ['bands', 'home'], gifUrl: 'https://raw.githubusercontent.com/omercotkd/exercises-gifs/main/assets/0102.gif', compound: true },
+  { name: 'Hip Thrust con Mini-Band', muscleGroup: 'glutes', equipment: ['bands', 'home', 'bodyweight'], gifUrl: 'https://raw.githubusercontent.com/omercotkd/exercises-gifs/main/assets/1060.gif', compound: true },
+  { name: 'Abduzioni Glutei con Mini-Band', muscleGroup: 'glutes', equipment: ['bands', 'home', 'bodyweight'], gifUrl: 'https://raw.githubusercontent.com/omercotkd/exercises-gifs/main/assets/0993.gif', compound: false },
+  { name: 'Glute Kickback con Elastico', muscleGroup: 'glutes', equipment: ['bands', 'home'], gifUrl: 'https://raw.githubusercontent.com/omercotkd/exercises-gifs/main/assets/0393.gif', compound: false },
+  { name: 'Stacco Rumeno con Elastico', muscleGroup: 'hamstrings', equipment: ['bands', 'home'], gifUrl: 'https://raw.githubusercontent.com/omercotkd/exercises-gifs/main/assets/0027.gif', compound: true }
 ];
 
 // --- DATA: MEAL LIBRARY ---
@@ -255,19 +270,23 @@ const MEAL_LIBRARY: MealTemplate[] = [
 
 // --- LOGIC: WORKOUT GENERATOR ---
 
-function getExercises(equipment: ('gym' | 'home' | 'bodyweight'), muscleGroups: string[], count: number, preferCompound: boolean): ExerciseTemplate[] {
-  let filtered = EXERCISE_LIBRARY.filter(e => e.equipment.includes(equipment) && muscleGroups.includes(e.muscleGroup));
+function getExercises(equipment: ('gym' | 'home' | 'bands' | 'bodyweight'), muscleGroups: string[], count: number, preferCompound: boolean): ExerciseTemplate[] {
+  let filtered = EXERCISE_LIBRARY.filter(e => {
+    if (!muscleGroups.includes(e.muscleGroup)) return false;
+    if (equipment === 'bands') {
+      return e.equipment.includes('bands') || e.equipment.includes('bodyweight');
+    }
+    return e.equipment.includes(equipment);
+  });
   
   if (preferCompound) {
     const compound = filtered.filter(e => e.compound);
     const isolation = filtered.filter(e => !e.compound);
     
     const result: ExerciseTemplate[] = [];
-    // Shuffle arrays
     compound.sort(() => 0.5 - Math.random());
     isolation.sort(() => 0.5 - Math.random());
     
-    // Take mostly compound
     const compoundCount = Math.min(Math.ceil(count * 0.7), compound.length);
     result.push(...compound.slice(0, compoundCount));
     
@@ -275,8 +294,7 @@ function getExercises(equipment: ('gym' | 'home' | 'bodyweight'), muscleGroups: 
     if (isolationCount > 0 && isolation.length > 0) {
       result.push(...isolation.slice(0, isolationCount));
     } else if (result.length < count && compound.length > compoundCount) {
-      // Fill with more compound if isolation is missing
-       result.push(...compound.slice(compoundCount, count));
+      result.push(...compound.slice(compoundCount, count));
     }
     
     return result;
@@ -346,23 +364,25 @@ function generateWorkoutPlan(profile: FitnessProfile): WorkoutDay[] {
   return plan;
 }
 
-// --- LOGIC: DIET GENERATOR ---
+// --- LOGIC: SCIENTIFIC DIET GENERATOR (Mifflin-St Jeor 1990) ---
 
 function calculateBMR(profile: DietProfile): number {
   if (profile.gender === 'male') {
-    return 88.362 + (13.397 * profile.weight) + (4.799 * profile.height) - (5.677 * profile.age);
+    // Mifflin-St Jeor Uomini: (10 × kg) + (6.25 × cm) - (5 × anni) + 5
+    return (10 * profile.weight) + (6.25 * profile.height) - (5 * profile.age) + 5;
   } else {
-    return 447.593 + (9.247 * profile.weight) + (3.098 * profile.height) - (4.330 * profile.age);
+    // Mifflin-St Jeor Donne: (10 × kg) + (6.25 × cm) - (5 × anni) - 161
+    return (10 * profile.weight) + (6.25 * profile.height) - (5 * profile.age) - 161;
   }
 }
 
 function calculateTDEE(bmr: number, activityLevel: string): number {
   switch (activityLevel) {
-    case 'sedentary': return bmr * 1.2;
-    case 'light': return bmr * 1.375;
-    case 'active': return bmr * 1.55;
-    case 'very_active': return bmr * 1.725;
-    default: return bmr * 1.2;
+    case 'sedentary': return bmr * 1.15;   // Sedentario / Lavoro d'ufficio
+    case 'light': return bmr * 1.25;       // Leggero (1-2 allenamenti/sett)
+    case 'active': return bmr * 1.40;      // Moderato (3-4 allenamenti/sett)
+    case 'very_active': return bmr * 1.60; // Intenso (5+ allenamenti/sett)
+    default: return bmr * 1.15;
   }
 }
 
@@ -796,9 +816,10 @@ export function FitnessScreen({ module, onClose, onSave }: FitnessScreenProps) {
                   <h3 className="text-2xl font-black text-[var(--text-main)] text-center">Attrezzatura disponibile</h3>
                   <div className="space-y-3">
                     {[
-                      { id: 'gym', label: 'Palestra Completa', desc: 'Bilancieri, manubri, macchinari, cavi' },
-                      { id: 'home', label: 'Casa con attrezzi base', desc: 'Manubri, panca, sbarra per trazioni' },
-                      { id: 'bodyweight', label: 'Solo Corpo Libero', desc: 'Nessun attrezzo, allenamento calistenico' }
+                      { id: 'gym', label: '🏋️ Palestra Completa', desc: 'Bilancieri, manubri, macchinari e cavi' },
+                      { id: 'home', label: '🏠 Casa con attrezzi base', desc: 'Manubri, panca e sbarra' },
+                      { id: 'bands', label: '🎗️ Corpo Libero + Elastici', desc: 'Corpo libero integrato con bande elastiche e mini-band' },
+                      { id: 'bodyweight', label: '🤸 Solo Corpo Libero', desc: 'Nessun attrezzo, allenamento a corpo libero puro' }
                     ].map(opt => (
                       <button key={opt.id} onClick={() => setFitProfile({...fitProfile, equipment: opt.id as any})} className={`w-full p-6 text-left rounded-3xl border-2 transition-all ${fitProfile.equipment === opt.id ? 'border-emerald-500 bg-emerald-500/10' : 'border-[var(--border)] bg-[var(--card-bg)]'}`}>
                         <p className="font-bold text-lg text-[var(--text-main)]">{opt.label}</p>
