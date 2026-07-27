@@ -161,7 +161,7 @@ export function RecipesScreen({ onClose, initialSearchQuery, initialRecipe }: Re
     return () => window.removeEventListener('recipes-updated', loadRecipes);
   }, [loadRecipes]);
 
-  const FIXED_CATEGORIES = ['Antipasti', 'Primi', 'Secondi', 'Dolci', 'Colazione'];
+  const FIXED_CATEGORIES = ['Fitness & Dieta', 'Antipasti', 'Primi', 'Secondi', 'Dolci', 'Colazione'];
 
   const categories = useMemo(() => {
     return FIXED_CATEGORIES;
