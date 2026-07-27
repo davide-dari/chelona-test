@@ -237,6 +237,34 @@ export const notificationService = {
           });
         }
       }
+
+      // 5. FITNESS & DIETA (Pasti)
+      if (m.type === 'fitness' && m.mealPlanWeekly && Array.isArray(m.mealPlanWeekly)) {
+        m.mealPlanWeekly.forEach((day: any, dayIdx: number) => {
+          if (day.meals && Array.isArray(day.meals)) {
+            day.meals.forEach((meal: any, mealIdx: number) => {
+              if (meal.notificationsEnabled && meal.time) {
+                const parts = meal.time.split(':');
+                const hours = parseInt(parts[0], 10) || 12;
+                const minutes = parseInt(parts[1], 10) || 0;
+
+                const mealDate = new Date();
+                mealDate.setDate(mealDate.getDate() + dayIdx);
+                mealDate.setHours(hours, minutes, 0, 0);
+
+                if (mealDate.getTime() > now.getTime()) {
+                  scheduledNotifs.push({
+                    id: stringToNumericId(`fit_${m.id}_${dayIdx}_${mealIdx}`),
+                    title: `⏰ Ora del pasto! (${meal.time})`,
+                    body: `È il momento di preparare o gustare: ${meal.name} (${meal.calories} kcal)`,
+                    at: mealDate
+                  });
+                }
+              }
+            });
+          }
+        });
+      }
     });
 
     if ((window as any).Capacitor?.isNativePlatform?.()) {

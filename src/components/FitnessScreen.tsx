@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { ArrowLeft, ArrowRight, Check, ChevronDown, ChevronUp, RefreshCw, Play, Award, TrendingUp, Target, Activity, Heart, Dumbbell, Utensils, ExternalLink, X } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, ChevronDown, ChevronUp, RefreshCw, Play, Award, TrendingUp, Target, Activity, Heart, Dumbbell, Utensils, ExternalLink, X, Bell, Clock } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { findRecipeForMeal } from '../services/recipeSearchService';
+import { notificationService } from '../services/notificationService';
 
 // --- INTERFACES ---
 
@@ -61,6 +62,8 @@ export interface Meal {
   protein: number;
   carbs: number;
   fat: number;
+  time?: string;
+  notificationsEnabled?: boolean;
   isSimple?: boolean;
   recipeUrl?: string;
 }
@@ -530,6 +533,94 @@ export function FitnessScreen({ module, onClose, onSave }: FitnessScreenProps) {
     setFormData(updatedModule);
     onSave(updatedModule);
     setSwappingMealInfo(null);
+  };
+
+  const handleUpdateMealTime = (dayIdx: number, mealIdx: number, newTime: string) => {
+    if (!activeMealPlanWeekly) return;
+    const updatedPlanWeekly = [...activeMealPlanWeekly];
+    const targetDay = { ...updatedPlanWeekly[dayIdx] };
+    const updatedMeals = [...targetDay.meals];
+    
+    updatedMeals[mealIdx] = {
+      ...updatedMeals[mealIdx],
+      time: newTime
+    };
+
+    targetDay.meals = updatedMeals;
+    updatedPlanWeekly[dayIdx] = targetDay;
+
+    const updatedModule: FitnessModule = {
+      ...formData,
+      mealPlanWeekly: updatedPlanWeekly
+    };
+
+    setFormData(updatedModule);
+    onSave(updatedModule);
+    notificationService.syncAllModuleNotifications([updatedModule]);
+  };
+
+  const handleToggleMealNotification = async (dayIdx: number, mealIdx: number) => {
+    if (!activeMealPlanWeekly) return;
+    const currentMeal = activeMealPlanWeekly[dayIdx].meals[mealIdx];
+    const nextState = !currentMeal.notificationsEnabled;
+
+    if (nextState) {
+      const granted = await notificationService.requestPermission();
+      if (!granted) {
+        alert("Attiva le notifiche nelle impostazioni del tuo dispositivo per ricevere i promemoria dei pasti.");
+        return;
+      }
+    }
+
+    const updatedPlanWeekly = [...activeMealPlanWeekly];
+    const targetDay = { ...updatedPlanWeekly[dayIdx] };
+    const updatedMeals = [...targetDay.meals];
+    
+    updatedMeals[mealIdx] = {
+      ...updatedMeals[mealIdx],
+      notificationsEnabled: nextState
+    };
+
+    targetDay.meals = updatedMeals;
+    updatedPlanWeekly[dayIdx] = targetDay;
+
+    const updatedModule: FitnessModule = {
+      ...formData,
+      mealPlanWeekly: updatedPlanWeekly
+    };
+
+    setFormData(updatedModule);
+    onSave(updatedModule);
+    await notificationService.syncAllModuleNotifications([updatedModule]);
+  };
+
+  const handleToggleAllMealNotifications = async (enable: boolean) => {
+    if (!activeMealPlanWeekly) return;
+    if (enable) {
+      const granted = await notificationService.requestPermission();
+      if (!granted) {
+        alert("Attiva le notifiche nelle impostazioni del tuo dispositivo per ricevere i promemoria dei pasti.");
+        return;
+      }
+    }
+
+    const updatedPlanWeekly = activeMealPlanWeekly.map(day => ({
+      ...day,
+      meals: day.meals.map((m, idx) => ({
+        ...m,
+        time: m.time || (idx === 0 ? '08:00' : idx === 1 ? '10:30' : idx === 2 ? '13:00' : idx === 3 ? '16:30' : '20:00'),
+        notificationsEnabled: enable
+      }))
+    }));
+
+    const updatedModule: FitnessModule = {
+      ...formData,
+      mealPlanWeekly: updatedPlanWeekly
+    };
+
+    setFormData(updatedModule);
+    onSave(updatedModule);
+    await notificationService.syncAllModuleNotifications([updatedModule]);
   };
 
 
@@ -1265,19 +1356,66 @@ export function FitnessScreen({ module, onClose, onSave }: FitnessScreenProps) {
 
               {/* Meals for selected day */}
               <div className="space-y-4">
-                <h4 className="font-bold text-[var(--text-muted)] uppercase tracking-widest text-xs ml-2">Pasti Consigliati del Giorno</h4>
+                <div className="flex items-center justify-between ml-2 mr-1">
+                  <h4 className="font-bold text-[var(--text-muted)] uppercase tracking-widest text-xs">Pasti Consigliati del Giorno</h4>
+                  <div className="flex items-center gap-2">
+                    <button 
+                      onClick={() => handleToggleAllMealNotifications(true)}
+                      className="px-2.5 py-1 bg-amber-500/10 hover:bg-amber-500/20 text-amber-500 rounded-xl text-[10px] font-extrabold transition-colors flex items-center gap-1 border border-amber-500/20"
+                      title="Attiva le notifiche per tutti i pasti di questo piano"
+                    >
+                      <Bell className="w-3 h-3" />
+                      <span>Attiva Tutti</span>
+                    </button>
+                    <button 
+                      onClick={() => handleToggleAllMealNotifications(false)}
+                      className="px-2 py-1 bg-[var(--surface-variant)] hover:bg-[var(--border)] text-[var(--text-muted)] rounded-xl text-[10px] font-bold transition-colors"
+                      title="Disattiva tutte le notifiche dei pasti"
+                    >
+                      Off
+                    </button>
+                  </div>
+                </div>
+
                 {activeMealPlanWeekly[expandedDayIndex || 0].meals.map((meal, idx) => {
                   const key = `${expandedDayIndex || 0}_${idx}`;
-
                   const isSearching = isSearchingRecipe[key];
+                  const mealTime = meal.time || (idx === 0 ? '08:00' : idx === 1 ? '10:30' : idx === 2 ? '13:00' : idx === 3 ? '16:30' : '20:00');
                   
                   return (
                   <div key={idx} className="bg-[var(--card-bg)] border border-[var(--border)] rounded-[2rem] overflow-hidden shadow-sm">
                     {/* Card Header */}
                     <div className="p-5 flex flex-col gap-3">
                       <div className="flex justify-between items-start">
-                        <div className="flex-1 min-w-0">
-                          <p className="text-[10px] font-black uppercase tracking-widest text-amber-500 mb-1">Pasto {idx + 1}</p>
+                        <div className="flex-1 min-w-0 pr-2">
+                          <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                            <span className="text-[10px] font-black uppercase tracking-widest text-amber-500">Pasto {idx + 1}</span>
+                            
+                            {/* Time Badge Input */}
+                            <div className="flex items-center gap-1 bg-[var(--bg)] border border-[var(--border)] rounded-xl px-2 py-0.5 text-xs font-bold text-[var(--text-main)] shadow-inner">
+                              <Clock className="w-3 h-3 text-amber-500 shrink-0" />
+                              <input 
+                                type="time" 
+                                value={mealTime} 
+                                onChange={(e) => handleUpdateMealTime(expandedDayIndex || 0, idx, e.target.value)}
+                                className="bg-transparent text-[var(--text-main)] font-extrabold text-xs outline-none cursor-pointer w-14"
+                              />
+                            </div>
+
+                            {/* Notification Toggle Button */}
+                            <button
+                              onClick={() => handleToggleMealNotification(expandedDayIndex || 0, idx)}
+                              className={`px-2 py-0.5 rounded-xl border transition-all flex items-center gap-1 text-[10px] font-extrabold ${
+                                meal.notificationsEnabled 
+                                  ? 'bg-amber-500 text-white border-amber-500 shadow-md shadow-amber-500/20' 
+                                  : 'bg-[var(--bg)] text-[var(--text-muted)] border-[var(--border)] hover:border-amber-500 hover:text-amber-500'
+                              }`}
+                              title={meal.notificationsEnabled ? `Notifica attiva per le ${mealTime}` : `Attiva notifica per le ${mealTime}`}
+                            >
+                              <Bell className="w-3 h-3 shrink-0" />
+                              <span>{meal.notificationsEnabled ? 'Notifica ON' : 'Notifica'}</span>
+                            </button>
+                          </div>
                           <h5 className="font-bold text-base text-[var(--text-main)] leading-tight">{meal.name}</h5>
                         </div>
                         <div className="text-right shrink-0 ml-3 bg-amber-500/10 rounded-2xl px-3 py-2">
