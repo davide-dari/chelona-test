@@ -35,7 +35,8 @@ export interface FitnessProfile {
   height: number;
   weight: number;
   level: 'beginner' | 'intermediate' | 'advanced';
-  goal: 'mass' | 'cut' | 'strength' | 'endurance' | 'tone';
+  goal: string;
+  goals?: string[];
   daysPerWeek: number;
   equipment: 'gym' | 'home' | 'bands' | 'bodyweight';
 }
@@ -78,7 +79,8 @@ export interface DietProfile {
   height: number;
   weight: number;
   activityLevel: 'sedentary' | 'light' | 'active' | 'very_active';
-  goal: 'cut' | 'maintain' | 'bulk';
+  goal: string;
+  goals?: string[];
   restrictions: string[];
   mealsPerDay: number;
 }
@@ -781,20 +783,78 @@ export function FitnessScreen({ module, onClose, onSave }: FitnessScreenProps) {
 
               {fitWizardStep === 4 && (
                 <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-6">
-                  <h3 className="text-2xl font-black text-[var(--text-main)] text-center">Il tuo obiettivo</h3>
+                  <div className="text-center">
+                    <h3 className="text-2xl font-black text-[var(--text-main)]">I tuoi obiettivi</h3>
+                    <p className="text-xs font-semibold text-[var(--text-muted)] mt-1">Puoi selezionare più di un obiettivo per accorpare i tuoi traguardi!</p>
+                  </div>
+
                   <div className="space-y-3">
                     {[
-                      { id: 'mass', label: 'Massa Muscolare', icon: '💪' },
-                      { id: 'cut', label: 'Dimagrimento', icon: '🔥' },
-                      { id: 'strength', label: 'Forza', icon: '🏋️‍♂️' },
-                      { id: 'tone', label: 'Tonificazione', icon: '✨' }
-                    ].map(opt => (
-                      <button key={opt.id} onClick={() => { setFitProfile({...fitProfile, goal: opt.id as any}); setFitWizardStep(5); }} className={`w-full p-5 flex items-center gap-4 text-left rounded-3xl border-2 transition-all ${fitProfile.goal === opt.id ? 'border-emerald-500 bg-emerald-500/10' : 'border-[var(--border)] bg-[var(--card-bg)]'}`}>
-                        <span className="text-3xl">{opt.icon}</span>
-                        <p className="font-bold text-lg text-[var(--text-main)]">{opt.label}</p>
-                      </button>
-                    ))}
+                      { id: 'mass', label: 'Massa Muscolare', desc: 'Aumento della massa magra e del volume muscolare', icon: '💪' },
+                      { id: 'cut', label: 'Dimagrimento & Definizione', desc: 'Bruciare grasso superfluo e scolpire i muscoli', icon: '🔥' },
+                      { id: 'strength', label: 'Forza Massimale', desc: 'Incremento della forza pura e potenza', icon: '🏋️‍♂️' },
+                      { id: 'tone', label: 'Tonificazione Muscolare', desc: 'Migliorare tono, elasticità e definizione', icon: '✨' }
+                    ].map(opt => {
+                      const currentGoals = fitProfile.goals || [fitProfile.goal];
+                      const isChecked = currentGoals.includes(opt.id);
+
+                      return (
+                        <button 
+                          key={opt.id} 
+                          onClick={() => {
+                            let updated: string[];
+                            if (isChecked) {
+                              updated = currentGoals.filter(g => g !== opt.id);
+                              if (updated.length === 0) updated = [opt.id];
+                            } else {
+                              updated = [...currentGoals, opt.id];
+                            }
+                            
+                            const labelsMap: any = { mass: 'Massa', cut: 'Dimagrimento', strength: 'Forza', tone: 'Tonificazione' };
+                            const summaryLabel = updated.length >= 2 && updated.includes('mass') && updated.includes('cut') 
+                              ? 'Ricomposizione Corporea (Massa + Dimagrimento)' 
+                              : updated.map(g => labelsMap[g] || g).join(' + ');
+
+                            setFitProfile({ ...fitProfile, goals: updated, goal: summaryLabel });
+                          }} 
+                          className={`w-full p-5 flex items-center justify-between gap-4 text-left rounded-3xl border-2 transition-all ${
+                            (fitProfile.goals || [fitProfile.goal]).includes(opt.id) 
+                              ? 'border-emerald-500 bg-emerald-500/10 shadow-lg shadow-emerald-500/10' 
+                              : 'border-[var(--border)] bg-[var(--card-bg)] hover:border-emerald-500/50'
+                          }`}
+                        >
+                          <div className="flex items-center gap-4">
+                            <span className="text-3xl">{opt.icon}</span>
+                            <div>
+                              <p className="font-bold text-base text-[var(--text-main)]">{opt.label}</p>
+                              <p className="text-xs font-semibold text-[var(--text-muted)] mt-0.5">{opt.desc}</p>
+                            </div>
+                          </div>
+                          <div className={`w-6 h-6 rounded-xl border-2 flex items-center justify-center transition-colors ${
+                            (fitProfile.goals || [fitProfile.goal]).includes(opt.id)
+                              ? 'bg-emerald-500 border-emerald-500 text-white font-black text-xs'
+                              : 'border-[var(--border)] text-transparent'
+                          }`}>
+                            ✓
+                          </div>
+                        </button>
+                      );
+                    })}
                   </div>
+
+                  {fitProfile.goal && (
+                    <div className="bg-emerald-500/10 border border-emerald-500/20 p-4 rounded-2xl text-center">
+                      <p className="text-[10px] font-black uppercase tracking-widest text-emerald-500 mb-1">Obiettivo Combinato</p>
+                      <p className="font-extrabold text-sm text-[var(--text-main)]">{fitProfile.goal}</p>
+                    </div>
+                  )}
+
+                  <button 
+                    onClick={() => setFitWizardStep(5)} 
+                    className="w-full py-4 bg-emerald-500 text-white font-black text-base rounded-2xl shadow-lg shadow-emerald-500/20 hover:bg-emerald-600 transition-colors"
+                  >
+                    Conferma Obiettivi (Avanti) ➔
+                  </button>
                 </motion.div>
               )}
 
@@ -906,19 +966,75 @@ export function FitnessScreen({ module, onClose, onSave }: FitnessScreenProps) {
 
               {dietWizardStep === 4 && (
                 <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-6">
-                  <h3 className="text-2xl font-black text-[var(--text-main)] text-center">Obiettivo di peso</h3>
+                  <div className="text-center">
+                    <h3 className="text-2xl font-black text-[var(--text-main)]">Obiettivo Alimentare</h3>
+                    <p className="text-xs font-semibold text-[var(--text-muted)] mt-1">Puoi selezionare uno o più traguardi per il tuo piano nutrizionale!</p>
+                  </div>
+
                   <div className="space-y-3">
                     {[
-                      { id: 'cut', label: 'Perdita di Peso', desc: 'Deficit calorico per bruciare grassi' },
-                      { id: 'maintain', label: 'Mantenimento', desc: 'Mantenere il peso attuale' },
-                      { id: 'bulk', label: 'Aumento Massa', desc: 'Surplus calorico per costruire muscoli' }
-                    ].map(opt => (
-                      <button key={opt.id} onClick={() => { setDietProfile({...dietProfile, goal: opt.id as any}); setDietWizardStep(5); }} className={`w-full p-6 text-left rounded-3xl border-2 transition-all ${dietProfile.goal === opt.id ? 'border-amber-500 bg-amber-500/10' : 'border-[var(--border)] bg-[var(--card-bg)]'}`}>
-                        <p className="font-bold text-lg text-[var(--text-main)]">{opt.label}</p>
-                        <p className="text-sm font-semibold text-[var(--text-muted)] mt-1">{opt.desc}</p>
-                      </button>
-                    ))}
+                      { id: 'recomp', label: '⚡ Ricomposizione Corporea', desc: 'Perdere grasso e tonificare/costruire muscolo contemporaneamente' },
+                      { id: 'cut', label: '🔥 Perdita di Peso / Definizione', desc: 'Deficit calorico per ridurre la massa grassa' },
+                      { id: 'maintain', label: '⚖️ Mantenimento & Tono', desc: 'Mantenere il peso attuale con apporto proteico bilanciato' },
+                      { id: 'bulk', label: '💪 Aumento Massa (Clean Bulk)', desc: 'Lieve surplus calorico per favorire l\'ipertrofia muscolare' }
+                    ].map(opt => {
+                      const currentGoals = dietProfile.goals || [dietProfile.goal];
+                      const isChecked = currentGoals.includes(opt.id);
+
+                      return (
+                        <button 
+                          key={opt.id} 
+                          onClick={() => {
+                            let updated: string[];
+                            if (isChecked) {
+                              updated = currentGoals.filter(g => g !== opt.id);
+                              if (updated.length === 0) updated = [opt.id];
+                            } else {
+                              updated = [...currentGoals, opt.id];
+                            }
+
+                            const labelsMap: any = { recomp: 'Ricomposizione', cut: 'Dimagrimento', maintain: 'Mantenimento', bulk: 'Massa' };
+                            const summaryLabel = updated.includes('recomp') || (updated.includes('cut') && updated.includes('bulk'))
+                              ? 'Ricomposizione Corporea (Massa + Dimagrimento)'
+                              : updated.map(g => labelsMap[g] || g).join(' + ');
+
+                            setDietProfile({ ...dietProfile, goals: updated, goal: summaryLabel });
+                          }} 
+                          className={`w-full p-5 text-left rounded-3xl border-2 transition-all flex items-center justify-between ${
+                            (dietProfile.goals || [dietProfile.goal]).includes(opt.id) 
+                              ? 'border-amber-500 bg-amber-500/10 shadow-lg shadow-amber-500/10' 
+                              : 'border-[var(--border)] bg-[var(--card-bg)] hover:border-amber-500/50'
+                          }`}
+                        >
+                          <div>
+                            <p className="font-bold text-base text-[var(--text-main)]">{opt.label}</p>
+                            <p className="text-xs font-semibold text-[var(--text-muted)] mt-1">{opt.desc}</p>
+                          </div>
+                          <div className={`w-6 h-6 rounded-xl border-2 flex items-center justify-center transition-colors shrink-0 ml-3 ${
+                            (dietProfile.goals || [dietProfile.goal]).includes(opt.id)
+                              ? 'bg-amber-500 border-amber-500 text-white font-black text-xs'
+                              : 'border-[var(--border)] text-transparent'
+                          }`}>
+                            ✓
+                          </div>
+                        </button>
+                      );
+                    })}
                   </div>
+
+                  {dietProfile.goal && (
+                    <div className="bg-amber-500/10 border border-amber-500/20 p-4 rounded-2xl text-center">
+                      <p className="text-[10px] font-black uppercase tracking-widest text-amber-500 mb-1">Obiettivo Nutrizionale Combinato</p>
+                      <p className="font-extrabold text-sm text-[var(--text-main)]">{dietProfile.goal}</p>
+                    </div>
+                  )}
+
+                  <button 
+                    onClick={() => setDietWizardStep(5)} 
+                    className="w-full py-4 bg-amber-500 text-white font-black text-base rounded-2xl shadow-lg shadow-amber-500/20 hover:bg-amber-600 transition-colors"
+                  >
+                    Conferma Obiettivi (Avanti) ➔
+                  </button>
                 </motion.div>
               )}
 
