@@ -529,14 +529,16 @@ export default function App() {
         
         if (encryptionKey) {
             try {
-                const privateModules = await storage.loadPrivateState(encryptionKey, currentProfileId);
-                loadedModules = loadedModules.map(pubMod => {
-                    if (pubMod.type === 'auto' || pubMod.type === 'document') {
+                const fullState = await storage.loadState(encryptionKey, currentProfileId);
+                if (fullState && fullState.modules && fullState.modules.length > 0) {
+                    loadedModules = fullState.modules;
+                } else {
+                    const privateModules = await storage.loadPrivateState(encryptionKey, currentProfileId);
+                    loadedModules = loadedModules.map(pubMod => {
                         const priv = privateModules.find(p => p.id === pubMod.id);
                         return priv ? { ...pubMod, ...priv } : pubMod;
-                    }
-                    return pubMod;
-                });
+                    });
+                }
             } catch (e) {
                 console.error("Failed to load private modules", e);
             }
@@ -2835,6 +2837,30 @@ export default function App() {
                     </div>
                   </div>
 
+                  {!encryptionKey && (
+                    <div className="mt-4 max-w-2xl mx-auto">
+                      <motion.button
+                        whileHover={{ scale: 1.01 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() => unlockAndProceed(() => showToast('Dati sensibili sbloccati!', 'success'))}
+                        className="w-full p-4 rounded-3xl bg-gradient-to-r from-amber-500/10 via-amber-500/20 to-amber-500/10 border border-amber-500/30 flex items-center justify-between gap-4 text-amber-500 shadow-lg shadow-amber-500/5 group cursor-pointer active:scale-95 transition-all"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-2xl bg-amber-500 text-white flex items-center justify-center font-bold shrink-0 shadow-md shadow-amber-500/30 group-hover:scale-110 transition-transform">
+                            <Lock className="w-5 h-5" />
+                          </div>
+                          <div className="text-left">
+                            <p className="font-black text-sm text-[var(--text-main)]">Dati Sensibili Riservati</p>
+                            <p className="text-xs text-[var(--text-muted)] font-medium">Tocca per sbloccare documenti, auto e note con impronta o password</p>
+                          </div>
+                        </div>
+                        <div className="px-4 py-2 bg-amber-500 text-white rounded-xl text-xs font-black uppercase tracking-wider shadow-md active:scale-95 transition-all flex items-center gap-1.5 shrink-0">
+                          <Fingerprint className="w-4 h-4" />
+                          <span>Sblocca</span>
+                        </div>
+                      </motion.button>
+                    </div>
+                  )}
                 </div>
 
                 {isListening ? (
