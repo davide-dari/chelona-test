@@ -299,6 +299,7 @@ export default function App() {
     setTimeout(() => setToast(null), 3000);
   };
   const [encryptionKey, setEncryptionKey] = useState<CryptoKey | null>(null);
+  const [isSensitiveUnlocked, setIsSensitiveUnlocked] = useState(false);
   const [currentProfileId, setCurrentProfileId] = useState<string | null>(() => {
     const profiles = storage.loadProfiles();
     return profiles.length > 0 ? profiles[0].id : null;
@@ -834,7 +835,7 @@ export default function App() {
 
 
   const unlockAndProceed = async (callback: () => void) => {
-    if (encryptionKey) {
+    if (isSensitiveUnlocked && encryptionKey) {
       callback();
       return;
     }
@@ -855,14 +856,20 @@ export default function App() {
         if (masterKeyStr) {
           const key = await encryption.deriveKey(masterKeyStr, profile.salt);
           setEncryptionKey(key);
+          setIsSensitiveUnlocked(true);
 
-          // Load private state
+          // Load private state & full state into memory
           try {
-            const privateModules = await storage.loadPrivateState(key, profile.id);
-            setModules(prev => prev.map(pubMod => {
-              const priv = privateModules.find(p => p.id === pubMod.id);
-              return priv ? { ...pubMod, ...priv } : pubMod;
-            }));
+            const fullState = await storage.loadState(key, profile.id);
+            if (fullState && fullState.modules && fullState.modules.length > 0) {
+              setModules(fullState.modules);
+            } else {
+              const privateModules = await storage.loadPrivateState(key, profile.id);
+              setModules(prev => prev.map(pubMod => {
+                const priv = privateModules.find(p => p.id === pubMod.id);
+                return priv ? { ...pubMod, ...priv } : pubMod;
+              }));
+            }
           } catch (e) {}
 
           callback();
@@ -873,14 +880,14 @@ export default function App() {
       }
     }
 
-    // Fallback to vault unlock screen if biometrics not enabled or cancelled
+    // Fallback to vault unlock screen modal if biometrics not enabled or cancelled
     setPendingAction(() => callback);
     setShowVaultLock(true);
   };
 
   const openEditModalWithSecurity = (module: Module) => {
     const sensitive = isModuleSensitive(module);
-    if (sensitive && !encryptionKey) {
+    if (sensitive && !isSensitiveUnlocked) {
       unlockAndProceed(() => {
         openEditModal(module);
       });
@@ -901,7 +908,7 @@ export default function App() {
     }
 
     const sensitive = isModuleSensitive(type);
-    if (sensitive && !encryptionKey) {
+    if (sensitive && !isSensitiveUnlocked) {
       unlockAndProceed(doAction);
       return;
     }
@@ -1833,6 +1840,7 @@ export default function App() {
             targetProfileId={currentProfileId || undefined}
             onAuthenticated={(key, _profileId) => {
               setEncryptionKey(key);
+              setIsSensitiveUnlocked(true);
               setShowVaultLock(false);
               if (pendingAction) {
                 pendingAction();

@@ -160,9 +160,9 @@ export const LockScreen = ({ isVisible, onAuthenticated, onStartScan, onOpenTool
       bioTimeoutRef.current = null;
     }
 
-    if (view === 'login' && selectedProfile?.isBiometricEnabled) {
+    if (mode === 'vault-unlock' && view === 'login' && selectedProfile?.isBiometricEnabled) {
       if (autoBioTriggered.current !== selectedProfile.id) {
-        console.log('[LockScreen] Auto-triggering biometrics for:', selectedProfile.username);
+        console.log('[LockScreen] Auto-triggering biometrics for vault unlock:', selectedProfile.username);
         autoBioTriggered.current = selectedProfile.id;
         // Minimal delay to ensure the UI is rendered before the native prompt appears
         bioTimeoutRef.current = setTimeout(() => {
