@@ -198,7 +198,22 @@ export default function App() {
     const timer = setTimeout(() => {
       setIsSplashScreenActive(false);
     }, 400);
+    const loadInitialProfile = async () => {
+      const profiles = storage.loadProfiles();
+      if (profiles.length > 0) {
+        const activeProfile = profiles.find(p => p.id === currentProfileId) || profiles[0];
+        if (!currentProfileId) {
+          setCurrentProfileId(activeProfile.id);
+        }
+        if (activeProfile.hasPassword === false && !encryptionKey) {
+          const pubKey = await storage.getPublicKey();
+          setEncryptionKey(pubKey);
+        }
+      }
+    };
+
     storage.initStorage().then(() => {
+      loadInitialProfile();
       try {
         const loadedAddresses = storage.loadAddressBook();
         if ((window as any).ChelonaNative && (window as any).ChelonaNative.saveAddresses) {
@@ -208,7 +223,13 @@ export default function App() {
         console.error('Failed to sync addresses for Android Auto at startup', err);
       }
     }).catch(console.error);
-    return () => clearTimeout(timer);
+
+    window.addEventListener('chelona_profiles_updated', loadInitialProfile);
+
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('chelona_profiles_updated', loadInitialProfile);
+    };
   }, []);
 
   // Ricezione intenzioni di condivisione di luoghi da mappe esterne

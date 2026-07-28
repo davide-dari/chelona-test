@@ -282,6 +282,7 @@ export interface ProfileConfig {
   username: string;
   passwordHash: string;
   salt: string;
+  hasPassword?: boolean; // false = password removed, free access at startup
   isBiometricEnabled: boolean;
   biometricServerKey?: string;
   credentialId?: string; // For WebAuthn

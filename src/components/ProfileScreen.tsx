@@ -269,6 +269,49 @@ export function ProfileScreen({
     }
   };
 
+  const handleRemovePassword = async () => {
+    if (!window.confirm("Sei sicuro di voler rimuovere la password dal tuo profilo? L'applicazione ed la homepage si apriranno direttamente all'avvio senza richiedere alcuna password.")) {
+      return;
+    }
+
+    try {
+      setIsChangingPwd(true);
+      setPwdError('');
+      setPwdSuccess('');
+
+      const profiles = storage.loadProfiles();
+      const profile = profiles.find(p => p.id === currentProfileId);
+      if (!profile) throw new Error('Profilo non trovato');
+
+      const publicPass = 'chelona_public_vault_key_2026';
+      const newSalt = 'public_salt_123';
+      const newHash = await encryption.hashPassword(publicPass, newSalt);
+      const newKey = await storage.getPublicKey();
+
+      const updatedProfile = {
+        ...profile,
+        passwordHash: newHash,
+        salt: newSalt,
+        hasPassword: false,
+        isBiometricEnabled: false
+      };
+
+      storage.saveProfiles(profiles.map(p => p.id === currentProfileId ? updatedProfile : p));
+      await storage.saveState({ modules, folders }, newKey, currentProfileId);
+      onEncryptionKeyChanged(newKey);
+
+      setPwdSuccess('Password rimossa con successo! Ora l\'app si aprirà direttamente senza password.');
+      showToast('Password rimossa dal profilo! Accesso ora libero all\'avvio.', 'success');
+    } catch (e: any) {
+      setPwdError(e.message || 'Errore durante la rimozione della password');
+    } finally {
+      setIsChangingPwd(false);
+    }
+  };
+
+  const currentProfileObj = storage.loadProfiles().find(p => p.id === currentProfileId);
+  const hasCustomPassword = currentProfileObj ? currentProfileObj.hasPassword !== false : true;
+
   const profileAvatar = avatar || `https://ui-avatars.com/api/?name=${username}&background=FFFBEB&color=B45309&size=200`;
 
   return (
@@ -438,6 +481,20 @@ export function ProfileScreen({
                     {isChangingPwd ? 'Aggiornamento...' : 'Aggiorna Password Sensibili'}
                   </button>
                 </form>
+
+                {hasCustomPassword && (
+                  <div className="pt-3 border-t border-[var(--border)]">
+                    <button
+                      type="button"
+                      onClick={handleRemovePassword}
+                      disabled={isChangingPwd}
+                      className="w-full py-3.5 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-xl font-bold transition-all border border-red-500/20 flex items-center justify-center gap-2 text-xs shadow-sm active:scale-95"
+                    >
+                      <X className="w-4 h-4" />
+                      <span>Rimuovi Password dal Profilo (Avvio Libero)</span>
+                    </button>
+                  </div>
+                )}
               </div>
 
               <div className="bg-[var(--card-bg)] rounded-[var(--radius-lg)] p-5 border border-[var(--border)] shadow-sm flex items-center justify-between gap-4">
