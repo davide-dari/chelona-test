@@ -288,6 +288,7 @@ export interface ProfileConfig {
   encryptedMasterKey?: string; // Master key encrypted for biometric recovery
   bioSalt?: string;
   avatar?: string; // Base64 encoded or URL for custom avatar
+  requirePasswordForPublic?: boolean; // false (default) = direct homepage access, protection only for sensitive items
   pinnedCategoryIds?: string[]; // IDs of categories pinned to home
   pinnedToolIds?: string[]; // IDs of tools pinned to home
 }

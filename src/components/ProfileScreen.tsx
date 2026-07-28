@@ -349,14 +349,44 @@ export function ProfileScreen({
 
             {/* Sicurezza e Backup */}
             <div className="space-y-6">
+              {/* Modalità Accesso Diretto e Riservatezza Dati */}
+              <div className="bg-[var(--card-bg)] rounded-[var(--radius-lg)] p-5 lg:p-6 border border-[var(--border)] shadow-sm space-y-4">
+                <div className="flex items-center gap-3 border-b border-[var(--border)] pb-4 mb-2">
+                  <div className="w-10 h-10 bg-amber-500/10 rounded-2xl flex items-center justify-center text-amber-500 shrink-0">
+                    <ShieldCheck className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold text-[var(--text-main)] leading-tight">Protezione Dati & Database</h3>
+                    <p className="text-xs text-[var(--text-muted)]">Accesso libero alla homepage e blocco riservato</p>
+                  </div>
+                </div>
+
+                <div className="p-4 rounded-2xl bg-[var(--bg)] border border-[var(--border)] space-y-2.5">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                      <span className="text-xs font-black uppercase tracking-wider text-[var(--text-main)]">
+                        Homepage ad Avvio Libero
+                      </span>
+                    </div>
+                    <span className="px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 text-[10px] font-black tracking-wider">
+                      ATTIVO
+                    </span>
+                  </div>
+                  <p className="text-xs text-[var(--text-muted)] leading-relaxed">
+                    Password e blocco globale del database disattivati per la homepage. L'impronta o il PIN vengono richiesti <strong>esclusivamente all'apertura delle categorie o dei moduli sensibili</strong> (Documenti, Spese, Rate, Note, Auto, ecc.).
+                  </p>
+                </div>
+              </div>
+
               <div className="bg-[var(--card-bg)] rounded-[var(--radius-lg)] p-5 lg:p-6 border border-[var(--border)] shadow-sm space-y-4">
                 <div className="flex items-center gap-3 border-b border-[var(--border)] pb-4 mb-2">
                   <div className="w-10 h-10 bg-[var(--accent-hover)]/10 rounded-2xl flex items-center justify-center text-[var(--accent)] shrink-0">
                     <Lock className="w-5 h-5" />
                   </div>
                   <div>
-                    <h3 className="text-base font-bold text-[var(--text-main)] leading-tight">Cambia Password</h3>
-                    <p className="text-xs text-[var(--text-muted)]">Aggiorna la chiave crittografica</p>
+                    <h3 className="text-base font-bold text-[var(--text-main)] leading-tight">Password Dati Sensibili</h3>
+                    <p className="text-xs text-[var(--text-muted)]">Imposta o aggiorna il PIN/password per i moduli riservati</p>
                   </div>
                 </div>
 
@@ -385,7 +415,7 @@ export function ProfileScreen({
                   <div className="flex gap-3">
                     <input
                       type="password"
-                      placeholder="Nuova"
+                      placeholder="Nuova Password"
                       required
                       value={newPassword}
                       onChange={e => setNewPassword(e.target.value)}
@@ -393,7 +423,7 @@ export function ProfileScreen({
                     />
                     <input
                       type="password"
-                      placeholder="Conferma"
+                      placeholder="Conferma Nuova"
                       required
                       value={confirmPassword}
                       onChange={e => setConfirmPassword(e.target.value)}
@@ -405,7 +435,7 @@ export function ProfileScreen({
                     disabled={isChangingPwd}
                     className="w-full py-3 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white rounded-xl font-bold transition-all disabled:opacity-50 shadow-md shadow-amber-600/20 text-sm"
                   >
-                    {isChangingPwd ? 'Aggiornamento...' : 'Aggiorna Password'}
+                    {isChangingPwd ? 'Aggiornamento...' : 'Aggiorna Password Sensibili'}
                   </button>
                 </form>
               </div>
