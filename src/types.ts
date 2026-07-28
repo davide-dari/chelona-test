@@ -4,6 +4,7 @@ export type FuelType = 'benzina' | 'diesel' | 'gpl' | 'metano' | 'ibrida' | 'ele
 export interface Folder {
   id: string;
   name: string;
+  isSensitive?: boolean;
 }
 
 export interface BaseModule {
@@ -15,6 +16,7 @@ export interface BaseModule {
   w: number;
   h: number;
   folderId?: string;
+  isSensitive?: boolean;
   createdAt?: string;
   updatedAt?: string;
 }

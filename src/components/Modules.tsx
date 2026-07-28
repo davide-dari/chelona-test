@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { CreditCard, ShieldCheck, Wallet, Fingerprint, Plus, Trash2, Calendar, DollarSign, Pencil, StickyNote, Copy, Check, GripVertical, Car, Wrench, AlertCircle, FileText, QrCode, FileDown, X, Clock, Eye, Lock, ChevronRight, Bell, BellOff, Gauge, Users, Paperclip, Receipt, Image as ImageIcon, MapPin, ChevronLeft, Bus, Activity, BookOpen } from 'lucide-react';
 import { Module, GenericModule, AutoModule, DocumentModule, SplitModule, SingleExpenseModule, WalletModule, GalleryModule, TravelModule, TransportModule } from '../types';
+import { isModuleSensitive } from '../utils/security';
 import { EXPENSE_CATEGORIES } from '../constants/expenses';
 import { motion, AnimatePresence } from 'motion/react';
 import { CAR_BRANDS } from '../utils/carBrands';
@@ -12,11 +13,13 @@ interface ModuleWrapperProps {
   onDelete?: (id: string) => void;
   onEdit?: (module: Module) => void;
   onShare?: (module: Module) => void;
+  onToggleSensitivity?: (module: Module) => void;
   children: React.ReactNode;
 }
 
-const ModuleWrapper = ({ module, onDelete, onEdit, onShare, children }: ModuleWrapperProps) => {
+const ModuleWrapper = ({ module, onDelete, onEdit, onShare, onToggleSensitivity, children }: ModuleWrapperProps) => {
   const [showMenu, setShowMenu] = useState(false);
+  const sensitive = isModuleSensitive(module);
 
   const handleContextMenu = (e: React.MouseEvent | React.TouchEvent) => {
     e.preventDefault();
@@ -28,7 +31,15 @@ const ModuleWrapper = ({ module, onDelete, onEdit, onShare, children }: ModuleWr
       className="module-card relative group flex flex-col bg-[var(--card-bg)] backdrop-blur-3xl rounded-[2.5rem] border border-[var(--border)] shadow-[0_8px_30px_rgba(0,0,0,0.04)] hover:shadow-[0_20px_50px_rgba(0,0,0,0.12)] transition-all p-5 sm:p-6 overflow-hidden"
       onContextMenu={handleContextMenu}
     >
-      <div className="flex items-center justify-end mb-3 shrink-0">
+      <div className="flex items-center justify-between mb-3 shrink-0">
+        <div className="flex items-center gap-1">
+          {sensitive && (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-500 text-[10px] font-black uppercase tracking-wider" title="Modulo protetto da Impronta / Biometria">
+              <Lock className="w-3 h-3" />
+              <span>Sensibile</span>
+            </span>
+          )}
+        </div>
         <div className="flex items-center gap-1.5 opacity-0 md:group-hover:opacity-100 transition-all shrink-0">
           {onShare && (
             <button
@@ -37,6 +48,15 @@ const ModuleWrapper = ({ module, onDelete, onEdit, onShare, children }: ModuleWr
               title="Condividi via QR"
             >
               <QrCode className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
+            </button>
+          )}
+          {onToggleSensitivity && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onToggleSensitivity(module); }}
+              className="p-2 sm:p-1.5 hover:bg-[var(--bg)] text-[var(--text-muted)] hover:text-amber-500 rounded-lg transition-all"
+              title={sensitive ? "Rimuovi protezione impronta" : "Proteggi con impronta"}
+            >
+              <Lock className={`w-4 h-4 sm:w-3.5 sm:h-3.5 ${sensitive ? 'text-amber-500 fill-amber-500/20' : ''}`} />
             </button>
           )}
           {onEdit && (

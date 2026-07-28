@@ -7,6 +7,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Sun, Moon, Wrench, Plus, LayoutDashboard, Settings, User, LogOut, Search, Mic, Bell, CreditCard, Fingerprint, ShieldCheck, Lock, Menu, X, StickyNote, FileText, Grid2X2, Car, QrCode, Folder as FolderIcon, Check, Edit2, Trash2, BookOpen, ArrowLeft, ArrowRight, Camera, FileDown, Hourglass, Users, Download, Receipt, MapPin, Image as ImageIcon, Lightbulb, Globe, ChevronLeft, Bus, Home, Armchair, Activity } from 'lucide-react';
 
 import { Module, ModuleType, Folder, DocumentModule } from './types';
+import { isModuleSensitive } from './utils/security';
 import { storage, AppState } from './services/storage';
 import { encryption } from './services/encryption';
 import { GenericCard, AutoCard, DocumentCard, SplitCard, SingleExpenseCard, GalleryCard, TravelCard, StudyCard, FitnessCard } from './components/Modules';
@@ -277,7 +278,10 @@ export default function App() {
     setTimeout(() => setToast(null), 3000);
   };
   const [encryptionKey, setEncryptionKey] = useState<CryptoKey | null>(null);
-  const [currentProfileId, setCurrentProfileId] = useState<string | null>(null);
+  const [currentProfileId, setCurrentProfileId] = useState<string | null>(() => {
+    const profiles = storage.loadProfiles();
+    return profiles.length > 0 ? profiles[0].id : null;
+  });
   const [showVaultLock, setShowVaultLock] = useState(false);
   const [pendingAction, setPendingAction] = useState<(() => void) | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -806,12 +810,89 @@ export default function App() {
   };
 
 
-  const openEditModal = (module: Module) => {
-    if ((module.type === 'auto' || module.type === 'document') && !encryptionKey) {
-      setPendingAction(() => () => openEditModal(module));
+  const unlockAndProceed = async (callback: () => void) => {
+    if (encryptionKey) {
+      callback();
+      return;
+    }
+
+    const targetProfile = currentProfileId || (storage.loadProfiles()[0]?.id ?? null);
+    if (!targetProfile) {
+      setPendingAction(() => callback);
       setShowVaultLock(true);
       return;
     }
+
+    const profiles = storage.loadProfiles();
+    const profile = profiles.find(p => p.id === targetProfile);
+
+    if (profile && profile.isBiometricEnabled) {
+      try {
+        const masterKeyStr = await biometricService.getMasterKey(profile.id, profile.biometricServerKey);
+        if (masterKeyStr) {
+          const key = await encryption.deriveKey(masterKeyStr, profile.salt);
+          setEncryptionKey(key);
+
+          // Load private state
+          try {
+            const privateModules = await storage.loadPrivateState(key, profile.id);
+            setModules(prev => prev.map(pubMod => {
+              const priv = privateModules.find(p => p.id === pubMod.id);
+              return priv ? { ...pubMod, ...priv } : pubMod;
+            }));
+          } catch (e) {}
+
+          callback();
+          return;
+        }
+      } catch (err) {
+        console.warn('[BiometricAuth] Biometric authentication failed or cancelled:', err);
+      }
+    }
+
+    // Fallback to vault unlock screen if biometrics not enabled or cancelled
+    setPendingAction(() => callback);
+    setShowVaultLock(true);
+  };
+
+  const openEditModalWithSecurity = (module: Module) => {
+    const sensitive = isModuleSensitive(module);
+    if (sensitive && !encryptionKey) {
+      unlockAndProceed(() => {
+        openEditModal(module);
+      });
+      return;
+    }
+    openEditModal(module);
+  };
+
+  const handleSelectCategoryWithSecurity = (type: ModuleType | 'home' | null) => {
+    if (!type || type === 'home') {
+      setSelectedType(type);
+      return;
+    }
+
+    const sensitive = isModuleSensitive(type);
+    if (sensitive && !encryptionKey) {
+      unlockAndProceed(() => {
+        setSelectedType(type);
+      });
+      return;
+    }
+
+    setSelectedType(type);
+  };
+
+  const handleToggleModuleSensitivity = async (module: Module) => {
+    const nextState = !isModuleSensitive(module);
+    const updated = { ...module, isSensitive: nextState };
+
+    setModules(prev => prev.map(m => m.id === module.id ? updated : m));
+    await saveAppState(modules.map(m => m.id === module.id ? updated : m), folders);
+    showToast(nextState ? 'Modulo protetto da impronta 🔒' : 'Protezione impronta rimossa 🔓');
+  };
+
+  const openEditModal = (module: Module) => {
     if (module.type === 'auto') {
       setEditingAutoModule(module as import('./types').AutoModule);
       return;
@@ -2815,7 +2896,7 @@ export default function App() {
                                 return (
                                   <button
                                     key={`pinned-cat-${catId}`}
-                                    onClick={() => setSelectedType(catId as ModuleType)}
+                                    onClick={() => handleSelectCategoryWithSecurity(catId as ModuleType)}
                                     className="bg-[var(--card-bg)] p-5 rounded-3xl border border-[var(--border)] shadow-sm hover:border-[var(--accent)] transition-all flex items-center gap-4 group"
                                   >
                                     <div className={`w-12 h-12 bg-[var(--bg)] rounded-2xl flex items-center justify-center ${t.color} group-hover:scale-110 transition-transform shadow-inner`}>
@@ -2924,7 +3005,7 @@ export default function App() {
                                       setEditingFitnessModule(newFitness);
                                     }
                                   } else {
-                                    setSelectedType(key as ModuleType);
+                                    handleSelectCategoryWithSecurity(key as ModuleType);
                                   }
                                 }}
                                 className="bg-[var(--card-bg)] p-6 lg:p-8 rounded-[2.5rem] border border-[var(--border)] shadow-sm hover:border-[var(--accent)] hover:shadow-lg hover:-translate-y-1 transition-all group flex flex-col items-center text-center gap-4"
@@ -3039,25 +3120,25 @@ export default function App() {
                           {filteredModules.map((module) => (
                             <div key={module.id} className="w-full">
                               {module.type === 'auto' ? (
-                                <AutoCard module={module} onDelete={requestDelete} onEdit={openEditModal} />
+                                <AutoCard module={module} onDelete={requestDelete} onEdit={openEditModalWithSecurity} onToggleSensitivity={handleToggleModuleSensitivity} />
                               ) : module.type === 'document' ? (
-                                <DocumentCard module={module} onDelete={requestDelete} onEdit={openEditModal} onShare={setSharingModule} />
+                                <DocumentCard module={module} onDelete={requestDelete} onEdit={openEditModalWithSecurity} onShare={setSharingModule} onToggleSensitivity={handleToggleModuleSensitivity} />
                               ) : module.type === 'split' ? (
-                                <SplitCard module={module as import('./types').SplitModule} onDelete={requestDelete} onEdit={openEditModal} onShare={setSharingModule as any} />
+                                <SplitCard module={module as import('./types').SplitModule} onDelete={requestDelete} onEdit={openEditModalWithSecurity} onShare={setSharingModule as any} onToggleSensitivity={handleToggleModuleSensitivity} />
                               ) : module.type === 'single-expense' ? (
-                                <SingleExpenseCard module={module as import('./types').SingleExpenseModule} onDelete={requestDelete} onEdit={openEditModal} />
+                                <SingleExpenseCard module={module as import('./types').SingleExpenseModule} onDelete={requestDelete} onEdit={openEditModalWithSecurity} onToggleSensitivity={handleToggleModuleSensitivity} />
                               ) : module.type === 'installments' ? (
-                                <InstallmentsCard module={module as import('./types').InstallmentsModule} onDelete={requestDelete} onEdit={openEditModal} />
+                                <InstallmentsCard module={module as import('./types').InstallmentsModule} onDelete={requestDelete} onEdit={openEditModalWithSecurity} onToggleSensitivity={handleToggleModuleSensitivity} />
                               ) : module.type === 'gallery' ? (
-                                <GalleryCard module={module as import('./types').GalleryModule} onEdit={openEditModal} />
+                                <GalleryCard module={module as import('./types').GalleryModule} onEdit={openEditModalWithSecurity} onToggleSensitivity={handleToggleModuleSensitivity} />
                               ) : module.type === 'study' ? (
-                                <StudyCard module={module} onDelete={requestDelete} onEdit={openEditModal} />
+                                <StudyCard module={module} onDelete={requestDelete} onEdit={openEditModalWithSecurity} onToggleSensitivity={handleToggleModuleSensitivity} />
                               ) : module.type === 'fitness' ? (
-                                <FitnessCard module={module as import('./types').FitnessModule} onDelete={requestDelete} onEdit={openEditModal} />
+                                <FitnessCard module={module as import('./types').FitnessModule} onDelete={requestDelete} onEdit={openEditModalWithSecurity} onToggleSensitivity={handleToggleModuleSensitivity} />
                               ) : module.type === 'travel' ? (
-                                <TravelCard module={module as import('./types').TravelModule} onDelete={requestDelete} onEdit={openEditModal} />
+                                <TravelCard module={module as import('./types').TravelModule} onDelete={requestDelete} onEdit={openEditModalWithSecurity} onToggleSensitivity={handleToggleModuleSensitivity} />
                               ) : (
-                                <GenericCard module={module as import('./types').GenericModule} onDelete={requestDelete} onEdit={openEditModal} />
+                                <GenericCard module={module as import('./types').GenericModule} onDelete={requestDelete} onEdit={openEditModalWithSecurity} onToggleSensitivity={handleToggleModuleSensitivity} />
                               )}
                             </div>
                           ))}
