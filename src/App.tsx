@@ -889,21 +889,24 @@ export default function App() {
     openEditModal(module);
   };
 
-  const handleSelectCategoryWithSecurity = (type: ModuleType | 'home' | null) => {
+  const handleSelectCategoryWithSecurity = (type: ModuleType | 'home' | null, actionCallback?: () => void) => {
+    const doAction = () => {
+      if (actionCallback) actionCallback();
+      else if (type) setSelectedType(type);
+    };
+
     if (!type || type === 'home') {
-      setSelectedType(type);
+      doAction();
       return;
     }
 
     const sensitive = isModuleSensitive(type);
     if (sensitive && !encryptionKey) {
-      unlockAndProceed(() => {
-        setSelectedType(type);
-      });
+      unlockAndProceed(doAction);
       return;
     }
 
-    setSelectedType(type);
+    doAction();
   };
 
   const handleToggleModuleSensitivity = async (module: Module) => {
@@ -2983,77 +2986,79 @@ export default function App() {
                               <button
                                 key={key}
                                 onClick={() => {
-                                  if (key === 'recipes') {
-                                    setIsRecipesOpen(true);
-                                  } else if (key === 'travel') {
-                                    const existingTravel = modules.find(m => m.type === 'travel') as import('./types').TravelModule;
-                                    if (existingTravel) {
-                                      setEditingTravelModule(existingTravel);
+                                  handleSelectCategoryWithSecurity(key as ModuleType, () => {
+                                    if (key === 'recipes') {
+                                      setIsRecipesOpen(true);
+                                    } else if (key === 'travel') {
+                                      const existingTravel = modules.find(m => m.type === 'travel') as import('./types').TravelModule;
+                                      if (existingTravel) {
+                                        setEditingTravelModule(existingTravel);
+                                      } else {
+                                        const newTravel: import('./types').TravelModule = {
+                                          id: generateUUID(),
+                                          type: 'travel',
+                                          title: 'Viaggi',
+                                          destinations: [],
+                                          x: 0, y: 0, w: 3, h: 3,
+                                          folderId: selectedFolderId || undefined
+                                        };
+                                        setModules(prev => {
+                                          const updated = [newTravel, ...prev];
+                                          saveAppState(updated, folders).catch(console.error);
+                                          return updated;
+                                        });
+                                        setEditingTravelModule(newTravel);
+                                      }
+                                    } else if (key === 'study') {
+                                      const existingStudy = modules.find(m => m.type === 'study');
+                                      if (existingStudy) {
+                                        setEditingStudyModule(existingStudy);
+                                      } else {
+                                        const newStudy: any = {
+                                          id: generateUUID(),
+                                          type: 'study',
+                                          title: 'Studio',
+                                          status: 'wizard',
+                                          topics: [],
+                                          x: (modules.length * 2) % 12,
+                                          y: Infinity,
+                                          w: 3,
+                                          h: 2,
+                                          folderId: selectedFolderId || undefined
+                                        };
+                                        setModules(prev => {
+                                          const updated = [newStudy, ...prev];
+                                          saveAppState(updated, folders).catch(console.error);
+                                          return updated;
+                                        });
+                                        setEditingStudyModule(newStudy);
+                                      }
+                                    } else if (key === 'fitness') {
+                                      const existingFitness = modules.find(m => m.type === 'fitness');
+                                      if (existingFitness) {
+                                        setEditingFitnessModule(existingFitness as import('./types').FitnessModule);
+                                      } else {
+                                        const newFitness: import('./types').FitnessModule = {
+                                          id: generateUUID(),
+                                          type: 'fitness',
+                                          title: 'Fitness & Dieta',
+                                          x: (modules.length * 2) % 12,
+                                          y: Infinity,
+                                          w: 3,
+                                          h: 2,
+                                          folderId: selectedFolderId || undefined
+                                        };
+                                        setModules(prev => {
+                                          const updated = [newFitness, ...prev];
+                                          saveAppState(updated, folders).catch(console.error);
+                                          return updated;
+                                        });
+                                        setEditingFitnessModule(newFitness);
+                                      }
                                     } else {
-                                      const newTravel: import('./types').TravelModule = {
-                                        id: generateUUID(),
-                                        type: 'travel',
-                                        title: 'Viaggi',
-                                        destinations: [],
-                                        x: 0, y: 0, w: 3, h: 3,
-                                        folderId: selectedFolderId || undefined
-                                      };
-                                      setModules(prev => {
-                                        const updated = [newTravel, ...prev];
-                                        saveAppState(updated, folders).catch(console.error);
-                                        return updated;
-                                      });
-                                      setEditingTravelModule(newTravel);
+                                      setSelectedType(key as ModuleType);
                                     }
-                                  } else if (key === 'study') {
-                                    const existingStudy = modules.find(m => m.type === 'study');
-                                    if (existingStudy) {
-                                      setEditingStudyModule(existingStudy);
-                                    } else {
-                                      const newStudy: any = {
-                                        id: generateUUID(),
-                                        type: 'study',
-                                        title: 'Studio',
-                                        status: 'wizard',
-                                        topics: [],
-                                        x: (modules.length * 2) % 12,
-                                        y: Infinity,
-                                        w: 3,
-                                        h: 2,
-                                        folderId: selectedFolderId || undefined
-                                      };
-                                      setModules(prev => {
-                                        const updated = [newStudy, ...prev];
-                                        saveAppState(updated, folders).catch(console.error);
-                                        return updated;
-                                      });
-                                      setEditingStudyModule(newStudy);
-                                    }
-                                  } else if (key === 'fitness') {
-                                    const existingFitness = modules.find(m => m.type === 'fitness');
-                                    if (existingFitness) {
-                                      setEditingFitnessModule(existingFitness as import('./types').FitnessModule);
-                                    } else {
-                                      const newFitness: import('./types').FitnessModule = {
-                                        id: generateUUID(),
-                                        type: 'fitness',
-                                        title: 'Fitness & Dieta',
-                                        x: (modules.length * 2) % 12,
-                                        y: Infinity,
-                                        w: 3,
-                                        h: 2,
-                                        folderId: selectedFolderId || undefined
-                                      };
-                                      setModules(prev => {
-                                        const updated = [newFitness, ...prev];
-                                        saveAppState(updated, folders).catch(console.error);
-                                        return updated;
-                                      });
-                                      setEditingFitnessModule(newFitness);
-                                    }
-                                  } else {
-                                    handleSelectCategoryWithSecurity(key as ModuleType);
-                                  }
+                                  });
                                 }}
                                 className="bg-[var(--card-bg)] p-6 lg:p-8 rounded-[2.5rem] border border-[var(--border)] shadow-sm hover:border-[var(--accent)] hover:shadow-lg hover:-translate-y-1 transition-all group flex flex-col items-center text-center gap-4"
                               >
