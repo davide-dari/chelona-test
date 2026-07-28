@@ -835,7 +835,7 @@ export default function App() {
 
 
   const unlockAndProceed = async (callback: () => void) => {
-    if (isSensitiveUnlocked && encryptionKey) {
+    if (isSensitiveUnlocked) {
       callback();
       return;
     }
@@ -849,6 +849,15 @@ export default function App() {
 
     const profiles = storage.loadProfiles();
     const profile = profiles.find(p => p.id === targetProfile);
+
+    // If profile has password explicitly removed, auto-unlock sensitive data
+    if (profile?.hasPassword === false) {
+      setIsSensitiveUnlocked(true);
+      const pubKey = await storage.getPublicKey();
+      setEncryptionKey(pubKey);
+      callback();
+      return;
+    }
 
     if (profile && profile.isBiometricEnabled) {
       try {
