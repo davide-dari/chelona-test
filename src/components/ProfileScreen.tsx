@@ -311,6 +311,7 @@ export function ProfileScreen({
 
   const currentProfileObj = storage.loadProfiles().find(p => p.id === currentProfileId);
   const hasCustomPassword = currentProfileObj ? currentProfileObj.hasPassword !== false : true;
+  const hasSecurityLock = hasCustomPassword || isBioEnabled;
 
   const profileAvatar = avatar || `https://ui-avatars.com/api/?name=${username}&background=FFFBEB&color=B45309&size=200`;
 
@@ -695,15 +696,17 @@ export function ProfileScreen({
           )}
         </AnimatePresence>
 
-        <div className="p-6 pb-32 border-t border-[var(--border)] mt-auto bg-[var(--card-bg)] shrink-0">
-          <button
-            onClick={onLogout}
-            className="w-full py-5 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white rounded-2xl font-bold transition-all flex items-center justify-center gap-3 shadow-xl"
-          >
-            <Lock className="w-5 h-5" />
-            Blocca App e Disconnetti
-          </button>  
-        </div>
+        {hasSecurityLock && (
+          <div className="p-6 pb-28 border-t border-[var(--border)] mt-auto bg-[var(--card-bg)] shrink-0 flex items-center justify-center">
+            <button
+              onClick={onLogout}
+              className="w-full max-w-md py-4 px-6 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white rounded-2xl font-bold transition-all flex items-center justify-center gap-3 shadow-xl active:scale-95 text-base"
+            >
+              <Lock className="w-5 h-5 shrink-0" />
+              <span>Blocca App e Disconnetti</span>
+            </button>  
+          </div>
+        )}
       </div>
     </div>
   );
