@@ -848,15 +848,7 @@ export default function App() {
     const profiles = storage.loadProfiles();
     const profile = profiles.find(p => p.id === targetProfile);
 
-    // If profile has password explicitly removed, auto-unlock sensitive data
-    if (profile?.hasPassword === false) {
-      setIsSensitiveUnlocked(true);
-      const pubKey = await storage.getPublicKey();
-      setEncryptionKey(pubKey);
-      callback();
-      return;
-    }
-
+    // 1. Check if native biometrics (fingerprint / Face ID) is enabled on the profile
     if (profile && profile.isBiometricEnabled) {
       try {
         const masterKeyStr = await biometricService.getMasterKey(profile.id, profile.biometricServerKey);
@@ -885,6 +877,15 @@ export default function App() {
       } catch (err) {
         console.warn('[BiometricAuth] Biometric authentication failed or cancelled:', err);
       }
+    }
+
+    // 2. If biometrics is not enabled and profile has no password, auto-unlock
+    if (profile?.hasPassword === false) {
+      setIsSensitiveUnlocked(true);
+      const pubKey = await storage.getPublicKey();
+      setEncryptionKey(pubKey);
+      callback();
+      return;
     }
 
     // Fallback to vault unlock screen modal if biometrics not enabled or cancelled
