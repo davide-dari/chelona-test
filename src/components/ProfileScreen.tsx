@@ -696,17 +696,7 @@ export function ProfileScreen({
           )}
         </AnimatePresence>
 
-        {hasSecurityLock && (
-          <div className="p-6 pb-28 border-t border-[var(--border)] mt-auto bg-[var(--card-bg)] shrink-0 flex items-center justify-center">
-            <button
-              onClick={onLogout}
-              className="w-full max-w-md py-4 px-6 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white rounded-2xl font-bold transition-all flex items-center justify-center gap-3 shadow-xl active:scale-95 text-base"
-            >
-              <Lock className="w-5 h-5 shrink-0" />
-              <span>Blocca App e Disconnetti</span>
-            </button>  
-          </div>
-        )}
+
       </div>
     </div>
   );
