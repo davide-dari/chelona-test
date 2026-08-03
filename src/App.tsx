@@ -305,6 +305,7 @@ export default function App() {
     return profiles.length > 0 ? profiles[0].id : null;
   });
   const [showVaultLock, setShowVaultLock] = useState(false);
+  const [showProfileSelectorModal, setShowProfileSelectorModal] = useState(false);
   const [pendingAction, setPendingAction] = useState<(() => void) | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [username, setUsername] = useState('Utente');
@@ -1169,16 +1170,13 @@ export default function App() {
   };
 
   const handleLogout = () => {
-    setEncryptionKey(null);
-    setCurrentProfileId(null);
-    // CRITICAL: We NO LONGER call setModules([]) here. 
-    // This avoids a race condition with the auto-save useEffect 
-    // that could overwrite encrypted data with an empty array.
+    setIsSensitiveUnlocked(false);
     setIsProfileOpen(false);
     setIsSidebarOpen(false);
     setIsSettingsOpen(false);
     setIsAdding(false);
     setSearchQuery('');
+    setShowProfileSelectorModal(true);
   };
 
   // useContainerWidth removed (DnD disabled)
@@ -1858,6 +1856,108 @@ export default function App() {
             onStartScan={() => {}}
             onOpenTools={() => { setShowVaultLock(false); }}
           />
+        </div>
+      )}
+
+      {showProfileSelectorModal && (
+        <div className="fixed inset-0 z-[100000] flex items-center justify-center p-4 lg:p-8">
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setShowProfileSelectorModal(false)}
+            className="absolute inset-0 bg-black/60 backdrop-blur-md"
+          />
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0, y: 20 }}
+            animate={{ scale: 1, opacity: 1, y: 0 }}
+            exit={{ scale: 0.9, opacity: 0, y: 20 }}
+            className="relative w-full max-w-md bg-[var(--card-bg)] rounded-[2.5rem] p-6 lg:p-8 shadow-2xl overflow-hidden border border-[var(--border)] z-10"
+          >
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-2xl bg-amber-500/10 text-amber-500 flex items-center justify-center font-bold shrink-0">
+                  <User className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-[var(--text-main)]">Seleziona Profilo</h3>
+                  <p className="text-xs text-[var(--text-muted)] font-medium">Cambia o crea un nuovo profilo per la tua dashboard</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowProfileSelectorModal(false)}
+                className="p-2 hover:bg-[var(--bg)] rounded-xl text-[var(--text-muted)] transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-1 custom-scrollbar">
+              {storage.loadProfiles().map(p => {
+                const isSelected = p.id === currentProfileId;
+                return (
+                  <button
+                    key={`profile-sel-${p.id}`}
+                    onClick={async () => {
+                      setCurrentProfileId(p.id);
+                      setUsername(p.username);
+                      setAvatar(p.avatar);
+                      setIsBioEnabled(p.isBiometricEnabled || false);
+                      setIsSensitiveUnlocked(false);
+                      setShowProfileSelectorModal(false);
+                      setIsProfileOpen(false);
+                      const pubKey = await storage.getPublicKey();
+                      setEncryptionKey(pubKey);
+                      try {
+                        const pubState = await storage.loadPublicState(p.id);
+                        setModules(pubState.modules || []);
+                        setFolders(pubState.folders || []);
+                      } catch (err) {}
+                      showToast(`Sei passato al profilo di ${p.username} 👤`, 'success');
+                    }}
+                    className={`w-full p-4 rounded-2xl border transition-all flex items-center justify-between gap-4 group cursor-pointer ${
+                      isSelected
+                        ? 'bg-[var(--accent-bg)] border-[var(--accent)] text-[var(--accent)] shadow-sm'
+                        : 'bg-[var(--bg)] border-[var(--border)] text-[var(--text-main)] hover:border-[var(--accent)]'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <img
+                        src={p.avatar || `https://ui-avatars.com/api/?name=${p.username}&background=E3E3E3&color=5E5E5E`}
+                        alt={p.username}
+                        className="w-11 h-11 rounded-xl object-cover border border-[var(--border)]"
+                      />
+                      <div className="text-left">
+                        <p className="font-bold text-base text-[var(--text-main)]">{p.username}</p>
+                        <p className="text-xs text-[var(--text-muted)]">
+                          {isSelected ? 'Profilo Attivo' : 'Tocca per attivare'}
+                        </p>
+                      </div>
+                    </div>
+                    {isSelected && (
+                      <div className="w-7 h-7 rounded-full bg-[var(--accent)] text-white flex items-center justify-center shrink-0">
+                        <Check className="w-4 h-4" />
+                      </div>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="mt-6 pt-4 border-t border-[var(--border)] flex flex-col gap-3">
+              <button
+                onClick={() => {
+                  setShowProfileSelectorModal(false);
+                  setIsProfileOpen(false);
+                  setCurrentProfileId(null);
+                }}
+                className="w-full py-4 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white rounded-2xl font-bold transition-all flex items-center justify-center gap-2 shadow-lg shadow-amber-500/20 active:scale-95 text-sm cursor-pointer"
+              >
+                <Plus className="w-5 h-5" />
+                <span>Crea Nuovo Profilo</span>
+              </button>
+            </div>
+          </motion.div>
         </div>
       )}
 

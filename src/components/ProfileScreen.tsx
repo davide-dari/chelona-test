@@ -696,7 +696,15 @@ export function ProfileScreen({
           )}
         </AnimatePresence>
 
-
+        <div className="p-6 pb-28 border-t border-[var(--border)] mt-auto bg-[var(--card-bg)] shrink-0 flex flex-col items-center justify-center gap-3">
+          <button
+            onClick={onLogout}
+            className="w-full max-w-md py-4 px-6 bg-[var(--surface-variant)] hover:bg-[var(--border)] text-[var(--text-main)] border border-[var(--border)] rounded-2xl font-bold transition-all flex items-center justify-center gap-3 shadow-sm active:scale-95 text-base cursor-pointer"
+          >
+            <User className="w-5 h-5 text-[var(--accent)] shrink-0" />
+            <span>Cambia Profilo / Esci</span>
+          </button>
+        </div>
       </div>
     </div>
   );
