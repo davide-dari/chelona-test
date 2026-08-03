@@ -205,7 +205,7 @@ export default function App() {
         if (!currentProfileId) {
           setCurrentProfileId(activeProfile.id);
         }
-        if (activeProfile.hasPassword === false && !encryptionKey) {
+        if (!encryptionKey) {
           const pubKey = await storage.getPublicKey();
           setEncryptionKey(pubKey);
         }
@@ -418,14 +418,12 @@ export default function App() {
             console.log('[App] Backgrounding skipped: bypass lock is active.');
             return;
           }
-          console.log('[App] Backgrounding: Locking application for security.');
-          setEncryptionKey(null);
-          setShowVaultLock(true);
+          console.log('[App] Backgrounding: Resetting sensitive unlocked state.');
+          setIsSensitiveUnlocked(false);
           setIsProfileOpen(false);
           setIsSettingsOpen(false);
           setIsAdding(false);
           setIsToolsOpen(false);
-          setSelectedType(null);
         } else {
           // Quando torniamo in foreground resettiamo sempre i flag
           (window as any).__chelona_bypass_lock = false;
