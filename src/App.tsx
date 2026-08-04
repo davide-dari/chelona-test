@@ -16,6 +16,7 @@ import { LockScreen } from './components/LockScreen';
 import { TOOLS, TOOLS_UTILITY } from './constants/tools';
 import { ConfirmDialog } from './components/ConfirmDialog';
 import { notificationService } from './services/notificationService';
+import { biometricService } from './services/biometricService';
 import { APP_VERSION } from './constants/version';
 
 import { motion, AnimatePresence } from 'motion/react';
@@ -852,32 +853,50 @@ export default function App() {
     // 1. Check if native biometrics (fingerprint / Face ID) is enabled on the profile
     if (profile && profile.isBiometricEnabled) {
       try {
-        const masterKeyStr = await biometricService.getMasterKey(profile.id, profile.biometricServerKey);
-        if (masterKeyStr) {
-          const key = await encryption.deriveKey(masterKeyStr, profile.salt);
-          setEncryptionKey(key);
-          setIsSensitiveUnlocked(true);
+        // verifyIdentity mostra SEMPRE il prompt nativo (impronta / Face ID / PIN dispositivo).
+        // getMasterKey da solo NON apre il prompt su Android (la chiave Keystore non richiede auth).
+        const verified = await biometricService.verifyIdentity(`Sblocca la sezione sensibile di ${profile.username}`);
+        if (!verified) {
+          console.warn('[BiometricAuth] Biometric authentication cancelled or failed.');
+        } else {
+          const masterKeyStr = await biometricService.getMasterKey(profile.id, profile.biometricServerKey);
+          if (masterKeyStr) {
+            const key = await encryption.deriveKey(masterKeyStr, profile.salt);
+            setEncryptionKey(key);
+            setIsSensitiveUnlocked(true);
 
-          // Load private state & full state into memory
-          try {
-            const fullState = await storage.loadState(key, profile.id);
-            if (fullState && fullState.modules && fullState.modules.length > 0) {
-              setModules(fullState.modules);
-            } else {
-              const privateModules = await storage.loadPrivateState(key, profile.id);
-              setModules(prev => prev.map(pubMod => {
-                const priv = privateModules.find(p => p.id === pubMod.id);
-                return priv ? { ...pubMod, ...priv } : pubMod;
-              }));
-            }
-          } catch (e) {}
+            // Load private state & full state into memory
+            try {
+              const fullState = await storage.loadState(key, profile.id);
+              if (fullState && fullState.modules && fullState.modules.length > 0) {
+                setModules(fullState.modules);
+              } else {
+                const privateModules = await storage.loadPrivateState(key, profile.id);
+                setModules(prev => prev.map(pubMod => {
+                  const priv = privateModules.find(p => p.id === pubMod.id);
+                  return priv ? { ...pubMod, ...priv } : pubMod;
+                }));
+              }
+            } catch (e) {}
 
-          callback();
-          return;
+            callback();
+            return;
+          }
         }
       } catch (err) {
         console.warn('[BiometricAuth] Biometric authentication failed or cancelled:', err);
       }
+
+      // Biometria attiva ma verifica fallita/annullata:
+      // - con password -> fallback al modal password (LockScreen)
+      // - senza password -> NON auto-sbloccare, la sezione resta bloccata
+      if (profile?.hasPassword === false) {
+        showToast('Impronta non riconosciuta. Sezione bloccata.', 'error');
+        return;
+      }
+      setPendingAction(() => callback);
+      setShowVaultLock(true);
+      return;
     }
 
     // 2. If biometrics is not enabled and profile has no password, auto-unlock
