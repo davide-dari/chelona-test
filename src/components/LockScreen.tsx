@@ -288,7 +288,8 @@ export const LockScreen = ({ isVisible, onAuthenticated, onStartScan, onOpenTool
         try {
           const bioPass = await biometricService.getMasterKey(selectedProfile.id, selectedProfile.biometricServerKey);
           if (bioPass) {
-            const key = await encryption.deriveKey(bioPass, selectedProfile.salt);
+            // Raw AES export: reimport, non riderevazione PBKDF2
+            const key = await encryption.importKey(bioPass);
             setPassword('');
             setError('');
             onAuthenticated(key, selectedProfile.id);

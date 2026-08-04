@@ -861,7 +861,8 @@ export default function App() {
         } else {
           const masterKeyStr = await biometricService.getMasterKey(profile.id, profile.biometricServerKey);
           if (masterKeyStr) {
-            const key = await encryption.deriveKey(masterKeyStr, profile.salt);
+            // La master key salvata è il raw AES export: va reimportata, NON riderivata (PBKDF2)
+            const key = await encryption.importKey(masterKeyStr);
             setEncryptionKey(key);
             setIsSensitiveUnlocked(true);
 
