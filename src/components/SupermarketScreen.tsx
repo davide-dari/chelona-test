@@ -13,7 +13,6 @@ import {
   CatalogProduct, findProductMatches, guessEmoji,
   PRODUCT_CATEGORY_LABEL, normalizeProduct
 } from '../data/supermarketProducts';
-import { getProductImage } from '../services/productImageService';
 
 interface SupermarketScreenProps {
   module: SupermarketModule;
@@ -32,6 +31,30 @@ interface FridgePanelProps {
 }
 
 const FRIDGE_STORAGE_KEY = 'chelona_fridge_ingredients';
+
+const UNIT_OPTIONS = ['kg', 'g', 'lt', 'ml', 'pz', 'etto', 'busta', 'lattina', 'barattolo', 'bottiglia', 'confezione', 'mazzo', 'fetta', 'scatola', 'pacco', 'vasetto'] as const;
+
+const UNIT_PLURAL: Record<string, string> = {
+  kg: 'kg', g: 'g', lt: 'lt', ml: 'ml', pz: 'pz',
+  etto: 'etti', busta: 'buste', lattina: 'lattine', barattolo: 'barattoli',
+  bottiglia: 'bottiglie', confezione: 'confezioni', mazzo: 'mazzi',
+  fetta: 'fette', scatola: 'scatole', pacco: 'pacchi', vasetto: 'vasetti'
+};
+
+const formatQuantity = (qty: string, unit: string): string => {
+  const q = qty.trim();
+  if (!q) return '';
+  return unit ? `${q} ${UNIT_PLURAL[unit] ?? unit}` : q;
+};
+
+const parseSuggestionQ = (q?: string): { qty: string; unit: string } => {
+  if (!q) return { qty: '', unit: '' };
+  const m = q.trim().match(/^([\d.,/]+)\s*([a-zà-ù]+)$/i);
+  if (!m) return { qty: '', unit: '' };
+  const tok = m[2].toLowerCase();
+  const match = UNIT_OPTIONS.find(u => u === tok || UNIT_PLURAL[u] === tok);
+  return match ? { qty: m[1], unit: match } : { qty: m[1], unit: '' };
+};
 
 const CATEGORY_META: { id: SupermarketCategory; label: string; icon: any; color: string }[] = [
   { id: 'frutta-verdura', label: 'Frutta & Verdura', icon: Apple, color: 'text-green-500 bg-green-500/10' },
@@ -69,38 +92,12 @@ const loadFridge = (): string[] => {
   }
 };
 
-const isOnline = () => typeof navigator !== 'undefined' && navigator.onLine;
-
 function ProductThumb({ name, emoji, size = 44 }: { name: string; emoji?: string; size?: number }) {
-  const [img, setImg] = useState<string | null>(null);
-  const [failed, setFailed] = useState(false);
   const e = emoji || guessEmoji(name);
-
-  useEffect(() => {
-    if (!isOnline()) return;
-    let mounted = true;
-    getProductImage(name).then((url) => {
-      if (mounted && url) setImg(url);
-    });
-    return () => { mounted = false; };
-  }, [name]);
-
-  if (img && !failed) {
-    return (
-      <img
-        src={img}
-        alt={name}
-        loading="lazy"
-        style={{ width: size, height: size }}
-        onError={() => setFailed(true)}
-        className="rounded-xl object-cover bg-[var(--bg)] shrink-0 ring-1 ring-[var(--border)]"
-      />
-    );
-  }
   return (
     <span
-      style={{ width: size, height: size }}
-      className="flex items-center justify-center text-2xl shrink-0 rounded-xl bg-[var(--surface-variant)] ring-1 ring-[var(--border)]"
+      style={{ width: size, height: size, fontSize: Math.round(size * 0.5) }}
+      className="flex items-center justify-center shrink-0 rounded-xl bg-[var(--surface-variant)] ring-1 ring-[var(--border)]"
     >
       {e}
     </span>
@@ -141,30 +138,30 @@ function FridgePanel({ fridgeIngredients, open, onToggle, onAdd, onRemove, onSha
             transition={{ duration: 0.2 }}
             className="overflow-hidden"
           >
-            <div className="p-3 pt-0">
+            <div className="px-4 pb-4">
               {fridgeIngredients.length === 0 ? (
                 <p className="text-sm text-[var(--text-muted)] font-medium bg-[var(--bg)] rounded-2xl p-4 border border-dashed border-[var(--border)]">
                   Nessun ingrediente in frigo. Spunta un articolo acquistato e premi "In frigo" per ritrovarlo qui.
                 </p>
               ) : (
-                <div className="max-h-56 overflow-y-auto custom-scrollbar space-y-1.5 pr-0.5">
+                <div className="flex flex-wrap gap-2">
                   {fridgeIngredients.map((ing, idx) => (
-                    <div key={`${ing}-${idx}`} className="flex items-center gap-2.5 bg-[var(--bg)] border border-[var(--border)] rounded-2xl px-2.5 py-2">
-                      <ProductThumb name={ing} size={32} />
-                      <span className="flex-1 min-w-0 font-bold text-sm text-[var(--text-main)] truncate">{ing}</span>
+                    <div key={`${ing}-${idx}`} className="flex items-center gap-1 bg-[var(--surface-variant)] rounded-full pl-2 pr-1 py-1 hover:bg-sky-500/10 transition-colors">
                       <button
                         onClick={() => onAdd(ing)}
-                        title="Aggiungi alla lista della spesa"
-                        className="p-2 rounded-xl bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20 shrink-0 transition-colors"
+                        title="Aggiungi alla lista"
+                        className="flex items-center gap-1.5 text-xs font-bold text-[var(--text-main)]"
                       >
-                        <Plus className="w-4 h-4" />
+                        <span className="text-sm leading-none">{guessEmoji(ing)}</span>
+                        <span className="max-w-28 truncate">{ing}</span>
+                        <Plus className="w-3 h-3 text-sky-500" />
                       </button>
                       <button
                         onClick={() => onRemove(ing)}
                         title="Rimuovi dal frigorifero"
-                        className="p-2 rounded-xl text-[var(--text-muted)] hover:text-rose-500 hover:bg-rose-500/10 shrink-0 transition-colors"
+                        className="p-0.5 rounded-full text-[var(--text-muted)] hover:text-rose-500 hover:bg-rose-500/10 transition-colors"
                       >
-                        <Trash2 className="w-4 h-4" />
+                        <X className="w-3 h-3" />
                       </button>
                     </div>
                   ))}
@@ -182,6 +179,7 @@ export const SupermarketScreen = ({ module, onSave, onClose, onShare }: Supermar
   const [data, setData] = useState<SupermarketModule>(module);
   const [itemName, setItemName] = useState('');
   const [itemQty, setItemQty] = useState('');
+  const [itemUnit, setItemUnit] = useState('');
   const [fridgeIngredients, setFridgeIngredients] = useState<string[]>(loadFridge);
   const [fridgeOpen, setFridgeOpen] = useState(true);
   const [suggestions, setSuggestions] = useState<CatalogProduct[]>([]);
@@ -224,7 +222,9 @@ export const SupermarketScreen = ({ module, onSave, onClose, onShare }: Supermar
 
   const applySuggestion = (p: CatalogProduct) => {
     setItemName(p.n);
-    setItemQty(p.q || '');
+    const parsed = parseSuggestionQ(p.q);
+    setItemQty(parsed.qty);
+    setItemUnit(parsed.unit);
     setSelectedSuggestion(p);
     setSuggestions([]);
     inputRef.current?.focus();
@@ -244,16 +244,19 @@ export const SupermarketScreen = ({ module, onSave, onClose, onShare }: Supermar
       ? selectedSuggestion.c
       : fallbackClassify(name);
 
+    const quantity = itemQty.trim() ? formatQuantity(itemQty, itemUnit) : selectedSuggestion?.q || undefined;
+
     const item: SupermarketItem = {
       id: generateUUID(),
       name,
-      quantity: itemQty.trim() || selectedSuggestion?.q || undefined,
+      quantity,
       category: cat,
       checked: false
     };
     update({ ...data, items: [...data.items, item] });
     setItemName('');
     setItemQty('');
+    setItemUnit('');
     setSelectedSuggestion(null);
     setSuggestions([]);
     inputRef.current?.focus();
@@ -466,12 +469,37 @@ export const SupermarketScreen = ({ module, onSave, onClose, onShare }: Supermar
             <div className="flex gap-2">
               <input
                 type="text"
+                inputMode="decimal"
                 value={itemQty}
                 onChange={e => setItemQty(e.target.value)}
                 onKeyDown={e => { if (e.key === 'Enter') addItem(); }}
-                placeholder="Quantità"
-                className="w-24 sm:w-28 px-4 py-3.5 bg-[var(--card-bg)] border border-[var(--border)] rounded-2xl outline-none focus:border-emerald-500 transition-all font-medium text-[var(--text-main)] placeholder:text-[var(--text-muted)] text-center"
+                placeholder="Qtà"
+                className="w-20 px-3 py-3.5 bg-[var(--card-bg)] border border-[var(--border)] rounded-2xl outline-none focus:border-emerald-500 transition-all font-medium text-[var(--text-main)] placeholder:text-[var(--text-muted)] text-center"
               />
+              <select
+                value={itemUnit}
+                onChange={e => setItemUnit(e.target.value)}
+                aria-label="Unità di misura"
+                className="w-28 px-2 py-3.5 bg-[var(--card-bg)] border border-[var(--border)] rounded-2xl outline-none focus:border-emerald-500 transition-all font-medium text-[var(--text-main)] cursor-pointer"
+              >
+                <option value="">Unità</option>
+                <option value="kg">kg</option>
+                <option value="g">grammi</option>
+                <option value="lt">litri</option>
+                <option value="ml">ml</option>
+                <option value="pz">pezzi</option>
+                <option value="etto">etti</option>
+                <option value="busta">buste</option>
+                <option value="lattina">lattine</option>
+                <option value="barattolo">barattoli</option>
+                <option value="bottiglia">bottiglie</option>
+                <option value="confezione">confezioni</option>
+                <option value="mazzo">mazzi</option>
+                <option value="fetta">fette</option>
+                <option value="scatola">scatole</option>
+                <option value="pacco">pacchi</option>
+                <option value="vasetto">vasetti</option>
+              </select>
               <button
                 onClick={addItem}
                 className="flex items-center justify-center gap-1.5 bg-emerald-500 hover:bg-emerald-600 text-white px-5 py-3.5 rounded-2xl font-bold transition-all active:scale-95 shadow-lg shadow-emerald-500/25 shrink-0"
@@ -539,6 +567,9 @@ export const SupermarketScreen = ({ module, onSave, onClose, onShare }: Supermar
 
         {/* MAIN SCROLL AREA */}
         <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain custom-scrollbar scroll-smooth">
+          {/* FRIDGE — MOBILE (sopra la lista, subito sotto i filtri) */}
+          <div className="lg:hidden px-4 pt-3">{fridgePanel}</div>
+
           <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_330px] lg:gap-6 px-4 lg:px-6 pt-3">
             {/* LIST */}
             <div className="min-w-0 pb-4 lg:pb-10">
@@ -632,13 +663,8 @@ export const SupermarketScreen = ({ module, onSave, onClose, onShare }: Supermar
             </div>
 
             {/* FRIDGE — DESKTOP */}
-            <aside className="hidden lg:block">
-              <div className="lg:sticky lg:top-3 lg:h-fit">{fridgePanel}</div>
-            </aside>
+            <aside className="hidden lg:block lg:sticky lg:top-3 h-fit">{fridgePanel}</aside>
           </div>
-
-          {/* FRIDGE — MOBILE */}
-          <div className="lg:hidden px-4 lg:px-6 pb-10 pt-1">{fridgePanel}</div>
         </div>
       </div>
 
