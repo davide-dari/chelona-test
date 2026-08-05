@@ -382,9 +382,9 @@ export const SupermarketScreen = ({ module, onSave, onClose, onShare }: Supermar
   );
 
   return (
-    <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col h-full w-full max-w-6xl mx-auto bg-[var(--bg)] relative overflow-hidden">
+    <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="fixed inset-0 z-[150] flex flex-col h-[100dvh] w-full max-w-6xl mx-auto bg-[var(--bg)] relative overflow-hidden">
       {/* HEADER */}
-      <header className="flex items-center justify-between gap-3 p-4 lg:p-5 bg-[var(--card-bg)] border-b border-[var(--border)] shrink-0 z-30">
+      <header className="flex items-center justify-between gap-3 pt-[max(env(safe-area-inset-top),16px)] px-4 lg:px-5 pb-4 bg-[var(--card-bg)] border-b border-[var(--border)] shrink-0 z-30">
         <button onClick={onClose} className="p-2.5 -ml-2 hover:bg-[var(--surface-variant)] rounded-full text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors shrink-0">
           <ArrowLeft className="w-6 h-6" />
         </button>
@@ -566,7 +566,7 @@ export const SupermarketScreen = ({ module, onSave, onClose, onShare }: Supermar
         )}
 
         {/* MAIN SCROLL AREA */}
-        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain custom-scrollbar scroll-smooth">
+        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain custom-scrollbar scroll-smooth pb-[max(env(safe-area-inset-bottom),8px)]">
           {/* FRIDGE — MOBILE (sopra la lista, subito sotto i filtri) */}
           <div className="lg:hidden px-4 pt-3">{fridgePanel}</div>
 
