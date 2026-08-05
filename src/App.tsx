@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Sun, Moon, Wrench, Plus, LayoutDashboard, Settings, User, LogOut, Search, Mic, Bell, CreditCard, Fingerprint, ShieldCheck, Lock, Menu, X, StickyNote, FileText, Grid2X2, Car, QrCode, Folder as FolderIcon, Check, Edit2, Trash2, BookOpen, ArrowLeft, ArrowRight, Camera, FileDown, Hourglass, Users, Download, Receipt, MapPin, Image as ImageIcon, Lightbulb, Globe, ChevronLeft, Bus, Home, Armchair, Activity } from 'lucide-react';
+import { Sun, Moon, Wrench, Plus, LayoutDashboard, Settings, User, LogOut, Search, Mic, Bell, CreditCard, Fingerprint, ShieldCheck, Lock, Menu, X, StickyNote, FileText, Grid2X2, Car, QrCode, Folder as FolderIcon, Check, Edit2, Trash2, BookOpen, ArrowLeft, ArrowRight, Camera, FileDown, Hourglass, Users, Download, Receipt, MapPin, Image as ImageIcon, Lightbulb, Globe, ChevronLeft, Bus, Home, Armchair, Activity, ShoppingBasket } from 'lucide-react';
 
 import { Module, ModuleType, Folder, DocumentModule } from './types';
 import { isModuleSensitive } from './utils/security';
@@ -46,6 +46,7 @@ const StudyScreen = React.lazy(() => import('./components/StudyScreen').then(m =
 const FurnitureScreen = React.lazy(() => import('./components/FurnitureScreen').then(m => ({ default: m.FurnitureScreen })));
 const InstallmentsScreen = React.lazy(() => import('./components/InstallmentsScreen').then(m => ({ default: m.InstallmentsScreen })));
 const FitnessScreen = React.lazy(() => import('./components/FitnessScreen').then(m => ({ default: m.FitnessScreen })));
+const SupermarketScreen = React.lazy(() => import('./components/SupermarketScreen').then(m => ({ default: m.SupermarketScreen })));
 const ShareScreen = React.lazy(() => import('./components/ShareScreen').then(m => ({ default: m.ShareScreen })));
 import { SpeechRecognition } from '@capacitor-community/speech-recognition';
 import { Device } from '@capacitor/device';
@@ -193,6 +194,7 @@ export default function App() {
   const [editingFurnitureModule, setEditingFurnitureModule] = useState<import('./types').FurnitureModule | null>(null);
   const [editingInstallmentsModule, setEditingInstallmentsModule] = useState<import('./types').InstallmentsModule | null>(null);
   const [editingFitnessModule, setEditingFitnessModule] = useState<import('./types').FitnessModule | null>(null);
+  const [editingSupermarketModule, setEditingSupermarketModule] = useState<import('./types').SupermarketModule | null>(null);
 
   useEffect(() => {
     // Show splash screen briefly, then go to lock screen immediately
@@ -460,6 +462,7 @@ export default function App() {
       if (editingDocumentModule) { setEditingDocumentModule(null); return; }
       if (editingGenericModule) { setEditingGenericModule(null); return; }
       if (editingFurnitureModule) { setEditingFurnitureModule(null); return; }
+      if (editingSupermarketModule) { setEditingSupermarketModule(null); return; }
       if (editingInstallmentsModule) { setEditingInstallmentsModule(null); return; }
       if (editingFitnessModule) { setEditingFitnessModule(null); return; }
       if (editingModuleId) { setEditingModuleId(null); setFormData({}); return; }
@@ -485,12 +488,10 @@ export default function App() {
     moduleToDelete, showGalleryViewer, gallerySelectedImage,
     editingAutoModule, editingSplitModule, editingSingleExpenseModule,
     editingTravelModule, editingStudyModule, editingFitnessModule, editingDocumentModule,
-    editingGenericModule, editingFurnitureModule, editingInstallmentsModule, editingModuleId, isAdding, isProfileOpen,
+    editingGenericModule, editingFurnitureModule, editingInstallmentsModule, editingSupermarketModule, editingModuleId, isAdding, isProfileOpen,
     activeToolId, isToolsOpen, isArchiveOpen, isAddressBookOpen, isRecipesOpen,
     isSidebarOpen, selectedFolderId, selectedType, spesaSubMenu
   ]);
-
-
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
@@ -994,6 +995,10 @@ export default function App() {
     }
     if (module.type === 'furniture') {
       setEditingFurnitureModule(module as import('./types').FurnitureModule);
+      return;
+    }
+    if (module.type === 'supermarket') {
+      setEditingSupermarketModule(module as import('./types').SupermarketModule);
       return;
     }
     if (module.type === 'fitness') {
@@ -2203,6 +2208,12 @@ export default function App() {
                 onSave={(mod) => { updateModuleDirect(mod); setEditingFurnitureModule(mod); }}
                 onClose={() => setEditingFurnitureModule(null)}
               />
+            ) : editingSupermarketModule ? (
+              <SupermarketScreen
+                module={editingSupermarketModule}
+                onSave={(mod) => { updateModuleDirect(mod); setEditingSupermarketModule(mod); }}
+                onClose={() => setEditingSupermarketModule(null)}
+              />
             ) : editingStudyModule ? (
               <StudyScreen
                 module={editingStudyModule}
@@ -2451,11 +2462,46 @@ export default function App() {
                          >
                            <Armchair className="w-8 h-8 text-teal-500 group-hover:scale-110 transition-transform" />
                            <div className="text-center">
-                             <span className="font-bold text-xs uppercase tracking-wider block">Arredamento</span>
-                             <span className="text-[10px] text-[var(--text-muted)] mt-1 block">Idee e acquisti per stanze</span>
-                           </div>
-                         </button>
-                      </div>
+                           <span className="font-bold text-xs uppercase tracking-wider block">Arredamento</span>
+                           <span className="text-[10px] text-[var(--text-muted)] mt-1 block">Idee e acquisti per stanze</span>
+                         </div>
+                       </button>
+                       <button
+                         onClick={() => {
+                           setHomeSubMenu(false);
+                           setIsAdding(false);
+                           const existingSupermarket = modules.find(m => m.type === 'supermarket') as import('./types').SupermarketModule;
+                           if (existingSupermarket) {
+                             setEditingSupermarketModule(existingSupermarket);
+                           } else {
+                             const newSupermarket: import('./types').SupermarketModule = {
+                               id: generateUUID(),
+                               type: 'supermarket',
+                               title: 'Lista della Spesa',
+                               items: [],
+                               x: (modules.length * 2) % 12,
+                               y: Infinity,
+                               w: 3,
+                               h: 3,
+                               folderId: selectedFolderId || undefined
+                             };
+                             setModules(prev => {
+                               const updated = [newSupermarket, ...prev];
+                               saveAppState(updated, folders).catch(console.error);
+                               return updated;
+                             });
+                             setEditingSupermarketModule(newSupermarket);
+                           }
+                         }}
+                         className="flex flex-col items-center justify-center gap-4 p-8 rounded-2xl border border-[var(--border)] hover:border-emerald-500/60 hover:bg-emerald-500/10 transition-all group text-center h-full text-[var(--text-main)]"
+                       >
+                         <ShoppingBasket className="w-8 h-8 text-emerald-500 group-hover:scale-110 transition-transform" />
+                          <div className="text-center">
+                            <span className="font-bold text-xs uppercase tracking-wider block">Supermercato</span>
+                            <span className="text-[10px] text-[var(--text-muted)] mt-1 block">Lista della spesa intelligente</span>
+                          </div>
+                        </button>
+                     </div>
                     </div>
                   )}
 
@@ -3269,6 +3315,42 @@ export default function App() {
                               <p className="text-sm text-[var(--text-muted)] mt-1">Idee e acquisti per stanze</p>
                             </div>
                           </button>
+
+                          <button
+                            onClick={() => {
+                              const existingSupermarket = modules.find(m => m.type === 'supermarket') as import('./types').SupermarketModule;
+                              if (existingSupermarket) {
+                                setEditingSupermarketModule(existingSupermarket);
+                              } else {
+                                const newSupermarket: import('./types').SupermarketModule = {
+                                  id: generateUUID(),
+                                  type: 'supermarket',
+                                  title: 'Lista della Spesa',
+                                  items: [],
+                                  x: (modules.length * 2) % 12,
+                                  y: Infinity,
+                                  w: 3,
+                                  h: 3,
+                                  folderId: selectedFolderId || undefined
+                                };
+                                setModules(prev => {
+                                  const updated = [newSupermarket, ...prev];
+                                  saveAppState(updated, folders).catch(console.error);
+                                  return updated;
+                                });
+                                setEditingSupermarketModule(newSupermarket);
+                              }
+                            }}
+                            className="bg-[var(--card-bg)] p-6 lg:p-8 rounded-[2.5rem] border border-[var(--border)] shadow-sm hover:border-emerald-500/50 hover:bg-emerald-500/5 transition-all group flex flex-col items-center text-center gap-4"
+                          >
+                            <div className="w-16 h-16 bg-emerald-500/10 text-emerald-500 rounded-3xl flex items-center justify-center group-hover:scale-110 transition-transform shadow-inner">
+                              <ShoppingBasket className="w-8 h-8" />
+                            </div>
+                            <div>
+                              <p className="font-black text-[var(--text-main)] text-lg">Supermercato</p>
+                              <p className="text-sm text-[var(--text-muted)] mt-1">Lista della spesa intelligente</p>
+                            </div>
+                          </button>
                         </div>
                       </div>
                     ) : filteredModules.length === 0 ? (
@@ -3340,7 +3422,7 @@ export default function App() {
           </div>
           
           {/* Global FAB (Only on main dashboard and specific categories except gallery/travel) */}
-          {(selectedType !== 'gallery') && !editingTravelModule && !editingStudyModule && !editingFitnessModule && !isAdding && !editingModuleId && !isArchiveOpen && !isToolsOpen && !editingAutoModule && !editingSplitModule && !editingSingleExpenseModule && !editingDocumentModule && !editingGenericModule && !editingFurnitureModule && !editingInstallmentsModule && (
+          {(selectedType !== 'gallery') && !editingTravelModule && !editingStudyModule && !editingFitnessModule && !isAdding && !editingModuleId && !isArchiveOpen && !isToolsOpen && !editingAutoModule && !editingSplitModule && !editingSingleExpenseModule && !editingDocumentModule && !editingGenericModule && !editingFurnitureModule && !editingInstallmentsModule && !editingSupermarketModule && (
             <>
               {/* Scan QR Button next to Plus button */}
               <motion.button

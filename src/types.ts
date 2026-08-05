@@ -1,4 +1,4 @@
-export type ModuleType = 'generic' | 'auto' | 'document' | 'split' | 'single-expense' | 'wallet' | 'gallery' | 'travel' | 'transport' | 'recipes' | 'furniture' | 'installments' | 'fitness' | 'study';
+export type ModuleType = 'generic' | 'auto' | 'document' | 'split' | 'single-expense' | 'wallet' | 'gallery' | 'travel' | 'transport' | 'recipes' | 'furniture' | 'installments' | 'fitness' | 'study' | 'supermarket';
 export type FuelType = 'benzina' | 'diesel' | 'gpl' | 'metano' | 'ibrida' | 'elettrica';
 
 export interface Folder {
@@ -271,7 +271,7 @@ export interface StudyModule extends BaseModule {
   h: number;
 }
 
-export type Module = GenericModule | AutoModule | DocumentModule | SplitModule | SingleExpenseModule | WalletModule | GalleryModule | TravelModule | TransportModule | FurnitureModule | InstallmentsModule | FitnessModule | StudyModule;
+export type Module = GenericModule | AutoModule | DocumentModule | SplitModule | SingleExpenseModule | WalletModule | GalleryModule | TravelModule | TransportModule | FurnitureModule | InstallmentsModule | FitnessModule | StudyModule | SupermarketModule;
 
 export interface DashboardState {
   modules: Module[];
@@ -324,4 +324,19 @@ export interface FurnitureRoom {
 export interface FurnitureModule extends BaseModule {
   type: 'furniture';
   rooms: FurnitureRoom[];
+}
+
+export type SupermarketCategory = 'frutta-verdura' | 'latticini-uova' | 'carne-pesce' | 'pane-pasticceria' | 'dispensa' | 'bevande' | 'pulizia' | 'igiene' | 'altro';
+
+export interface SupermarketItem {
+  id: string;
+  name: string;
+  quantity?: string;
+  category: SupermarketCategory;
+  checked: boolean;
+}
+
+export interface SupermarketModule extends BaseModule {
+  type: 'supermarket';
+  items: SupermarketItem[];
 }
