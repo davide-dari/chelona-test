@@ -1,4 +1,4 @@
-export type ModuleType = 'generic' | 'auto' | 'document' | 'split' | 'single-expense' | 'wallet' | 'gallery' | 'travel' | 'transport' | 'recipes' | 'furniture' | 'installments' | 'fitness' | 'study' | 'supermarket';
+export type ModuleType = 'generic' | 'auto' | 'document' | 'split' | 'single-expense' | 'wallet' | 'gallery' | 'travel' | 'transport' | 'recipes' | 'furniture' | 'installments' | 'fitness' | 'study' | 'supermarket' | 'volantino';
 export type FuelType = 'benzina' | 'diesel' | 'gpl' | 'metano' | 'ibrida' | 'elettrica';
 
 export interface Folder {
@@ -271,7 +271,7 @@ export interface StudyModule extends BaseModule {
   h: number;
 }
 
-export type Module = GenericModule | AutoModule | DocumentModule | SplitModule | SingleExpenseModule | WalletModule | GalleryModule | TravelModule | TransportModule | FurnitureModule | InstallmentsModule | FitnessModule | StudyModule | SupermarketModule;
+export type Module = GenericModule | AutoModule | DocumentModule | SplitModule | SingleExpenseModule | WalletModule | GalleryModule | TravelModule | TransportModule | FurnitureModule | InstallmentsModule | FitnessModule | StudyModule | SupermarketModule | VolantinoModule;
 
 export interface DashboardState {
   modules: Module[];
@@ -339,4 +339,21 @@ export interface SupermarketItem {
 export interface SupermarketModule extends BaseModule {
   type: 'supermarket';
   items: SupermarketItem[];
+}
+
+export interface VolantinoOffer {
+  id: string;
+  productName: string;
+  storeId: string;
+  price: number;
+  quantity?: string;
+  unitPrice?: string;
+  validFrom?: string;
+  validTo?: string;
+  isPromo?: boolean;
+}
+
+export interface VolantinoModule extends BaseModule {
+  type: 'volantino';
+  offers: VolantinoOffer[];
 }
