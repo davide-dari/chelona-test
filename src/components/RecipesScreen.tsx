@@ -34,6 +34,17 @@ export function RecipesScreen({ onClose, initialSearchQuery, initialRecipe }: Re
   }, [fridgeIngredients]);
 
   useEffect(() => {
+    const handler = () => {
+      try {
+        const saved = localStorage.getItem('chelona_fridge_ingredients');
+        setFridgeIngredients(saved ? JSON.parse(saved) : []);
+      } catch {}
+    };
+    window.addEventListener('chelona_fridge_updated', handler);
+    return () => window.removeEventListener('chelona_fridge_updated', handler);
+  }, []);
+
+  useEffect(() => {
     const savedFavs = localStorage.getItem('chelona_gz_favorites');
     if (savedFavs) {
       try { setFavorites(JSON.parse(savedFavs)); } catch (e) {}

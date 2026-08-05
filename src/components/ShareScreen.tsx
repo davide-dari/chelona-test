@@ -56,7 +56,8 @@ export const ShareScreen = ({ module, onClose }: ShareScreenProps) => {
   }, []);
 
   const typeLabel = module.type === 'document' ? 'Documento'
-    : module.type === 'auto' ? 'Auto' : module.type === 'split' ? 'Spese' : 'Modulo';
+    : module.type === 'auto' ? 'Auto' : module.type === 'split' ? 'Spese'
+    : module.type === 'supermarket' ? 'Lista della Spesa' : 'Modulo';
 
   // Calcola la durata totale in ms dai selettori
   const totalDurationMs = useMemo(() => (

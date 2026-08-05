@@ -780,13 +780,32 @@ export default function App() {
         return;
       }
 
-      // 2. Filtro Sicurezza: Se non siamo loggati, accettiamo SOLO i profili (gestiti sopra)
+      // 2. Gestione Condivisione Frigo (globale, non cifrata, permessa sempre)
+      if (typeof parsedData.type === 'string' && parsedData.type === 'shared_fridge') {
+        const ingredients = Array.isArray(parsedData.data) ? parsedData.data.filter((i: any) => typeof i === 'string' && i.trim().length > 0) as string[] : [];
+        if (ingredients.length === 0) {
+          showToast('QR frigorifero non valido', 'error');
+          return;
+        }
+        let current: string[] = [];
+        try {
+          const saved = localStorage.getItem('chelona_fridge_ingredients');
+          current = saved ? JSON.parse(saved) : [];
+        } catch {}
+        const merged = [...new Set([...current, ...ingredients])];
+        localStorage.setItem('chelona_fridge_ingredients', JSON.stringify(merged));
+        window.dispatchEvent(new Event('chelona_fridge_updated'));
+        showToast(`Frigorifero aggiornato: ${ingredients.length} ingredienti aggiunti!`);
+        return;
+      }
+
+      // 3. Filtro Sicurezza: Se non siamo loggati, accettiamo SOLO i profili (gestiti sopra)
       if (!encryptionKey) {
         showToast('Non stai scansionando un profilo', 'error');
         return;
       }
 
-      // 3. Gestione Moduli Condivisi (Solo se loggati)
+      // 4. Gestione Moduli Condivisi (Solo se loggati)
       if (typeof parsedData.type === 'string' && parsedData.type.startsWith('shared_')) {
         const moduleType = parsedData.type.replace('shared_', '');
         
@@ -2213,6 +2232,7 @@ export default function App() {
                 module={editingSupermarketModule}
                 onSave={(mod) => { updateModuleDirect(mod); setEditingSupermarketModule(mod); }}
                 onClose={() => setEditingSupermarketModule(null)}
+                onShare={(mod) => setSharingModule(mod as Module)}
               />
             ) : editingStudyModule ? (
               <StudyScreen

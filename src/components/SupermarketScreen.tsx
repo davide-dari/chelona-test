@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { QRCodeSVG } from 'qrcode.react';
 import { SupermarketModule, SupermarketItem, SupermarketCategory } from '../types';
 import {
   ArrowLeft, Plus, Trash2, CheckCircle2, ShoppingCart, Refrigerator,
   Apple, Milk, Drumstick, Croissant, PackageCheck, CupSoda, SprayCan,
-  ShowerHead, ShoppingBasket, RotateCcw, ChevronDown, ChevronUp, ImageOff
+  ShowerHead, ShoppingBasket, RotateCcw, ChevronDown, ChevronUp, Share2, X
 } from 'lucide-react';
 import { generateUUID } from '../utils/uuid';
 import {
@@ -17,6 +18,7 @@ interface SupermarketScreenProps {
   module: SupermarketModule;
   onSave: (m: SupermarketModule) => void;
   onClose: () => void;
+  onShare: (m: SupermarketModule) => void;
 }
 
 const FRIDGE_STORAGE_KEY = 'chelona_fridge_ingredients';
@@ -91,7 +93,7 @@ function ProductThumb({ name, emoji, size = 44 }: { name: string; emoji?: string
   );
 }
 
-export const SupermarketScreen = ({ module, onSave, onClose }: SupermarketScreenProps) => {
+export const SupermarketScreen = ({ module, onSave, onClose, onShare }: SupermarketScreenProps) => {
   const [data, setData] = useState<SupermarketModule>(module);
   const [itemName, setItemName] = useState('');
   const [itemQty, setItemQty] = useState('');
@@ -101,7 +103,14 @@ export const SupermarketScreen = ({ module, onSave, onClose }: SupermarketScreen
   const [highlighted, setHighlighted] = useState(-1);
   const [selectedSuggestion, setSelectedSuggestion] = useState<CatalogProduct | null>(null);
   const [dupeMsg, setDupeMsg] = useState<string | null>(null);
+  const [shareFridgeOpen, setShareFridgeOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const handler = () => setFridgeIngredients(loadFridge());
+    window.addEventListener('chelona_fridge_updated', handler);
+    return () => window.removeEventListener('chelona_fridge_updated', handler);
+  }, []);
 
   useEffect(() => {
     localStorage.setItem(FRIDGE_STORAGE_KEY, JSON.stringify(fridgeIngredients));
@@ -241,6 +250,13 @@ export const SupermarketScreen = ({ module, onSave, onClose }: SupermarketScreen
               placeholder="Lista della Spesa..."
             />
           </div>
+          <button
+            onClick={() => onShare(data)}
+            title="Condividi lista della spesa"
+            className="p-2.5 hover:bg-[var(--surface-variant)] rounded-full text-[var(--text-muted)] hover:text-emerald-500 transition-colors shrink-0"
+          >
+            <Share2 className="w-5 h-5" />
+          </button>
         </div>
       </header>
 
@@ -473,6 +489,13 @@ export const SupermarketScreen = ({ module, onSave, onClose }: SupermarketScreen
               <span className="text-xs font-bold text-[var(--text-muted)] flex items-center gap-1">
                 {fridgeOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
               </span>
+              <button
+                onClick={(e) => { e.stopPropagation(); setShareFridgeOpen(true); }}
+                title="Condividi frigorifero"
+                className="p-2 rounded-xl text-sky-500 hover:bg-sky-500/10 transition-colors"
+              >
+                <Share2 className="w-4 h-4" />
+              </button>
             </button>
 
             <AnimatePresence initial={false}>
@@ -523,6 +546,58 @@ export const SupermarketScreen = ({ module, onSave, onClose }: SupermarketScreen
           </div>
         </div>
       </div>
+
+      {/* FRIDGE SHARE MODAL */}
+      <AnimatePresence>
+        {shareFridgeOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+            onClick={() => setShareFridgeOpen(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              className="relative w-full max-w-sm bg-[var(--card-bg)] rounded-[2.5rem] p-6 shadow-2xl border border-[var(--border)]"
+              onClick={e => e.stopPropagation()}
+            >
+              <button
+                onClick={() => setShareFridgeOpen(false)}
+                className="absolute top-4 right-4 p-2 rounded-xl text-[var(--text-muted)] hover:bg-[var(--surface-variant)] transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+              <div className="w-14 h-14 bg-sky-500/10 text-sky-500 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                <Refrigerator className="w-7 h-7" />
+              </div>
+              <h3 className="text-xl font-bold text-[var(--text-main)] text-center mb-1">Condividi Frigorifero</h3>
+              <p className="text-sm text-[var(--text-muted)] text-center mb-6">
+                {fridgeIngredients.length > 0
+                  ? `${fridgeIngredients.length} ingredienti. Scansiona il QR per riceverli.`
+                  : 'Il frigorifero è vuoto: aggiungi ingredienti per poterli condividere.'}
+              </p>
+              {fridgeIngredients.length > 0 ? (
+                <div className="flex justify-center bg-white rounded-3xl p-5 border border-[var(--border)]">
+                  <QRCodeSVG
+                    value={JSON.stringify({ t: 'shared_fridge', d: fridgeIngredients })}
+                    size={220}
+                    level="M"
+                    marginSize={1}
+                  />
+                </div>
+              ) : (
+                <div className="py-6 flex flex-col items-center text-center gap-2">
+                  <ShoppingBasket className="w-8 h-8 text-[var(--text-muted)] opacity-40" />
+                  <span className="text-xs text-[var(--text-muted)] font-medium">Aggiungi ingredienti al frigo per condividere</span>
+                </div>
+              )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 };
