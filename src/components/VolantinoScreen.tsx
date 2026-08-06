@@ -2,9 +2,10 @@ import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   ArrowLeft, Plus, Trash2, Pencil, X, Search, Trophy, Store,
-  RotateCcw, ShoppingBasket, BadgePercent, Sparkles, ChevronRight, Scale
+  RotateCcw, ShoppingBasket, BadgePercent, Sparkles, ChevronRight, Scale,
+  FileText, ExternalLink, Link, Calendar, FileUp
 } from 'lucide-react';
-import { VolantinoModule, VolantinoOffer, SupermarketItem } from '../types';
+import { VolantinoModule, VolantinoOffer, VolantinoFlyer, SupermarketItem } from '../types';
 import { generateUUID } from '../utils/uuid';
 import { guessEmoji, findProductMatches, normalizeProduct } from '../data/supermarketProducts';
 import { VOLANTINO_STORES, storeById, DEFAULT_VOLANTINO_OFFERS, StoreId } from '../data/volantinoOffers';
@@ -69,7 +70,14 @@ function OfferThumb({ name, size = 40 }: { name: string; size?: number }) {
   );
 }
 
-const emptyForm = { productName: '', storeId: '' as string, price: '', quantity: '', validTo: '', isPromo: true };
+const emptyForm = { productName: '', brand: '', storeId: '' as string, price: '', quantity: '', validTo: '', isPromo: true };
+
+const fmtDateTime = (iso?: string): string | null => {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return null;
+  return `${d.toLocaleDateString('it-IT')} · ${d.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}`;
+};
 
 export default function VolantinoScreen({ module, onSave, onClose, shoppingItems }: VolantinoScreenProps) {
   const [tab, setTab] = useState<'offers' | 'compare'>('offers');
@@ -83,10 +91,30 @@ export default function VolantinoScreen({ module, onSave, onClose, shoppingItems
   const [confirmReset, setConfirmReset] = useState(false);
   const [suggestions, setSuggestions] = useState<ReturnType<typeof findProductMatches>>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [editingFlyer, setEditingFlyer] = useState<VolantinoFlyer | null>(null);
+  const [pdfFlyer, setPdfFlyer] = useState<VolantinoFlyer | null>(null);
+  const [flyerForm, setFlyerForm] = useState({ label: '', updatedAt: '', pdfUrl: '', pdfAttachment: '' });
 
   const offers = module.offers;
+  const flyers = module.flyers ?? [];
 
   const update = (next: VolantinoOffer[]) => onSave({ ...module, offers: next });
+
+  const saveFlyers = (next: VolantinoFlyer[]) => onSave({ ...module, offers, flyers: next });
+
+  const getFlyer = (storeId: string) => flyers.find(f => f.storeId === storeId);
+
+  const touchFlyer = (storeId: string): VolantinoFlyer[] => {
+    const now = new Date().toISOString();
+    const existing = getFlyer(storeId);
+    if (existing) return flyers.map(f => f.storeId === storeId ? { ...f, updatedAt: now } : f);
+    return [...flyers, { id: generateUUID(), storeId, label: 'Volantino settimanale', updatedAt: now }];
+  };
+
+  const lastUpdate = useMemo(() => {
+    const times = flyers.map(f => f.updatedAt).filter(Boolean) as string[];
+    return times.length > 0 ? times.sort().reverse()[0] : undefined;
+  }, [flyers]);
 
   const uniqueProducts = useMemo(() => {
     const seen = new Set<string>();
@@ -193,6 +221,7 @@ export default function VolantinoScreen({ module, onSave, onClose, shoppingItems
     setEditingId(offer.id);
     setForm({
       productName: offer.productName,
+      brand: offer.brand || '',
       storeId: offer.storeId,
       price: String(offer.price),
       quantity: offer.quantity || '',
@@ -227,19 +256,59 @@ export default function VolantinoScreen({ module, onSave, onClose, shoppingItems
       productName,
       storeId: form.storeId,
       price: Math.round(price * 100) / 100,
+      brand: form.brand.trim() || undefined,
       quantity: form.quantity.trim() || undefined,
       validTo: form.validTo || undefined,
       isPromo: form.isPromo
     };
-    if (editingId) {
-      update(offers.map(o => o.id === editingId ? offer : o));
-    } else {
-      update([offer, ...offers]);
-    }
+    const nextOffers = editingId ? offers.map(o => o.id === editingId ? offer : o) : [offer, ...offers];
+    onSave({ ...module, offers: nextOffers, flyers: touchFlyer(form.storeId) });
     setFormOpen(false);
   };
 
-  const removeOffer = (id: string) => update(offers.filter(o => o.id !== id));
+  const removeOffer = (id: string) => {
+    const offer = offers.find(o => o.id === id);
+    onSave({ ...module, offers: offers.filter(o => o.id !== id), flyers: offer ? touchFlyer(offer.storeId) : flyers });
+  };
+
+  const openFlyerForm = (storeId: string, existing?: VolantinoFlyer) => {
+    const flyer = existing ?? getFlyer(storeId);
+    if (!flyer) {
+      const created: VolantinoFlyer = { id: generateUUID(), storeId, label: 'Volantino settimanale', updatedAt: new Date().toISOString() };
+      saveFlyers([...flyers, created]);
+      return;
+    }
+    setEditingFlyer(flyer);
+    setFlyerForm({
+      label: flyer.label || 'Volantino settimanale',
+      updatedAt: flyer.updatedAt ? flyer.updatedAt.slice(0, 10) : '',
+      pdfUrl: flyer.pdfUrl || '',
+      pdfAttachment: flyer.pdfAttachment || ''
+    });
+  };
+
+  const onFlyerPdfSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf'))) return;
+    const reader = new FileReader();
+    reader.onload = () => setFlyerForm(f => ({ ...f, pdfAttachment: String(reader.result) }));
+    reader.readAsDataURL(file);
+  };
+
+  const saveFlyer = () => {
+    if (!editingFlyer) return;
+    const next = flyers.map(f => f.id === editingFlyer.id ? {
+      ...f,
+      label: flyerForm.label.trim() || 'Volantino settimanale',
+      updatedAt: flyerForm.updatedAt
+        ? new Date(`${flyerForm.updatedAt}T12:00:00`).toISOString()
+        : f.updatedAt ?? new Date().toISOString(),
+      pdfUrl: flyerForm.pdfUrl.trim() || undefined,
+      pdfAttachment: flyerForm.pdfAttachment || undefined
+    } : f);
+    saveFlyers(next);
+    setEditingFlyer(null);
+  };
 
   const restoreDemo = () => update(DEFAULT_VOLANTINO_OFFERS.map(o => ({ ...o })));
 
@@ -277,7 +346,7 @@ export default function VolantinoScreen({ module, onSave, onClose, shoppingItems
             Volantino
           </h1>
           <p className="text-[11px] lg:text-xs text-[var(--text-muted)] font-medium">
-            {offers.length} offerte su {offersByStore.length} catene · confronta e scegli dove andare
+            {offers.length} offerte · {offersByStore.length} catene{lastUpdate ? ` · aggiornato ${fmtDateTime(lastUpdate)}` : ''}
           </p>
         </div>
         <button
@@ -331,22 +400,46 @@ export default function VolantinoScreen({ module, onSave, onClose, shoppingItems
                 </button>
               </div>
             ) : (
-              offersByStore.map(({ store, offers: list }) => (
-                <section key={store.id} className="bg-[var(--card-bg)] rounded-[1.75rem] border border-[var(--border)] overflow-hidden">
-                  <header className="flex items-center gap-3 px-4 lg:px-5 py-3.5 border-b border-[var(--border)] bg-[var(--surface-variant)]/50">
-                    <span className={`w-10 h-10 rounded-xl ${store.bg} ${store.text} flex items-center justify-center font-black text-sm shrink-0`}>
-                      {store.short}
-                    </span>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-black text-[var(--text-main)] truncate">{store.label}</p>
-                      <p className="text-[11px] text-[var(--text-muted)] font-medium">
-                        {list.length} offerte{store.budget ? ' · fascia economica' : ''}
-                      </p>
-                    </div>
-                    <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full ${store.bg} ${store.text} shrink-0`}>
-                      {euro(list.reduce((a, o) => a + o.price, 0))}
-                    </span>
-                  </header>
+              <>
+                {offersByStore.map(({ store, offers: list }) => {
+                const flyer = getFlyer(store.id);
+                const hasPdf = !!(flyer?.pdfUrl || flyer?.pdfAttachment);
+                return (
+                  <section key={store.id} className="bg-[var(--card-bg)] rounded-[1.75rem] border border-[var(--border)] overflow-hidden">
+                    <header className="flex items-center gap-3 px-4 lg:px-5 py-3.5 border-b border-[var(--border)] bg-[var(--surface-variant)]/50">
+                      <span className={`w-10 h-10 rounded-xl ${store.bg} ${store.text} flex items-center justify-center font-black text-sm shrink-0`}>
+                        {store.short}
+                      </span>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-black text-[var(--text-main)] truncate">{store.label}</p>
+                        <p className="text-[11px] text-[var(--text-muted)] font-medium truncate">
+                          {flyer?.label || 'Volantino settimanale'}
+                          {flyer?.updatedAt ? ` · agg. ${fmtDateTime(flyer.updatedAt)}` : ''}
+                          {!flyer && ' · non configurato'}
+                        </p>
+                      </div>
+                      <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full ${store.bg} ${store.text} shrink-0`}>
+                        {euro(list.reduce((a, o) => a + o.price, 0))}
+                      </span>
+                      <div className="flex gap-1 shrink-0">
+                        {hasPdf && (
+                          <button
+                            onClick={() => setPdfFlyer(flyer!)}
+                            title="Visualizza volantino PDF"
+                            className="p-2 rounded-xl text-[var(--text-muted)] hover:text-amber-500 hover:bg-amber-500/10 transition-colors"
+                          >
+                            <FileText className="w-4 h-4" />
+                          </button>
+                        )}
+                        <button
+                          onClick={() => openFlyerForm(store.id, flyer)}
+                          title="Configura volantino"
+                          className="p-2 rounded-xl text-[var(--text-muted)] hover:text-amber-500 hover:bg-amber-500/10 transition-colors"
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </header>
                   <ul className="divide-y divide-[var(--border)]">
                     {list.map(o => (
                       <li key={o.id} className="flex items-center gap-3 px-4 lg:px-5 py-3 group">
@@ -354,6 +447,7 @@ export default function VolantinoScreen({ module, onSave, onClose, shoppingItems
                         <div className="flex-1 min-w-0">
                           <p className="font-bold text-[var(--text-main)] text-sm truncate flex items-center gap-2">
                             {o.productName}
+                            {o.brand && <span className="text-[10px] font-bold text-amber-600 bg-amber-500/10 border border-amber-500/20 rounded-full px-2 py-0.5 shrink-0">{o.brand}</span>}
                             {o.isPromo && <BadgePercent className="w-3.5 h-3.5 text-amber-500 shrink-0" />}
                           </p>
                           <p className="text-[11px] text-[var(--text-muted)] font-medium truncate">
@@ -383,15 +477,17 @@ export default function VolantinoScreen({ module, onSave, onClose, shoppingItems
                     ))}
                   </ul>
                 </section>
-              ))
-            )}
+                );
+                })}
 
-            <button
-              onClick={openAddForm}
-              className="w-full flex items-center justify-center gap-2 bg-amber-500 hover:bg-amber-600 text-white py-4 rounded-2xl font-bold transition-all active:scale-[0.99] shadow-lg shadow-amber-500/25 sticky bottom-2"
-            >
-              <Plus className="w-5 h-5" /> Aggiungi offerta
-            </button>
+              <button
+                onClick={openAddForm}
+                className="w-full flex items-center justify-center gap-2 bg-amber-500 hover:bg-amber-600 text-white py-4 rounded-2xl font-bold transition-all active:scale-[0.99] shadow-lg shadow-amber-500/25 sticky bottom-2"
+              >
+                <Plus className="w-5 h-5" /> Aggiungi offerta
+              </button>
+              </>
+            )}
           </div>
         ) : (
           <div className="p-4 lg:p-6 space-y-4">
@@ -447,7 +543,8 @@ export default function VolantinoScreen({ module, onSave, onClose, shoppingItems
                       <OfferThumb name={selectedProduct} size={48} />
                       <div className="flex-1 min-w-0">
                         <p className="font-black text-[var(--text-main)]">{selectedProduct}</p>
-                        <p className="text-xs text-[var(--text-muted)] font-medium">
+                        <p className="text-xs text-[var(--text-muted)] font-medium truncate">
+                          {sortedCompare[0].brand && <span className="text-amber-600 font-bold">{sortedCompare[0].brand} · </span>}
                           {sortedCompare.length} catene in offerta
                           {sortedCompare[0].quantity ? ` · ${sortedCompare[0].quantity}` : ''}
                         </p>
@@ -702,6 +799,16 @@ export default function VolantinoScreen({ module, onSave, onClose, shoppingItems
                   </AnimatePresence>
                 </div>
 
+                <div>
+                  <label className="block text-xs font-bold text-[var(--text-muted)] mb-1.5">Marca</label>
+                  <input
+                    value={form.brand}
+                    onChange={e => setForm(f => ({ ...f, brand: e.target.value }))}
+                    placeholder="es. Barilla, Galbani… (opzionale)"
+                    className="w-full px-4 py-3.5 bg-[var(--surface-variant)] border border-[var(--border)] rounded-2xl outline-none focus:border-amber-500 transition-all font-medium text-[var(--text-main)]"
+                  />
+                </div>
+
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs font-bold text-[var(--text-muted)] mb-1.5">Catena</label>
@@ -807,6 +914,156 @@ export default function VolantinoScreen({ module, onSave, onClose, shoppingItems
                 </button>
               </div>
             </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* FLYER CONFIG MODAL */}
+      <AnimatePresence>
+        {editingFlyer && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[99999] flex items-end sm:items-center justify-center sm:p-4 bg-black/60 backdrop-blur-sm"
+            onClick={() => setEditingFlyer(null)}
+          >
+            <motion.div
+              initial={{ y: 60, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: 60, opacity: 0 }}
+              transition={{ type: 'spring', damping: 28, stiffness: 300 }}
+              className="relative w-full max-w-lg bg-[var(--card-bg)] rounded-t-[2.5rem] sm:rounded-[2.5rem] p-6 shadow-2xl border border-[var(--border)] max-h-[88vh] overflow-y-auto custom-scrollbar pb-[max(env(safe-area-inset-bottom),16px)]"
+              onClick={e => e.stopPropagation()}
+            >
+              <button
+                onClick={() => setEditingFlyer(null)}
+                className="absolute top-4 right-4 p-2 rounded-xl text-[var(--text-muted)] hover:bg-[var(--surface-variant)] transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+              <div className="w-12 h-12 bg-amber-500/10 text-amber-500 rounded-2xl flex items-center justify-center mb-4">
+                <Calendar className="w-6 h-6" />
+              </div>
+              <h3 className="text-xl font-bold text-[var(--text-main)] mb-1">Volantino {storeById(editingFlyer.storeId).label}</h3>
+              <p className="text-sm text-[var(--text-muted)] mb-5">Riferimento del volantino per questa catena</p>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs font-bold text-[var(--text-muted)] mb-1.5">Nome volantino</label>
+                  <input
+                    value={flyerForm.label}
+                    onChange={e => setFlyerForm(f => ({ ...f, label: e.target.value }))}
+                    placeholder="es. Volantino settimana 4–10 agosto"
+                    className="w-full px-4 py-3.5 bg-[var(--surface-variant)] border border-[var(--border)] rounded-2xl outline-none focus:border-amber-500 transition-all font-medium text-[var(--text-main)]"
+                  />
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold text-[var(--text-muted)] mb-1.5">Data aggiornamento</label>
+                    <input
+                      type="date"
+                      value={flyerForm.updatedAt}
+                      onChange={e => setFlyerForm(f => ({ ...f, updatedAt: e.target.value }))}
+                      className="w-full px-4 py-3.5 bg-[var(--surface-variant)] border border-[var(--border)] rounded-2xl outline-none focus:border-amber-500 transition-all font-medium text-[var(--text-main)]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-[var(--text-muted)] mb-1.5">PDF del volantino</label>
+                    <label className="flex items-center justify-center gap-2 px-4 py-3.5 bg-[var(--surface-variant)] border border-[var(--border)] rounded-2xl cursor-pointer hover:border-amber-500 transition-all text-sm font-semibold text-[var(--text-main)]">
+                      <FileUp className="w-4 h-4 text-amber-500" />
+                      {flyerForm.pdfAttachment ? 'Sostituisci PDF' : 'Carica PDF'}
+                      <input type="file" accept="application/pdf,.pdf" className="hidden" onChange={onFlyerPdfSelect} />
+                    </label>
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-[var(--text-muted)] mb-1.5">Link PDF (URL)</label>
+                  <div className="relative">
+                    <Link className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" />
+                    <input
+                      value={flyerForm.pdfUrl}
+                      onChange={e => setFlyerForm(f => ({ ...f, pdfUrl: e.target.value }))}
+                      placeholder="https://www.…/volantino.pdf"
+                      className="w-full pl-11 pr-4 py-3.5 bg-[var(--surface-variant)] border border-[var(--border)] rounded-2xl outline-none focus:border-amber-500 transition-all font-medium text-[var(--text-main)]"
+                    />
+                  </div>
+                  <p className="text-[10px] text-[var(--text-muted)] mt-1">Allegato o URL: puoi inserire entrambi, il PDF caricato ha la precedenza.</p>
+                </div>
+
+                {(flyerForm.pdfAttachment || flyerForm.pdfUrl) && (
+                  <div className="flex items-center justify-between gap-2 text-xs font-bold text-emerald-600 bg-emerald-500/5 border border-emerald-500/20 rounded-2xl px-4 py-2.5">
+                    <span className="truncate flex items-center gap-1.5">
+                      <FileText className="w-4 h-4 shrink-0" />
+                      {flyerForm.pdfAttachment ? 'PDF allegato pronto' : flyerForm.pdfUrl}
+                    </span>
+                    <button
+                      onClick={() => setFlyerForm(f => ({ ...f, pdfAttachment: '', pdfUrl: '' }))}
+                      className="text-rose-500 hover:text-rose-600 font-bold shrink-0"
+                    >
+                      Rimuovi
+                    </button>
+                  </div>
+                )}
+
+                <button
+                  onClick={saveFlyer}
+                  className="w-full bg-amber-500 hover:bg-amber-600 text-white py-4 rounded-2xl font-bold transition-all active:scale-[0.99] shadow-lg shadow-amber-500/25"
+                >
+                  Salva volantino
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* PDF VIEWER MODAL */}
+      <AnimatePresence>
+        {pdfFlyer && (pdfFlyer.pdfAttachment || pdfFlyer.pdfUrl) && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[99999] flex flex-col bg-black/80 backdrop-blur-sm"
+            onClick={() => setPdfFlyer(null)}
+          >
+            <div
+              className="flex flex-col h-full w-full max-w-4xl mx-auto bg-[var(--card-bg)] overflow-hidden"
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="flex items-center gap-3 px-4 pt-[max(env(safe-area-inset-top),12px)] pb-3 border-b border-[var(--border)] shrink-0">
+                <button
+                  onClick={() => setPdfFlyer(null)}
+                  className="p-2 rounded-xl text-[var(--text-muted)] hover:bg-[var(--surface-variant)] transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+                <div className="flex-1 min-w-0">
+                  <p className="font-black text-[var(--text-main)] truncate">
+                    {pdfFlyer.label || 'Volantino'} · {storeById(pdfFlyer.storeId).label}
+                  </p>
+                  {pdfFlyer.updatedAt && (
+                    <p className="text-[11px] text-[var(--text-muted)] font-medium">
+                      Aggiornato {fmtDateTime(pdfFlyer.updatedAt)}
+                    </p>
+                  )}
+                </div>
+                {pdfFlyer.pdfUrl && (
+                  <button
+                    onClick={() => window.open(pdfFlyer.pdfUrl!, '_system')}
+                    className="flex items-center gap-1.5 bg-amber-500 hover:bg-amber-600 text-white px-3 py-2 rounded-xl text-xs font-bold transition-colors shrink-0"
+                  >
+                    <ExternalLink className="w-3.5 h-3.5" /> Apri esternamente
+                  </button>
+                )}
+              </div>
+              <iframe
+                src={pdfFlyer.pdfAttachment || pdfFlyer.pdfUrl || undefined}
+                className="flex-1 w-full border-none bg-white"
+                title={`Volantino ${storeById(pdfFlyer.storeId).label}`}
+              />
+            </div>
           </motion.div>
         )}
       </AnimatePresence>

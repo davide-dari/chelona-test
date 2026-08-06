@@ -8,7 +8,7 @@ import { Sun, Moon, Wrench, Plus, LayoutDashboard, Settings, User, LogOut, Searc
 
 import { Module, ModuleType, Folder, DocumentModule } from './types';
 import { isModuleSensitive } from './utils/security';
-import { DEFAULT_VOLANTINO_OFFERS } from './data/volantinoOffers';
+import { DEFAULT_VOLANTINO_OFFERS, VOLANTINO_STORES } from './data/volantinoOffers';
 import { storage, AppState } from './services/storage';
 import { encryption } from './services/encryption';
 import { GenericCard, AutoCard, DocumentCard, SplitCard, SingleExpenseCard, GalleryCard, TravelCard, StudyCard, FitnessCard } from './components/Modules';
@@ -2549,6 +2549,7 @@ export default function App() {
                                 type: 'volantino',
                                 title: 'Volantino',
                                 offers: DEFAULT_VOLANTINO_OFFERS.map(o => ({ ...o })),
+                                flyers: VOLANTINO_STORES.map(s => ({ id: generateUUID(), storeId: s.id, label: 'Volantino settimanale', updatedAt: new Date().toISOString() })),
                                 x: (modules.length * 2) % 12,
                                 y: Infinity,
                                 w: 3,
@@ -3433,6 +3434,7 @@ export default function App() {
                                   type: 'volantino',
                                   title: 'Volantino',
                                   offers: DEFAULT_VOLANTINO_OFFERS.map(o => ({ ...o })),
+                                  flyers: VOLANTINO_STORES.map(s => ({ id: generateUUID(), storeId: s.id, label: 'Volantino settimanale', updatedAt: new Date().toISOString() })),
                                   x: (modules.length * 2) % 12,
                                   y: Infinity,
                                   w: 3,

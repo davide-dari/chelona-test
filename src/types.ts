@@ -346,6 +346,7 @@ export interface VolantinoOffer {
   productName: string;
   storeId: string;
   price: number;
+  brand?: string;
   quantity?: string;
   unitPrice?: string;
   validFrom?: string;
@@ -353,7 +354,17 @@ export interface VolantinoOffer {
   isPromo?: boolean;
 }
 
+export interface VolantinoFlyer {
+  id: string;
+  storeId: string;
+  label?: string;
+  updatedAt?: string;
+  pdfUrl?: string;
+  pdfAttachment?: string;
+}
+
 export interface VolantinoModule extends BaseModule {
   type: 'volantino';
   offers: VolantinoOffer[];
+  flyers?: VolantinoFlyer[];
 }
