@@ -3,9 +3,10 @@ import { motion, AnimatePresence } from 'motion/react';
 import {
   ArrowLeft, Plus, Trash2, Pencil, X, Search, Trophy, Store,
   RotateCcw, ShoppingBasket, BadgePercent, Sparkles, ChevronRight, Scale,
-  FileText, ExternalLink, Link, Calendar, FileUp
+  FileText, ExternalLink, Link, Calendar, FileUp, ChevronLeft,
+  Apple, Milk, Drumstick, Croissant, PackageCheck, GlassWater, SprayCan, ShowerHead
 } from 'lucide-react';
-import { VolantinoModule, VolantinoOffer, VolantinoFlyer, SupermarketItem } from '../types';
+import { VolantinoModule, VolantinoOffer, VolantinoFlyer, SupermarketItem, SupermarketCategory } from '../types';
 import { generateUUID } from '../utils/uuid';
 import { guessEmoji, findProductMatches, normalizeProduct } from '../data/supermarketProducts';
 import { VOLANTINO_STORES, storeById, DEFAULT_VOLANTINO_OFFERS, StoreId } from '../data/volantinoOffers';
@@ -82,6 +83,31 @@ function OfferThumb({ name, size = 44 }: { name: string; size?: number }) {
   );
 }
 
+const AISLES: { id: SupermarketCategory; label: string; icon: any; color: string }[] = [
+  { id: 'frutta-verdura', label: 'Frutta & Verdura', icon: Apple, color: 'text-green-500 bg-green-500/10' },
+  { id: 'latticini-uova', label: 'Latticini & Uova', icon: Milk, color: 'text-sky-500 bg-sky-500/10' },
+  { id: 'carne-pesce', label: 'Carne & Pesce', icon: Drumstick, color: 'text-rose-500 bg-rose-500/10' },
+  { id: 'pane-pasticceria', label: 'Pane & Pasticceria', icon: Croissant, color: 'text-amber-500 bg-amber-500/10' },
+  { id: 'dispensa', label: 'Dispensa', icon: PackageCheck, color: 'text-orange-500 bg-orange-500/10' },
+  { id: 'bevande', label: 'Bevande', icon: GlassWater, color: 'text-blue-500 bg-blue-500/10' },
+  { id: 'pulizia', label: 'Pulizia Casa', icon: SprayCan, color: 'text-teal-500 bg-teal-500/10' },
+  { id: 'igiene', label: 'Igiene Personale', icon: ShowerHead, color: 'text-purple-500 bg-purple-500/10' },
+  { id: 'altro', label: 'Altro', icon: ShoppingBasket, color: 'text-slate-500 bg-slate-500/10' }
+];
+
+const classifyProduct = (name: string): SupermarketCategory => {
+  const t = name.toLowerCase();
+  if (/(mela|banana|arancia|limone|pomodoro|insalata|lattuga|patat|cipoll|aglio|carot|zucchin|peperon|melanzan|broccol|spinaci|fung|fragol|uva|pera|pesca|kiwi|avocado|rucola|basilic|prezzemol|verdur|frutt)/.test(t)) return 'frutta-verdura';
+  if (/(latte|mozzarell|parmigian|grana|ricott|burro|yogurt|panna|uova|uovo|formaggi|gorgonzol|fontina|mascarpone|sottilette)/.test(t)) return 'latticini-uova';
+  if (/(pane|panino|focaccia|biscott|fette|crackers|croissant|torta|dolci)/.test(t)) return 'pane-pasticceria';
+  if (/(pasta|spaghetti|penne|rigatoni|linguine|riso|farina|zucchero|sale|caffe|cioccolato|nutella|passata|pelat|tonno in scatola|tonno al|legumi|lenticchie|ceci|fagioli|olio|miele|marmellat)/.test(t)) return 'dispensa';
+  if (/(pollo|manzo|maiale|tacchin|vitello|agnello|salsiccia|salame|prosciutt|pancetta|bacon|hamburger|salmone|tonno|merluzz|orata|branzino|gamber|calamar|carne|pesce|bresaola|speck)/.test(t)) return 'carne-pesce';
+  if (/(acqua|birra|cola|bibita|succo|aranciata|vino|prosecco)/.test(t)) return 'bevande';
+  if (/(detersivo|sapone|igienica|scottex|carta|spugna|ammorbidente|panni)/.test(t)) return 'pulizia';
+  if (/(dentifricio|shampoo|balsamo|deodorante|doccia|igiene|bagnoschiuma)/.test(t)) return 'igiene';
+  return 'altro';
+};
+
 const emptyForm = { productName: '', brand: '', storeId: '' as string, price: '', quantity: '', validTo: '', isPromo: true };
 
 const fmtDateTime = (iso?: string): string | null => {
@@ -106,6 +132,7 @@ export default function VolantinoScreen({ module, onSave, onClose, shoppingItems
   const [editingFlyer, setEditingFlyer] = useState<VolantinoFlyer | null>(null);
   const [pdfFlyer, setPdfFlyer] = useState<VolantinoFlyer | null>(null);
   const [flyerForm, setFlyerForm] = useState({ label: '', updatedAt: '', pdfUrl: '', pdfAttachment: '' });
+  const [selectedStore, setSelectedStore] = useState<string | null>(null);
 
   const offers = module.offers;
   const flyers = module.flyers ?? [];
@@ -159,6 +186,21 @@ export default function VolantinoScreen({ module, onSave, onClose, shoppingItems
     }
     return map;
   }, [offers]);
+
+  const storeAisles = useMemo(() => {
+    if (!selectedStore) return [];
+    const list = offers.filter(o => o.storeId === selectedStore);
+    const map = new Map<SupermarketCategory, VolantinoOffer[]>();
+    for (const a of AISLES) map.set(a.id, []);
+    for (const o of list) {
+      const cat = classifyProduct(o.productName);
+      (map.get(cat) || map.get('altro')!).push(o);
+    }
+    return AISLES.map(a => ({
+      ...a,
+      items: (map.get(a.id) || []).sort((x, y) => x.productName.localeCompare(y.productName, 'it'))
+    })).filter(a => a.items.length > 0);
+  }, [offers, selectedStore]);
 
   const matchedShopping = useMemo(() => {
     if (!shoppingItems?.length) return [];
@@ -223,9 +265,9 @@ export default function VolantinoScreen({ module, onSave, onClose, shoppingItems
     return { rows, stores: storeList, totals: storeTotals, winner, maxTotal };
   }, [basket, offersByProduct]);
 
-  const openAddForm = () => {
+  const openAddForm = (storeId?: string) => {
     setEditingId(null);
-    setForm(emptyForm);
+    setForm({ ...emptyForm, storeId: storeId || '' });
     setFormOpen(true);
   };
 
@@ -329,14 +371,7 @@ export default function VolantinoScreen({ module, onSave, onClose, shoppingItems
     return !isNaN(price) && price > 0 ? unitPriceLabel(price, form.quantity) : null;
   }, [form.price, form.quantity]);
 
-  const formatDate = (d?: string) => {
-    if (!d) return null;
-    const [y, m, day] = d.split('-');
-    return `fino al ${day}/${m}`;
-  };
-
   const compareProductOffers = selectedProduct ? offersByProduct.get(normalizeProduct(selectedProduct)) || [] : [];
-
   const sortedCompare = useMemo(() => {
     return [...compareProductOffers].sort((a, b) => a.price - b.price);
   }, [compareProductOffers]);
@@ -411,93 +446,129 @@ export default function VolantinoScreen({ module, onSave, onClose, shoppingItems
                   <Sparkles className="w-5 h-5" /> Ripristina offerte demo
                 </button>
               </div>
-            ) : (
+            ) : !selectedStore ? (
               <>
-                {offersByStore.map(({ store, offers: list }) => {
-                const flyer = getFlyer(store.id);
-                const hasPdf = !!(flyer?.pdfUrl || flyer?.pdfAttachment);
-                return (
-                  <section key={store.id} className="bg-[var(--card-bg)] rounded-[1.75rem] border border-[var(--border)] overflow-hidden">
-                    <header className="flex items-center gap-3 px-4 lg:px-5 py-3.5 border-b border-[var(--border)] bg-[var(--surface-variant)]/50">
-                      <StoreLogo id={store.id} short={store.short} size={40} />
-                      <div className="flex-1 min-w-0">
-                        <p className="font-black text-[var(--text-main)] truncate">{store.label}</p>
-                        <p className="text-[11px] text-[var(--text-muted)] font-medium truncate">
-                          {flyer?.label || 'Volantino settimanale'}
-                          {flyer?.updatedAt ? ` · agg. ${fmtDateTime(flyer.updatedAt)}` : ''}
-                          {!flyer && ' · non configurato'}
+                <p className="text-sm font-black text-[var(--text-muted)] uppercase tracking-wider">Scegli il supermercato</p>
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 lg:gap-4">
+                  {offersByStore.map(({ store, offers: list }) => {
+                    const flyer = getFlyer(store.id);
+                    const total = list.reduce((a, o) => a + o.price, 0);
+                    return (
+                      <button
+                        key={store.id}
+                        onClick={() => setSelectedStore(store.id)}
+                        className="bg-[var(--card-bg)] rounded-[2rem] border border-[var(--border)] p-5 flex flex-col items-center text-center gap-3 hover:border-amber-500/60 hover:bg-amber-500/5 transition-all group shadow-sm"
+                      >
+                        <StoreLogo id={store.id} short={store.short} size={56} />
+                        <div className="min-w-0">
+                          <p className="font-black text-[var(--text-main)] truncate">{store.label}</p>
+                          <p className="text-[11px] text-[var(--text-muted)] font-medium">{list.length} offerte · {euro(total)}</p>
+                        </div>
+                        <p className="text-[10px] text-[var(--text-muted)] font-medium flex items-center gap-1">
+                          <Calendar className="w-3 h-3 shrink-0" />
+                          {flyer?.updatedAt ? `agg. ${fmtDateTime(flyer.updatedAt)}` : 'volantino non configurato'}
                         </p>
-                      </div>
-                      <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full ${store.bg} ${store.text} shrink-0`}>
-                        {euro(list.reduce((a, o) => a + o.price, 0))}
-                      </span>
-                      <div className="flex gap-1 shrink-0">
-                        {hasPdf && (
-                          <button
-                            onClick={() => setPdfFlyer(flyer!)}
-                            title="Visualizza volantino PDF"
-                            className="p-2 rounded-xl text-[var(--text-muted)] hover:text-amber-500 hover:bg-amber-500/10 transition-colors"
-                          >
-                            <FileText className="w-4 h-4" />
-                          </button>
-                        )}
-                        <button
-                          onClick={() => openFlyerForm(store.id, flyer)}
-                          title="Configura volantino"
-                          className="p-2 rounded-xl text-[var(--text-muted)] hover:text-amber-500 hover:bg-amber-500/10 transition-colors"
-                        >
-                          <Pencil className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </header>
-                  <ul className="divide-y divide-[var(--border)]">
-                    {list.map(o => (
-                      <li key={o.id} className="flex items-center gap-3 px-4 lg:px-5 py-3 group">
-                        <OfferThumb name={o.productName} />
-                        <div className="flex-1 min-w-0">
-                          <p className="font-bold text-[var(--text-main)] text-sm truncate flex items-center gap-2">
-                            {o.productName}
-                            {o.brand && <span className="text-[10px] font-bold text-amber-600 bg-amber-500/10 border border-amber-500/20 rounded-full px-2 py-0.5 shrink-0">{o.brand}</span>}
-                            {o.isPromo && <BadgePercent className="w-3.5 h-3.5 text-amber-500 shrink-0" />}
-                          </p>
-                          <p className="text-[11px] text-[var(--text-muted)] font-medium truncate">
-                            {[o.quantity, unitPriceLabel(o.price, o.quantity), formatDate(o.validTo)].filter(Boolean).join(' · ')}
-                          </p>
-                        </div>
-                        <div className="text-right shrink-0">
-                          <p className="font-black text-amber-500">{euro(o.price)}</p>
-                        </div>
-                        <div className="flex gap-1 shrink-0 opacity-60 group-hover:opacity-100 transition-opacity">
-                          <button
-                            onClick={() => openEditForm(o)}
-                            className="p-2 rounded-xl text-[var(--text-muted)] hover:text-amber-500 hover:bg-amber-500/10 transition-colors"
-                            aria-label="Modifica offerta"
-                          >
-                            <Pencil className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => removeOffer(o.id)}
-                            className="p-2 rounded-xl text-[var(--text-muted)] hover:text-rose-500 hover:bg-rose-500/10 transition-colors"
-                            aria-label="Elimina offerta"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                </section>
-                );
-                })}
+                      </button>
+                    );
+                  })}
+                </div>
+              </>
+            ) : (() => {
+              const store = storeById(selectedStore);
+              const flyer = getFlyer(selectedStore);
+              const hasPdf = !!(flyer?.pdfUrl || flyer?.pdfAttachment);
+              const total = offers.filter(o => o.storeId === selectedStore).reduce((a, o) => a + o.price, 0);
+              return (
+                <div className="space-y-4">
+                  <button
+                    onClick={() => setSelectedStore(null)}
+                    className="flex items-center gap-1.5 text-sm font-bold text-[var(--text-muted)] hover:text-amber-500 transition-colors"
+                  >
+                    <ChevronLeft className="w-4 h-4" /> Tutti i supermercati
+                  </button>
 
+                  <section className="bg-[var(--card-bg)] rounded-[2rem] border border-[var(--border)] p-4 lg:p-5 flex items-center gap-3 shadow-sm">
+                    <StoreLogo id={store.id} short={store.short} size={52} />
+                    <div className="flex-1 min-w-0">
+                      <p className="font-black text-[var(--text-main)] text-lg truncate">{store.label}</p>
+                      <p className="text-[11px] text-[var(--text-muted)] font-medium truncate">
+                        {flyer?.label || 'Volantino settimanale'}
+                        {flyer?.updatedAt ? ` · aggiornato ${fmtDateTime(flyer.updatedAt)}` : ''}
+                        {!flyer && ' · non configurato'}
+                      </p>
+                    </div>
+                    <span className={`text-xs font-bold px-3 py-1.5 rounded-full ${store.bg} ${store.text} shrink-0`}>{euro(total)}</span>
+                    <div className="flex gap-1 shrink-0">
+                      {hasPdf && (
+                        <button onClick={() => setPdfFlyer(flyer!)} title="Visualizza volantino PDF" className="p-2 rounded-xl text-[var(--text-muted)] hover:text-amber-500 hover:bg-amber-500/10 transition-colors">
+                          <FileText className="w-4 h-4" />
+                        </button>
+                      )}
+                      <button onClick={() => openFlyerForm(store.id, flyer)} title="Configura volantino" className="p-2 rounded-xl text-[var(--text-muted)] hover:text-amber-500 hover:bg-amber-500/10 transition-colors">
+                        <Pencil className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </section>
+
+                  {storeAisles.map(aisle => (
+                    <section key={aisle.id} className="bg-[var(--card-bg)] rounded-[2rem] border border-[var(--border)] overflow-hidden">
+                      <header className="flex items-center gap-3 px-4 lg:px-5 py-3 border-b border-[var(--border)] bg-[var(--surface-variant)]/50">
+                        <span className={`w-9 h-9 rounded-xl ${aisle.color} flex items-center justify-center shrink-0`}>
+                          <aisle.icon className="w-4 h-4" />
+                        </span>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-black text-[var(--text-main)] text-sm">Corsia {aisle.label}</p>
+                          <p className="text-[11px] text-[var(--text-muted)] font-medium">{aisle.items.length} prodotti in offerta</p>
+                        </div>
+                        <span className="text-xs font-bold text-amber-500 shrink-0">{euro(aisle.items.reduce((a, o) => a + o.price, 0))}</span>
+                      </header>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 p-3 lg:p-4">
+                        {aisle.items.map(o => (
+                          <div key={o.id} className="group relative bg-[var(--surface-variant)] rounded-2xl overflow-hidden border border-[var(--border)] shadow-sm hover:border-amber-500/50 transition-all">
+                            <div className={`relative flex items-center justify-center h-24 lg:h-28 bg-gradient-to-br ${thumbGradient(o.productName)}`}>
+                              <span className="text-5xl lg:text-6xl drop-shadow-sm">{guessEmoji(o.productName)}</span>
+                              {o.isPromo && (
+                                <span className="absolute top-2 right-2 bg-amber-500 text-white rounded-full p-1.5 shadow-lg">
+                                  <BadgePercent className="w-3.5 h-3.5" />
+                                </span>
+                              )}
+                              {o.brand && (
+                                <span className="absolute bottom-2 left-2 bg-black/45 backdrop-blur-sm text-white text-[9px] font-bold px-2 py-0.5 rounded-full max-w-[75%] truncate">
+                                  {o.brand}
+                                </span>
+                              )}
+                              <div className="absolute top-2 left-2 flex gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                                <button onClick={() => openEditForm(o)} aria-label="Modifica offerta" className="p-1.5 rounded-lg bg-black/40 backdrop-blur-sm text-white hover:bg-black/60 transition-colors">
+                                  <Pencil className="w-3.5 h-3.5" />
+                                </button>
+                                <button onClick={() => removeOffer(o.id)} aria-label="Elimina offerta" className="p-1.5 rounded-lg bg-black/40 backdrop-blur-sm text-white hover:bg-rose-500/80 transition-colors">
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            </div>
+                            <div className="p-3 flex items-end justify-between gap-2">
+                              <div className="min-w-0">
+                                <p className="font-bold text-[var(--text-main)] text-sm leading-tight truncate">{o.productName}</p>
+                                <p className="text-[10px] text-[var(--text-muted)] font-medium mt-0.5 truncate">
+                                  {[o.quantity, unitPriceLabel(o.price, o.quantity)].filter(Boolean).join(' · ')}
+                                </p>
+                              </div>
+                              <p className="font-black text-amber-500 shrink-0">{euro(o.price)}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </section>
+                  ))}
+                </div>
+              );
+            })()}
               <button
-                onClick={openAddForm}
+                onClick={() => openAddForm(selectedStore ?? undefined)}
                 className="w-full flex items-center justify-center gap-2 bg-amber-500 hover:bg-amber-600 text-white py-4 rounded-2xl font-bold transition-all active:scale-[0.99] shadow-lg shadow-amber-500/25 sticky bottom-2"
               >
                 <Plus className="w-5 h-5" /> Aggiungi offerta
               </button>
-              </>
-            )}
           </div>
         ) : (
           <div className="p-4 lg:p-6 space-y-4">
