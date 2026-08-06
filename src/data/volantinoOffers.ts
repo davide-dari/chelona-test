@@ -2,7 +2,9 @@ import type { VolantinoOffer } from '../types';
 
 export type StoreId =
   | 'conad' | 'coop' | 'esselunga' | 'lidl' | 'aldi'
-  | 'penny' | 'eurospin' | 'carrefour' | 'despar' | 'tigre';
+  | 'penny' | 'eurospin' | 'carrefour' | 'despar' | 'tigre'
+  | 'gros' | 'ipergros' | 'grosmarket' | 'megamarket' | 'familycenter'
+  | 'todis' | 'carrefourmarket' | 'carrefourexpress';
 
 export interface VolantinoStore {
   id: StoreId;
@@ -25,6 +27,14 @@ export const VOLANTINO_STORES: VolantinoStore[] = [
   { id: 'carrefour', label: 'Carrefour', short: 'CA', text: 'text-sky-400', bg: 'bg-sky-400/10', border: 'border-sky-400/40' },
   { id: 'despar', label: 'Despar', short: 'DE', text: 'text-teal-400', bg: 'bg-teal-400/10', border: 'border-teal-400/40' },
   { id: 'tigre', label: 'Tigre', short: 'TI', text: 'text-pink-400', bg: 'bg-pink-400/10', border: 'border-pink-400/40', budget: true },
+  { id: 'gros', label: 'Gros', short: 'GR', text: 'text-green-600', bg: 'bg-green-600/10', border: 'border-green-600/40' },
+  { id: 'ipergros', label: 'IperGros', short: 'IG', text: 'text-lime-500', bg: 'bg-lime-500/10', border: 'border-lime-500/40' },
+  { id: 'grosmarket', label: 'Gros Market', short: 'GM', text: 'text-emerald-500', bg: 'bg-emerald-500/10', border: 'border-emerald-500/40' },
+  { id: 'megamarket', label: 'Megamarket', short: 'MM', text: 'text-fuchsia-500', bg: 'bg-fuchsia-500/10', border: 'border-fuchsia-500/40', budget: true },
+  { id: 'familycenter', label: 'Family Center', short: 'FC', text: 'text-rose-400', bg: 'bg-rose-400/10', border: 'border-rose-400/40' },
+  { id: 'todis', label: 'Todis', short: 'TD', text: 'text-red-500', bg: 'bg-red-500/10', border: 'border-red-500/40', budget: true },
+  { id: 'carrefourmarket', label: 'Carrefour Market', short: 'CM', text: 'text-sky-500', bg: 'bg-sky-500/10', border: 'border-sky-500/40' },
+  { id: 'carrefourexpress', label: 'Carrefour Express', short: 'CE', text: 'text-sky-600', bg: 'bg-sky-600/10', border: 'border-sky-600/40' },
 ];
 
 export function storeById(id: string): VolantinoStore {
@@ -75,6 +85,21 @@ const DEMO: Row[] = [
   ['Dentifricio', '75 ml', [['conad', 1.99], ['coop', 2.19], ['esselunga', 1.89], ['lidl', 1.59], ['aldi', 1.49], ['penny', 1.69], ['eurospin', 1.39]]],
   ['Scottex', '4 rotoli', [['conad', 2.29], ['coop', 2.49], ['esselunga', 2.19], ['lidl', 1.79], ['aldi', 1.69], ['penny', 1.99], ['eurospin', 1.59]]],
   ['Sapone mani', '250 ml', [['conad', 1.49], ['coop', 1.59], ['esselunga', 1.39], ['lidl', 1.19], ['aldi', 1.09], ['penny', 1.29], ['carrefour', 1.49]]],
+
+  ['Latte intero', '1 L', [['gros', 1.12], ['ipergros', 1.10], ['grosmarket', 1.18], ['megamarket', 1.15], ['familycenter', 1.19], ['todis', 1.09], ['carrefourmarket', 1.24], ['carrefourexpress', 1.29]]],
+  ['Spaghetti', '500 g', [['gros', 0.79], ['ipergros', 0.75], ['grosmarket', 0.85], ['megamarket', 0.82], ['familycenter', 0.89], ['todis', 0.69], ['carrefourmarket', 0.99], ['carrefourexpress', 1.05]]],
+  ['Riso Carnaroli', '1 kg', [['gros', 2.89], ['ipergros', 2.79], ['grosmarket', 3.09], ['megamarket', 2.99], ['familycenter', 3.19], ['todis', 2.69], ['carrefourmarket', 3.39], ['carrefourexpress', 3.59]]],
+  ['Passata di pomodoro', '700 g', [['gros', 1.09], ['ipergros', 1.05], ['grosmarket', 1.19], ['megamarket', 1.12], ['familycenter', 1.25], ['todis', 0.99], ['carrefourmarket', 1.29], ['carrefourexpress', 1.39]]],
+  ['Olio extravergine di oliva', '1 L', [['gros', 8.99], ['ipergros', 8.79], ['grosmarket', 9.49], ['megamarket', 9.19], ['familycenter', 9.79], ['todis', 8.49], ['carrefourmarket', 9.99], ['carrefourexpress', 10.49]]],
+  ['Tonno in scatola', '160 g', [['gros', 1.69], ['ipergros', 1.59], ['grosmarket', 1.79], ['megamarket', 1.75], ['familycenter', 1.85], ['todis', 1.49], ['carrefourmarket', 1.99], ['carrefourexpress', 2.09]]],
+  ['Mozzarella', '125 g', [['gros', 1.09], ['ipergros', 1.05], ['grosmarket', 1.19], ['megamarket', 1.12], ['familycenter', 1.25], ['todis', 0.99], ['carrefourmarket', 1.35], ['carrefourexpress', 1.45]]],
+  ['Petto di pollo', '500 g', [['gros', 4.99], ['ipergros', 4.89], ['grosmarket', 5.19], ['megamarket', 5.09], ['familycenter', 5.29], ['todis', 4.79], ['carrefourmarket', 5.39], ['carrefourexpress', 5.59]]],
+  ['Banana', '1 kg', [['gros', 1.09], ['ipergros', 1.05], ['grosmarket', 1.19], ['megamarket', 1.15], ['familycenter', 1.25], ['todis', 0.99], ['carrefourmarket', 1.29], ['carrefourexpress', 1.35]]],
+  ['Caffè macinato', '250 g', [['gros', 3.19], ['ipergros', 3.09], ['grosmarket', 3.39], ['megamarket', 3.29], ['familycenter', 3.49], ['todis', 2.99], ['carrefourmarket', 3.59], ['carrefourexpress', 3.79]]],
+  ['Carta igienica', '8 rotoli', [['gros', 2.99], ['ipergros', 2.89], ['grosmarket', 3.19], ['megamarket', 3.09], ['familycenter', 3.29], ['todis', 2.79], ['carrefourmarket', 3.39], ['carrefourexpress', 3.59]]],
+  ['Nutella', '750 g', [['gros', 4.09], ['ipergros', 3.99], ['grosmarket', 4.29], ['megamarket', 4.19], ['familycenter', 4.39], ['todis', 3.89], ['carrefourmarket', 4.49], ['carrefourexpress', 4.69]]],
+  ['Acqua minerale', '6x1.5 L', [['gros', 1.69], ['ipergros', 1.59], ['grosmarket', 1.79], ['megamarket', 1.75], ['familycenter', 1.89], ['todis', 1.49], ['carrefourmarket', 1.99], ['carrefourexpress', 2.19]]],
+  ['Birra', '6x33 cl', [['gros', 4.99], ['ipergros', 4.79], ['grosmarket', 5.29], ['megamarket', 5.19], ['familycenter', 5.49], ['todis', 4.49], ['carrefourmarket', 5.69], ['carrefourexpress', 5.99]]],
 ];
 
 export const PRODUCT_BRANDS: Record<string, string> = {

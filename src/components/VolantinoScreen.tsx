@@ -9,6 +9,7 @@ import { VolantinoModule, VolantinoOffer, VolantinoFlyer, SupermarketItem } from
 import { generateUUID } from '../utils/uuid';
 import { guessEmoji, findProductMatches, normalizeProduct } from '../data/supermarketProducts';
 import { VOLANTINO_STORES, storeById, DEFAULT_VOLANTINO_OFFERS, StoreId } from '../data/volantinoOffers';
+import { StoreLogo } from './StoreLogo';
 
 interface VolantinoScreenProps {
   module: VolantinoModule;
@@ -59,11 +60,22 @@ function unitPriceLabel(price: number, qty?: string): string | null {
   return `${euro(per)}/pezzo`;
 }
 
-function OfferThumb({ name, size = 40 }: { name: string; size?: number }) {
+function thumbGradient(name: string): string {
+  const t = name.toLowerCase();
+  if (/(mela|banana|arancia|limone|pomodoro|insalata|lattuga|patat|cipoll|aglio|carot|zucchin|peperon|melanzan|broccol|spinaci|fung|fragol|uva|pera|pesca|kiwi|avocado|verdur|frutt|rucola|zucchino)/.test(t)) return 'from-green-500/30 to-lime-500/10';
+  if (/(latte|formaggi|mozzarell|parmigian|grana|yogurt|burro|panna|uova|ricott|prosciutt|bresaola|salame|mortadell|speck)/.test(t)) return 'from-rose-500/30 to-orange-500/10';
+  if (/(pollo|manzo|maiale|tacchin|vitello|agnello|carne|salmone|tonno|pesce|merluzz|orata|gamber|hamburger)/.test(t)) return 'from-red-500/30 to-rose-500/10';
+  if (/(pane|panino|biscott|crackers|fette|croissant|pasta|spaghetti|penne|riso|farina|zucchero|caff|cioccolato|nutella|dolc|miele|marmellat)/.test(t)) return 'from-amber-500/30 to-yellow-500/10';
+  if (/(acqua|vino|birra|succo|cola|aranciata|bibita|prosecco)/.test(t)) return 'from-blue-500/30 to-cyan-500/10';
+  if (/(detersivo|sapone|igienica|scottex|dentifricio|shampoo|pulizia|igiene|rotoli)/.test(t)) return 'from-teal-500/30 to-emerald-500/10';
+  return 'from-slate-500/30 to-slate-500/10';
+}
+
+function OfferThumb({ name, size = 44 }: { name: string; size?: number }) {
   return (
     <span
       style={{ width: size, height: size, fontSize: Math.round(size * 0.5) }}
-      className="flex items-center justify-center shrink-0 rounded-xl bg-[var(--surface-variant)] ring-1 ring-[var(--border)]"
+      className={`flex items-center justify-center shrink-0 rounded-xl bg-gradient-to-br ${thumbGradient(name)} ring-1 ring-[var(--border)] shadow-sm`}
     >
       {guessEmoji(name)}
     </span>
@@ -407,9 +419,7 @@ export default function VolantinoScreen({ module, onSave, onClose, shoppingItems
                 return (
                   <section key={store.id} className="bg-[var(--card-bg)] rounded-[1.75rem] border border-[var(--border)] overflow-hidden">
                     <header className="flex items-center gap-3 px-4 lg:px-5 py-3.5 border-b border-[var(--border)] bg-[var(--surface-variant)]/50">
-                      <span className={`w-10 h-10 rounded-xl ${store.bg} ${store.text} flex items-center justify-center font-black text-sm shrink-0`}>
-                        {store.short}
-                      </span>
+                      <StoreLogo id={store.id} short={store.short} size={40} />
                       <div className="flex-1 min-w-0">
                         <p className="font-black text-[var(--text-main)] truncate">{store.label}</p>
                         <p className="text-[11px] text-[var(--text-muted)] font-medium truncate">
@@ -563,9 +573,7 @@ export default function VolantinoScreen({ module, onSave, onClose, shoppingItems
                         return (
                           <li key={o.id} className={`px-4 lg:px-5 py-3.5 ${isBest ? 'bg-emerald-500/5' : ''}`}>
                             <div className="flex items-center gap-3">
-                              <span className={`w-9 h-9 rounded-xl ${st.bg} ${st.text} flex items-center justify-center font-black text-xs shrink-0`}>
-                                {st.short}
-                              </span>
+                              <StoreLogo id={o.storeId} short={st.short} size={36} />
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2">
                                   <p className="font-bold text-[var(--text-main)] text-sm truncate">{st.label}</p>
@@ -668,10 +676,8 @@ export default function VolantinoScreen({ module, onSave, onClose, shoppingItems
                             <th className="text-left px-4 py-3 text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider sticky left-0 bg-[var(--card-bg)]">Prodotto</th>
                             {basketMatrix.stores.map(s => (
                               <th key={s} className="px-3 py-3 text-center">
-                                <span className={`inline-flex items-center gap-1.5 ${storeById(s).text}`}>
-                                  <span className={`w-6 h-6 rounded-lg ${storeById(s).bg} flex items-center justify-center font-black text-[10px]`}>
-                                    {storeById(s).short}
-                                  </span>
+                                <span className={`inline-flex items-center justify-center ${storeById(s).text}`}>
+                                  <StoreLogo id={s} short={storeById(s).short} size={26} />
                                 </span>
                               </th>
                             ))}
@@ -763,6 +769,24 @@ export default function VolantinoScreen({ module, onSave, onClose, shoppingItems
                 {editingId ? 'Modifica offerta' : 'Nuova offerta'}
               </h3>
               <p className="text-sm text-[var(--text-muted)] mb-5">Aggiungi un prezzo trovato nei volantini</p>
+
+              {form.productName.trim() && (
+                <div className="flex items-center gap-3 mb-5 p-3 bg-[var(--surface-variant)]/50 border border-[var(--border)] rounded-2xl">
+                  <OfferThumb name={form.productName} size={52} />
+                  <div className="flex-1 min-w-0">
+                    <p className="font-black text-[var(--text-main)] text-sm truncate">{form.productName}</p>
+                    <p className="text-[11px] text-[var(--text-muted)] font-medium truncate">
+                      {[form.brand.trim() || '—', form.quantity || '—'].filter(Boolean).join(' · ')}
+                    </p>
+                  </div>
+                  {unitPreview && (
+                    <div className="text-right shrink-0">
+                      <p className="font-black text-emerald-500">{unitPreview}</p>
+                      <p className="text-[10px] text-[var(--text-muted)] font-medium">prezzo unitario</p>
+                    </div>
+                  )}
+                </div>
+              )}
 
               <div className="space-y-4">
                 <div className="relative">
