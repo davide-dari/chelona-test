@@ -37,12 +37,13 @@ export const ITALIAN_SUPERMARKETS: ItalianSupermarket[] = [
   {
     id: 'esselunga', label: 'Esselunga', short: 'ES', color: '#F37B21', website: 'https://www.esselunga.it/',
     flyerUrl: 'https://www.esselunga.it/volantino.html',
-    regions: ['Lombardia', 'Piemonte', 'Ligura', 'Emilia-Romagna', 'Toscana', 'Umbria', 'Lazio', 'Friuli-Venezia Giulia'],
+    regions: ['Lombardia', 'Piemonte', 'Liguria', 'Emilia-Romagna', 'Toscana', 'Umbria', 'Lazio', 'Friuli-Venezia Giulia'],
     cities: ['Milano', 'Monza', 'Bergamo', 'Brescia', 'Torino', 'Genova', 'Bologna', 'Parma', 'Modena', 'Ravenna', 'Firenze', 'Pisa', 'Perugia', 'Roma', 'Udine'],
     points: '~200',
   },
   {
-    id: 'coop', label: 'Coop', short: 'CC', color: '#E4001B', website: 'https://www.e-coop.it/', regions: ['Italia'],
+    id: 'coop', label: 'Coop', short: 'CC', color: '#E4001B', website: 'https://www.e-coop.it/',
+    flyerUrl: 'https://coop.it/le-nostre-promozioni', regions: ['Italia'],
     cities: ['Milano', 'Roma', 'Torino', 'Genova', 'Bologna', 'Firenze', 'Napoli', 'Bari', 'Palermo', 'Catania', 'Cagliari', 'Verona', 'Trieste', 'Parma', 'Padova', 'Reggio Emilia', 'Livorno'],
     points: '1000+',
   },
@@ -58,7 +59,19 @@ export const ITALIAN_SUPERMARKETS: ItalianSupermarket[] = [
   },
   {
     id: 'aldi', label: 'Aldi', short: 'AL', color: '#0057A8',
-    website: 'https://www.aldi.it/', regions: ['Italia'], discount: true, points: '1000+',
+    website: 'https://www.aldi.it/',
+    flyerUrl: 'https://www.aldi.it/offerte/volantino', regions: ['Italia'], discount: true, points: '1000+',
+  },
+  {
+    id: 'md', label: 'MD', short: 'MD', color: '#E30613',
+    website: 'https://www.md.it/',
+    flyerUrl: 'https://www.md.it/volantino', regions: ['Italia'], discount: true, points: '~900',
+  },
+  {
+    id: 'agora', label: "Agorà", short: 'AG', color: '#7A1FA2',
+    website: 'https://www.gruppovege.it/',
+    flyerUrl: 'https://www.gruppovege.it/volantino', regions: ['Italia'], discount: true,
+    group: 'Agorà Network (Végé)', points: '~1800',
   },
   {
     id: 'eurospin', label: 'Eurospin', short: 'EU', color: '#00923F',
@@ -77,7 +90,8 @@ export const ITALIAN_SUPERMARKETS: ItalianSupermarket[] = [
   },
   {
     id: 'crai', label: 'Craï', short: 'CR', color: '#EB1C49',
-    website: 'https://www.crai.it/', regions: ['Italia'], points: '2500+',
+    website: 'https://www.crai.it/',
+    flyerUrl: 'https://www.crai.it/volantino', regions: ['Italia'], points: '2500+',
   },
   {
     id: 'penny', label: 'Penny Market', short: 'PM', color: '#0050AA', website: 'https://www.penny.it/',
@@ -101,6 +115,7 @@ export const ITALIAN_SUPERMARKETS: ItalianSupermarket[] = [
   {
     id: 'tigre', label: 'Tigre', short: 'TI', color: '#FFB81C',
     website: 'https://www.e-tigre.it/',
+    flyerUrl: 'https://www.e-tigre.it/volantino',
     regions: ['Lombardia', 'Piemonte', 'Emilia-Romagna', 'Liguria', 'Veneto', 'Toscana', 'Lazio'],
     cities: ['Milano', 'Monza', 'Brescia', 'Varese', 'Bergamo', 'Como', 'Torino', 'Novara', 'Alessandria', 'Piacenza', 'Parma', 'Bologna', 'Genova', 'Verona', 'Venezia', 'Firenze', 'Pisa', 'Roma'],
     discount: true, group: 'MDA', points: '~400',
@@ -108,6 +123,7 @@ export const ITALIAN_SUPERMARKETS: ItalianSupermarket[] = [
   {
     id: 'gros', label: 'Gros', short: 'GR', color: '#009A44',
     website: 'https://www.gruppogros.com/',
+    flyerUrl: 'https://www.gruppogros.com/volantini',
     regions: ['Piemonte', 'Liguria', "Valle d'Aosta"],
     cities: ['Cuneo', 'Alessandria', 'Asti', 'Torino', 'Genova', 'Savona', 'Imperia', 'Sanremo', 'Aosta'],
     group: 'Végé', points: '~100',
@@ -115,6 +131,7 @@ export const ITALIAN_SUPERMARKETS: ItalianSupermarket[] = [
   {
     id: 'ipergros', label: 'IperGros', short: 'IG', color: '#86B817',
     website: 'https://www.gruppogros.com/',
+    flyerUrl: 'https://www.gruppogros.com/volantini',
     regions: ['Piemonte', 'Liguria'],
     cities: ['Cuneo', 'Torino', 'Asti', 'Savona', 'Imperia', 'Genova', 'Sanremo'],
     group: 'Végé', points: '~30',
@@ -122,6 +139,7 @@ export const ITALIAN_SUPERMARKETS: ItalianSupermarket[] = [
   {
     id: 'tomarket', label: 'ToMarket', short: 'TM', color: '#E8B81C',
     website: 'https://www.gruppogros.com/',
+    flyerUrl: 'https://www.gruppogros.com/volantini',
     regions: ['Piemonte'],
     cities: ['Torino', 'Cuneo', 'Alessandria', 'Asti'],
     group: 'Végé', points: '~30',
@@ -129,6 +147,7 @@ export const ITALIAN_SUPERMARKETS: ItalianSupermarket[] = [
   {
     id: 'megamarket', label: 'Megamarket', short: 'MM', color: '#C026D3',
     website: 'https://www.gruppovege.it/',
+    flyerUrl: 'https://www.gruppovege.it/volantino',
     regions: ['Sardegna'],
     cities: ['Cagliari', 'Sassari', 'Olbia', 'Oristano', 'Nuoro'],
     discount: true, group: 'Végé', points: '~25',
@@ -136,6 +155,7 @@ export const ITALIAN_SUPERMARKETS: ItalianSupermarket[] = [
   {
     id: 'familycenter', label: 'Family Center', short: 'FC', color: '#EC4899',
     website: 'https://www.gruppovege.it/',
+    flyerUrl: 'https://www.gruppovege.it/volantino',
     regions: ['Sardegna'],
     cities: ['Cagliari', 'Sassari', 'Olbia', 'Oristano', 'Nuoro'],
     group: 'Végé', points: '~30',
@@ -143,6 +163,7 @@ export const ITALIAN_SUPERMARKETS: ItalianSupermarket[] = [
   {
     id: 'bennet', label: 'Bennet', short: 'BN', color: '#7B2C8E',
     website: 'https://www.bennet.it/',
+    flyerUrl: 'https://www.bennet.it/volantino',
     regions: ['Lombardia', 'Piemonte', 'Veneto', 'Emilia-Romagna', 'Friuli-Venezia Giulia'],
     cities: ['Milano', 'Monza', 'Como', 'Varese', 'Novara', 'Torino', 'Alessandria', 'Venezia', 'Verona', 'Bologna', 'Reggio Emilia', 'Parma', 'Modena', 'Udine', 'Pordenone', 'Genova'],
     group: 'Selex', points: '~80',
@@ -155,8 +176,17 @@ export const ITALIAN_SUPERMARKETS: ItalianSupermarket[] = [
     group: 'Adda Supermercati', points: '~180',
   },
   {
+    id: 'unes', label: 'Unes', short: 'UN', color: '#E4001B',
+    website: 'https://www.unes.it/',
+    flyerUrl: 'https://www.unes.it/it/volantino',
+    regions: ['Lombardia'],
+    cities: ['Milano', 'Como', 'Varese', 'Pavia', 'Lecco', 'Lodi', 'Monza', 'Bergamo', 'Brescia'],
+    group: 'Selex', points: '~160',
+  },
+  {
     id: 'ilgigante', label: 'Il Gigante', short: 'GI', color: '#F26522',
     website: 'https://www.ilgigante.it/',
+    flyerUrl: 'https://www.ilgigante.it/volantino',
     regions: ['Lombardia'],
     cities: ['Milano', 'Monza', 'Brescia', 'Bergamo', 'Como', 'Varese'],
     group: 'Sigma Lombardia', points: '~30',
@@ -178,13 +208,23 @@ export const ITALIAN_SUPERMARKETS: ItalianSupermarket[] = [
   {
     id: 'sisa', label: 'Sisa', short: 'SI', color: '#E4001B',
     website: 'https://www.sisa.it/',
+    flyerUrl: 'https://www.sisa.it/volantini',
     regions: ['Marche', 'Abruzzo', 'Molise', 'Umbria', 'Toscana', 'Lazio'],
-    cities: ['Ancona', 'Pesaro', 'Ascoli Piceno', 'Macerata', "L'Aquila", 'Posiciona', 'Chieti', 'Teramo', 'Perugia', 'Firenze', 'Arezzo', 'Roma'],
+    cities: ['Ancona', 'Pesaro', 'Ascoli Piceno', 'Macerata', "L'Aquila", 'Pescara', 'Chieti', 'Teramo', 'Perugia', 'Firenze', 'Arezzo', 'Roma'],
     group: 'Consorzio Sisa', points: '~150',
+  },
+  {
+    id: 'basar', label: 'Basar', short: 'BS', color: '#00843D',
+    website: 'https://www.basar.it/',
+    flyerUrl: 'https://www.basar.it/volantino',
+    regions: ['Lazio'],
+    cities: ['Roma', 'Viterbo', 'Frosinone', 'Latina', 'Rieti', 'Civitavecchia'],
+    points: '~130',
   },
   {
     id: 'smeraldo', label: 'Punto Smeraldo', short: 'PS', color: '#0A9B44',
     website: 'https://www.puntosmeraldo.it/',
+    flyerUrl: 'https://www.puntosmeraldo.it/volantino',
     regions: ['Sardegna'],
     cities: ['Cagliari', 'Sassari', 'Olbia', 'Oristano', 'Nuoro'],
     points: '~45',
@@ -200,6 +240,7 @@ export const ITALIAN_SUPERMARKETS: ItalianSupermarket[] = [
   {
     id: 'ali', label: 'Alì', short: 'AL', color: '#E4001B',
     website: 'https://www.gruppoali.it/',
+    flyerUrl: 'https://www.gruppoali.it/volantino',
     regions: ['Veneto'],
     cities: ['Padova', 'Venezia', 'Treviso', 'Verona', 'Vicenza', 'Rovigo', 'Belluno'],
     group: 'Alì – Italia', points: '~150',
@@ -207,6 +248,7 @@ export const ITALIAN_SUPERMARKETS: ItalianSupermarket[] = [
   {
     id: 'diperdi', label: 'Dì per Dì', short: 'DD', color: '#F5A800',
     website: 'https://www.gruppovege.it/',
+    flyerUrl: 'https://www.gruppovege.it/volantino',
     regions: ['Veneto', 'Friuli-Venezia Giulia', 'Trentino-Alto Adige', 'Emilia-Romagna'],
     cities: ['Venezia', 'Padova', 'Treviso', 'Verona', 'Udine', 'Pordenone', 'Trento', 'Rovereto', 'Bologna', 'Modena'],
     discount: true, group: 'Végé', points: '~60',
@@ -244,6 +286,7 @@ export const ITALIAN_SUPERMARKETS: ItalianSupermarket[] = [
   {
     id: 'sidis', label: 'Sidis', short: 'SD', color: '#E4001B',
     website: 'https://www.sidis.it/',
+    flyerUrl: 'https://www.sidis.it/volantino',
     regions: ['Campania', 'Puglia', 'Sicilia'],
     cities: ['Napoli', 'Salerno', 'Caserta', 'Bari', 'Foggia', 'Palermo', 'Messina'],
     points: '~150',
