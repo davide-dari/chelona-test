@@ -4,15 +4,34 @@ interface StoreLogoProps {
   id: string;
   short?: string;
   size?: number;
+  logo?: string;
+  hex?: string;
 }
 
 const F = 'Arial, Helvetica, sans-serif';
 
-export function StoreLogo({ id, short, size = 40 }: StoreLogoProps) {
-  let logo: React.ReactNode;
+export function StoreLogo({ id, short, size = 40, logo: logoUrl, hex }: StoreLogoProps) {
+  let content: React.ReactNode;
+
+  if (logoUrl) {
+    return (
+      <span
+        style={{ width: size, height: size, aspectRatio: '1 / 1' }}
+        className="inline-flex items-center justify-center shrink-0 rounded-[14px] bg-white ring-1 ring-[var(--border)] overflow-hidden"
+      >
+        <img
+          src={logoUrl}
+          alt={short || id}
+          style={{ width: size * 0.82, height: size * 0.82, objectFit: 'contain' }}
+          className="shrink-0"
+          loading="lazy"
+        />
+      </span>
+    );
+  }
   switch (id) {
     case 'lidl':
-      logo = (
+      content = (
         <>
           <rect width="64" height="64" rx="14" fill="#0B4DA2" />
           <circle cx="32" cy="32" r="27" fill="#FFD600" />
@@ -21,7 +40,7 @@ export function StoreLogo({ id, short, size = 40 }: StoreLogoProps) {
       );
       break;
     case 'aldi':
-      logo = (
+      content = (
         <>
           <rect width="64" height="64" rx="14" fill="#0057A8" />
           <ellipse cx="32" cy="18" rx="24" ry="10" fill="#FF7F00" />
@@ -30,7 +49,7 @@ export function StoreLogo({ id, short, size = 40 }: StoreLogoProps) {
       );
       break;
     case 'conad':
-      logo = (
+      content = (
         <>
           <rect width="64" height="64" rx="14" fill="#D71920" />
           <g fill="#FFFFFF">
@@ -48,7 +67,7 @@ export function StoreLogo({ id, short, size = 40 }: StoreLogoProps) {
       );
       break;
     case 'coop':
-      logo = (
+      content = (
         <>
           <rect width="64" height="64" rx="14" fill="#FFFFFF" />
           <rect x="2" y="2" width="60" height="60" rx="12" fill="none" stroke="#E3E3E3" strokeWidth="2" />
@@ -57,7 +76,7 @@ export function StoreLogo({ id, short, size = 40 }: StoreLogoProps) {
       );
       break;
     case 'esselunga':
-      logo = (
+      content = (
         <>
           <rect width="64" height="64" rx="14" fill="#F37B21" />
           <text x="32" y="42" textAnchor="middle" fontFamily={F} fontWeight="900" fontSize="22" fill="#FFFFFF">ESSE</text>
@@ -66,7 +85,7 @@ export function StoreLogo({ id, short, size = 40 }: StoreLogoProps) {
       );
       break;
     case 'penny':
-      logo = (
+      content = (
         <>
           <rect width="64" height="64" rx="14" fill="#FFFFFF" />
           <rect x="2" y="2" width="60" height="60" rx="12" fill="none" stroke="#E3E3E3" strokeWidth="2" />
@@ -76,7 +95,7 @@ export function StoreLogo({ id, short, size = 40 }: StoreLogoProps) {
       );
       break;
     case 'eurospin':
-      logo = (
+      content = (
         <>
           <rect width="64" height="64" rx="14" fill="#00923F" />
           <text x="32" y="48" textAnchor="middle" fontFamily={F} fontWeight="900" fontSize="34" fill="#FFFFFF">€</text>
@@ -87,7 +106,7 @@ export function StoreLogo({ id, short, size = 40 }: StoreLogoProps) {
     case 'carrefour':
     case 'carrefourmarket':
     case 'carrefourexpress':
-      logo = (
+      content = (
         <>
           <rect width="64" height="64" rx="14" fill="#FFFFFF" />
           <rect x="2" y="2" width="60" height="60" rx="12" fill="none" stroke="#E3E3E3" strokeWidth="2" />
@@ -98,7 +117,7 @@ export function StoreLogo({ id, short, size = 40 }: StoreLogoProps) {
       );
       break;
     case 'despar':
-      logo = (
+      content = (
         <>
           <rect width="64" height="64" rx="14" fill="#FFFFFF" />
           <rect x="2" y="2" width="60" height="60" rx="12" fill="none" stroke="#E3E3E3" strokeWidth="2" />
@@ -108,7 +127,7 @@ export function StoreLogo({ id, short, size = 40 }: StoreLogoProps) {
       );
       break;
     case 'tigre':
-      logo = (
+      content = (
         <>
           <rect width="64" height="64" rx="14" fill="#FFB81C" />
           <path d="M10 18 h44 v4 h-44 z M10 42 h44 v4 h-44 z" fill="#1A1A1A" opacity="0.85" />
@@ -117,7 +136,7 @@ export function StoreLogo({ id, short, size = 40 }: StoreLogoProps) {
       );
       break;
     case 'gros':
-      logo = (
+      content = (
         <>
           <rect width="64" height="64" rx="14" fill="#009A44" />
           <text x="32" y="43" textAnchor="middle" fontFamily={F} fontWeight="900" fontSize="22" fill="#FFFFFF">GROS</text>
@@ -125,7 +144,7 @@ export function StoreLogo({ id, short, size = 40 }: StoreLogoProps) {
       );
       break;
     case 'ipergros':
-      logo = (
+      content = (
         <>
           <rect width="64" height="64" rx="14" fill="#86B817" />
           <text x="32" y="29" textAnchor="middle" fontFamily={F} fontWeight="900" fontSize="10" fill="#FFFFFF">IPER</text>
@@ -134,7 +153,7 @@ export function StoreLogo({ id, short, size = 40 }: StoreLogoProps) {
       );
       break;
     case 'grosmarket':
-      logo = (
+      content = (
         <>
           <rect width="64" height="64" rx="14" fill="#008F8C" />
           <text x="32" y="44" textAnchor="middle" fontFamily={F} fontWeight="900" fontSize="26" fill="#FFFFFF">GM</text>
@@ -142,7 +161,7 @@ export function StoreLogo({ id, short, size = 40 }: StoreLogoProps) {
       );
       break;
     case 'megamarket':
-      logo = (
+      content = (
         <>
           <rect width="64" height="64" rx="14" fill="#C026D3" />
           <path d="M32 10 l1.8 4.2 4.5 .4 -3.4 3 1 4.4 -3.9-2.4 -3.9 2.4 1-4.4 -3.4-3 4.5-.4z" fill="#FFD600" />
@@ -151,7 +170,7 @@ export function StoreLogo({ id, short, size = 40 }: StoreLogoProps) {
       );
       break;
     case 'familycenter':
-      logo = (
+      content = (
         <>
           <rect width="64" height="64" rx="14" fill="#EC4899" />
           <path d="M51 10c-1.7-2.2-5-2.2-6.7 0l-1.1 1.3-1.1-1.3c-1.7-2.2-5-2.2-6.7 0-1.9 2.3-1.7 5.7.4 7.7l7.4 7 7.4-7c2.1-2 2.3-5.4.3-7.7z" fill="#FFD600" />
@@ -160,7 +179,7 @@ export function StoreLogo({ id, short, size = 40 }: StoreLogoProps) {
       );
       break;
     case 'todis':
-      logo = (
+      content = (
         <>
           <rect width="64" height="64" rx="14" fill="#E5001B" />
           <text x="32" y="43" textAnchor="middle" fontFamily={F} fontWeight="900" fontSize="18" fill="#FFFFFF">TODIS</text>
@@ -168,9 +187,9 @@ export function StoreLogo({ id, short, size = 40 }: StoreLogoProps) {
       );
       break;
     default:
-      logo = (
+      content = (
         <>
-          <rect width="64" height="64" rx="14" fill="#475569" />
+          <rect width="64" height="64" rx="14" fill={hex || '#475569'} />
           <text x="32" y="43" textAnchor="middle" fontFamily={F} fontWeight="900" fontSize="22" fill="#FFFFFF">
             {(short || id).slice(0, 2).toUpperCase()}
           </text>
@@ -179,7 +198,7 @@ export function StoreLogo({ id, short, size = 40 }: StoreLogoProps) {
   }
   return (
     <svg width={size} height={size} viewBox="0 0 64 64" className="shrink-0" style={{ borderRadius: 14 * (size / 64) }} aria-hidden>
-      {logo}
+      {content}
     </svg>
   );
 }

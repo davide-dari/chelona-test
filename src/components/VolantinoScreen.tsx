@@ -1,15 +1,19 @@
 import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
-  ArrowLeft, Plus, Trash2, Pencil, X, Search, Trophy, Store,
-  RotateCcw, ShoppingBasket, BadgePercent, Sparkles, ChevronRight, Scale,
-  FileText, ExternalLink, Link, Calendar, FileUp, ChevronLeft,
-  Apple, Milk, Drumstick, Croissant, PackageCheck, GlassWater, SprayCan, ShowerHead
+  ArrowLeft, X, MapPin, History, ExternalLink, CalendarDays, FileUp,
+  Link2, FileText, Loader2, Check, Sparkles, Globe, Store, ChevronLeft
 } from 'lucide-react';
-import { VolantinoModule, VolantinoOffer, VolantinoFlyer, SupermarketItem, SupermarketCategory } from '../types';
+import { CapacitorHttp, Capacitor } from '@capacitor/core';
+import { Filesystem, Directory } from '@capacitor/filesystem';
+import { FileOpener } from '@capawesome-team/capacitor-file-opener';
+import { VolantinoModule, VolantinoFlyer, SupermarketItem } from '../types';
 import { generateUUID } from '../utils/uuid';
-import { guessEmoji, findProductMatches, normalizeProduct } from '../data/supermarketProducts';
-import { VOLANTINO_STORES, storeById, DEFAULT_VOLANTINO_OFFERS, StoreId } from '../data/volantinoOffers';
+import {
+  ITALIAN_SUPERMARKETS, supermarketsForZone, suggestZones, supermarketById,
+  cityRegion, ItalianSupermarket
+} from '../data/italianSupermarkets';
+import { logoFor } from '../data/supermarketLogos';
 import { StoreLogo } from './StoreLogo';
 
 interface VolantinoScreenProps {
@@ -19,325 +23,146 @@ interface VolantinoScreenProps {
   shoppingItems?: SupermarketItem[];
 }
 
-const euro = (n: number) => n.toLocaleString('it-IT', { style: 'currency', currency: 'EUR' });
+const HISTORY_KEY = 'chelona_volantino_zones';
+const SUGGESTED_ZONES = ['Tutta Italia', 'Lombardia', 'Lazio', 'Veneto', 'Piemonte', 'Campania', 'Sicilia', 'Toscana', 'Emilia-Romagna'];
 
-function parseQuantity(q?: string): { total: number; kind: 'g' | 'l' | 'pz' } | null {
-  if (!q) return null;
-  const s = q.trim().toLowerCase().replace(/\s+/g, '');
-  let count = 1;
-  let amountStr = s;
-  let unit = '';
-  let m = s.match(/^(\d+)[x×]([\d.,]+)(g|kg|ml|cl|l|pz)$/);
-  if (m) {
-    count = parseInt(m[1]);
-    amountStr = m[2];
-    unit = m[3];
-  } else {
-    m = s.match(/^([\d.,]+)(g|kg|ml|cl|l|pz)$/);
-    if (!m) return null;
-    amountStr = m[1];
-    unit = m[2];
+const loadHistory = (): string[] => {
+  try {
+    const raw = localStorage.getItem(HISTORY_KEY);
+    const arr = raw ? JSON.parse(raw) : [];
+    return Array.isArray(arr) ? arr.filter((z: unknown) => typeof z === 'string') : [];
+  } catch {
+    return [];
   }
-  const amount = parseFloat(amountStr.replace(',', '.'));
-  if (isNaN(amount) || amount <= 0) return null;
-  if (unit === 'kg') return { total: count * amount * 1000, kind: 'g' };
-  if (unit === 'g') return { total: count * amount, kind: 'g' };
-  if (unit === 'l') return { total: count * amount, kind: 'l' };
-  if (unit === 'ml') return { total: count * (amount / 1000), kind: 'l' };
-  if (unit === 'cl') return { total: count * (amount / 100), kind: 'l' };
-  return { total: count * amount, kind: 'pz' };
-}
-
-function unitPriceLabel(price: number, qty?: string): string | null {
-  const parsed = parseQuantity(qty);
-  if (!parsed || parsed.total <= 0) return null;
-  const per = price / parsed.total;
-  if (parsed.kind === 'g') {
-    if (parsed.total >= 1000) return `${euro(per)}/kg`;
-    if (parsed.total >= 100) return `${euro(per * 100)}/100 g`;
-    return `${euro(per)}/g`;
-  }
-  if (parsed.kind === 'l') return `${euro(per)}/L`;
-  return `${euro(per)}/pezzo`;
-}
-
-function thumbGradient(name: string): string {
-  const t = name.toLowerCase();
-  if (/(mela|banana|arancia|limone|pomodoro|insalata|lattuga|patat|cipoll|aglio|carot|zucchin|peperon|melanzan|broccol|spinaci|fung|fragol|uva|pera|pesca|kiwi|avocado|verdur|frutt|rucola|zucchino)/.test(t)) return 'from-green-500/30 to-lime-500/10';
-  if (/(latte|formaggi|mozzarell|parmigian|grana|yogurt|burro|panna|uova|ricott|prosciutt|bresaola|salame|mortadell|speck)/.test(t)) return 'from-rose-500/30 to-orange-500/10';
-  if (/(pollo|manzo|maiale|tacchin|vitello|agnello|carne|salmone|tonno|pesce|merluzz|orata|gamber|hamburger)/.test(t)) return 'from-red-500/30 to-rose-500/10';
-  if (/(pane|panino|biscott|crackers|fette|croissant|pasta|spaghetti|penne|riso|farina|zucchero|caff|cioccolato|nutella|dolc|miele|marmellat)/.test(t)) return 'from-amber-500/30 to-yellow-500/10';
-  if (/(acqua|vino|birra|succo|cola|aranciata|bibita|prosecco)/.test(t)) return 'from-blue-500/30 to-cyan-500/10';
-  if (/(detersivo|sapone|igienica|scottex|dentifricio|shampoo|pulizia|igiene|rotoli)/.test(t)) return 'from-teal-500/30 to-emerald-500/10';
-  return 'from-slate-500/30 to-slate-500/10';
-}
-
-function OfferThumb({ name, size = 44 }: { name: string; size?: number }) {
-  return (
-    <span
-      style={{ width: size, height: size, fontSize: Math.round(size * 0.5) }}
-      className={`flex items-center justify-center shrink-0 rounded-xl bg-gradient-to-br ${thumbGradient(name)} ring-1 ring-[var(--border)] shadow-sm`}
-    >
-      {guessEmoji(name)}
-    </span>
-  );
-}
-
-const AISLES: { id: SupermarketCategory; label: string; icon: any; color: string }[] = [
-  { id: 'frutta-verdura', label: 'Frutta & Verdura', icon: Apple, color: 'text-green-500 bg-green-500/10' },
-  { id: 'latticini-uova', label: 'Latticini & Uova', icon: Milk, color: 'text-sky-500 bg-sky-500/10' },
-  { id: 'carne-pesce', label: 'Carne & Pesce', icon: Drumstick, color: 'text-rose-500 bg-rose-500/10' },
-  { id: 'pane-pasticceria', label: 'Pane & Pasticceria', icon: Croissant, color: 'text-amber-500 bg-amber-500/10' },
-  { id: 'dispensa', label: 'Dispensa', icon: PackageCheck, color: 'text-orange-500 bg-orange-500/10' },
-  { id: 'bevande', label: 'Bevande', icon: GlassWater, color: 'text-blue-500 bg-blue-500/10' },
-  { id: 'pulizia', label: 'Pulizia Casa', icon: SprayCan, color: 'text-teal-500 bg-teal-500/10' },
-  { id: 'igiene', label: 'Igiene Personale', icon: ShowerHead, color: 'text-purple-500 bg-purple-500/10' },
-  { id: 'altro', label: 'Altro', icon: ShoppingBasket, color: 'text-slate-500 bg-slate-500/10' }
-];
-
-const classifyProduct = (name: string): SupermarketCategory => {
-  const t = name.toLowerCase();
-  if (/(mela|banana|arancia|limone|pomodoro|insalata|lattuga|patat|cipoll|aglio|carot|zucchin|peperon|melanzan|broccol|spinaci|fung|fragol|uva|pera|pesca|kiwi|avocado|rucola|basilic|prezzemol|verdur|frutt)/.test(t)) return 'frutta-verdura';
-  if (/(latte|mozzarell|parmigian|grana|ricott|burro|yogurt|panna|uova|uovo|formaggi|gorgonzol|fontina|mascarpone|sottilette)/.test(t)) return 'latticini-uova';
-  if (/(pane|panino|focaccia|biscott|fette|crackers|croissant|torta|dolci)/.test(t)) return 'pane-pasticceria';
-  if (/(pasta|spaghetti|penne|rigatoni|linguine|riso|farina|zucchero|sale|caffe|cioccolato|nutella|passata|pelat|tonno in scatola|tonno al|legumi|lenticchie|ceci|fagioli|olio|miele|marmellat)/.test(t)) return 'dispensa';
-  if (/(pollo|manzo|maiale|tacchin|vitello|agnello|salsiccia|salame|prosciutt|pancetta|bacon|hamburger|salmone|tonno|merluzz|orata|branzino|gamber|calamar|carne|pesce|bresaola|speck)/.test(t)) return 'carne-pesce';
-  if (/(acqua|birra|cola|bibita|succo|aranciata|vino|prosecco)/.test(t)) return 'bevande';
-  if (/(detersivo|sapone|igienica|scottex|carta|spugna|ammorbidente|panni)/.test(t)) return 'pulizia';
-  if (/(dentifricio|shampoo|balsamo|deodorante|doccia|igiene|bagnoschiuma)/.test(t)) return 'igiene';
-  return 'altro';
 };
 
-const emptyForm = { productName: '', brand: '', storeId: '' as string, price: '', quantity: '', validTo: '', isPromo: true };
+const normZone = (z: string) => z.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
 
-const fmtDateTime = (iso?: string): string | null => {
+const fmtTimestamp = (iso?: string): string | null => {
   if (!iso) return null;
   const d = new Date(iso);
   if (isNaN(d.getTime())) return null;
-  return `${d.toLocaleDateString('it-IT')} · ${d.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}`;
+  return d.toLocaleDateString('it-IT', { day: 'numeric', month: 'short' });
 };
 
-export default function VolantinoScreen({ module, onSave, onClose, shoppingItems }: VolantinoScreenProps) {
-  const [tab, setTab] = useState<'offers' | 'compare'>('offers');
-  const [compareMode, setCompareMode] = useState<'single' | 'basket'>('single');
-  const [selectedProduct, setSelectedProduct] = useState<string>('');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [basket, setBasket] = useState<string[]>([]);
-  const [form, setForm] = useState(emptyForm);
-  const [formOpen, setFormOpen] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [confirmReset, setConfirmReset] = useState(false);
-  const [suggestions, setSuggestions] = useState<ReturnType<typeof findProductMatches>>([]);
-  const [showSuggestions, setShowSuggestions] = useState(false);
+export default function VolantinoScreen({ module, onSave, onClose }: VolantinoScreenProps) {
+  const [query, setQuery] = useState('');
+  const [activeZone, setActiveZone] = useState<string | null>(null);
+  const [history, setHistory] = useState<string[]>(loadHistory());
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [editingFlyer, setEditingFlyer] = useState<VolantinoFlyer | null>(null);
-  const [pdfFlyer, setPdfFlyer] = useState<VolantinoFlyer | null>(null);
   const [flyerForm, setFlyerForm] = useState({ label: '', updatedAt: '', pdfUrl: '', pdfAttachment: '' });
-  const [selectedStore, setSelectedStore] = useState<string | null>(null);
+  const [opening, setOpening] = useState(false);
 
-  const offers = module.offers;
   const flyers = module.flyers ?? [];
+  const flyerFor = (storeId: string) => flyers.find(f => f.storeId === storeId);
+  const saveFlyers = (next: VolantinoFlyer[]) => onSave({ ...module, offers: module.offers, flyers: next });
 
-  const update = (next: VolantinoOffer[]) => onSave({ ...module, offers: next });
-
-  const saveFlyers = (next: VolantinoFlyer[]) => onSave({ ...module, offers, flyers: next });
-
-  const getFlyer = (storeId: string) => flyers.find(f => f.storeId === storeId);
-
-  const touchFlyer = (storeId: string): VolantinoFlyer[] => {
-    const now = new Date().toISOString();
-    const existing = getFlyer(storeId);
-    if (existing) return flyers.map(f => f.storeId === storeId ? { ...f, updatedAt: now } : f);
-    return [...flyers, { id: generateUUID(), storeId, label: 'Volantino settimanale', updatedAt: now }];
+  /* ── zona / filtri ─────────────────────────────────────────────── */
+  const updateQuery = (v: string) => {
+    setQuery(v);
+    setSuggestions(v.trim().length >= 1 ? suggestZones(v, 7) : []);
   };
 
-  const lastUpdate = useMemo(() => {
+  const commitZone = (z: string) => {
+    const clean = z.trim();
+    if (!clean) return;
+    setActiveZone(clean);
+    setQuery('');
+    setSuggestions([]);
+    setHistory(prev => {
+      const next = [clean, ...prev.filter(x => normZone(x) !== normZone(clean))].slice(0, 8);
+      try { localStorage.setItem(HISTORY_KEY, JSON.stringify(next)); } catch { /* noop */ }
+      return next;
+    });
+  };
+
+  const stores = useMemo(() => {
+    if (!activeZone || activeZone === 'Tutta Italia') return [...ITALIAN_SUPERMARKETS];
+    return supermarketsForZone(activeZone);
+  }, [activeZone]);
+
+  const resolvedZoneText = useMemo(() => {
+    if (!activeZone || activeZone === 'Tutta Italia') return 'Tutta Italia';
+    const reg = cityRegion(activeZone);
+    return reg ? `${activeZone} · ${reg}` : activeZone;
+  }, [activeZone]);
+
+  const lastUpdatedAt = useMemo(() => {
     const times = flyers.map(f => f.updatedAt).filter(Boolean) as string[];
-    return times.length > 0 ? times.sort().reverse()[0] : undefined;
+    return times.length ? times.sort().reverse()[0] : undefined;
   }, [flyers]);
 
-  const uniqueProducts = useMemo(() => {
-    const seen = new Set<string>();
-    const list: string[] = [];
-    for (const o of offers) {
-      const k = normalizeProduct(o.productName);
-      if (!seen.has(k)) { seen.add(k); list.push(o.productName); }
+  /* ── catena selezionata ────────────────────────────────────────── */
+  const chain = selectedId ? supermarketById(selectedId) : undefined;
+  const flyer = chain ? flyerFor(chain.id) : undefined;
+  const hasPdf = !!(flyer?.pdfUrl || flyer?.pdfAttachment);
+
+  const openInSystem = (url: string) => {
+    if (!url) return;
+    if (Capacitor.isNativePlatform()) window.open(url, '_system');
+    else window.open(url, '_blank');
+  };
+
+  const openNativePdf = async (f: VolantinoFlyer) => {
+    if (!chain) return;
+    if (!f?.pdfUrl && !f?.pdfAttachment) {
+      openInSystem(chain.website || '');
+      return;
     }
-    return list.sort((a, b) => a.localeCompare(b, 'it'));
-  }, [offers]);
-
-  const offersByStore = useMemo(() => {
-    const map = new Map<string, VolantinoOffer[]>();
-    for (const s of VOLANTINO_STORES) map.set(s.id, []);
-    for (const o of offers) {
-      const list = map.get(o.storeId) || [];
-      list.push(o);
-      map.set(o.storeId, list);
+    if (!Capacitor.isNativePlatform()) {
+      openInSystem(f.pdfUrl || chain.website || '');
+      return;
     }
-    return VOLANTINO_STORES.map(s => ({ store: s, offers: map.get(s.id) || [] })).filter(g => g.offers.length > 0);
-  }, [offers]);
-
-  const offersByProduct = useMemo(() => {
-    const map = new Map<string, VolantinoOffer[]>();
-    for (const o of offers) {
-      const k = normalizeProduct(o.productName);
-      const list = map.get(k) || [];
-      list.push(o);
-      map.set(k, list);
-    }
-    return map;
-  }, [offers]);
-
-  const storeAisles = useMemo(() => {
-    if (!selectedStore) return [];
-    const list = offers.filter(o => o.storeId === selectedStore);
-    const map = new Map<SupermarketCategory, VolantinoOffer[]>();
-    for (const a of AISLES) map.set(a.id, []);
-    for (const o of list) {
-      const cat = classifyProduct(o.productName);
-      (map.get(cat) || map.get('altro')!).push(o);
-    }
-    return AISLES.map(a => ({
-      ...a,
-      items: (map.get(a.id) || []).sort((x, y) => x.productName.localeCompare(y.productName, 'it'))
-    })).filter(a => a.items.length > 0);
-  }, [offers, selectedStore]);
-
-  const matchedShopping = useMemo(() => {
-    if (!shoppingItems?.length) return [];
-    const offerKeys = new Set(offers.map(o => normalizeProduct(o.productName)));
-    return shoppingItems.filter(i => !i.checked && offerKeys.has(normalizeProduct(i.name)));
-  }, [shoppingItems, offers]);
-
-  const importFromShoppingList = () => {
-    setBasket(prev => {
-      const next = new Set(prev);
-      for (const o of offers) {
-        if (matchedShopping.some(i => normalizeProduct(i.name) === normalizeProduct(o.productName))) {
-          next.add(o.productName);
-        }
+    setOpening(true);
+    try {
+      const fileName = `volantino_${chain.id}.pdf`;
+      if (f.pdfAttachment) {
+        const base64Data = f.pdfAttachment.includes(',') ? f.pdfAttachment.split(',')[1] : f.pdfAttachment;
+        await Filesystem.writeFile({ path: fileName, data: base64Data, directory: Directory.Cache });
+      } else if (f.pdfUrl) {
+        let url = f.pdfUrl;
+        try {
+          const head = await CapacitorHttp.request({ url, method: 'HEAD' });
+          if (head.url && /^\w+:\/\//.test(head.url) && head.url !== url) url = head.url;
+        } catch { /* keep url */ }
+        await Filesystem.deleteFile({ path: fileName, directory: Directory.Cache }).catch(() => {});
+        await Filesystem.downloadFile({
+          url,
+          path: fileName,
+          directory: Directory.Cache,
+          connectTimeout: 30000,
+          readTimeout: 120000
+        });
       }
-      return Array.from(next);
-    });
-    setCompareMode('basket');
-  };
-
-  const toggleBasketProduct = (name: string) => {
-    setBasket(prev => prev.includes(name) ? prev.filter(p => p !== name) : [...prev, name]);
-  };
-
-  const basketProductsFiltered = uniqueProducts.filter(p =>
-    !searchQuery.trim() || normalizeProduct(p).includes(normalizeProduct(searchQuery))
-  );
-
-  const basketMatrix = useMemo(() => {
-    if (basket.length === 0) return null;
-    const rows = basket.map(name => ({
-      name,
-      qty: offersByProduct.get(normalizeProduct(name))?.[0]?.quantity,
-      offers: offersByProduct.get(normalizeProduct(name)) || []
-    }));
-    const stores = new Set<string>();
-    for (const r of rows) for (const o of r.offers) stores.add(o.storeId);
-    const storeTotals = new Map<string, { total: number; missing: number; wins: number }>();
-    const storeList = Array.from(stores).sort((a, b) => storeById(a).label.localeCompare(storeById(b).label, 'it'));
-    for (const s of storeList) {
-      let total = 0; let missing = 0; let wins = 0;
-      for (const r of rows) {
-        const best = r.offers.reduce<VolantinoOffer | null>((acc, o) => (!acc || o.price < acc.price) ? o : acc, null);
-        const o = r.offers.find(x => x.storeId === s);
-        if (o) {
-          total += o.price;
-          if (best && Math.abs(o.price - best.price) < 0.005) wins++;
-        } else missing++;
-      }
-      storeTotals.set(s, { total, missing, wins });
-    }
-    const full = storeList.filter(s => storeTotals.get(s)!.missing === 0);
-    const candidates = full.length > 0 ? full : storeList;
-    const winner = candidates.reduce<{ id: string; total: number; missing: number; wins: number } | null>(
-      (acc, s) => {
-        const v = storeTotals.get(s)!;
-        return !acc || v.total < acc.total ? { id: s, ...v } : acc;
-      },
-      null
-    );
-    const maxTotal = storeList.reduce((max, s) => Math.max(max, storeTotals.get(s)!.total), 0);
-    return { rows, stores: storeList, totals: storeTotals, winner, maxTotal };
-  }, [basket, offersByProduct]);
-
-  const openAddForm = (storeId?: string) => {
-    setEditingId(null);
-    setForm({ ...emptyForm, storeId: storeId || '' });
-    setFormOpen(true);
-  };
-
-  const openEditForm = (offer: VolantinoOffer) => {
-    setEditingId(offer.id);
-    setForm({
-      productName: offer.productName,
-      brand: offer.brand || '',
-      storeId: offer.storeId,
-      price: String(offer.price),
-      quantity: offer.quantity || '',
-      validTo: offer.validTo || '',
-      isPromo: offer.isPromo ?? true
-    });
-    setFormOpen(true);
-  };
-
-  const onProductInput = (v: string) => {
-    setForm(f => ({ ...f, productName: v }));
-    if (v.trim().length >= 2) {
-      setSuggestions(findProductMatches(v, 6));
-      setShowSuggestions(true);
-    } else {
-      setSuggestions([]);
-      setShowSuggestions(false);
+      const { uri } = await Filesystem.getUri({ path: fileName, directory: Directory.Cache });
+      await FileOpener.openFile({ path: uri });
+    } catch (err) {
+      console.error('[Volantino] Apertura reader nativa fallita:', err);
+      openInSystem(f.pdfUrl || chain.website || '');
+    } finally {
+      setOpening(false);
     }
   };
 
-  const pickSuggestion = (name: string, qty?: string) => {
-    setForm(f => ({ ...f, productName: name, quantity: f.quantity || qty || '' }));
-    setShowSuggestions(false);
-  };
-
-  const saveOffer = () => {
-    const productName = form.productName.trim();
-    const price = parseFloat(String(form.price).replace(',', '.'));
-    if (!productName || isNaN(price) || price <= 0) return;
-    const offer: VolantinoOffer = {
-      id: editingId || generateUUID(),
-      productName,
-      storeId: form.storeId,
-      price: Math.round(price * 100) / 100,
-      brand: form.brand.trim() || undefined,
-      quantity: form.quantity.trim() || undefined,
-      validTo: form.validTo || undefined,
-      isPromo: form.isPromo
-    };
-    const nextOffers = editingId ? offers.map(o => o.id === editingId ? offer : o) : [offer, ...offers];
-    onSave({ ...module, offers: nextOffers, flyers: touchFlyer(form.storeId) });
-    setFormOpen(false);
-  };
-
-  const removeOffer = (id: string) => {
-    const offer = offers.find(o => o.id === id);
-    onSave({ ...module, offers: offers.filter(o => o.id !== id), flyers: offer ? touchFlyer(offer.storeId) : flyers });
-  };
-
-  const openFlyerForm = (storeId: string, existing?: VolantinoFlyer) => {
-    const flyer = existing ?? getFlyer(storeId);
-    if (!flyer) {
-      const created: VolantinoFlyer = { id: generateUUID(), storeId, label: 'Volantino settimanale', updatedAt: new Date().toISOString() };
+  /* ── config volantino ──────────────────────────────────────────── */
+  const openFlyerForm = (existing?: VolantinoFlyer) => {
+    if (!chain) return;
+    const f = existing ?? flyerFor(chain.id);
+    if (!f) {
+      const created: VolantinoFlyer = {
+        id: generateUUID(), storeId: chain.id, label: 'Volantino settimanale', updatedAt: new Date().toISOString()
+      };
       saveFlyers([...flyers, created]);
       return;
     }
-    setEditingFlyer(flyer);
+    setEditingFlyer(f);
     setFlyerForm({
-      label: flyer.label || 'Volantino settimanale',
-      updatedAt: flyer.updatedAt ? flyer.updatedAt.slice(0, 10) : '',
-      pdfUrl: flyer.pdfUrl || '',
-      pdfAttachment: flyer.pdfAttachment || ''
+      label: f.label || 'Volantino settimanale',
+      updatedAt: f.updatedAt ? f.updatedAt.slice(0, 10) : '',
+      pdfUrl: f.pdfUrl || '',
+      pdfAttachment: f.pdfAttachment || ''
     });
   };
 
@@ -364,658 +189,281 @@ export default function VolantinoScreen({ module, onSave, onClose, shoppingItems
     setEditingFlyer(null);
   };
 
-  const restoreDemo = () => update(DEFAULT_VOLANTINO_OFFERS.map(o => ({ ...o })));
-
-  const unitPreview = useMemo(() => {
-    const price = parseFloat(String(form.price).replace(',', '.'));
-    return !isNaN(price) && price > 0 ? unitPriceLabel(price, form.quantity) : null;
-  }, [form.price, form.quantity]);
-
-  const compareProductOffers = selectedProduct ? offersByProduct.get(normalizeProduct(selectedProduct)) || [] : [];
-  const sortedCompare = useMemo(() => {
-    return [...compareProductOffers].sort((a, b) => a.price - b.price);
-  }, [compareProductOffers]);
-
-  const best = sortedCompare[0];
-  const worst = sortedCompare[sortedCompare.length - 1];
-  const maxPrice = worst?.price || 0;
-
+  /* ───────────────────────── RENDER ─────────────────────────────── */
   return (
-    <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="fixed inset-0 z-[150] flex flex-col h-[100dvh] w-full max-w-6xl mx-auto bg-[var(--bg)] relative overflow-hidden">
+    <motion.div
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="fixed inset-0 z-[150] flex flex-col h-[100dvh] w-full max-w-6xl mx-auto bg-[var(--bg)] relative overflow-hidden"
+    >
       {/* HEADER */}
       <header className="flex items-center justify-between gap-3 pt-[max(env(safe-area-inset-top),16px)] px-4 lg:px-5 pb-4 bg-[var(--card-bg)] border-b border-[var(--border)] shrink-0 z-30">
-        <button onClick={onClose} className="p-2.5 -ml-2 hover:bg-[var(--surface-variant)] rounded-full text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors shrink-0">
+        <button
+          onClick={() => (chain ? setSelectedId(null) : onClose())}
+          className="p-2.5 -ml-2 hover:bg-[var(--surface-variant)] rounded-full text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors shrink-0"
+        >
           <ArrowLeft className="w-6 h-6" />
         </button>
         <div className="flex-1 min-w-0">
           <h1 className="text-xl lg:text-2xl font-black text-[var(--text-main)] truncate flex items-center gap-2">
-            <BadgePercent className="w-5 h-5 lg:w-6 lg:h-6 text-amber-500 shrink-0" />
-            Volantino
+            <Sparkles className="w-5 h-5 lg:w-6 lg:h-6 text-amber-500 shrink-0" />
+            {chain ? chain.label : 'Volantino'}
           </h1>
-          <p className="text-[11px] lg:text-xs text-[var(--text-muted)] font-medium">
-            {offers.length} offerte · {offersByStore.length} catene{lastUpdate ? ` · aggiornato ${fmtDateTime(lastUpdate)}` : ''}
+          <p className="text-[11px] lg:text-xs text-[var(--text-muted)] font-medium truncate">
+            {chain
+              ? (flyer?.label || 'Volantino settimanale')
+              : `${stores.length} supermercati${lastUpdatedAt ? ` · aggiornato ${fmtTimestamp(lastUpdatedAt)}` : ''}`}
           </p>
         </div>
-        <button
-          onClick={() => setConfirmReset(true)}
-          title="Ripristina offerte demo"
-          className="p-2.5 -mr-1 hover:bg-[var(--surface-variant)] rounded-full text-[var(--text-muted)] hover:text-amber-500 transition-colors shrink-0"
-        >
-          <RotateCcw className="w-5 h-5" />
-        </button>
       </header>
-
-      {/* TABS */}
-      <div className="shrink-0 px-4 lg:px-5 py-3 border-b border-[var(--border)] bg-[var(--card-bg)]">
-        <div className="flex gap-1 p-1 bg-[var(--surface-variant)] rounded-2xl">
-          {([
-            { id: 'offers', label: 'Offerte', icon: Store },
-            { id: 'compare', label: 'Confronta', icon: Trophy }
-          ] as const).map(t => (
-            <button
-              key={t.id}
-              onClick={() => setTab(t.id)}
-              className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-sm font-bold transition-all ${
-                tab === t.id ? 'bg-[var(--card-bg)] shadow text-amber-500' : 'text-[var(--text-muted)]'
-              }`}
-            >
-              <t.icon className="w-4 h-4" />
-              {t.label}
-            </button>
-          ))}
-        </div>
-      </div>
 
       {/* MAIN SCROLL AREA */}
       <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain custom-scrollbar scroll-smooth pb-[max(env(safe-area-inset-bottom),8px)]">
-        {tab === 'offers' ? (
+        {chain ? (
+          /* ─────────── DETTAGLIO CATENA + ANTEPRIMA VOLANTINO ─────────── */
           <div className="p-4 lg:p-6 space-y-4">
-            {offersByStore.length === 0 ? (
-              <div className="flex flex-col items-center text-center py-16 gap-4">
-                <div className="w-20 h-20 bg-amber-500/10 text-amber-500 rounded-3xl flex items-center justify-center">
-                  <Store className="w-10 h-10" />
-                </div>
-                <div>
-                  <p className="font-black text-[var(--text-main)] text-lg">Nessuna offerta</p>
-                  <p className="text-sm text-[var(--text-muted)] mt-1">Aggiungi le offerte dei volantini o ripristina i dati demo</p>
-                </div>
-                <button
-                  onClick={restoreDemo}
-                  className="flex items-center gap-2 bg-amber-500 hover:bg-amber-600 text-white px-5 py-3 rounded-2xl font-bold transition-all active:scale-95 shadow-lg shadow-amber-500/25"
-                >
-                  <Sparkles className="w-5 h-5" /> Ripristina offerte demo
-                </button>
+            <button
+              onClick={() => setSelectedId(null)}
+              className="flex items-center gap-1.5 text-sm font-bold text-[var(--text-muted)] hover:text-amber-500 transition-colors"
+            >
+              <ChevronLeft className="w-4 h-4" /> Tutti i supermercati
+            </button>
+
+            {/* Info insegna */}
+            <section className="bg-[var(--card-bg)] rounded-[2rem] border border-[var(--border)] p-4 lg:p-5 flex items-center gap-3 shadow-sm">
+              <StoreLogo id={chain.id} short={chain.short} hex={chain.color} logo={logoFor(chain.id)} size={56} />
+              <div className="flex-1 min-w-0">
+                <p className="font-black text-[var(--text-main)] text-lg truncate flex items-center gap-2">
+                  {chain.label}
+                  {chain.discount && (
+                    <span className="text-[10px] font-black uppercase tracking-wide text-emerald-600 bg-emerald-500/10 border border-emerald-500/20 rounded-full px-2 py-0.5 shrink-0">
+                      Risparmio
+                    </span>
+                  )}
+                </p>
+                <p className="text-[11px] text-[var(--text-muted)] font-medium truncate">
+                  {[chain.group, chain.points ? `${chain.points} punti vendita` : null, chain.regions.includes('Italia') ? 'Presente in tutta Italia' : chain.regions.join(', ')].filter(Boolean).join(' · ')}
+                </p>
               </div>
-            ) : !selectedStore ? (
-              <>
-                <p className="text-sm font-black text-[var(--text-muted)] uppercase tracking-wider">Scegli il supermercato</p>
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 lg:gap-4">
-                  {offersByStore.map(({ store, offers: list }) => {
-                    const flyer = getFlyer(store.id);
-                    const total = list.reduce((a, o) => a + o.price, 0);
-                    return (
-                      <button
-                        key={store.id}
-                        onClick={() => setSelectedStore(store.id)}
-                        className="bg-[var(--card-bg)] rounded-[2rem] border border-[var(--border)] p-5 flex flex-col items-center text-center gap-3 hover:border-amber-500/60 hover:bg-amber-500/5 transition-all group shadow-sm"
-                      >
-                        <StoreLogo id={store.id} short={store.short} size={56} />
-                        <div className="min-w-0">
-                          <p className="font-black text-[var(--text-main)] truncate">{store.label}</p>
-                          <p className="text-[11px] text-[var(--text-muted)] font-medium">{list.length} offerte · {euro(total)}</p>
-                        </div>
-                        <p className="text-[10px] text-[var(--text-muted)] font-medium flex items-center gap-1">
-                          <Calendar className="w-3 h-3 shrink-0" />
-                          {flyer?.updatedAt ? `agg. ${fmtDateTime(flyer.updatedAt)}` : 'volantino non configurato'}
-                        </p>
-                      </button>
-                    );
-                  })}
-                </div>
-              </>
-            ) : (() => {
-              const store = storeById(selectedStore);
-              const flyer = getFlyer(selectedStore);
-              const hasPdf = !!(flyer?.pdfUrl || flyer?.pdfAttachment);
-              const total = offers.filter(o => o.storeId === selectedStore).reduce((a, o) => a + o.price, 0);
-              return (
-                <div className="space-y-4">
-                  <button
-                    onClick={() => setSelectedStore(null)}
-                    className="flex items-center gap-1.5 text-sm font-bold text-[var(--text-muted)] hover:text-amber-500 transition-colors"
-                  >
-                    <ChevronLeft className="w-4 h-4" /> Tutti i supermercati
-                  </button>
-
-                  <section className="bg-[var(--card-bg)] rounded-[2rem] border border-[var(--border)] p-4 lg:p-5 flex items-center gap-3 shadow-sm">
-                    <StoreLogo id={store.id} short={store.short} size={52} />
-                    <div className="flex-1 min-w-0">
-                      <p className="font-black text-[var(--text-main)] text-lg truncate">{store.label}</p>
-                      <p className="text-[11px] text-[var(--text-muted)] font-medium truncate">
-                        {flyer?.label || 'Volantino settimanale'}
-                        {flyer?.updatedAt ? ` · aggiornato ${fmtDateTime(flyer.updatedAt)}` : ''}
-                        {!flyer && ' · non configurato'}
-                      </p>
-                    </div>
-                    <span className={`text-xs font-bold px-3 py-1.5 rounded-full ${store.bg} ${store.text} shrink-0`}>{euro(total)}</span>
-                    <div className="flex gap-1 shrink-0">
-                      {hasPdf && (
-                        <button onClick={() => setPdfFlyer(flyer!)} title="Visualizza volantino PDF" className="p-2 rounded-xl text-[var(--text-muted)] hover:text-amber-500 hover:bg-amber-500/10 transition-colors">
-                          <FileText className="w-4 h-4" />
-                        </button>
-                      )}
-                      <button onClick={() => openFlyerForm(store.id, flyer)} title="Configura volantino" className="p-2 rounded-xl text-[var(--text-muted)] hover:text-amber-500 hover:bg-amber-500/10 transition-colors">
-                        <Pencil className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </section>
-
-                  {storeAisles.map(aisle => (
-                    <section key={aisle.id} className="bg-[var(--card-bg)] rounded-[2rem] border border-[var(--border)] overflow-hidden">
-                      <header className="flex items-center gap-3 px-4 lg:px-5 py-3 border-b border-[var(--border)] bg-[var(--surface-variant)]/50">
-                        <span className={`w-9 h-9 rounded-xl ${aisle.color} flex items-center justify-center shrink-0`}>
-                          <aisle.icon className="w-4 h-4" />
-                        </span>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-black text-[var(--text-main)] text-sm">Corsia {aisle.label}</p>
-                          <p className="text-[11px] text-[var(--text-muted)] font-medium">{aisle.items.length} prodotti in offerta</p>
-                        </div>
-                        <span className="text-xs font-bold text-amber-500 shrink-0">{euro(aisle.items.reduce((a, o) => a + o.price, 0))}</span>
-                      </header>
-                      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 p-3 lg:p-4">
-                        {aisle.items.map(o => (
-                          <div key={o.id} className="group relative bg-[var(--surface-variant)] rounded-2xl overflow-hidden border border-[var(--border)] shadow-sm hover:border-amber-500/50 transition-all">
-                            <div className={`relative flex items-center justify-center h-24 lg:h-28 bg-gradient-to-br ${thumbGradient(o.productName)}`}>
-                              <span className="text-5xl lg:text-6xl drop-shadow-sm">{guessEmoji(o.productName)}</span>
-                              {o.isPromo && (
-                                <span className="absolute top-2 right-2 bg-amber-500 text-white rounded-full p-1.5 shadow-lg">
-                                  <BadgePercent className="w-3.5 h-3.5" />
-                                </span>
-                              )}
-                              {o.brand && (
-                                <span className="absolute bottom-2 left-2 bg-black/45 backdrop-blur-sm text-white text-[9px] font-bold px-2 py-0.5 rounded-full max-w-[75%] truncate">
-                                  {o.brand}
-                                </span>
-                              )}
-                              <div className="absolute top-2 left-2 flex gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-                                <button onClick={() => openEditForm(o)} aria-label="Modifica offerta" className="p-1.5 rounded-lg bg-black/40 backdrop-blur-sm text-white hover:bg-black/60 transition-colors">
-                                  <Pencil className="w-3.5 h-3.5" />
-                                </button>
-                                <button onClick={() => removeOffer(o.id)} aria-label="Elimina offerta" className="p-1.5 rounded-lg bg-black/40 backdrop-blur-sm text-white hover:bg-rose-500/80 transition-colors">
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                </button>
-                              </div>
-                            </div>
-                            <div className="p-3 flex items-end justify-between gap-2">
-                              <div className="min-w-0">
-                                <p className="font-bold text-[var(--text-main)] text-sm leading-tight truncate">{o.productName}</p>
-                                <p className="text-[10px] text-[var(--text-muted)] font-medium mt-0.5 truncate">
-                                  {[o.quantity, unitPriceLabel(o.price, o.quantity)].filter(Boolean).join(' · ')}
-                                </p>
-                              </div>
-                              <p className="font-black text-amber-500 shrink-0">{euro(o.price)}</p>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </section>
-                  ))}
-                </div>
-              );
-            })()}
-              <button
-                onClick={() => openAddForm(selectedStore ?? undefined)}
-                className="w-full flex items-center justify-center gap-2 bg-amber-500 hover:bg-amber-600 text-white py-4 rounded-2xl font-bold transition-all active:scale-[0.99] shadow-lg shadow-amber-500/25 sticky bottom-2"
-              >
-                <Plus className="w-5 h-5" /> Aggiungi offerta
-              </button>
-          </div>
-        ) : (
-          <div className="p-4 lg:p-6 space-y-4">
-            {/* MODE SWITCH */}
-            <div className="flex gap-1 p-1 bg-[var(--surface-variant)] rounded-2xl">
-              {([
-                { id: 'single', label: 'Singolo prodotto', icon: Scale },
-                { id: 'basket', label: 'Cestino completo', icon: ShoppingBasket }
-              ] as const).map(m => (
+              {chain.website && (
                 <button
-                  key={m.id}
-                  onClick={() => { setCompareMode(m.id); if (m.id === 'single') setBasket([]); }}
-                  className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all ${
-                    compareMode === m.id ? 'bg-[var(--card-bg)] shadow text-amber-500' : 'text-[var(--text-muted)]'
-                  }`}
+                  onClick={() => openInSystem(chain.website!)}
+                  title="Sito ufficiale"
+                  className="p-2.5 rounded-xl text-[var(--text-muted)] hover:text-amber-500 hover:bg-amber-500/10 transition-colors shrink-0"
                 >
-                  <m.icon className="w-4 h-4" />
-                  {m.label}
+                  <Globe className="w-5 h-5" />
                 </button>
-              ))}
-            </div>
+              )}
+            </section>
 
-            {compareMode === 'single' ? (
-              <>
-                <div className="relative">
-                  <Search className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" />
-                  <input
-                    value={searchQuery}
-                    onChange={e => setSearchQuery(e.target.value)}
-                    placeholder="Cerca un prodotto tra le offerte…"
-                    className="w-full pl-11 pr-4 py-3.5 bg-[var(--card-bg)] border border-[var(--border)] rounded-2xl outline-none focus:border-amber-500 transition-all font-medium text-[var(--text-main)]"
+            {/* Anteprima volantino */}
+            <section className="rounded-[2rem] overflow-hidden border border-[var(--border)] bg-[var(--card-bg)] shadow-sm">
+              {hasPdf ? (
+                <div className="h-96 lg:h-[26rem] relative bg-white">
+                  <iframe
+                    src={flyer!.pdfAttachment || flyer!.pdfUrl}
+                    className="absolute inset-0 w-full h-full border-none bg-white"
+                    title={`Volantino ${chain.label}`}
                   />
                 </div>
+              ) : (
+                <FlyerCover chain={chain} />
+              )}
+
+              <footer className="px-4 lg:px-5 py-4 flex flex-wrap items-center gap-2.5 border-t border-[var(--border)]">
+                <div className="flex-1 min-w-0">
+                  <p className="font-bold text-[var(--text-main)] text-sm truncate">
+                    {flyer?.label || 'Volantino settimanale'}
+                  </p>
+                  <p className="text-[10px] text-[var(--text-muted)] font-medium truncate">
+                    {flyer?.updatedAt ? `aggiornato ${fmtTimestamp(flyer.updatedAt)}` : 'non ancora configurato'}
+                  </p>
+                </div>
+
+                <button
+                  onClick={() => (hasPdf ? openNativePdf(flyer!) : openFlyerForm(flyer))}
+                  disabled={opening}
+                  className="flex items-center gap-2 bg-amber-500 hover:bg-amber-600 disabled:opacity-60 text-white px-4 py-2.5 rounded-xl text-sm font-bold transition-all active:scale-95 shadow-lg shadow-amber-500/25 shrink-0"
+                >
+                  {opening ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
+                  {hasPdf ? 'Apri con il reader' : 'Configura volantino'}
+                </button>
+
+                {chain.website && (
+                  <button
+                    onClick={() => openInSystem(chain.website!)}
+                    className="flex items-center gap-2 bg-[var(--surface-variant)] hover:bg-[var(--surface-variant)]/70 text-[var(--text-main)] px-4 py-2.5 rounded-xl text-sm font-bold transition-colors shrink-0"
+                  >
+                    <ExternalLink className="w-4 h-4" /> Sito
+                  </button>
+                )}
+              </footer>
+            </section>
+
+            {hasPdf && (
+              <p className="text-[11px] text-[var(--text-muted)] px-1 flex items-center gap-1.5">
+                <Check className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                Il PDF verrà aperto nell'app lettore installata sul tuo telefono.
+              </p>
+            )}
+          </div>
+        ) : (
+          /* ─────────── HOME: ZONA + LISTA SUPERMERCATI ─────────── */
+          <div className="p-4 lg:p-6 space-y-5">
+            {/* Ricerca zona */}
+            <section className="bg-[var(--card-bg)] rounded-[2rem] border border-[var(--border)] p-4 lg:p-5 shadow-sm">
+              <p className="text-sm font-black text-[var(--text-muted)] uppercase tracking-wider mb-3 flex items-center gap-2">
+                <MapPin className="w-4 h-4 text-amber-500" /> Dove fai la spesa?
+              </p>
+              <div className="relative">
+                <MapPin className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" />
+                <input
+                  value={query}
+                  onChange={e => updateQuery(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') commitZone(query); }}
+                  placeholder="Città o regione, es. Milano, Lazio…"
+                  className="w-full pl-11 pr-4 py-3.5 bg-[var(--surface-variant)] border border-[var(--border)] rounded-2xl outline-none focus:border-amber-500 transition-all font-medium text-[var(--text-main)]"
+                />
+              </div>
+
+              {/* suggerimenti */}
+              <AnimatePresence>
+                {query.trim() && suggestions.length > 0 ? (
+                  <motion.ul
+                    key="sugg"
+                    initial={{ opacity: 0, y: -6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -6 }}
+                    className="mt-2 bg-[var(--card-bg)] border border-[var(--border)] rounded-2xl shadow-xl overflow-hidden custom-scrollbar max-h-64 overflow-y-auto"
+                  >
+                    {suggestions.map((s, i) => (
+                      <li key={`${s}-${i}`}>
+                        <button
+                          onClick={() => commitZone(s)}
+                          className="w-full flex items-center gap-3 px-4 py-3 hover:bg-[var(--surface-variant)] transition-colors text-left"
+                        >
+                          <MapPin className="w-4 h-4 text-amber-500 shrink-0" />
+                          <span className="font-semibold text-[var(--text-main)] text-sm flex-1">{s}</span>
+                          {cityRegion(s) && <span className="text-[10px] font-bold text-[var(--text-muted)]">{cityRegion(s)}</span>}
+                        </button>
+                      </li>
+                    ))}
+                  </motion.ul>
+                ) : !query.trim() ? (
+                  <motion.div key="chips" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
+                    <div className="flex flex-wrap gap-2 mt-4">
+                      {SUGGESTED_ZONES.map(z => (
+                        <button
+                          key={z}
+                          onClick={() => commitZone(z)}
+                          className={`px-3 py-2 rounded-xl border text-xs font-bold transition-all ${
+                            activeZone === z
+                              ? 'bg-amber-500/10 border-amber-500/50 text-amber-500'
+                              : 'bg-[var(--surface-variant)] border-[var(--border)] text-[var(--text-main)] hover:border-amber-500/50'
+                          }`}
+                        >
+                          {z}
+                        </button>
+                      ))}
+                    </div>
+                  </motion.div>
+                ) : null}
+              </AnimatePresence>
+            </section>
+
+            {/* Cronologia */}
+            {history.length > 0 && (
+              <section>
+                <p className="text-sm font-black text-[var(--text-muted)] uppercase tracking-wider mb-2 flex items-center gap-2">
+                  <History className="w-4 h-4 text-[var(--text-muted)]" /> Recenti
+                </p>
                 <div className="flex flex-wrap gap-2">
-                  {uniqueProducts.filter(p => !searchQuery.trim() || normalizeProduct(p).includes(normalizeProduct(searchQuery))).slice(0, 14).map(p => (
+                  {history.map(z => (
                     <button
-                      key={p}
-                      onClick={() => setSelectedProduct(selectedProduct === p ? '' : p)}
-                      className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-sm font-semibold transition-all ${
-                        selectedProduct === p
-                          ? 'bg-amber-500/10 border-amber-500/50 text-amber-500'
-                          : 'bg-[var(--card-bg)] border-[var(--border)] text-[var(--text-main)]'
-                      }`}
+                      key={z}
+                      onClick={() => commitZone(z)}
+                      className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-[var(--border)] bg-[var(--surface-variant)] text-[var(--text-main)] text-sm font-semibold hover:border-amber-500/50 transition-all"
                     >
-                      {guessEmoji(p)} {p}
+                      <MapPin className="w-3.5 h-3.5 text-[var(--text-muted)]" />
+                      {z}
                     </button>
                   ))}
                 </div>
+              </section>
+            )}
 
-                {selectedProduct && sortedCompare.length > 0 && (
-                  <div className="bg-[var(--card-bg)] rounded-[1.75rem] border border-[var(--border)] overflow-hidden">
-                    <header className="px-4 lg:px-5 py-4 border-b border-[var(--border)] flex items-center gap-3">
-                      <OfferThumb name={selectedProduct} size={48} />
-                      <div className="flex-1 min-w-0">
-                        <p className="font-black text-[var(--text-main)]">{selectedProduct}</p>
-                        <p className="text-xs text-[var(--text-muted)] font-medium truncate">
-                          {sortedCompare[0].brand && <span className="text-amber-600 font-bold">{sortedCompare[0].brand} · </span>}
-                          {sortedCompare.length} catene in offerta
-                          {sortedCompare[0].quantity ? ` · ${sortedCompare[0].quantity}` : ''}
-                        </p>
-                      </div>
-                      {best && worst && worst.price > best.price && (
-                        <span className="text-xs font-bold text-emerald-600 bg-emerald-500/10 border border-emerald-500/20 rounded-full px-3 py-1.5 shrink-0">
-                          Risparmi fino a {euro(worst.price - best.price)}
-                        </span>
-                      )}
-                    </header>
-                    <ul className="divide-y divide-[var(--border)]">
-                      {sortedCompare.map((o, idx) => {
-                        const st = storeById(o.storeId);
-                        const isBest = idx === 0;
-                        const pct = maxPrice > 0 ? Math.round((o.price / maxPrice) * 100) : 100;
-                        return (
-                          <li key={o.id} className={`px-4 lg:px-5 py-3.5 ${isBest ? 'bg-emerald-500/5' : ''}`}>
-                            <div className="flex items-center gap-3">
-                              <StoreLogo id={o.storeId} short={st.short} size={36} />
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2">
-                                  <p className="font-bold text-[var(--text-main)] text-sm truncate">{st.label}</p>
-                                  {isBest && (
-                                    <span className="flex items-center gap-1 text-[10px] font-black text-emerald-600 bg-emerald-500/10 border border-emerald-500/20 rounded-full px-2 py-0.5 shrink-0">
-                                      <Trophy className="w-3 h-3" /> MIGLIOR PREZZO
-                                    </span>
-                                  )}
-                                </div>
-                                <div className="h-1.5 mt-2 bg-[var(--surface-variant)] rounded-full overflow-hidden">
-                                  <div className="h-full bg-amber-500 rounded-full" style={{ width: `${pct}%` }} />
-                                </div>
-                              </div>
-                              <div className="text-right shrink-0">
-                                <p className={`font-black ${isBest ? 'text-emerald-500' : 'text-[var(--text-main)]'}`}>{euro(o.price)}</p>
-                                {unitPriceLabel(o.price, o.quantity) && (
-                                  <p className="text-[10px] text-[var(--text-muted)] font-medium">{unitPriceLabel(o.price, o.quantity)}</p>
-                                )}
-                              </div>
-                            </div>
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  </div>
-                )}
+            {/* Zona attiva */}
+            {activeZone && (
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-lg font-black text-[var(--text-main)] flex items-center gap-2">
+                  <MapPin className="w-5 h-5 text-amber-500" /> {resolvedZoneText}
+                </p>
+                <button
+                  onClick={() => setActiveZone(null)}
+                  className="flex items-center gap-1.5 text-xs font-bold text-[var(--text-muted)] hover:text-rose-500 transition-colors shrink-0"
+                >
+                  <X className="w-3.5 h-3.5" /> Rimuovi filtro
+                </button>
+              </div>
+            )}
 
-                {!selectedProduct && (
-                  <p className="text-center text-sm text-[var(--text-muted)] py-10 flex items-center justify-center gap-2">
-                    <Trophy className="w-4 h-4 text-amber-500" /> Seleziona un prodotto per confrontare i prezzi tra le catene
-                  </p>
-                )}
-              </>
-            ) : (
-              <>
-                {matchedShopping.length > 0 && (
-                  <button
-                    onClick={importFromShoppingList}
-                    className="w-full flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white py-3.5 rounded-2xl font-bold transition-all active:scale-[0.99] shadow-lg shadow-emerald-500/25"
-                  >
-                    <ShoppingBasket className="w-5 h-5" /> Confronta la mia lista della spesa ({matchedShopping.length} prodotti)
-                  </button>
-                )}
-
-                <div className="relative">
-                  <Search className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" />
-                  <input
-                    value={searchQuery}
-                    onChange={e => setSearchQuery(e.target.value)}
-                    placeholder="Filtra prodotti…"
-                    className="w-full pl-11 pr-4 py-3.5 bg-[var(--card-bg)] border border-[var(--border)] rounded-2xl outline-none focus:border-amber-500 transition-all font-medium text-[var(--text-main)]"
-                  />
-                </div>
-
-                <div className="flex flex-wrap gap-2">
-                  {basketProductsFiltered.map(p => {
-                    const active = basket.includes(p);
+            {/* Griglia supermercati */}
+            <section>
+              <p className="text-sm font-black text-[var(--text-muted)] uppercase tracking-wider mb-3">
+                {activeZone ? `${stores.length} insegne disponibili` : 'Tutti i supermercati'}
+              </p>
+              {stores.length > 0 ? (
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 lg:gap-4">
+                  {stores.map(ch => {
+                    const f = flyerFor(ch.id);
+                    const hasP = !!(f?.pdfUrl || f?.pdfAttachment);
                     return (
                       <button
-                        key={p}
-                        onClick={() => toggleBasketProduct(p)}
-                        className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-sm font-semibold transition-all ${
-                          active
-                            ? 'bg-amber-500/10 border-amber-500/50 text-amber-500'
-                            : 'bg-[var(--card-bg)] border-[var(--border)] text-[var(--text-muted)]'
-                        }`}
+                        key={ch.id}
+                        onClick={() => setSelectedId(ch.id)}
+                        className="group bg-[var(--card-bg)] rounded-[2rem] border border-[var(--border)] p-4 lg:p-5 flex flex-col items-center text-center gap-2 hover:border-amber-500/60 hover:bg-amber-500/5 transition-all shadow-sm"
                       >
-                        {active && <ChevronRight className="w-3.5 h-3.5" />}
-                        {guessEmoji(p)} {p}
+                        <span className="relative">
+                          <StoreLogo id={ch.id} short={ch.short} hex={ch.color} logo={logoFor(ch.id)} size={64} />
+                          {hasP ? (
+                            <span className="absolute -bottom-1 -right-1 w-5 h-5 bg-emerald-500 border-2 border-[var(--card-bg)] rounded-full flex items-center justify-center">
+                              <Check className="w-3 h-3 text-white" />
+                            </span>
+                          ) : ch.discount ? (
+                            <span className="absolute -top-1 -right-1 w-5 h-5 bg-rose-500 text-white rounded-full flex items-center justify-center text-[9px] font-black">%</span>
+                          ) : null}
+                        </span>
+                        <span className="w-full">
+                          <span className="block font-black text-[var(--text-main)] text-sm leading-tight truncate">{ch.label}</span>
+                          <span className="block text-[10px] text-[var(--text-muted)] font-medium truncate mt-0.5">
+                            {ch.points ? `${ch.points} punti vendita` : 'presenza diffusa'}
+                          </span>
+                        </span>
                       </button>
                     );
                   })}
-                  {basketProductsFiltered.length === 0 && (
-                    <p className="text-sm text-[var(--text-muted)] py-4">Nessun prodotto trovato</p>
-                  )}
                 </div>
+              ) : (
+                <div className="flex flex-col items-center text-center py-12 gap-3">
+                  <div className="w-16 h-16 bg-amber-500/10 text-amber-500 rounded-3xl flex items-center justify-center">
+                    <Store className="w-8 h-8" />
+                  </div>
+                  <p className="font-black text-[var(--text-main)]">Nessuna insegna trovata</p>
+                  <p className="text-sm text-[var(--text-muted)] max-w-xs">Prova un'altra città o regione, oppure rimuovi il filtro.</p>
+                </div>
+              )}
+            </section>
 
-                {basketMatrix && basketMatrix.rows.length > 0 && basketMatrix.winner && (
-                  <>
-                    <div className="bg-gradient-to-r from-amber-500 to-orange-500 rounded-[1.75rem] p-5 text-white shadow-lg shadow-amber-500/25">
-                      <p className="text-xs font-bold uppercase tracking-wider opacity-80 flex items-center gap-1.5">
-                        <Trophy className="w-4 h-4" /> Dove conviene andare
-                      </p>
-                      <p className="text-2xl font-black mt-1">{storeById(basketMatrix.winner.id).label}</p>
-                      <p className="text-sm font-medium mt-1 opacity-90">
-                        Totale {euro(basketMatrix.winner.total)} · {basketMatrix.winner.wins} prodotti al miglior prezzo
-                        {basketMatrix.winner.missing > 0 && ` · ${basketMatrix.winner.missing} prezzi mancanti`}
-                      </p>
-                      {basketMatrix.maxTotal > basketMatrix.winner.total && (
-                        <p className="text-sm font-bold mt-2 bg-white/20 rounded-xl px-3 py-2 inline-block">
-                          Risparmi {euro(basketMatrix.maxTotal - basketMatrix.winner.total)} rispetto alla catena più cara
-                        </p>
-                      )}
-                    </div>
-
-                    <div className="bg-[var(--card-bg)] rounded-[1.75rem] border border-[var(--border)] overflow-x-auto custom-scrollbar">
-                      <table className="w-full text-sm min-w-[560px]">
-                        <thead>
-                          <tr className="border-b border-[var(--border)]">
-                            <th className="text-left px-4 py-3 text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider sticky left-0 bg-[var(--card-bg)]">Prodotto</th>
-                            {basketMatrix.stores.map(s => (
-                              <th key={s} className="px-3 py-3 text-center">
-                                <span className={`inline-flex items-center justify-center ${storeById(s).text}`}>
-                                  <StoreLogo id={s} short={storeById(s).short} size={26} />
-                                </span>
-                              </th>
-                            ))}
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {basketMatrix.rows.map(r => {
-                            const bestOffer = r.offers.reduce<VolantinoOffer | null>((acc, o) => (!acc || o.price < acc.price) ? o : acc, null);
-                            return (
-                              <tr key={normalizeProduct(r.name)} className="border-b border-[var(--border)] last:border-0">
-                                <td className="px-4 py-3 font-semibold text-[var(--text-main)] sticky left-0 bg-[var(--card-bg)] whitespace-nowrap">
-                                  {guessEmoji(r.name)} {r.name}
-                                  {r.qty && <span className="text-[10px] text-[var(--text-muted)] font-medium ml-1">({r.qty})</span>}
-                                </td>
-                                {basketMatrix.stores.map(s => {
-                                  const o = r.offers.find(x => x.storeId === s);
-                                  const isBest = !!o && !!bestOffer && Math.abs(o.price - bestOffer.price) < 0.005;
-                                  return (
-                                    <td key={s} className={`px-3 py-3 text-center font-bold ${isBest ? 'text-emerald-500' : 'text-[var(--text-main)]'}`}>
-                                      {o ? euro(o.price) : <span className="text-[var(--text-muted)] opacity-40">—</span>}
-                                    </td>
-                                  );
-                                })}
-                              </tr>
-                            );
-                          })}
-                          <tr className="bg-amber-500/5">
-                            <td className="px-4 py-3 font-black text-[var(--text-main)] sticky left-0 bg-[var(--card-bg)]">Totale</td>
-                            {basketMatrix.stores.map(s => {
-                              const v = basketMatrix.totals.get(s)!;
-                              const isWin = basketMatrix.winner!.id === s;
-                              return (
-                                <td key={s} className={`px-3 py-3 text-center font-black ${isWin ? 'text-amber-500' : 'text-[var(--text-main)]'}`}>
-                                  {euro(v.total)}
-                                  {v.missing > 0 && <span className="block text-[9px] font-medium text-[var(--text-muted)]">{v.missing} mancanti</span>}
-                                </td>
-                              );
-                            })}
-                          </tr>
-                        </tbody>
-                      </table>
-                    </div>
-
-                    <p className="text-[11px] text-[var(--text-muted)] text-center px-4">
-                      Prezzi di volantino, potrebbero variare in negozio. Modifica o aggiungi offerte dalla scheda Offerte.
-                    </p>
-                  </>
-                )}
-
-                {basket.length === 0 && (
-                  <p className="text-center text-sm text-[var(--text-muted)] py-8">
-                    Seleziona i prodotti da confrontare o importa la tua lista della spesa
-                  </p>
-                )}
-              </>
-            )}
+            <p className="text-[11px] text-[var(--text-muted)] text-center px-4 leading-relaxed">
+              Tocca il logo di una catena per vedere l'anteprima del volantino e aprirlo con il lettore PDF del tuo telefono.
+            </p>
           </div>
         )}
       </div>
 
-      {/* OFFER FORM MODAL */}
+      {/* CONFIG VOLANTINO MODAL */}
       <AnimatePresence>
-        {formOpen && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[99999] flex items-end sm:items-center justify-center sm:p-4 bg-black/60 backdrop-blur-sm"
-            onClick={() => setFormOpen(false)}
-          >
-            <motion.div
-              initial={{ y: 60, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              exit={{ y: 60, opacity: 0 }}
-              transition={{ type: 'spring', damping: 28, stiffness: 300 }}
-              className="relative w-full max-w-lg bg-[var(--card-bg)] rounded-t-[2.5rem] sm:rounded-[2.5rem] p-6 shadow-2xl border border-[var(--border)] max-h-[88vh] overflow-y-auto custom-scrollbar pb-[max(env(safe-area-inset-bottom),16px)]"
-              onClick={e => e.stopPropagation()}
-            >
-              <button
-                onClick={() => setFormOpen(false)}
-                className="absolute top-4 right-4 p-2 rounded-xl text-[var(--text-muted)] hover:bg-[var(--surface-variant)] transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
-              <div className="w-12 h-12 bg-amber-500/10 text-amber-500 rounded-2xl flex items-center justify-center mb-4">
-                <BadgePercent className="w-6 h-6" />
-              </div>
-              <h3 className="text-xl font-bold text-[var(--text-main)] mb-1">
-                {editingId ? 'Modifica offerta' : 'Nuova offerta'}
-              </h3>
-              <p className="text-sm text-[var(--text-muted)] mb-5">Aggiungi un prezzo trovato nei volantini</p>
-
-              {form.productName.trim() && (
-                <div className="flex items-center gap-3 mb-5 p-3 bg-[var(--surface-variant)]/50 border border-[var(--border)] rounded-2xl">
-                  <OfferThumb name={form.productName} size={52} />
-                  <div className="flex-1 min-w-0">
-                    <p className="font-black text-[var(--text-main)] text-sm truncate">{form.productName}</p>
-                    <p className="text-[11px] text-[var(--text-muted)] font-medium truncate">
-                      {[form.brand.trim() || '—', form.quantity || '—'].filter(Boolean).join(' · ')}
-                    </p>
-                  </div>
-                  {unitPreview && (
-                    <div className="text-right shrink-0">
-                      <p className="font-black text-emerald-500">{unitPreview}</p>
-                      <p className="text-[10px] text-[var(--text-muted)] font-medium">prezzo unitario</p>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              <div className="space-y-4">
-                <div className="relative">
-                  <label className="block text-xs font-bold text-[var(--text-muted)] mb-1.5">Prodotto</label>
-                  <input
-                    value={form.productName}
-                    onChange={e => onProductInput(e.target.value)}
-                    onFocus={() => form.productName.trim().length >= 2 && setShowSuggestions(true)}
-                    placeholder="es. Spaghetti"
-                    className="w-full px-4 py-3.5 bg-[var(--surface-variant)] border border-[var(--border)] rounded-2xl outline-none focus:border-amber-500 transition-all font-medium text-[var(--text-main)]"
-                  />
-                  <AnimatePresence>
-                    {showSuggestions && suggestions.length > 0 && (
-                      <motion.ul
-                        initial={{ opacity: 0, y: -6 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -6 }}
-                        className="absolute z-20 w-full mt-2 bg-[var(--card-bg)] border border-[var(--border)] rounded-2xl shadow-xl overflow-hidden custom-scrollbar max-h-56 overflow-y-auto"
-                      >
-                        {suggestions.map(s => (
-                          <li key={s.n}>
-                            <button
-                              onClick={() => pickSuggestion(s.n, s.q)}
-                              className="w-full flex items-center gap-3 px-4 py-3 hover:bg-[var(--surface-variant)] transition-colors text-left"
-                            >
-                              <span className="text-xl">{s.e}</span>
-                              <span className="font-semibold text-[var(--text-main)] text-sm flex-1">{s.n}</span>
-                              {s.q && <span className="text-[11px] font-bold text-amber-500">{s.q}</span>}
-                            </button>
-                          </li>
-                        ))}
-                      </motion.ul>
-                    )}
-                  </AnimatePresence>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-[var(--text-muted)] mb-1.5">Marca</label>
-                  <input
-                    value={form.brand}
-                    onChange={e => setForm(f => ({ ...f, brand: e.target.value }))}
-                    placeholder="es. Barilla, Galbani… (opzionale)"
-                    className="w-full px-4 py-3.5 bg-[var(--surface-variant)] border border-[var(--border)] rounded-2xl outline-none focus:border-amber-500 transition-all font-medium text-[var(--text-main)]"
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs font-bold text-[var(--text-muted)] mb-1.5">Catena</label>
-                    <select
-                      value={form.storeId}
-                      onChange={e => setForm(f => ({ ...f, storeId: e.target.value }))}
-                      className="w-full px-4 py-3.5 bg-[var(--surface-variant)] border border-[var(--border)] rounded-2xl outline-none focus:border-amber-500 transition-all font-medium text-[var(--text-main)] cursor-pointer"
-                    >
-                      <option value="">Scegli…</option>
-                      {VOLANTINO_STORES.map(s => (
-                        <option key={s.id} value={s.id}>{s.label}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-[var(--text-muted)] mb-1.5">Prezzo (€)</label>
-                    <input
-                      value={form.price}
-                      onChange={e => setForm(f => ({ ...f, price: e.target.value }))}
-                      inputMode="decimal"
-                      placeholder="0.99"
-                      className="w-full px-4 py-3.5 bg-[var(--surface-variant)] border border-[var(--border)] rounded-2xl outline-none focus:border-amber-500 transition-all font-medium text-[var(--text-main)]"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs font-bold text-[var(--text-muted)] mb-1.5">Quantità</label>
-                    <input
-                      value={form.quantity}
-                      onChange={e => setForm(f => ({ ...f, quantity: e.target.value }))}
-                      placeholder="es. 1 L, 500 g, 6x1.5 L"
-                      className="w-full px-4 py-3.5 bg-[var(--surface-variant)] border border-[var(--border)] rounded-2xl outline-none focus:border-amber-500 transition-all font-medium text-[var(--text-main)]"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-[var(--text-muted)] mb-1.5">Valido fino al</label>
-                    <input
-                      type="date"
-                      value={form.validTo}
-                      onChange={e => setForm(f => ({ ...f, validTo: e.target.value }))}
-                      className="w-full px-4 py-3.5 bg-[var(--surface-variant)] border border-[var(--border)] rounded-2xl outline-none focus:border-amber-500 transition-all font-medium text-[var(--text-main)]"
-                    />
-                  </div>
-                </div>
-
-                {unitPreview && (
-                  <div className="flex items-center gap-2 text-xs font-bold text-emerald-600 bg-emerald-500/5 border border-emerald-500/20 rounded-2xl px-4 py-2.5">
-                    <Scale className="w-4 h-4" /> Prezzo unitario stimato: {unitPreview}
-                  </div>
-                )}
-
-                <button
-                  onClick={saveOffer}
-                  disabled={!form.productName.trim() || !form.storeId || !(parseFloat(String(form.price).replace(',', '.')) > 0)}
-                  className="w-full bg-amber-500 hover:bg-amber-600 disabled:opacity-40 text-white py-4 rounded-2xl font-bold transition-all active:scale-[0.99] shadow-lg shadow-amber-500/25"
-                >
-                  {editingId ? 'Salva modifiche' : 'Aggiungi offerta'}
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* RESET CONFIRM MODAL */}
-      <AnimatePresence>
-        {confirmReset && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
-            onClick={() => setConfirmReset(false)}
-          >
-            <motion.div
-              initial={{ scale: 0.92, opacity: 0, y: 16 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.92, opacity: 0, y: 16 }}
-              className="relative w-full max-w-sm bg-[var(--card-bg)] rounded-[2.5rem] p-6 shadow-2xl border border-[var(--border)] text-center"
-              onClick={e => e.stopPropagation()}
-            >
-              <div className="w-14 h-14 bg-amber-500/10 text-amber-500 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                <RotateCcw className="w-7 h-7" />
-              </div>
-              <h3 className="text-lg font-bold text-[var(--text-main)] mb-1">Ripristinare le offerte demo?</h3>
-              <p className="text-sm text-[var(--text-muted)] mb-6">
-                Le offerte personalizzate verranno sostituite con il catalogo di esempio.
-              </p>
-              <div className="flex gap-3">
-                <button
-                  onClick={() => setConfirmReset(false)}
-                  className="flex-1 py-3 rounded-2xl font-bold text-[var(--text-muted)] bg-[var(--surface-variant)] hover:bg-[var(--surface-variant)]/70 transition-colors"
-                >
-                  Annulla
-                </button>
-                <button
-                  onClick={() => { restoreDemo(); setConfirmReset(false); }}
-                  className="flex-1 py-3 rounded-2xl font-bold text-white bg-amber-500 hover:bg-amber-600 transition-colors"
-                >
-                  Ripristina
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* FLYER CONFIG MODAL */}
-      <AnimatePresence>
-        {editingFlyer && (
+        {editingFlyer && chain && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -1033,14 +481,14 @@ export default function VolantinoScreen({ module, onSave, onClose, shoppingItems
             >
               <button
                 onClick={() => setEditingFlyer(null)}
-                className="absolute top-4 right-4 p-2 rounded-xl text-[var(--text-muted)] hover:bg-[var(--surface-variant)] transition-colors"
+                className="absolute top-4 right-4 p-2 rounded-xl text-[var(--text-muted)] hover:bg-[var(--surface-variant)] transition-colors shrink-0"
               >
                 <X className="w-5 h-5" />
               </button>
               <div className="w-12 h-12 bg-amber-500/10 text-amber-500 rounded-2xl flex items-center justify-center mb-4">
-                <Calendar className="w-6 h-6" />
+                <CalendarDays className="w-6 h-6" />
               </div>
-              <h3 className="text-xl font-bold text-[var(--text-main)] mb-1">Volantino {storeById(editingFlyer.storeId).label}</h3>
+              <h3 className="text-xl font-bold text-[var(--text-main)] mb-1">Volantino {chain.label}</h3>
               <p className="text-sm text-[var(--text-muted)] mb-5">Riferimento del volantino per questa catena</p>
 
               <div className="space-y-4">
@@ -1075,7 +523,7 @@ export default function VolantinoScreen({ module, onSave, onClose, shoppingItems
                 <div>
                   <label className="block text-xs font-bold text-[var(--text-muted)] mb-1.5">Link PDF (URL)</label>
                   <div className="relative">
-                    <Link className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" />
+                    <Link2 className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" />
                     <input
                       value={flyerForm.pdfUrl}
                       onChange={e => setFlyerForm(f => ({ ...f, pdfUrl: e.target.value }))}
@@ -1083,7 +531,7 @@ export default function VolantinoScreen({ module, onSave, onClose, shoppingItems
                       className="w-full pl-11 pr-4 py-3.5 bg-[var(--surface-variant)] border border-[var(--border)] rounded-2xl outline-none focus:border-amber-500 transition-all font-medium text-[var(--text-main)]"
                     />
                   </div>
-                  <p className="text-[10px] text-[var(--text-muted)] mt-1">Allegato o URL: puoi inserire entrambi, il PDF caricato ha la precedenza.</p>
+                  <p className="text-[10px] text-[var(--text-muted)] mt-1">Il PDF allegato ha la precedenza, altrimenti viene scaricato il link prima dell'apertura.</p>
                 </div>
 
                 {(flyerForm.pdfAttachment || flyerForm.pdfUrl) && (
@@ -1112,56 +560,25 @@ export default function VolantinoScreen({ module, onSave, onClose, shoppingItems
           </motion.div>
         )}
       </AnimatePresence>
-
-      {/* PDF VIEWER MODAL */}
-      <AnimatePresence>
-        {pdfFlyer && (pdfFlyer.pdfAttachment || pdfFlyer.pdfUrl) && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[99999] flex flex-col bg-black/80 backdrop-blur-sm"
-            onClick={() => setPdfFlyer(null)}
-          >
-            <div
-              className="flex flex-col h-full w-full max-w-4xl mx-auto bg-[var(--card-bg)] overflow-hidden"
-              onClick={e => e.stopPropagation()}
-            >
-              <div className="flex items-center gap-3 px-4 pt-[max(env(safe-area-inset-top),12px)] pb-3 border-b border-[var(--border)] shrink-0">
-                <button
-                  onClick={() => setPdfFlyer(null)}
-                  className="p-2 rounded-xl text-[var(--text-muted)] hover:bg-[var(--surface-variant)] transition-colors"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-                <div className="flex-1 min-w-0">
-                  <p className="font-black text-[var(--text-main)] truncate">
-                    {pdfFlyer.label || 'Volantino'} · {storeById(pdfFlyer.storeId).label}
-                  </p>
-                  {pdfFlyer.updatedAt && (
-                    <p className="text-[11px] text-[var(--text-muted)] font-medium">
-                      Aggiornato {fmtDateTime(pdfFlyer.updatedAt)}
-                    </p>
-                  )}
-                </div>
-                {pdfFlyer.pdfUrl && (
-                  <button
-                    onClick={() => window.open(pdfFlyer.pdfUrl!, '_system')}
-                    className="flex items-center gap-1.5 bg-amber-500 hover:bg-amber-600 text-white px-3 py-2 rounded-xl text-xs font-bold transition-colors shrink-0"
-                  >
-                    <ExternalLink className="w-3.5 h-3.5" /> Apri esternamente
-                  </button>
-                )}
-              </div>
-              <iframe
-                src={pdfFlyer.pdfAttachment || pdfFlyer.pdfUrl || undefined}
-                className="flex-1 w-full border-none bg-white"
-                title={`Volantino ${storeById(pdfFlyer.storeId).label}`}
-              />
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </motion.div>
+  );
+}
+
+/* ── Copertina grafica quando il volantino non ha ancora un PDF ── */
+function FlyerCover({ chain }: { chain: ItalianSupermarket }) {
+  return (
+    <div
+      className="relative h-96 lg:h-[26rem] flex flex-col items-center justify-center p-8 text-center overflow-hidden"
+      style={{ background: `linear-gradient(150deg, ${chain.color} 0%, ${chain.color}90 55%, #ffffff22 100%)` }}
+    >
+      <span className="bg-white/95 rounded-3xl p-5 shadow-2xl mb-5 inline-block">
+        <StoreLogo id={chain.id} short={chain.short} hex={chain.color} logo={logoFor(chain.id)} size={72} />
+      </span>
+      <p className="font-black text-[var(--text-main)] text-xl text-shadow-sm">{chain.label}</p>
+      <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-white/80 mt-1">Volantino settimanale</p>
+      <span className="mt-6 inline-flex items-center gap-2 bg-black/55 text-white text-xs font-bold px-4 py-2.5 rounded-full backdrop-blur-sm">
+        <FileText className="w-3.5 h-3.5" /> Anteprima volantino
+      </span>
+    </div>
   );
 }
