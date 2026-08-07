@@ -234,6 +234,14 @@ export const ITALIAN_SUPERMARKETS: ItalianSupermarket[] = [
     points: '~110',
   },
   {
+    id: 'insmercato', label: "IN'S Mercato", short: 'IN', color: '#E30613',
+    website: 'https://www.insmercato.it/',
+    flyerUrl: 'https://www.insmercato.it/volantino/',
+    regions: ['Lombardia', 'Emilia-Romagna', 'Piemonte', 'Veneto', 'Puglia', 'Calabria', 'Sicilia'],
+    cities: ['Milano', 'Monza', 'Bergamo', 'Brescia', 'Cremona', 'Mantova', 'Lodi', 'Pavia', 'Bologna', 'Parma', 'Modena', 'Torino', 'Genova', 'Verona', 'Bari', 'Taranto', 'Catanzaro', 'Reggio Calabria', 'Palermo', 'Catania'],
+    discount: true, group: 'Selex', points: '~900',
+  },
+  {
     id: 'sidis', label: 'Sidis', short: 'SD', color: '#E4001B',
     website: 'https://www.sidis.it/',
     regions: ['Campania', 'Puglia', 'Sicilia'],
