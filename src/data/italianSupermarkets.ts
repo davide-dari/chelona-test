@@ -62,7 +62,8 @@ export const ITALIAN_SUPERMARKETS: ItalianSupermarket[] = [
   },
   {
     id: 'eurospin', label: 'Eurospin', short: 'EU', color: '#00923F',
-    website: 'https://www.eurospin.it/', regions: ['Italia'], discount: true, points: '1100+',
+    website: 'https://www.eurospin.it/',
+    flyerUrl: 'https://www.eurospin.it/volantino/', regions: ['Italia'], discount: true, points: '1100+',
   },
   {
     id: 'carrefour', label: 'Carrefour', short: 'CA', color: '#003399', website: 'https://www.carrefour.it/',
@@ -79,15 +80,8 @@ export const ITALIAN_SUPERMARKETS: ItalianSupermarket[] = [
     website: 'https://www.crai.it/', regions: ['Italia'], points: '2500+',
   },
   {
-    id: 'todis', label: 'Todis', short: 'TD', color: '#E5001B', website: 'https://www.todis.it/', regions: ['Italia'], discount: true, points: '~350',
-  },
-  {
     id: 'penny', label: 'Penny Market', short: 'PM', color: '#0050AA', website: 'https://www.penny.it/',
     flyerUrl: 'https://www.penny.it/volantino', regions: ['Italia'], discount: true, points: '~400',
-  },
-  {
-    id: 'despar', label: 'Despar', short: 'DE', color: '#E4001B', website: 'https://www.despar.it/', regions: ['Italia'], discount: false,
-    group: 'Despar Italia', points: '~700',
   },
   {
     id: 'sigma', label: 'Sigma', short: 'SG', color: '#0057A8',
@@ -169,12 +163,14 @@ export const ITALIAN_SUPERMARKETS: ItalianSupermarket[] = [
   },
   {
     id: 'cadoro', label: 'Cadoro', short: 'CD', color: '#F5A623', website: 'https://www.cadoro.it/',
+    flyerUrl: 'https://www.cadoro.it/promozioni/',
     regions: ['Lazio', 'Umbria', 'Abruzzo', 'Molise'],
     cities: ['Roma', 'Viterbo', 'Frosinone', 'Rieti', 'Latina', 'Terni', 'Perugia', "L'Aquila", 'Teramo', 'Pescara', 'Campobasso'],
     points: '~100',
   },
   {
     id: 'famila', label: 'Famila', short: 'FA', color: '#0057A8', website: 'https://www.famila.it/',
+    flyerUrl: 'https://www.famila.it/faq/faq-famila-nazionale/promo-volantini',
     regions: ['Veneto', 'Emilia-Romagna', 'Piemonte', 'Lombardia', 'Toscana', 'Lazio'],
     cities: ['Venezia', 'Padova', 'Treviso', 'Verona', 'Trieste', 'Udine', 'Bologna', 'Modena', 'Ferrara', 'Ravenna', 'Torino', 'Novara', 'Milano', 'Firenze', 'Pisa', 'Roma'],
     group: 'Selex', points: '~200',
@@ -215,10 +211,11 @@ export const ITALIAN_SUPERMARKETS: ItalianSupermarket[] = [
     cities: ['Venezia', 'Padova', 'Treviso', 'Verona', 'Udine', 'Pordenone', 'Trento', 'Rovereto', 'Bologna', 'Modena'],
     discount: true, group: 'Végé', points: '~60',
   },
-  {
-    id: 'insmercato', label: "IN's Mercato", short: 'IN', color: '#E30613',
-    website: 'https://www.insmercato.it/', regions: ['Italia'], discount: true,
-    group: 'Selex', points: '~900',
+{
+    id: 'despar', label: 'Despar', short: 'DE', color: '#E4001B',
+    logo: '/logos/despar.png', website: 'https://www.despar.it/',
+    flyerUrl: 'https://www.despar.it/it/offerte-per-te/', regions: ['Italia'], discount: false,
+    group: 'Despar Italia', points: '~700',
   },
   {
     id: 'migross', label: 'Migross', short: 'MG', color: '#009A1C',
@@ -242,6 +239,14 @@ export const ITALIAN_SUPERMARKETS: ItalianSupermarket[] = [
     regions: ['Campania', 'Puglia', 'Sicilia'],
     cities: ['Napoli', 'Salerno', 'Caserta', 'Bari', 'Foggia', 'Palermo', 'Messina'],
     points: '~150',
+  },
+  {
+    id: 'pewex', label: 'Pewex', short: 'PX', color: '#0055A5',
+    website: 'https://www.pewex-supermercati.it/',
+    flyerUrl: 'https://www.pewex-supermercati.it/promozioni/volantini/pewex/volantino-pewex',
+    regions: ['Lombardia', 'Piemonte'],
+    cities: ['Milano', 'Monza', 'Bergamo', 'Brescia', 'Cremona', 'Lodi', 'Pavia', 'Varese', 'Como', 'Novara'],
+    discount: true, points: '~120',
   },
 ];
 
