@@ -21,6 +21,8 @@ export interface ItalianSupermarket {
   website?: string;
   /** URL volantino online ufficiale (già verificato quando presente) */
   flyerUrl?: string;
+  /** Giorno della settimana in cui la catena pubblica il nuovo volantino (0=domenica … 6=sabato) */
+  renewalWeekday?: number;
   /** Logo ufficiale bundle (asset) */
   logo?: string;
   /** Insegna di risparmio / discount */
@@ -67,9 +69,10 @@ export const ITALIAN_SUPERMARKETS: ItalianSupermarket[] = [
     flyerUrl: 'https://www.carrefour.it/volantini/', regions: ['Italia'],
     points: '1300+',
   },
-  {
-    id: 'md', label: 'MD Discount', short: 'MD', color: '#E4001B',
-    website: 'https://www.md.it/', regions: ['Italia'], discount: true, points: '~900',
+{
+    id: 'todis', label: 'Todis', short: 'TD', color: '#E5001B',
+    logo: '/logos/todis.svg', website: 'https://www.todis.it/', regions: ['Italia'],
+    flyerUrl: 'https://www.todis.it/volantini/', discount: true, points: '~350',
   },
   {
     id: 'crai', label: 'Craï', short: 'CR', color: '#EB1C49',
@@ -96,6 +99,7 @@ export const ITALIAN_SUPERMARKETS: ItalianSupermarket[] = [
   {
     id: 'pampanorama', label: 'PAM Panorama', short: 'PA', color: '#E4001B',
     website: 'https://www.pampanorama.it/',
+    flyerUrl: 'https://www.pampanorama.it/volantino',
     regions: ['Veneto', 'Friuli-Venezia Giulia', 'Trentino-Alto Adige', 'Emilia-Romagna', 'Lombardia', 'Lazio', 'Abruzzo'],
     cities: ['Venezia', 'Padova', 'Treviso', 'Verona', 'Udine', 'Trieste', 'Trento', 'Bologna', 'Parma', 'Roma', 'Pescara'],
     group: 'Gruppo Pam', points: '~550',
@@ -192,6 +196,7 @@ export const ITALIAN_SUPERMARKETS: ItalianSupermarket[] = [
   {
     id: 'dambros', label: "D'Ambros", short: 'DA', color: '#0072BC',
     website: 'https://www.dambros.it/',
+    flyerUrl: 'https://www.dambros.it/volantino',
     regions: ['Puglia', 'Campania'],
     cities: ['Bari', 'Foggia', 'Taranto', 'Barletta', 'Napoli', 'Salerno', 'Caserta'],
     points: '~60',
@@ -218,6 +223,7 @@ export const ITALIAN_SUPERMARKETS: ItalianSupermarket[] = [
   {
     id: 'migross', label: 'Migross', short: 'MG', color: '#009A1C',
     website: 'https://www.migross.it/',
+    flyerUrl: 'https://www.migross.it/volantino',
     regions: ['Trentino-Alto Adige', 'Veneto', 'Friuli-Venezia Giulia'],
     cities: ['Trento', 'Rovereto', 'Bolzano', 'Merano', 'Verona', 'Treviso', 'Venezia', 'Pordenone', 'Udine'],
     group: 'Migross Supermercati', points: '~50',
@@ -225,6 +231,7 @@ export const ITALIAN_SUPERMARKETS: ItalianSupermarket[] = [
   {
     id: 'italmark', label: 'Italmark', short: 'IT', color: '#E4001B',
     website: 'https://www.italmark.it/',
+    flyerUrl: 'https://www.italmark.it/volantino',
     regions: ['Lombardia', 'Veneto'],
     cities: ['Brescia', 'Verona', 'Sondrio', 'Mantova', 'Cremona', 'Bergamo'],
     points: '~110',

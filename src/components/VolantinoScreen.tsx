@@ -1,14 +1,15 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   ArrowLeft, X, MapPin, History, ExternalLink, CalendarDays, FileUp,
-  Link2, FileText, Loader2, Check, Sparkles, Globe, Store, ChevronLeft
+  Link2, FileText, Loader2, Check, Sparkles, Globe, Store, ChevronLeft, CalendarClock, Pencil
 } from 'lucide-react';
 import { CapacitorHttp, Capacitor } from '@capacitor/core';
 import { Filesystem, Directory } from '@capacitor/filesystem';
 import { FileOpener } from '@capawesome-team/capacitor-file-opener';
 import { VolantinoModule, VolantinoFlyer, SupermarketItem } from '../types';
 import { generateUUID } from '../utils/uuid';
+import { flyerWindowISO, daysUntil } from '../utils/flyerCycle';
 import {
   ITALIAN_SUPERMARKETS, supermarketsForZone, suggestZones, supermarketById,
   cityRegion, ItalianSupermarket
@@ -52,12 +53,43 @@ export default function VolantinoScreen({ module, onSave, onClose }: VolantinoSc
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [editingFlyer, setEditingFlyer] = useState<VolantinoFlyer | null>(null);
-  const [flyerForm, setFlyerForm] = useState({ label: '', updatedAt: '', pdfUrl: '', pdfAttachment: '' });
+  const [flyerForm, setFlyerForm] = useState({ label: '', updatedAt: '', validTo: '', pdfUrl: '', pdfAttachment: '' });
   const [opening, setOpening] = useState(false);
 
   const flyers = module.flyers ?? [];
   const flyerFor = (storeId: string) => flyers.find(f => f.storeId === storeId);
   const saveFlyers = (next: VolantinoFlyer[]) => onSave({ ...module, offers: module.offers, flyers: next });
+
+  /* Rinnovo automatico dei volantini in base alle scadenze:
+     crea i volantini mancanti per ogni catena del catalogo e, quando un
+     volantino scade, passa automaticamente al ciclo settimanale successivo. */
+  useEffect(() => {
+    const now = new Date();
+    let changed = false;
+    const next = ITALIAN_SUPERMARKETS.map(ch => {
+      const w = flyerWindowISO(ch.renewalWeekday, now);
+      const existing = flyers.find(f => f.storeId === ch.id);
+      if (existing) {
+        const expired = existing.validTo ? new Date(existing.validTo).getTime() < now.getTime() : true;
+        if (expired) {
+          changed = true;
+          return { ...existing, validFrom: w.validFrom, validTo: w.validTo, updatedAt: now.toISOString() };
+        }
+        return existing;
+      }
+      changed = true;
+      return {
+        id: generateUUID(),
+        storeId: ch.id,
+        label: 'Volantino settimanale',
+        updatedAt: now.toISOString(),
+        validFrom: w.validFrom,
+        validTo: w.validTo,
+      };
+    });
+    if (changed) saveFlyers(next);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   /* ── zona / filtri ─────────────────────────────────────────────── */
   const updateQuery = (v: string) => {
@@ -161,6 +193,7 @@ export default function VolantinoScreen({ module, onSave, onClose }: VolantinoSc
     setFlyerForm({
       label: f.label || 'Volantino settimanale',
       updatedAt: f.updatedAt ? f.updatedAt.slice(0, 10) : '',
+      validTo: f.validTo ? f.validTo.slice(0, 10) : '',
       pdfUrl: f.pdfUrl || '',
       pdfAttachment: f.pdfAttachment || ''
     });
@@ -182,6 +215,9 @@ export default function VolantinoScreen({ module, onSave, onClose }: VolantinoSc
       updatedAt: flyerForm.updatedAt
         ? new Date(`${flyerForm.updatedAt}T12:00:00`).toISOString()
         : f.updatedAt ?? new Date().toISOString(),
+      validTo: flyerForm.validTo
+        ? new Date(`${flyerForm.validTo}T23:59:59`).toISOString()
+        : f.validTo,
       pdfUrl: flyerForm.pdfUrl.trim() || undefined,
       pdfAttachment: flyerForm.pdfAttachment || undefined
     } : f);
@@ -244,6 +280,12 @@ export default function VolantinoScreen({ module, onSave, onClose }: VolantinoSc
                 <p className="text-[11px] text-[var(--text-muted)] font-medium truncate">
                   {[chain.group, chain.points ? `${chain.points} punti vendita` : null, chain.regions.includes('Italia') ? 'Presente in tutta Italia' : chain.regions.join(', ')].filter(Boolean).join(' · ')}
                 </p>
+                {flyer?.validTo && (
+                  <p className="text-[10px] font-bold mt-1 flex items-center gap-1.5">
+                    <CalendarClock className="w-3.5 h-3.5 shrink-0 text-amber-500" />
+                    <ValidityLabel flyer={flyer} />
+                  </p>
+                )}
               </div>
               {chain.website && (
                 <button
@@ -281,12 +323,20 @@ export default function VolantinoScreen({ module, onSave, onClose }: VolantinoSc
                 </div>
 
                 <button
-                  onClick={() => (hasPdf ? openNativePdf(flyer!) : openFlyerForm(flyer))}
+                  onClick={() => openFlyerForm(flyer)}
+                  title="Configura volantino"
+                  className="p-2.5 rounded-xl text-[var(--text-muted)] hover:text-amber-500 hover:bg-amber-500/10 transition-colors shrink-0"
+                >
+                  <Pencil className="w-4 h-4" />
+                </button>
+
+                <button
+                  onClick={() => (hasPdf ? openNativePdf(flyer!) : openInSystem(chain.flyerUrl || chain.website || ''))}
                   disabled={opening}
                   className="flex items-center gap-2 bg-amber-500 hover:bg-amber-600 disabled:opacity-60 text-white px-4 py-2.5 rounded-xl text-sm font-bold transition-all active:scale-95 shadow-lg shadow-amber-500/25 shrink-0"
                 >
                   {opening ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
-                  {hasPdf ? 'Apri con il reader' : 'Configura volantino'}
+                  {hasPdf ? 'Apri con il reader' : 'Vai al volantino online'}
                 </button>
 
                 {chain.website && (
@@ -438,6 +488,12 @@ export default function VolantinoScreen({ module, onSave, onClose }: VolantinoSc
                           <span className="block text-[10px] text-[var(--text-muted)] font-medium truncate mt-0.5">
                             {ch.points ? `${ch.points} punti vendita` : 'presenza diffusa'}
                           </span>
+                          {f && (
+                            <span className="block text-[10px] font-bold mt-1 flex items-center justify-center gap-1 truncate">
+                              <CalendarClock className={`w-3 h-3 shrink-0 ${f.validTo && new Date(f.validTo).getTime() < Date.now() ? 'text-rose-500' : 'text-amber-500'}`} />
+                              <ValidityLabel flyer={f} />
+                            </span>
+                          )}
                         </span>
                       </button>
                     );
@@ -512,14 +568,24 @@ export default function VolantinoScreen({ module, onSave, onClose }: VolantinoSc
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-[var(--text-muted)] mb-1.5">PDF del volantino</label>
+                    <label className="block text-xs font-bold text-[var(--text-muted)] mb-1.5">Valido fino al</label>
+                    <input
+                      type="date"
+                      value={flyerForm.validTo}
+                      onChange={e => setFlyerForm(f => ({ ...f, validTo: e.target.value }))}
+                      className="w-full px-4 py-3.5 bg-[var(--surface-variant)] border border-[var(--border)] rounded-2xl outline-none focus:border-amber-500 transition-all font-medium text-[var(--text-main)]"
+                    />
+                    <p className="text-[10px] text-[var(--text-muted)] mt-1">Se vuoto, l'app imposta la scadenza del ciclo settimanale e rinnova da sola il volantino.</p>
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-[var(--text-muted)] mb-1.5">PDF del volantino</label>
                     <label className="flex items-center justify-center gap-2 px-4 py-3.5 bg-[var(--surface-variant)] border border-[var(--border)] rounded-2xl cursor-pointer hover:border-amber-500 transition-all text-sm font-semibold text-[var(--text-main)]">
                       <FileUp className="w-4 h-4 text-amber-500" />
                       {flyerForm.pdfAttachment ? 'Sostituisci PDF' : 'Carica PDF'}
                       <input type="file" accept="application/pdf,.pdf" className="hidden" onChange={onFlyerPdfSelect} />
                     </label>
                   </div>
-                </div>
                 <div>
                   <label className="block text-xs font-bold text-[var(--text-muted)] mb-1.5">Link PDF (URL)</label>
                   <div className="relative">
@@ -562,6 +628,18 @@ export default function VolantinoScreen({ module, onSave, onClose }: VolantinoSc
       </AnimatePresence>
     </motion.div>
   );
+}
+
+/* ── Etichetta validità volantino ── */
+function ValidityLabel({ flyer }: { flyer: VolantinoFlyer }) {
+  const days = daysUntil(flyer?.validTo);
+  if (flyer?.validTo && days !== null && days < 0) {
+    return <span className="text-rose-500">scaduto · si rinnova automaticamente</span>;
+  }
+  if (days === 0) return <span className="text-amber-600">scade oggi</span>;
+  if (days === 1) return <span className="text-amber-600">scade domani</span>;
+  if (days !== null && days > 1) return <span className="text-[var(--text-muted)]">fino al {fmtTimestamp(flyer.validTo)}</span>;
+  return <span className="text-[var(--text-muted)]">volantino attivo</span>;
 }
 
 /* ── Copertina grafica quando il volantino non ha ancora un PDF ── */

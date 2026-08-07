@@ -359,6 +359,8 @@ export interface VolantinoFlyer {
   storeId: string;
   label?: string;
   updatedAt?: string;
+  validFrom?: string;
+  validTo?: string;
   pdfUrl?: string;
   pdfAttachment?: string;
 }
