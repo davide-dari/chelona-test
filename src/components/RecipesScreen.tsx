@@ -6,13 +6,14 @@ interface RecipeScreenProps {
   onClose: () => void;
   initialSearchQuery?: string;
   initialRecipe?: any;
+  initialCategory?: string;
 }
 
-export function RecipesScreen({ onClose, initialSearchQuery, initialRecipe }: RecipeScreenProps) {
+export function RecipesScreen({ onClose, initialSearchQuery, initialRecipe, initialCategory }: RecipeScreenProps) {
   const [allMeals, setAllMeals] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(initialCategory || null);
   const [searchQuery, setSearchQuery] = useState(initialSearchQuery || '');
   
   const [selectedMeal, setSelectedMeal] = useState<any | null>(null);
@@ -84,7 +85,7 @@ export function RecipesScreen({ onClose, initialSearchQuery, initialRecipe }: Re
         setSelectedMeal(null);
       }
     } else if (selectedCategory || searchQuery) {
-      if (initialSearchQuery) {
+      if (initialSearchQuery || initialCategory) {
         onClose();
       } else {
         setSelectedCategory(null);
@@ -93,7 +94,7 @@ export function RecipesScreen({ onClose, initialSearchQuery, initialRecipe }: Re
     } else {
       onClose();
     }
-  }, [selectedMeal, selectedCategory, searchQuery, onClose, initialRecipe, initialSearchQuery]);
+  }, [selectedMeal, selectedCategory, searchQuery, onClose, initialRecipe, initialSearchQuery, initialCategory]);
 
   useEffect(() => {
     window.addEventListener('recipes-back', handleBack);

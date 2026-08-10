@@ -1,12 +1,10 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import { QRCodeSVG } from 'qrcode.react';
 import { SupermarketModule, SupermarketItem, SupermarketCategory } from '../types';
 import {
-  ArrowLeft, Plus, Trash2, CheckCircle2, ShoppingCart, Refrigerator,
-  Apple, Milk, Drumstick, Croissant, PackageCheck, CupSoda, SprayCan,
-  ShowerHead, ShoppingBasket, RotateCcw, ChevronDown, Share2, X, Search, GlassWater
+  ArrowLeft, Plus, Trash2, CheckCircle2, Refrigerator,
+  Apple, Milk, Drumstick, Croissant, PackageCheck, GlassWater, SprayCan,
+  ShowerHead, ShoppingBasket, RotateCcw, Share2, Search, Sparkles
 } from 'lucide-react';
 import { generateUUID } from '../utils/uuid';
 import {
@@ -19,15 +17,6 @@ interface SupermarketScreenProps {
   onSave: (m: SupermarketModule) => void;
   onClose: () => void;
   onShare: (m: SupermarketModule) => void;
-}
-
-interface FridgePanelProps {
-  fridgeIngredients: string[];
-  open: boolean;
-  onToggle: () => void;
-  onAdd: (ingredient: string) => void;
-  onRemove: (ingredient: string) => void;
-  onShare: () => void;
 }
 
 const FRIDGE_STORAGE_KEY = 'chelona_fridge_ingredients';
@@ -68,6 +57,13 @@ const CATEGORY_META: { id: SupermarketCategory; label: string; icon: any; color:
   { id: 'altro', label: 'Altro', icon: ShoppingBasket, color: 'text-slate-500 bg-slate-500/10' }
 ];
 
+const QUICK_ADD_NAMES = [
+  'Pane in cassetta', 'Latte intero', 'Uova', 'Spaghetti', 'Acqua minerale',
+  'Caffè in capsule', 'Mozzarella', 'Banana', 'Pomodori', 'Petto di pollo',
+  'Carta igienica', 'Nutella', 'Olio extravergine di oliva', 'Yogurt greco',
+  'Patatine in busta', 'Sugo di pomodoro', 'Detersivo bucato', 'Shampoo'
+];
+
 const fallbackClassify = (name: string): SupermarketCategory => {
   const t = name.toLowerCase();
   if (/(mela|banana|arancia|limone|pomodoro|insalata|patat|cipoll|aglio|carot|zucchin|peperon|melanzan|broccol|spinaci|fung|fragol|uva|pera|pesca|albicocc|cilieg|anguria|melone|kiwi|ananas|mango|avocado|asparag|porro|sedano|finocchi|rucola|lattuga|radicchio|minestrone|verdur|frutt|basilic|prezzemol|rosmarin|timo|salvia|menta|origano|alloro)/i.test(t)) return 'frutta-verdura';
@@ -104,76 +100,9 @@ function ProductThumb({ name, emoji, size = 44 }: { name: string; emoji?: string
   );
 }
 
-function FridgePanel({ fridgeIngredients, open, onToggle, onAdd, onRemove, onShare }: FridgePanelProps) {
-  return (
-    <div className="bg-[var(--card-bg)] rounded-3xl border border-[var(--border)] overflow-hidden shadow-sm">
-      <button onClick={onToggle} className="w-full flex items-center gap-3 p-4 text-left hover:bg-[var(--surface-variant)] transition-colors">
-        <div className="w-10 h-10 rounded-2xl bg-sky-500/10 text-sky-500 flex items-center justify-center shrink-0">
-          <Refrigerator className="w-5 h-5" />
-        </div>
-        <div className="flex-1 min-w-0">
-          <h3 className="font-black text-[var(--text-main)]">Frigorifero</h3>
-          <p className="text-xs text-[var(--text-muted)] font-medium">
-            {fridgeIngredients.length > 0 ? `${fridgeIngredients.length} ingredienti in casa` : 'Nessun ingrediente in frigo'}
-          </p>
-        </div>
-        <button
-          onClick={(e) => { e.stopPropagation(); onShare(); }}
-          title="Condividi frigorifero"
-          className="p-2 rounded-xl text-sky-500 hover:bg-sky-500/10 shrink-0 transition-colors"
-        >
-          <Share2 className="w-4 h-4" />
-        </button>
-        <span className={`p-1.5 rounded-lg text-[var(--text-muted)] transition-transform ${open ? 'rotate-180' : ''}`}>
-          <ChevronDown className="w-4 h-4" />
-        </span>
-      </button>
-
-      <AnimatePresence initial={false}>
-        {open && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className="overflow-hidden"
-          >
-            <div className="px-4 pb-4">
-              {fridgeIngredients.length === 0 ? (
-                <p className="text-sm text-[var(--text-muted)] font-medium bg-[var(--bg)] rounded-2xl p-4 border border-dashed border-[var(--border)]">
-                  Nessun ingrediente in frigo. Spunta un articolo acquistato e premi "In frigo" per ritrovarlo qui.
-                </p>
-              ) : (
-                <div className="flex flex-wrap gap-2">
-                  {fridgeIngredients.map((ing, idx) => (
-                    <div key={`${ing}-${idx}`} className="flex items-center gap-1 bg-[var(--surface-variant)] rounded-full pl-2 pr-1 py-1 hover:bg-sky-500/10 transition-colors">
-                      <button
-                        onClick={() => onAdd(ing)}
-                        title="Aggiungi alla lista"
-                        className="flex items-center gap-1.5 text-xs font-bold text-[var(--text-main)]"
-                      >
-                        <span className="text-sm leading-none">{guessEmoji(ing)}</span>
-                        <span className="max-w-28 truncate">{ing}</span>
-                        <Plus className="w-3 h-3 text-sky-500" />
-                      </button>
-                      <button
-                        onClick={() => onRemove(ing)}
-                        title="Rimuovi dal frigorifero"
-                        className="p-0.5 rounded-full text-[var(--text-muted)] hover:text-rose-500 hover:bg-rose-500/10 transition-colors"
-                      >
-                        <X className="w-3 h-3" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  );
-}
+const openFridge = () => {
+  window.dispatchEvent(new CustomEvent('open-recipes', { detail: { category: 'fridge' } }));
+};
 
 export const SupermarketScreen = ({ module, onSave, onClose, onShare }: SupermarketScreenProps) => {
   const [data, setData] = useState<SupermarketModule>(module);
@@ -181,12 +110,11 @@ export const SupermarketScreen = ({ module, onSave, onClose, onShare }: Supermar
   const [itemQty, setItemQty] = useState('');
   const [itemUnit, setItemUnit] = useState('');
   const [fridgeIngredients, setFridgeIngredients] = useState<string[]>(loadFridge);
-  const [fridgeOpen, setFridgeOpen] = useState(true);
   const [suggestions, setSuggestions] = useState<CatalogProduct[]>([]);
   const [highlighted, setHighlighted] = useState(0);
   const [selectedSuggestion, setSelectedSuggestion] = useState<CatalogProduct | null>(null);
   const [dupeMsg, setDupeMsg] = useState<string | null>(null);
-  const [shareFridgeOpen, setShareFridgeOpen] = useState(false);
+  const [catFilter, setCatFilter] = useState<SupermarketCategory | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -262,6 +190,22 @@ export const SupermarketScreen = ({ module, onSave, onClose, onShare }: Supermar
     inputRef.current?.focus();
   };
 
+  const addQuick = (p: CatalogProduct) => {
+    if (data.items.some(i => normalize(i.name) === normalize(p.n))) {
+      setDupeMsg(`"${p.n}" è già nella lista`);
+      setTimeout(() => setDupeMsg(null), 1800);
+      return;
+    }
+    const item: SupermarketItem = {
+      id: generateUUID(),
+      name: p.n,
+      quantity: p.q,
+      category: p.c,
+      checked: false
+    };
+    update({ ...data, items: [...data.items, item] });
+  };
+
   const toggleChecked = (id: string) => {
     update({ ...data, items: data.items.map(i => i.id === id ? { ...i, checked: !i.checked } : i) });
   };
@@ -276,25 +220,7 @@ export const SupermarketScreen = ({ module, onSave, onClose, onShare }: Supermar
     const name = normalize(item.name);
     setFridgeIngredients(prev => prev.some(f => normalize(f) === name) ? prev : [...prev, item.name.trim()]);
     update({ ...data, items: data.items.filter(i => i.id !== id) });
-  };
-
-  const addFromFridge = (ingredient: string) => {
-    if (data.items.some(i => normalize(i.name) === normalize(ingredient))) {
-      setDupeMsg(`"${ingredient}" è già nella lista`);
-      setTimeout(() => setDupeMsg(null), 2500);
-      return;
-    }
-    const item: SupermarketItem = {
-      id: generateUUID(),
-      name: ingredient,
-      category: fallbackClassify(ingredient),
-      checked: false
-    };
-    update({ ...data, items: [...data.items, item] });
-  };
-
-  const removeFromFridge = (ingredient: string) => {
-    setFridgeIngredients(prev => prev.filter(f => f !== ingredient));
+    window.dispatchEvent(new CustomEvent('chelona_fridge_updated'));
   };
 
   const clearList = () => {
@@ -307,79 +233,32 @@ export const SupermarketScreen = ({ module, onSave, onClose, onShare }: Supermar
   const pending = total - done;
   const progress = total > 0 ? Math.round((done / total) * 100) : 0;
 
+  const quickAddProducts = useMemo(() => {
+    return QUICK_ADD_NAMES
+      .map(n => findProductMatches(n, 1)[0])
+      .filter((p): p is CatalogProduct => !!p);
+  }, []);
+
   const grouped = useMemo(() => {
     const map = new Map<SupermarketCategory, SupermarketItem[]>();
     for (const cat of CATEGORY_META) map.set(cat.id, []);
     for (const item of data.items) {
+      if (catFilter && item.category !== catFilter) continue;
       (map.get(item.category) || map.get('altro')!).push(item);
     }
     return CATEGORY_META.map(c => ({
       ...c,
       items: (map.get(c.id) || []).sort((a, b) => Number(a.checked) - Number(b.checked))
     })).filter(c => c.items.length > 0);
+  }, [data.items, catFilter]);
+
+  const catCounts = useMemo(() => {
+    const map = new Map<SupermarketCategory, number>();
+    for (const item of data.items) {
+      map.set(item.category, (map.get(item.category) || 0) + 1);
+    }
+    return map;
   }, [data.items]);
-
-  const miniCount = grouped.reduce((acc, c) => acc + c.items.filter(i => !i.checked).length, 0);
-
-  const fridgePanel = (
-    <FridgePanel
-      fridgeIngredients={fridgeIngredients}
-      open={fridgeOpen}
-      onToggle={() => setFridgeOpen(o => !o)}
-      onAdd={addFromFridge}
-      onRemove={removeFromFridge}
-      onShare={() => setShareFridgeOpen(true)}
-    />
-  );
-
-  const qrModal = createPortal(
-    <AnimatePresence>
-      {shareFridgeOpen && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
-          onClick={() => setShareFridgeOpen(false)}
-        >
-          <motion.div
-            initial={{ scale: 0.92, opacity: 0, y: 16 }}
-            animate={{ scale: 1, opacity: 1, y: 0 }}
-            exit={{ scale: 0.92, opacity: 0, y: 16 }}
-            className="relative w-full max-w-sm bg-[var(--card-bg)] rounded-[2.5rem] p-6 shadow-2xl border border-[var(--border)] max-h-[88vh] overflow-y-auto custom-scrollbar"
-            onClick={e => e.stopPropagation()}
-          >
-            <button
-              onClick={() => setShareFridgeOpen(false)}
-              className="absolute top-4 right-4 p-2 rounded-xl text-[var(--text-muted)] hover:bg-[var(--surface-variant)] transition-colors"
-            >
-              <X className="w-5 h-5" />
-            </button>
-            <div className="w-14 h-14 bg-sky-500/10 text-sky-500 rounded-2xl flex items-center justify-center mx-auto mb-4">
-              <Refrigerator className="w-7 h-7" />
-            </div>
-            <h3 className="text-xl font-bold text-[var(--text-main)] text-center mb-1">Condividi Frigorifero</h3>
-            <p className="text-sm text-[var(--text-muted)] text-center mb-6">
-              {fridgeIngredients.length > 0
-                ? `${fridgeIngredients.length} ingredienti. Scansiona il QR per riceverli sul tuo frigo.`
-                : 'Il frigorifero è vuoto: aggiungi ingredienti per condividerli.'}
-            </p>
-            {fridgeIngredients.length > 0 ? (
-              <div className="flex justify-center bg-white rounded-3xl p-5 border border-[var(--border)]">
-                <QRCodeSVG value={JSON.stringify({ t: 'shared_fridge', d: fridgeIngredients })} size={230} level="M" marginSize={1} />
-              </div>
-            ) : (
-              <div className="py-6 flex flex-col items-center text-center gap-2">
-                <ShoppingBasket className="w-8 h-8 text-[var(--text-muted)] opacity-40" />
-                <span className="text-xs text-[var(--text-muted)] font-medium">Aggiungi ingredienti al frigo per condividere</span>
-              </div>
-            )}
-          </motion.div>
-        </motion.div>
-      )}
-    </AnimatePresence>,
-    document.body
-  );
 
   return (
     <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="fixed inset-0 z-[150] flex flex-col h-[100dvh] w-full max-w-6xl mx-auto bg-[var(--bg)] relative overflow-hidden">
@@ -394,14 +273,28 @@ export const SupermarketScreen = ({ module, onSave, onClose, onShare }: Supermar
             {total > 0 ? `${pending} da comprare · ${done} acquistati` : 'Crea la tua lista della spesa'}
           </p>
         </div>
-        <button
-          onClick={() => onShare(data)}
-          title="Condividi lista della spesa"
-          disabled={total === 0}
-          className="p-3 rounded-2xl bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20 disabled:opacity-40 transition-colors shrink-0"
-        >
-          <Share2 className="w-5 h-5" />
-        </button>
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            onClick={openFridge}
+            title={`Apri il frigorifero (${fridgeIngredients.length} ingredienti)`}
+            className="relative p-3 rounded-2xl bg-sky-500/10 text-sky-500 hover:bg-sky-500/20 transition-colors"
+          >
+            <Refrigerator className="w-5 h-5" />
+            {fridgeIngredients.length > 0 && (
+              <span className="absolute -top-1 -right-1 min-w-5 h-5 px-1 rounded-full bg-sky-500 text-white text-[10px] font-black flex items-center justify-center shadow">
+                {fridgeIngredients.length}
+              </span>
+            )}
+          </button>
+          <button
+            onClick={() => onShare(data)}
+            title="Condividi lista della spesa"
+            disabled={total === 0}
+            className="p-3 rounded-2xl bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20 disabled:opacity-40 transition-colors"
+          >
+            <Share2 className="w-5 h-5" />
+          </button>
+        </div>
       </header>
 
       <div className="flex-1 min-h-0 flex flex-col">
@@ -510,6 +403,32 @@ export const SupermarketScreen = ({ module, onSave, onClose, onShare }: Supermar
             </div>
           </div>
 
+          {/* QUICK ADD CHIPS */}
+          <div className="mt-2.5 flex items-center gap-1.5 overflow-x-auto custom-scrollbar -mx-4 lg:-mx-6 px-4 lg:px-6 pb-0.5">
+            <span className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest flex items-center gap-1 shrink-0">
+              <Sparkles className="w-3.5 h-3.5 text-emerald-500" /> Veloce
+            </span>
+            {quickAddProducts.map(p => {
+              const added = data.items.some(i => normalize(i.name) === normalize(p.n));
+              return (
+                <button
+                  key={p.n}
+                  onClick={() => addQuick(p)}
+                  disabled={added}
+                  title={added ? 'Già in lista' : `Aggiungi ${p.n}`}
+                  className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border transition-all active:scale-95 ${
+                    added
+                      ? 'bg-[var(--surface-variant)] text-[var(--text-muted)] border-[var(--border)] opacity-50 cursor-default'
+                      : 'bg-[var(--card-bg)] text-[var(--text-main)] border-[var(--border)] hover:border-emerald-500 hover:bg-emerald-500/5 hover:text-emerald-600'
+                  }`}
+                >
+                  <span className="text-sm leading-none">{p.e}</span>
+                  {p.n}
+                </button>
+              );
+            })}
+          </div>
+
           {/* INLINE STATUS */}
           {(itemName.trim().length >= 2 || selectedSuggestion || dupeMsg) && (
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2 text-xs font-medium">
@@ -529,7 +448,7 @@ export const SupermarketScreen = ({ module, onSave, onClose, onShare }: Supermar
           )}
         </div>
 
-        {/* SUMMARY + PROGRESS */}
+        {/* SUMMARY + PROGRESS + CATEGORY FILTER */}
         {total > 0 && (
           <div className="shrink-0 px-4 lg:px-6 pt-3 pb-1">
             <div className="flex items-center justify-between mb-1.5">
@@ -565,110 +484,154 @@ export const SupermarketScreen = ({ module, onSave, onClose, onShare }: Supermar
           </div>
         )}
 
+        {/* CATEGORY FILTER */}
+        {total > 0 && (
+          <div className="shrink-0 px-4 lg:px-6 pt-2 flex items-center gap-1.5 overflow-x-auto custom-scrollbar">
+            <button
+              onClick={() => setCatFilter(null)}
+              className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-bold border transition-colors ${
+                !catFilter
+                  ? 'bg-emerald-500 text-white border-emerald-500'
+                  : 'bg-[var(--card-bg)] text-[var(--text-muted)] border-[var(--border)] hover:text-[var(--text-main)]'
+              }`}
+            >
+              Tutti
+            </button>
+            {CATEGORY_META.filter(c => catCounts.get(c.id)).map(c => {
+              const count = catCounts.get(c.id) || 0;
+              const active = catFilter === c.id;
+              return (
+                <button
+                  key={c.id}
+                  onClick={() => setCatFilter(active ? null : c.id)}
+                  className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border transition-colors ${
+                    active
+                      ? 'bg-emerald-500 text-white border-emerald-500'
+                      : 'bg-[var(--card-bg)] text-[var(--text-muted)] border-[var(--border)] hover:text-[var(--text-main)]'
+                  }`}
+                >
+                  <span className={active ? '' : c.color.split(' ')[0]}><c.icon className="w-3.5 h-3.5" /></span>
+                  {c.label}
+                  <span className={`${active ? 'text-white/80' : 'text-[var(--text-muted)]/70'}`}>{count}</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
+
         {/* MAIN SCROLL AREA */}
         <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain custom-scrollbar scroll-smooth pb-[max(env(safe-area-inset-bottom),8px)]">
-          {/* FRIDGE — MOBILE (sopra la lista, subito sotto i filtri) */}
-          <div className="lg:hidden px-4 pt-3">{fridgePanel}</div>
-
-          <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_330px] lg:gap-6 px-4 lg:px-6 pt-3">
-            {/* LIST */}
-            <div className="min-w-0 pb-4 lg:pb-10">
-              {total > 0 ? (
-                <div className="space-y-3">
-                  {grouped.map(cat => (
-                    <div key={cat.id} className="bg-[var(--card-bg)] rounded-3xl border border-[var(--border)] overflow-hidden shadow-sm">
-                      <div className="flex items-center gap-2.5 px-4 py-3 border-b border-[var(--border)]">
-                        <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${cat.color}`}>
-                          <cat.icon className="w-4.5 h-4.5" />
-                        </div>
-                        <h4 className="font-black text-sm uppercase tracking-wider text-[var(--text-main)]">{cat.label}</h4>
-                        <span className="text-[11px] font-bold text-[var(--text-muted)] ml-auto">
-                          {cat.items.filter(i => i.checked).length}/{cat.items.length}
-                        </span>
+          <div className="px-4 lg:px-6 pt-3 max-w-3xl mx-auto w-full">
+            {total > 0 ? (
+              <div className="space-y-3">
+                {grouped.map(cat => (
+                  <div key={cat.id} className="bg-[var(--card-bg)] rounded-3xl border border-[var(--border)] overflow-hidden shadow-sm">
+                    <div className="flex items-center gap-2.5 px-4 py-3 border-b border-[var(--border)]">
+                      <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${cat.color}`}>
+                        <cat.icon className="w-4.5 h-4.5" />
                       </div>
-                      <ul className="divide-y divide-[var(--border)]">
-                        <AnimatePresence initial={false}>
-                          {cat.items.map(item => {
-                            const inFridgeFlag = !item.checked && inFridge(item.name);
-                            return (
-                              <motion.li
-                                key={item.id}
-                                layout
-                                initial={{ opacity: 0, y: -8 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                exit={{ opacity: 0, x: 24 }}
-                                transition={{ duration: 0.15 }}
-                                className={`flex items-center gap-3 px-3.5 py-3 transition-opacity ${item.checked ? 'opacity-45' : ''}`}
-                              >
-                                <button
-                                  onClick={() => toggleChecked(item.id)}
-                                  aria-label={item.checked ? 'Rimuovi spunta' : 'Segna acquistato'}
-                                  className={`w-7 h-7 rounded-xl border-2 flex items-center justify-center shrink-0 transition-all active:scale-90 ${
-                                    item.checked
-                                      ? 'bg-emerald-500 border-emerald-500 text-white'
-                                      : 'border-[var(--border)] hover:border-emerald-500 text-transparent'
-                                  }`}
-                                >
-                                  <CheckCircle2 className="w-4 h-4" />
-                                </button>
-                                <ProductThumb name={item.name} size={40} />
-                                <div className="flex-1 min-w-0">
-                                  <p className={`font-bold text-[var(--text-main)] truncate ${item.checked ? 'line-through' : ''}`}>{item.name}</p>
-                                  {item.quantity && <p className="text-xs text-[var(--text-muted)] font-medium">{item.quantity}</p>}
-                                </div>
-                                {inFridgeFlag && (
-                                  <span className="text-[10px] font-bold text-sky-600 bg-sky-500/10 border border-sky-500/20 rounded-full px-2 py-1 shrink-0">
-                                    <Refrigerator className="w-3 h-3 inline -mt-0.5" /> In frigo
-                                  </span>
-                                )}
-                                {item.checked && (
-                                  <button
-                                    onClick={() => moveToFridge(item.id)}
-                                    title="Sposta nel frigorifero"
-                                    className="text-[10px] font-bold text-emerald-600 bg-emerald-500/10 border border-emerald-500/20 hover:bg-emerald-500/20 rounded-full px-2.5 py-1.5 flex items-center gap-1 shrink-0 transition-colors"
-                                  >
-                                    <Refrigerator className="w-3 h-3" /> In frigo
-                                  </button>
-                                )}
-                                <button
-                                  onClick={() => removeItem(item.id)}
-                                  aria-label="Rimuovi"
-                                  className="p-2 rounded-xl text-[var(--text-muted)] hover:text-rose-500 hover:bg-rose-500/10 shrink-0 transition-colors"
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </button>
-                              </motion.li>
-                            );
-                          })}
-                        </AnimatePresence>
-                      </ul>
+                      <h4 className="font-black text-sm uppercase tracking-wider text-[var(--text-main)]">{cat.label}</h4>
+                      <span className="text-[11px] font-bold text-[var(--text-muted)] ml-auto">
+                        {cat.items.filter(i => i.checked).length}/{cat.items.length}
+                      </span>
                     </div>
-                  ))}
-                </div>
-              ) : (
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className="py-14 flex flex-col items-center justify-center text-center px-4"
-                >
-                  <div className="w-20 h-20 bg-emerald-500/10 rounded-full flex items-center justify-center mb-5">
-                    <ShoppingBasket className="w-10 h-10 text-emerald-500" />
+                    <ul className="divide-y divide-[var(--border)]">
+                      <AnimatePresence initial={false}>
+                        {cat.items.map(item => {
+                          const inFridgeFlag = !item.checked && inFridge(item.name);
+                          return (
+                            <motion.li
+                              key={item.id}
+                              layout
+                              initial={{ opacity: 0, y: -8 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              exit={{ opacity: 0, x: 24 }}
+                              transition={{ duration: 0.15 }}
+                              className={`flex items-center gap-3 px-3.5 py-3 transition-opacity ${item.checked ? 'opacity-45' : ''}`}
+                            >
+                              <button
+                                onClick={() => toggleChecked(item.id)}
+                                aria-label={item.checked ? 'Rimuovi spunta' : 'Segna acquistato'}
+                                className={`w-7 h-7 rounded-xl border-2 flex items-center justify-center shrink-0 transition-all active:scale-90 ${
+                                  item.checked
+                                    ? 'bg-emerald-500 border-emerald-500 text-white'
+                                    : 'border-[var(--border)] hover:border-emerald-500 text-transparent'
+                                }`}
+                              >
+                                <CheckCircle2 className="w-4 h-4" />
+                              </button>
+                              <ProductThumb name={item.name} size={40} />
+                              <div className="flex-1 min-w-0">
+                                <p className={`font-bold text-[var(--text-main)] truncate ${item.checked ? 'line-through' : ''}`}>{item.name}</p>
+                                {item.quantity && <p className="text-xs text-[var(--text-muted)] font-medium">{item.quantity}</p>}
+                              </div>
+                              {inFridgeFlag && (
+                                <span className="text-[10px] font-bold text-sky-600 bg-sky-500/10 border border-sky-500/20 rounded-full px-2 py-1 shrink-0">
+                                  <Refrigerator className="w-3 h-3 inline -mt-0.5" /> In frigo
+                                </span>
+                              )}
+                              {item.checked && (
+                                <button
+                                  onClick={() => moveToFridge(item.id)}
+                                  title="Sposta nel frigorifero"
+                                  className="text-[10px] font-bold text-emerald-600 bg-emerald-500/10 border border-emerald-500/20 hover:bg-emerald-500/20 rounded-full px-2.5 py-1.5 flex items-center gap-1 shrink-0 transition-colors"
+                                >
+                                  <Refrigerator className="w-3 h-3" /> In frigo
+                                </button>
+                              )}
+                              <button
+                                onClick={() => removeItem(item.id)}
+                                aria-label="Rimuovi"
+                                className="p-2 rounded-xl text-[var(--text-muted)] hover:text-rose-500 hover:bg-rose-500/10 shrink-0 transition-colors"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </motion.li>
+                          );
+                        })}
+                      </AnimatePresence>
+                    </ul>
                   </div>
-                  <h3 className="text-xl font-bold text-[var(--text-main)] mb-1.5">Lista vuota</h3>
-                  <p className="text-sm text-[var(--text-muted)] max-w-sm">
-                    Scrivi un alimento o un oggetto: i suggerimenti dei supermercati ti aiutano, tutto è ordinato automaticamente per categoria.
-                  </p>
-                </motion.div>
-              )}
-            </div>
-
-            {/* FRIDGE — DESKTOP */}
-            <aside className="hidden lg:block lg:sticky lg:top-3 h-fit">{fridgePanel}</aside>
+                ))}
+              </div>
+            ) : (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="py-10 flex flex-col items-center justify-center text-center px-4"
+              >
+                <div className="w-20 h-20 bg-emerald-500/10 rounded-full flex items-center justify-center mb-5">
+                  <ShoppingBasket className="w-10 h-10 text-emerald-500" />
+                </div>
+                <h3 className="text-xl font-bold text-[var(--text-main)] mb-1.5">Lista vuota</h3>
+                <p className="text-sm text-[var(--text-muted)] max-w-sm">
+                  Scrivi un alimento o tocca una voce qui sotto per iniziare: i suggerimenti dei supermercati ti aiutano, tutto è ordinato automaticamente per categoria.
+                </p>
+                <div className="mt-6 flex flex-wrap justify-center gap-2 max-w-md">
+                  {quickAddProducts.slice(0, 10).map(p => {
+                    const added = data.items.some(i => normalize(i.name) === normalize(p.n));
+                    return (
+                      <button
+                        key={p.n}
+                        onClick={() => addQuick(p)}
+                        disabled={added}
+                        className={`flex items-center gap-1.5 px-3.5 py-2 rounded-full text-sm font-bold border transition-all active:scale-95 ${
+                          added
+                            ? 'bg-[var(--surface-variant)] text-[var(--text-muted)] border-[var(--border)] opacity-50 cursor-default'
+                            : 'bg-[var(--card-bg)] text-[var(--text-main)] border-[var(--border)] hover:border-emerald-500 hover:bg-emerald-500/5 hover:text-emerald-600 shadow-sm'
+                        }`}
+                      >
+                        <span>{p.e}</span>
+                        {p.n}
+                      </button>
+                    );
+                  })}
+                </div>
+              </motion.div>
+            )}
           </div>
         </div>
       </div>
-
-      {qrModal}
     </motion.div>
   );
 };

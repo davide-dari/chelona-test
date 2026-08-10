@@ -340,6 +340,7 @@ export default function App() {
   const [isRecipesOpen, setIsRecipesOpen] = useState(false);
   const [initialRecipesSearch, setInitialRecipesSearch] = useState('');
   const [initialRecipeToOpen, setInitialRecipeToOpen] = useState<any>(null);
+  const [initialRecipesCategory, setInitialRecipesCategory] = useState<string | null>(null);
 
   // Listen for open-recipes event from other modules (like Fitness/Diet)
   useEffect(() => {
@@ -350,6 +351,10 @@ export default function App() {
         setInitialRecipesSearch('');
       } else if (customEvent.detail && customEvent.detail.search) {
         setInitialRecipesSearch(customEvent.detail.search);
+        setInitialRecipeToOpen(null);
+      } else if (customEvent.detail && customEvent.detail.category) {
+        setInitialRecipesCategory(customEvent.detail.category);
+        setInitialRecipesSearch('');
         setInitialRecipeToOpen(null);
       } else {
         setInitialRecipesSearch('');
@@ -3241,6 +3246,7 @@ export default function App() {
                                 onClick={() => {
                                   handleSelectCategoryWithSecurity(key as ModuleType, () => {
                                     if (key === 'recipes') {
+                                      setInitialRecipesCategory(null);
                                       setIsRecipesOpen(true);
                                     } else if (key === 'travel') {
                                       const existingTravel = modules.find(m => m.type === 'travel') as import('./types').TravelModule;
@@ -3334,7 +3340,7 @@ export default function App() {
                         </h3>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                           <button
-                            onClick={() => setIsRecipesOpen(true)}
+                            onClick={() => { setInitialRecipesCategory(null); setIsRecipesOpen(true); }}
                             className="bg-[var(--card-bg)] p-6 lg:p-8 rounded-[2.5rem] border border-[var(--border)] shadow-sm hover:border-orange-500/50 hover:bg-orange-500/5 transition-all group flex flex-col items-center text-center gap-4"
                           >
                             <div className="w-16 h-16 bg-orange-500/10 text-orange-500 rounded-3xl flex items-center justify-center group-hover:scale-110 transition-transform shadow-inner">
@@ -3897,7 +3903,8 @@ export default function App() {
                setIsRecipesOpen(false);
                setInitialRecipesSearch('');
                setInitialRecipeToOpen(null);
-             }} initialSearchQuery={initialRecipesSearch} initialRecipe={initialRecipeToOpen} />
+               setInitialRecipesCategory(null);
+             }} initialSearchQuery={initialRecipesSearch} initialRecipe={initialRecipeToOpen} initialCategory={initialRecipesCategory} />
            </motion.div>
          )}
          {isAddressBookOpen && (
