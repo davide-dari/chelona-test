@@ -4,7 +4,7 @@ import { SupermarketModule, SupermarketItem, SupermarketCategory } from '../type
 import {
   ArrowLeft, Plus, Trash2, CheckCircle2, Refrigerator,
   Apple, Milk, Drumstick, Croissant, PackageCheck, GlassWater, SprayCan,
-  ShowerHead, ShoppingBasket, RotateCcw, Share2, Search, Sparkles
+  ShowerHead, ShoppingBasket, RotateCcw, Share2, Search
 } from 'lucide-react';
 import { generateUUID } from '../utils/uuid';
 import {
@@ -55,13 +55,6 @@ const CATEGORY_META: { id: SupermarketCategory; label: string; icon: any; color:
   { id: 'pulizia', label: 'Pulizia Casa', icon: SprayCan, color: 'text-teal-500 bg-teal-500/10' },
   { id: 'igiene', label: 'Igiene Personale', icon: ShowerHead, color: 'text-purple-500 bg-purple-500/10' },
   { id: 'altro', label: 'Altro', icon: ShoppingBasket, color: 'text-slate-500 bg-slate-500/10' }
-];
-
-const QUICK_ADD_NAMES = [
-  'Pane in cassetta', 'Latte intero', 'Uova', 'Spaghetti', 'Acqua minerale',
-  'Caffè in capsule', 'Mozzarella', 'Banana', 'Pomodori', 'Petto di pollo',
-  'Carta igienica', 'Nutella', 'Olio extravergine di oliva', 'Yogurt greco',
-  'Patatine in busta', 'Sugo di pomodoro', 'Detersivo bucato', 'Shampoo'
 ];
 
 const fallbackClassify = (name: string): SupermarketCategory => {
@@ -190,22 +183,6 @@ export const SupermarketScreen = ({ module, onSave, onClose, onShare }: Supermar
     inputRef.current?.focus();
   };
 
-  const addQuick = (p: CatalogProduct) => {
-    if (data.items.some(i => normalize(i.name) === normalize(p.n))) {
-      setDupeMsg(`"${p.n}" è già nella lista`);
-      setTimeout(() => setDupeMsg(null), 1800);
-      return;
-    }
-    const item: SupermarketItem = {
-      id: generateUUID(),
-      name: p.n,
-      quantity: p.q,
-      category: p.c,
-      checked: false
-    };
-    update({ ...data, items: [...data.items, item] });
-  };
-
   const toggleChecked = (id: string) => {
     update({ ...data, items: data.items.map(i => i.id === id ? { ...i, checked: !i.checked } : i) });
   };
@@ -232,12 +209,6 @@ export const SupermarketScreen = ({ module, onSave, onClose, onShare }: Supermar
   const alreadyInFridge = data.items.filter(i => !i.checked && inFridge(i.name)).length;
   const pending = total - done;
   const progress = total > 0 ? Math.round((done / total) * 100) : 0;
-
-  const quickAddProducts = useMemo(() => {
-    return QUICK_ADD_NAMES
-      .map(n => findProductMatches(n, 1)[0])
-      .filter((p): p is CatalogProduct => !!p);
-  }, []);
 
   const grouped = useMemo(() => {
     const map = new Map<SupermarketCategory, SupermarketItem[]>();
@@ -300,9 +271,9 @@ export const SupermarketScreen = ({ module, onSave, onClose, onShare }: Supermar
       <div className="flex-1 min-h-0 flex flex-col">
         {/* STICKY ADD BAR */}
         <div className="shrink-0 sticky top-0 z-40 px-4 lg:px-6 pt-3 pb-2 bg-[var(--bg)]/95 backdrop-blur-lg border-b border-[var(--border)]">
-          <div className="flex flex-col sm:flex-row gap-2">
+          <div className="max-w-2xl mx-auto flex items-center gap-2">
             <div className="flex-1 relative">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-[var(--text-muted)] pointer-events-none" />
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--text-muted)] pointer-events-none" />
               <input
                 ref={inputRef}
                 type="text"
@@ -322,8 +293,8 @@ export const SupermarketScreen = ({ module, onSave, onClose, onShare }: Supermar
                     setSuggestions([]);
                   }
                 }}
-                placeholder="Cerca o scrivi un alimento..."
-                className="w-full pl-11 pr-4 py-3.5 bg-[var(--card-bg)] border border-[var(--border)] rounded-2xl outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all font-medium text-[var(--text-main)] placeholder:text-[var(--text-muted)]"
+                placeholder="Cerca alimento..."
+                className="w-full pl-12 pr-4 py-4 bg-[var(--card-bg)] border border-[var(--border)] rounded-2xl outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all font-medium text-[var(--text-main)] placeholder:text-[var(--text-muted)]"
               />
 
               {/* SUGGESTIONS */}
@@ -359,79 +330,28 @@ export const SupermarketScreen = ({ module, onSave, onClose, onShare }: Supermar
               </AnimatePresence>
             </div>
 
-            <div className="flex gap-2">
-              <input
-                type="text"
-                inputMode="decimal"
-                value={itemQty}
-                onChange={e => setItemQty(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter') addItem(); }}
-                placeholder="Qtà"
-                className="w-20 px-3 py-3.5 bg-[var(--card-bg)] border border-[var(--border)] rounded-2xl outline-none focus:border-emerald-500 transition-all font-medium text-[var(--text-main)] placeholder:text-[var(--text-muted)] text-center"
-              />
-              <select
-                value={itemUnit}
-                onChange={e => setItemUnit(e.target.value)}
-                aria-label="Unità di misura"
-                className="w-28 px-2 py-3.5 bg-[var(--card-bg)] border border-[var(--border)] rounded-2xl outline-none focus:border-emerald-500 transition-all font-medium text-[var(--text-main)] cursor-pointer"
-              >
-                <option value="">Unità</option>
-                <option value="kg">kg</option>
-                <option value="g">grammi</option>
-                <option value="lt">litri</option>
-                <option value="ml">ml</option>
-                <option value="pz">pezzi</option>
-                <option value="etto">etti</option>
-                <option value="busta">buste</option>
-                <option value="lattina">lattine</option>
-                <option value="barattolo">barattoli</option>
-                <option value="bottiglia">bottiglie</option>
-                <option value="confezione">confezioni</option>
-                <option value="mazzo">mazzi</option>
-                <option value="fetta">fette</option>
-                <option value="scatola">scatole</option>
-                <option value="pacco">pacchi</option>
-                <option value="vasetto">vasetti</option>
-              </select>
-              <button
-                onClick={addItem}
-                className="flex items-center justify-center gap-1.5 bg-emerald-500 hover:bg-emerald-600 text-white px-5 py-3.5 rounded-2xl font-bold transition-all active:scale-95 shadow-lg shadow-emerald-500/25 shrink-0"
-              >
-                <Plus className="w-5 h-5" />
-                <span className="hidden sm:inline">Aggiungi</span>
-              </button>
-            </div>
-          </div>
-
-          {/* QUICK ADD CHIPS */}
-          <div className="mt-2.5 flex items-center gap-1.5 overflow-x-auto custom-scrollbar -mx-4 lg:-mx-6 px-4 lg:px-6 pb-0.5">
-            <span className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest flex items-center gap-1 shrink-0">
-              <Sparkles className="w-3.5 h-3.5 text-emerald-500" /> Veloce
-            </span>
-            {quickAddProducts.map(p => {
-              const added = data.items.some(i => normalize(i.name) === normalize(p.n));
-              return (
-                <button
-                  key={p.n}
-                  onClick={() => addQuick(p)}
-                  disabled={added}
-                  title={added ? 'Già in lista' : `Aggiungi ${p.n}`}
-                  className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border transition-all active:scale-95 ${
-                    added
-                      ? 'bg-[var(--surface-variant)] text-[var(--text-muted)] border-[var(--border)] opacity-50 cursor-default'
-                      : 'bg-[var(--card-bg)] text-[var(--text-main)] border-[var(--border)] hover:border-emerald-500 hover:bg-emerald-500/5 hover:text-emerald-600'
-                  }`}
-                >
-                  <span className="text-sm leading-none">{p.e}</span>
-                  {p.n}
-                </button>
-              );
-            })}
+            <input
+              type="text"
+              inputMode="decimal"
+              value={itemQty}
+              onChange={e => setItemQty(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') addItem(); }}
+              placeholder="Qtà"
+              title="Quantità"
+              className="w-20 px-3 py-4 bg-[var(--card-bg)] border border-[var(--border)] rounded-2xl outline-none focus:border-emerald-500 transition-all font-medium text-[var(--text-main)] placeholder:text-[var(--text-muted)] text-center shrink-0"
+            />
+            <button
+              onClick={addItem}
+              title="Aggiungi alla lista"
+              className="w-14 h-14 flex items-center justify-center bg-emerald-500 hover:bg-emerald-600 text-white rounded-2xl font-bold transition-all active:scale-95 shadow-lg shadow-emerald-500/25 shrink-0"
+            >
+              <Plus className="w-7 h-7" />
+            </button>
           </div>
 
           {/* INLINE STATUS */}
           {(itemName.trim().length >= 2 || selectedSuggestion || dupeMsg) && (
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2 text-xs font-medium">
+            <div className="max-w-2xl mx-auto flex flex-wrap items-center gap-x-3 gap-y-1 mt-2 text-xs font-medium">
               {selectedSuggestion ? (
                 <span className="text-[var(--text-muted)]">
                   {selectedSuggestion.e} <b className="text-[var(--text-main)]">{selectedSuggestion.n}</b> · {PRODUCT_CATEGORY_LABEL[selectedSuggestion.c]}
@@ -605,28 +525,8 @@ export const SupermarketScreen = ({ module, onSave, onClose, onShare }: Supermar
                 </div>
                 <h3 className="text-xl font-bold text-[var(--text-main)] mb-1.5">Lista vuota</h3>
                 <p className="text-sm text-[var(--text-muted)] max-w-sm">
-                  Scrivi un alimento o tocca una voce qui sotto per iniziare: i suggerimenti dei supermercati ti aiutano, tutto è ordinato automaticamente per categoria.
+                  Cerca un alimento qui sopra, scegli la quantità e premi + per aggiungerlo alla lista. Tutto viene salvato automaticamente.
                 </p>
-                <div className="mt-6 flex flex-wrap justify-center gap-2 max-w-md">
-                  {quickAddProducts.slice(0, 10).map(p => {
-                    const added = data.items.some(i => normalize(i.name) === normalize(p.n));
-                    return (
-                      <button
-                        key={p.n}
-                        onClick={() => addQuick(p)}
-                        disabled={added}
-                        className={`flex items-center gap-1.5 px-3.5 py-2 rounded-full text-sm font-bold border transition-all active:scale-95 ${
-                          added
-                            ? 'bg-[var(--surface-variant)] text-[var(--text-muted)] border-[var(--border)] opacity-50 cursor-default'
-                            : 'bg-[var(--card-bg)] text-[var(--text-main)] border-[var(--border)] hover:border-emerald-500 hover:bg-emerald-500/5 hover:text-emerald-600 shadow-sm'
-                        }`}
-                      >
-                        <span>{p.e}</span>
-                        {p.n}
-                      </button>
-                    );
-                  })}
-                </div>
               </motion.div>
             )}
           </div>
