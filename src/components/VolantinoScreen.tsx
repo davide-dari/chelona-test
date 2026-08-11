@@ -2,12 +2,13 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   ArrowLeft, X, MapPin, History, ExternalLink, CalendarDays, FileUp,
-  Link2, FileText, Loader2, Check, Sparkles, Globe, Store, ChevronLeft, CalendarClock, Pencil
+  Link2, FileText, Loader2, Check, Sparkles, Globe, Store, ChevronLeft, CalendarClock, Pencil,
+  ShoppingBag, Tag, Search, Plus, CheckCircle2
 } from 'lucide-react';
 import { CapacitorHttp, Capacitor } from '@capacitor/core';
 import { Filesystem, Directory } from '@capacitor/filesystem';
 import { FileOpener } from '@capawesome-team/capacitor-file-opener';
-import { VolantinoModule, VolantinoFlyer, SupermarketItem } from '../types';
+import { VolantinoModule, VolantinoFlyer, SupermarketItem, SupermarketCategory } from '../types';
 import { generateUUID } from '../utils/uuid';
 import { flyerWindowISO, daysUntil } from '../utils/flyerCycle';
 import {
@@ -16,16 +17,28 @@ import {
 } from '../data/italianSupermarkets';
 import { logoFor } from '../data/supermarketLogos';
 import { StoreLogo } from './StoreLogo';
+import { getScrapedFlyerOffers, ScrapedOffer } from '../data/flyerScraper';
 
 interface VolantinoScreenProps {
   module: VolantinoModule;
   onSave: (m: VolantinoModule) => void;
   onClose: () => void;
   shoppingItems?: SupermarketItem[];
+  onAddShoppingItem?: (item: SupermarketItem) => void;
 }
 
 const HISTORY_KEY = 'chelona_volantino_zones';
 const SUGGESTED_ZONES = ['Tutta Italia', 'Lombardia', 'Lazio', 'Veneto', 'Piemonte', 'Campania', 'Sicilia', 'Toscana', 'Emilia-Romagna'];
+
+const CATEGORY_LABELS: Record<string, string> = {
+  all: 'Tutte le Offerte',
+  pulizia: 'Pulizia Casa',
+  igiene: 'Igiene Personale',
+  dispensa: 'Dispensa & Alimentari',
+  'latticini-uova': 'Latticini & Uova',
+  'carne-pesce': 'Carne & Pesce',
+  bevande: 'Bevande'
+};
 
 const loadHistory = (): string[] => {
   try {
@@ -46,12 +59,15 @@ const fmtTimestamp = (iso?: string): string | null => {
   return d.toLocaleDateString('it-IT', { day: 'numeric', month: 'short' });
 };
 
-export default function VolantinoScreen({ module, onSave, onClose }: VolantinoScreenProps) {
+export default function VolantinoScreen({ module, onSave, onClose, shoppingItems = [], onAddShoppingItem }: VolantinoScreenProps) {
   const [query, setQuery] = useState('');
   const [activeZone, setActiveZone] = useState<string | null>(null);
   const [history, setHistory] = useState<string[]>(loadHistory());
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'offers' | 'flyer'>('offers');
+  const [offerSearch, setOfferSearch] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [editingFlyer, setEditingFlyer] = useState<VolantinoFlyer | null>(null);
   const [flyerForm, setFlyerForm] = useState({ label: '', updatedAt: '', validTo: '', pdfUrl: '', pdfAttachment: '' });
   const [opening, setOpening] = useState(false);
@@ -60,9 +76,7 @@ export default function VolantinoScreen({ module, onSave, onClose }: VolantinoSc
   const flyerFor = (storeId: string) => flyers.find(f => f.storeId === storeId);
   const saveFlyers = (next: VolantinoFlyer[]) => onSave({ ...module, offers: module.offers, flyers: next });
 
-  /* Rinnovo automatico dei volantini in base alle scadenze:
-     crea i volantini mancanti per ogni catena del catalogo e, quando un
-     volantino scade, passa automaticamente al ciclo settimanale successivo. */
+  /* Rinnovo automatico dei volantini in base alle scadenze */
   useEffect(() => {
     const now = new Date();
     let changed = false;
@@ -126,10 +140,25 @@ export default function VolantinoScreen({ module, onSave, onClose }: VolantinoSc
     return times.length ? times.sort().reverse()[0] : undefined;
   }, [flyers]);
 
-  /* ── catena selezionata ────────────────────────────────────────── */
+  /* ── catena selezionata & offerte scraped ────────────────────────── */
   const chain = selectedId ? supermarketById(selectedId) : undefined;
   const flyer = chain ? flyerFor(chain.id) : undefined;
   const hasPdf = !!(flyer?.pdfUrl || flyer?.pdfAttachment);
+
+  const scrapedOffers = useMemo(() => {
+    if (!chain) return [];
+    return getScrapedFlyerOffers(chain.id);
+  }, [chain]);
+
+  const filteredOffers = useMemo(() => {
+    return scrapedOffers.filter(offer => {
+      const catMatch = selectedCategory === 'all' || offer.category === selectedCategory;
+      const searchMatch = !offerSearch.trim() || 
+        offer.productName.toLowerCase().includes(offerSearch.toLowerCase()) || 
+        (offer.brand && offer.brand.toLowerCase().includes(offerSearch.toLowerCase()));
+      return catMatch && searchMatch;
+    });
+  }, [scrapedOffers, selectedCategory, offerSearch]);
 
   const openInSystem = (url: string) => {
     if (!url) return;
@@ -140,11 +169,11 @@ export default function VolantinoScreen({ module, onSave, onClose }: VolantinoSc
   const openNativePdf = async (f: VolantinoFlyer) => {
     if (!chain) return;
     if (!f?.pdfUrl && !f?.pdfAttachment) {
-      openInSystem(chain.website || '');
+      openInSystem(chain.flyerUrl || chain.website || '');
       return;
     }
     if (!Capacitor.isNativePlatform()) {
-      openInSystem(f.pdfUrl || chain.website || '');
+      openInSystem(f.pdfUrl || chain.flyerUrl || chain.website || '');
       return;
     }
     setOpening(true);
@@ -172,10 +201,29 @@ export default function VolantinoScreen({ module, onSave, onClose }: VolantinoSc
       await FileOpener.openFile({ path: uri });
     } catch (err) {
       console.error('[Volantino] Apertura reader nativa fallita:', err);
-      openInSystem(f.pdfUrl || chain.website || '');
+      openInSystem(f.pdfUrl || chain.flyerUrl || chain.website || '');
     } finally {
       setOpening(false);
     }
+  };
+
+  const handleAddOfferToShoppingList = (offer: ScrapedOffer) => {
+    if (onAddShoppingItem) {
+      const newItem: SupermarketItem = {
+        id: generateUUID(),
+        name: offer.productName,
+        category: offer.category,
+        completed: false,
+        quantity: 1,
+        isPromo: true,
+        promoPrice: offer.discountPrice
+      };
+      onAddShoppingItem(newItem);
+    }
+  };
+
+  const isItemInShoppingList = (productName: string) => {
+    return shoppingItems.some(i => i.name.toLowerCase() === productName.toLowerCase() && !i.completed);
   };
 
   /* ── config volantino ──────────────────────────────────────────── */
@@ -197,14 +245,6 @@ export default function VolantinoScreen({ module, onSave, onClose }: VolantinoSc
       pdfUrl: f.pdfUrl || '',
       pdfAttachment: f.pdfAttachment || ''
     });
-  };
-
-  const onFlyerPdfSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf'))) return;
-    const reader = new FileReader();
-    reader.onload = () => setFlyerForm(f => ({ ...f, pdfAttachment: String(reader.result) }));
-    reader.readAsDataURL(file);
   };
 
   const saveFlyer = () => {
@@ -236,19 +276,19 @@ export default function VolantinoScreen({ module, onSave, onClose }: VolantinoSc
       <header className="flex items-center justify-between gap-3 pt-[max(env(safe-area-inset-top),16px)] px-4 lg:px-5 pb-4 bg-[var(--card-bg)] border-b border-[var(--border)] shrink-0 z-30">
         <button
           onClick={() => (chain ? setSelectedId(null) : onClose())}
-          className="p-2.5 -ml-2 hover:bg-[var(--surface-variant)] rounded-full text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors shrink-0"
+          className="p-2.5 -ml-2 hover:bg-[var(--surface-variant)] rounded-full text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors shrink-0 cursor-pointer"
         >
           <ArrowLeft className="w-6 h-6" />
         </button>
         <div className="flex-1 min-w-0">
           <h1 className="text-xl lg:text-2xl font-black text-[var(--text-main)] truncate flex items-center gap-2">
             <Sparkles className="w-5 h-5 lg:w-6 lg:h-6 text-amber-500 shrink-0" />
-            {chain ? chain.label : 'Volantino'}
+            {chain ? chain.label : 'Volantini & Offerte'}
           </h1>
           <p className="text-[11px] lg:text-xs text-[var(--text-muted)] font-medium truncate">
             {chain
-              ? (flyer?.label || 'Volantino settimanale')
-              : `${stores.length} supermercati${lastUpdatedAt ? ` · aggiornato ${fmtTimestamp(lastUpdatedAt)}` : ''}`}
+              ? (chain.flyerUrl ? `Volantino Ufficiale: ${chain.flyerUrl}` : 'Offerte e volantino promozionale')
+              : `${stores.length} supermercati ed insegne` + (lastUpdatedAt ? ` · aggiornato ${fmtTimestamp(lastUpdatedAt)}` : '')}
           </p>
         </div>
       </header>
@@ -256,109 +296,239 @@ export default function VolantinoScreen({ module, onSave, onClose }: VolantinoSc
       {/* MAIN SCROLL AREA */}
       <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain custom-scrollbar scroll-smooth pb-[max(env(safe-area-inset-bottom),8px)]">
         {chain ? (
-          /* ─────────── DETTAGLIO CATENA + ANTEPRIMA VOLANTINO ─────────── */
-          <div className="p-4 lg:p-6 space-y-4">
+          /* ─────────── DETTAGLIO CATENA + SCRAPING OFFERTE ─────────── */
+          <div className="p-4 lg:p-6 space-y-5">
             <button
               onClick={() => setSelectedId(null)}
-              className="flex items-center gap-1.5 text-sm font-bold text-[var(--text-muted)] hover:text-amber-500 transition-colors"
+              className="flex items-center gap-1.5 text-sm font-bold text-[var(--text-muted)] hover:text-amber-500 transition-colors cursor-pointer"
             >
-              <ChevronLeft className="w-4 h-4" /> Tutti i supermercati
+              <ChevronLeft className="w-4 h-4" /> Tutti i supermercati ed insegne
             </button>
 
-            {/* Info insegna */}
-            <section className="bg-[var(--card-bg)] rounded-[2rem] border border-[var(--border)] p-4 lg:p-5 flex items-center gap-3 shadow-sm">
-              <StoreLogo id={chain.id} short={chain.short} hex={chain.color} logo={logoFor(chain.id)} size={56} />
-              <div className="flex-1 min-w-0">
-                <p className="font-black text-[var(--text-main)] text-lg truncate flex items-center gap-2">
-                  {chain.label}
-                  {chain.discount && (
-                    <span className="text-[10px] font-black uppercase tracking-wide text-emerald-600 bg-emerald-500/10 border border-emerald-500/20 rounded-full px-2 py-0.5 shrink-0">
-                      Risparmio
-                    </span>
-                  )}
-                </p>
-                <p className="text-[11px] text-[var(--text-muted)] font-medium truncate">
-                  {[chain.group, chain.points ? `${chain.points} punti vendita` : null, chain.regions.includes('Italia') ? 'Presente in tutta Italia' : chain.regions.join(', ')].filter(Boolean).join(' · ')}
-                </p>
-                {flyer?.validTo && (
-                  <p className="text-[10px] font-bold mt-1 flex items-center gap-1.5">
-                    <CalendarClock className="w-3.5 h-3.5 shrink-0 text-amber-500" />
-                    <ValidityLabel flyer={flyer} />
+            {/* Info insegna & URL Volantino */}
+            <section className="bg-[var(--card-bg)] rounded-[2rem] border border-[var(--border)] p-4 lg:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-sm">
+              <div className="flex items-center gap-3">
+                <StoreLogo id={chain.id} short={chain.short} hex={chain.color} logo={logoFor(chain.id)} size={60} />
+                <div className="flex-1 min-w-0">
+                  <p className="font-black text-[var(--text-main)] text-xl truncate flex items-center gap-2">
+                    {chain.label}
+                    {chain.discount && (
+                      <span className="text-[10px] font-black uppercase tracking-wide text-emerald-600 bg-emerald-500/10 border border-emerald-500/20 rounded-full px-2.5 py-0.5 shrink-0">
+                        Risparmio
+                      </span>
+                    )}
                   </p>
+                  <p className="text-[11px] text-[var(--text-muted)] font-medium truncate mt-0.5">
+                    {[chain.group, chain.points ? `${chain.points} punti vendita` : null, chain.regions.includes('Italia') ? 'Nazionale' : chain.regions.join(', ')].filter(Boolean).join(' · ')}
+                  </p>
+                  {chain.flyerUrl && (
+                    <a
+                      href={chain.flyerUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[11px] font-bold text-amber-500 hover:underline flex items-center gap-1 mt-1 truncate"
+                    >
+                      <Globe className="w-3.5 h-3.5 shrink-0" />
+                      {chain.flyerUrl}
+                    </a>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <button
+                  onClick={() => openInSystem(chain.flyerUrl || chain.website || '')}
+                  className="flex-1 sm:flex-initial flex items-center justify-center gap-2 bg-amber-500 hover:bg-amber-600 text-white px-4 py-2.5 rounded-2xl text-xs font-bold transition-all shadow-md active:scale-95 cursor-pointer"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                  Sito Volantino Online
+                </button>
+              </div>
+            </section>
+
+            {/* SELETTORE TAB: Offerte Scraped vs Reader Volantino */}
+            <div className="flex items-center gap-2 p-1.5 bg-[var(--surface-variant)] rounded-2xl border border-[var(--border)]">
+              <button
+                onClick={() => setActiveTab('offers')}
+                className={`flex-1 py-3 px-4 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                  activeTab === 'offers'
+                    ? 'bg-amber-500 text-white shadow-md'
+                    : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
+                }`}
+              >
+                <Tag className="w-4 h-4" />
+                Offerte Volantino ({filteredOffers.length})
+              </button>
+              <button
+                onClick={() => setActiveTab('flyer')}
+                className={`flex-1 py-3 px-4 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                  activeTab === 'flyer'
+                    ? 'bg-amber-500 text-white shadow-md'
+                    : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
+                }`}
+              >
+                <FileText className="w-4 h-4" />
+                Anteprima Volantino / PDF
+              </button>
+            </div>
+
+            {activeTab === 'offers' ? (
+              /* ────────── TAB 1: OFFERTE SCRAPED DEL VOLANTINO ────────── */
+              <div className="space-y-4">
+                {/* Ricerca ed abbonamento filtri offerte */}
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <div className="relative flex-1">
+                    <Search className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" />
+                    <input
+                      value={offerSearch}
+                      onChange={e => setOfferSearch(e.target.value)}
+                      placeholder={`Cerca in offerte ${chain.label} (es. Dash, Caffè, Pasta)…`}
+                      className="w-full pl-11 pr-4 py-3 bg-[var(--card-bg)] border border-[var(--border)] rounded-2xl outline-none focus:border-amber-500 font-medium text-xs text-[var(--text-main)] shadow-sm"
+                    />
+                  </div>
+
+                  <div className="flex gap-2 overflow-x-auto custom-scrollbar pb-1">
+                    {['all', 'pulizia', 'igiene', 'dispensa', 'latticini-uova', 'carne-pesce', 'bevande'].map(cat => (
+                      <button
+                        key={cat}
+                        onClick={() => setSelectedCategory(cat)}
+                        className={`px-3 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all border cursor-pointer ${
+                          selectedCategory === cat
+                            ? 'bg-amber-500/10 border-amber-500/50 text-amber-500'
+                            : 'bg-[var(--card-bg)] border-[var(--border)] text-[var(--text-muted)] hover:border-amber-500/40'
+                        }`}
+                      >
+                        {CATEGORY_LABELS[cat] || cat}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* GRIGLIA OFFERTE SCRAPED */}
+                {filteredOffers.length > 0 ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
+                    {filteredOffers.map(offer => {
+                      const added = isItemInShoppingList(offer.productName);
+                      return (
+                        <div
+                          key={offer.id}
+                          className="bg-[var(--card-bg)] border border-[var(--border)] rounded-2xl p-4 flex flex-col justify-between shadow-sm hover:border-amber-500/50 transition-all relative overflow-hidden group"
+                        >
+                          <div>
+                            <div className="flex items-start justify-between gap-2 mb-2">
+                              <span className="text-2xl">{offer.icon}</span>
+                              <div className="flex items-center gap-1.5">
+                                {offer.badge && (
+                                  <span className="text-[10px] font-black uppercase tracking-wider text-amber-600 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-full">
+                                    {offer.badge}
+                                  </span>
+                                )}
+                                <span className="text-[10px] font-black text-rose-500 bg-rose-500/10 border border-rose-500/20 px-2 py-0.5 rounded-full">
+                                  {offer.discountPercent}
+                                </span>
+                              </div>
+                            </div>
+
+                            <p className="font-bold text-sm text-[var(--text-main)] leading-snug line-clamp-2 mb-1">
+                              {offer.productName}
+                            </p>
+                            {offer.brand && (
+                              <p className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider mb-2">
+                                {offer.brand}
+                              </p>
+                            )}
+                          </div>
+
+                          <div className="mt-4 pt-3 border-t border-[var(--border)] flex items-center justify-between gap-2">
+                            <div>
+                              <span className="text-xs text-[var(--text-muted)] line-through mr-1.5 font-medium">
+                                €{offer.originalPrice.toFixed(2)}
+                              </span>
+                              <span className="text-base font-black text-emerald-600">
+                                €{offer.discountPrice.toFixed(2)}
+                              </span>
+                            </div>
+
+                            <button
+                              onClick={() => handleAddOfferToShoppingList(offer)}
+                              className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all active:scale-95 cursor-pointer ${
+                                added
+                                  ? 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-600'
+                                  : 'bg-amber-500 hover:bg-amber-600 text-white shadow-md shadow-amber-500/20'
+                              }`}
+                            >
+                              {added ? (
+                                <>
+                                  <CheckCircle2 className="w-3.5 h-3.5" />
+                                  <span>Aggiunto</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Plus className="w-3.5 h-3.5" />
+                                  <span>+ Spesa</span>
+                                </>
+                              )}
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center py-12 text-center bg-[var(--card-bg)] rounded-3xl border border-[var(--border)] p-6">
+                    <ShoppingBag className="w-10 h-10 text-amber-500/50 mb-3" />
+                    <p className="font-bold text-[var(--text-main)]">Nessuna offerta trovata</p>
+                    <p className="text-xs text-[var(--text-muted)] mt-1">Prova a cambiare parola chiave o filtro categoria.</p>
+                  </div>
                 )}
               </div>
-              {chain.website && (
-                <button
-                  onClick={() => openInSystem(chain.website!)}
-                  title="Sito ufficiale"
-                  className="p-2.5 rounded-xl text-[var(--text-muted)] hover:text-amber-500 hover:bg-amber-500/10 transition-colors shrink-0"
-                >
-                  <Globe className="w-5 h-5" />
-                </button>
-              )}
-            </section>
-
-            {/* Anteprima volantino */}
-            <section className="rounded-[2rem] overflow-hidden border border-[var(--border)] bg-[var(--card-bg)] shadow-sm">
-              {hasPdf ? (
-                <div className="h-96 lg:h-[26rem] relative bg-white">
-                  <iframe
-                    src={flyer!.pdfAttachment || flyer!.pdfUrl}
-                    className="absolute inset-0 w-full h-full border-none bg-white"
-                    title={`Volantino ${chain.label}`}
-                  />
-                </div>
-              ) : (
-                <FlyerCover chain={chain} />
-              )}
-
-              <footer className="px-4 lg:px-5 py-4 flex flex-wrap items-center gap-2.5 border-t border-[var(--border)]">
-                <div className="flex-1 min-w-0">
-                  <p className="font-bold text-[var(--text-main)] text-sm truncate">
-                    {flyer?.label || 'Volantino settimanale'}
-                  </p>
-                  <p className="text-[10px] text-[var(--text-muted)] font-medium truncate">
-                    {flyer?.updatedAt ? `aggiornato ${fmtTimestamp(flyer.updatedAt)}` : 'non ancora configurato'}
-                  </p>
-                </div>
-
-                <button
-                  onClick={() => openFlyerForm(flyer)}
-                  title="Configura volantino"
-                  className="p-2.5 rounded-xl text-[var(--text-muted)] hover:text-amber-500 hover:bg-amber-500/10 transition-colors shrink-0"
-                >
-                  <Pencil className="w-4 h-4" />
-                </button>
-
-                <button
-                  onClick={() => (hasPdf ? openNativePdf(flyer!) : openInSystem(chain.flyerUrl || chain.website || ''))}
-                  disabled={opening}
-                  className="flex items-center gap-2 bg-amber-500 hover:bg-amber-600 disabled:opacity-60 text-white px-4 py-2.5 rounded-xl text-sm font-bold transition-all active:scale-95 shadow-lg shadow-amber-500/25 shrink-0"
-                >
-                  {opening ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
-                  {hasPdf ? 'Apri con il reader' : 'Vai al volantino online'}
-                </button>
-
-                {chain.website && (
-                  <button
-                    onClick={() => openInSystem(chain.website!)}
-                    className="flex items-center gap-2 bg-[var(--surface-variant)] hover:bg-[var(--surface-variant)]/70 text-[var(--text-main)] px-4 py-2.5 rounded-xl text-sm font-bold transition-colors shrink-0"
-                  >
-                    <ExternalLink className="w-4 h-4" /> Sito
-                  </button>
+            ) : (
+              /* ────────── TAB 2: ANTEPRIMA VOLANTINO / PDF READER ────────── */
+              <section className="rounded-[2rem] overflow-hidden border border-[var(--border)] bg-[var(--card-bg)] shadow-sm">
+                {hasPdf ? (
+                  <div className="h-96 lg:h-[28rem] relative bg-white">
+                    <iframe
+                      src={flyer!.pdfAttachment || flyer!.pdfUrl}
+                      className="absolute inset-0 w-full h-full border-none bg-white"
+                      title={`Volantino ${chain.label}`}
+                    />
+                  </div>
+                ) : (
+                  <FlyerCover chain={chain} />
                 )}
-              </footer>
-            </section>
 
-            {hasPdf && (
-              <p className="text-[11px] text-[var(--text-muted)] px-1 flex items-center gap-1.5">
-                <Check className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
-                Il PDF verrà aperto nell'app lettore installata sul tuo telefono.
-              </p>
+                <footer className="px-4 lg:px-5 py-4 flex flex-wrap items-center gap-2.5 border-t border-[var(--border)]">
+                  <div className="flex-1 min-w-0">
+                    <p className="font-bold text-[var(--text-main)] text-sm truncate">
+                      {flyer?.label || 'Volantino settimanale'}
+                    </p>
+                    <p className="text-[10px] text-[var(--text-muted)] font-medium truncate">
+                      {flyer?.updatedAt ? `aggiornato ${fmtTimestamp(flyer.updatedAt)}` : 'volantino attivo'}
+                    </p>
+                  </div>
+
+                  <button
+                    onClick={() => openFlyerForm(flyer)}
+                    title="Configura volantino"
+                    className="p-2.5 rounded-xl text-[var(--text-muted)] hover:text-amber-500 hover:bg-amber-500/10 transition-colors shrink-0 cursor-pointer"
+                  >
+                    <Pencil className="w-4 h-4" />
+                  </button>
+
+                  <button
+                    onClick={() => (hasPdf ? openNativePdf(flyer!) : openInSystem(chain.flyerUrl || chain.website || ''))}
+                    disabled={opening}
+                    className="flex items-center gap-2 bg-amber-500 hover:bg-amber-600 disabled:opacity-60 text-white px-4 py-2.5 rounded-xl text-xs font-bold transition-all active:scale-95 shadow-lg shadow-amber-500/25 shrink-0 cursor-pointer"
+                  >
+                    {opening ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
+                    {hasPdf ? 'Apri con il reader' : 'Vai al volantino online'}
+                  </button>
+                </footer>
+              </section>
             )}
           </div>
         ) : (
-          /* ─────────── HOME: ZONA + LISTA SUPERMERCATI ─────────── */
+          /* ────────── HOME: ZONA + LISTA SUPERMERCATI ────────── */
           <div className="p-4 lg:p-6 space-y-5">
             {/* Ricerca zona */}
             <section className="bg-[var(--card-bg)] rounded-[2rem] border border-[var(--border)] p-4 lg:p-5 shadow-sm">
@@ -460,7 +630,7 @@ export default function VolantinoScreen({ module, onSave, onClose }: VolantinoSc
             {/* Griglia supermercati */}
             <section>
               <p className="text-sm font-black text-[var(--text-muted)] uppercase tracking-wider mb-3">
-                {activeZone ? `${stores.length} insegne disponibili` : 'Tutti i supermercati'}
+                {activeZone ? `${stores.length} insegne disponibili` : 'Tutti i supermercati ed insegne'}
               </p>
               {stores.length > 0 ? (
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 lg:gap-4">
@@ -470,8 +640,8 @@ export default function VolantinoScreen({ module, onSave, onClose }: VolantinoSc
                     return (
                       <button
                         key={ch.id}
-                        onClick={() => setSelectedId(ch.id)}
-                        className="group bg-[var(--card-bg)] rounded-[2rem] border border-[var(--border)] p-4 lg:p-5 flex flex-col items-center text-center gap-2 hover:border-amber-500/60 hover:bg-amber-500/5 transition-all shadow-sm"
+                        onClick={() => { setSelectedId(ch.id); setActiveTab('offers'); }}
+                        className="group bg-[var(--card-bg)] rounded-[2rem] border border-[var(--border)] p-4 lg:p-5 flex flex-col items-center text-center gap-2 hover:border-amber-500/60 hover:bg-amber-500/5 transition-all shadow-sm cursor-pointer"
                       >
                         <span className="relative">
                           <StoreLogo id={ch.id} short={ch.short} hex={ch.color} logo={logoFor(ch.id)} size={64} />
@@ -511,7 +681,7 @@ export default function VolantinoScreen({ module, onSave, onClose }: VolantinoSc
             </section>
 
             <p className="text-[11px] text-[var(--text-muted)] text-center px-4 leading-relaxed">
-              Tocca il logo di una catena per vedere l'anteprima del volantino e aprirlo con il lettore PDF del tuo telefono.
+              Tocca il logo di una catena per consultare le offerte del volantino ed aggiungerle direttamente alla tua lista della spesa.
             </p>
           </div>
         )}
@@ -608,7 +778,7 @@ export default function VolantinoScreen({ module, onSave, onClose }: VolantinoSc
                     </span>
                     <button
                       onClick={() => setFlyerForm(f => ({ ...f, pdfAttachment: '', pdfUrl: '' }))}
-                      className="text-rose-500 hover:text-rose-600 font-bold shrink-0"
+                      className="text-rose-500 hover:text-rose-600 font-bold shrink-0 cursor-pointer"
                     >
                       Rimuovi
                     </button>
@@ -617,7 +787,7 @@ export default function VolantinoScreen({ module, onSave, onClose }: VolantinoSc
 
                 <button
                   onClick={saveFlyer}
-                  className="w-full bg-amber-500 hover:bg-amber-600 text-white py-4 rounded-2xl font-bold transition-all active:scale-[0.99] shadow-lg shadow-amber-500/25"
+                  className="w-full bg-amber-500 hover:bg-amber-600 text-white py-4 rounded-2xl font-bold transition-all active:scale-[0.99] shadow-lg shadow-amber-500/25 cursor-pointer"
                 >
                   Salva volantino
                 </button>

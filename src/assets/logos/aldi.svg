@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 120" width="300" height="120">
+  <rect width="300" height="120" rx="16" fill="#0A2540"/>
+  <rect x="20" y="15" width="90" height="90" rx="8" fill="#0057A8" stroke="#64B5F6" stroke-width="3"/>
+  <text x="65" y="76" font-family="'Arial Black', sans-serif" font-weight="900" font-size="52" fill="#FF8C00" text-anchor="middle">A</text>
+  <text x="200" y="70" font-family="'Arial Black', sans-serif" font-weight="900" font-size="42" fill="#FFFFFF" text-anchor="middle">ALDI</text>
+</svg>

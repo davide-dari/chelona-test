@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 120" width="300" height="120">
+  <rect width="300" height="120" rx="16" fill="#EA580C"/>
+  <path d="M40 45 L70 20 L100 45 L100 90 L40 90 Z" fill="#1E3A8A"/>
+  <text x="195" y="55" font-family="'Arial Black', sans-serif" font-weight="900" font-size="22" fill="#FFFFFF" text-anchor="middle">RISPARMIO</text>
+  <text x="195" y="85" font-family="'Arial Black', sans-serif" font-weight="900" font-size="28" fill="#FEF08A" text-anchor="middle">CASA</text>
+</svg>

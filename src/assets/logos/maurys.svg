@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 120" width="300" height="120">
+  <rect width="300" height="120" rx="16" fill="#FFF200"/>
+  <rect x="10" y="10" width="280" height="100" rx="12" fill="#003876"/>
+  <text x="150" y="65" font-family="'Arial Black', sans-serif" font-weight="900" font-size="42" fill="#FFF200" text-anchor="middle" letter-spacing="-1">Maury's</text>
+  <text x="150" y="92" font-family="'Inter', sans-serif" font-weight="800" font-size="10" fill="#FFFFFF" text-anchor="middle" letter-spacing="2">I SPECIALISTI DEL RISPARMIO</text>
+</svg>

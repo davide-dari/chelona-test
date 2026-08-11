@@ -35,6 +35,44 @@ export interface ItalianSupermarket {
 
 export const ITALIAN_SUPERMARKETS: ItalianSupermarket[] = [
   {
+    id: 'acqua-e-sapone', label: 'Acqua & Sapone', short: 'AS', color: '#003B73', website: 'https://www.acquaesapone.it/',
+    flyerUrl: 'https://www.acquaesapone.it/volantino/',
+    regions: ['Italia'],
+    points: '800+',
+  },
+  {
+    id: 'maurys', label: "Maury's", short: 'MA', color: '#003876', website: 'https://www.maurys.it/',
+    flyerUrl: 'https://www.maurys.it/volantino/',
+    regions: ['Lazio', 'Toscana', 'Umbria', 'Marche', 'Abruzzo', 'Campania', 'Sardegna', 'Lombardia'],
+    cities: ['Roma', 'Firenze', 'Perugia', 'Ancona', 'Pescara', 'Napoli', 'Cagliari', 'Milano'],
+    points: '100+',
+  },
+  {
+    id: 'tigota', label: 'Tigotà', short: 'TI', color: '#008080', website: 'https://www.tigota.it/',
+    flyerUrl: 'https://www.tigota.it/it/volantino',
+    regions: ['Italia'],
+    points: '650+',
+  },
+  {
+    id: 'risparmio-casa', label: 'Risparmio Casa', short: 'RC', color: '#EA580C', website: 'https://www.risparmiocasa.com/',
+    flyerUrl: 'https://www.risparmiocasa.com/volantino/',
+    regions: ['Italia'],
+    points: '150+',
+  },
+  {
+    id: 'deco', label: 'Decò', short: 'DE', color: '#15803D', website: 'https://www.supermercatideco.it/',
+    flyerUrl: 'https://www.supermercatideco.it/volantino',
+    regions: ['Campania', 'Lazio', 'Puglia', 'Molise', 'Basilicata', 'Calabria', 'Sicilia'],
+    cities: ['Napoli', 'Roma', 'Bari', 'Campobasso', 'Potenza', 'Reggio Calabria', 'Palermo'],
+    points: '500+',
+  },
+  {
+    id: 'ins', label: "IN's Mercato", short: 'IN', color: '#1E40AF', website: 'https://www.insmercato.it/',
+    flyerUrl: 'https://www.insmercato.it/volantino/',
+    regions: ['Italia'], discount: true,
+    points: '500+',
+  },
+  {
     id: 'esselunga', label: 'Esselunga', short: 'ES', color: '#F37B21', website: 'https://www.esselunga.it/',
     flyerUrl: 'https://www.esselunga.it/it-it/promozioni/volantini.html',
     regions: ['Lombardia', 'Piemonte', 'Liguria', 'Emilia-Romagna', 'Toscana', 'Umbria', 'Lazio', 'Friuli-Venezia Giulia'],

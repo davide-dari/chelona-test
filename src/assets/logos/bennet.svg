@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 120" width="300" height="120">
+  <rect width="300" height="120" rx="16" fill="#581C87"/>
+  <text x="150" y="70" font-family="'Arial Black', sans-serif" font-weight="900" font-size="42" fill="#FFFFFF" text-anchor="middle" letter-spacing="1">bennet</text>
+  <circle cx="255" cy="42" r="6" fill="#A855F7"/>
+</svg>

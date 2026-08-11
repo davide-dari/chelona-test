@@ -2253,6 +2253,27 @@ export default function App() {
                 onSave={(mod) => { updateModuleDirect(mod); setEditingVolantinoModule(mod); }}
                 onClose={() => setEditingVolantinoModule(null)}
                 shoppingItems={(modules.find(m => m.type === 'supermarket') as import('./types').SupermarketModule | undefined)?.items}
+                onAddShoppingItem={(item) => {
+                  const existingSupermarket = modules.find(m => m.type === 'supermarket') as import('./types').SupermarketModule;
+                  if (existingSupermarket) {
+                    const updatedItems = [item, ...(existingSupermarket.items || [])];
+                    const updatedMod = { ...existingSupermarket, items: updatedItems };
+                    updateModuleDirect(updatedMod);
+                    showToast(`Aggiunto alla Lista della Spesa: ${item.name}`, 'success');
+                  } else {
+                    const newSupermarket: import('./types').SupermarketModule = {
+                      id: generateUUID(),
+                      type: 'supermarket',
+                      title: 'Lista della Spesa',
+                      items: [item],
+                      x: 0, y: 0, w: 3, h: 2
+                    };
+                    const updated = [newSupermarket, ...modules];
+                    saveAppState(updated, folders).catch(console.error);
+                    setModules(updated);
+                    showToast(`Aggiunto alla Lista della Spesa: ${item.name}`, 'success');
+                  }
+                }}
               />
             ) : editingStudyModule ? (
               <StudyScreen

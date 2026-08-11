@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 120" width="300" height="120">
+  <rect width="300" height="120" rx="16" fill="#DC2626"/>
+  <ellipse cx="150" cy="60" rx="130" ry="45" fill="#B91C1C"/>
+  <text x="150" y="70" font-family="'Arial Black', sans-serif" font-weight="900" font-size="44" fill="#FACC15" text-anchor="middle">unes</text>
+</svg>
