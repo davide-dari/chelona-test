@@ -606,19 +606,16 @@ export default function App() {
   }, [encryptionKey, currentProfileId]);
 
   const handleCheckUpdate = React.useCallback(async (silent = true) => {
-    // Controllo aggiornamenti
-    if ((window as any).Capacitor || (window.location.search.includes('debug_update=1'))) {
-      try {
-        const info = await updateService.checkForUpdates();
-        if (info && info.available) {
-          setAvailableUpdate(info);
-          return true;
-        } else if (!silent) {
-          showToast('L\'applicazione è aggiornata.', 'success');
-        }
-      } catch (e) {
-        if (!silent) showToast('Errore durante il controllo aggiornamenti.', 'error');
+    try {
+      const info = await updateService.checkForUpdates();
+      if (info && info.available) {
+        setAvailableUpdate(info);
+        return true;
+      } else if (!silent) {
+        showToast('L\'applicazione è aggiornata.', 'success');
       }
+    } catch (e) {
+      if (!silent) showToast('Errore durante il controllo aggiornamenti.', 'error');
     }
     return false;
   }, []);
@@ -628,8 +625,9 @@ export default function App() {
       m.biometricService.isSupported().then(setIsBioSupported);
     });
 
-    // Controllo aggiornamenti all'avvio - Rimosso su richiesta utente
-    // handleCheckUpdate(true);
+    // Controllo automatico aggiornamenti all'avvio dell'app
+    handleCheckUpdate(true);
+
     // Ascolta eventi manuali di aggiornamento
     const handleManualUpdate = (e: any) => {
       if (e.detail) setAvailableUpdate(e.detail);

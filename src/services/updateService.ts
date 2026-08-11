@@ -26,15 +26,42 @@ class UpdateService {
 
     console.log(`[UpdateService] Checking for updates... Current version: ${this.currentVersion}`);
     try {
-      const response = await fetch(`https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/releases`, {
-        cache: 'no-store',
-        headers: {
-          'Accept': 'application/vnd.github.v3+json',
-          'User-Agent': 'Chelona-App-Updater',
-          'Authorization': `Bearer ${GITHUB_TOKEN}`,
-          'Cache-Control': 'no-cache'
-        }
-      });
+      const url = `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/releases?per_page=100`;
+      let response: Response;
+
+      try {
+        response = await fetch(url, {
+          cache: 'no-store',
+          headers: {
+            'Accept': 'application/vnd.github.v3+json',
+            'User-Agent': 'Chelona-App-Updater',
+            'Authorization': `Bearer ${GITHUB_TOKEN}`,
+            'Cache-Control': 'no-cache'
+          }
+        });
+      } catch (err) {
+        console.warn('[UpdateService] Primary fetch failed, falling back to public request:', err);
+        response = await fetch(url, {
+          cache: 'no-store',
+          headers: {
+            'Accept': 'application/vnd.github.v3+json',
+            'User-Agent': 'Chelona-App-Updater',
+            'Cache-Control': 'no-cache'
+          }
+        });
+      }
+
+      if (!response.ok && (response.status === 401 || response.status === 403)) {
+        console.warn(`[UpdateService] Auth returned ${response.status} — retrying unauthenticated...`);
+        response = await fetch(url, {
+          cache: 'no-store',
+          headers: {
+            'Accept': 'application/vnd.github.v3+json',
+            'User-Agent': 'Chelona-App-Updater',
+            'Cache-Control': 'no-cache'
+          }
+        });
+      }
 
       if (!response.ok) {
         const errorText = await response.text().catch(() => 'No error body');
