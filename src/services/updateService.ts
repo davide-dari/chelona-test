@@ -63,15 +63,35 @@ class UpdateService {
         });
       }
 
-      if (!response.ok) {
-        const errorText = await response.text().catch(() => 'No error body');
-        console.error(`[UpdateService] GitHub API error: ${response.status} ${response.statusText} - ${errorText}`);
-        return null;
+      let releases: any[] = [];
+      if (response.ok) {
+        const data = await response.json();
+        if (Array.isArray(data)) releases = data;
+        else if (data && data.tag_name) releases = [data];
       }
 
-      const releases = await response.json();
-      if (!Array.isArray(releases) || releases.length === 0) {
-        console.error('[UpdateService] Unexpected GitHub API response format (no releases)');
+      if (releases.length === 0) {
+        console.warn('[UpdateService] Main endpoint returned no releases, trying releases/latest unauthenticated...');
+        try {
+          const fallbackRes = await fetch(`https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/releases/latest`, {
+            cache: 'no-store',
+            headers: {
+              'Accept': 'application/vnd.github.v3+json',
+              'User-Agent': 'Chelona-App-Updater',
+              'Cache-Control': 'no-cache'
+            }
+          });
+          if (fallbackRes.ok) {
+            const latestData = await fallbackRes.json();
+            if (latestData && latestData.tag_name) releases = [latestData];
+          }
+        } catch (e) {
+          console.error('[UpdateService] releases/latest fallback failed:', e);
+        }
+      }
+
+      if (releases.length === 0) {
+        console.error('[UpdateService] Could not fetch releases from GitHub API.');
         return null;
       }
 
