@@ -19,7 +19,7 @@ export function RecipesScreen({ onClose, initialSearchQuery, initialRecipe, init
   const [selectedMeal, setSelectedMeal] = useState<any | null>(null);
   const [favorites, setFavorites] = useState<any[]>([]);
 
-  // Fridge state
+  // Inventory state
   const [fridgeIngredients, setFridgeIngredients] = useState<string[]>(() => {
     try {
       const saved = localStorage.getItem('chelona_fridge_ingredients');
@@ -28,21 +28,50 @@ export function RecipesScreen({ onClose, initialSearchQuery, initialRecipe, init
       return [];
     }
   });
-  const [fridgeInput, setFridgeInput] = useState('');
+  const [freezerIngredients, setFreezerIngredients] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem('chelona_freezer_ingredients');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [pantryIngredients, setPantryIngredients] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem('chelona_pantry_ingredients');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
 
+  const [inventoryInput, setInventoryInput] = useState('');
+
+  // Sincronizza verso il LocalStorage
   useEffect(() => {
     localStorage.setItem('chelona_fridge_ingredients', JSON.stringify(fridgeIngredients));
   }, [fridgeIngredients]);
-
   useEffect(() => {
-    const handler = () => {
-      try {
-        const saved = localStorage.getItem('chelona_fridge_ingredients');
-        setFridgeIngredients(saved ? JSON.parse(saved) : []);
-      } catch {}
+    localStorage.setItem('chelona_freezer_ingredients', JSON.stringify(freezerIngredients));
+  }, [freezerIngredients]);
+  useEffect(() => {
+    localStorage.setItem('chelona_pantry_ingredients', JSON.stringify(pantryIngredients));
+  }, [pantryIngredients]);
+
+  // Sincronizza dal LocalStorage/Eventi
+  useEffect(() => {
+    const handleFridge = () => { try { setFridgeIngredients(JSON.parse(localStorage.getItem('chelona_fridge_ingredients') || '[]')); } catch {} };
+    const handleFreezer = () => { try { setFreezerIngredients(JSON.parse(localStorage.getItem('chelona_freezer_ingredients') || '[]')); } catch {} };
+    const handlePantry = () => { try { setPantryIngredients(JSON.parse(localStorage.getItem('chelona_pantry_ingredients') || '[]')); } catch {} };
+    
+    window.addEventListener('chelona_fridge_updated', handleFridge);
+    window.addEventListener('chelona_freezer_updated', handleFreezer);
+    window.addEventListener('chelona_pantry_updated', handlePantry);
+    return () => {
+      window.removeEventListener('chelona_fridge_updated', handleFridge);
+      window.removeEventListener('chelona_freezer_updated', handleFreezer);
+      window.removeEventListener('chelona_pantry_updated', handlePantry);
     };
-    window.addEventListener('chelona_fridge_updated', handler);
-    return () => window.removeEventListener('chelona_fridge_updated', handler);
   }, []);
 
   useEffect(() => {
@@ -185,21 +214,24 @@ export function RecipesScreen({ onClose, initialSearchQuery, initialRecipe, init
       return favorites.filter(m => m.title.toLowerCase().includes(searchQuery.toLowerCase()));
     }
 
-    if (selectedCategory === 'fridge') {
-      if (fridgeIngredients.length === 0) return [];
+    const isInventoryCategory = selectedCategory === 'fridge' || selectedCategory === 'freezer' || selectedCategory === 'pantry';
+
+    if (isInventoryCategory) {
+      const allInventoryIngredients = [...new Set([...fridgeIngredients, ...freezerIngredients, ...pantryIngredients])];
+      if (allInventoryIngredients.length === 0) return [];
       
       const scored = allMeals.map(meal => {
         let score = 0;
         const recipeIngsText = meal.ingredients && meal.ingredients.length > 0 ? meal.ingredients.join(' ').toLowerCase() : meal.steps.join(' ').toLowerCase();
         
-        fridgeIngredients.forEach(ing => {
+        allInventoryIngredients.forEach(ing => {
           if (recipeIngsText.includes(ing.toLowerCase())) {
             score += 1;
           }
         });
 
         const missingIngredients = (meal.ingredients || []).filter((ing: string) => {
-          return !fridgeIngredients.some(f => ing.toLowerCase().includes(f.toLowerCase()));
+          return !allInventoryIngredients.some(f => ing.toLowerCase().includes(f.toLowerCase()));
         });
 
         return { ...meal, fridgeScore: score, missingIngredients };
@@ -218,7 +250,7 @@ export function RecipesScreen({ onClose, initialSearchQuery, initialRecipe, init
       const matchSearch = searchQuery ? meal.title.toLowerCase().includes(searchQuery.toLowerCase()) : true;
       return matchCat && matchSearch;
     });
-  }, [allMeals, selectedCategory, searchQuery, favorites, fridgeIngredients]);
+  }, [allMeals, selectedCategory, searchQuery, favorites, fridgeIngredients, freezerIngredients, pantryIngredients]);
 
   const availableIngredients = useMemo(() => {
     const commonSet = new Set([
@@ -356,6 +388,15 @@ export function RecipesScreen({ onClose, initialSearchQuery, initialRecipe, init
                     onClick={() => setSelectedCategory('fridge')}
                     className="flex flex-col items-center justify-center p-4 bg-gradient-to-br from-cyan-100 to-blue-200 border border-cyan-300 rounded-2xl transition-all shadow-sm group hover:shadow-md"
                   >
+                    <span
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap ${
+                      ['fridge', 'freezer', 'pantry'].includes(selectedCategory || '')
+                        ? 'bg-orange-500 text-white shadow-md'
+                        : 'bg-[var(--surface-variant)] text-[var(--text-muted)]'
+                    }`}
+                  >
+                    📦 Inventario
+                  </span>
                     <div className="text-3xl mb-2">❄️</div>
                     <span className="font-bold text-blue-800 text-sm text-center">Il mio Frigo</span>
                   </motion.button>
@@ -393,11 +434,11 @@ export function RecipesScreen({ onClose, initialSearchQuery, initialRecipe, init
           <div className="max-w-6xl mx-auto space-y-6">
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
               <div className="flex items-center gap-3 w-full sm:w-auto">
-                <h2 className="text-xl md:text-2xl font-bold text-[var(--text-main)] flex items-center gap-2 truncate">
+                <h2 className="text-xl sm:text-2xl font-black text-[var(--text-main)] flex items-center gap-2">
                   {selectedCategory === 'favorites' ? (
-                    <><Star className="w-6 h-6 text-yellow-500 fill-yellow-500" /> Le mie Preferite</>
-                  ) : selectedCategory === 'fridge' ? (
-                    <>❄️ Il mio Frigo</>
+                    <>⭐ Preferiti</>
+                  ) : ['fridge', 'freezer', 'pantry'].includes(selectedCategory || '') ? (
+                    <>📦 Il mio Inventario</>
                   ) : searchQuery && !selectedCategory ? (
                     <>Ricerca: <span className="text-orange-500">{searchQuery}</span></>
                   ) : (
@@ -406,7 +447,7 @@ export function RecipesScreen({ onClose, initialSearchQuery, initialRecipe, init
                 </h2>
               </div>
               
-              {selectedCategory !== 'fridge' && (
+              {!['fridge', 'freezer', 'pantry'].includes(selectedCategory || '') && (
                 <div className="relative w-full sm:w-64">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] w-4 h-4" />
                   <input
@@ -420,31 +461,98 @@ export function RecipesScreen({ onClose, initialSearchQuery, initialRecipe, init
               )}
             </div>
 
-            {selectedCategory === 'fridge' && (
+            {['fridge', 'freezer', 'pantry'].includes(selectedCategory || '') && (() => {
+              const allInventoryCount = fridgeIngredients.length + freezerIngredients.length + pantryIngredients.length;
+              
+              const activeList = selectedCategory === 'fridge' ? fridgeIngredients 
+                                : selectedCategory === 'freezer' ? freezerIngredients 
+                                : pantryIngredients;
+                                
+              const setActiveList = selectedCategory === 'fridge' ? setFridgeIngredients
+                                   : selectedCategory === 'freezer' ? setFreezerIngredients
+                                   : setPantryIngredients;
+                                   
+              const getIcon = (cat: string) => cat === 'fridge' ? '🧊' : cat === 'freezer' ? '❄️' : '📦';
+              const getColor = (cat: string) => cat === 'fridge' ? 'sky' : cat === 'freezer' ? 'indigo' : 'orange';
+              const colorPrefix = getColor(selectedCategory!);
+              const INV_STYLE: Record<string, { chip: string; remove: string; selected: string; hover: string }> = {
+                sky: {
+                  chip: 'bg-sky-500/10 text-sky-500 border border-sky-500/20',
+                  remove: 'bg-sky-500/20 text-sky-600',
+                  selected: 'bg-sky-500 text-white border-sky-500 shadow-md shadow-sky-500/20',
+                  hover: 'hover:border-sky-500'
+                },
+                indigo: {
+                  chip: 'bg-indigo-500/10 text-indigo-500 border border-indigo-500/20',
+                  remove: 'bg-indigo-500/20 text-indigo-600',
+                  selected: 'bg-indigo-500 text-white border-indigo-500 shadow-md shadow-indigo-500/20',
+                  hover: 'hover:border-indigo-500'
+                },
+                orange: {
+                  chip: 'bg-orange-500/10 text-orange-500 border border-orange-500/20',
+                  remove: 'bg-orange-500/20 text-orange-600',
+                  selected: 'bg-orange-500 text-white border-orange-500 shadow-md shadow-orange-500/20',
+                  hover: 'hover:border-orange-500'
+                }
+              };
+              const style = INV_STYLE[colorPrefix];
+
+              return (
               <div className="bg-[var(--card-bg)] p-6 rounded-[2.5rem] border border-[var(--border)] shadow-xl space-y-6">
-                {/* Frigo Header & Count Banner */}
+                {/* Header & Count Banner */}
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-[var(--border)]">
                   <div>
                     <h3 className="text-xl font-black text-[var(--text-main)] flex items-center gap-2">
-                      <span className="text-2xl">❄️</span> Il Mio Frigo Virtus
+                      <span className="text-2xl">📦</span> Inventario Virtus
                     </h3>
                     <p className="text-xs font-semibold text-[var(--text-muted)] mt-1">
-                      {fridgeIngredients.length === 0 
+                      {allInventoryCount === 0 
                         ? 'Seleziona gli ingredienti che hai in casa per trovare ricette su misura' 
-                        : `Hai ${fridgeIngredients.length} ingredienti salvati nel frigo • ${filteredMeals.length} ricette abbinabili trovate!`}
+                        : `Hai ${allInventoryCount} ingredienti salvati in casa • ${filteredMeals.length} ricette abbinabili trovate!`}
                     </p>
                   </div>
-                  {fridgeIngredients.length > 0 && (
+                  {allInventoryCount > 0 && (
                     <button 
                       onClick={() => {
                         setFridgeIngredients([]);
+                        setFreezerIngredients([]);
+                        setPantryIngredients([]);
                         localStorage.removeItem('chelona_fridge_ingredients');
+                        localStorage.removeItem('chelona_freezer_ingredients');
+                        localStorage.removeItem('chelona_pantry_ingredients');
                       }} 
                       className="px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-xl text-xs font-bold transition-all border border-red-500/20 shrink-0"
                     >
-                      🗑️ Svuota Frigo
+                      🗑️ Svuota Tutto
                     </button>
                   )}
+                </div>
+
+                {/* Tabs for Fridge, Freezer, Pantry */}
+                <div className="flex bg-[var(--surface-variant)] p-1 rounded-2xl">
+                  {[
+                    { id: 'fridge', label: 'Frigo', icon: '🧊', count: fridgeIngredients.length },
+                    { id: 'freezer', label: 'Freezer', icon: '❄️', count: freezerIngredients.length },
+                    { id: 'pantry', label: 'Dispensa', icon: '📦', count: pantryIngredients.length }
+                  ].map(tab => (
+                    <button
+                      key={tab.id}
+                      onClick={() => setSelectedCategory(tab.id)}
+                      className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-bold transition-all ${
+                        selectedCategory === tab.id
+                          ? 'bg-[var(--card-bg)] text-[var(--text-main)] shadow-sm'
+                          : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
+                      }`}
+                    >
+                      <span>{tab.icon}</span>
+                      <span>{tab.label}</span>
+                      {tab.count > 0 && (
+                        <span className="bg-orange-500 text-white px-1.5 py-0.5 rounded-full text-[9px]">
+                          {tab.count}
+                        </span>
+                      )}
+                    </button>
+                  ))}
                 </div>
 
                 {/* Input & Search Autocomplete */}
@@ -452,36 +560,36 @@ export function RecipesScreen({ onClose, initialSearchQuery, initialRecipe, init
                   <div className="relative flex-1">
                     <input 
                       type="text"
-                      placeholder="Cerca o aggiungi ingrediente (es: pollo, uova, zucchine...)"
-                      value={fridgeInput}
-                      onChange={(e) => setFridgeInput(e.target.value)}
+                      placeholder={`Aggiungi a ${selectedCategory === 'fridge' ? 'Frigo' : selectedCategory === 'freezer' ? 'Freezer' : 'Dispensa'}...`}
+                      value={inventoryInput}
+                      onChange={(e) => setInventoryInput(e.target.value)}
                       onKeyDown={(e) => {
-                        if (e.key === 'Enter' && fridgeInput.trim()) {
-                          const val = fridgeInput.trim().toLowerCase();
-                          if (!fridgeIngredients.includes(val)) {
-                            setFridgeIngredients(prev => [...prev, val]);
+                        if (e.key === 'Enter' && inventoryInput.trim()) {
+                          const val = inventoryInput.trim().toLowerCase();
+                          if (!activeList.includes(val)) {
+                            setActiveList(prev => [...prev, val]);
                           }
-                          setFridgeInput('');
+                          setInventoryInput('');
                         }
                       }}
-                      className="w-full bg-[var(--bg)] border border-[var(--border)] rounded-2xl py-3.5 px-5 text-[var(--text-main)] outline-none focus:border-cyan-500 font-medium text-sm transition-colors shadow-inner"
+                      className="w-full bg-[var(--bg)] border border-[var(--border)] rounded-2xl py-3.5 px-5 text-[var(--text-main)] outline-none focus:border-orange-500 font-medium text-sm transition-colors shadow-inner"
                     />
-                    {fridgeInput.trim().length > 0 && (
+                    {inventoryInput.trim().length > 0 && (
                       <div className="absolute top-full left-0 right-0 mt-2 bg-[var(--card-bg)] border border-[var(--border)] rounded-2xl shadow-2xl max-h-56 overflow-y-auto z-[100] custom-scrollbar">
                         {availableIngredients
-                          .filter(ing => ing.includes(fridgeInput.toLowerCase().trim()) && !fridgeIngredients.includes(ing))
+                          .filter(ing => ing.includes(inventoryInput.toLowerCase().trim()) && !activeList.includes(ing))
                           .slice(0, 30)
                           .map(ing => (
                             <button
                               key={ing}
                               onClick={() => {
-                                setFridgeIngredients(prev => [...prev, ing]);
-                                setFridgeInput('');
+                                setActiveList(prev => [...prev, ing]);
+                                setInventoryInput('');
                               }}
-                              className="w-full text-left px-5 py-2.5 hover:bg-cyan-500/10 text-[var(--text-main)] capitalize font-semibold text-sm border-b border-[var(--border)] last:border-b-0 flex items-center justify-between"
+                              className="w-full text-left px-5 py-2.5 hover:bg-orange-500/10 text-[var(--text-main)] capitalize font-semibold text-sm border-b border-[var(--border)] last:border-b-0 flex items-center justify-between"
                             >
                               <span>{ing}</span>
-                              <span className="text-xs text-cyan-500 font-bold">+ Aggiungi</span>
+                              <span className="text-xs text-orange-500 font-bold">+ Aggiungi</span>
                             </button>
                         ))}
                       </div>
@@ -489,31 +597,31 @@ export function RecipesScreen({ onClose, initialSearchQuery, initialRecipe, init
                   </div>
                   <button 
                     onClick={() => {
-                      if (fridgeInput.trim()) {
-                        const val = fridgeInput.trim().toLowerCase();
-                        if (!fridgeIngredients.includes(val)) {
-                          setFridgeIngredients(prev => [...prev, val]);
+                      if (inventoryInput.trim()) {
+                        const val = inventoryInput.trim().toLowerCase();
+                        if (!activeList.includes(val)) {
+                          setActiveList(prev => [...prev, val]);
                         }
-                        setFridgeInput('');
+                        setInventoryInput('');
                       }
                     }}
-                    className="px-6 py-3.5 bg-cyan-500 hover:bg-cyan-600 text-white rounded-2xl font-bold text-sm transition-all shadow-lg shadow-cyan-500/20 active:scale-95 shrink-0"
+                    className="px-6 py-3.5 bg-orange-500 hover:bg-orange-600 text-white rounded-2xl font-bold text-sm transition-all shadow-lg shadow-orange-500/20 active:scale-95 shrink-0"
                   >
                     + Aggiungi
                   </button>
                 </div>
 
                 {/* Active Stock Chips */}
-                {fridgeIngredients.length > 0 && (
+                {activeList.length > 0 && (
                   <div className="bg-[var(--bg)] p-4 rounded-2xl border border-[var(--border)]">
-                    <p className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest mb-3">Ingredienti attualmente nel frigo ({fridgeIngredients.length})</p>
+                    <p className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest mb-3">Ingredienti in {selectedCategory === 'fridge' ? 'Frigo' : selectedCategory === 'freezer' ? 'Freezer' : 'Dispensa'} ({activeList.length})</p>
                     <div className="flex flex-wrap gap-2">
-                      {fridgeIngredients.map(ing => (
-                        <span key={ing} className="inline-flex items-center gap-1.5 bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 px-3.5 py-1.5 rounded-xl text-xs font-extrabold capitalize shadow-sm">
-                          <span>✓ {ing}</span>
+                      {activeList.map(ing => (
+                        <span key={ing} className={`inline-flex items-center gap-1.5 ${style.chip} px-3.5 py-1.5 rounded-xl text-xs font-extrabold capitalize shadow-sm`}>
+                          <span>{getIcon(selectedCategory!)} {ing}</span>
                           <button 
-                            onClick={() => setFridgeIngredients(prev => prev.filter(i => i !== ing))} 
-                            className="w-4 h-4 rounded-full bg-emerald-500/20 hover:bg-red-500/30 hover:text-red-500 text-emerald-600 flex items-center justify-center text-xs transition-colors ml-1"
+                            onClick={() => setActiveList(prev => prev.filter(i => i !== ing))} 
+                            className={`w-4 h-4 rounded-full ${style.remove} hover:bg-red-500/30 hover:text-red-500 flex items-center justify-center text-xs transition-colors ml-1`}
                             title="Rimuovi"
                           >
                             ×
@@ -523,11 +631,9 @@ export function RecipesScreen({ onClose, initialSearchQuery, initialRecipe, init
                     </div>
                   </div>
                 )}
-
                 {/* Quick Add Ingredient Categories */}
                 <div className="space-y-4 pt-2">
                   <p className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest">Tocca gli ingredienti per aggiungerli o rimuoverli rapidamente</p>
-                  
                   {[
                     {
                       name: '🥛 Latticini & Uova',
@@ -558,21 +664,21 @@ export function RecipesScreen({ onClose, initialSearchQuery, initialRecipe, init
                       <p className="text-xs font-bold text-[var(--text-main)]">{catGroup.name}</p>
                       <div className="flex flex-wrap gap-1.5">
                         {catGroup.items.map(item => {
-                          const isSelected = fridgeIngredients.includes(item.toLowerCase());
+                          const isSelected = activeList.includes(item.toLowerCase());
                           return (
                             <button
                               key={item}
                               onClick={() => {
                                 if (isSelected) {
-                                  setFridgeIngredients(prev => prev.filter(i => i !== item.toLowerCase()));
+                                  setActiveList(prev => prev.filter(i => i !== item.toLowerCase()));
                                 } else {
-                                  setFridgeIngredients(prev => [...prev, item.toLowerCase()]);
+                                  setActiveList(prev => [...prev, item.toLowerCase()]);
                                 }
                               }}
                               className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all active:scale-95 border ${
                                 isSelected
-                                  ? 'bg-emerald-500 text-white border-emerald-500 shadow-md shadow-emerald-500/20'
-                                  : 'bg-[var(--bg)] text-[var(--text-muted)] border-[var(--border)] hover:border-cyan-500 hover:text-[var(--text-main)]'
+                                  ? style.selected
+                                  : `bg-[var(--bg)] text-[var(--text-muted)] border-[var(--border)] ${style.hover} hover:text-[var(--text-main)]`
                               }`}
                             >
                               {isSelected ? `✓ ${item}` : `+ ${item}`}
@@ -584,7 +690,8 @@ export function RecipesScreen({ onClose, initialSearchQuery, initialRecipe, init
                   ))}
                 </div>
               </div>
-            )}
+              );
+            })()}
 
             {loading ? (
               <div className="flex items-center justify-center py-20">

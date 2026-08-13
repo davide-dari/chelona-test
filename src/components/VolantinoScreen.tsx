@@ -639,6 +639,15 @@ export default function VolantinoScreen({ module, onSave, onClose, shoppingItems
           </div>
         </div>
 
+        {/* ── DoveConviene Banner ── */}
+        <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-3 flex items-start gap-2.5">
+          <CheckCircle2 className="w-4 h-4 text-emerald-500 mt-0.5 shrink-0" />
+          <p className="text-xs text-[var(--text-main)] leading-relaxed">
+            <strong className="text-emerald-600 block mb-0.5">Volantino digitalizzato in tempo reale</strong>
+            Offerte e reparti estratti e sincronizzati tramite il database di DoveConviene.it
+          </p>
+        </div>
+
         {/* ── Tabs ── */}
         <div className="flex gap-1 bg-[var(--surface-variant)] rounded-xl p-1">
           <button onClick={() => setActiveTab('offers')} className={`flex-1 py-2 rounded-lg text-xs font-bold transition-colors ${activeTab === 'offers' ? 'bg-amber-500 text-white' : 'text-[var(--text-muted)]'}`}>

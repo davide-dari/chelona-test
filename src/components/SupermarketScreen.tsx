@@ -4,7 +4,8 @@ import { SupermarketModule, SupermarketItem, SupermarketCategory } from '../type
 import {
   ArrowLeft, Plus, Trash2, CheckCircle2, Refrigerator,
   Apple, Milk, Drumstick, Croissant, PackageCheck, GlassWater, SprayCan,
-  ShowerHead, ShoppingBasket, Share2, Search, AlertTriangle, X, Scale
+  ShowerHead, ShoppingBasket, Share2, Search, AlertTriangle, X, Scale,
+  Snowflake, Package
 } from 'lucide-react';
 import { generateUUID } from '../utils/uuid';
 import {
@@ -20,6 +21,8 @@ interface SupermarketScreenProps {
 }
 
 const FRIDGE_STORAGE_KEY = 'chelona_fridge_ingredients';
+const FREEZER_STORAGE_KEY = 'chelona_freezer_ingredients';
+const PANTRY_STORAGE_KEY = 'chelona_pantry_ingredients';
 
 const UNIT_OPTIONS = ['kg', 'g', 'lt', 'ml', 'pz', 'etto', 'busta', 'lattina', 'barattolo', 'bottiglia', 'confezione', 'mazzo', 'fetta', 'scatola', 'pacco', 'vasetto'] as const;
 
@@ -113,6 +116,47 @@ const loadFridge = (): string[] => {
   }
 };
 
+const loadFreezer = (): string[] => {
+  try {
+    const saved = localStorage.getItem(FREEZER_STORAGE_KEY);
+    return saved ? JSON.parse(saved) : [];
+  } catch {
+    return [];
+  }
+};
+
+const loadPantry = (): string[] => {
+  try {
+    const saved = localStorage.getItem(PANTRY_STORAGE_KEY);
+    return saved ? JSON.parse(saved) : [];
+  } catch {
+    return [];
+  }
+};
+
+const getStorageLocation = (name: string, category: SupermarketCategory): 'fridge' | 'freezer' | 'pantry' => {
+  const t = name.toLowerCase();
+  // Regole esplicite dal nome (es. surgelati, gelato -> freezer)
+  if (/(surgelat|gelato|ghiaccio|sofficini|piselli|bastoncini|pizza surg|patatine surg)/i.test(t)) return 'freezer';
+  // Regole per la dispensa (alimenti secchi/scatole non in base alla categoria ma al nome specifico se serve)
+  if (/(cipolla|aglio|patate|zucca)/i.test(t)) return 'pantry'; // eccezioni frutta-verdura che vanno in dispensa
+  
+  // Regole basate sulla categoria
+  switch (category) {
+    case 'latticini-uova':
+    case 'carne-pesce':
+      return 'fridge';
+    case 'frutta-verdura':
+      return 'fridge'; // La maggior parte va in frigo
+    case 'dispensa':
+    case 'pane-pasticceria':
+    case 'bevande':
+      return 'pantry';
+    default:
+      return 'pantry'; // default generico (anche per pulizia/igiene che non vanno in frigo)
+  }
+};
+
 function ProductThumb({ name, emoji, size = 44 }: { name: string; emoji?: string; size?: number }) {
   const e = emoji || guessEmoji(name);
   return (
@@ -125,8 +169,8 @@ function ProductThumb({ name, emoji, size = 44 }: { name: string; emoji?: string
   );
 }
 
-const openFridge = () => {
-  window.dispatchEvent(new CustomEvent('open-recipes', { detail: { category: 'fridge' } }));
+const openStorage = (category: string) => {
+  window.dispatchEvent(new CustomEvent('open-recipes', { detail: { category } }));
 };
 
 export const SupermarketScreen = ({ module, onSave, onClose, onShare }: SupermarketScreenProps) => {
@@ -135,6 +179,8 @@ export const SupermarketScreen = ({ module, onSave, onClose, onShare }: Supermar
   const [itemQty, setItemQty] = useState('');
   const [itemUnit, setItemUnit] = useState('');
   const [fridgeIngredients, setFridgeIngredients] = useState<string[]>(loadFridge);
+  const [freezerIngredients, setFreezerIngredients] = useState<string[]>(loadFreezer);
+  const [pantryIngredients, setPantryIngredients] = useState<string[]>(loadPantry);
   const [suggestions, setSuggestions] = useState<CatalogProduct[]>([]);
   const [highlighted, setHighlighted] = useState(0);
   const [selectedSuggestion, setSelectedSuggestion] = useState<CatalogProduct | null>(null);
@@ -145,14 +191,32 @@ export const SupermarketScreen = ({ module, onSave, onClose, onShare }: Supermar
   const qtyRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    const handler = () => setFridgeIngredients(loadFridge());
-    window.addEventListener('chelona_fridge_updated', handler);
-    return () => window.removeEventListener('chelona_fridge_updated', handler);
+    const handleFridge = () => setFridgeIngredients(loadFridge());
+    const handleFreezer = () => setFreezerIngredients(loadFreezer());
+    const handlePantry = () => setPantryIngredients(loadPantry());
+    
+    window.addEventListener('chelona_fridge_updated', handleFridge);
+    window.addEventListener('chelona_freezer_updated', handleFreezer);
+    window.addEventListener('chelona_pantry_updated', handlePantry);
+    
+    return () => {
+      window.removeEventListener('chelona_fridge_updated', handleFridge);
+      window.removeEventListener('chelona_freezer_updated', handleFreezer);
+      window.removeEventListener('chelona_pantry_updated', handlePantry);
+    };
   }, []);
 
   useEffect(() => {
     localStorage.setItem(FRIDGE_STORAGE_KEY, JSON.stringify(fridgeIngredients));
   }, [fridgeIngredients]);
+
+  useEffect(() => {
+    localStorage.setItem(FREEZER_STORAGE_KEY, JSON.stringify(freezerIngredients));
+  }, [freezerIngredients]);
+
+  useEffect(() => {
+    localStorage.setItem(PANTRY_STORAGE_KEY, JSON.stringify(pantryIngredients));
+  }, [pantryIngredients]);
 
   useEffect(() => {
     setDupeMsg(null);
@@ -166,14 +230,18 @@ export const SupermarketScreen = ({ module, onSave, onClose, onShare }: Supermar
     onSave(updated);
   };
 
-  const inFridge = (name: string): boolean => {
+  const inStorage = (name: string, arr: string[]): boolean => {
     const n = normalize(name);
     if (n.length < 3) return false;
-    return fridgeIngredients.some(f => {
+    return arr.some(f => {
       const fn = normalize(f);
       return fn === n || (n.length >= 4 && (fn.includes(n) || n.includes(fn)));
     });
   };
+
+  const inFridge = (name: string) => inStorage(name, fridgeIngredients);
+  const inFreezer = (name: string) => inStorage(name, freezerIngredients);
+  const inPantry = (name: string) => inStorage(name, pantryIngredients);
 
   const applySuggestion = (p: CatalogProduct) => {
     setItemName(p.n);
@@ -229,13 +297,25 @@ export const SupermarketScreen = ({ module, onSave, onClose, onShare }: Supermar
     update({ ...data, items: data.items.filter(i => i.id !== id) });
   };
 
-  const moveToFridge = (id: string) => {
+  const moveToStorage = (id: string) => {
     const item = data.items.find(i => i.id === id);
     if (!item) return;
-    const name = normalize(item.name);
-    setFridgeIngredients(prev => prev.some(f => normalize(f) === name) ? prev : [...prev, item.name.trim()]);
+    const nameStr = item.name.trim();
+    const nameNorm = normalize(nameStr);
+    const loc = getStorageLocation(item.name, item.category);
+    
+    if (loc === 'fridge') {
+      setFridgeIngredients(prev => prev.some(f => normalize(f) === nameNorm) ? prev : [...prev, nameStr]);
+      window.dispatchEvent(new CustomEvent('chelona_fridge_updated'));
+    } else if (loc === 'freezer') {
+      setFreezerIngredients(prev => prev.some(f => normalize(f) === nameNorm) ? prev : [...prev, nameStr]);
+      window.dispatchEvent(new CustomEvent('chelona_freezer_updated'));
+    } else {
+      setPantryIngredients(prev => prev.some(f => normalize(f) === nameNorm) ? prev : [...prev, nameStr]);
+      window.dispatchEvent(new CustomEvent('chelona_pantry_updated'));
+    }
+    
     update({ ...data, items: data.items.filter(i => i.id !== id) });
-    window.dispatchEvent(new CustomEvent('chelona_fridge_updated'));
   };
 
   const confirmDeleteList = () => {
@@ -246,6 +326,8 @@ export const SupermarketScreen = ({ module, onSave, onClose, onShare }: Supermar
   const total = data.items.length;
   const done = data.items.filter(i => i.checked).length;
   const alreadyInFridge = data.items.filter(i => !i.checked && inFridge(i.name)).length;
+  const alreadyInFreezer = data.items.filter(i => !i.checked && inFreezer(i.name)).length;
+  const alreadyInPantry = data.items.filter(i => !i.checked && inPantry(i.name)).length;
   const pending = total - done;
   const progress = total > 0 ? Math.round((done / total) * 100) : 0;
 
@@ -345,18 +427,44 @@ export const SupermarketScreen = ({ module, onSave, onClose, onShare }: Supermar
           </p>
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
-          <button
-            onClick={openFridge}
-            title={`Frigorifero (${fridgeIngredients.length})`}
-            className="relative p-2.5 rounded-2xl bg-sky-500/10 text-sky-500 hover:bg-sky-500/20 transition-colors"
-          >
-            <Refrigerator className="w-5 h-5" />
-            {fridgeIngredients.length > 0 && (
-              <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-sky-500 text-white text-[9px] font-black flex items-center justify-center shadow">
-                {fridgeIngredients.length}
-              </span>
-            )}
-          </button>
+          <div className="flex bg-[var(--surface-variant)] rounded-2xl overflow-hidden p-0.5 border border-[var(--border)]">
+            <button
+              onClick={() => openStorage('fridge')}
+              title={`Frigorifero (${fridgeIngredients.length})`}
+              className="relative p-2 rounded-xl text-sky-500 hover:bg-sky-500/10 transition-colors"
+            >
+              <Refrigerator className="w-4 h-4" />
+              {fridgeIngredients.length > 0 && (
+                <span className="absolute -top-1 -right-1 min-w-[16px] h-[16px] px-1 rounded-full bg-sky-500 text-white text-[8px] font-black flex items-center justify-center shadow">
+                  {fridgeIngredients.length}
+                </span>
+              )}
+            </button>
+            <button
+              onClick={() => openStorage('freezer')}
+              title={`Freezer (${freezerIngredients.length})`}
+              className="relative p-2 rounded-xl text-indigo-500 hover:bg-indigo-500/10 transition-colors"
+            >
+              <Snowflake className="w-4 h-4" />
+              {freezerIngredients.length > 0 && (
+                <span className="absolute -top-1 -right-1 min-w-[16px] h-[16px] px-1 rounded-full bg-indigo-500 text-white text-[8px] font-black flex items-center justify-center shadow">
+                  {freezerIngredients.length}
+                </span>
+              )}
+            </button>
+            <button
+              onClick={() => openStorage('pantry')}
+              title={`Dispensa (${pantryIngredients.length})`}
+              className="relative p-2 rounded-xl text-orange-500 hover:bg-orange-500/10 transition-colors"
+            >
+              <Package className="w-4 h-4" />
+              {pantryIngredients.length > 0 && (
+                <span className="absolute -top-1 -right-1 min-w-[16px] h-[16px] px-1 rounded-full bg-orange-500 text-white text-[8px] font-black flex items-center justify-center shadow">
+                  {pantryIngredients.length}
+                </span>
+              )}
+            </button>
+          </div>
           <button
             onClick={() => onShare(data)}
             title="Condividi lista"
@@ -439,14 +547,14 @@ export const SupermarketScreen = ({ module, onSave, onClose, onShare }: Supermar
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: 'auto' }}
                 exit={{ opacity: 0, height: 0 }}
-                className="flex items-center gap-2"
+                className="flex flex-wrap items-center gap-2"
               >
                 {/* Selected product badge */}
                 {selectedSuggestion && (
-                  <div className="flex items-center gap-1.5 bg-emerald-500/10 border border-emerald-500/20 rounded-xl px-2.5 py-2 shrink-0">
-                    <span className="text-sm">{selectedSuggestion.e || guessEmoji(selectedSuggestion.n)}</span>
-                    <span className="text-xs font-bold text-emerald-600 max-w-[80px] truncate">{selectedSuggestion.n}</span>
-                    <button onClick={() => { setSelectedSuggestion(null); setItemName(''); setItemQty(''); setItemUnit(''); inputRef.current?.focus(); }} className="ml-0.5 text-emerald-500 hover:text-emerald-700">
+                  <div className="flex items-center gap-1.5 bg-emerald-500/10 border border-emerald-500/20 rounded-xl px-2.5 py-2 min-w-0 shrink">
+                    <span className="text-sm shrink-0">{selectedSuggestion.e || guessEmoji(selectedSuggestion.n)}</span>
+                    <span className="text-xs font-bold text-emerald-600 truncate">{selectedSuggestion.n}</span>
+                    <button onClick={() => { setSelectedSuggestion(null); setItemName(''); setItemQty(''); setItemUnit(''); inputRef.current?.focus(); }} className="ml-0.5 text-emerald-500 hover:text-emerald-700 shrink-0">
                       <X className="w-3.5 h-3.5" />
                     </button>
                   </div>
@@ -461,16 +569,16 @@ export const SupermarketScreen = ({ module, onSave, onClose, onShare }: Supermar
                   onChange={e => setItemQty(e.target.value)}
                   onKeyDown={e => { if (e.key === 'Enter') addItem(); }}
                   placeholder="Qtà"
-                  className="w-16 px-2.5 py-2.5 bg-[var(--card-bg)] border border-[var(--border)] rounded-xl outline-none focus:border-emerald-500 transition-all font-medium text-[var(--text-main)] placeholder:text-[var(--text-muted)] text-center text-sm shrink-0"
+                  className="flex-1 min-w-[60px] max-w-[80px] px-2.5 py-2.5 bg-[var(--card-bg)] border border-[var(--border)] rounded-xl outline-none focus:border-emerald-500 transition-all font-medium text-[var(--text-main)] placeholder:text-[var(--text-muted)] text-center text-sm"
                 />
 
                 {/* Unit selector */}
-                <div className="relative shrink-0">
+                <div className="relative flex-1 min-w-[80px]">
                   <Scale className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[var(--text-muted)] pointer-events-none" />
                   <select
                     value={itemUnit}
                     onChange={e => setItemUnit(e.target.value)}
-                    className="pl-8 pr-3 py-2.5 bg-[var(--card-bg)] border border-[var(--border)] rounded-xl outline-none focus:border-emerald-500 transition-all font-medium text-[var(--text-main)] text-sm appearance-none cursor-pointer min-w-[80px]"
+                    className="w-full pl-8 pr-3 py-2.5 bg-[var(--card-bg)] border border-[var(--border)] rounded-xl outline-none focus:border-emerald-500 transition-all font-medium text-[var(--text-main)] text-sm appearance-none cursor-pointer"
                   >
                     <option value="">Unità</option>
                     <optgroup label="Peso">
@@ -542,6 +650,12 @@ export const SupermarketScreen = ({ module, onSave, onClose, onShare }: Supermar
                   )}
                   {alreadyInFridge > 0 && (
                     <span className="text-[10px] font-bold text-sky-600 bg-sky-500/10 border border-sky-500/20 rounded-full px-2 py-0.5">in frigo</span>
+                  )}
+                  {alreadyInFreezer > 0 && (
+                    <span className="text-[10px] font-bold text-indigo-600 bg-indigo-500/10 border border-indigo-500/20 rounded-full px-2 py-0.5">in freezer</span>
+                  )}
+                  {alreadyInPantry > 0 && (
+                    <span className="text-[10px] font-bold text-orange-600 bg-orange-500/10 border border-orange-500/20 rounded-full px-2 py-0.5">in dispensa</span>
                   )}
                 </div>
                 <button
@@ -623,6 +737,9 @@ export const SupermarketScreen = ({ module, onSave, onClose, onShare }: Supermar
                       <AnimatePresence initial={false}>
                         {cat.items.map(item => {
                           const inFridgeFlag = !item.checked && inFridge(item.name);
+                          const inFreezerFlag = !item.checked && inFreezer(item.name);
+                          const inPantryFlag = !item.checked && inPantry(item.name);
+                          const loc = getStorageLocation(item.name, item.category);
                           return (
                             <motion.li
                               key={item.id}
@@ -658,15 +775,27 @@ export const SupermarketScreen = ({ module, onSave, onClose, onShare }: Supermar
                                   <Refrigerator className="w-2.5 h-2.5" /> Frigo
                                 </span>
                               )}
-                              {item.checked && (
-                                <button
-                                  onClick={() => moveToFridge(item.id)}
-                                  title="Sposta nel frigorifero"
-                                  className="text-[9px] font-bold text-emerald-600 bg-emerald-500/10 border border-emerald-500/20 hover:bg-emerald-500/20 rounded-full px-2 py-1 flex items-center gap-0.5 shrink-0 transition-colors"
-                                >
-                                  <Refrigerator className="w-3 h-3" /> Frigo
-                                </button>
+                              {inFreezerFlag && (
+                                <span className="text-[9px] font-bold text-indigo-600 bg-indigo-500/10 border border-indigo-500/20 rounded-full px-1.5 py-0.5 shrink-0 flex items-center gap-0.5">
+                                  <Snowflake className="w-2.5 h-2.5" /> Freezer
+                                </span>
                               )}
+                              {inPantryFlag && (
+                                <span className="text-[9px] font-bold text-orange-600 bg-orange-500/10 border border-orange-500/20 rounded-full px-1.5 py-0.5 shrink-0 flex items-center gap-0.5">
+                                  <Package className="w-2.5 h-2.5" /> Dispensa
+                                </span>
+                              )}
+                              <button
+                                onClick={() => moveToStorage(item.id)}
+                                className={`shrink-0 flex items-center gap-1 px-3 py-1.5 text-xs font-bold rounded-xl transition-all shadow-sm ${
+                                  loc === 'fridge' ? 'bg-sky-500 text-white shadow-sky-500/25 hover:bg-sky-600' :
+                                  loc === 'freezer' ? 'bg-indigo-500 text-white shadow-indigo-500/25 hover:bg-indigo-600' :
+                                  'bg-orange-500 text-white shadow-orange-500/25 hover:bg-orange-600'
+                                }`}
+                              >
+                                {loc === 'fridge' ? <Refrigerator className="w-3.5 h-3.5" /> : loc === 'freezer' ? <Snowflake className="w-3.5 h-3.5" /> : <Package className="w-3.5 h-3.5" />}
+                                <span className="hidden sm:inline">Sposta</span>
+                              </button>
                               {/* Delete single item */}
                               <button
                                 onClick={() => removeItem(item.id)}
