@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   ArrowLeft, RefreshCw, Globe, ExternalLink, Loader2, CalendarDays,
-  ChevronRight, Store, Sparkles, BookOpen
+  ChevronRight, Store, Sparkles, BookOpen, MapPin, Crosshair, X
 } from 'lucide-react';
 import { Capacitor } from '@capacitor/core';
 import { VolantinoModule } from '../types';
@@ -14,6 +14,10 @@ import {
   getVolantiniDb, refreshVolantini, ensureBkcode,
   volantinoViewerUrl, volantinoNodeUrl, formatValidity
 } from '../services/centrovolantini';
+import {
+  ALL_ITALY_ZONE, flyerMatchesZone, loadZone, resolveCap, resolveGps, saveZone,
+  type VolantiniZone
+} from '../services/zoneService';
 
 interface VolantinoScreenProps {
   module: VolantinoModule;
@@ -43,14 +47,59 @@ export default function VolantinoScreen({ module, onClose }: VolantinoScreenProp
   const [failedCovers, setFailedCovers] = useState<Set<number>>(new Set());
   const refreshDone = useRef(false);
 
+  /* ── Zona dell'utente ── */
+  const [zone, setZone] = useState<VolantiniZone | null>(() => loadZone());
+  const [zoneModalOpen, setZoneModalOpen] = useState<boolean>(() => !loadZone());
+  const [capInput, setCapInput] = useState('');
+  const [zoneBusy, setZoneBusy] = useState<'gps' | null>(null);
+  const [zoneError, setZoneError] = useState<string | null>(null);
+
+  const applyZone = (z: VolantiniZone) => {
+    setZone(z);
+    saveZone(z);
+    setZoneModalOpen(false);
+    setZoneError(null);
+  };
+
+  const submitCap = () => {
+    setZoneError(null);
+    const z = resolveCap(capInput);
+    if (!z) {
+      setZoneError('CAP non valido. Inserisci un codice di 5 cifre.');
+      return;
+    }
+    applyZone(z);
+  };
+
+  const useGps = async () => {
+    setZoneError(null);
+    setZoneBusy('gps');
+    const z = await resolveGps();
+    setZoneBusy(null);
+    if (!z) {
+      setZoneError('Impossibile rilevare la posizione. Riprova o inserisci il CAP.');
+      return;
+    }
+    applyZone(z);
+  };
+
   const coverFailed = (id: number) => failedCovers.has(id);
   const markCoverFailed = (id: number) =>
     setFailedCovers(prev => (prev.has(id) ? prev : new Set(prev).add(id)));
 
-  const chains = useMemo(() => db.chains.filter(c => c.flyers.length > 0), [db]);
+  const allChains = useMemo(() => db.chains.filter(c => c.flyers.length > 0), [db]);
+
+  /* Catene con almeno un volantino rilevante per la zona */
+  const chains = useMemo(() => {
+    if (!zone || zone.kind === 'all') return allChains;
+    return allChains
+      .map(c => ({ ...c, flyers: c.flyers.filter(f => flyerMatchesZone(zone, f)) }))
+      .filter(c => c.flyers.length > 0);
+  }, [allChains, zone]);
+
   const chain = chainSlug ? chains.find(c => c.slug === chainSlug) : undefined;
 
-  /* Novità: tutti i volantini ordinati dal più recente (node id desc) */
+  /* Novità: volantini rilevanti ordinati dal più recente (node id desc) */
   const novita = useMemo(() => {
     const flat = chains.flatMap(c => c.flyers.map(f => ({ c, f })));
     return flat.sort((a, b) => b.f.id - a.f.id).slice(0, 60);
@@ -122,7 +171,7 @@ export default function VolantinoScreen({ module, onClose }: VolantinoScreenProp
     if (view === 'flyer' && activeFlyer) return formatValidity(activeFlyer) ?? 'Sfoglia il volantino';
     if (view === 'chain' && chain) return `${chain.flyers.length} volantini disponibili`;
     const updated = fmtUpdated(db.updatedAt);
-    return `${chains.length} catene · ${novita.length} volantini${updated ? ` · agg. ${updated}` : ''}`;
+    return `${chains.length} catene · ${novita.length} volantini · ${zone?.label ?? 'Tutta Italia'}${updated ? ` · agg. ${updated}` : ''}`;
   };
 
   return (
@@ -155,6 +204,15 @@ export default function VolantinoScreen({ module, onClose }: VolantinoScreenProp
         <div className="flex items-center gap-1.5 shrink-0">
           {view === 'home' && (
             <button
+              onClick={() => setZoneModalOpen(true)}
+              className="p-2.5 rounded-2xl bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20 transition-colors"
+              title="Zona dei volantini"
+            >
+              <MapPin className="w-5 h-5" />
+            </button>
+          )}
+          {view === 'home' && (
+            <button
               onClick={doRefresh}
               disabled={refreshing}
               className="p-2.5 rounded-2xl bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 transition-colors disabled:opacity-50"
@@ -184,6 +242,86 @@ export default function VolantinoScreen({ module, onClose }: VolantinoScreenProp
           {view === 'flyer' && activeFlyer && chain && <FlyerView key={`${chain.slug}-${activeFlyer.id}`} />}
         </AnimatePresence>
       </div>
+
+      {/* ═══ MODAL ZONA ═══ */}
+      <AnimatePresence>
+        {zoneModalOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-5 bg-black/60 backdrop-blur-sm"
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 12 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 12 }}
+              transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+              className="w-full max-w-sm rounded-3xl bg-[var(--card-bg)] border border-[var(--border)] p-6 shadow-2xl"
+            >
+              <div className="flex items-start justify-between mb-1">
+                <h2 className="text-lg font-black text-[var(--text-main)] flex items-center gap-2">
+                  <MapPin className="w-5 h-5 text-emerald-500" />
+                  Dove fai la spesa?
+                </h2>
+                <button onClick={() => setZoneModalOpen(false)} className="p-1.5 -mr-1.5 text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <p className="text-xs text-[var(--text-muted)] font-medium mb-4">
+                Inserisci il CAP o usa la tua posizione per mostrare i volantini della tua zona.
+              </p>
+
+              <label className="block text-[11px] font-bold uppercase tracking-wider text-[var(--text-muted)] mb-1.5">
+                Codice di avviamento postale
+              </label>
+              <div className="flex gap-2">
+                <input
+                  value={capInput}
+                  onChange={e => setCapInput(e.target.value.replace(/\D/g, '').slice(0, 5))}
+                  onKeyDown={e => { if (e.key === 'Enter') submitCap(); }}
+                  inputMode="numeric"
+                  placeholder="Es. 20100"
+                  className="flex-1 min-w-0 px-4 py-3 rounded-2xl bg-[var(--bg)] border border-[var(--border)] text-[var(--text-main)] font-bold text-base tracking-widest outline-none focus:border-emerald-500/60 transition-colors"
+                />
+                <button
+                  onClick={submitCap}
+                  disabled={capInput.length !== 5}
+                  className="shrink-0 px-5 py-3 rounded-2xl bg-emerald-500 hover:bg-emerald-600 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold text-sm transition-colors"
+                >
+                  OK
+                </button>
+              </div>
+
+              <div className="flex items-center gap-3 my-4">
+                <div className="flex-1 h-px bg-[var(--border)]" />
+                <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">oppure</span>
+                <div className="flex-1 h-px bg-[var(--border)]" />
+              </div>
+
+              <button
+                onClick={useGps}
+                disabled={zoneBusy !== null}
+                className="w-full inline-flex items-center justify-center gap-2 px-5 py-3.5 rounded-2xl bg-amber-500 hover:bg-amber-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold text-sm transition-colors"
+              >
+                {zoneBusy === 'gps' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Crosshair className="w-4 h-4" />}
+                {zoneBusy === 'gps' ? 'Rilevamento posizione...' : 'Usa la mia posizione'}
+              </button>
+
+              {zoneError && (
+                <p className="mt-3 text-xs font-semibold text-red-500 text-center">{zoneError}</p>
+              )}
+
+              <button
+                onClick={() => applyZone(ALL_ITALY_ZONE)}
+                className="mt-4 w-full text-center text-xs font-bold text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors"
+              >
+                Mostra tutti i volantini (tutta Italia)
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 
@@ -193,6 +331,25 @@ export default function VolantinoScreen({ module, onClose }: VolantinoScreenProp
   function HomeView() {
     return (
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="px-4 pt-4 pb-8 max-w-2xl mx-auto w-full space-y-6">
+        {/* ── Banner zona ── */}
+        {zone && zone.kind !== 'all' && (
+          <button
+            onClick={() => setZoneModalOpen(true)}
+            className="w-full flex items-center gap-2.5 p-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/25 text-left transition-colors hover:bg-emerald-500/15"
+          >
+            <MapPin className="w-4 h-4 text-emerald-500 shrink-0" />
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-bold text-[var(--text-main)]">
+                Volantini per {zone.label}
+              </p>
+              <p className="text-[10px] text-[var(--text-muted)] font-medium">
+                Tocca per cambiare zona
+              </p>
+            </div>
+            <ChevronRight className="w-4 h-4 text-emerald-500 shrink-0" />
+          </button>
+        )}
+
         {/* ── Novità Volantini ── */}
         <section>
           <div className="flex items-center justify-between mb-3">
