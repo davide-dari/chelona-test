@@ -6,7 +6,7 @@ import type { VolantiniDb, VolantinoChain, VolantinoFlyer } from '../data/volant
 const BASE = 'https://www.centrovolantini.it';
 const UA =
   'Mozilla/5.0 (Linux; Android 14; Chelona) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126 Mobile Safari/537.36';
-const CACHE_KEY = 'chelona_volantini_db_v1';
+const CACHE_KEY = 'chelona_volantini_db_v2';
 const CACHE_TTL = 6 * 60 * 60 * 1000;
 
 interface DbCache {

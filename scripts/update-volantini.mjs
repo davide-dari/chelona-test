@@ -45,30 +45,38 @@ function parseCatene(html) {
 }
 
 function parseChainPage(html, slug) {
+  // La pagina catena contiene piu' viste: "volantini della catena" (i volantini veri)
+  // e widget come "scelti per voi" che elencano volantini di ALTRE catene.
+  // Isoliamo solo la vista della catena.
+  const start = html.indexOf('view-volantini-della-catena');
+  if (start === -1) return [];
+  const nextView = html.indexOf('class="view view-', start + 10);
+  const viewHtml = html.slice(start, nextView === -1 ? undefined : nextView);
+
+  // Ogni volantino e' una colonna che inizia con field-copertina
+  const chunks = viewHtml.split('<div class="views-field views-field-field-copertina">');
   const flyers = [];
-  const rowRe = /<div class="views-row[^"]*">([\s\S]*?)<div class="views-column views-column-2">/g;
-  let rowM;
-  while ((rowM = rowRe.exec(html))) {
-    const row = rowM[1];
-    const node = /href="\/node\/(\d+)"/.exec(row);
-    const img = /src="([^"]+)"[^>]*alt="Copertina[^"]*"/.exec(row) || /src="([^"]+\.(?:jpg|jpeg|png|gif))"/.exec(row);
-    const titleM = /class="field-content"><a href="\/node\/\d+">([^<]+)<\/a>/.exec(row);
-    const subtitleM = /views-field-field-subtitle">[\s\S]*?field-content">([^<]+)</.exec(row);
-    const fromM = /views-field-field-from">[\s\S]*?content="([^"]+)"/.exec(row);
-    const toM = /views-field-field-to">[\s\S]*?content="([^"]+)"/.exec(row);
+  for (let k = 1; k < chunks.length; k++) {
+    const chunk = chunks[k];
+    const node = /href="\/node\/(\d+)"/.exec(chunk);
     if (!node) continue;
-    const id = Number(node[1]);
+    const img =
+      /<img class="image-style-thumb-copertina"[^>]*src="([^"]+)"/.exec(chunk) ||
+      /src="([^"]+\.(?:jpg|jpeg|png|gif))"/.exec(chunk);
+    const titleM = /<span class="field-content"><a href="\/node\/\d+">([^<]+)<\/a>/.exec(chunk);
+    const sub = /views-field-field-subtitle">[\s\S]*?field-content">([^<]+)</.exec(chunk);
+    const fromM = /views-field-field-from">[\s\S]*?content="([^"]+)"/.exec(chunk);
+    const toM = /views-field-field-to">[\s\S]*?content="([^"]+)"/.exec(chunk);
     flyers.push({
-      id,
+      id: Number(node[1]),
       title: titleM ? titleM[1].trim() : 'Volantino',
-      subtitle: subtitleM ? subtitleM[1].trim() : undefined,
+      subtitle: sub ? sub[1].trim() : undefined,
       coverUrl: img ? abs(img[1]) : undefined,
       from: fromM ? fromM[1] : undefined,
       to: toM ? toM[1] : undefined,
     });
   }
-  const uniq = flyers.filter((f, i) => flyers.findIndex((x) => x.id === f.id) === i);
-  return uniq;
+  return flyers.filter((f, i) => flyers.findIndex((x) => x.id === f.id) === i);
 }
 
 function parseNode(html) {
@@ -107,6 +115,21 @@ async function main() {
     console.log(`  ${c.slug}: ${c.flyers.length} volantini`);
     await sleep(250);
   }
+
+  // Dedupe: un node id deve appartenere a una sola catena (teniamo la prima occorrenza)
+  const seen = new Set();
+  let dropped = 0;
+  for (const c of chains) {
+    c.flyers = c.flyers.filter((f) => {
+      if (seen.has(f.id)) {
+        dropped++;
+        return false;
+      }
+      seen.add(f.id);
+      return true;
+    });
+  }
+  if (dropped) console.log(`  dedupe: rimossi ${dropped} volantini duplicati tra catene`);
 
   console.log('3/3 bkcode Calameo...');
   const allIds = [...new Set(chains.flatMap((c) => c.flyers.map((f) => f.id)))];
