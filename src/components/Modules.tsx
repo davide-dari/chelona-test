@@ -138,7 +138,7 @@ const ModuleWrapper = ({ module, onDelete, onEdit, onShare, onToggleSensitivity,
   );
 };
 
-export const DocumentCard = ({ module, onDelete, onEdit, onShare }: { module: DocumentModule; onDelete: (id: string) => void; onEdit: (m: Module) => void; onShare: (m: Module) => void; }) => {
+export const DocumentCard = ({ module, onDelete, onEdit, onShare, onToggleSensitivity }: { module: DocumentModule; onDelete: (id: string) => void; onEdit: (m: Module) => void; onShare: (m: Module) => void; onToggleSensitivity?: (module: Module) => void; }) => {
   const isTaxCode = module.documentType === 'tax_code';
   const isIdentity = module.documentType === 'identity';
   const isLicense = module.documentType === 'driving_license';
@@ -157,7 +157,7 @@ export const DocumentCard = ({ module, onDelete, onEdit, onShare }: { module: Do
   const expiresSoon = module.expiryDate && !isExpired && (new Date(module.expiryDate).getTime() - new Date().getTime()) < (30 * 24 * 60 * 60 * 1000);
 
   return (
-    <ModuleWrapper module={module} onDelete={onDelete} onEdit={onEdit}>
+    <ModuleWrapper module={module} onDelete={onDelete} onEdit={onEdit} onToggleSensitivity={onToggleSensitivity}>
       <div 
         className="w-full aspect-[1.58/1] rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow cursor-pointer relative active:scale-[0.98]"
         onClick={() => onEdit(module)}
@@ -335,9 +335,9 @@ export const DocumentCard = ({ module, onDelete, onEdit, onShare }: { module: Do
   );
 };
 
-export const GenericCard = ({ module, onDelete, onEdit }: { module: GenericModule; onDelete: (id: string) => void; onEdit: (m: Module) => void; }) => {
+export const GenericCard = ({ module, onDelete, onEdit, onToggleSensitivity }: { module: GenericModule; onDelete: (id: string) => void; onEdit: (m: Module) => void; onToggleSensitivity?: (module: Module) => void; }) => {
   return (
-    <ModuleWrapper module={module} onDelete={onDelete} onEdit={onEdit}>
+    <ModuleWrapper module={module} onDelete={onDelete} onEdit={onEdit} onToggleSensitivity={onToggleSensitivity}>
       <div 
         className="h-full flex flex-col cursor-pointer group/card hover:bg-[var(--bg)] transition-colors p-4 -m-4 rounded-2xl active:scale-[0.98]"
         onClick={() => onEdit(module)}
@@ -365,12 +365,12 @@ export const GenericCard = ({ module, onDelete, onEdit }: { module: GenericModul
   );
 };
 
-export const AutoCard = ({ module, onDelete, onEdit }: { module: AutoModule; onDelete: (id: string) => void; onEdit: (m: Module) => void; }) => {
+export const AutoCard = ({ module, onDelete, onEdit, onToggleSensitivity }: { module: AutoModule; onDelete: (id: string) => void; onEdit: (m: Module) => void; onToggleSensitivity?: (module: Module) => void; }) => {
   const brandLogo = module.brand ? module.brand.toLowerCase().replace(/ /g, '-') : '';
   const hasLogo = CAR_BRANDS.includes(brandLogo);
 
   return (
-    <ModuleWrapper module={module} onDelete={onDelete} onEdit={onEdit}>
+    <ModuleWrapper module={module} onDelete={onDelete} onEdit={onEdit} onToggleSensitivity={onToggleSensitivity}>
       <div 
         className="h-full flex flex-col cursor-pointer group/card hover:bg-[var(--bg)] transition-colors p-4 -m-4 rounded-2xl active:scale-[0.98]"
         onClick={() => onEdit(module)}
@@ -419,7 +419,7 @@ export const AutoCard = ({ module, onDelete, onEdit }: { module: AutoModule; onD
   );
 };
 
-export const SingleExpenseCard = ({ module, onDelete, onEdit }: { module: SingleExpenseModule; onDelete: (id: string) => void; onEdit: (m: Module) => void; }) => {
+export const SingleExpenseCard = ({ module, onDelete, onEdit, onToggleSensitivity }: { module: SingleExpenseModule; onDelete: (id: string) => void; onEdit: (m: Module) => void; onToggleSensitivity?: (module: Module) => void; }) => {
   const getCategoryTheme = (cat: string) => {
     switch (cat) {
       case 'food':          return { icon: '🛒', color: 'text-orange-500', bg: 'bg-orange-500/10' };
@@ -435,7 +435,7 @@ export const SingleExpenseCard = ({ module, onDelete, onEdit }: { module: Single
   const catTheme = getCategoryTheme(module.category);
 
   return (
-    <ModuleWrapper module={module} onDelete={onDelete} onEdit={onEdit}>
+    <ModuleWrapper module={module} onDelete={onDelete} onEdit={onEdit} onToggleSensitivity={onToggleSensitivity}>
       <div 
         className="h-full flex flex-col cursor-pointer group/card hover:bg-[var(--bg)] transition-colors p-4 -m-4 rounded-2xl active:scale-[0.98]"
         onClick={() => onEdit(module)}
@@ -461,11 +461,11 @@ export const SingleExpenseCard = ({ module, onDelete, onEdit }: { module: Single
   );
 };
 
-export const SplitCard = ({ module, onDelete, onEdit, onShare }: { module: SplitModule; onDelete: (id: string) => void; onEdit: (m: Module) => void; onShare?: (m: Module) => void; }) => {
+export const SplitCard = ({ module, onDelete, onEdit, onShare, onToggleSensitivity }: { module: SplitModule; onDelete: (id: string) => void; onEdit: (m: Module) => void; onShare?: (m: Module) => void; onToggleSensitivity?: (module: Module) => void; }) => {
   const totalAmount = module.expenses.reduce((sum, exp) => sum + exp.amount, 0);
   
   return (
-    <ModuleWrapper module={module} onDelete={onDelete} onEdit={onEdit} onShare={onShare}>
+    <ModuleWrapper module={module} onDelete={onDelete} onEdit={onEdit} onShare={onShare} onToggleSensitivity={onToggleSensitivity}>
       <div 
         className="h-full flex flex-col cursor-pointer group/card hover:bg-[var(--bg)] transition-colors p-4 -m-4 rounded-2xl active:scale-[0.98]"
         onClick={() => onEdit(module)}
@@ -494,7 +494,7 @@ export const SplitCard = ({ module, onDelete, onEdit, onShare }: { module: Split
   );
 };
 
-export const GalleryCard = ({ module, onEdit }: { module: GalleryModule; onEdit?: (m: Module) => void; }) => {
+export const GalleryCard = ({ module, onEdit, onToggleSensitivity }: { module: GalleryModule; onEdit?: (m: Module) => void; onToggleSensitivity?: (module: Module) => void; }) => {
   const images: any[] = [];
   if (module.images && module.images.length > 0) {
     images.push(...module.images);
@@ -505,7 +505,7 @@ export const GalleryCard = ({ module, onEdit }: { module: GalleryModule; onEdit?
   const coverImage = images.length > 0 ? images[0].image : '';
 
   return (
-    <ModuleWrapper module={module} onEdit={onEdit}>
+    <ModuleWrapper module={module} onEdit={onEdit} onToggleSensitivity={onToggleSensitivity}>
       <div 
         className="h-full flex flex-col p-2 -m-2 rounded-2xl transition-all cursor-pointer"
         onClick={() => onEdit?.(module)}
@@ -534,10 +534,10 @@ export const GalleryCard = ({ module, onEdit }: { module: GalleryModule; onEdit?
   );
 };
 
-export const TravelCard = ({ module, onDelete, onEdit }: { module: TravelModule; onDelete?: (id: string) => void; onEdit?: (m: Module) => void; }) => {
+export const TravelCard = ({ module, onDelete, onEdit, onToggleSensitivity }: { module: TravelModule; onDelete?: (id: string) => void; onEdit?: (m: Module) => void; onToggleSensitivity?: (module: Module) => void; }) => {
   const count = module.destinations?.length || 0;
   return (
-    <ModuleWrapper module={module} onDelete={onDelete} onEdit={onEdit}>
+    <ModuleWrapper module={module} onDelete={onDelete} onEdit={onEdit} onToggleSensitivity={onToggleSensitivity}>
       <div
         className="h-full flex flex-col cursor-pointer group/card hover:bg-[var(--bg)] transition-colors p-4 -m-4 rounded-2xl active:scale-[0.98]"
         onClick={() => onEdit?.(module)}
@@ -570,13 +570,13 @@ export const TravelCard = ({ module, onDelete, onEdit }: { module: TravelModule;
   );
 };
 
-export const StudyCard = ({ module, onDelete, onEdit }: { module: any; onDelete?: (id: string) => void; onEdit?: (m: Module) => void; }) => {
+export const StudyCard = ({ module, onDelete, onEdit, onToggleSensitivity }: { module: any; onDelete?: (id: string) => void; onEdit?: (m: Module) => void; onToggleSensitivity?: (module: Module) => void; }) => {
   const topics = module.topics || [];
   const completed = topics.filter((t: any) => t.isCompleted).length;
   const progress = topics.length > 0 ? (completed / topics.length) * 100 : 0;
 
   return (
-    <ModuleWrapper module={module} onDelete={onDelete} onEdit={onEdit}>
+    <ModuleWrapper module={module} onDelete={onDelete} onEdit={onEdit} onToggleSensitivity={onToggleSensitivity}>
       <div
         className="h-full flex flex-col cursor-pointer group/card hover:bg-[var(--bg)] transition-colors p-4 -m-4 rounded-2xl active:scale-[0.98]"
         onClick={() => onEdit?.(module)}
@@ -616,7 +616,7 @@ export const StudyCard = ({ module, onDelete, onEdit }: { module: any; onDelete?
   );
 };
 
-export const FitnessCard = ({ module, onDelete, onEdit }: { module: any; onDelete?: (id: string) => void; onEdit?: (m: Module) => void; }) => {
+export const FitnessCard = ({ module, onDelete, onEdit, onToggleSensitivity }: { module: any; onDelete?: (id: string) => void; onEdit?: (m: Module) => void; onToggleSensitivity?: (module: Module) => void; }) => {
   const workoutPlan = module.workoutPlan || [];
   const completedDays = workoutPlan.filter((d: any) => d.isCompleted).length;
   const hasFitness = workoutPlan.length > 0;
@@ -624,7 +624,7 @@ export const FitnessCard = ({ module, onDelete, onEdit }: { module: any; onDelet
   const progress = workoutPlan.length > 0 ? (completedDays / workoutPlan.length) * 100 : 0;
 
   return (
-    <ModuleWrapper module={module} onDelete={onDelete} onEdit={onEdit}>
+    <ModuleWrapper module={module} onDelete={onDelete} onEdit={onEdit} onToggleSensitivity={onToggleSensitivity}>
       <div
         className="h-full flex flex-col cursor-pointer group/card hover:bg-[var(--bg)] transition-colors p-4 -m-4 rounded-2xl active:scale-[0.98]"
         onClick={() => onEdit?.(module)}

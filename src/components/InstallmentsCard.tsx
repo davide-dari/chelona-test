@@ -1,16 +1,19 @@
 import React from 'react';
-import { Target, CheckCircle2, Pencil, Trash2, X } from 'lucide-react';
+import { Target, CheckCircle2, Pencil, Trash2, X, Lock } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { InstallmentsModule } from '../types';
+import { isModuleSensitive } from '../utils/security';
 
 interface InstallmentsCardProps {
   module: InstallmentsModule;
   onEdit: (module: import('../types').Module) => void;
   onDelete: (id: string) => void;
+  onToggleSensitivity?: (module: import('../types').Module) => void;
 }
 
-export const InstallmentsCard = ({ module, onEdit, onDelete }: InstallmentsCardProps) => {
+export const InstallmentsCard = ({ module, onEdit, onDelete, onToggleSensitivity }: InstallmentsCardProps) => {
   const [showMenu, setShowMenu] = React.useState(false);
+  const sensitive = isModuleSensitive(module);
   const payments = module.payments || [];
   const paidAmount = payments.filter(p => p.isPaid).reduce((acc, curr) => acc + curr.amount, 0);
   const progress = module.targetAmount > 0 ? (paidAmount / module.targetAmount) * 100 : 0;
@@ -39,6 +42,15 @@ export const InstallmentsCard = ({ module, onEdit, onDelete }: InstallmentsCardP
           <h3 className="font-bold text-[var(--text-main)] text-lg line-clamp-1">{module.title || 'Nuove Rate'}</h3>
           <p className="text-xs text-[var(--text-muted)] uppercase tracking-wider font-bold">Rate</p>
         </div>
+        {onToggleSensitivity && (
+          <button
+            onClick={(e) => { e.stopPropagation(); onToggleSensitivity(module); }}
+            className="p-2 rounded-lg hover:bg-[var(--bg)] text-[var(--text-muted)] hover:text-amber-500 transition-all ml-auto"
+            title={sensitive ? "Rimuovi protezione impronta" : "Proteggi con impronta"}
+          >
+            <Lock className={`w-4 h-4 ${sensitive ? 'text-amber-500 fill-amber-500/20' : ''}`} />
+          </button>
+        )}
       </div>
 
       <div className="flex-1 space-y-4">

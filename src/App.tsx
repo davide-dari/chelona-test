@@ -8,7 +8,6 @@ import { Sun, Moon, Wrench, Plus, LayoutDashboard, Settings, User, LogOut, Searc
 
 import { Module, ModuleType, Folder, DocumentModule } from './types';
 import { isModuleSensitive } from './utils/security';
-import { DEFAULT_VOLANTINO_OFFERS, VOLANTINO_STORES } from './data/volantinoOffers';
 import { storage, AppState } from './services/storage';
 import { encryption } from './services/encryption';
 import { GenericCard, AutoCard, DocumentCard, SplitCard, SingleExpenseCard, GalleryCard, TravelCard, StudyCard, FitnessCard } from './components/Modules';
@@ -50,8 +49,6 @@ const FitnessScreen = React.lazy(() => import('./components/FitnessScreen').then
 const SupermarketScreen = React.lazy(() => import('./components/SupermarketScreen').then(m => ({ default: m.SupermarketScreen })));
 const VolantinoScreen = React.lazy(() => import('./components/VolantinoScreen').then(m => ({ default: m.default })));
 const ShareScreen = React.lazy(() => import('./components/ShareScreen').then(m => ({ default: m.ShareScreen })));
-import { SpeechRecognition } from '@capacitor-community/speech-recognition';
-import { Device } from '@capacitor/device';
 // UI Libraries removed as per request (CSS Grid migration)
 
 // ResponsiveGridLayout removed (DnD disabled)
@@ -2248,30 +2245,7 @@ export default function App() {
             ) : editingVolantinoModule ? (
               <VolantinoScreen
                 module={editingVolantinoModule}
-                onSave={(mod) => { updateModuleDirect(mod); setEditingVolantinoModule(mod); }}
                 onClose={() => setEditingVolantinoModule(null)}
-                shoppingItems={(modules.find(m => m.type === 'supermarket') as import('./types').SupermarketModule | undefined)?.items}
-                onAddShoppingItem={(item) => {
-                  const existingSupermarket = modules.find(m => m.type === 'supermarket') as import('./types').SupermarketModule;
-                  if (existingSupermarket) {
-                    const updatedItems = [item, ...(existingSupermarket.items || [])];
-                    const updatedMod = { ...existingSupermarket, items: updatedItems };
-                    updateModuleDirect(updatedMod);
-                    showToast(`Aggiunto alla Lista della Spesa: ${item.name}`, 'success');
-                  } else {
-                    const newSupermarket: import('./types').SupermarketModule = {
-                      id: generateUUID(),
-                      type: 'supermarket',
-                      title: 'Lista della Spesa',
-                      items: [item],
-                      x: 0, y: 0, w: 3, h: 2
-                    };
-                    const updated = [newSupermarket, ...modules];
-                    saveAppState(updated, folders).catch(console.error);
-                    setModules(updated);
-                    showToast(`Aggiunto alla Lista della Spesa: ${item.name}`, 'success');
-                  }
-                }}
               />
             ) : editingStudyModule ? (
               <StudyScreen
@@ -2572,8 +2546,8 @@ export default function App() {
                                 id: generateUUID(),
                                 type: 'volantino',
                                 title: 'Volantino',
-                                offers: DEFAULT_VOLANTINO_OFFERS.map(o => ({ ...o })),
-                                flyers: VOLANTINO_STORES.map(s => ({ id: generateUUID(), storeId: s.id, label: 'Volantino settimanale', updatedAt: new Date().toISOString() })),
+                                offers: [],
+                                flyers: [],
                                 x: (modules.length * 2) % 12,
                                 y: Infinity,
                                 w: 3,
@@ -3458,8 +3432,8 @@ export default function App() {
                                   id: generateUUID(),
                                   type: 'volantino',
                                   title: 'Volantino',
-                                  offers: DEFAULT_VOLANTINO_OFFERS.map(o => ({ ...o })),
-                                  flyers: VOLANTINO_STORES.map(s => ({ id: generateUUID(), storeId: s.id, label: 'Volantino settimanale', updatedAt: new Date().toISOString() })),
+                                  offers: [],
+                                  flyers: [],
                                   x: (modules.length * 2) % 12,
                                   y: Infinity,
                                   w: 3,
