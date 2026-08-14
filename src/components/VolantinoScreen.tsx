@@ -16,16 +16,20 @@ import {
   volantinoViewerUrl, volantinoNodeUrl, formatValidity
 } from '../services/centrovolantini';
 import {
-  ALL_ITALY_ZONE, flyerMatchesZone, loadZone, resolveCap, resolveGps, saveZone,
+  ALL_ITALY_ZONE, flyerMatchesZone, loadZone, resolveCap, resolveCity, resolveGps, saveZone,
+  textMatchesZone,
   type VolantiniZone
 } from '../services/zoneService';
+import { searchComuni, comuniByCap, findComune } from '../services/comuniService';
+import { TP_BROKEN_LOGOS, TP_CATEGORIES, TP_SHOPS, tpLogoUrl, tpPageUrl } from '../data/tuttiprezziDb';
+import type { TpCategory, TpFlyer, TpShop } from '../data/tuttiprezziDb';
 
 interface VolantinoScreenProps {
   module: VolantinoModule;
   onClose: () => void;
 }
 
-type ViewMode = 'home' | 'chain' | 'flyer';
+type ViewMode = 'home' | 'chain' | 'flyer' | 'tp-chain' | 'tp-flyer';
 
 const fmtUpdated = (iso?: string) => {
   if (!iso) return null;
@@ -52,8 +56,16 @@ export default function VolantinoScreen({ module, onClose }: VolantinoScreenProp
   const [zone, setZone] = useState<VolantiniZone | null>(() => loadZone());
   const [zoneModalOpen, setZoneModalOpen] = useState<boolean>(() => !loadZone());
   const [capInput, setCapInput] = useState('');
+  const [cityInput, setCityInput] = useState('');
+  const [citySuggestions, setCitySuggestions] = useState<ReturnType<typeof searchComuni>>([]);
+  const [capSuggestions, setCapSuggestions] = useState<ReturnType<typeof comuniByCap>>([]);
   const [zoneBusy, setZoneBusy] = useState<'gps' | null>(null);
   const [zoneError, setZoneError] = useState<string | null>(null);
+
+  /* ── TuttiPrezzi ── */
+  const [tpCat, setTpCat] = useState<TpCategory>('supermercati');
+  const [tpShopSlug, setTpShopSlug] = useState<string | null>(null);
+  const [tpFlyer, setTpFlyer] = useState<{ shop: TpShop; flyer: TpFlyer } | null>(null);
 
   const applyZone = (z: VolantiniZone) => {
     setZone(z);
@@ -70,6 +82,28 @@ export default function VolantinoScreen({ module, onClose }: VolantinoScreenProp
       return;
     }
     applyZone(z);
+  };
+
+  const onCityChange = (v: string) => {
+    setCityInput(v);
+    setZoneError(null);
+    if (v.trim().length >= 2) setCitySuggestions(searchComuni(v));
+    else setCitySuggestions([]);
+  };
+
+  const pickCity = (s: ReturnType<typeof searchComuni>[number]) => {
+    setCityInput(`${s.n} (${s.p})`);
+    setCitySuggestions([]);
+    setCapInput(s.c);
+    setCapSuggestions(comuniByCap(s.c));
+    const z = resolveCity(s.n);
+    if (z) applyZone(z);
+  };
+
+  const onCapChange = (v: string) => {
+    setCapInput(v);
+    setZoneError(null);
+    setCapSuggestions(v.length === 5 ? comuniByCap(v) : []);
   };
 
   const useGps = async () => {
@@ -131,6 +165,30 @@ export default function VolantinoScreen({ module, onClose }: VolantinoScreenProp
     setView('chain');
   };
 
+  /* ── Navigazione TuttiPrezzi ── */
+  const tpShops = useMemo(() => {
+    const byCat = TP_SHOPS.filter(s => s.cat === tpCat && s.flyers.length > 0);
+    if (!zone || zone.kind === 'all') return byCat;
+    return byCat
+      .map(s => ({
+        ...s,
+        flyers: s.flyers.filter(f => textMatchesZone(zone, `${f.nome} ${s.name}`)),
+      }))
+      .filter(s => s.flyers.length > 0);
+  }, [tpCat, zone]);
+
+  const tpShop = tpShopSlug ? TP_SHOPS.find(s => s.slug === tpShopSlug) : undefined;
+
+  const openTpShop = (slug: string) => {
+    setTpShopSlug(slug);
+    setView('tp-chain');
+  };
+
+  const openTpFlyer = (shop: TpShop, flyer: TpFlyer) => {
+    setTpFlyer({ shop, flyer });
+    setView('tp-flyer');
+  };
+
   const openFlyer = async (flyer: VolantinoFlyer, slug?: string) => {
     if (slug) setChainSlug(slug);
     setActiveFlyer(flyer);
@@ -150,6 +208,8 @@ export default function VolantinoScreen({ module, onClose }: VolantinoScreenProp
   const goBack = () => {
     if (view === 'chain') { setChainSlug(null); setView('home'); }
     else if (view === 'flyer') { setActiveFlyer(null); setViewerUrl(null); setView(chain ? 'chain' : 'home'); }
+    else if (view === 'tp-chain') { setTpShopSlug(null); setView('home'); }
+    else if (view === 'tp-flyer') { setTpFlyer(null); setView('tp-chain'); }
     else onClose();
   };
 
@@ -165,12 +225,16 @@ export default function VolantinoScreen({ module, onClose }: VolantinoScreenProp
   const headerTitle = () => {
     if (view === 'chain' && chain) return chain.name;
     if (view === 'flyer' && activeFlyer && chain) return flyerDisplayTitle(activeFlyer, chain);
+    if (view === 'tp-chain' && tpShop) return tpShop.name;
+    if (view === 'tp-flyer' && tpFlyer) return tpFlyer.flyer.nome || tpFlyer.shop.name;
     return module.title || 'Volantini & Offerte';
   };
 
   const headerSubtitle = () => {
     if (view === 'flyer' && activeFlyer) return formatValidity(activeFlyer) ?? 'Sfoglia il volantino';
     if (view === 'chain' && chain) return `${chain.flyers.length} volantini disponibili`;
+    if (view === 'tp-chain' && tpShop) return `${tpShop.flyers.length} volantini disponibili`;
+    if (view === 'tp-flyer' && tpFlyer) return `${tpFlyer.flyer.pages.length} pagine · scorri per sfogliare`;
     const updated = fmtUpdated(db.updatedAt);
     return `${chains.length} catene · ${novita.length} volantini · ${zone?.label ?? 'Tutta Italia'}${updated ? ` · agg. ${updated}` : ''}`;
   };
@@ -195,6 +259,12 @@ export default function VolantinoScreen({ module, onClose }: VolantinoScreenProp
               <StoreLogo id={chain.logoId ?? chain.slug} short={chain.name.slice(0, 2)} logo={chain.logoId ? logoFor(chain.logoId) : undefined} brandSlug={chain.slug} size={24} />
             ) : view === 'flyer' && chain ? (
               <StoreLogo id={chain.logoId ?? chain.slug} short={chain.name.slice(0, 2)} logo={chain.logoId ? logoFor(chain.logoId) : undefined} brandSlug={chain.slug} size={24} />
+            ) : (view === 'tp-chain' && tpShop) || (view === 'tp-flyer' && tpFlyer) ? (
+              TP_BROKEN_LOGOS.has((tpShop ?? tpFlyer!.shop).slug) ? (
+                <StoreLogo id={(tpShop ?? tpFlyer!.shop).slug} short={(tpShop ?? tpFlyer!.shop).name.slice(0, 2)} brandSlug={(tpShop ?? tpFlyer!.shop).slug} size={24} />
+              ) : (
+                <img src={tpLogoUrl((tpShop ?? tpFlyer!.shop).slug)} alt={(tpShop ?? tpFlyer!.shop).name} onError={e => { e.currentTarget.style.display = 'none'; }} className="w-6 h-6 rounded-md object-contain bg-white ring-1 ring-[var(--border)]" />
+              )
             ) : (
               <Sparkles className="w-5 h-5 text-amber-500 shrink-0" />
             )}
@@ -222,6 +292,11 @@ export default function VolantinoScreen({ module, onClose }: VolantinoScreenProp
               <RefreshCw className={`w-5 h-5 ${refreshing ? 'animate-spin' : ''}`} />
             </button>
           )}
+          {(view === 'tp-flyer' || view === 'tp-chain') && tpShop && (
+            <button onClick={() => openInSystem(`https://www.tuttiprezzi.it/${tpShop.slug}.html`)} className="p-2.5 rounded-2xl bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 transition-colors shrink-0" title="Apri sul sito">
+              <ExternalLink className="w-5 h-5" />
+            </button>
+          )}
           {view === 'chain' && officialUrl && (
             <button onClick={() => openInSystem(officialUrl)} className="p-2.5 rounded-2xl bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 transition-colors shrink-0" title="Sito ufficiale">
               <Globe className="w-5 h-5" />
@@ -241,6 +316,8 @@ export default function VolantinoScreen({ module, onClose }: VolantinoScreenProp
           {view === 'home' && <HomeView key="home" />}
           {view === 'chain' && chain && <ChainView key={chain.slug} />}
           {view === 'flyer' && activeFlyer && chain && <FlyerView key={`${chain.slug}-${activeFlyer.id}`} />}
+          {view === 'tp-chain' && tpShop && <TpChainView key={tpShop.slug} />}
+          {view === 'tp-flyer' && tpFlyer && <TpFlyerView key={`${tpFlyer.shop.slug}-${tpFlyer.flyer.pages[0] ?? 0}`} />}
         </AnimatePresence>
       </div>
 
@@ -270,17 +347,66 @@ export default function VolantinoScreen({ module, onClose }: VolantinoScreenProp
                 </button>
               </div>
               <p className="text-xs text-[var(--text-muted)] font-medium mb-4">
-                Inserisci il CAP o usa la tua posizione per mostrare i volantini della tua zona.
+                Inserisci il CAP o la tua città, oppure usa la posizione per mostrare i volantini della tua zona.
               </p>
+
+              {/* ── Città con autocomplete ── */}
+              <label className="block text-[11px] font-bold uppercase tracking-wider text-[var(--text-muted)] mb-1.5">
+                Città
+              </label>
+              <div className="relative mb-3">
+                <input
+                  value={cityInput}
+                  onChange={e => onCityChange(e.target.value)}
+                  onFocus={() => { if (cityInput.trim().length >= 2) setCitySuggestions(searchComuni(cityInput)); }}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter' && citySuggestions.length) pickCity(citySuggestions[0]);
+                  }}
+                  placeholder="Es. Milano"
+                  className="w-full px-4 py-3 rounded-2xl bg-[var(--bg)] border border-[var(--border)] text-[var(--text-main)] font-semibold text-base outline-none focus:border-emerald-500/60 transition-colors"
+                />
+                {citySuggestions.length > 0 && (
+                  <div className="absolute z-20 top-full left-0 right-0 mt-1.5 rounded-2xl bg-[var(--card-bg)] border border-[var(--border)] shadow-xl overflow-hidden max-h-56 overflow-y-auto custom-scrollbar">
+                    {citySuggestions.map(s => (
+                      <button
+                        key={`${s.n}-${s.p}`}
+                        onClick={() => pickCity(s)}
+                        className="w-full flex items-center justify-between gap-2 px-4 py-2.5 text-left hover:bg-emerald-500/10 transition-colors"
+                      >
+                        <span className="text-sm font-semibold text-[var(--text-main)]">{s.n}</span>
+                        <span className="text-[11px] font-bold text-[var(--text-muted)] shrink-0">
+                          {s.p} · {s.c}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="flex items-center gap-3 my-2">
+                <div className="flex-1 h-px bg-[var(--border)]" />
+                <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">oppure</span>
+                <div className="flex-1 h-px bg-[var(--border)]" />
+              </div>
 
               <label className="block text-[11px] font-bold uppercase tracking-wider text-[var(--text-muted)] mb-1.5">
                 Codice di avviamento postale
               </label>
-              <div className="flex gap-2">
+              <div className="relative flex gap-2 mb-3">
                 <input
                   value={capInput}
-                  onChange={e => setCapInput(e.target.value.replace(/\D/g, '').slice(0, 5))}
-                  onKeyDown={e => { if (e.key === 'Enter') submitCap(); }}
+                  onChange={e => onCapChange(e.target.value.replace(/\D/g, '').slice(0, 5))}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter') {
+                      if (capSuggestions.length) {
+                        const s = capSuggestions[0];
+                        setCityInput(`${s.n} (${s.p})`);
+                        setCapSuggestions([]);
+                        const z = resolveCap(capInput) ?? resolveCity(s.n);
+                        if (z) applyZone(z);
+                      } else submitCap();
+                    }
+                  }}
                   inputMode="numeric"
                   placeholder="Es. 20100"
                   className="flex-1 min-w-0 px-4 py-3 rounded-2xl bg-[var(--bg)] border border-[var(--border)] text-[var(--text-main)] font-bold text-base tracking-widest outline-none focus:border-emerald-500/60 transition-colors"
@@ -292,6 +418,26 @@ export default function VolantinoScreen({ module, onClose }: VolantinoScreenProp
                 >
                   OK
                 </button>
+                {capSuggestions.length > 0 && (
+                  <div className="absolute z-20 top-full left-0 right-0 mt-1.5 rounded-2xl bg-[var(--card-bg)] border border-[var(--border)] shadow-xl overflow-hidden">
+                    {capSuggestions.map(s => (
+                      <button
+                        key={`${s.n}-${s.p}`}
+                        onClick={() => {
+                          setCapInput(s.c);
+                          setCityInput(`${s.n} (${s.p})`);
+                          setCapSuggestions([]);
+                          const z = resolveCap(s.c) ?? resolveCity(s.n);
+                          if (z) applyZone(z);
+                        }}
+                        className="w-full flex items-center justify-between gap-2 px-4 py-2.5 text-left hover:bg-emerald-500/10 transition-colors"
+                      >
+                        <span className="text-sm font-semibold text-[var(--text-main)]">{s.n}</span>
+                        <span className="text-[11px] font-bold text-[var(--text-muted)] shrink-0">{s.p} · {s.c}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div className="flex items-center gap-3 my-4">
@@ -407,6 +553,50 @@ export default function VolantinoScreen({ module, onClose }: VolantinoScreenProp
               >
                 <StoreLogo id={c.logoId ?? c.slug} short={c.name.slice(0, 2)} logo={c.logoId ? logoFor(c.logoId) : undefined} size={48} />
                 <span className="text-[10px] font-bold text-[var(--text-main)] text-center leading-tight line-clamp-2">{c.name}</span>
+              </button>
+            ))}
+          </div>
+        </section>
+
+        {/* ── TuttiPrezzi.it ── */}
+        <section>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-sm font-black uppercase tracking-wider text-[var(--text-muted)] flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-amber-500" />
+              Più marchi
+            </h2>
+            <span className="text-[11px] font-semibold text-[var(--text-muted)]">tuttiprezzi.it</span>
+          </div>
+          <div className="flex gap-2 overflow-x-auto custom-scrollbar pb-1 -mx-4 px-4 mb-3">
+            {TP_CATEGORIES.map(c => (
+              <button
+                key={c.key}
+                onClick={() => setTpCat(c.key)}
+                className={`shrink-0 px-3.5 py-2 rounded-full text-xs font-bold transition-colors ${
+                  tpCat === c.key
+                    ? 'bg-amber-500 text-white'
+                    : 'bg-[var(--card-bg)] border border-[var(--border)] text-[var(--text-muted)] hover:text-[var(--text-main)]'
+                }`}
+              >
+                {c.label}
+              </button>
+            ))}
+          </div>
+          <div className="grid grid-cols-4 gap-2.5">
+            {tpShops.map(s => (
+              <button
+                key={s.slug}
+                onClick={() => openTpShop(s.slug)}
+                className="flex flex-col items-center gap-1.5 p-2.5 rounded-2xl bg-[var(--card-bg)] border border-[var(--border)] hover:border-amber-500/40 hover:bg-amber-500/5 transition-colors"
+              >
+                <div className="w-11 h-11 rounded-xl bg-white ring-1 ring-[var(--border)] flex items-center justify-center overflow-hidden">
+                  {TP_BROKEN_LOGOS.has(s.slug) ? (
+                    <StoreLogo id={s.slug} short={s.name.slice(0, 2)} brandSlug={s.slug} size={40} />
+                  ) : (
+                    <img src={tpLogoUrl(s.slug)} alt={s.name} onError={e => { e.currentTarget.style.display = 'none'; }} className="w-9 h-9 object-contain" />
+                  )}
+                </div>
+                <span className="text-[10px] font-bold text-[var(--text-main)] text-center leading-tight line-clamp-2">{s.name}</span>
               </button>
             ))}
           </div>
@@ -533,6 +723,95 @@ export default function VolantinoScreen({ module, onClose }: VolantinoScreenProp
               </button>
             </div>
           )}
+        </div>
+      </motion.div>
+    );
+  }
+
+  /* ═══════════════════════════════════════════════════════════════════
+     VIEW 4: TUTTIPREZZI — volantini di un marchio (immagini pagina)
+     ═══════════════════════════════════════════════════════════════════ */
+  function TpChainView() {
+    if (!tpShop) return null;
+    return (
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="px-4 pt-4 pb-8 max-w-2xl mx-auto w-full space-y-4">
+        <div className="flex items-center gap-4 p-4 rounded-2xl bg-[var(--card-bg)] border border-[var(--border)]">
+          <div className="w-16 h-16 rounded-2xl bg-white ring-1 ring-[var(--border)] flex items-center justify-center overflow-hidden shrink-0">
+            {TP_BROKEN_LOGOS.has(tpShop.slug) ? (
+            <StoreLogo id={tpShop.slug} short={tpShop.name.slice(0, 2)} brandSlug={tpShop.slug} size={56} />
+          ) : (
+            <img src={tpLogoUrl(tpShop.slug)} alt={tpShop.name} onError={e => { e.currentTarget.style.display = 'none'; }} className="w-12 h-12 object-contain" />
+          )}
+          </div>
+          <div className="flex-1 min-w-0">
+            <h2 className="font-black text-[var(--text-main)] text-lg leading-tight">{tpShop.name}</h2>
+            <p className="text-xs text-[var(--text-muted)] font-medium mt-0.5">
+              {TP_CATEGORIES.find(c => c.key === tpShop.cat)?.label} · {tpShop.flyers.length} volantini
+            </p>
+          </div>
+        </div>
+
+        <div className="space-y-2.5">
+          {tpShop.flyers.map((f, i) => (
+            <button
+              key={`${f.dir}-${f.pages[0] ?? i}`}
+              onClick={() => openTpFlyer(tpShop, f)}
+              className="w-full flex items-center gap-3 p-3 rounded-2xl bg-[var(--card-bg)] border border-[var(--border)] hover:border-amber-500/40 hover:bg-amber-500/5 transition-colors text-left"
+            >
+              <div className="relative w-14 h-[4.2rem] shrink-0 rounded-xl overflow-hidden bg-[var(--bg)] border border-[var(--border)]">
+                <img
+                  src={tpPageUrl(f.dir, f.pages[0] ?? 1)}
+                  alt={f.nome || tpShop.name}
+                  loading="lazy"
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-bold text-sm text-[var(--text-main)] truncate">{f.nome || `${tpShop.name} — volantino`}</p>
+                <p className="text-xs text-[var(--text-muted)] font-medium truncate mt-0.5">{f.pages.length} pagine</p>
+              </div>
+              <ChevronRight className="w-5 h-5 text-[var(--text-muted)] shrink-0" />
+            </button>
+          ))}
+        </div>
+      </motion.div>
+    );
+  }
+
+  /* ═══════════════════════════════════════════════════════════════════
+     VIEW 5: TUTTIPREZZI — viewer immagini con swipe verticale
+     ═══════════════════════════════════════════════════════════════════ */
+  function TpFlyerView() {
+    if (!tpFlyer) return null;
+    const { shop, flyer } = tpFlyer;
+    return (
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex flex-col h-full max-w-2xl mx-auto w-full">
+        <div className="px-4 py-3 shrink-0 flex items-center gap-3 border-b border-[var(--border)]">
+          <div className="w-10 h-10 rounded-xl bg-white ring-1 ring-[var(--border)] flex items-center justify-center overflow-hidden shrink-0">
+            {TP_BROKEN_LOGOS.has(shop.slug) ? (
+            <StoreLogo id={shop.slug} short={shop.name.slice(0, 2)} brandSlug={shop.slug} size={32} />
+          ) : (
+            <img src={tpLogoUrl(shop.slug)} alt={shop.name} onError={e => { e.currentTarget.style.display = 'none'; }} className="w-8 h-8 object-contain" />
+          )}
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="font-black text-[var(--text-main)] text-sm leading-tight truncate">{flyer.nome || shop.name}</p>
+            <p className="text-[11px] text-[var(--text-muted)] font-semibold truncate">{shop.name} · {flyer.pages.length} pagine</p>
+          </div>
+        </div>
+        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain custom-scrollbar bg-white">
+          {flyer.pages.map((p, i) => (
+            <div key={`${p}-${i}`} className="w-full flex justify-center">
+              <img
+                src={tpPageUrl(flyer.dir, p)}
+                alt={`${shop.name} pagina ${i + 1}`}
+                loading={i === 0 ? 'eager' : 'lazy'}
+                onError={e => { e.currentTarget.style.display = 'none'; }}
+                className="w-full h-auto block"
+              />
+            </div>
+          ))}
+          <p className="py-4 text-center text-xs font-semibold text-[var(--text-muted)]">Fine del volantino</p>
         </div>
       </motion.div>
     );

@@ -7,6 +7,7 @@ import { Geolocation } from '@capacitor/geolocation';
 import { capToRegion } from '../data/capRegions';
 import { CITY_REGIONS, ITALIAN_REGIONS } from '../data/italianSupermarkets';
 import type { VolantinoFlyer } from '../data/volantiniDb';
+import { COMUNI, PROVINCE_REGIONS } from '../data/comuni';
 
 export interface VolantiniZone {
   kind: 'cap' | 'gps' | 'all';
@@ -44,6 +45,37 @@ export function resolveCap(cap: string): VolantiniZone | null {
     region: hit.region,
     city: hit.city,
     label: hit.city ? `${c} · ${hit.city}` : `${c} · ${hit.region}`,
+  };
+}
+
+/**
+ * Risolve una città (nome del comune) in zona, trovando CAP e regione
+ * dal dataset comuni. Accetta anche "Comune di X" e nomi parziali esatti.
+ */
+export function resolveCity(name: string): VolantiniZone | null {
+  const n = name.trim();
+  if (n.length < 2) return null;
+  const deaccent = (s: string) =>
+    s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+  const q = deaccent(n).replace(/^(comune di|comune)\s+/, '').replace(/[^a-z0-9]+/g, ' ');
+  if (q.length < 2) return null;
+  // Match esatto per nome comune
+  let best: { n: string; p: string; c: string } | null = null;
+  let bestScore = -1;
+  for (const c of COMUNI) {
+    const cn = deaccent(c.n).replace(/[^a-z0-9]+/g, ' ');
+    if (cn === q) { best = c; bestScore = 3; break; }
+    if (cn.startsWith(q) && bestScore < 2) { best = c; bestScore = 2; }
+  }
+  if (!best) return null;
+  const region = PROVINCE_REGIONS[best.p];
+  if (!region) return null;
+  return {
+    kind: 'cap',
+    cap: best.c,
+    region,
+    city: best.n,
+    label: `${best.n} · ${region}`,
   };
 }
 
@@ -139,6 +171,30 @@ const SEP = String.raw`[\s\-']+`;
 const word = (k: string) =>
   new RegExp(String.raw`\b` + deaccent(k).replace(/[\s\-']+/g, SEP) + String.raw`\b`);
 
+/* Indice città→regione costruito una sola volta dal dataset comuni. */
+let cityIndex: Map<string, string> | null = null;
+let cityRegex: RegExp | null = null;
+function getCityIndex(): { map: Map<string, string>; re: RegExp } {
+  if (cityIndex && cityRegex) return { map: cityIndex, re: cityRegex };
+  cityIndex = new Map();
+  for (const c of COMUNI) {
+    const cn = deaccent(c.n).replace(/[^a-z0-9]+/g, ' ').replace(/\s+/g, ' ').trim();
+    if (cn.length < 3) continue;
+    const region = PROVINCE_REGIONS[c.p];
+    if (!region) continue;
+    // ignora nomi troppo generici (anche se comuni): es. "rocca", "monte"
+    if (cn.length < 4 && cn.includes(' ')) continue;
+    if (!cityIndex.has(cn)) cityIndex.set(cn, region);
+  }
+  // regex alternata: nomi ordinati per lunghezza descrescente, boundaries \b
+  const keys = [...cityIndex.keys()].sort((a, b) => b.length - a.length);
+  const esc = (k: string) => k.split(' ').join(String.raw`[\s\-']+`);
+  const maxLen = 80;
+  const parts = keys.filter(k => k.length <= maxLen).map(esc);
+  cityRegex = new RegExp(String.raw`\b(?:${parts.join('|')})\b`, 'i');
+  return { map: cityIndex, re: cityRegex };
+}
+
 /** Macro-aree italiane → regioni. */
 const MACRO_REGIONS: Record<string, string[]> = {
   'nordest': ['Veneto', 'Friuli-Venezia Giulia', 'Trentino-Alto Adige', 'Emilia-Romagna'],
@@ -165,23 +221,50 @@ const REGION_ALIASES: Record<string, string> = {
 
 /** Regioni a cui si riferisce il volantino (dal testo). null = nazionale/ovunque. */
 export function flyerRegions(flyer: VolantinoFlyer): Set<string> | null {
-  const text = deaccent(`${flyer.title} ${flyer.subtitle ?? ''}`);
+  return textRegions(`${flyer.title} ${flyer.subtitle ?? ''}`);
+}
+
+/**
+ * Regioni a cui si riferisce un testo libero (nome volantino tuttiprezzi,
+ * es. "ROMA- BUFALOTTA", "COOP Distribuzione Roma-UNICOOP ETRURIA").
+ * null = nazionale/ovunque.
+ */
+export function textRegions(text: string): Set<string> | null {
+  const t = deaccent(text);
   const regions = new Set<string>();
   const addRegion = (r: string) => regions.add(r);
 
   for (const r of ITALIAN_REGIONS) {
-    if (word(r).test(text)) addRegion(r);
+    if (word(r).test(t)) addRegion(r);
   }
   for (const [city, region] of Object.entries(CITY_REGIONS)) {
-    if (word(city).test(text)) addRegion(region);
+    if (word(city).test(t)) addRegion(region);
   }
   for (const [macro, rs] of Object.entries(MACRO_REGIONS)) {
-    if (word(macro).test(text)) rs.forEach(addRegion);
+    if (word(macro).test(t)) rs.forEach(addRegion);
   }
   for (const [alias, region] of Object.entries(REGION_ALIASES)) {
-    if (word(alias).test(text)) addRegion(region);
+    if (word(alias).test(t)) addRegion(region);
+  }
+  // Città dal dataset comuni (indice compilato una volta, regex alternata)
+  const { map, re } = getCityIndex();
+  const hits = t.match(re);
+  if (hits) {
+    for (const hit of hits) {
+      const key = deaccent(hit).replace(/[^a-z0-9]+/g, ' ').replace(/\s+/g, ' ').trim();
+      const region = map.get(key);
+      if (region) addRegion(region);
+    }
   }
   return regions.size > 0 ? regions : null;
+}
+
+/** Il testo è rilevante per la zona dell'utente? (volantini tuttiprezzi) */
+export function textMatchesZone(zone: VolantiniZone | null, text: string): boolean {
+  if (!zone || zone.kind === 'all' || !zone.region) return true;
+  const regions = textRegions(text);
+  if (!regions) return true; // nazionale
+  return regions.has(zone.region);
 }
 
 /** Il volantino è rilevante per la zona dell'utente? */
