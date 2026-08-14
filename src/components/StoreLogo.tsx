@@ -1,4 +1,5 @@
 import React from 'react';
+import { brandImageUrl } from '../data/brandImages';
 
 interface StoreLogoProps {
   id: string;
@@ -6,21 +7,23 @@ interface StoreLogoProps {
   size?: number;
   logo?: string;
   hex?: string;
+  /** Slug catena volantini: se non c'è logo locale usa il logo openfoodfacts. */
+  brandSlug?: string;
 }
 
 const F = 'Arial, Helvetica, sans-serif';
 
-export function StoreLogo({ id, short, size = 40, logo: logoUrl, hex }: StoreLogoProps) {
-  let content: React.ReactNode;
+export function StoreLogo({ id, short, size = 40, logo: logoUrl, hex, brandSlug }: StoreLogoProps) {
+  const ofUrl = !logoUrl && brandSlug ? brandImageUrl(brandSlug) : undefined;
 
-  if (logoUrl) {
+  if (logoUrl || ofUrl) {
     return (
       <span
         style={{ width: size, height: size, aspectRatio: '1 / 1' }}
         className="inline-flex items-center justify-center shrink-0 rounded-[14px] bg-white ring-1 ring-[var(--border)] overflow-hidden"
       >
         <img
-          src={logoUrl}
+          src={logoUrl ?? ofUrl}
           alt={short || id}
           style={{ width: size * 0.82, height: size * 0.82, objectFit: 'contain' }}
           className="shrink-0"
@@ -29,6 +32,7 @@ export function StoreLogo({ id, short, size = 40, logo: logoUrl, hex }: StoreLog
       </span>
     );
   }
+  let content: React.ReactNode;
   switch (id) {
     case 'lidl':
       content = (

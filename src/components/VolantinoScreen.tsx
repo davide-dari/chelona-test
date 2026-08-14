@@ -9,6 +9,7 @@ import { VolantinoModule } from '../types';
 import { logoFor } from '../data/supermarketLogos';
 import { StoreLogo } from './StoreLogo';
 import { supermarketById } from '../data/italianSupermarkets';
+import { brandImageUrl } from '../data/brandImages';
 import type { VolantiniDb, VolantinoChain, VolantinoFlyer } from '../data/volantiniDb';
 import {
   getVolantiniDb, refreshVolantini, ensureBkcode,
@@ -191,9 +192,9 @@ export default function VolantinoScreen({ module, onClose }: VolantinoScreenProp
         <div className="flex-1 min-w-0 text-center">
           <h1 className="text-lg font-black text-[var(--text-main)] truncate flex items-center justify-center gap-2">
             {view === 'chain' && chain ? (
-              <StoreLogo id={chain.logoId ?? chain.slug} short={chain.name.slice(0, 2)} logo={chain.logoId ? logoFor(chain.logoId) : undefined} size={24} />
+              <StoreLogo id={chain.logoId ?? chain.slug} short={chain.name.slice(0, 2)} logo={chain.logoId ? logoFor(chain.logoId) : undefined} brandSlug={chain.slug} size={24} />
             ) : view === 'flyer' && chain ? (
-              <StoreLogo id={chain.logoId ?? chain.slug} short={chain.name.slice(0, 2)} logo={chain.logoId ? logoFor(chain.logoId) : undefined} size={24} />
+              <StoreLogo id={chain.logoId ?? chain.slug} short={chain.name.slice(0, 2)} logo={chain.logoId ? logoFor(chain.logoId) : undefined} brandSlug={chain.slug} size={24} />
             ) : (
               <Sparkles className="w-5 h-5 text-amber-500 shrink-0" />
             )}
@@ -364,28 +365,23 @@ export default function VolantinoScreen({ module, onClose }: VolantinoScreenProp
               <button
                 key={f.id}
                 onClick={() => openFlyer(f, c.slug)}
-                className="group relative overflow-hidden rounded-2xl bg-[var(--card-bg)] border border-[var(--border)] aspect-[3/4] focus:outline-none focus:ring-2 focus:ring-amber-500/40"
+                className="group relative overflow-hidden rounded-2xl bg-[var(--card-bg)] border border-[var(--border)] aspect-[3/4] focus:outline-none focus:ring-2 focus:ring-amber-500/40 flex flex-col"
               >
-                {f.coverUrl && !coverFailed(f.id) ? (
-                  <img
-                    src={f.coverUrl}
-                    alt={flyerDisplayTitle(f, c)}
-                    loading="lazy"
-                    onError={() => markCoverFailed(f.id)}
-                    className="absolute inset-0 w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-300"
-                  />
-                ) : (
-                  <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-amber-500/15 via-transparent to-emerald-500/10">
-                    <StoreLogo id={c.logoId ?? c.slug} short={c.name.slice(0, 2)} logo={c.logoId ? logoFor(c.logoId) : undefined} size={56} />
+                <div className="flex-1 min-h-0 flex items-center justify-center p-3">
+                  <div className="flex items-center justify-center w-full h-full rounded-xl bg-white ring-1 ring-[var(--border)] overflow-hidden">
+                    <StoreLogo
+                      id={c.logoId ?? c.slug}
+                      short={c.name.slice(0, 2)}
+                      logo={c.logoId ? logoFor(c.logoId) : undefined}
+                      brandSlug={c.slug}
+                      size={72}
+                    />
                   </div>
-                )}
-                <div className="absolute inset-x-0 bottom-0 p-2 pt-8 bg-gradient-to-t from-black/75 via-black/35 to-transparent">
-                  <div className="flex items-center gap-1.5 mb-1">
-                    <StoreLogo id={c.logoId ?? c.slug} short={c.name.slice(0, 2)} logo={c.logoId ? logoFor(c.logoId) : undefined} size={16} />
-                    <span className="text-[10px] font-extrabold text-white truncate">{c.name}</span>
-                  </div>
+                </div>
+                <div className="px-2 pb-2.5 pt-1">
+                  <span className="block text-[10px] font-extrabold text-[var(--text-main)] text-center truncate">{c.name}</span>
                   {f.subtitle && (
-                    <p className="text-[9px] leading-tight text-white/85 font-medium line-clamp-2">{f.subtitle}</p>
+                    <span className="block text-[9px] leading-tight text-[var(--text-muted)] font-medium text-center line-clamp-2 mt-0.5">{f.subtitle}</span>
                   )}
                 </div>
               </button>
@@ -429,7 +425,7 @@ export default function VolantinoScreen({ module, onClose }: VolantinoScreenProp
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="px-4 pt-4 pb-8 max-w-2xl mx-auto w-full space-y-4">
         {/* ── Banner catena ── */}
         <div className="flex items-center gap-4 p-4 rounded-2xl bg-[var(--card-bg)] border border-[var(--border)]">
-          <StoreLogo id={chain.logoId ?? chain.slug} short={chain.name.slice(0, 2)} logo={chain.logoId ? logoFor(chain.logoId) : undefined} size={64} />
+          <StoreLogo id={chain.logoId ?? chain.slug} short={chain.name.slice(0, 2)} logo={chain.logoId ? logoFor(chain.logoId) : undefined} brandSlug={chain.slug} size={64} />
           <div className="flex-1 min-w-0">
             <h2 className="font-black text-[var(--text-main)] text-lg leading-tight">{chain.name}</h2>
             <p className="text-xs text-[var(--text-muted)] font-medium mt-0.5">{chain.flyers.length} volantini disponibili</p>
@@ -456,7 +452,7 @@ export default function VolantinoScreen({ module, onClose }: VolantinoScreenProp
                     <img src={f.coverUrl} alt={flyerDisplayTitle(f, chain)} loading="lazy" onError={() => markCoverFailed(f.id)} className="w-full h-full object-cover" />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center">
-                      <StoreLogo id={chain.logoId ?? chain.slug} short={chain.name.slice(0, 2)} logo={chain.logoId ? logoFor(chain.logoId) : undefined} size={32} />
+                      <StoreLogo id={chain.logoId ?? chain.slug} short={chain.name.slice(0, 2)} logo={chain.logoId ? logoFor(chain.logoId) : undefined} brandSlug={chain.slug} size={32} />
                     </div>
                   )}
                 </div>
@@ -492,12 +488,12 @@ export default function VolantinoScreen({ module, onClose }: VolantinoScreenProp
             <img src={activeFlyer.coverUrl} alt={flyerDisplayTitle(activeFlyer, chain)} onError={() => markCoverFailed(activeFlyer.id)} className="w-full h-full object-cover" />
           ) : (
             <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-amber-500/20 via-transparent to-emerald-500/10">
-              <StoreLogo id={chain.logoId ?? chain.slug} short={chain.name.slice(0, 2)} logo={chain.logoId ? logoFor(chain.logoId) : undefined} size={72} />
+              <StoreLogo id={chain.logoId ?? chain.slug} short={chain.name.slice(0, 2)} logo={chain.logoId ? logoFor(chain.logoId) : undefined} brandSlug={chain.slug} size={72} />
             </div>
           )}
           <div className="absolute inset-0 bg-gradient-to-t from-[var(--bg)] via-transparent to-transparent" />
           <div className="absolute left-4 bottom-3 right-4 flex items-end gap-3">
-            <StoreLogo id={chain.logoId ?? chain.slug} short={chain.name.slice(0, 2)} logo={chain.logoId ? logoFor(chain.logoId) : undefined} size={36} />
+            <StoreLogo id={chain.logoId ?? chain.slug} short={chain.name.slice(0, 2)} logo={chain.logoId ? logoFor(chain.logoId) : undefined} brandSlug={chain.slug} size={36} />
             <div className="flex-1 min-w-0">
               <p className="font-black text-[var(--text-main)] text-base leading-tight truncate">{flyerDisplayTitle(activeFlyer, chain)}</p>
               <p className="text-[11px] text-[var(--text-muted)] font-semibold truncate">{chain.name}{activeFlyer.subtitle ? ` · ${activeFlyer.subtitle}` : ''}</p>
