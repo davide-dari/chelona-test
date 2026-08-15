@@ -1,13 +1,11 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
-  ArrowLeft, ExternalLink, Loader2, MapPin, Crosshair, X, ChevronRight,
+  ArrowLeft, Loader2, MapPin, Crosshair, X, ChevronRight,
   CalendarDays, Store
 } from 'lucide-react';
-import { Capacitor } from '@capacitor/core';
 import { VolantinoModule } from '../types';
 import { StoreLogo } from './StoreLogo';
-import { brandImageUrl } from '../data/brandImages';
 import { ALL_ITALY_ZONE, loadZone, resolveCap, resolveCity, resolveGps, saveZone, type VolantiniZone } from '../services/zoneService';
 import { searchComuni, comuniByCap, findComune } from '../services/comuniService';
 import {
@@ -36,7 +34,123 @@ const fmtDist = (m: number) => {
   return `${(m / 1000).toFixed(1).replace('.', ',')} km`;
 };
 
-/* Slug dovecoviene della città dell'utente (fallback: capoluogo provincia, poi nazionale) */
+/* ═══ Pinch-to-zoom per le pagine del volantino ═══ */
+function PinchZoom({ children }: { children: React.ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const st = useRef({ s: 1, x: 0, y: 0 });
+  const pinch = useRef<{
+    d0: number; m0x: number; m0y: number; s0: number; x0: number; y0: number;
+  } | null>(null);
+  const drag = useRef<{ x0: number; y0: number; sx: number; sy: number; t0: number } | null>(null);
+  const lastTap = useRef<{ t: number; x: number; y: number } | null>(null);
+
+  const apply = (s: number, x: number, y: number) => {
+    const el = ref.current;
+    if (!el) return;
+    st.current = { s, x, y };
+    el.style.transform = `translate(${x}px, ${y}px) scale(${s})`;
+    el.style.touchAction = s > 1.01 ? 'none' : 'pan-y';
+  };
+
+  const maxScale = () => {
+    const el = ref.current;
+    const img = el?.querySelector('img');
+    if (el && img && img.naturalWidth > 0) {
+      return Math.min(4, Math.max(2, img.naturalWidth / Math.max(el.clientWidth, 1)));
+    }
+    return 3;
+  };
+
+  const onTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
+    if (e.touches.length === 2) {
+      drag.current = null;
+      const [a, b] = [e.touches[0], e.touches[1]];
+      pinch.current = {
+        d0: Math.max(Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY), 1),
+        m0x: (a.clientX + b.clientX) / 2,
+        m0y: (a.clientY + b.clientY) / 2,
+        s0: st.current.s,
+        x0: st.current.x,
+        y0: st.current.y,
+      };
+    } else if (e.touches.length === 1) {
+      pinch.current = null;
+      drag.current = {
+        x0: e.touches[0].clientX,
+        y0: e.touches[0].clientY,
+        sx: st.current.x,
+        sy: st.current.y,
+        t0: Date.now(),
+      };
+    }
+  };
+
+  const onTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
+    const p = pinch.current;
+    if (p && e.touches.length === 2) {
+      const [a, b] = [e.touches[0], e.touches[1]];
+      const d = Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
+      const mx = (a.clientX + b.clientX) / 2;
+      const my = (a.clientY + b.clientY) / 2;
+      let s = p.s0 * (d / p.d0);
+      s = Math.min(Math.max(s, 1), maxScale());
+      apply(s, p.x0 + (mx - p.m0x), p.y0 + (my - p.m0y));
+    } else if (drag.current && e.touches.length === 1 && st.current.s > 1.01) {
+      const d = drag.current;
+      apply(st.current.s, d.sx + (e.touches[0].clientX - d.x0), d.sy + (e.touches[0].clientY - d.y0));
+    }
+  };
+
+  const onTouchEnd = (e: React.TouchEvent<HTMLDivElement>) => {
+    const wasPinch = pinch.current !== null;
+    pinch.current = null;
+    const d = drag.current;
+    drag.current = null;
+
+    // Tap (tocco breve senza movimento) → doppio tap per zoom/reset
+    if (!wasPinch && d && e.changedTouches.length === 1 && Date.now() - d.t0 < 300) {
+      const t = e.changedTouches[0];
+      const moved = Math.hypot(t.clientX - d.x0, t.clientY - d.y0);
+      if (moved < 10) {
+        const now = Date.now();
+        const last = lastTap.current;
+        if (last && now - last.t < 300 && Math.hypot(t.clientX - last.x, t.clientY - last.y) < 40) {
+          lastTap.current = null;
+          const el = ref.current;
+          const rect = el?.getBoundingClientRect();
+          if (st.current.s > 1.01) {
+            apply(1, 0, 0);
+          } else if (el && rect) {
+            const cx = t.clientX - rect.left;
+            const cy = t.clientY - rect.top;
+            const s = Math.min(2.5, maxScale());
+            apply(s, rect.width / 2 - cx * s, rect.height / 2 - cy * s);
+          }
+        } else {
+          lastTap.current = { t: now, x: t.clientX, y: t.clientY };
+        }
+        return;
+      }
+    }
+    lastTap.current = null;
+    if (st.current.s <= 1.01) apply(1, 0, 0);
+  };
+
+  return (
+    <div
+      ref={ref}
+      onTouchStart={onTouchStart}
+      onTouchMove={onTouchMove}
+      onTouchEnd={onTouchEnd}
+      className="w-full will-change-transform select-none"
+      style={{ touchAction: 'pan-y' }}
+    >
+      {children}
+    </div>
+  );
+}
+
+/* Slug della città dell'utente (fallback: capoluogo provincia, poi nazionale) */
 const dcSlugForZone = (zone: VolantiniZone | null): string => {
   if (!zone || zone.kind === 'all') return '';
   const city = zone.city ?? '';
@@ -165,12 +279,6 @@ export default function VolantinoScreen({ module, onClose }: VolantinoScreenProp
     } else onClose();
   };
 
-  const openInSystem = (url: string) => {
-    if (!url) return;
-    if (Capacitor.isNativePlatform()) window.open(url, '_system');
-    else window.open(url, '_blank');
-  };
-
   const headerSubtitle = () => {
     if (view === 'flyer' && activeFlyer) {
       return `${activeFlyer.flyer.n} · ${activeFlyer.flyer.p.length} pagine · scorri per sfogliare`;
@@ -217,15 +325,6 @@ export default function VolantinoScreen({ module, onClose }: VolantinoScreenProp
               title="Zona dei volantini"
             >
               <MapPin className="w-5 h-5" />
-            </button>
-          )}
-          {view === 'flyer' && activeFlyer && (
-            <button
-              onClick={() => openInSystem(`https://www.doveconviene.it/${activeFlyer.flyer.s}`)}
-              className="p-2.5 rounded-2xl bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 transition-colors shrink-0"
-              title="Apri sul sito"
-            >
-              <ExternalLink className="w-5 h-5" />
             </button>
           )}
         </div>
@@ -514,28 +613,23 @@ export default function VolantinoScreen({ module, onClose }: VolantinoScreenProp
             </span>
           )}
         </div>
-        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain custom-scrollbar bg-white">
+        <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain custom-scrollbar bg-white">
           {flyer.p.length === 0 ? (
             <div className="py-16 text-center">
               <p className="text-sm font-semibold text-[var(--text-muted)]">Anteprima non disponibile</p>
-              <button
-                onClick={() => openInSystem(`https://www.doveconviene.it/${flyer.s}`)}
-                className="mt-4 inline-flex items-center gap-2 px-5 py-3 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-xl transition-colors"
-              >
-                <ExternalLink className="w-4 h-4" /> Apri sul sito
-              </button>
             </div>
           ) : (
             flyer.p.map((_, i) => (
-              <div key={`${fid}-${i}`} className="w-full flex justify-center">
+              <PinchZoom key={`${fid}-${i}`}>
                 <img
                   src={dcPageUrl(fid, i, 4)}
                   alt={`${flyer.n} pagina ${i + 1}`}
                   loading={i === 0 ? 'eager' : 'lazy'}
                   onError={e => { e.currentTarget.style.display = 'none'; }}
                   className="w-full h-auto block"
+                  draggable={false}
                 />
-              </div>
+              </PinchZoom>
             ))
           )}
           {flyer.p.length > 0 && (
