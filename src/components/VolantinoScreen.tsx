@@ -14,6 +14,7 @@ import {
   type DcFlyer
 } from '../data/doveconvieneDb';
 import { DC_COMUNE_SLUG, DC_CAPOLUOGO_SLUG } from '../data/dcCityMap';
+import { comuniCaps } from '../data/comuniCaps';
 import { OFFER_GROUPS, OFFER_DATE, type OfferEntry } from '../data/offerStats';
 
 interface VolantinoScreenProps {
@@ -197,6 +198,7 @@ export default function VolantinoScreen({ module, onClose }: VolantinoScreenProp
   const [zoneModalOpen, setZoneModalOpen] = useState<boolean>(() => !loadZone());
   const [capInput, setCapInput] = useState('');
   const [cityInput, setCityInput] = useState('');
+  const [pickedComune, setPickedComune] = useState<ReturnType<typeof searchComuni>[number] | null>(null);
   const [citySuggestions, setCitySuggestions] = useState<ReturnType<typeof searchComuni>>([]);
   const [capSuggestions, setCapSuggestions] = useState<ReturnType<typeof comuniByCap>>([]);
   const [zoneBusy, setZoneBusy] = useState<'gps' | null>(null);
@@ -207,6 +209,10 @@ export default function VolantinoScreen({ module, onClose }: VolantinoScreenProp
 
   /* ── Ricerca statistiche ── */
   const [statsQuery, setStatsQuery] = useState('');
+  const [statsOrigin, setStatsOrigin] = useState(false);
+
+  /* ── Ricerca volantino per supermercato ── */
+  const [flyerQuery, setFlyerQuery] = useState('');
 
   const applyZone = (z: VolantiniZone) => {
     setZone(z);
@@ -235,11 +241,52 @@ export default function VolantinoScreen({ module, onClose }: VolantinoScreenProp
   const pickCity = (s: ReturnType<typeof searchComuni>[number]) => {
     setCityInput(`${s.n} (${s.p})`);
     setCitySuggestions([]);
+    setPickedComune(s);
     setCapInput(s.c);
     setCapSuggestions(comuniByCap(s.c));
     const z = resolveCity(s.n);
-    if (z) applyZone(z);
+    if (!z) return;
+    setZone({ ...z, cap: undefined });
+    setZoneError(null);
+    if (comuniCaps(s.n)) {
+      saveZone({ ...z, cap: undefined });
+    } else {
+      applyZone({ ...z, cap: undefined });
+    }
   };
+
+  /* Applica una zona con un CAP specifico della città (es. 20121 per Milano) */
+  const applySpecificCap = (s: ReturnType<typeof searchComuni>[number], cap: string) => {
+    const base = resolveCap(cap);
+    if (!base) return;
+    applyZone({
+      kind: 'cap',
+      cap,
+      region: base.region,
+      city: s.n,
+      provincia: s.p,
+      label: `${cap} · ${s.n}`,
+    });
+  };
+
+  /* All'apertura della modal, precompila città/CAP dalla zona salvata */
+  useEffect(() => {
+    if (!zoneModalOpen) return;
+    if (zone && zone.city) {
+      const f = findComune(zone.city);
+      if (f) {
+        setCityInput(`${f.n} (${f.p})`);
+        setPickedComune(f);
+        setCapInput(zone.cap ?? f.c);
+      } else {
+        setCityInput(zone.city);
+      }
+    } else {
+      setCityInput('');
+      setCapInput('');
+      setPickedComune(null);
+    }
+  }, [zoneModalOpen, zone]);
 
   const onCapChange = (v: string) => {
     setCapInput(v);
@@ -268,6 +315,21 @@ export default function VolantinoScreen({ module, onClose }: VolantinoScreenProp
     return list.sort((a, b) => a.dist - b.dist || (parseInt(a.fid) - parseInt(b.fid)));
   }, [dcSlug, cat]);
 
+  /* Tutti i volantini della città (tutte le categorie) per la ricerca supermercato */
+  const allCards = useMemo(() => {
+    const data = dcSlug && DC_CITY_FLYERS[dcSlug] ? DC_CITY_FLYERS[dcSlug] : DC_CITY_FLYERS['--nazionale--'];
+    const out: DcCard[] = [];
+    for (const c of DC_CATEGORIES) out.push(...parseCards(data[c.slug] ?? ''));
+    const seen = new Set<string>();
+    return out.filter(c => (seen.has(c.fid) ? false : (seen.add(c.fid), true)));
+  }, [dcSlug]);
+
+  const shownCards = useMemo(() => {
+    const q = flyerQuery.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    if (!q) return cards;
+    return allCards.filter(c => c.flyer.n.toLowerCase().includes(q));
+  }, [flyerQuery, cards, allCards]);
+
   const cityLabel = useMemo(() => {
     if (dcSlug && DC_CITY_SLUGS[dcSlug]) return DC_CITY_SLUGS[dcSlug];
     return '';
@@ -283,7 +345,18 @@ export default function VolantinoScreen({ module, onClose }: VolantinoScreenProp
   const openFlyer = (card: DcCard) => {
     setActiveFlyer({ fid: card.fid, flyer: card.flyer });
     setFullPage(null);
+    setStatsOrigin(false);
     setView('flyer');
+  };
+
+  /* Apre il volantino direttamente alla pagina dell'offerta (vista confronto) */
+  const openOfferPage = (fid: string, pg: number) => {
+    const flyer = DC_FLYERS[fid];
+    if (!flyer) return;
+    setActiveFlyer({ fid, flyer });
+    setView('flyer');
+    setFullPage(pg);
+    setStatsOrigin(true);
   };
 
   const goBack = () => {
@@ -293,7 +366,8 @@ export default function VolantinoScreen({ module, onClose }: VolantinoScreenProp
     }
     if (view === 'flyer') {
       setActiveFlyer(null);
-      setView('home');
+      setView(statsOrigin ? 'stats' : 'home');
+      setStatsOrigin(false);
     } else if (view === 'stats') {
       setView('home');
     } else onClose();
@@ -313,7 +387,7 @@ export default function VolantinoScreen({ module, onClose }: VolantinoScreenProp
     if (view === 'stats') {
       return `Confronto prezzi · rilevati dai volantini del ${OFFER_DATE}`;
     }
-    const base = cityLabel ? `${cityLabel} · ${cards.length} volantini` : `${cards.length} volantini · tutta Italia`;
+    const base = cityLabel ? `${cityLabel} · ${shownCards.length} volantini` : `${shownCards.length} volantini · tutta Italia`;
     return `${base} · ${DC_CATEGORIES.find(c => c.slug === cat)?.name ?? ''}`;
   };
 
@@ -436,6 +510,52 @@ export default function VolantinoScreen({ module, onClose }: VolantinoScreenProp
                 )}
               </div>
 
+              {/* ── CAP specifico della città (per le città con più CAP) ── */}
+              {pickedComune && comuniCaps(pickedComune.n) && (
+                <div className="mb-3">
+                  <label className="block text-[11px] font-bold uppercase tracking-wider text-[var(--text-muted)] mb-1.5">
+                    CAP specifico {pickedComune.n} · {pickedComune.p}
+                  </label>
+                  <div className="flex gap-1.5 overflow-x-auto custom-scrollbar pb-1 -mx-4 px-4">
+                    <button
+                      onClick={() => {
+                        setCapInput(pickedComune.c);
+                        const z = resolveCity(pickedComune.n);
+                        if (z) applyZone({ ...z, cap: undefined });
+                      }}
+                      className={`shrink-0 px-3 py-1.5 rounded-full text-[11px] font-bold transition-colors ${
+                        zone && zone.city === pickedComune.n && !zone.cap
+                          ? 'bg-emerald-500 text-white'
+                          : 'bg-[var(--bg)] border border-[var(--border)] text-[var(--text-muted)] hover:text-[var(--text-main)]'
+                      }`}
+                    >
+                      Tutta la città
+                    </button>
+                    {comuniCaps(pickedComune.n)!.map(cap => (
+                      <button
+                        key={cap}
+                        onClick={() => {
+                          setCapInput(cap);
+                          applySpecificCap(pickedComune, cap);
+                        }}
+                        className={`shrink-0 px-3 py-1.5 rounded-full text-[11px] font-bold tracking-wide transition-colors ${
+                          zone && zone.city === pickedComune.n && zone.cap === cap
+                            ? 'bg-emerald-500 text-white'
+                            : 'bg-[var(--bg)] border border-[var(--border)] text-[var(--text-muted)] hover:text-[var(--text-main)]'
+                        }`}
+                      >
+                        {cap}
+                      </button>
+                    ))}
+                  </div>
+                  <p className="text-[10px] text-[var(--text-muted)] font-medium mt-1">
+                    {zone && zone.city === pickedComune.n && zone.cap
+                      ? `Volantini per ${zone.cap} · ${pickedComune.n}`
+                      : `Volantini per tutta ${pickedComune.n}`}
+                  </p>
+                </div>
+              )}
+
               <div className="flex items-center gap-3 my-2">
                 <div className="flex-1 h-px bg-[var(--border)]" />
                 <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">oppure</span>
@@ -454,6 +574,7 @@ export default function VolantinoScreen({ module, onClose }: VolantinoScreenProp
                       if (capSuggestions.length) {
                         const s = capSuggestions[0];
                         setCityInput(`${s.n} (${s.p})`);
+                        setPickedComune(s);
                         setCapSuggestions([]);
                         const z = resolveCap(capInput) ?? resolveCity(s.n);
                         if (z) applyZone(z);
@@ -479,6 +600,7 @@ export default function VolantinoScreen({ module, onClose }: VolantinoScreenProp
                         onClick={() => {
                           setCapInput(s.c);
                           setCityInput(`${s.n} (${s.p})`);
+                          setPickedComune(s);
                           setCapSuggestions([]);
                           const z = resolveCap(s.c) ?? resolveCity(s.n);
                           if (z) applyZone(z);
@@ -539,7 +661,7 @@ export default function VolantinoScreen({ module, onClose }: VolantinoScreenProp
           <MapPin className="w-4 h-4 text-emerald-500 shrink-0" />
           <div className="flex-1 min-w-0">
             <p className="text-xs font-bold text-[var(--text-main)]">
-              {cityLabel ? `Volantini per ${cityLabel}` : zone && zone.kind !== 'all' ? `Volantini per ${zone.label}` : 'Volantini per tutta Italia'}
+              {zone && zone.cap ? `Volantini per ${zone.label}` : cityLabel ? `Volantini per ${cityLabel}` : zone && zone.kind !== 'all' ? `Volantini per ${zone.label}` : 'Volantini per tutta Italia'}
               {!cityLabel && zone && zone.kind !== 'all' ? ' · nazionali' : ''}
             </p>
             <p className="text-[10px] text-[var(--text-muted)] font-medium">
@@ -577,17 +699,47 @@ export default function VolantinoScreen({ module, onClose }: VolantinoScreenProp
           ))}
         </div>
 
+        {/* ── Ricerca supermercato ── */}
+        <div className="relative">
+          <Search className="w-4 h-4 text-[var(--text-muted)] absolute left-4 top-1/2 -translate-y-1/2" />
+          <input
+            value={flyerQuery}
+            onChange={e => setFlyerQuery(e.target.value)}
+            placeholder="Cerca il volantino di un supermercato (es. Esselunga, Lidl, Trony…)"
+            className="w-full pl-11 pr-10 py-3 rounded-2xl bg-[var(--card-bg)] border border-[var(--border)] text-[var(--text-main)] font-semibold text-sm outline-none focus:border-emerald-500/60 transition-colors"
+          />
+          {flyerQuery && (
+            <button
+              onClick={() => setFlyerQuery('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors"
+              title="Cancella"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+
+        {flyerQuery && (
+          <p className="text-[11px] text-[var(--text-muted)] font-medium">
+            {shownCards.length === 0
+              ? `Nessun volantino per "${flyerQuery}" in ${cityLabel || 'tutta Italia'}`
+              : `${shownCards.length} volantini per "${flyerQuery}" (in tutte le categorie)`}
+          </p>
+        )}
+
         {/* ── Volantini della categoria ── */}
-        {cards.length === 0 ? (
+        {shownCards.length === 0 ? (
           <div className="py-16 text-center">
             <Store className="w-10 h-10 text-[var(--text-muted)] mx-auto mb-3 opacity-40" />
             <p className="text-sm font-semibold text-[var(--text-muted)]">
-              Nessun volantino in questa categoria per {cityLabel || 'la tua zona'}.
+              {flyerQuery
+                ? `Nessun volantino trovato per "${flyerQuery}".`
+                : `Nessun volantino in questa categoria per ${cityLabel || 'la tua zona'}.`}
             </p>
           </div>
         ) : (
           <div className="grid grid-cols-3 gap-3">
-            {cards.map(c => (
+            {shownCards.map(c => (
               <button
                 key={c.fid}
                 onClick={() => openFlyer(c)}
@@ -734,7 +886,7 @@ export default function VolantinoScreen({ module, onClose }: VolantinoScreenProp
 
         <p className="text-[11px] text-[var(--text-muted)] font-medium">
           {groups.length === OFFER_GROUPS.length
-            ? `${OFFER_GROUPS.length} articoli confrontati · il prezzo migliore è evidenziato in verde`
+            ? `${OFFER_GROUPS.length} articoli confrontati · tocca il prezzo migliore per vederlo nel volantino`
             : `${groups.length} risultati per "${statsQuery}"`}
         </p>
 
@@ -766,10 +918,15 @@ export default function VolantinoScreen({ module, onClose }: VolantinoScreenProp
                   {g.o.map((e, i) => {
                     const isBest = g.o.length > 1 && e === b;
                     return (
-                      <div
+                      <button
                         key={`${e.s}-${i}`}
-                        className={`flex items-center gap-3 px-2.5 py-2 rounded-2xl ${
-                          isBest ? 'bg-emerald-500/10 ring-1 ring-emerald-500/25' : ''
+                        onClick={() => openOfferPage(e.fid, e.pg)}
+                        disabled={!isBest}
+                        title={isBest ? 'Apri il volantino alla pagina dell\'offerta' : undefined}
+                        className={`w-full flex items-center gap-3 px-2.5 py-2 rounded-2xl text-left transition-colors ${
+                          isBest
+                            ? 'bg-emerald-500/10 ring-1 ring-emerald-500/25 hover:bg-emerald-500/15 active:bg-emerald-500/20'
+                            : 'cursor-default'
                         }`}
                       >
                         <span className={`shrink-0 w-2 h-2 rounded-full ${isBest ? 'bg-emerald-500' : 'bg-[var(--border)]'}`} />
@@ -786,7 +943,8 @@ export default function VolantinoScreen({ module, onClose }: VolantinoScreenProp
                             {unitPrice(e).toFixed(2).replace('.', ',')} {fmtUnit(e.u)}
                           </p>
                         </div>
-                      </div>
+                        {isBest && <Store className="w-4 h-4 text-emerald-500 shrink-0" />}
+                      </button>
                     );
                   })}
                 </div>

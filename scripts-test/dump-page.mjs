@@ -1,0 +1,16 @@
+import puppeteer from 'puppeteer';
+const browser = await puppeteer.launch({ headless: 'new', args: ['--no-sandbox', '--ignore-certificate-errors', '--allow-insecure-localhost'], ignoreHTTPSErrors: true });
+const page = await browser.newPage();
+await page.setViewport({ width: 420, height: 900 });
+page.on('pageerror', e => console.log('PAGE-ERR:', e.message));
+await page.goto(process.argv[2], { waitUntil: 'networkidle0', timeout: 60000 });
+await page.evaluate(() => localStorage.clear());
+await page.reload({ waitUntil: 'networkidle0', timeout: 60000 });
+await new Promise(r => setTimeout(r, 2500));
+const text = await page.evaluate(() => document.body.innerText.slice(0, 1500));
+console.log('--- PAGE TEXT ---');
+console.log(text);
+const btns = await page.evaluate(() => [...document.querySelectorAll('button')].map(b => (b.textContent||'').trim().slice(0,40)));
+console.log('--- BUTTONS ---');
+console.log(JSON.stringify(btns, null, 1));
+await browser.close();
