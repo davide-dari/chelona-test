@@ -111,12 +111,41 @@ export const CAP_RANGES: CapRange[] = [
   [98010, 98100, 'Sicilia', 'Messina'],
 ];
 
+/** Sigla provincia per capoluogo (per il fallback dovecoviene). */
+const PROVINCE_SIGLA: Record<string, string> = {
+  'Roma': 'RM', 'Viterbo': 'VT', 'Rieti': 'RI', 'Frosinone': 'FR', 'Latina': 'LT',
+  'Terni': 'TR', 'Perugia': 'PG', 'Sassari': 'SS', 'Nuoro': 'NU', 'Cagliari': 'CA',
+  'Oristano': 'OR', 'Sud Sardegna': 'SU', 'Torino': 'TO', 'Aosta': 'AO', 'Cuneo': 'CN',
+  'Vercelli': 'VC', 'Biella': 'BI', 'Asti': 'AT', 'Alessandria': 'AL', 'Genova': 'GE',
+  'Savona': 'SV', 'Imperia': 'IM', 'La Spezia': 'SP', 'Milano': 'MI', 'Monza': 'MB',
+  'Varese': 'VA', 'Como': 'CO', 'Sondrio': 'SO', 'Lecco': 'LC', 'Bergamo': 'BG',
+  'Brescia': 'BS', 'Cremona': 'CR', 'Lodi': 'LO', 'Pavia': 'PV', 'Novara': 'NO',
+  'Verbania': 'VB', 'Piacenza': 'PC', 'Venezia': 'VE', 'Treviso': 'TV', 'Belluno': 'BL',
+  'Udine': 'UD', 'Trieste': 'TS', 'Padova': 'PD', 'Vicenza': 'VI', 'Verona': 'VR',
+  'Trento': 'TN', 'Bolzano': 'BZ', 'Bologna': 'BO', 'Modena': 'MO', 'Reggio Emilia': 'RE',
+  'Parma': 'PR', 'Ferrara': 'FE', 'Rovigo': 'RO', 'Mantova': 'MN', 'Forlì': 'FC',
+  'Rimini': 'RN', 'Ravenna': 'RA', 'Firenze': 'FI', 'Pistoia': 'PT', 'Arezzo': 'AR',
+  'Siena': 'SI', 'Massa': 'MS', 'Lucca': 'LU', 'Pisa': 'PI', 'Livorno': 'LI',
+  'Grosseto': 'GR', 'Prato': 'PO', 'Ancona': 'AN', 'Pesaro': 'PU', 'Macerata': 'MC',
+  'Ascoli Piceno': 'AP', 'Fermo': 'FM', 'Teramo': 'TE', 'Pescara': 'PE', 'Chieti': 'CH',
+  "L'Aquila": 'AQ', 'Bari': 'BA', 'Foggia': 'FG', 'Brindisi': 'BR', 'Lecce': 'LE',
+  'Taranto': 'TA', 'Matera': 'MT', 'Barletta': 'BT', 'Andria': 'BT', 'Trani': 'BT',
+  'Potenza': 'PZ', 'Salerno': 'SA', 'Avellino': 'AV', 'Benevento': 'BN', 'Caserta': 'CE',
+  'Napoli': 'NA', 'Campobasso': 'CB', 'Isernia': 'IS', 'Catanzaro': 'CZ', 'Cosenza': 'CS',
+  'Crotone': 'KR', 'Vibo Valentia': 'VV', 'Catanzaro Lido': 'CZ', 'Reggio Calabria': 'RC',
+  'Agrigento': 'AG', 'Caltanissetta': 'CL', 'Catania': 'CT', 'Enna': 'EN', 'Messina': 'ME',
+  'Palermo': 'PA', 'Ragusa': 'RG', 'Siracusa': 'SR', 'Trapani': 'TP',
+};
+
 /** Regione per CAP (5 cifre), con città principale per l'etichetta. */
-export function capToRegion(cap: string): { region: string; city?: string } | null {
+export function capToRegion(cap: string): { region: string; city?: string; sigla?: string } | null {
   if (!/^\d{5}$/.test(cap)) return null;
   const n = parseInt(cap, 10);
   for (const [min, max, region, city] of CAP_RANGES) {
-    if (n >= min && n <= max) return { region, city };
+    if (n >= min && n <= max) {
+      const sigla = city ? PROVINCE_SIGLA[city] : undefined;
+      return { region, city, sigla };
+    }
   }
   return null;
 }

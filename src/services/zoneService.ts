@@ -5,8 +5,7 @@
 import { Capacitor, CapacitorHttp } from '@capacitor/core';
 import { Geolocation } from '@capacitor/geolocation';
 import { capToRegion } from '../data/capRegions';
-import { CITY_REGIONS, ITALIAN_REGIONS } from '../data/italianSupermarkets';
-import type { VolantinoFlyer } from '../data/volantiniDb';
+import { ITALIAN_REGIONS } from '../data/italianSupermarkets';
 import { COMUNI, PROVINCE_REGIONS } from '../data/comuni';
 
 export interface VolantiniZone {
@@ -14,6 +13,8 @@ export interface VolantiniZone {
   region?: string;
   city?: string;
   cap?: string;
+  /** Sigla provincia (es. "MI") */
+  provincia?: string;
   /** Etichetta compatta da mostrare nell'UI (es. "20100 · Milano") */
   label: string;
 }
@@ -44,6 +45,7 @@ export function resolveCap(cap: string): VolantiniZone | null {
     cap: c,
     region: hit.region,
     city: hit.city,
+    provincia: hit.sigla,
     label: hit.city ? `${c} · ${hit.city}` : `${c} · ${hit.region}`,
   };
 }
@@ -75,6 +77,7 @@ export function resolveCity(name: string): VolantiniZone | null {
     cap: best.c,
     region,
     city: best.n,
+    provincia: best.p,
     label: `${best.n} · ${region}`,
   };
 }
@@ -158,119 +161,3 @@ export async function resolveGps(): Promise<VolantiniZone | null> {
 }
 
 export const ALL_ITALY_ZONE: VolantiniZone = { kind: 'all', label: 'Tutta Italia' };
-
-/* ═══════════════════════════════════════════════════════════════════
-   Matching regionale dei volantini (dal titolo/sottotitolo)
-   ═══════════════════════════════════════════════════════════════════ */
-
-const deaccent = (s: string) =>
-  s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-
-/** Regex con \b per trovare una parola/frase (spazi/trattini flessibili). */
-const SEP = String.raw`[\s\-']+`;
-const word = (k: string) =>
-  new RegExp(String.raw`\b` + deaccent(k).replace(/[\s\-']+/g, SEP) + String.raw`\b`);
-
-/* Indice città→regione costruito una sola volta dal dataset comuni. */
-let cityIndex: Map<string, string> | null = null;
-let cityRegex: RegExp | null = null;
-function getCityIndex(): { map: Map<string, string>; re: RegExp } {
-  if (cityIndex && cityRegex) return { map: cityIndex, re: cityRegex };
-  cityIndex = new Map();
-  for (const c of COMUNI) {
-    const cn = deaccent(c.n).replace(/[^a-z0-9]+/g, ' ').replace(/\s+/g, ' ').trim();
-    if (cn.length < 3) continue;
-    const region = PROVINCE_REGIONS[c.p];
-    if (!region) continue;
-    // ignora nomi troppo generici (anche se comuni): es. "rocca", "monte"
-    if (cn.length < 4 && cn.includes(' ')) continue;
-    if (!cityIndex.has(cn)) cityIndex.set(cn, region);
-  }
-  // regex alternata: nomi ordinati per lunghezza descrescente, boundaries \b
-  const keys = [...cityIndex.keys()].sort((a, b) => b.length - a.length);
-  const esc = (k: string) => k.split(' ').join(String.raw`[\s\-']+`);
-  const maxLen = 80;
-  const parts = keys.filter(k => k.length <= maxLen).map(esc);
-  cityRegex = new RegExp(String.raw`\b(?:${parts.join('|')})\b`, 'i');
-  return { map: cityIndex, re: cityRegex };
-}
-
-/** Macro-aree italiane → regioni. */
-const MACRO_REGIONS: Record<string, string[]> = {
-  'nordest': ['Veneto', 'Friuli-Venezia Giulia', 'Trentino-Alto Adige', 'Emilia-Romagna'],
-  'nordovest': ['Piemonte', "Valle d'Aosta", 'Lombardia', 'Liguria'],
-  'norditalia': ['Piemonte', "Valle d'Aosta", 'Lombardia', 'Liguria', 'Trentino-Alto Adige', 'Veneto', 'Friuli-Venezia Giulia', 'Emilia-Romagna'],
-  'centronord': ['Emilia-Romagna', 'Toscana', 'Umbria', 'Marche', 'Lazio', 'Liguria'],
-  'suditalia': ['Abruzzo', 'Molise', 'Campania', 'Puglia', 'Basilicata', 'Calabria', 'Sicilia'],
-  'sud': ['Abruzzo', 'Molise', 'Campania', 'Puglia', 'Basilicata', 'Calabria', 'Sicilia'],
-  'isole': ['Sicilia', 'Sardegna'],
-  'centroitalia': ['Toscana', 'Umbria', 'Marche', 'Lazio'],
-  'centro': ['Toscana', 'Umbria', 'Marche', 'Lazio'],
-};
-
-/** Nomi brevi / varianti di regioni → regione canonica. */
-const REGION_ALIASES: Record<string, string> = {
-  'emilia': 'Emilia-Romagna',
-  'romagna': 'Emilia-Romagna',
-  'trentino': 'Trentino-Alto Adige',
-  'altoadige': 'Trentino-Alto Adige',
-  'sudtirol': 'Trentino-Alto Adige',
-  'friuli': 'Friuli-Venezia Giulia',
-  'aosta': "Valle d'Aosta",
-};
-
-/** Regioni a cui si riferisce il volantino (dal testo). null = nazionale/ovunque. */
-export function flyerRegions(flyer: VolantinoFlyer): Set<string> | null {
-  return textRegions(`${flyer.title} ${flyer.subtitle ?? ''}`);
-}
-
-/**
- * Regioni a cui si riferisce un testo libero (nome volantino tuttiprezzi,
- * es. "ROMA- BUFALOTTA", "COOP Distribuzione Roma-UNICOOP ETRURIA").
- * null = nazionale/ovunque.
- */
-export function textRegions(text: string): Set<string> | null {
-  const t = deaccent(text);
-  const regions = new Set<string>();
-  const addRegion = (r: string) => regions.add(r);
-
-  for (const r of ITALIAN_REGIONS) {
-    if (word(r).test(t)) addRegion(r);
-  }
-  for (const [city, region] of Object.entries(CITY_REGIONS)) {
-    if (word(city).test(t)) addRegion(region);
-  }
-  for (const [macro, rs] of Object.entries(MACRO_REGIONS)) {
-    if (word(macro).test(t)) rs.forEach(addRegion);
-  }
-  for (const [alias, region] of Object.entries(REGION_ALIASES)) {
-    if (word(alias).test(t)) addRegion(region);
-  }
-  // Città dal dataset comuni (indice compilato una volta, regex alternata)
-  const { map, re } = getCityIndex();
-  const hits = t.match(re);
-  if (hits) {
-    for (const hit of hits) {
-      const key = deaccent(hit).replace(/[^a-z0-9]+/g, ' ').replace(/\s+/g, ' ').trim();
-      const region = map.get(key);
-      if (region) addRegion(region);
-    }
-  }
-  return regions.size > 0 ? regions : null;
-}
-
-/** Il testo è rilevante per la zona dell'utente? (volantini tuttiprezzi) */
-export function textMatchesZone(zone: VolantiniZone | null, text: string): boolean {
-  if (!zone || zone.kind === 'all' || !zone.region) return true;
-  const regions = textRegions(text);
-  if (!regions) return true; // nazionale
-  return regions.has(zone.region);
-}
-
-/** Il volantino è rilevante per la zona dell'utente? */
-export function flyerMatchesZone(zone: VolantiniZone | null, flyer: VolantinoFlyer): boolean {
-  if (!zone || zone.kind === 'all' || !zone.region) return true;
-  const regions = flyerRegions(flyer);
-  if (!regions) return true; // nazionale
-  return regions.has(zone.region);
-}

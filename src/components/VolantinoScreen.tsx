@@ -1,56 +1,72 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
-  ArrowLeft, RefreshCw, Globe, ExternalLink, Loader2, CalendarDays,
-  ChevronRight, Store, Sparkles, BookOpen, MapPin, Crosshair, X
+  ArrowLeft, ExternalLink, Loader2, MapPin, Crosshair, X, ChevronRight,
+  CalendarDays, Store
 } from 'lucide-react';
 import { Capacitor } from '@capacitor/core';
 import { VolantinoModule } from '../types';
-import { logoFor } from '../data/supermarketLogos';
 import { StoreLogo } from './StoreLogo';
-import { supermarketById } from '../data/italianSupermarkets';
 import { brandImageUrl } from '../data/brandImages';
-import type { VolantiniDb, VolantinoChain, VolantinoFlyer } from '../data/volantiniDb';
-import {
-  getVolantiniDb, refreshVolantini, ensureBkcode,
-  volantinoViewerUrl, volantinoNodeUrl, formatValidity
-} from '../services/centrovolantini';
-import {
-  ALL_ITALY_ZONE, flyerMatchesZone, loadZone, resolveCap, resolveCity, resolveGps, saveZone,
-  textMatchesZone,
-  type VolantiniZone
-} from '../services/zoneService';
+import { ALL_ITALY_ZONE, loadZone, resolveCap, resolveCity, resolveGps, saveZone, type VolantiniZone } from '../services/zoneService';
 import { searchComuni, comuniByCap, findComune } from '../services/comuniService';
-import { TP_BROKEN_LOGOS, TP_CATEGORIES, TP_SHOPS, tpLogoUrl, tpPageUrl } from '../data/tuttiprezziDb';
-import type { TpCategory, TpFlyer, TpShop } from '../data/tuttiprezziDb';
+import {
+  DC_CATEGORIES, DC_CITY_SLUGS, DC_FLYERS, DC_CITY_FLYERS,
+  dcCoverUrl, dcLogoUrl, dcPageUrl,
+  type DcFlyer
+} from '../data/doveconvieneDb';
+import { DC_COMUNE_SLUG, DC_CAPOLUOGO_SLUG } from '../data/dcCityMap';
 
 interface VolantinoScreenProps {
   module: VolantinoModule;
   onClose: () => void;
 }
 
-type ViewMode = 'home' | 'chain' | 'flyer' | 'tp-chain' | 'tp-flyer';
+type ViewMode = 'home' | 'flyer';
 
-const fmtUpdated = (iso?: string) => {
-  if (!iso) return null;
-  const d = new Date(iso);
-  if (isNaN(d.getTime())) return null;
-  return d.toLocaleDateString('it-IT', { day: 'numeric', month: 'short', year: 'numeric' });
+interface DcCard {
+  fid: string;
+  dist: number; // metri
+  flyer: DcFlyer;
+}
+
+const fmtDist = (m: number) => {
+  if (m <= 0) return '';
+  if (m < 1000) return `${m} m`;
+  return `${(m / 1000).toFixed(1).replace('.', ',')} km`;
 };
 
-const flyerDisplayTitle = (f: VolantinoFlyer, chain: VolantinoChain) =>
-  f.title && f.title !== 'Volantino' ? f.title : chain.name;
+/* Slug dovecoviene della città dell'utente (fallback: capoluogo provincia, poi nazionale) */
+const dcSlugForZone = (zone: VolantiniZone | null): string => {
+  if (!zone || zone.kind === 'all') return '';
+  const city = zone.city ?? '';
+  if (!city) return '';
+  if (DC_COMUNE_SLUG[city]) return DC_COMUNE_SLUG[city];
+  const sigla = zone.provincia;
+  if (sigla && DC_CAPOLUOGO_SLUG[sigla]) return DC_CAPOLUOGO_SLUG[sigla];
+  const comune = findComune(city);
+  if (comune) {
+    if (DC_COMUNE_SLUG[comune.n]) return DC_COMUNE_SLUG[comune.n];
+    if (DC_CAPOLUOGO_SLUG[comune.p]) return DC_CAPOLUOGO_SLUG[comune.p];
+  }
+  return '';
+};
+
+const parseCards = (s: string): DcCard[] => {
+  const out: DcCard[] = [];
+  for (const part of s.split(',')) {
+    if (!part) continue;
+    const [fid, dist] = part.split(':');
+    const flyer = DC_FLYERS[fid];
+    if (!flyer) continue;
+    out.push({ fid, dist: parseInt(dist || '0', 10) || 0, flyer });
+  }
+  return out;
+};
 
 export default function VolantinoScreen({ module, onClose }: VolantinoScreenProps) {
   const [view, setView] = useState<ViewMode>('home');
-  const [db, setDb] = useState<VolantiniDb>(() => getVolantiniDb());
-  const [chainSlug, setChainSlug] = useState<string | null>(null);
-  const [activeFlyer, setActiveFlyer] = useState<VolantinoFlyer | null>(null);
-  const [viewerUrl, setViewerUrl] = useState<string | null>(null);
-  const [resolving, setResolving] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
-  const [failedCovers, setFailedCovers] = useState<Set<number>>(new Set());
-  const refreshDone = useRef(false);
+  const [activeFlyer, setActiveFlyer] = useState<{ fid: string; flyer: DcFlyer } | null>(null);
 
   /* ── Zona dell'utente ── */
   const [zone, setZone] = useState<VolantiniZone | null>(() => loadZone());
@@ -62,10 +78,8 @@ export default function VolantinoScreen({ module, onClose }: VolantinoScreenProp
   const [zoneBusy, setZoneBusy] = useState<'gps' | null>(null);
   const [zoneError, setZoneError] = useState<string | null>(null);
 
-  /* ── TuttiPrezzi ── */
-  const [tpCat, setTpCat] = useState<TpCategory>('supermercati');
-  const [tpShopSlug, setTpShopSlug] = useState<string | null>(null);
-  const [tpFlyer, setTpFlyer] = useState<{ shop: TpShop; flyer: TpFlyer } | null>(null);
+  /* ── Categoria selezionata ── */
+  const [cat, setCat] = useState<string>('iper-e-super');
 
   const applyZone = (z: VolantiniZone) => {
     setZone(z);
@@ -118,99 +132,37 @@ export default function VolantinoScreen({ module, onClose }: VolantinoScreenProp
     applyZone(z);
   };
 
-  const coverFailed = (id: number) => failedCovers.has(id);
-  const markCoverFailed = (id: number) =>
-    setFailedCovers(prev => (prev.has(id) ? prev : new Set(prev).add(id)));
+  /* ── Volantini per la città selezionata ── */
+  const dcSlug = useMemo(() => dcSlugForZone(zone), [zone]);
 
-  const allChains = useMemo(() => db.chains.filter(c => c.flyers.length > 0), [db]);
+  const cards = useMemo(() => {
+    const data = dcSlug && DC_CITY_FLYERS[dcSlug] ? DC_CITY_FLYERS[dcSlug] : DC_CITY_FLYERS['--nazionale--'];
+    const list = parseCards(data[cat] ?? '');
+    return list.sort((a, b) => a.dist - b.dist || (parseInt(a.fid) - parseInt(b.fid)));
+  }, [dcSlug, cat]);
 
-  /* Catene con almeno un volantino rilevante per la zona */
-  const chains = useMemo(() => {
-    if (!zone || zone.kind === 'all') return allChains;
-    return allChains
-      .map(c => ({ ...c, flyers: c.flyers.filter(f => flyerMatchesZone(zone, f)) }))
-      .filter(c => c.flyers.length > 0);
-  }, [allChains, zone]);
+  const cityLabel = useMemo(() => {
+    if (dcSlug && DC_CITY_SLUGS[dcSlug]) return DC_CITY_SLUGS[dcSlug];
+    return '';
+  }, [dcSlug]);
 
-  const chain = chainSlug ? chains.find(c => c.slug === chainSlug) : undefined;
+  const catCount = useMemo(() => {
+    const data = dcSlug && DC_CITY_FLYERS[dcSlug] ? DC_CITY_FLYERS[dcSlug] : DC_CITY_FLYERS['--nazionale--'];
+    let n = 0;
+    for (const c of DC_CATEGORIES) n += parseCards(data[c.slug] ?? '').length;
+    return n;
+  }, [dcSlug]);
 
-  /* Novità: volantini rilevanti ordinati dal più recente (node id desc) */
-  const novita = useMemo(() => {
-    const flat = chains.flatMap(c => c.flyers.map(f => ({ c, f })));
-    return flat.sort((a, b) => b.f.id - a.f.id).slice(0, 60);
-  }, [chains]);
-
-  /* Refresh automatico all'apertura (solo nativo: su web CORS fallisce in silenzio) */
-  useEffect(() => {
-    if (refreshDone.current) return;
-    refreshDone.current = true;
-    let cancelled = false;
-    const t = setTimeout(async () => {
-      if (!Capacitor.isNativePlatform()) return;
-      const fresh = await refreshVolantini();
-      if (!cancelled) setDb(fresh);
-    }, 800);
-    return () => { cancelled = true; clearTimeout(t); };
-  }, []);
-
-  const doRefresh = async () => {
-    setRefreshing(true);
-    const fresh = await refreshVolantini();
-    setDb(fresh);
-    setRefreshing(false);
-  };
-
-  const openChain = (slug: string) => {
-    setChainSlug(slug);
-    setView('chain');
-  };
-
-  /* ── Navigazione TuttiPrezzi ── */
-  const tpShops = useMemo(() => {
-    const byCat = TP_SHOPS.filter(s => s.cat === tpCat && s.flyers.length > 0);
-    if (!zone || zone.kind === 'all') return byCat;
-    return byCat
-      .map(s => ({
-        ...s,
-        flyers: s.flyers.filter(f => textMatchesZone(zone, `${f.nome} ${s.name}`)),
-      }))
-      .filter(s => s.flyers.length > 0);
-  }, [tpCat, zone]);
-
-  const tpShop = tpShopSlug ? TP_SHOPS.find(s => s.slug === tpShopSlug) : undefined;
-
-  const openTpShop = (slug: string) => {
-    setTpShopSlug(slug);
-    setView('tp-chain');
-  };
-
-  const openTpFlyer = (shop: TpShop, flyer: TpFlyer) => {
-    setTpFlyer({ shop, flyer });
-    setView('tp-flyer');
-  };
-
-  const openFlyer = async (flyer: VolantinoFlyer, slug?: string) => {
-    if (slug) setChainSlug(slug);
-    setActiveFlyer(flyer);
-    setViewerUrl(null);
-    setResolving(true);
+  const openFlyer = (card: DcCard) => {
+    setActiveFlyer({ fid: card.fid, flyer: card.flyer });
     setView('flyer');
-    if (flyer.bkcode) {
-      setViewerUrl(volantinoViewerUrl(flyer));
-      setResolving(false);
-      return;
-    }
-    const updated = await ensureBkcode(flyer);
-    if (updated.bkcode) setViewerUrl(volantinoViewerUrl(updated));
-    setResolving(false);
   };
 
   const goBack = () => {
-    if (view === 'chain') { setChainSlug(null); setView('home'); }
-    else if (view === 'flyer') { setActiveFlyer(null); setViewerUrl(null); setView(chain ? 'chain' : 'home'); }
-    else if (view === 'tp-chain') { setTpShopSlug(null); setView('home'); }
-    else if (view === 'tp-flyer') { setTpFlyer(null); setView('tp-chain'); }
-    else onClose();
+    if (view === 'flyer') {
+      setActiveFlyer(null);
+      setView('home');
+    } else onClose();
   };
 
   const openInSystem = (url: string) => {
@@ -219,24 +171,12 @@ export default function VolantinoScreen({ module, onClose }: VolantinoScreenProp
     else window.open(url, '_blank');
   };
 
-  const officialSite = chain && chain.logoId ? supermarketById(chain.logoId) : undefined;
-  const officialUrl = officialSite?.flyerUrl || officialSite?.website;
-
-  const headerTitle = () => {
-    if (view === 'chain' && chain) return chain.name;
-    if (view === 'flyer' && activeFlyer && chain) return flyerDisplayTitle(activeFlyer, chain);
-    if (view === 'tp-chain' && tpShop) return tpShop.name;
-    if (view === 'tp-flyer' && tpFlyer) return tpFlyer.flyer.nome || tpFlyer.shop.name;
-    return module.title || 'Volantini & Offerte';
-  };
-
   const headerSubtitle = () => {
-    if (view === 'flyer' && activeFlyer) return formatValidity(activeFlyer) ?? 'Sfoglia il volantino';
-    if (view === 'chain' && chain) return `${chain.flyers.length} volantini disponibili`;
-    if (view === 'tp-chain' && tpShop) return `${tpShop.flyers.length} volantini disponibili`;
-    if (view === 'tp-flyer' && tpFlyer) return `${tpFlyer.flyer.pages.length} pagine · scorri per sfogliare`;
-    const updated = fmtUpdated(db.updatedAt);
-    return `${chains.length} catene · ${novita.length} volantini · ${zone?.label ?? 'Tutta Italia'}${updated ? ` · agg. ${updated}` : ''}`;
+    if (view === 'flyer' && activeFlyer) {
+      return `${activeFlyer.flyer.n} · ${activeFlyer.flyer.p.length} pagine · scorri per sfogliare`;
+    }
+    const base = cityLabel ? `${cityLabel} · ${cards.length} volantini` : `${cards.length} volantini · tutta Italia`;
+    return `${base} · ${DC_CATEGORIES.find(c => c.slug === cat)?.name ?? ''}`;
   };
 
   return (
@@ -255,20 +195,17 @@ export default function VolantinoScreen({ module, onClose }: VolantinoScreenProp
         </button>
         <div className="flex-1 min-w-0 text-center">
           <h1 className="text-lg font-black text-[var(--text-main)] truncate flex items-center justify-center gap-2">
-            {view === 'chain' && chain ? (
-              <StoreLogo id={chain.logoId ?? chain.slug} short={chain.name.slice(0, 2)} logo={chain.logoId ? logoFor(chain.logoId) : undefined} brandSlug={chain.slug} size={24} />
-            ) : view === 'flyer' && chain ? (
-              <StoreLogo id={chain.logoId ?? chain.slug} short={chain.name.slice(0, 2)} logo={chain.logoId ? logoFor(chain.logoId) : undefined} brandSlug={chain.slug} size={24} />
-            ) : (view === 'tp-chain' && tpShop) || (view === 'tp-flyer' && tpFlyer) ? (
-              TP_BROKEN_LOGOS.has((tpShop ?? tpFlyer!.shop).slug) ? (
-                <StoreLogo id={(tpShop ?? tpFlyer!.shop).slug} short={(tpShop ?? tpFlyer!.shop).name.slice(0, 2)} brandSlug={(tpShop ?? tpFlyer!.shop).slug} size={24} />
-              ) : (
-                <img src={tpLogoUrl((tpShop ?? tpFlyer!.shop).slug)} alt={(tpShop ?? tpFlyer!.shop).name} onError={e => { e.currentTarget.style.display = 'none'; }} className="w-6 h-6 rounded-md object-contain bg-white ring-1 ring-[var(--border)]" />
-              )
+            {view === 'flyer' && activeFlyer ? (
+              <img
+                src={dcLogoUrl(activeFlyer.flyer.s)}
+                alt={activeFlyer.flyer.n}
+                onError={e => { e.currentTarget.style.display = 'none'; }}
+                className="w-6 h-6 rounded-md object-contain bg-white ring-1 ring-[var(--border)]"
+              />
             ) : (
-              <Sparkles className="w-5 h-5 text-amber-500 shrink-0" />
+              <Store className="w-5 h-5 text-emerald-500 shrink-0" />
             )}
-            {headerTitle()}
+            {view === 'flyer' && activeFlyer ? activeFlyer.flyer.n : (module.title || 'Volantini & Offerte')}
           </h1>
           <p className="text-[11px] text-[var(--text-muted)] font-medium truncate">{headerSubtitle()}</p>
         </div>
@@ -282,28 +219,12 @@ export default function VolantinoScreen({ module, onClose }: VolantinoScreenProp
               <MapPin className="w-5 h-5" />
             </button>
           )}
-          {view === 'home' && (
-            <button
-              onClick={doRefresh}
-              disabled={refreshing}
-              className="p-2.5 rounded-2xl bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 transition-colors disabled:opacity-50"
-              title="Aggiorna volantini"
-            >
-              <RefreshCw className={`w-5 h-5 ${refreshing ? 'animate-spin' : ''}`} />
-            </button>
-          )}
-          {(view === 'tp-flyer' || view === 'tp-chain') && tpShop && (
-            <button onClick={() => openInSystem(`https://www.tuttiprezzi.it/${tpShop.slug}.html`)} className="p-2.5 rounded-2xl bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 transition-colors shrink-0" title="Apri sul sito">
-              <ExternalLink className="w-5 h-5" />
-            </button>
-          )}
-          {view === 'chain' && officialUrl && (
-            <button onClick={() => openInSystem(officialUrl)} className="p-2.5 rounded-2xl bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 transition-colors shrink-0" title="Sito ufficiale">
-              <Globe className="w-5 h-5" />
-            </button>
-          )}
           {view === 'flyer' && activeFlyer && (
-            <button onClick={() => openInSystem(volantinoNodeUrl(activeFlyer.id))} className="p-2.5 rounded-2xl bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 transition-colors shrink-0" title="Apri nel browser">
+            <button
+              onClick={() => openInSystem(`https://www.doveconviene.it/${activeFlyer.flyer.s}`)}
+              className="p-2.5 rounded-2xl bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 transition-colors shrink-0"
+              title="Apri sul sito"
+            >
               <ExternalLink className="w-5 h-5" />
             </button>
           )}
@@ -314,10 +235,7 @@ export default function VolantinoScreen({ module, onClose }: VolantinoScreenProp
       <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain custom-scrollbar scroll-smooth pb-[max(env(safe-area-inset-bottom),8px)]">
         <AnimatePresence mode="wait">
           {view === 'home' && <HomeView key="home" />}
-          {view === 'chain' && chain && <ChainView key={chain.slug} />}
-          {view === 'flyer' && activeFlyer && chain && <FlyerView key={`${chain.slug}-${activeFlyer.id}`} />}
-          {view === 'tp-chain' && tpShop && <TpChainView key={tpShop.slug} />}
-          {view === 'tp-flyer' && tpFlyer && <TpFlyerView key={`${tpFlyer.shop.slug}-${tpFlyer.flyer.pages[0] ?? 0}`} />}
+          {view === 'flyer' && activeFlyer && <FlyerView key={activeFlyer.fid} />}
         </AnimatePresence>
       </div>
 
@@ -473,345 +391,156 @@ export default function VolantinoScreen({ module, onClose }: VolantinoScreenProp
   );
 
   /* ═══════════════════════════════════════════════════════════════════
-     VIEW 1: HOME — Novità Volantini + Lista Catene
+     VIEW 1: HOME — categorie + volantini della città
      ═══════════════════════════════════════════════════════════════════ */
   function HomeView() {
     return (
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="px-4 pt-4 pb-8 max-w-2xl mx-auto w-full space-y-6">
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="px-4 pt-4 pb-8 max-w-2xl mx-auto w-full space-y-5">
         {/* ── Banner zona ── */}
-        {zone && zone.kind !== 'all' && (
-          <button
-            onClick={() => setZoneModalOpen(true)}
-            className="w-full flex items-center gap-2.5 p-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/25 text-left transition-colors hover:bg-emerald-500/15"
-          >
-            <MapPin className="w-4 h-4 text-emerald-500 shrink-0" />
-            <div className="flex-1 min-w-0">
-              <p className="text-xs font-bold text-[var(--text-main)]">
-                Volantini per {zone.label}
-              </p>
-              <p className="text-[10px] text-[var(--text-muted)] font-medium">
-                Tocca per cambiare zona
-              </p>
-            </div>
-            <ChevronRight className="w-4 h-4 text-emerald-500 shrink-0" />
-          </button>
-        )}
-
-        {/* ── Novità Volantini ── */}
-        <section>
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-black uppercase tracking-wider text-[var(--text-muted)] flex items-center gap-2">
-              <BookOpen className="w-4 h-4 text-amber-500" />
-              Novità Volantini
-            </h2>
-            <span className="text-[11px] font-semibold text-[var(--text-muted)]">{novita.length} volantini</span>
-          </div>
-          <div className="grid grid-cols-3 gap-3">
-            {novita.map(({ c, f }) => (
-              <button
-                key={f.id}
-                onClick={() => openFlyer(f, c.slug)}
-                className="group relative overflow-hidden rounded-2xl bg-[var(--card-bg)] border border-[var(--border)] aspect-[3/4] focus:outline-none focus:ring-2 focus:ring-amber-500/40 flex flex-col"
-              >
-                <div className="flex-1 min-h-0 flex items-center justify-center p-3">
-                  <div className="flex items-center justify-center w-full h-full rounded-xl bg-white ring-1 ring-[var(--border)] overflow-hidden">
-                    <StoreLogo
-                      id={c.logoId ?? c.slug}
-                      short={c.name.slice(0, 2)}
-                      logo={c.logoId ? logoFor(c.logoId) : undefined}
-                      brandSlug={c.slug}
-                      size={72}
-                    />
-                  </div>
-                </div>
-                <div className="px-2 pb-2.5 pt-1">
-                  <span className="block text-[10px] font-extrabold text-[var(--text-main)] text-center truncate">{c.name}</span>
-                  {f.subtitle && (
-                    <span className="block text-[9px] leading-tight text-[var(--text-muted)] font-medium text-center line-clamp-2 mt-0.5">{f.subtitle}</span>
-                  )}
-                </div>
-              </button>
-            ))}
-          </div>
-        </section>
-
-        {/* ── Lista Catene ── */}
-        <section>
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-black uppercase tracking-wider text-[var(--text-muted)] flex items-center gap-2">
-              <Store className="w-4 h-4 text-emerald-500" />
-              Lista Catene
-            </h2>
-            <span className="text-[11px] font-semibold text-[var(--text-muted)]">{chains.length} insegne</span>
-          </div>
-          <div className="grid grid-cols-4 gap-2.5">
-            {chains.map(c => (
-              <button
-                key={c.slug}
-                onClick={() => openChain(c.slug)}
-                className="flex flex-col items-center gap-1.5 p-2.5 rounded-2xl bg-[var(--card-bg)] border border-[var(--border)] hover:border-amber-500/40 hover:bg-amber-500/5 transition-colors"
-              >
-                <StoreLogo id={c.logoId ?? c.slug} short={c.name.slice(0, 2)} logo={c.logoId ? logoFor(c.logoId) : undefined} size={48} />
-                <span className="text-[10px] font-bold text-[var(--text-main)] text-center leading-tight line-clamp-2">{c.name}</span>
-              </button>
-            ))}
-          </div>
-        </section>
-
-        {/* ── TuttiPrezzi.it ── */}
-        <section>
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-black uppercase tracking-wider text-[var(--text-muted)] flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-amber-500" />
-              Più marchi
-            </h2>
-            <span className="text-[11px] font-semibold text-[var(--text-muted)]">tuttiprezzi.it</span>
-          </div>
-          <div className="flex gap-2 overflow-x-auto custom-scrollbar pb-1 -mx-4 px-4 mb-3">
-            {TP_CATEGORIES.map(c => (
-              <button
-                key={c.key}
-                onClick={() => setTpCat(c.key)}
-                className={`shrink-0 px-3.5 py-2 rounded-full text-xs font-bold transition-colors ${
-                  tpCat === c.key
-                    ? 'bg-amber-500 text-white'
-                    : 'bg-[var(--card-bg)] border border-[var(--border)] text-[var(--text-muted)] hover:text-[var(--text-main)]'
-                }`}
-              >
-                {c.label}
-              </button>
-            ))}
-          </div>
-          <div className="grid grid-cols-4 gap-2.5">
-            {tpShops.map(s => (
-              <button
-                key={s.slug}
-                onClick={() => openTpShop(s.slug)}
-                className="flex flex-col items-center gap-1.5 p-2.5 rounded-2xl bg-[var(--card-bg)] border border-[var(--border)] hover:border-amber-500/40 hover:bg-amber-500/5 transition-colors"
-              >
-                <div className="w-11 h-11 rounded-xl bg-white ring-1 ring-[var(--border)] flex items-center justify-center overflow-hidden">
-                  {TP_BROKEN_LOGOS.has(s.slug) ? (
-                    <StoreLogo id={s.slug} short={s.name.slice(0, 2)} brandSlug={s.slug} size={40} />
-                  ) : (
-                    <img src={tpLogoUrl(s.slug)} alt={s.name} onError={e => { e.currentTarget.style.display = 'none'; }} className="w-9 h-9 object-contain" />
-                  )}
-                </div>
-                <span className="text-[10px] font-bold text-[var(--text-main)] text-center leading-tight line-clamp-2">{s.name}</span>
-              </button>
-            ))}
-          </div>
-        </section>
-      </motion.div>
-    );
-  }
-
-  /* ═══════════════════════════════════════════════════════════════════
-     VIEW 2: CATENA — volantini dell'insegna
-     ═══════════════════════════════════════════════════════════════════ */
-  function ChainView() {
-    if (!chain) return null;
-    const sorted = [...chain.flyers].sort((a, b) => b.id - a.id);
-    return (
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="px-4 pt-4 pb-8 max-w-2xl mx-auto w-full space-y-4">
-        {/* ── Banner catena ── */}
-        <div className="flex items-center gap-4 p-4 rounded-2xl bg-[var(--card-bg)] border border-[var(--border)]">
-          <StoreLogo id={chain.logoId ?? chain.slug} short={chain.name.slice(0, 2)} logo={chain.logoId ? logoFor(chain.logoId) : undefined} brandSlug={chain.slug} size={64} />
+        <button
+          onClick={() => setZoneModalOpen(true)}
+          className="w-full flex items-center gap-2.5 p-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/25 text-left transition-colors hover:bg-emerald-500/15"
+        >
+          <MapPin className="w-4 h-4 text-emerald-500 shrink-0" />
           <div className="flex-1 min-w-0">
-            <h2 className="font-black text-[var(--text-main)] text-lg leading-tight">{chain.name}</h2>
-            <p className="text-xs text-[var(--text-muted)] font-medium mt-0.5">{chain.flyers.length} volantini disponibili</p>
-            {officialUrl && (
-              <button onClick={() => openInSystem(officialUrl)} className="mt-2 inline-flex items-center gap-1.5 text-xs font-bold text-amber-500 hover:text-amber-400 transition-colors">
-                <Globe className="w-3.5 h-3.5" /> Sito ufficiale
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* ── Volantini ── */}
-        <div className="space-y-2.5">
-          {sorted.map(f => {
-            const validity = formatValidity(f);
-            return (
-              <button
-                key={f.id}
-                onClick={() => openFlyer(f)}
-                className="w-full flex items-center gap-3 p-3 rounded-2xl bg-[var(--card-bg)] border border-[var(--border)] hover:border-amber-500/40 hover:bg-amber-500/5 transition-colors text-left"
-              >
-                <div className="relative w-14 h-[4.2rem] shrink-0 rounded-xl overflow-hidden bg-[var(--bg)] border border-[var(--border)]">
-                  {f.coverUrl && !coverFailed(f.id) ? (
-                    <img src={f.coverUrl} alt={flyerDisplayTitle(f, chain)} loading="lazy" onError={() => markCoverFailed(f.id)} className="w-full h-full object-cover" />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center">
-                      <StoreLogo id={chain.logoId ?? chain.slug} short={chain.name.slice(0, 2)} logo={chain.logoId ? logoFor(chain.logoId) : undefined} brandSlug={chain.slug} size={32} />
-                    </div>
-                  )}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-bold text-sm text-[var(--text-main)] truncate">{flyerDisplayTitle(f, chain)}</p>
-                  {f.subtitle && <p className="text-xs text-[var(--text-muted)] font-medium truncate mt-0.5">{f.subtitle}</p>}
-                  {validity && (
-                    <p className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-500 mt-1.5">
-                      <CalendarDays className="w-3 h-3" /> {validity}
-                    </p>
-                  )}
-                </div>
-                <ChevronRight className="w-5 h-5 text-[var(--text-muted)] shrink-0" />
-              </button>
-            );
-          })}
-        </div>
-      </motion.div>
-    );
-  }
-
-  /* ═══════════════════════════════════════════════════════════════════
-     VIEW 3: VOLANTINO — viewer Calameo
-     ═══════════════════════════════════════════════════════════════════ */
-  function FlyerView() {
-    if (!activeFlyer || !chain) return null;
-    const validity = formatValidity(activeFlyer);
-    return (
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex flex-col h-full max-w-2xl mx-auto w-full">
-        {/* ── Copertina ── */}
-        <div className="relative h-44 shrink-0 overflow-hidden">
-          {activeFlyer.coverUrl && !coverFailed(activeFlyer.id) ? (
-            <img src={activeFlyer.coverUrl} alt={flyerDisplayTitle(activeFlyer, chain)} onError={() => markCoverFailed(activeFlyer.id)} className="w-full h-full object-cover" />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-amber-500/20 via-transparent to-emerald-500/10">
-              <StoreLogo id={chain.logoId ?? chain.slug} short={chain.name.slice(0, 2)} logo={chain.logoId ? logoFor(chain.logoId) : undefined} brandSlug={chain.slug} size={72} />
-            </div>
-          )}
-          <div className="absolute inset-0 bg-gradient-to-t from-[var(--bg)] via-transparent to-transparent" />
-          <div className="absolute left-4 bottom-3 right-4 flex items-end gap-3">
-            <StoreLogo id={chain.logoId ?? chain.slug} short={chain.name.slice(0, 2)} logo={chain.logoId ? logoFor(chain.logoId) : undefined} brandSlug={chain.slug} size={36} />
-            <div className="flex-1 min-w-0">
-              <p className="font-black text-[var(--text-main)] text-base leading-tight truncate">{flyerDisplayTitle(activeFlyer, chain)}</p>
-              <p className="text-[11px] text-[var(--text-muted)] font-semibold truncate">{chain.name}{activeFlyer.subtitle ? ` · ${activeFlyer.subtitle}` : ''}</p>
-            </div>
-            {validity && (
-              <span className="shrink-0 inline-flex items-center gap-1 text-[10px] font-bold text-emerald-500 bg-emerald-500/10 rounded-full px-2.5 py-1">
-                <CalendarDays className="w-3 h-3" /> {validity}
-              </span>
-            )}
-          </div>
-        </div>
-
-        {/* ── Viewer ── */}
-        <div className="flex-1 min-h-0 relative">
-          {resolving && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 z-10">
-              <Loader2 className="w-8 h-8 text-amber-500 animate-spin" />
-              <p className="text-sm font-semibold text-[var(--text-muted)]">Caricamento volantino...</p>
-            </div>
-          )}
-          {!resolving && viewerUrl && (
-            <iframe
-              src={viewerUrl}
-              title={flyerDisplayTitle(activeFlyer, chain)}
-              className="w-full h-full border-0 bg-white"
-              allow="fullscreen; autoplay; clipboard-write"
-            />
-          )}
-          {!resolving && !viewerUrl && (
-            <div className="h-full flex flex-col items-center justify-center gap-3 px-8 text-center">
-              <p className="text-sm font-semibold text-[var(--text-muted)]">Anteprima non disponibile</p>
-              <button
-                onClick={() => openInSystem(volantinoNodeUrl(activeFlyer.id))}
-                className="inline-flex items-center gap-2 px-5 py-3 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-xl transition-colors"
-              >
-                <ExternalLink className="w-4 h-4" /> Apri il volantino
-              </button>
-            </div>
-          )}
-        </div>
-      </motion.div>
-    );
-  }
-
-  /* ═══════════════════════════════════════════════════════════════════
-     VIEW 4: TUTTIPREZZI — volantini di un marchio (immagini pagina)
-     ═══════════════════════════════════════════════════════════════════ */
-  function TpChainView() {
-    if (!tpShop) return null;
-    return (
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="px-4 pt-4 pb-8 max-w-2xl mx-auto w-full space-y-4">
-        <div className="flex items-center gap-4 p-4 rounded-2xl bg-[var(--card-bg)] border border-[var(--border)]">
-          <div className="w-16 h-16 rounded-2xl bg-white ring-1 ring-[var(--border)] flex items-center justify-center overflow-hidden shrink-0">
-            {TP_BROKEN_LOGOS.has(tpShop.slug) ? (
-            <StoreLogo id={tpShop.slug} short={tpShop.name.slice(0, 2)} brandSlug={tpShop.slug} size={56} />
-          ) : (
-            <img src={tpLogoUrl(tpShop.slug)} alt={tpShop.name} onError={e => { e.currentTarget.style.display = 'none'; }} className="w-12 h-12 object-contain" />
-          )}
-          </div>
-          <div className="flex-1 min-w-0">
-            <h2 className="font-black text-[var(--text-main)] text-lg leading-tight">{tpShop.name}</h2>
-            <p className="text-xs text-[var(--text-muted)] font-medium mt-0.5">
-              {TP_CATEGORIES.find(c => c.key === tpShop.cat)?.label} · {tpShop.flyers.length} volantini
+            <p className="text-xs font-bold text-[var(--text-main)]">
+              {cityLabel ? `Volantini per ${cityLabel}` : zone && zone.kind !== 'all' ? `Volantini per ${zone.label}` : 'Volantini per tutta Italia'}
+              {!cityLabel && zone && zone.kind !== 'all' ? ' · nazionali' : ''}
+            </p>
+            <p className="text-[10px] text-[var(--text-muted)] font-medium">
+              {catCount} volantini · tocca per cambiare zona
             </p>
           </div>
-        </div>
+          <ChevronRight className="w-4 h-4 text-emerald-500 shrink-0" />
+        </button>
 
-        <div className="space-y-2.5">
-          {tpShop.flyers.map((f, i) => (
+        {/* ── Categorie ── */}
+        <div className="flex gap-2 overflow-x-auto custom-scrollbar pb-1 -mx-4 px-4">
+          {DC_CATEGORIES.map(c => (
             <button
-              key={`${f.dir}-${f.pages[0] ?? i}`}
-              onClick={() => openTpFlyer(tpShop, f)}
-              className="w-full flex items-center gap-3 p-3 rounded-2xl bg-[var(--card-bg)] border border-[var(--border)] hover:border-amber-500/40 hover:bg-amber-500/5 transition-colors text-left"
+              key={c.slug}
+              onClick={() => setCat(c.slug)}
+              className={`shrink-0 px-3.5 py-2 rounded-full text-xs font-bold transition-colors ${
+                cat === c.slug
+                  ? 'bg-emerald-500 text-white'
+                  : 'bg-[var(--card-bg)] border border-[var(--border)] text-[var(--text-muted)] hover:text-[var(--text-main)]'
+              }`}
             >
-              <div className="relative w-14 h-[4.2rem] shrink-0 rounded-xl overflow-hidden bg-[var(--bg)] border border-[var(--border)]">
-                <img
-                  src={tpPageUrl(f.dir, f.pages[0] ?? 1)}
-                  alt={f.nome || tpShop.name}
-                  loading="lazy"
-                  className="w-full h-full object-cover"
-                />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="font-bold text-sm text-[var(--text-main)] truncate">{f.nome || `${tpShop.name} — volantino`}</p>
-                <p className="text-xs text-[var(--text-muted)] font-medium truncate mt-0.5">{f.pages.length} pagine</p>
-              </div>
-              <ChevronRight className="w-5 h-5 text-[var(--text-muted)] shrink-0" />
+              {c.name}
             </button>
           ))}
         </div>
+
+        {/* ── Volantini della categoria ── */}
+        {cards.length === 0 ? (
+          <div className="py-16 text-center">
+            <Store className="w-10 h-10 text-[var(--text-muted)] mx-auto mb-3 opacity-40" />
+            <p className="text-sm font-semibold text-[var(--text-muted)]">
+              Nessun volantino in questa categoria per {cityLabel || 'la tua zona'}.
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-3 gap-3">
+            {cards.map(c => (
+              <button
+                key={c.fid}
+                onClick={() => openFlyer(c)}
+                className="group relative overflow-hidden rounded-2xl bg-[var(--card-bg)] border border-[var(--border)] aspect-[3/4] focus:outline-none focus:ring-2 focus:ring-emerald-500/40 flex flex-col hover:border-emerald-500/40"
+              >
+                <div className="flex-1 min-h-0 relative bg-white">
+                  <img
+                    src={dcCoverUrl(c.fid)}
+                    alt={c.flyer.n}
+                    loading="lazy"
+                    onError={e => {
+                      e.currentTarget.style.display = 'none';
+                      const logo = e.currentTarget.nextElementSibling as HTMLElement | null;
+                      if (logo) logo.style.display = 'flex';
+                    }}
+                    className="w-full h-full object-cover"
+                  />
+                  <div
+                    className="absolute inset-0 items-center justify-center"
+                    style={{ display: 'none' }}
+                  >
+                    <StoreLogo id={c.flyer.s} short={c.flyer.n.slice(0, 2)} brandSlug={c.flyer.s} size={56} />
+                  </div>
+                  {c.dist > 0 && (
+                    <span className="absolute top-1.5 left-1.5 text-[9px] font-bold text-emerald-700 bg-emerald-500/90 rounded-full px-1.5 py-0.5 shadow">
+                      {fmtDist(c.dist)}
+                    </span>
+                  )}
+                </div>
+                <div className="px-2 pb-2 pt-1.5">
+                  <span className="block text-[10px] font-extrabold text-[var(--text-main)] text-center truncate">{c.flyer.n}</span>
+                  <span className="block text-[9px] text-[var(--text-muted)] font-medium text-center mt-0.5">
+                    {c.flyer.p.length} pagine
+                  </span>
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
       </motion.div>
     );
   }
 
   /* ═══════════════════════════════════════════════════════════════════
-     VIEW 5: TUTTIPREZZI — viewer immagini con swipe verticale
+     VIEW 2: VOLANTINO — pagine immagine con swipe verticale
      ═══════════════════════════════════════════════════════════════════ */
-  function TpFlyerView() {
-    if (!tpFlyer) return null;
-    const { shop, flyer } = tpFlyer;
+  function FlyerView() {
+    if (!activeFlyer) return null;
+    const { fid, flyer } = activeFlyer;
     return (
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex flex-col h-full max-w-2xl mx-auto w-full">
-        <div className="px-4 py-3 shrink-0 flex items-center gap-3 border-b border-[var(--border)]">
+        <div className="px-4 py-3 shrink-0 flex items-center gap-3 border-b border-[var(--border)] bg-[var(--card-bg)]">
           <div className="w-10 h-10 rounded-xl bg-white ring-1 ring-[var(--border)] flex items-center justify-center overflow-hidden shrink-0">
-            {TP_BROKEN_LOGOS.has(shop.slug) ? (
-            <StoreLogo id={shop.slug} short={shop.name.slice(0, 2)} brandSlug={shop.slug} size={32} />
-          ) : (
-            <img src={tpLogoUrl(shop.slug)} alt={shop.name} onError={e => { e.currentTarget.style.display = 'none'; }} className="w-8 h-8 object-contain" />
-          )}
+            <img
+              src={dcLogoUrl(flyer.s)}
+              alt={flyer.n}
+              onError={e => { e.currentTarget.style.display = 'none'; }}
+              className="w-8 h-8 object-contain"
+            />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="font-black text-[var(--text-main)] text-sm leading-tight truncate">{flyer.nome || shop.name}</p>
-            <p className="text-[11px] text-[var(--text-muted)] font-semibold truncate">{shop.name} · {flyer.pages.length} pagine</p>
+            <p className="font-black text-[var(--text-main)] text-sm leading-tight truncate">{flyer.n}</p>
+            <p className="text-[11px] text-[var(--text-muted)] font-semibold truncate">
+              {cityLabel || 'Tutta Italia'} · {flyer.p.length} pagine
+            </p>
           </div>
+          {flyer.p.length > 1 && (
+            <span className="shrink-0 inline-flex items-center gap-1 text-[10px] font-bold text-emerald-500 bg-emerald-500/10 rounded-full px-2.5 py-1">
+              <CalendarDays className="w-3 h-3" /> {flyer.p.length} pagine
+            </span>
+          )}
         </div>
         <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain custom-scrollbar bg-white">
-          {flyer.pages.map((p, i) => (
-            <div key={`${p}-${i}`} className="w-full flex justify-center">
-              <img
-                src={tpPageUrl(flyer.dir, p)}
-                alt={`${shop.name} pagina ${i + 1}`}
-                loading={i === 0 ? 'eager' : 'lazy'}
-                onError={e => { e.currentTarget.style.display = 'none'; }}
-                className="w-full h-auto block"
-              />
+          {flyer.p.length === 0 ? (
+            <div className="py-16 text-center">
+              <p className="text-sm font-semibold text-[var(--text-muted)]">Anteprima non disponibile</p>
+              <button
+                onClick={() => openInSystem(`https://www.doveconviene.it/${flyer.s}`)}
+                className="mt-4 inline-flex items-center gap-2 px-5 py-3 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-xl transition-colors"
+              >
+                <ExternalLink className="w-4 h-4" /> Apri sul sito
+              </button>
             </div>
-          ))}
-          <p className="py-4 text-center text-xs font-semibold text-[var(--text-muted)]">Fine del volantino</p>
+          ) : (
+            flyer.p.map((_, i) => (
+              <div key={`${fid}-${i}`} className="w-full flex justify-center">
+                <img
+                  src={dcPageUrl(fid, i, 4)}
+                  alt={`${flyer.n} pagina ${i + 1}`}
+                  loading={i === 0 ? 'eager' : 'lazy'}
+                  onError={e => { e.currentTarget.style.display = 'none'; }}
+                  className="w-full h-auto block"
+                />
+              </div>
+            ))
+          )}
+          {flyer.p.length > 0 && (
+            <p className="py-4 text-center text-xs font-semibold text-[var(--text-muted)]">Fine del volantino</p>
+          )}
         </div>
       </motion.div>
     );
