@@ -468,7 +468,7 @@ export default function App() {
       if (editingGenericModule) { setEditingGenericModule(null); return; }
       if (editingFurnitureModule) { setEditingFurnitureModule(null); return; }
       if (editingSupermarketModule) { setEditingSupermarketModule(null); return; }
-      if (editingVolantinoModule) { setEditingVolantinoModule(null); return; }
+      if (editingVolantinoModule) { window.dispatchEvent(new CustomEvent('volantino-back')); return; }
       if (editingInstallmentsModule) { setEditingInstallmentsModule(null); return; }
       if (editingFitnessModule) { setEditingFitnessModule(null); return; }
       if (editingModuleId) { setEditingModuleId(null); setFormData({}); return; }

@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   ArrowLeft, Loader2, MapPin, Crosshair, X, ChevronRight,
-  CalendarDays, Store
+  CalendarDays, Store, Maximize2, ChevronLeft, BarChart3, Search
 } from 'lucide-react';
 import { VolantinoModule } from '../types';
 import { StoreLogo } from './StoreLogo';
@@ -14,13 +14,14 @@ import {
   type DcFlyer
 } from '../data/doveconvieneDb';
 import { DC_COMUNE_SLUG, DC_CAPOLUOGO_SLUG } from '../data/dcCityMap';
+import { OFFER_GROUPS, OFFER_DATE, type OfferEntry } from '../data/offerStats';
 
 interface VolantinoScreenProps {
   module: VolantinoModule;
   onClose: () => void;
 }
 
-type ViewMode = 'home' | 'flyer';
+type ViewMode = 'home' | 'flyer' | 'stats';
 
 interface DcCard {
   fid: string;
@@ -35,7 +36,7 @@ const fmtDist = (m: number) => {
 };
 
 /* ═══ Pinch-to-zoom per le pagine del volantino ═══ */
-function PinchZoom({ children }: { children: React.ReactNode }) {
+function PinchZoom({ children, onScale }: { children: React.ReactNode; onScale?: (s: number) => void }) {
   const ref = useRef<HTMLDivElement>(null);
   const st = useRef({ s: 1, x: 0, y: 0 });
   const pinch = useRef<{
@@ -50,6 +51,7 @@ function PinchZoom({ children }: { children: React.ReactNode }) {
     st.current = { s, x, y };
     el.style.transform = `translate(${x}px, ${y}px) scale(${s})`;
     el.style.touchAction = s > 1.01 ? 'none' : 'pan-y';
+    onScale?.(s);
   };
 
   const maxScale = () => {
@@ -142,7 +144,7 @@ function PinchZoom({ children }: { children: React.ReactNode }) {
       onTouchStart={onTouchStart}
       onTouchMove={onTouchMove}
       onTouchEnd={onTouchEnd}
-      className="w-full will-change-transform select-none"
+      className="w-full h-full will-change-transform select-none"
       style={{ touchAction: 'pan-y' }}
     >
       {children}
@@ -178,9 +180,17 @@ const parseCards = (s: string): DcCard[] => {
   return out;
 };
 
+/* Prezzo unitario normalizzato (€/kg, €/litro o €/pezzo) */
+const unitPrice = (e: OfferEntry) => (e.u === 'pz' ? e.p / e.q : e.p / e.q);
+
+const fmtUnit = (u: OfferEntry['u']) => (u === 'kg' ? '€/kg' : u === 'l' ? '€/litro' : '€/pezzo');
+
+const fmtPrice = (n: number) => `${n.toFixed(2).replace('.', ',')} €`;
+
 export default function VolantinoScreen({ module, onClose }: VolantinoScreenProps) {
   const [view, setView] = useState<ViewMode>('home');
   const [activeFlyer, setActiveFlyer] = useState<{ fid: string; flyer: DcFlyer } | null>(null);
+  const [fullPage, setFullPage] = useState<number | null>(null);
 
   /* ── Zona dell'utente ── */
   const [zone, setZone] = useState<VolantiniZone | null>(() => loadZone());
@@ -194,6 +204,9 @@ export default function VolantinoScreen({ module, onClose }: VolantinoScreenProp
 
   /* ── Categoria selezionata ── */
   const [cat, setCat] = useState<string>('iper-e-super');
+
+  /* ── Ricerca statistiche ── */
+  const [statsQuery, setStatsQuery] = useState('');
 
   const applyZone = (z: VolantiniZone) => {
     setZone(z);
@@ -269,19 +282,36 @@ export default function VolantinoScreen({ module, onClose }: VolantinoScreenProp
 
   const openFlyer = (card: DcCard) => {
     setActiveFlyer({ fid: card.fid, flyer: card.flyer });
+    setFullPage(null);
     setView('flyer');
   };
 
   const goBack = () => {
+    if (fullPage !== null) {
+      setFullPage(null);
+      return;
+    }
     if (view === 'flyer') {
       setActiveFlyer(null);
+      setView('home');
+    } else if (view === 'stats') {
       setView('home');
     } else onClose();
   };
 
+  // Back hardware Android: chiude un livello alla volta (come le altre sezioni)
+  useEffect(() => {
+    const onBack = () => goBack();
+    window.addEventListener('volantino-back', onBack);
+    return () => window.removeEventListener('volantino-back', onBack);
+  });
+
   const headerSubtitle = () => {
     if (view === 'flyer' && activeFlyer) {
-      return `${activeFlyer.flyer.n} · ${activeFlyer.flyer.p.length} pagine · scorri per sfogliare`;
+      return `${activeFlyer.flyer.n} · ${activeFlyer.flyer.p.length} pagine · tocca una pagina per ingrandire`;
+    }
+    if (view === 'stats') {
+      return `Confronto prezzi · rilevati dai volantini del ${OFFER_DATE}`;
     }
     const base = cityLabel ? `${cityLabel} · ${cards.length} volantini` : `${cards.length} volantini · tutta Italia`;
     return `${base} · ${DC_CATEGORIES.find(c => c.slug === cat)?.name ?? ''}`;
@@ -335,8 +365,14 @@ export default function VolantinoScreen({ module, onClose }: VolantinoScreenProp
         <AnimatePresence mode="wait">
           {view === 'home' && <HomeView key="home" />}
           {view === 'flyer' && activeFlyer && <FlyerView key={activeFlyer.fid} />}
+          {view === 'stats' && <StatsView key="stats" />}
         </AnimatePresence>
       </div>
+
+      {/* ═══ PAGINA A TUTTO SCHERMO ═══ */}
+      <AnimatePresence>
+        {view === 'flyer' && fullPage !== null && <PageViewer key={`page-${activeFlyer?.fid}-${fullPage}`} />}
+      </AnimatePresence>
 
       {/* ═══ MODAL ZONA ═══ */}
       <AnimatePresence>
@@ -515,6 +551,17 @@ export default function VolantinoScreen({ module, onClose }: VolantinoScreenProp
 
         {/* ── Categorie ── */}
         <div className="flex gap-2 overflow-x-auto custom-scrollbar pb-1 -mx-4 px-4">
+          <button
+            onClick={() => { setStatsQuery(''); setView('stats'); }}
+            className={`shrink-0 inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs font-bold transition-colors ${
+              view === 'stats'
+                ? 'bg-amber-500 text-white'
+                : 'bg-amber-500/10 border border-amber-500/25 text-amber-600 hover:bg-amber-500/20'
+            }`}
+          >
+            <BarChart3 className="w-3.5 h-3.5" />
+            Confronta prezzi
+          </button>
           {DC_CATEGORIES.map(c => (
             <button
               key={c.slug}
@@ -612,6 +659,13 @@ export default function VolantinoScreen({ module, onClose }: VolantinoScreenProp
               <CalendarDays className="w-3 h-3" /> {flyer.p.length} pagine
             </span>
           )}
+          <button
+            onClick={() => setFullPage(0)}
+            className="shrink-0 p-2.5 rounded-2xl bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20 transition-colors"
+            title="Apri a tutto schermo"
+          >
+            <Maximize2 className="w-5 h-5" />
+          </button>
         </div>
         <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain custom-scrollbar bg-white">
           {flyer.p.length === 0 ? (
@@ -620,20 +674,205 @@ export default function VolantinoScreen({ module, onClose }: VolantinoScreenProp
             </div>
           ) : (
             flyer.p.map((_, i) => (
-              <PinchZoom key={`${fid}-${i}`}>
+              <div key={`${fid}-${i}`} className="w-full relative group">
                 <img
                   src={dcPageUrl(fid, i, 4)}
                   alt={`${flyer.n} pagina ${i + 1}`}
                   loading={i === 0 ? 'eager' : 'lazy'}
                   onError={e => { e.currentTarget.style.display = 'none'; }}
-                  className="w-full h-auto block"
+                  className="w-full h-auto block cursor-pointer"
                   draggable={false}
+                  onClick={() => setFullPage(i)}
                 />
-              </PinchZoom>
+              </div>
             ))
           )}
           {flyer.p.length > 0 && (
             <p className="py-4 text-center text-xs font-semibold text-[var(--text-muted)]">Fine del volantino</p>
+          )}
+        </div>
+      </motion.div>
+    );
+  }
+
+  /* ═══════════════════════════════════════════════════════════════════
+     VIEW 4: CONFRONTA PREZZI — statistiche da articolo o marca specifica
+     ═══════════════════════════════════════════════════════════════════ */
+  function StatsView() {
+    const q = statsQuery.trim().toLowerCase();
+    const groups = q
+      ? OFFER_GROUPS.filter(g =>
+          g.g.toLowerCase().includes(q) ||
+          g.o.some(e => e.n.toLowerCase().includes(q) || e.b.toLowerCase().includes(q))
+        )
+      : OFFER_GROUPS;
+
+    const best = (o: OfferEntry[]) => o.reduce((a, b) => (unitPrice(b) < unitPrice(a) ? b : a), o[0]);
+    const avg = (o: OfferEntry[]) => o.reduce((s, e) => s + unitPrice(e), 0) / o.length;
+
+    return (
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="px-4 pt-4 pb-8 max-w-2xl mx-auto w-full space-y-4">
+        {/* ── Ricerca ── */}
+        <div className="relative">
+          <Search className="w-4 h-4 text-[var(--text-muted)] absolute left-4 top-1/2 -translate-y-1/2" />
+          <input
+            value={statsQuery}
+            onChange={e => setStatsQuery(e.target.value)}
+            placeholder="Cerca un alimento o una marca (es. salmone, tonno, Lavazza…)"
+            className="w-full pl-11 pr-10 py-3 rounded-2xl bg-[var(--card-bg)] border border-[var(--border)] text-[var(--text-main)] font-semibold text-sm outline-none focus:border-amber-500/60 transition-colors"
+          />
+          {statsQuery && (
+            <button
+              onClick={() => setStatsQuery('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors"
+              title="Cancella"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+
+        <p className="text-[11px] text-[var(--text-muted)] font-medium">
+          {groups.length === OFFER_GROUPS.length
+            ? `${OFFER_GROUPS.length} articoli confrontati · il prezzo migliore è evidenziato in verde`
+            : `${groups.length} risultati per "${statsQuery}"`}
+        </p>
+
+        {/* ── Gruppi ── */}
+        {groups.length === 0 ? (
+          <div className="py-16 text-center">
+            <BarChart3 className="w-10 h-10 text-[var(--text-muted)] mx-auto mb-3 opacity-40" />
+            <p className="text-sm font-semibold text-[var(--text-muted)]">
+              Nessun articolo trovato per "{statsQuery}".
+            </p>
+            <p className="text-xs text-[var(--text-muted)] font-medium mt-1">Prova con: salmone, tonno, prosciutto, gelato, birra…</p>
+          </div>
+        ) : (
+          groups.map(g => {
+            const b = best(g.o);
+            const a = avg(g.o);
+            return (
+              <div key={g.id} className="rounded-3xl bg-[var(--card-bg)] border border-[var(--border)] overflow-hidden">
+                <div className="flex items-center gap-2 px-4 pt-3.5 pb-2">
+                  <span className="text-lg leading-none">{g.e}</span>
+                  <h3 className="flex-1 min-w-0 font-black text-[var(--text-main)] text-sm truncate">{g.g}</h3>
+                  {g.o.length > 1 && (
+                    <span className="shrink-0 text-[10px] font-bold text-amber-600 bg-amber-500/10 rounded-full px-2 py-0.5">
+                      {Math.round((1 - unitPrice(b) / a) * 100)}% sotto la media
+                    </span>
+                  )}
+                </div>
+                <div className="px-2 pb-2 space-y-0.5">
+                  {g.o.map((e, i) => {
+                    const isBest = g.o.length > 1 && e === b;
+                    return (
+                      <div
+                        key={`${e.s}-${i}`}
+                        className={`flex items-center gap-3 px-2.5 py-2 rounded-2xl ${
+                          isBest ? 'bg-emerald-500/10 ring-1 ring-emerald-500/25' : ''
+                        }`}
+                      >
+                        <span className={`shrink-0 w-2 h-2 rounded-full ${isBest ? 'bg-emerald-500' : 'bg-[var(--border)]'}`} />
+                        <div className="flex-1 min-w-0">
+                          <p className={`text-xs font-bold truncate ${isBest ? 'text-emerald-600' : 'text-[var(--text-main)]'}`}>
+                            {e.s} {e.b !== e.s ? `· ${e.b}` : ''}
+                            {isBest && <span className="ml-1.5 text-[9px] font-black uppercase tracking-wide bg-emerald-500 text-white rounded-full px-1.5 py-0.5 align-middle">Migliore</span>}
+                          </p>
+                          <p className="text-[10px] text-[var(--text-muted)] font-medium truncate">{e.n}</p>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <p className={`text-sm font-black ${isBest ? 'text-emerald-600' : 'text-[var(--text-main)]'}`}>{fmtPrice(e.p)}</p>
+                          <p className="text-[10px] text-[var(--text-muted)] font-semibold">
+                            {unitPrice(e).toFixed(2).replace('.', ',')} {fmtUnit(e.u)}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })
+        )}
+
+        <p className="text-[10px] text-[var(--text-muted)] font-medium text-center pt-1">
+          Prezzi rilevati dai volantini nazionali attivi ({OFFER_DATE}). Possono variare per punto vendita: verifica sempre in negozio.
+        </p>
+      </motion.div>
+    );
+  }
+
+  /* ═══════════════════════════════════════════════════════════════════
+     VIEW 3: PAGINA A TUTTO SCHERMO — zoom (pinch/doppio tap) e swipe
+     ═══════════════════════════════════════════════════════════════════ */
+  function PageViewer() {
+    if (!activeFlyer || fullPage === null) return null;
+    const { fid, flyer } = activeFlyer;
+    const total = Math.max(flyer.p.length, 1);
+    const scaleRef = useRef(1);
+    const swipeStart = useRef<number | null>(null);
+
+    const setPage = (n: number) => setFullPage(Math.min(Math.max(n, 0), total - 1));
+
+    return (
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="fixed inset-0 z-[200] flex flex-col bg-black"
+        onTouchStart={e => { if (e.touches.length === 1 && scaleRef.current <= 1.01) swipeStart.current = e.touches[0].clientX; else swipeStart.current = null; }}
+        onTouchEnd={e => {
+          if (swipeStart.current === null) return;
+          const dx = e.changedTouches[0].clientX - swipeStart.current;
+          swipeStart.current = null;
+          if (Math.abs(dx) > 60) setPage(fullPage + (dx < 0 ? 1 : -1));
+        }}
+      >
+        <header className="flex items-center gap-3 pt-[max(env(safe-area-inset-top),16px)] px-4 pb-3 shrink-0 z-30">
+          <button
+            onClick={() => setFullPage(null)}
+            className="p-2.5 -ml-2 hover:bg-white/10 rounded-full text-white transition-colors shrink-0"
+          >
+            <ArrowLeft className="w-6 h-6" />
+          </button>
+          <div className="flex-1 min-w-0 text-center">
+            <h1 className="text-base font-black text-white truncate">{flyer.n}</h1>
+            <p className="text-[11px] text-white/60 font-semibold">
+              Pagina {fullPage + 1} di {total} · pizzica per zoomare
+            </p>
+          </div>
+          <div className="w-9 shrink-0" />
+        </header>
+
+        <div className="flex-1 min-h-0 relative flex items-center justify-center overflow-hidden">
+          <PinchZoom key={`${fid}-${fullPage}`} onScale={s => { scaleRef.current = s; }}>
+            <img
+              src={dcPageUrl(fid, fullPage, 4)}
+              alt={`${flyer.n} pagina ${fullPage + 1}`}
+              className="w-full h-full object-contain select-none"
+              draggable={false}
+            />
+          </PinchZoom>
+
+          {total > 1 && (
+            <>
+              <button
+                onClick={() => setPage(fullPage - 1)}
+                disabled={fullPage === 0}
+                className="absolute left-2 top-1/2 -translate-y-1/2 p-2.5 rounded-full bg-white/10 text-white hover:bg-white/20 disabled:opacity-30 transition-colors"
+                title="Pagina precedente"
+              >
+                <ChevronLeft className="w-6 h-6" />
+              </button>
+              <button
+                onClick={() => setPage(fullPage + 1)}
+                disabled={fullPage === total - 1}
+                className="absolute right-2 top-1/2 -translate-y-1/2 p-2.5 rounded-full bg-white/10 text-white hover:bg-white/20 disabled:opacity-30 transition-colors"
+                title="Pagina successiva"
+              >
+                <ChevronRight className="w-6 h-6" />
+              </button>
+            </>
           )}
         </div>
       </motion.div>
