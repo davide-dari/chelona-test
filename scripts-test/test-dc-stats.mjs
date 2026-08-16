@@ -205,6 +205,7 @@ try {
   ok('categoria Alimentari mostrata', /ALIMENTARI/i.test(catTxt));
   ok('categoria Casa e cura mostrata', /Casa e cura/i.test(catTxt));
   ok('confronto su tutti i volantini', /articoli confrontati su tutti i volantini/.test(catTxt));
+  ok('nome carta fedeltà mostrato (Esse Card / PerTe+ / Buona Spesa / Tribù)', /Carta Fidaty|PerTe\+|Buona Spesa Card|Despar Tribù/.test(catTxt));
 
   // ── Freeze barra di ricerca: il focus resta nell'input dopo la digitazione ──
   const searchInputFocus = await page.evaluate(() => {

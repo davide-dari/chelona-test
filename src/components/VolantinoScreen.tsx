@@ -15,7 +15,7 @@ import {
 } from '../data/doveconvieneDb';
 import { DC_COMUNE_SLUG, DC_CAPOLUOGO_SLUG } from '../data/dcCityMap';
 import { comuniCaps } from '../data/comuniCaps';
-import { OFFER_GROUPS, OFFER_DATE, type OfferEntry, type OfferCategory } from '../data/offerStats';
+import { OFFER_GROUPS, OFFER_DATE, FIDELITY_CARDS, type OfferEntry, type OfferCategory } from '../data/offerStats';
 import { initDcData, useDcDataVersion } from '../services/dcData';
 
 interface VolantinoScreenProps {
@@ -538,6 +538,11 @@ function StatsView(props: {
                             <div className="flex-1 min-w-0">
                               <p className={`text-xs font-bold truncate ${isBest ? 'text-emerald-600' : 'text-[var(--text-main)]'}`}>
                                 {e.s} {e.b !== e.s ? `· ${e.b}` : ''}
+                                {FIDELITY_CARDS[e.s] && (
+                                  <span className={`ml-1.5 align-middle inline-block text-[9px] font-bold rounded-full px-1.5 py-0.5 ${isBest ? 'bg-emerald-500/15 text-emerald-700' : 'bg-[var(--surface-variant)] text-[var(--text-muted)]'}`}>
+                                    {FIDELITY_CARDS[e.s]}
+                                  </span>
+                                )}
                                 {isBest && <span className="ml-1.5 text-[9px] font-black uppercase tracking-wide bg-emerald-500 text-white rounded-full px-1.5 py-0.5 align-middle">Migliore</span>}
                               </p>
                               <p className="text-[10px] text-[var(--text-muted)] font-medium truncate">{e.n}</p>

@@ -28,9 +28,32 @@ export interface OfferGroup {
 
 export const OFFER_DATE = '10-23 agosto 2026';
 
+/* Carta fedeltà delle catene (nome mostrato nel confronto prezzi quando il
+   volantino indica prezzi riservati ai possessori della carta). */
+export const FIDELITY_CARDS: Record<string, string> = {
+  Esselunga: 'Carta Fidaty',
+  Pam: 'PerTe+',
+  MD: 'Buona Spesa Card',
+  Interspar: 'Despar Tribù',
+};
+
 /* Normalizza una stringa per il confronto (minuscole, senza accenti) */
 export const normalizeOfferName = (s: string): string =>
   s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
+
+/* Forme alternative di un token (singolare/plurale italiano) per associare
+   prodotti identici ma di tipologia diversa (es. pomodori ↔ pomodoro). */
+export const expandToken = (t: string): string[] => {
+  const forms = new Set<string>([t]);
+  if (t.length < 4) return [...forms];
+  const last = t[t.length - 1];
+  const base = t.slice(0, -1);
+  if (last === 'i') { forms.add(base + 'o'); }
+  else if (last === 'e') { forms.add(base + 'a'); forms.add(base + 'o'); }
+  else if (last === 'a') { forms.add(base + 'o'); }
+  else if (last === 'o') { forms.add(base + 'a'); }
+  return [...forms];
+};
 
 const OFFER_STOPWORDS = new Set(['di', 'del', 'della', 'delle', 'al', 'allo', 'alla', 'alle', 'in', 'e', 'a', 'da', 'con', 'per', 'più', 'l']);
 
@@ -50,6 +73,10 @@ export const findOffersForName = (name: string): OfferEntry[] => {
     for (const e of g.o) {
       const nTokens = new Set(normalizeOfferName(e.n).split(' ').filter(t => t.length >= 3));
       const bTokens = new Set(normalizeOfferName(e.b).split(' ').filter(t => t.length >= 3));
+      const nForms = new Set<string>();
+      for (const nt of nTokens) for (const f of expandToken(nt)) nForms.add(f);
+      const gForms = new Set<string>();
+      for (const gt of gTokens) for (const f of expandToken(gt)) gForms.add(f);
       let hit = 0;
       let covered = 0;
       let firstHit = false;
@@ -65,6 +92,8 @@ export const findOffersForName = (name: string): OfferEntry[] => {
             if (nt.startsWith(t) && tl >= 5) { th = 1.2; break; }
           }
         }
+        if (th === 0 && nForms.has(t)) th = 1.8;
+        if (th === 0 && gForms.has(t)) th = 1.3;
         if (th > 0) {
           hit += th * tl;
           covered += tl;
