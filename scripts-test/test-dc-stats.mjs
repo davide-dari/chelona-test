@@ -11,14 +11,21 @@ const failed = [];
 page.on('requestfailed', r => failed.push(r.url()));
 
 const bodyText = () => page.evaluate(() => document.body.innerText);
-const waitText = (re, ms = 10000) => page.waitForFunction(r => new RegExp(r).test(document.body.innerText), { timeout: ms }, re);
-const clickBtn = async label => {
-  await waitText(label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
-  return page.evaluate(l => {
-    const el = [...document.querySelectorAll('button, [role="button"], a')].find(x => x.innerText?.includes(l));
-    if (el) { el.click(); return true; }
-    return false;
-  }, label);
+const waitText = (re, ms = 10000) => page.waitForFunction(r => new RegExp(r).test(document.body.innerText), { timeout: ms }, re)
+  .catch(err => {
+    return page.evaluate(() => document.body.innerText).then(t => { throw new Error(`${err.message} | BODY: ${t.slice(0, 300).replace(/\n/g, ' | ')}`); });
+  });
+const clickBtn = async (label, verify) => {
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const ok = await page.evaluate(l => {
+      const el = [...document.querySelectorAll('button, [role="button"], a')].find(x => x.innerText?.includes(l));
+      if (el) { el.click(); return true; }
+      return false;
+    }, label);
+    if (ok) await new Promise(r => setTimeout(r, 700));
+    if (!verify || await page.evaluate(v => new RegExp(v).test(document.body.innerText), verify)) return ok;
+  }
+  return false;
 };
 const setVal = (i, v) => page.evaluate((i, v) => {
   const el = document.querySelectorAll('input')[i];
@@ -41,10 +48,12 @@ const setPlaceholder = (ph, v) => page.evaluate((ph, v) => {
 
 try {
   await page.goto(BASE, { waitUntil: 'networkidle2' });
+  await waitText('Nuovo Profilo', 15000);
+  await new Promise(r => setTimeout(r, 1500));
 
-  console.log("STEP click", 'Nuovo Profilo'); await clickBtn('Nuovo Profilo'); console.log("STEP ok");
-  console.log("STEP click", 'Inizia ora'); await clickBtn('Inizia ora'); console.log("STEP ok");
-  console.log("STEP click", 'Configura Profilo'); await clickBtn('Configura Profilo'); console.log("STEP ok");
+  console.log("STEP click", 'Nuovo Profilo'); await clickBtn('Nuovo Profilo', 'Inizia ora'); console.log("STEP ok");
+  console.log("STEP click", 'Inizia ora'); await clickBtn('Inizia ora', 'Configura Profilo'); console.log("STEP ok");
+  console.log("STEP click", 'Configura Profilo'); await clickBtn('Configura Profilo', 'Crea Profilo'); console.log("STEP ok");
   await waitText('Crea Profilo');
   const inputs = await page.evaluate(() => [...document.querySelectorAll('input')].map(i => i.placeholder));
   inputs.forEach((f, i) => { if (/nome|name/i.test(f || '')) setVal(i, 'Test'); if (/password|pass/i.test(f || '')) setVal(i, 'test123'); });
@@ -160,12 +169,83 @@ try {
     if (b) b.click();
   });
   await waitText('Volantini per Milano');
-  await new Promise(r => setTimeout(r, 700));
+  await page.waitForFunction(() => !/Volantini per 20121/.test(document.body.innerText), { timeout: 10000 });
   ok('ritorno a tutta la città', /Volantini per Milano/.test(await bodyText()) && !/Volantini per 20121/.test(await bodyText()));
 
   await page.evaluate(() => window.dispatchEvent(new CustomEvent('volantino-back')));
   await new Promise(r => setTimeout(r, 700));
   ok('back → chiusura modulo', !/Confronta prezzi/.test(await bodyText()));
+
+  // ── Confronta prezzi: categorie Alimentari / Casa e cura ──
+  await clickBtn('Volantino');
+  await waitText('Confronta prezzi');
+  await page.evaluate(() => {
+    const b = [...document.querySelectorAll('button')].find(x => x.innerText.includes('Confronta prezzi'));
+    if (b) b.click();
+  });
+  await waitText('articoli confrontati');
+  const catTxt = await bodyText();
+  ok('categoria Alimentari mostrata', /ALIMENTARI/i.test(catTxt));
+  ok('categoria Casa e cura mostrata', /Casa e cura/i.test(catTxt));
+  ok('confronto su tutti i volantini', /articoli confrontati su tutti i volantini/.test(catTxt));
+
+  // ── Freeze barra di ricerca: il focus resta nell'input dopo la digitazione ──
+  const searchInputFocus = await page.evaluate(() => {
+    const i = document.querySelector('input[placeholder*="Cerca un alimento"]');
+    i.focus();
+    const s = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
+    s.call(i, 'ton'); i.dispatchEvent(new Event('input', { bubbles: true }));
+    return new Promise(res => setTimeout(() => res(document.activeElement === i), 400));
+  });
+  ok('focus mantenuto durante la digitazione (niente freeze)', searchInputFocus === true);
+
+  await setSearch('salmone');
+  await waitText('Salmone');
+  const dopo = await bodyText();
+  ok('ricerca in categoria Alimentari', /ALIMENTARI/i.test(dopo) && /Salmone/.test(dopo));
+
+  await page.evaluate(() => window.dispatchEvent(new CustomEvent('volantino-back')));
+  await new Promise(r => setTimeout(r, 500));
+  await page.evaluate(() => window.dispatchEvent(new CustomEvent('volantino-back')));
+  await new Promise(r => setTimeout(r, 700));
+  ok('chiusura modulo volantino', !/Confronta prezzi/.test(await bodyText()));
+
+  // ── Lista della spesa: badge "dove costa meno" + apertura volantino ──
+  await clickBtn('Supermercato');
+  await waitText('Cerca e aggiungi prodotti');
+  await setPlaceholder('Cerca prodotto...', 'Salmone affumicato');
+  await waitText('Salmone affumicato');
+  await new Promise(r => setTimeout(r, 300));
+  // Il suggerimento si seleziona con mousedown
+  await page.evaluate(() => {
+    const b = [...document.querySelectorAll('button')].find(x => x.innerText.includes('Salmone affumicato') && x.innerText.includes('Carne e pesce'));
+    if (b) {
+      b.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+      b.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+      b.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    }
+  });
+  await new Promise(r => setTimeout(r, 400));
+  await page.evaluate(() => {
+    const b = [...document.querySelectorAll('button')].find(x => x.title === 'Aggiungi alla lista');
+    if (b) b.click();
+  });
+  await waitText('vedi nel volantino');
+  const spesa = await bodyText();
+  ok('badge dove costa meno visibile', /vedi nel volantino/.test(spesa) && /€/.test(spesa) && /Pam|Eurospin|Lidl|Esselunga/.test(spesa), spesa.match(/[0-9]+,[0-9]+ € · \w+/)?.[0] ?? '');
+
+  await page.evaluate(() => {
+    const b = [...document.querySelectorAll('button')].find(x => x.innerText.includes('vedi nel volantino'));
+    if (b) b.click();
+  });
+  await waitText(/Pagina \d+ di/);
+  const volOff = await bodyText();
+  ok('apertura volantino dal badge lista spesa', /pizzica per zoomare/.test(volOff) && /Pagina \d+ di/.test(volOff));
+  await page.evaluate(() => window.dispatchEvent(new CustomEvent('volantino-back')));
+  await new Promise(r => setTimeout(r, 500));
+  await page.evaluate(() => window.dispatchEvent(new CustomEvent('volantino-back')));
+  await new Promise(r => setTimeout(r, 700));
+  ok('ritorno alla lista della spesa', /vedi nel volantino/.test(await bodyText()));
 
   ok('0 richieste fallite', failed.filter(u => !u.includes('api.github.com')).length === 0, failed.filter(u => !u.includes('api.github.com')).slice(0, 3).join('\n'));
 } catch (err) {

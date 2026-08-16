@@ -5,13 +5,15 @@ import {
   ArrowLeft, Plus, Trash2, CheckCircle2, Refrigerator,
   Apple, Milk, Drumstick, Croissant, PackageCheck, GlassWater, SprayCan,
   ShowerHead, ShoppingBasket, Share2, Search, AlertTriangle, X, Scale,
-  Snowflake, Package
+  Snowflake, Package, Store
 } from 'lucide-react';
 import { generateUUID } from '../utils/uuid';
 import {
   CatalogProduct, findProductMatches, guessEmoji,
   PRODUCT_CATEGORY_LABEL, normalizeProduct
 } from '../data/supermarketProducts';
+import { findOffersForName } from '../data/offerStats';
+import { DC_FLYERS } from '../data/doveconvieneDb';
 
 interface SupermarketScreenProps {
   module: SupermarketModule;
@@ -343,6 +345,28 @@ export const SupermarketScreen = ({ module, onSave, onClose, onShare }: Supermar
       items: (map.get(c.id) || []).sort((a, b) => Number(a.checked) - Number(b.checked))
     })).filter(c => c.items.length > 0);
   }, [data.items, catFilter]);
+
+  /* Miglior prezzo per ogni articolo della lista, dalle offerte dei volantini */
+  const bestOffers = useMemo(() => {
+    const map = new Map<string, { price: string; store: string; fid: string; pg: number } | null>();
+    for (const item of data.items) {
+      const matches = findOffersForName(item.name);
+      if (!matches.length) { map.set(item.id, null); continue; }
+      const best = matches[0];
+      map.set(item.id, {
+        price: best.p.toFixed(2).replace('.', ','),
+        store: best.s,
+        fid: best.fid,
+        pg: best.pg,
+      });
+    }
+    return map;
+  }, [data.items]);
+
+  const openOfferFlyer = (fid: string, pg: number) => {
+    if (!DC_FLYERS[fid]) return;
+    window.dispatchEvent(new CustomEvent('open-flyer-offer', { detail: { fid, pg } }));
+  };
 
   const catCounts = useMemo(() => {
     const map = new Map<SupermarketCategory, number>();
@@ -768,6 +792,18 @@ export const SupermarketScreen = ({ module, onSave, onClose, onShare }: Supermar
                               <div className="flex-1 min-w-0">
                                 <p className={`font-bold text-sm text-[var(--text-main)] truncate ${item.checked ? 'line-through' : ''}`}>{item.name}</p>
                                 {item.quantity && <p className="text-[11px] text-[var(--text-muted)] font-medium">{item.quantity}</p>}
+                                {/* Dove costa meno — offre dai volantini */}
+                                {bestOffers.get(item.id) && (
+                                  <button
+                                    onClick={() => { const o = bestOffers.get(item.id); if (o) openOfferFlyer(o.fid, o.pg); }}
+                                    title={`Dove costa meno: ${bestOffers.get(item.id)!.store} · ${bestOffers.get(item.id)!.price} € · apri il volantino alla pagina dell'offerta`}
+                                    className="mt-1 inline-flex items-center gap-1 text-[10px] font-bold text-emerald-600 bg-emerald-500/10 border border-emerald-500/20 rounded-full px-2 py-0.5 hover:bg-emerald-500/20 transition-colors"
+                                  >
+                                    <Store className="w-2.5 h-2.5" />
+                                    {bestOffers.get(item.id)!.price} € · {bestOffers.get(item.id)!.store}
+                                    <span className="underline decoration-dotted">vedi nel volantino</span>
+                                  </button>
+                                )}
                               </div>
                               {/* Badges */}
                               {inFridgeFlag && (

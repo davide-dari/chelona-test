@@ -15,11 +15,12 @@ import {
 } from '../data/doveconvieneDb';
 import { DC_COMUNE_SLUG, DC_CAPOLUOGO_SLUG } from '../data/dcCityMap';
 import { comuniCaps } from '../data/comuniCaps';
-import { OFFER_GROUPS, OFFER_DATE, type OfferEntry } from '../data/offerStats';
+import { OFFER_GROUPS, OFFER_DATE, type OfferEntry, type OfferCategory } from '../data/offerStats';
 
 interface VolantinoScreenProps {
   module: VolantinoModule;
   onClose: () => void;
+  initialOffer?: { fid: string; pg: number };
 }
 
 type ViewMode = 'home' | 'flyer' | 'stats';
@@ -188,10 +189,467 @@ const fmtUnit = (u: OfferEntry['u']) => (u === 'kg' ? '€/kg' : u === 'l' ? '�
 
 const fmtPrice = (n: number) => `${n.toFixed(2).replace('.', ',')} €`;
 
-export default function VolantinoScreen({ module, onClose }: VolantinoScreenProps) {
+/* ═══════════════════════════════════════════════════════════════════
+   VIEW 1: HOME — categorie + volantini della città
+   ═══════════════════════════════════════════════════════════════════ */
+function HomeView(props: {
+  zone: VolantiniZone | null;
+  cityLabel: string;
+  catCount: number;
+  cat: string;
+  onCat: (c: string) => void;
+  flyerQuery: string;
+  onFlyerQuery: (q: string) => void;
+  shownCards: DcCard[];
+  onOpenFlyer: (c: DcCard) => void;
+  onZone: () => void;
+  onStats: () => void;
+}) {
+  const { zone, cityLabel, catCount, cat, onCat, flyerQuery, onFlyerQuery, shownCards, onOpenFlyer, onZone, onStats } = props;
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="px-4 pt-4 pb-8 max-w-2xl mx-auto w-full space-y-5">
+      {/* ── Banner zona ── */}
+      <button
+        onClick={onZone}
+        className="w-full flex items-center gap-2.5 p-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/25 text-left transition-colors hover:bg-emerald-500/15"
+      >
+        <MapPin className="w-4 h-4 text-emerald-500 shrink-0" />
+        <div className="flex-1 min-w-0">
+          <p className="text-xs font-bold text-[var(--text-main)]">
+            {zone && zone.cap ? `Volantini per ${zone.label}` : cityLabel ? `Volantini per ${cityLabel}` : zone && zone.kind !== 'all' ? `Volantini per ${zone.label}` : 'Volantini per tutta Italia'}
+            {!cityLabel && zone && zone.kind !== 'all' ? ' · nazionali' : ''}
+          </p>
+          <p className="text-[10px] text-[var(--text-muted)] font-medium">
+            {catCount} volantini · tocca per cambiare zona
+          </p>
+        </div>
+        <ChevronRight className="w-4 h-4 text-emerald-500 shrink-0" />
+      </button>
+
+      {/* ── Categorie ── */}
+      <div className="flex gap-2 overflow-x-auto custom-scrollbar pb-1 -mx-4 px-4">
+        <button
+          onClick={onStats}
+          className={`shrink-0 inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs font-bold transition-colors ${
+            'bg-amber-500/10 border border-amber-500/25 text-amber-600 hover:bg-amber-500/20'
+          }`}
+        >
+          <BarChart3 className="w-3.5 h-3.5" />
+          Confronta prezzi
+        </button>
+        {DC_CATEGORIES.map(c => (
+          <button
+            key={c.slug}
+            onClick={() => onCat(c.slug)}
+            className={`shrink-0 px-3.5 py-2 rounded-full text-xs font-bold transition-colors ${
+              cat === c.slug
+                ? 'bg-emerald-500 text-white'
+                : 'bg-[var(--card-bg)] border border-[var(--border)] text-[var(--text-muted)] hover:text-[var(--text-main)]'
+            }`}
+          >
+            {c.name}
+          </button>
+        ))}
+      </div>
+
+      {/* ── Ricerca supermercato ── */}
+      <div className="relative">
+        <Search className="w-4 h-4 text-[var(--text-muted)] absolute left-4 top-1/2 -translate-y-1/2" />
+        <input
+          value={flyerQuery}
+          onChange={e => onFlyerQuery(e.target.value)}
+          placeholder="Cerca il volantino di un supermercato (es. Esselunga, Lidl, Trony…)"
+          className="w-full pl-11 pr-10 py-3 rounded-2xl bg-[var(--card-bg)] border border-[var(--border)] text-[var(--text-main)] font-semibold text-sm outline-none focus:border-emerald-500/60 transition-colors"
+        />
+        {flyerQuery && (
+          <button
+            onClick={() => onFlyerQuery('')}
+            className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors"
+            title="Cancella"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        )}
+      </div>
+
+      {flyerQuery && (
+        <p className="text-[11px] text-[var(--text-muted)] font-medium">
+          {shownCards.length === 0
+            ? `Nessun volantino per "${flyerQuery}" in ${cityLabel || 'tutta Italia'}`
+            : `${shownCards.length} volantini per "${flyerQuery}" (in tutte le categorie)`}
+        </p>
+      )}
+
+      {/* ── Volantini della categoria ── */}
+      {shownCards.length === 0 ? (
+        <div className="py-16 text-center">
+          <Store className="w-10 h-10 text-[var(--text-muted)] mx-auto mb-3 opacity-40" />
+          <p className="text-sm font-semibold text-[var(--text-muted)]">
+            {flyerQuery
+              ? `Nessun volantino trovato per "${flyerQuery}".`
+              : `Nessun volantino in questa categoria per ${cityLabel || 'la tua zona'}.`}
+          </p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-3 gap-3">
+          {shownCards.map(c => (
+            <button
+              key={c.fid}
+              onClick={() => onOpenFlyer(c)}
+              className="group relative overflow-hidden rounded-2xl bg-[var(--card-bg)] border border-[var(--border)] aspect-[3/4] focus:outline-none focus:ring-2 focus:ring-emerald-500/40 flex flex-col hover:border-emerald-500/40"
+            >
+              <div className="flex-1 min-h-0 relative bg-white">
+                <img
+                  src={dcCoverUrl(c.fid)}
+                  alt={c.flyer.n}
+                  loading="lazy"
+                  onError={e => {
+                    e.currentTarget.style.display = 'none';
+                    const logo = e.currentTarget.nextElementSibling as HTMLElement | null;
+                    if (logo) logo.style.display = 'flex';
+                  }}
+                  className="w-full h-full object-cover"
+                />
+                <div
+                  className="absolute inset-0 items-center justify-center"
+                  style={{ display: 'none' }}
+                >
+                  <StoreLogo id={c.flyer.s} short={c.flyer.n.slice(0, 2)} brandSlug={c.flyer.s} size={56} />
+                </div>
+                {c.dist > 0 && (
+                  <span className="absolute top-1.5 left-1.5 text-[9px] font-bold text-emerald-700 bg-emerald-500/90 rounded-full px-1.5 py-0.5 shadow">
+                    {fmtDist(c.dist)}
+                  </span>
+                )}
+              </div>
+              <div className="px-2 pb-2 pt-1.5">
+                <span className="block text-[10px] font-extrabold text-[var(--text-main)] text-center truncate">{c.flyer.n}</span>
+                <span className="block text-[9px] text-[var(--text-muted)] font-medium text-center mt-0.5">
+                  {c.flyer.p.length} pagine
+                </span>
+              </div>
+            </button>
+          ))}
+        </div>
+      )}
+    </motion.div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   VIEW 2: VOLANTINO — pagine immagine con swipe verticale
+   ═══════════════════════════════════════════════════════════════════ */
+function FlyerView(props: {
+  activeFlyer: { fid: string; flyer: DcFlyer };
+  cityLabel: string;
+  onFullPage: (i: number) => void;
+}) {
+  const { fid, flyer } = props.activeFlyer;
+  const { cityLabel, onFullPage } = props;
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex flex-col h-full max-w-2xl mx-auto w-full">
+      <div className="px-4 py-3 shrink-0 flex items-center gap-3 border-b border-[var(--border)] bg-[var(--card-bg)]">
+        <div className="w-10 h-10 rounded-xl bg-white ring-1 ring-[var(--border)] flex items-center justify-center overflow-hidden shrink-0">
+          <img
+            src={dcLogoUrl(flyer.s)}
+            alt={flyer.n}
+            onError={e => { e.currentTarget.style.display = 'none'; }}
+            className="w-8 h-8 object-contain"
+          />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="font-black text-[var(--text-main)] text-sm leading-tight truncate">{flyer.n}</p>
+          <p className="text-[11px] text-[var(--text-muted)] font-semibold truncate">
+            {cityLabel || 'Tutta Italia'} · {flyer.p.length} pagine
+          </p>
+        </div>
+        {flyer.p.length > 1 && (
+          <span className="shrink-0 inline-flex items-center gap-1 text-[10px] font-bold text-emerald-500 bg-emerald-500/10 rounded-full px-2.5 py-1">
+            <CalendarDays className="w-3 h-3" /> {flyer.p.length} pagine
+          </span>
+        )}
+        <button
+          onClick={() => onFullPage(0)}
+          className="shrink-0 p-2.5 rounded-2xl bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20 transition-colors"
+          title="Apri a tutto schermo"
+        >
+          <Maximize2 className="w-5 h-5" />
+        </button>
+      </div>
+      <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain custom-scrollbar bg-white">
+        {flyer.p.length === 0 ? (
+          <div className="py-16 text-center">
+            <p className="text-sm font-semibold text-[var(--text-muted)]">Anteprima non disponibile</p>
+          </div>
+        ) : (
+          flyer.p.map((_, i) => (
+            <div key={`${fid}-${i}`} className="w-full relative group">
+              <img
+                src={dcPageUrl(fid, i, 4)}
+                alt={`${flyer.n} pagina ${i + 1}`}
+                loading={i === 0 ? 'eager' : 'lazy'}
+                onError={e => { e.currentTarget.style.display = 'none'; }}
+                className="w-full h-auto block cursor-pointer"
+                draggable={false}
+                onClick={() => onFullPage(i)}
+              />
+            </div>
+          ))
+        )}
+        {flyer.p.length > 0 && (
+          <p className="py-4 text-center text-xs font-semibold text-[var(--text-muted)]">Fine del volantino</p>
+        )}
+      </div>
+    </motion.div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   VIEW 4: CONFRONTA PREZZI — statistiche da articolo o marca specifica
+   ═══════════════════════════════════════════════════════════════════ */
+function StatsView(props: {
+  query: string;
+  onQuery: (q: string) => void;
+  onOfferPage: (fid: string, pg: number) => void;
+}) {
+  const { query, onQuery, onOfferPage } = props;
+  const q = query.trim().toLowerCase();
+
+  /* Confronto completo su tutti i volantini attivi, raggruppati per categoria */
+  const groups = useMemo(() => {
+    return OFFER_GROUPS.filter(g =>
+      !q ||
+      g.g.toLowerCase().includes(q) ||
+      g.o.some(e => e.n.toLowerCase().includes(q) || e.b.toLowerCase().includes(q))
+    );
+  }, [q]);
+
+  const categories = useMemo(() => {
+    const cats: { id: OfferCategory; label: string; emoji: string; groups: typeof groups }[] = [
+      { id: 'alimentari', label: 'Alimentari', emoji: '🛒', groups: [] },
+      { id: 'casa', label: 'Casa e cura', emoji: '🧼', groups: [] },
+    ];
+    for (const g of groups) {
+      const cat = cats.find(c => c.id === g.c) ?? cats[0];
+      cat.groups.push(g);
+    }
+    return cats.filter(c => c.groups.length > 0);
+  }, [groups]);
+
+  const best = (o: OfferEntry[]) => o.reduce((a, b) => (unitPrice(b) < unitPrice(a) ? b : a), o[0]);
+  const avg = (o: OfferEntry[]) => o.reduce((s, e) => s + unitPrice(e), 0) / o.length;
+
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="px-4 pt-4 pb-8 max-w-2xl mx-auto w-full space-y-4">
+      {/* ── Ricerca ── */}
+      <div className="relative">
+        <Search className="w-4 h-4 text-[var(--text-muted)] absolute left-4 top-1/2 -translate-y-1/2" />
+        <input
+          value={query}
+          onChange={e => onQuery(e.target.value)}
+          placeholder="Cerca un alimento o una marca (es. salmone, tonno, Lavazza…)"
+          className="w-full pl-11 pr-10 py-3 rounded-2xl bg-[var(--card-bg)] border border-[var(--border)] text-[var(--text-main)] font-semibold text-sm outline-none focus:border-amber-500/60 transition-colors"
+        />
+        {query && (
+          <button
+            onClick={() => onQuery('')}
+            className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors"
+            title="Cancella"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        )}
+      </div>
+
+      <p className="text-[11px] text-[var(--text-muted)] font-medium">
+        {groups.length === OFFER_GROUPS.length
+          ? `${OFFER_GROUPS.length} articoli confrontati su tutti i volantini · tocca il prezzo migliore per vederlo nel volantino`
+          : `${groups.length} risultati per "${query}"`}
+      </p>
+
+      {/* ── Gruppi per categoria ── */}
+      {groups.length === 0 ? (
+        <div className="py-16 text-center">
+          <BarChart3 className="w-10 h-10 text-[var(--text-muted)] mx-auto mb-3 opacity-40" />
+          <p className="text-sm font-semibold text-[var(--text-muted)]">
+            Nessun articolo trovato per "{query}".
+          </p>
+          <p className="text-xs text-[var(--text-muted)] font-medium mt-1">Prova con: salmone, tonno, prosciutto, gelato, birra…</p>
+        </div>
+      ) : (
+        categories.map(cat => (
+          <section key={cat.id}>
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-base leading-none">{cat.emoji}</span>
+              <h2 className="flex-1 min-w-0 text-xs font-black uppercase tracking-wider text-[var(--text-muted)]">
+                {cat.label}
+                <span className="ml-1.5 font-bold text-[10px] text-[var(--text-muted)] opacity-70">({cat.groups.length})</span>
+              </h2>
+              <div className="flex-1 h-px bg-[var(--border)]" />
+            </div>
+            <div className="space-y-4">
+              {cat.groups.map(g => {
+                const b = best(g.o);
+                const a = avg(g.o);
+                return (
+                  <div key={g.id} className="rounded-3xl bg-[var(--card-bg)] border border-[var(--border)] overflow-hidden">
+                    <div className="flex items-center gap-2 px-4 pt-3.5 pb-2">
+                      <span className="text-lg leading-none">{g.e}</span>
+                      <h3 className="flex-1 min-w-0 font-black text-[var(--text-main)] text-sm truncate">{g.g}</h3>
+                      {g.o.length > 1 && (
+                        <span className="shrink-0 text-[10px] font-bold text-amber-600 bg-amber-500/10 rounded-full px-2 py-0.5">
+                          {Math.round((1 - unitPrice(b) / a) * 100)}% sotto la media
+                        </span>
+                      )}
+                    </div>
+                    <div className="px-2 pb-2 space-y-0.5">
+                      {g.o.map((e, i) => {
+                        const isBest = g.o.length > 1 && e === b;
+                        return (
+                          <button
+                            key={`${e.s}-${i}`}
+                            onClick={() => onOfferPage(e.fid, e.pg)}
+                            disabled={!isBest}
+                            title={isBest ? 'Apri il volantino alla pagina dell\'offerta' : undefined}
+                            className={`w-full flex items-center gap-3 px-2.5 py-2 rounded-2xl text-left transition-colors ${
+                              isBest
+                                ? 'bg-emerald-500/10 ring-1 ring-emerald-500/25 hover:bg-emerald-500/15 active:bg-emerald-500/20'
+                                : 'cursor-default'
+                            }`}
+                          >
+                            <span className={`shrink-0 w-2 h-2 rounded-full ${isBest ? 'bg-emerald-500' : 'bg-[var(--border)]'}`} />
+                            <div className="flex-1 min-w-0">
+                              <p className={`text-xs font-bold truncate ${isBest ? 'text-emerald-600' : 'text-[var(--text-main)]'}`}>
+                                {e.s} {e.b !== e.s ? `· ${e.b}` : ''}
+                                {isBest && <span className="ml-1.5 text-[9px] font-black uppercase tracking-wide bg-emerald-500 text-white rounded-full px-1.5 py-0.5 align-middle">Migliore</span>}
+                              </p>
+                              <p className="text-[10px] text-[var(--text-muted)] font-medium truncate">{e.n}</p>
+                            </div>
+                            <div className="text-right shrink-0">
+                              <p className={`text-sm font-black ${isBest ? 'text-emerald-600' : 'text-[var(--text-main)]'}`}>{fmtPrice(e.p)}</p>
+                              <p className="text-[10px] text-[var(--text-muted)] font-semibold">
+                                {unitPrice(e).toFixed(2).replace('.', ',')} {fmtUnit(e.u)}
+                              </p>
+                            </div>
+                            {isBest && <Store className="w-4 h-4 text-emerald-500 shrink-0" />}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        ))
+      )}
+
+      <p className="text-[10px] text-[var(--text-muted)] font-medium text-center pt-1">
+        Prezzi rilevati dai volantini attivi ({OFFER_DATE}). Possono variare per punto vendita: verifica sempre in negozio.
+      </p>
+    </motion.div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   VIEW 3: PAGINA A TUTTO SCHERMO — zoom (pinch/doppio tap) e swipe
+   ═══════════════════════════════════════════════════════════════════ */
+function PageViewer(props: {
+  activeFlyer: { fid: string; flyer: DcFlyer };
+  fullPage: number;
+  onFullPage: (n: number | null) => void;
+}) {
+  const { fid, flyer } = props.activeFlyer;
+  const { fullPage, onFullPage } = props;
+  const total = Math.max(flyer.p.length, 1);
+  const scaleRef = useRef(1);
+  const swipeStart = useRef<number | null>(null);
+
+  const setPage = (n: number) => onFullPage(Math.min(Math.max(n, 0), total - 1));
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-[200] flex flex-col bg-black"
+      onTouchStart={e => { if (e.touches.length === 1 && scaleRef.current <= 1.01) swipeStart.current = e.touches[0].clientX; else swipeStart.current = null; }}
+      onTouchEnd={e => {
+        if (swipeStart.current === null) return;
+        const dx = e.changedTouches[0].clientX - swipeStart.current;
+        swipeStart.current = null;
+        if (Math.abs(dx) > 60) setPage(fullPage + (dx < 0 ? 1 : -1));
+      }}
+    >
+      <header className="flex items-center gap-3 pt-[max(env(safe-area-inset-top),16px)] px-4 pb-3 shrink-0 z-30">
+        <button
+          onClick={() => onFullPage(null)}
+          className="p-2.5 -ml-2 hover:bg-white/10 rounded-full text-white transition-colors shrink-0"
+        >
+          <ArrowLeft className="w-6 h-6" />
+        </button>
+        <div className="flex-1 min-w-0 text-center">
+          <h1 className="text-base font-black text-white truncate">{flyer.n}</h1>
+          <p className="text-[11px] text-white/60 font-semibold">
+            Pagina {fullPage + 1} di {total} · pizzica per zoomare
+          </p>
+        </div>
+        <div className="w-9 shrink-0" />
+      </header>
+
+      <div className="flex-1 min-h-0 relative flex items-center justify-center overflow-hidden">
+        <PinchZoom key={`${fid}-${fullPage}`} onScale={s => { scaleRef.current = s; }}>
+          <img
+            src={dcPageUrl(fid, fullPage, 4)}
+            alt={`${flyer.n} pagina ${fullPage + 1}`}
+            className="w-full h-full object-contain select-none"
+            draggable={false}
+          />
+        </PinchZoom>
+
+        {total > 1 && (
+          <>
+            <button
+              onClick={() => setPage(fullPage - 1)}
+              disabled={fullPage === 0}
+              className="absolute left-2 top-1/2 -translate-y-1/2 p-2.5 rounded-full bg-white/10 text-white hover:bg-white/20 disabled:opacity-30 transition-colors"
+              title="Pagina precedente"
+            >
+              <ChevronLeft className="w-6 h-6" />
+            </button>
+            <button
+              onClick={() => setPage(fullPage + 1)}
+              disabled={fullPage === total - 1}
+              className="absolute right-2 top-1/2 -translate-y-1/2 p-2.5 rounded-full bg-white/10 text-white hover:bg-white/20 disabled:opacity-30 transition-colors"
+              title="Pagina successiva"
+            >
+              <ChevronRight className="w-6 h-6" />
+            </button>
+          </>
+        )}
+      </div>
+    </motion.div>
+  );
+}
+
+export default function VolantinoScreen({ module, onClose, initialOffer }: VolantinoScreenProps) {
   const [view, setView] = useState<ViewMode>('home');
   const [activeFlyer, setActiveFlyer] = useState<{ fid: string; flyer: DcFlyer } | null>(null);
   const [fullPage, setFullPage] = useState<number | null>(null);
+
+  /* Apre direttamente l'offerta richiesta da un altro modulo (es. Lista della Spesa) */
+  useEffect(() => {
+    if (!initialOffer) return;
+    const flyer = DC_FLYERS[initialOffer.fid];
+    if (!flyer) return;
+    setActiveFlyer({ fid: initialOffer.fid, flyer });
+    setView('flyer');
+    setFullPage(initialOffer.pg);
+    setFromBadge(true);
+  }, [initialOffer]);
+
+  /* Il volantino è stato aperto dalla Lista della Spesa: al back si torna alla lista */
+  const [fromBadge, setFromBadge] = useState(false);
 
   /* ── Zona dell'utente ── */
   const [zone, setZone] = useState<VolantiniZone | null>(() => loadZone());
@@ -364,6 +822,11 @@ export default function VolantinoScreen({ module, onClose }: VolantinoScreenProp
       setFullPage(null);
       return;
     }
+    if (fromBadge) {
+      setFromBadge(false);
+      onClose();
+      return;
+    }
     if (view === 'flyer') {
       setActiveFlyer(null);
       setView(statsOrigin ? 'stats' : 'home');
@@ -437,15 +900,41 @@ export default function VolantinoScreen({ module, onClose }: VolantinoScreenProp
       {/* ═══ CONTENT ═══ */}
       <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain custom-scrollbar scroll-smooth pb-[max(env(safe-area-inset-bottom),8px)]">
         <AnimatePresence mode="wait">
-          {view === 'home' && <HomeView key="home" />}
-          {view === 'flyer' && activeFlyer && <FlyerView key={activeFlyer.fid} />}
-          {view === 'stats' && <StatsView key="stats" />}
+          {view === 'home' && (
+            <HomeView
+              key="home"
+              zone={zone}
+              cityLabel={cityLabel}
+              catCount={catCount}
+              cat={cat}
+              onCat={setCat}
+              flyerQuery={flyerQuery}
+              onFlyerQuery={setFlyerQuery}
+              shownCards={shownCards}
+              onOpenFlyer={openFlyer}
+              onZone={() => setZoneModalOpen(true)}
+              onStats={() => { setStatsQuery(''); setView('stats'); }}
+            />
+          )}
+          {view === 'flyer' && activeFlyer && (
+            <FlyerView key={activeFlyer.fid} activeFlyer={activeFlyer} cityLabel={cityLabel} onFullPage={setFullPage} />
+          )}
+          {view === 'stats' && (
+            <StatsView
+              key="stats"
+              query={statsQuery}
+              onQuery={setStatsQuery}
+              onOfferPage={openOfferPage}
+            />
+          )}
         </AnimatePresence>
       </div>
 
       {/* ═══ PAGINA A TUTTO SCHERMO ═══ */}
       <AnimatePresence>
-        {view === 'flyer' && fullPage !== null && <PageViewer key={`page-${activeFlyer?.fid}-${fullPage}`} />}
+        {view === 'flyer' && fullPage !== null && activeFlyer && (
+          <PageViewer key={`page-${activeFlyer?.fid}-${fullPage}`} activeFlyer={activeFlyer} fullPage={fullPage} onFullPage={setFullPage} />
+        )}
       </AnimatePresence>
 
       {/* ═══ MODAL ZONA ═══ */}
@@ -646,394 +1135,5 @@ export default function VolantinoScreen({ module, onClose }: VolantinoScreenProp
       </AnimatePresence>
     </motion.div>
   );
-
-  /* ═══════════════════════════════════════════════════════════════════
-     VIEW 1: HOME — categorie + volantini della città
-     ═══════════════════════════════════════════════════════════════════ */
-  function HomeView() {
-    return (
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="px-4 pt-4 pb-8 max-w-2xl mx-auto w-full space-y-5">
-        {/* ── Banner zona ── */}
-        <button
-          onClick={() => setZoneModalOpen(true)}
-          className="w-full flex items-center gap-2.5 p-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/25 text-left transition-colors hover:bg-emerald-500/15"
-        >
-          <MapPin className="w-4 h-4 text-emerald-500 shrink-0" />
-          <div className="flex-1 min-w-0">
-            <p className="text-xs font-bold text-[var(--text-main)]">
-              {zone && zone.cap ? `Volantini per ${zone.label}` : cityLabel ? `Volantini per ${cityLabel}` : zone && zone.kind !== 'all' ? `Volantini per ${zone.label}` : 'Volantini per tutta Italia'}
-              {!cityLabel && zone && zone.kind !== 'all' ? ' · nazionali' : ''}
-            </p>
-            <p className="text-[10px] text-[var(--text-muted)] font-medium">
-              {catCount} volantini · tocca per cambiare zona
-            </p>
-          </div>
-          <ChevronRight className="w-4 h-4 text-emerald-500 shrink-0" />
-        </button>
-
-        {/* ── Categorie ── */}
-        <div className="flex gap-2 overflow-x-auto custom-scrollbar pb-1 -mx-4 px-4">
-          <button
-            onClick={() => { setStatsQuery(''); setView('stats'); }}
-            className={`shrink-0 inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs font-bold transition-colors ${
-              view === 'stats'
-                ? 'bg-amber-500 text-white'
-                : 'bg-amber-500/10 border border-amber-500/25 text-amber-600 hover:bg-amber-500/20'
-            }`}
-          >
-            <BarChart3 className="w-3.5 h-3.5" />
-            Confronta prezzi
-          </button>
-          {DC_CATEGORIES.map(c => (
-            <button
-              key={c.slug}
-              onClick={() => setCat(c.slug)}
-              className={`shrink-0 px-3.5 py-2 rounded-full text-xs font-bold transition-colors ${
-                cat === c.slug
-                  ? 'bg-emerald-500 text-white'
-                  : 'bg-[var(--card-bg)] border border-[var(--border)] text-[var(--text-muted)] hover:text-[var(--text-main)]'
-              }`}
-            >
-              {c.name}
-            </button>
-          ))}
-        </div>
-
-        {/* ── Ricerca supermercato ── */}
-        <div className="relative">
-          <Search className="w-4 h-4 text-[var(--text-muted)] absolute left-4 top-1/2 -translate-y-1/2" />
-          <input
-            value={flyerQuery}
-            onChange={e => setFlyerQuery(e.target.value)}
-            placeholder="Cerca il volantino di un supermercato (es. Esselunga, Lidl, Trony…)"
-            className="w-full pl-11 pr-10 py-3 rounded-2xl bg-[var(--card-bg)] border border-[var(--border)] text-[var(--text-main)] font-semibold text-sm outline-none focus:border-emerald-500/60 transition-colors"
-          />
-          {flyerQuery && (
-            <button
-              onClick={() => setFlyerQuery('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors"
-              title="Cancella"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          )}
-        </div>
-
-        {flyerQuery && (
-          <p className="text-[11px] text-[var(--text-muted)] font-medium">
-            {shownCards.length === 0
-              ? `Nessun volantino per "${flyerQuery}" in ${cityLabel || 'tutta Italia'}`
-              : `${shownCards.length} volantini per "${flyerQuery}" (in tutte le categorie)`}
-          </p>
-        )}
-
-        {/* ── Volantini della categoria ── */}
-        {shownCards.length === 0 ? (
-          <div className="py-16 text-center">
-            <Store className="w-10 h-10 text-[var(--text-muted)] mx-auto mb-3 opacity-40" />
-            <p className="text-sm font-semibold text-[var(--text-muted)]">
-              {flyerQuery
-                ? `Nessun volantino trovato per "${flyerQuery}".`
-                : `Nessun volantino in questa categoria per ${cityLabel || 'la tua zona'}.`}
-            </p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-3 gap-3">
-            {shownCards.map(c => (
-              <button
-                key={c.fid}
-                onClick={() => openFlyer(c)}
-                className="group relative overflow-hidden rounded-2xl bg-[var(--card-bg)] border border-[var(--border)] aspect-[3/4] focus:outline-none focus:ring-2 focus:ring-emerald-500/40 flex flex-col hover:border-emerald-500/40"
-              >
-                <div className="flex-1 min-h-0 relative bg-white">
-                  <img
-                    src={dcCoverUrl(c.fid)}
-                    alt={c.flyer.n}
-                    loading="lazy"
-                    onError={e => {
-                      e.currentTarget.style.display = 'none';
-                      const logo = e.currentTarget.nextElementSibling as HTMLElement | null;
-                      if (logo) logo.style.display = 'flex';
-                    }}
-                    className="w-full h-full object-cover"
-                  />
-                  <div
-                    className="absolute inset-0 items-center justify-center"
-                    style={{ display: 'none' }}
-                  >
-                    <StoreLogo id={c.flyer.s} short={c.flyer.n.slice(0, 2)} brandSlug={c.flyer.s} size={56} />
-                  </div>
-                  {c.dist > 0 && (
-                    <span className="absolute top-1.5 left-1.5 text-[9px] font-bold text-emerald-700 bg-emerald-500/90 rounded-full px-1.5 py-0.5 shadow">
-                      {fmtDist(c.dist)}
-                    </span>
-                  )}
-                </div>
-                <div className="px-2 pb-2 pt-1.5">
-                  <span className="block text-[10px] font-extrabold text-[var(--text-main)] text-center truncate">{c.flyer.n}</span>
-                  <span className="block text-[9px] text-[var(--text-muted)] font-medium text-center mt-0.5">
-                    {c.flyer.p.length} pagine
-                  </span>
-                </div>
-              </button>
-            ))}
-          </div>
-        )}
-      </motion.div>
-    );
-  }
-
-  /* ═══════════════════════════════════════════════════════════════════
-     VIEW 2: VOLANTINO — pagine immagine con swipe verticale
-     ═══════════════════════════════════════════════════════════════════ */
-  function FlyerView() {
-    if (!activeFlyer) return null;
-    const { fid, flyer } = activeFlyer;
-    return (
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex flex-col h-full max-w-2xl mx-auto w-full">
-        <div className="px-4 py-3 shrink-0 flex items-center gap-3 border-b border-[var(--border)] bg-[var(--card-bg)]">
-          <div className="w-10 h-10 rounded-xl bg-white ring-1 ring-[var(--border)] flex items-center justify-center overflow-hidden shrink-0">
-            <img
-              src={dcLogoUrl(flyer.s)}
-              alt={flyer.n}
-              onError={e => { e.currentTarget.style.display = 'none'; }}
-              className="w-8 h-8 object-contain"
-            />
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="font-black text-[var(--text-main)] text-sm leading-tight truncate">{flyer.n}</p>
-            <p className="text-[11px] text-[var(--text-muted)] font-semibold truncate">
-              {cityLabel || 'Tutta Italia'} · {flyer.p.length} pagine
-            </p>
-          </div>
-          {flyer.p.length > 1 && (
-            <span className="shrink-0 inline-flex items-center gap-1 text-[10px] font-bold text-emerald-500 bg-emerald-500/10 rounded-full px-2.5 py-1">
-              <CalendarDays className="w-3 h-3" /> {flyer.p.length} pagine
-            </span>
-          )}
-          <button
-            onClick={() => setFullPage(0)}
-            className="shrink-0 p-2.5 rounded-2xl bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20 transition-colors"
-            title="Apri a tutto schermo"
-          >
-            <Maximize2 className="w-5 h-5" />
-          </button>
-        </div>
-        <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain custom-scrollbar bg-white">
-          {flyer.p.length === 0 ? (
-            <div className="py-16 text-center">
-              <p className="text-sm font-semibold text-[var(--text-muted)]">Anteprima non disponibile</p>
-            </div>
-          ) : (
-            flyer.p.map((_, i) => (
-              <div key={`${fid}-${i}`} className="w-full relative group">
-                <img
-                  src={dcPageUrl(fid, i, 4)}
-                  alt={`${flyer.n} pagina ${i + 1}`}
-                  loading={i === 0 ? 'eager' : 'lazy'}
-                  onError={e => { e.currentTarget.style.display = 'none'; }}
-                  className="w-full h-auto block cursor-pointer"
-                  draggable={false}
-                  onClick={() => setFullPage(i)}
-                />
-              </div>
-            ))
-          )}
-          {flyer.p.length > 0 && (
-            <p className="py-4 text-center text-xs font-semibold text-[var(--text-muted)]">Fine del volantino</p>
-          )}
-        </div>
-      </motion.div>
-    );
-  }
-
-  /* ═══════════════════════════════════════════════════════════════════
-     VIEW 4: CONFRONTA PREZZI — statistiche da articolo o marca specifica
-     ═══════════════════════════════════════════════════════════════════ */
-  function StatsView() {
-    const q = statsQuery.trim().toLowerCase();
-    const groups = q
-      ? OFFER_GROUPS.filter(g =>
-          g.g.toLowerCase().includes(q) ||
-          g.o.some(e => e.n.toLowerCase().includes(q) || e.b.toLowerCase().includes(q))
-        )
-      : OFFER_GROUPS;
-
-    const best = (o: OfferEntry[]) => o.reduce((a, b) => (unitPrice(b) < unitPrice(a) ? b : a), o[0]);
-    const avg = (o: OfferEntry[]) => o.reduce((s, e) => s + unitPrice(e), 0) / o.length;
-
-    return (
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="px-4 pt-4 pb-8 max-w-2xl mx-auto w-full space-y-4">
-        {/* ── Ricerca ── */}
-        <div className="relative">
-          <Search className="w-4 h-4 text-[var(--text-muted)] absolute left-4 top-1/2 -translate-y-1/2" />
-          <input
-            value={statsQuery}
-            onChange={e => setStatsQuery(e.target.value)}
-            placeholder="Cerca un alimento o una marca (es. salmone, tonno, Lavazza…)"
-            className="w-full pl-11 pr-10 py-3 rounded-2xl bg-[var(--card-bg)] border border-[var(--border)] text-[var(--text-main)] font-semibold text-sm outline-none focus:border-amber-500/60 transition-colors"
-          />
-          {statsQuery && (
-            <button
-              onClick={() => setStatsQuery('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors"
-              title="Cancella"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          )}
-        </div>
-
-        <p className="text-[11px] text-[var(--text-muted)] font-medium">
-          {groups.length === OFFER_GROUPS.length
-            ? `${OFFER_GROUPS.length} articoli confrontati · tocca il prezzo migliore per vederlo nel volantino`
-            : `${groups.length} risultati per "${statsQuery}"`}
-        </p>
-
-        {/* ── Gruppi ── */}
-        {groups.length === 0 ? (
-          <div className="py-16 text-center">
-            <BarChart3 className="w-10 h-10 text-[var(--text-muted)] mx-auto mb-3 opacity-40" />
-            <p className="text-sm font-semibold text-[var(--text-muted)]">
-              Nessun articolo trovato per "{statsQuery}".
-            </p>
-            <p className="text-xs text-[var(--text-muted)] font-medium mt-1">Prova con: salmone, tonno, prosciutto, gelato, birra…</p>
-          </div>
-        ) : (
-          groups.map(g => {
-            const b = best(g.o);
-            const a = avg(g.o);
-            return (
-              <div key={g.id} className="rounded-3xl bg-[var(--card-bg)] border border-[var(--border)] overflow-hidden">
-                <div className="flex items-center gap-2 px-4 pt-3.5 pb-2">
-                  <span className="text-lg leading-none">{g.e}</span>
-                  <h3 className="flex-1 min-w-0 font-black text-[var(--text-main)] text-sm truncate">{g.g}</h3>
-                  {g.o.length > 1 && (
-                    <span className="shrink-0 text-[10px] font-bold text-amber-600 bg-amber-500/10 rounded-full px-2 py-0.5">
-                      {Math.round((1 - unitPrice(b) / a) * 100)}% sotto la media
-                    </span>
-                  )}
-                </div>
-                <div className="px-2 pb-2 space-y-0.5">
-                  {g.o.map((e, i) => {
-                    const isBest = g.o.length > 1 && e === b;
-                    return (
-                      <button
-                        key={`${e.s}-${i}`}
-                        onClick={() => openOfferPage(e.fid, e.pg)}
-                        disabled={!isBest}
-                        title={isBest ? 'Apri il volantino alla pagina dell\'offerta' : undefined}
-                        className={`w-full flex items-center gap-3 px-2.5 py-2 rounded-2xl text-left transition-colors ${
-                          isBest
-                            ? 'bg-emerald-500/10 ring-1 ring-emerald-500/25 hover:bg-emerald-500/15 active:bg-emerald-500/20'
-                            : 'cursor-default'
-                        }`}
-                      >
-                        <span className={`shrink-0 w-2 h-2 rounded-full ${isBest ? 'bg-emerald-500' : 'bg-[var(--border)]'}`} />
-                        <div className="flex-1 min-w-0">
-                          <p className={`text-xs font-bold truncate ${isBest ? 'text-emerald-600' : 'text-[var(--text-main)]'}`}>
-                            {e.s} {e.b !== e.s ? `· ${e.b}` : ''}
-                            {isBest && <span className="ml-1.5 text-[9px] font-black uppercase tracking-wide bg-emerald-500 text-white rounded-full px-1.5 py-0.5 align-middle">Migliore</span>}
-                          </p>
-                          <p className="text-[10px] text-[var(--text-muted)] font-medium truncate">{e.n}</p>
-                        </div>
-                        <div className="text-right shrink-0">
-                          <p className={`text-sm font-black ${isBest ? 'text-emerald-600' : 'text-[var(--text-main)]'}`}>{fmtPrice(e.p)}</p>
-                          <p className="text-[10px] text-[var(--text-muted)] font-semibold">
-                            {unitPrice(e).toFixed(2).replace('.', ',')} {fmtUnit(e.u)}
-                          </p>
-                        </div>
-                        {isBest && <Store className="w-4 h-4 text-emerald-500 shrink-0" />}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            );
-          })
-        )}
-
-        <p className="text-[10px] text-[var(--text-muted)] font-medium text-center pt-1">
-          Prezzi rilevati dai volantini nazionali attivi ({OFFER_DATE}). Possono variare per punto vendita: verifica sempre in negozio.
-        </p>
-      </motion.div>
-    );
-  }
-
-  /* ═══════════════════════════════════════════════════════════════════
-     VIEW 3: PAGINA A TUTTO SCHERMO — zoom (pinch/doppio tap) e swipe
-     ═══════════════════════════════════════════════════════════════════ */
-  function PageViewer() {
-    if (!activeFlyer || fullPage === null) return null;
-    const { fid, flyer } = activeFlyer;
-    const total = Math.max(flyer.p.length, 1);
-    const scaleRef = useRef(1);
-    const swipeStart = useRef<number | null>(null);
-
-    const setPage = (n: number) => setFullPage(Math.min(Math.max(n, 0), total - 1));
-
-    return (
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        className="fixed inset-0 z-[200] flex flex-col bg-black"
-        onTouchStart={e => { if (e.touches.length === 1 && scaleRef.current <= 1.01) swipeStart.current = e.touches[0].clientX; else swipeStart.current = null; }}
-        onTouchEnd={e => {
-          if (swipeStart.current === null) return;
-          const dx = e.changedTouches[0].clientX - swipeStart.current;
-          swipeStart.current = null;
-          if (Math.abs(dx) > 60) setPage(fullPage + (dx < 0 ? 1 : -1));
-        }}
-      >
-        <header className="flex items-center gap-3 pt-[max(env(safe-area-inset-top),16px)] px-4 pb-3 shrink-0 z-30">
-          <button
-            onClick={() => setFullPage(null)}
-            className="p-2.5 -ml-2 hover:bg-white/10 rounded-full text-white transition-colors shrink-0"
-          >
-            <ArrowLeft className="w-6 h-6" />
-          </button>
-          <div className="flex-1 min-w-0 text-center">
-            <h1 className="text-base font-black text-white truncate">{flyer.n}</h1>
-            <p className="text-[11px] text-white/60 font-semibold">
-              Pagina {fullPage + 1} di {total} · pizzica per zoomare
-            </p>
-          </div>
-          <div className="w-9 shrink-0" />
-        </header>
-
-        <div className="flex-1 min-h-0 relative flex items-center justify-center overflow-hidden">
-          <PinchZoom key={`${fid}-${fullPage}`} onScale={s => { scaleRef.current = s; }}>
-            <img
-              src={dcPageUrl(fid, fullPage, 4)}
-              alt={`${flyer.n} pagina ${fullPage + 1}`}
-              className="w-full h-full object-contain select-none"
-              draggable={false}
-            />
-          </PinchZoom>
-
-          {total > 1 && (
-            <>
-              <button
-                onClick={() => setPage(fullPage - 1)}
-                disabled={fullPage === 0}
-                className="absolute left-2 top-1/2 -translate-y-1/2 p-2.5 rounded-full bg-white/10 text-white hover:bg-white/20 disabled:opacity-30 transition-colors"
-                title="Pagina precedente"
-              >
-                <ChevronLeft className="w-6 h-6" />
-              </button>
-              <button
-                onClick={() => setPage(fullPage + 1)}
-                disabled={fullPage === total - 1}
-                className="absolute right-2 top-1/2 -translate-y-1/2 p-2.5 rounded-full bg-white/10 text-white hover:bg-white/20 disabled:opacity-30 transition-colors"
-                title="Pagina successiva"
-              >
-                <ChevronRight className="w-6 h-6" />
-              </button>
-            </>
-          )}
-        </div>
-      </motion.div>
-    );
-  }
 }
+

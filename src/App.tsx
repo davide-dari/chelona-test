@@ -138,12 +138,6 @@ const TEMPLATES = {
     icon: Globe,
     color: 'text-indigo-400'
   },
-  study: {
-    title: 'Studio',
-    content: '',
-    icon: BookOpen,
-    color: 'text-indigo-500'
-  },
   recipes: {
     title: 'Ricette',
     content: '',
@@ -195,6 +189,7 @@ export default function App() {
   const [editingFitnessModule, setEditingFitnessModule] = useState<import('./types').FitnessModule | null>(null);
   const [editingSupermarketModule, setEditingSupermarketModule] = useState<import('./types').SupermarketModule | null>(null);
   const [editingVolantinoModule, setEditingVolantinoModule] = useState<import('./types').VolantinoModule | null>(null);
+  const [flyerInitialOffer, setFlyerInitialOffer] = useState<{ fid: string; pg: number } | null>(null);
 
   useEffect(() => {
     // Show splash screen briefly, then go to lock screen immediately
@@ -362,6 +357,40 @@ export default function App() {
     window.addEventListener('open-recipes', handleOpenRecipes);
     return () => window.removeEventListener('open-recipes', handleOpenRecipes);
   }, []);
+
+  // Listen for open-flyer-offer event from other modules (like Supermercato/Lista della Spesa)
+  useEffect(() => {
+    const handleOpenFlyerOffer = (e: Event) => {
+      const d = (e as CustomEvent).detail;
+      if (!d || !d.fid || typeof d.pg !== 'number') return;
+      setFlyerInitialOffer({ fid: String(d.fid), pg: d.pg });
+      const existingVolantino = modules.find(m => m.type === 'volantino') as import('./types').VolantinoModule | undefined;
+      if (existingVolantino) {
+        setEditingVolantinoModule(existingVolantino);
+      } else {
+        const newVolantino: import('./types').VolantinoModule = {
+          id: generateUUID(),
+          type: 'volantino',
+          title: 'Volantino',
+          offers: [],
+          flyers: [],
+          x: (modules.length * 2) % 12,
+          y: Infinity,
+          w: 3,
+          h: 3,
+          folderId: selectedFolderId || undefined
+        };
+        setModules(prev => {
+          const updated = [newVolantino, ...prev];
+          saveAppState(updated, folders).catch(console.error);
+          return updated;
+        });
+        setEditingVolantinoModule(newVolantino);
+      }
+    };
+    window.addEventListener('open-flyer-offer', handleOpenFlyerOffer);
+    return () => window.removeEventListener('open-flyer-offer', handleOpenFlyerOffer);
+  }, [modules, folders, selectedFolderId]);
   const [autoFormStep, setAutoFormStep] = useState(0);
   const [picker, setPicker] = useState<'brand' | 'model' | null>(null);
   const [pendingImportModule, setPendingImportModule] = useState<Module | null>(null);
@@ -2235,17 +2264,18 @@ export default function App() {
                 onSave={(mod) => { updateModuleDirect(mod); setEditingFurnitureModule(mod); }}
                 onClose={() => setEditingFurnitureModule(null)}
               />
+            ) : editingVolantinoModule ? (
+              <VolantinoScreen
+                module={editingVolantinoModule}
+                initialOffer={flyerInitialOffer ?? undefined}
+                onClose={() => { setEditingVolantinoModule(null); setFlyerInitialOffer(null); }}
+              />
             ) : editingSupermarketModule ? (
               <SupermarketScreen
                 module={editingSupermarketModule}
                 onSave={(mod) => { updateModuleDirect(mod); setEditingSupermarketModule(mod); }}
                 onClose={() => setEditingSupermarketModule(null)}
                 onShare={(mod) => setSharingModule(mod as Module)}
-              />
-            ) : editingVolantinoModule ? (
-              <VolantinoScreen
-                module={editingVolantinoModule}
-                onClose={() => setEditingVolantinoModule(null)}
               />
             ) : editingStudyModule ? (
               <StudyScreen
@@ -2328,26 +2358,6 @@ export default function App() {
                                 setSpesaSubMenu(true);
                               } else if (key === 'home') {
                                 setHomeSubMenu(true);
-                              } else if (key === 'study') {
-                                setIsAdding(false);
-                                const newStudy: any = {
-                                  id: generateUUID(),
-                                  type: 'study',
-                                  title: 'Studio',
-                                  status: 'wizard',
-                                  topics: [],
-                                  x: (modules.length * 2) % 12,
-                                  y: Infinity,
-                                  w: 3,
-                                  h: 2,
-                                  folderId: selectedFolderId || undefined
-                                };
-                                setModules(prev => {
-                                  const updated = [newStudy, ...prev];
-                                  saveAppState(updated, folders).catch(console.error);
-                                  return updated;
-                                });
-                                setEditingStudyModule(newStudy);
                               } else {
                                 setFormData({ ...formData, template: key, title: t.title, content: t.content });
                                 setAutoFormStep(0);
@@ -3261,30 +3271,6 @@ export default function App() {
                                         });
                                         setEditingTravelModule(newTravel);
                                       }
-                                    } else if (key === 'study') {
-                                      const existingStudy = modules.find(m => m.type === 'study');
-                                      if (existingStudy) {
-                                        setEditingStudyModule(existingStudy);
-                                      } else {
-                                        const newStudy: any = {
-                                          id: generateUUID(),
-                                          type: 'study',
-                                          title: 'Studio',
-                                          status: 'wizard',
-                                          topics: [],
-                                          x: (modules.length * 2) % 12,
-                                          y: Infinity,
-                                          w: 3,
-                                          h: 2,
-                                          folderId: selectedFolderId || undefined
-                                        };
-                                        setModules(prev => {
-                                          const updated = [newStudy, ...prev];
-                                          saveAppState(updated, folders).catch(console.error);
-                                          return updated;
-                                        });
-                                        setEditingStudyModule(newStudy);
-                                      }
                                     } else if (key === 'fitness') {
                                       const existingFitness = modules.find(m => m.type === 'fitness');
                                       if (existingFitness) {
@@ -3566,26 +3552,6 @@ export default function App() {
                       return updated;
                     });
                     setEditingTravelModule(newTravel);
-                  } else if (selectedType === 'study') {
-                    // Create new study module directly
-                    const newStudy: any = {
-                      id: generateUUID(),
-                      type: 'study',
-                      title: 'Studio',
-                      status: 'wizard',
-                      topics: [],
-                      x: (modules.length * 2) % 12,
-                      y: Infinity,
-                      w: 3,
-                      h: 2,
-                      folderId: selectedFolderId || undefined
-                    };
-                    setModules(prev => {
-                      const updated = [newStudy, ...prev];
-                      saveAppState(updated, folders).catch(console.error);
-                      return updated;
-                    });
-                    setEditingStudyModule(newStudy);
                   } else if (selectedType === 'fitness') {
                     const newFitness: import('./types').FitnessModule = {
                       id: generateUUID(),
