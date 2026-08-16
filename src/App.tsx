@@ -222,6 +222,9 @@ export default function App() {
       }
     }).catch(console.error);
 
+    // Precarica i volantini live (fallback sul bundle) in background
+    import('./services/dcData').then(({ initDcData }) => initDcData()).catch(console.error);
+
     window.addEventListener('chelona_profiles_updated', loadInitialProfile);
 
     return () => {

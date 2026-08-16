@@ -14,6 +14,7 @@ import {
 } from '../data/supermarketProducts';
 import { findOffersForName } from '../data/offerStats';
 import { DC_FLYERS } from '../data/doveconvieneDb';
+import { initDcData, useDcDataVersion } from '../services/dcData';
 
 interface SupermarketScreenProps {
   module: SupermarketModule;
@@ -191,6 +192,10 @@ export const SupermarketScreen = ({ module, onSave, onClose, onShare }: Supermar
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const qtyRef = useRef<HTMLInputElement>(null);
+
+  /* Dati volantini: fallback sul bundle, poi aggiornati dal servizio live */
+  useDcDataVersion();
+  useEffect(() => { initDcData(); }, []);
 
   useEffect(() => {
     const handleFridge = () => setFridgeIngredients(loadFridge());

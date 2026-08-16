@@ -1,0 +1,37 @@
+name: Sync flyers from dovecoviene.it
+
+on:
+  schedule:
+    - cron: '17 */12 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Run sync
+        run: node scripts-dc/sync-dc-data.mjs --out=/tmp/dc-data.json
+
+      - name: Commit to dc-data branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin dc-data || true
+          git switch -C dc-data origin/dc-data 2>/dev/null || git switch -c dc-data
+          cp /tmp/dc-data.json dc-data.json
+          git add dc-data.json
+          git commit -m "sync flyers $(date -u +%Y-%m-%dT%H:%MZ)" || echo "nessun aggiornamento"
+          git push origin dc-data || true

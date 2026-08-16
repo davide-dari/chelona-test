@@ -16,6 +16,7 @@ import {
 import { DC_COMUNE_SLUG, DC_CAPOLUOGO_SLUG } from '../data/dcCityMap';
 import { comuniCaps } from '../data/comuniCaps';
 import { OFFER_GROUPS, OFFER_DATE, type OfferEntry, type OfferCategory } from '../data/offerStats';
+import { initDcData, useDcDataVersion } from '../services/dcData';
 
 interface VolantinoScreenProps {
   module: VolantinoModule;
@@ -637,6 +638,10 @@ export default function VolantinoScreen({ module, onClose, initialOffer }: Volan
   const [activeFlyer, setActiveFlyer] = useState<{ fid: string; flyer: DcFlyer } | null>(null);
   const [fullPage, setFullPage] = useState<number | null>(null);
 
+  /* Dati volantini: fallback sul bundle, poi aggiornati dal servizio live */
+  const dcVer = useDcDataVersion();
+  useEffect(() => { initDcData(); }, []);
+
   /* Apre direttamente l'offerta richiesta da un altro modulo (es. Lista della Spesa) */
   useEffect(() => {
     if (!initialOffer) return;
@@ -771,7 +776,7 @@ export default function VolantinoScreen({ module, onClose, initialOffer }: Volan
     const data = dcSlug && DC_CITY_FLYERS[dcSlug] ? DC_CITY_FLYERS[dcSlug] : DC_CITY_FLYERS['--nazionale--'];
     const list = parseCards(data[cat] ?? '');
     return list.sort((a, b) => a.dist - b.dist || (parseInt(a.fid) - parseInt(b.fid)));
-  }, [dcSlug, cat]);
+  }, [dcSlug, cat, dcVer]);
 
   /* Tutti i volantini della città (tutte le categorie) per la ricerca supermercato */
   const allCards = useMemo(() => {
@@ -780,7 +785,7 @@ export default function VolantinoScreen({ module, onClose, initialOffer }: Volan
     for (const c of DC_CATEGORIES) out.push(...parseCards(data[c.slug] ?? ''));
     const seen = new Set<string>();
     return out.filter(c => (seen.has(c.fid) ? false : (seen.add(c.fid), true)));
-  }, [dcSlug]);
+  }, [dcSlug, dcVer]);
 
   const shownCards = useMemo(() => {
     const q = flyerQuery.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
@@ -798,7 +803,7 @@ export default function VolantinoScreen({ module, onClose, initialOffer }: Volan
     let n = 0;
     for (const c of DC_CATEGORIES) n += parseCards(data[c.slug] ?? '').length;
     return n;
-  }, [dcSlug]);
+  }, [dcSlug, dcVer]);
 
   const openFlyer = (card: DcCard) => {
     setActiveFlyer({ fid: card.fid, flyer: card.flyer });

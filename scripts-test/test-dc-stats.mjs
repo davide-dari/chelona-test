@@ -247,7 +247,7 @@ try {
   await new Promise(r => setTimeout(r, 700));
   ok('ritorno alla lista della spesa', /vedi nel volantino/.test(await bodyText()));
 
-  ok('0 richieste fallite', failed.filter(u => !u.includes('api.github.com')).length === 0, failed.filter(u => !u.includes('api.github.com')).slice(0, 3).join('\n'));
+  ok('0 richieste fallite', failed.filter(u => !u.includes('api.github.com') && !u.includes('raw.githubusercontent.com/davide-dari/chelona-test/dc-data')).length === 0, failed.filter(u => !u.includes('api.github.com') && !u.includes('raw.githubusercontent.com/davide-dari/chelona-test/dc-data')).slice(0, 3).join('\n'));
 } catch (err) {
   ok('errore esecuzione', false, String(err).slice(0, 200));
 }
