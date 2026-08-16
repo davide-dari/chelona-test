@@ -3624,3 +3624,21 @@ export function applyLiveDcData(data: {
   dcDataVersion++;
   dcDataListeners.forEach(cb => cb());
 }
+
+/** Ritorna tutti i fid unici per una categoria (scandendo tutte le città). */
+export function dcAllFidsForCategory(catSlug: string): string[] {
+  const seen = new Set<string>();
+  const fids: string[] = [];
+  for (const cityData of Object.values(DC_CITY_FLYERS)) {
+    const raw = cityData[catSlug];
+    if (!raw) continue;
+    for (const part of raw.split(',')) {
+      const fid = part.split(':')[0];
+      if (fid && !seen.has(fid) && DC_FLYERS[fid]) {
+        seen.add(fid);
+        fids.push(fid);
+      }
+    }
+  }
+  return fids;
+}

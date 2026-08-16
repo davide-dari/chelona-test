@@ -132,6 +132,33 @@ try {
   await new Promise(r => setTimeout(r, 500));
   ok('back → home (evento volantino-back)', /Confronta prezzi/.test(await bodyText()) && !/articoli confrontati/.test(await bodyText()));
 
+  // ── Esplora tutti i volantini per categoria ──
+  await page.evaluate(() => {
+    const b = [...document.querySelectorAll('button')].find(x => x.innerText.includes('Esplora'));
+    if (b) b.click();
+  });
+  await waitText('volantini da');
+  const browseTxt = await bodyText();
+  ok('vista esplora mostra catene', /volantini da \d+ catene/.test(browseTxt));
+  ok('vista esplora contiene catene note', /Lidl|Esselunga|Eurospin|Conad/.test(browseTxt));
+
+  // Ricerca nella vista esplora
+  const browseSearch = await page.evaluate(() => {
+    const i = [...document.querySelectorAll('input')].find(x => x.placeholder?.includes('Cerca una catena'));
+    if (!i) return false;
+    const s = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
+    s.call(i, 'Lidl'); i.dispatchEvent(new Event('input', { bubbles: true }));
+    return true;
+  });
+  ok('input ricerca esplora presente', browseSearch);
+  await new Promise(r => setTimeout(r, 400));
+  const browseSearchTxt = await bodyText();
+  ok('ricerca esplora filtra catene', /Lidl/.test(browseSearchTxt));
+
+  await page.evaluate(() => window.dispatchEvent(new CustomEvent('volantino-back')));
+  await new Promise(r => setTimeout(r, 500));
+  ok('back da esplora → home', /Confronta prezzi/.test(await bodyText()) && !/volantini da/.test(await bodyText()));
+
   // ── Barra di ricerca supermercato ──
   await setSearch('Lidl');
   await waitText('volantini per "Lidl"');

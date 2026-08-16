@@ -2,7 +2,8 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   ArrowLeft, Loader2, MapPin, Crosshair, X, ChevronRight,
-  CalendarDays, Store, ChevronLeft, BarChart3, Search, Star
+  CalendarDays, Store, ChevronLeft, BarChart3, Search, Star,
+  LayoutGrid
 } from 'lucide-react';
 import { VolantinoModule } from '../types';
 import { StoreLogo } from './StoreLogo';
@@ -10,7 +11,7 @@ import { ALL_ITALY_ZONE, loadZone, resolveCap, resolveCity, resolveGps, saveZone
 import { searchComuni, comuniByCap, findComune } from '../services/comuniService';
 import {
   DC_CATEGORIES, DC_CITY_SLUGS, DC_FLYERS, DC_CITY_FLYERS,
-  dcCoverUrl, dcLogoUrl, dcPageUrl,
+  dcCoverUrl, dcLogoUrl, dcPageUrl, dcAllFidsForCategory,
   type DcFlyer
 } from '../data/doveconvieneDb';
 import { DC_COMUNE_SLUG, DC_CAPOLUOGO_SLUG } from '../data/dcCityMap';
@@ -24,7 +25,7 @@ interface VolantinoScreenProps {
   initialOffer?: { fid: string; pg: number };
 }
 
-type ViewMode = 'home' | 'flyer' | 'stats';
+type ViewMode = 'home' | 'flyer' | 'stats' | 'browse';
 
 interface DcCard {
   fid: string;
@@ -207,8 +208,9 @@ function HomeView(props: {
   onOpenFlyer: (c: DcCard) => void;
   onZone: () => void;
   onStats: () => void;
+  onBrowse: (catSlug: string) => void;
 }) {
-  const { zone, cityLabel, catCount, cat, onCat, favCats, onToggleFav, flyerQuery, onFlyerQuery, shownCards, onOpenFlyer, onZone, onStats } = props;
+  const { zone, cityLabel, catCount, cat, onCat, favCats, onToggleFav, flyerQuery, onFlyerQuery, shownCards, onOpenFlyer, onZone, onStats, onBrowse } = props;
 
   /* Le categorie preferite compaiono per prime, in ordine di preferenza */
   const orderedCats = useMemo(() => {
@@ -246,6 +248,13 @@ function HomeView(props: {
         >
           <BarChart3 className="w-3.5 h-3.5" />
           Confronta prezzi
+        </button>
+        <button
+          onClick={() => onBrowse(cat)}
+          className="shrink-0 inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs font-bold transition-colors bg-violet-500/10 border border-violet-500/25 text-violet-600 hover:bg-violet-500/20"
+        >
+          <LayoutGrid className="w-3.5 h-3.5" />
+          Esplora
         </button>
         {orderedCats.map(c => {
           const isFav = favCats.has(c.slug);
@@ -574,7 +583,108 @@ function StatsView(props: {
 }
 
 /* ═══════════════════════════════════════════════════════════════════
-   VIEW 3: PAGINA A TUTTO SCHERMO — zoom (pinch/doppio tap) e swipe
+   VIEW 3: ESPLORA — tutti i volantini per categoria, raggruppati per catena
+   ═══════════════════════════════════════════════════════════════════ */
+function BrowseView(props: {
+  catSlug: string;
+  query: string;
+  onQuery: (q: string) => void;
+  onOpenFlyer: (c: DcCard) => void;
+}) {
+  const { catSlug, query, onQuery, onOpenFlyer } = props;
+  const dcVer = useDcDataVersion();
+
+  /* Tutti i fid unici per la categoria, con dedup per retailer */
+  const allCards = useMemo(() => {
+    const fids = dcAllFidsForCategory(catSlug);
+    return fids.map(fid => {
+      const flyer = DC_FLYERS[fid];
+      return flyer ? { fid, dist: 0, flyer } : null;
+    }).filter(Boolean) as DcCard[];
+  }, [catSlug, dcVer]);
+
+  /* Raggruppa per retailer slug */
+  const grouped = useMemo(() => {
+    const map = new Map<string, { name: string; cards: DcCard[] }>();
+    for (const card of allCards) {
+      const key = card.flyer.s;
+      let entry = map.get(key);
+      if (!entry) {
+        entry = { name: card.flyer.n, cards: [] };
+        map.set(key, entry);
+      }
+      entry.cards.push(card);
+    }
+    const q = query.trim().toLowerCase();
+    let entries = [...map.entries()];
+    if (q) entries = entries.filter(([slug, e]) =>
+      slug.includes(q) || e.name.toLowerCase().includes(q)
+    );
+    return entries.sort((a, b) => a[1].name.localeCompare(b[1].name));
+  }, [allCards, query]);
+
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="px-4 pt-4 pb-8 max-w-2xl mx-auto w-full space-y-4">
+      <div className="relative">
+        <Search className="w-4 h-4 text-[var(--text-muted)] absolute left-4 top-1/2 -translate-y-1/2" />
+        <input
+          value={query}
+          onChange={e => onQuery(e.target.value)}
+          placeholder="Cerca una catena (es. Lidl, IKEA, Trony…)"
+          className="w-full pl-11 pr-10 py-3 rounded-2xl bg-[var(--card-bg)] border border-[var(--border)] text-[var(--text-main)] font-semibold text-sm outline-none focus:border-violet-500/60 transition-colors"
+        />
+        {query && (
+          <button
+            onClick={() => onQuery('')}
+            className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors"
+            title="Cancella"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        )}
+      </div>
+
+      <p className="text-[11px] text-[var(--text-muted)] font-medium">
+        {query
+          ? `${grouped.length} risultati per "${query}"`
+          : `${allCards.length} volantini da ${grouped.length} catene`}
+      </p>
+
+      {grouped.length === 0 ? (
+        <div className="py-16 text-center">
+          <LayoutGrid className="w-10 h-10 text-[var(--text-muted)] mx-auto mb-3 opacity-40" />
+          <p className="text-sm font-semibold text-[var(--text-muted)]">
+            Nessuna catena trovata per "{query}".
+          </p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          {grouped.map(([slug, entry]) => (
+            <button
+              key={slug}
+              onClick={() => { if (entry.cards.length === 1) onOpenFlyer(entry.cards[0]); }}
+              className={`flex flex-col items-center gap-2 p-4 rounded-2xl bg-[var(--card-bg)] border border-[var(--border)] transition-colors ${entry.cards.length === 1 ? 'hover:border-emerald-500/40 active:bg-emerald-500/10' : 'hover:border-violet-500/40'}`}
+            >
+              <img
+                src={dcLogoUrl(slug)}
+                alt={entry.name}
+                onError={e => { e.currentTarget.style.display = 'none'; }}
+                className="w-10 h-10 rounded-lg object-contain bg-white ring-1 ring-[var(--border)]"
+              />
+              <p className="text-xs font-bold text-[var(--text-main)] text-center truncate w-full">{entry.name}</p>
+              <p className="text-[10px] text-[var(--text-muted)] font-medium">
+                {entry.cards.length === 1 ? '1 volantino' : `${entry.cards.length} volantini`}
+              </p>
+            </button>
+          ))}
+        </div>
+      )}
+    </motion.div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   VIEW 4: PAGINA A TUTTO SCHERMO — zoom (pinch/doppio tap) e swipe
    ═══════════════════════════════════════════════════════════════════ */
 function PageViewer(props: {
   activeFlyer: { fid: string; flyer: DcFlyer };
@@ -713,6 +823,8 @@ export default function VolantinoScreen({ module, onClose, initialOffer }: Volan
 
   /* ── Ricerca volantino per supermercato ── */
   const [flyerQuery, setFlyerQuery] = useState('');
+  const [browseCat, setBrowseCat] = useState<string | null>(null);
+  const [browseQuery, setBrowseQuery] = useState('');
 
   const applyZone = (z: VolantiniZone) => {
     setZone(z);
@@ -875,6 +987,10 @@ export default function VolantinoScreen({ module, onClose, initialOffer }: Volan
       setStatsOrigin(false);
     } else if (view === 'stats') {
       setView('home');
+    } else if (view === 'browse') {
+      setBrowseCat(null);
+      setBrowseQuery('');
+      setView('home');
     } else onClose();
   };
 
@@ -891,6 +1007,10 @@ export default function VolantinoScreen({ module, onClose, initialOffer }: Volan
     }
     if (view === 'stats') {
       return `Confronto prezzi · rilevati dai volantini del ${OFFER_DATE}`;
+    }
+    if (view === 'browse' && browseCat) {
+      const catName = DC_CATEGORIES.find(c => c.slug === browseCat)?.name ?? '';
+      return `Esplora tutti i volantini · ${catName}`;
     }
     const base = cityLabel ? `${cityLabel} · ${shownCards.length} volantini` : `${shownCards.length} volantini · tutta Italia`;
     return `${base} · ${DC_CATEGORIES.find(c => c.slug === cat)?.name ?? ''}`;
@@ -958,6 +1078,7 @@ export default function VolantinoScreen({ module, onClose, initialOffer }: Volan
               onOpenFlyer={openFlyer}
               onZone={() => setZoneModalOpen(true)}
               onStats={() => { setStatsQuery(''); setView('stats'); }}
+              onBrowse={(c) => { setBrowseCat(c); setBrowseQuery(''); setView('browse'); }}
             />
           )}
           {view === 'flyer' && activeFlyer && (
@@ -969,6 +1090,15 @@ export default function VolantinoScreen({ module, onClose, initialOffer }: Volan
               query={statsQuery}
               onQuery={setStatsQuery}
               onOfferPage={openOfferPage}
+            />
+          )}
+          {view === 'browse' && browseCat && (
+            <BrowseView
+              key={`browse-${browseCat}`}
+              catSlug={browseCat}
+              query={browseQuery}
+              onQuery={setBrowseQuery}
+              onOpenFlyer={openFlyer}
             />
           )}
         </AnimatePresence>
