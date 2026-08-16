@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   ArrowLeft, Loader2, MapPin, Crosshair, X, ChevronRight,
-  CalendarDays, Store, Maximize2, ChevronLeft, BarChart3, Search
+  CalendarDays, Store, ChevronLeft, BarChart3, Search, Star
 } from 'lucide-react';
 import { VolantinoModule } from '../types';
 import { StoreLogo } from './StoreLogo';
@@ -199,6 +199,8 @@ function HomeView(props: {
   catCount: number;
   cat: string;
   onCat: (c: string) => void;
+  favCats: Set<string>;
+  onToggleFav: (c: string) => void;
   flyerQuery: string;
   onFlyerQuery: (q: string) => void;
   shownCards: DcCard[];
@@ -206,7 +208,14 @@ function HomeView(props: {
   onZone: () => void;
   onStats: () => void;
 }) {
-  const { zone, cityLabel, catCount, cat, onCat, flyerQuery, onFlyerQuery, shownCards, onOpenFlyer, onZone, onStats } = props;
+  const { zone, cityLabel, catCount, cat, onCat, favCats, onToggleFav, flyerQuery, onFlyerQuery, shownCards, onOpenFlyer, onZone, onStats } = props;
+
+  /* Le categorie preferite compaiono per prime, in ordine di preferenza */
+  const orderedCats = useMemo(() => {
+    const favs = DC_CATEGORIES.filter(c => favCats.has(c.slug));
+    const others = DC_CATEGORIES.filter(c => !favCats.has(c.slug));
+    return [...favs, ...others];
+  }, [favCats]);
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="px-4 pt-4 pb-8 max-w-2xl mx-auto w-full space-y-5">
       {/* ── Banner zona ── */}
@@ -238,19 +247,34 @@ function HomeView(props: {
           <BarChart3 className="w-3.5 h-3.5" />
           Confronta prezzi
         </button>
-        {DC_CATEGORIES.map(c => (
-          <button
-            key={c.slug}
-            onClick={() => onCat(c.slug)}
-            className={`shrink-0 px-3.5 py-2 rounded-full text-xs font-bold transition-colors ${
+        {orderedCats.map(c => {
+          const isFav = favCats.has(c.slug);
+          return (
+            <div key={c.slug} className="shrink-0 inline-flex items-center gap-1 rounded-full border transition-colors overflow-hidden ${
               cat === c.slug
-                ? 'bg-emerald-500 text-white'
-                : 'bg-[var(--card-bg)] border border-[var(--border)] text-[var(--text-muted)] hover:text-[var(--text-main)]'
-            }`}
-          >
-            {c.name}
-          </button>
-        ))}
+                ? 'border-emerald-500 bg-emerald-500'
+                : 'border-[var(--border)] bg-[var(--card-bg)]'
+            }">
+              <button
+                onClick={() => onCat(c.slug)}
+                className={`pl-3.5 py-2 text-xs font-bold transition-colors ${
+                  cat === c.slug ? 'text-white' : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
+                }`}
+              >
+                {c.name}
+              </button>
+              <button
+                onClick={() => onToggleFav(c.slug)}
+                title={isFav ? 'Rimuovi dai preferiti' : 'Aggiungi ai preferiti'}
+                className={`pr-2 py-2 transition-colors ${
+                  cat === c.slug ? 'text-white' : isFav ? 'text-amber-500' : 'text-[var(--text-muted)] opacity-50 hover:opacity-100'
+                }`}
+              >
+                <Star className={`w-3.5 h-3.5 ${isFav ? 'fill-current' : ''}`} />
+              </button>
+            </div>
+          );
+        })}
       </div>
 
       {/* ── Ricerca supermercato ── */}
@@ -369,13 +393,6 @@ function FlyerView(props: {
             <CalendarDays className="w-3 h-3" /> {flyer.p.length} pagine
           </span>
         )}
-        <button
-          onClick={() => onFullPage(0)}
-          className="shrink-0 p-2.5 rounded-2xl bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20 transition-colors"
-          title="Apri a tutto schermo"
-        >
-          <Maximize2 className="w-5 h-5" />
-        </button>
       </div>
       <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain custom-scrollbar bg-white">
         {flyer.p.length === 0 ? (
@@ -464,7 +481,7 @@ function StatsView(props: {
 
       <p className="text-[11px] text-[var(--text-muted)] font-medium">
         {groups.length === OFFER_GROUPS.length
-          ? `${OFFER_GROUPS.length} articoli confrontati su tutti i volantini · tocca il prezzo migliore per vederlo nel volantino`
+          ? `${OFFER_GROUPS.length} articoli confrontati su tutti i volantini · tocca un prezzo per vederlo nel volantino`
           : `${groups.length} risultati per "${query}"`}
       </p>
 
@@ -510,12 +527,11 @@ function StatsView(props: {
                           <button
                             key={`${e.s}-${i}`}
                             onClick={() => onOfferPage(e.fid, e.pg)}
-                            disabled={!isBest}
-                            title={isBest ? 'Apri il volantino alla pagina dell\'offerta' : undefined}
+                            title="Apri il volantino alla pagina dell'offerta"
                             className={`w-full flex items-center gap-3 px-2.5 py-2 rounded-2xl text-left transition-colors ${
                               isBest
                                 ? 'bg-emerald-500/10 ring-1 ring-emerald-500/25 hover:bg-emerald-500/15 active:bg-emerald-500/20'
-                                : 'cursor-default'
+                                : 'hover:bg-[var(--surface-variant)]/60 active:bg-[var(--surface-variant)]'
                             }`}
                           >
                             <span className={`shrink-0 w-2 h-2 rounded-full ${isBest ? 'bg-emerald-500' : 'bg-[var(--border)]'}`} />
@@ -532,7 +548,7 @@ function StatsView(props: {
                                 {unitPrice(e).toFixed(2).replace('.', ',')} {fmtUnit(e.u)}
                               </p>
                             </div>
-                            {isBest && <Store className="w-4 h-4 text-emerald-500 shrink-0" />}
+                            {isBest ? <Store className="w-4 h-4 text-emerald-500 shrink-0" /> : <ChevronRight className="w-4 h-4 text-[var(--text-muted)] shrink-0" />}
                           </button>
                         );
                       })}
@@ -669,6 +685,22 @@ export default function VolantinoScreen({ module, onClose, initialOffer }: Volan
 
   /* ── Categoria selezionata ── */
   const [cat, setCat] = useState<string>('iper-e-super');
+
+  /* ── Categorie preferite (stella), persistite ── */
+  const [favCats, setFavCats] = useState<Set<string>>(() => {
+    try {
+      const raw = localStorage.getItem('chelona:dc:favCats');
+      return new Set(raw ? JSON.parse(raw) : []);
+    } catch { return new Set(); }
+  });
+  const toggleFav = (slug: string) => {
+    setFavCats(prev => {
+      const next = new Set(prev);
+      if (next.has(slug)) next.delete(slug); else next.add(slug);
+      try { localStorage.setItem('chelona:dc:favCats', JSON.stringify([...next])); } catch {}
+      return next;
+    });
+  };
 
   /* ── Ricerca statistiche ── */
   const [statsQuery, setStatsQuery] = useState('');
@@ -913,6 +945,8 @@ export default function VolantinoScreen({ module, onClose, initialOffer }: Volan
               catCount={catCount}
               cat={cat}
               onCat={setCat}
+              favCats={favCats}
+              onToggleFav={toggleFav}
               flyerQuery={flyerQuery}
               onFlyerQuery={setFlyerQuery}
               shownCards={shownCards}

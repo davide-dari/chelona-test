@@ -86,7 +86,7 @@ async function fetchCityLabels() {
   return labels;
 }
 
-const cardsRe = /<div id="(\d+)" class="flyerCard[^"]*"[^>]*data-type='flyer'[^>]*>/;
+const cardsRe = /<div id="(\d+)" class="flyerCard[^"]*"[^>]*data-type='(?:flyer|click-out)'[^>]*>/;
 const titleRe = /flyerCard__titleText">([^<]+)/;
 const slugRe = /\/([a-z0-9-]+)\/(?:volantino|offerte|catalogo)\//;
 const distRe = /flyerCard__detailsSecondary">([^<]+)/;
@@ -150,6 +150,65 @@ async function phase1(cities) {
   }, CONC);
   console.log(`fase1 done. volantini unici: ${Object.keys(flyerCards).length}`);
   return { cityData, flyerCards };
+}
+
+/* ── FASE 1.5: retailer pages (sitemap nazionali + roma/milano/bologna) ──
+   Aggiunge volantini visibili solo sulle pagine retailer (es. /roma/volantino/penny),
+   che non compaiono nelle ~100 card delle pagine categoria. */
+async function phaseRetailers(flyerCards, cityData) {
+  const sitemaps = [
+    { name: 'sitemap_retailers.xml.gz', city: '' },
+    { name: 'sitemap_retailers_roma.xml.gz', city: 'roma' },
+    { name: 'sitemap_retailers_milano.xml.gz', city: 'milano' },
+    { name: 'sitemap_retailers_bologna.xml.gz', city: 'bologna' },
+  ];
+  const urls = [];
+  for (const sm of sitemaps) {
+    try {
+      const r = await fetch(`${BASE}/${sm.name}`, { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(30000) });
+      if (!r.ok) continue;
+      const buf = Buffer.from(await r.arrayBuffer());
+      const zlib = await import('node:zlib');
+      const xml = zlib.gunzipSync(buf).toString();
+      for (const m of xml.matchAll(/<loc>([^<]+)<\/loc>/g)) {
+        const u = m[1];
+        const m2 = u.match(/\/(?:volantino|offerte|catalogo)\/([a-z0-9-]+)$/);
+        if (m2) urls.push({ city: sm.city, slug: m2[1] });
+      }
+    } catch {}
+  }
+  console.log(`fase-retailers: ${urls.length} pagine retailer (nazionali + roma/milano/bologna)`);
+  let added = 0;
+  await run(urls, async ({ city, slug }) => {
+    const h = await get(`${BASE}/${city ? `${city}/` : ''}volantino/${slug}`);
+    if (!h) return;
+    const blocks = h.split(/(?=<div id="\d+" class="flyerCard)/).slice(1);
+    if (!blocks.length) return;
+    const b = blocks[0];
+    const m = b.match(cardsRe);
+    if (!m) return;
+    const fid = m[1];
+    const title = b.match(titleRe);
+    const cover = b.match(coverRe);
+    const dist = b.match(distRe);
+    // la categoria è nell'href della card (es. /roma/discount/penny/volantino/...)
+    const href = b.match(/href='([^']+)'/);
+    const catm = href ? href[1].match(/\/([a-z0-9-]+)\/[a-z0-9-]+\/(?:volantino|offerte|catalogo)\//) : null;
+    const cat = catm ? catm[1] : '';
+    if (!cat || !CATS.includes(cat)) return;
+    const ret = title?.[1]?.trim() || '';
+    if (!flyerCards[fid]) flyerCards[fid] = { cat, retailer: ret, slug, cover: cover?.[1] || '', cities: new Set() };
+    if (city) {
+      flyerCards[fid].cities.add(city);
+      if (!cityData[city]) cityData[city] = { cats: {} };
+      if (!cityData[city].cats[cat]) cityData[city].cats[cat] = [];
+      if (!cityData[city].cats[cat].some(c => c.fid === fid)) {
+        cityData[city].cats[cat].push({ fid, dist: dist?.[1]?.trim() || '' });
+        added++;
+      }
+    }
+  }, CONC);
+  console.log(`fase-retailers done. card aggiunte: ${added}`);
 }
 
 /* Estrae il primo oggetto JSON a partire da "window.DCFlyer = "
@@ -279,6 +338,7 @@ console.log(`etichette città: ${Object.keys(cityLabels).length}`);
 const limited = LIMIT ? cities.slice(0, LIMIT) : cities;
 const { cityData, flyerCards } = await phase1(limited);
 const naz = await phaseNaz(flyerCards);
+await phaseRetailers(flyerCards, cityData);
 const pubIds = await phase2(flyerCards);
 const pubMeta = await phase3(pubIds);
 const json = assemble(cityData, flyerCards, pubIds, pubMeta, cityLabels, naz);

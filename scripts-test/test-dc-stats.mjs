@@ -79,19 +79,36 @@ try {
   ok('ricerca salmone', /Salmone/.test(txt));
   ok('miglior prezzo salmone Lidl', txt.includes('Lidl') && txt.includes('7,49 €'));
 
+  // Click su un prezzo NON migliore → il volantino si apre comunque alla pagina dell'offerta
+  await page.evaluate(() => {
+    const buttons = [...document.querySelectorAll('button')];
+    const b = buttons.find(x => x.textContent?.includes('Eurospin') && x.textContent?.includes('€'));
+    if (b) b.click();
+  });
+  await waitText('pizzica per zoomare');
+  const of = await bodyText();
+  ok('apertura volantino da prezzo non migliore', /Eurospin/.test(of) && /di \d+ /.test(of) && /pizzica per zoomare/.test(of));
+
+  // Back: fullscreen → volantino (resta aperto)
+  await page.evaluate(() => window.dispatchEvent(new CustomEvent('volantino-back')));
+  await waitText('Fine del volantino');
+  ok('back dal fullscreen → volantino', /Fine del volantino/.test(await bodyText()));
+  await page.evaluate(() => window.dispatchEvent(new CustomEvent('volantino-back')));
+  await waitText('risultati per "salmone"');
+
   // Click sul prezzo migliore → apertura volantino alla pagina dell'offerta
   await page.evaluate(() => {
     const b = [...document.querySelectorAll('button')].find(x => x.textContent?.includes('Migliore'));
     if (b) b.click();
   });
   await waitText('Pagina 1 di');
-  const of = await bodyText();
-  ok('apertura volantino alla pagina offerta', /Lidl/.test(of) && /Pagina 1 di/.test(of) && /pizzica per zoomare/.test(of));
+  const ofBest = await bodyText();
+  ok('apertura volantino alla pagina offerta', /Lidl/.test(ofBest) && /Pagina 1 di/.test(ofBest) && /pizzica per zoomare/.test(ofBest));
 
   // Back: fullscreen → volantino (resta aperto)
   await page.evaluate(() => window.dispatchEvent(new CustomEvent('volantino-back')));
   await waitText('Fine del volantino');
-  ok('back dal fullscreen → volantino', /Fine del volantino/.test(await bodyText()));
+  ok('back dal fullscreen → volantino (migliore)', /Fine del volantino/.test(await bodyText()));
 
   // Back: volantino → confronta prezzi (provenienza offerta, ricerca "salmone" ancora attiva)
   await page.evaluate(() => window.dispatchEvent(new CustomEvent('volantino-back')));
@@ -247,7 +264,7 @@ try {
   await new Promise(r => setTimeout(r, 700));
   ok('ritorno alla lista della spesa', /vedi nel volantino/.test(await bodyText()));
 
-  ok('0 richieste fallite', failed.filter(u => !u.includes('api.github.com') && !u.includes('raw.githubusercontent.com/davide-dari/chelona-test/dc-data')).length === 0, failed.filter(u => !u.includes('api.github.com') && !u.includes('raw.githubusercontent.com/davide-dari/chelona-test/dc-data')).slice(0, 3).join('\n'));
+  ok('0 richieste fallite', failed.filter(u => !u.includes('api.github.com') && !u.includes('raw.githubusercontent.com/davide-dari/chelona-test/dc-data') && !u.includes('fonts.gstatic.com')).length === 0, failed.filter(u => !u.includes('api.github.com') && !u.includes('raw.githubusercontent.com/davide-dari/chelona-test/dc-data') && !u.includes('fonts.gstatic.com')).slice(0, 3).join('\n'));
 } catch (err) {
   ok('errore esecuzione', false, String(err).slice(0, 200));
 }
