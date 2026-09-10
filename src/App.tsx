@@ -3840,9 +3840,9 @@ export default function App() {
             initial={{ opacity: 0, y: -20, x: '-50%' }}
             animate={{ opacity: 1, y: 0, x: '-50%' }}
             exit={{ opacity: 0, y: -20, x: '-50%' }}
-            className={`fixed top-6 left-1/2 z-[10000] px-6 py-3 rounded-2xl shadow-xl flex items-center gap-3 border ${
-              toast.type === 'success' ? 'bg-green-50 border-green-100 text-green-700' :
-              toast.type === 'error' ? 'bg-red-50 border-red-100 text-red-700' :
+            className={`fixed top-6 left-1/2 z-[10000] px-6 py-3 rounded-2xl shadow-xl flex items-center gap-3 border backdrop-blur-md ${
+              toast.type === 'success' ? 'bg-[var(--success-bg)] border-[var(--success)]/30 text-[var(--success)]' :
+              toast.type === 'error' ? 'bg-[var(--danger-bg)] border-[var(--danger)]/30 text-[var(--danger)]' :
               'bg-[var(--accent-bg)] border-[var(--accent)]/20 text-[var(--accent)]'
             }`}
           >
