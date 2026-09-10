@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, User, Lock, Fingerprint, LogOut, Camera, Check, AlertCircle, Share2, Download, Copy, ShieldCheck, QrCode, SunDim, RefreshCw, LayoutDashboard, Plus, Sun, Moon, FileArchive, Bell } from 'lucide-react';
+import { X, User, Lock, Fingerprint, LogOut, Camera, Check, AlertCircle, Share2, Download, Copy, ShieldCheck, QrCode, SunDim, RefreshCw, LayoutDashboard, Plus, Sun, Moon, FileArchive, Bell, Cloud, CloudUpload, HardDriveDownload, LogIn } from 'lucide-react';
 import { storage } from '../services/storage';
 import { encryption } from '../services/encryption';
 import { updateService } from '../services/updateService';
@@ -12,6 +12,7 @@ import JSZip from 'jszip';
 import { lzw } from '../utils/lzw';
 import { Filesystem, Directory } from '@capacitor/filesystem';
 import { Capacitor } from '@capacitor/core';
+import { googleDrive } from '../services/googleDriveService';
 
 interface ProfileScreenProps {
   onClose: () => void;
@@ -74,6 +75,28 @@ export function ProfileScreen({
   const [backupJSON, setBackupJSON] = useState<string | null>(null);
   const [isAntiGlare, setIsAntiGlare] = useState(false);
 
+  const [driveBusy, setDriveBusy] = useState(false);
+  const [driveSignedIn, setDriveSignedIn] = useState(googleDrive.isSignedIn());
+  const [driveBackups, setDriveBackups] = useState<{ id: string; name: string; modifiedTime?: string }[]>([]);
+  const [showDriveRestore, setShowDriveRestore] = useState(false);
+  const restoreZipInputRef = useRef<HTMLInputElement>(null);
+
+  /* Crea lo ZIP di backup (profiles.enc + state_*.enc) */
+  const buildBackupZip = async (): Promise<Blob> => {
+    const zip = new JSZip();
+    const profilesEnc = storage.getRawProfiles();
+    if (!profilesEnc) throw new Error('Nessun profilo da esportare');
+    zip.file('profiles.enc', profilesEnc);
+    const profiles = storage.loadProfiles();
+    for (const p of profiles) {
+      const stateEnc = storage.getRawState(p.id);
+      if (stateEnc) zip.file(`state_${p.id}.enc`, stateEnc);
+    }
+    return await zip.generateAsync({ type: 'blob' });
+  };
+
+  const dateStr = () => new Date().toISOString().substring(0, 10);
+
   const handleGenerateBackup = () => {
     const profiles = storage.loadProfiles();
     const profile = profiles.find(p => p.id === currentProfileId);
@@ -99,27 +122,8 @@ export function ProfileScreen({
 
   const handleExportZip = async () => {
     try {
-      const zip = new JSZip();
-      
-      const profilesEnc = storage.getRawProfiles();
-      if (!profilesEnc) {
-        showToast('Nessun profilo da esportare', 'error');
-        return;
-      }
-      
-      zip.file('profiles.enc', profilesEnc);
-      
-      const profiles = storage.loadProfiles();
-      for (const p of profiles) {
-        const stateEnc = storage.getRawState(p.id);
-        if (stateEnc) {
-          zip.file(`state_${p.id}.enc`, stateEnc);
-        }
-      }
-      
-      const zipBlob = await zip.generateAsync({ type: 'blob' });
-      const dateStr = new Date().toISOString().substring(0, 10);
-      const filename = `chelona_backup_${dateStr}.zip`;
+      const zipBlob = await buildBackupZip();
+      const filename = `chelona_backup_${dateStr()}.zip`;
       
       if (Capacitor.isNativePlatform()) {
         const reader = new FileReader();
@@ -160,6 +164,92 @@ export function ProfileScreen({
       console.error('ZIP creation error', err);
       showToast('Errore durante la creazione del file ZIP', 'error');
     }
+  };
+
+  const handleDriveBackup = async () => {
+    if (!googleDrive.isConfigured()) {
+      showToast('Google Drive non configurato: imposta il Client ID in googleConfig.ts', 'error');
+      return;
+    }
+    setDriveBusy(true);
+    try {
+      if (!driveSignedIn) {
+        showToast('Effettua il login a Google Drive…', 'info');
+        await googleDrive.authorize();
+        setDriveSignedIn(googleDrive.isSignedIn());
+        if (!googleDrive.isSignedIn()) throw new Error('Login non completato.');
+      }
+      const zipBlob = await buildBackupZip();
+      const filename = `chelona_backup_${dateStr()}.zip`;
+      await googleDrive.uploadBackup(zipBlob, filename);
+      showToast('Backup caricato su Google Drive!', 'success');
+    } catch (err: any) {
+      console.error('Drive backup error', err);
+      showToast(`Errore backup Drive: ${err?.message || 'impossibile completare'}`, 'error');
+    } finally {
+      setDriveBusy(false);
+    }
+  };
+
+  const handleDriveSignOut = async () => {
+    await googleDrive.signOut();
+    setDriveSignedIn(false);
+    showToast('Disconnesso da Google Drive', 'info');
+  };
+
+  const handleDriveOpenRestore = async () => {
+    setDriveBusy(true);
+    try {
+      const backups = await googleDrive.listBackups();
+      setDriveBackups(backups);
+      setShowDriveRestore(true);
+    } catch (err: any) {
+      showToast(`Errore lettura backup: ${err?.message || 'impossibile completare'}`, 'error');
+    } finally {
+      setDriveBusy(false);
+    }
+  };
+
+  const restoreFromZipBlob = async (blob: Blob) => {
+    try {
+      const zip = await JSZip.loadAsync(blob);
+      const profilesEnc = zip.file('profiles.enc');
+      if (!profilesEnc) throw new Error('File backup non valido (manca profiles.enc)');
+      const profilesEncStr = await profilesEnc.async('string');
+      await storage.saveRawProfiles(profilesEncStr);
+
+      const stateFiles = Object.keys(zip.files).filter(n => /^state_.+\.enc$/.test(n));
+      for (const name of stateFiles) {
+        const content = await zip.file(name)!.async('string');
+        const profileId = name.replace(/^state_/, '').replace(/\.enc$/, '');
+        await storage.saveRawState(profileId, content);
+      }
+      showToast('Backup ripristinato! Riavvio dell\'app…', 'success');
+      setTimeout(() => window.location.reload(), 1200);
+    } catch (err: any) {
+      console.error('Restore error', err);
+      showToast(`Errore ripristino: ${err?.message || 'file non valido'}`, 'error');
+    }
+  };
+
+  const handleDriveRestore = async (fileId: string) => {
+    setDriveBusy(true);
+    try {
+      const blob = await googleDrive.downloadBackup(fileId);
+      await restoreFromZipBlob(blob);
+      setShowDriveRestore(false);
+    } catch (err: any) {
+      showToast(`Errore ripristino: ${err?.message || 'impossibile completare'}`, 'error');
+    } finally {
+      setDriveBusy(false);
+    }
+  };
+
+  const handleRestoreZipPick = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    await restoreFromZipBlob(file);
   };
 
   const handleAvatarClick = () => {
@@ -626,6 +716,69 @@ export function ProfileScreen({
                     Aggiorna
                   </button>
                 </div>
+
+                {/* ── Google Drive ── */}
+                <div className="mt-3 pt-3 border-t border-[var(--border)]">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Cloud className="w-3.5 h-3.5 text-sky-500" />
+                    <p className="text-[11px] font-bold text-[var(--text-main)]">Google Drive</p>
+                    {driveSignedIn && (
+                      <span className="ml-auto text-[9px] font-bold text-emerald-600 bg-emerald-500/10 rounded-full px-2 py-0.5">collegato</span>
+                    )}
+                  </div>
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    {driveSignedIn ? (
+                      <>
+                        <button
+                          onClick={handleDriveBackup}
+                          disabled={driveBusy}
+                          className="flex-1 py-2.5 bg-sky-500 text-white rounded-xl font-bold hover:bg-sky-600 transition-all flex items-center justify-center gap-2 text-xs disabled:opacity-50"
+                        >
+                          <CloudUpload className="w-4 h-4" />
+                          {driveBusy ? 'Caricamento…' : 'Backup su Drive'}
+                        </button>
+                        <button
+                          onClick={handleDriveOpenRestore}
+                          disabled={driveBusy}
+                          className="flex-1 py-2.5 bg-[var(--bg)] text-[var(--text-main)] border border-[var(--border)] rounded-xl font-bold hover:bg-[var(--border)] transition-all flex items-center justify-center gap-2 text-xs disabled:opacity-50"
+                        >
+                          <HardDriveDownload className="w-4 h-4 text-sky-500" />
+                          Ripristina
+                        </button>
+                        <button
+                          onClick={handleDriveSignOut}
+                          className="py-2.5 px-3 bg-[var(--bg)] text-[var(--text-muted)] border border-[var(--border)] rounded-xl font-bold hover:bg-[var(--border)] transition-all flex items-center justify-center gap-2 text-xs"
+                          title="Disconnetti Google Drive"
+                        >
+                          <LogIn className="w-4 h-4" />
+                        </button>
+                      </>
+                    ) : (
+                      <button
+                        onClick={handleDriveBackup}
+                        disabled={driveBusy}
+                        className="flex-1 py-2.5 bg-sky-500 text-white rounded-xl font-bold hover:bg-sky-600 transition-all flex items-center justify-center gap-2 text-xs disabled:opacity-50"
+                      >
+                        <Cloud className="w-4 h-4" />
+                        {driveBusy ? 'Attesa login…' : 'Collega Google Drive'}
+                      </button>
+                    )}
+                    <button
+                      onClick={() => restoreZipInputRef.current?.click()}
+                      className="flex-1 py-2.5 bg-[var(--bg)] text-[var(--text-main)] border border-[var(--border)] rounded-xl font-bold hover:bg-[var(--border)] transition-all flex items-center justify-center gap-2 text-xs"
+                    >
+                      <FileArchive className="w-4 h-4 text-amber-500" />
+                      Ripristina da file
+                    </button>
+                    <input
+                      ref={restoreZipInputRef}
+                      type="file"
+                      accept=".zip,application/zip"
+                      className="hidden"
+                      onChange={handleRestoreZipPick}
+                    />
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -691,6 +844,66 @@ export function ProfileScreen({
                      I dati sono protetti dalla tua password
                   </div>
                 </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
+
+        <AnimatePresence>
+          {showDriveRestore && (
+            <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 lg:p-8">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setShowDriveRestore(false)}
+                className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+              />
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.9, opacity: 0 }}
+                className="relative w-full max-w-md bg-[var(--card-bg)] rounded-[32px] p-6 lg:p-8 shadow-2xl overflow-hidden border border-[var(--border)]"
+              >
+                <div className="flex items-center gap-3 mb-5">
+                  <div className="w-11 h-11 bg-sky-500/10 rounded-2xl flex items-center justify-center text-sky-500 shrink-0">
+                    <Cloud className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-[var(--text-main)] leading-tight">Ripristina da Google Drive</h3>
+                    <p className="text-[11px] text-[var(--text-muted)]">Scegli un backup da ripristinare</p>
+                  </div>
+                  <button onClick={() => setShowDriveRestore(false)} className="ml-auto p-2 text-[var(--text-muted)] hover:text-[var(--text-main)]">
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                {driveBackups.length === 0 ? (
+                  <div className="py-10 text-center">
+                    <Cloud className="w-10 h-10 text-[var(--text-muted)] mx-auto mb-3 opacity-40" />
+                    <p className="text-sm font-semibold text-[var(--text-muted)]">Nessun backup trovato su Drive.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2 max-h-80 overflow-y-auto">
+                    {driveBackups.map(b => (
+                      <button
+                        key={b.id}
+                        onClick={() => handleDriveRestore(b.id)}
+                        disabled={driveBusy}
+                        className="w-full flex items-center gap-3 p-3 rounded-2xl bg-[var(--bg)] border border-[var(--border)] hover:bg-[var(--border)] transition-colors text-left disabled:opacity-50"
+                      >
+                        <FileArchive className="w-5 h-5 text-amber-500 shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-bold text-[var(--text-main)] truncate">{b.name}</p>
+                          {b.modifiedTime && (
+                            <p className="text-[10px] text-[var(--text-muted)]">{new Date(b.modifiedTime).toLocaleString('it-IT')}</p>
+                          )}
+                        </div>
+                        <HardDriveDownload className="w-4 h-4 text-sky-500 shrink-0" />
+                      </button>
+                    ))}
+                  </div>
+                )}
               </motion.div>
             </div>
           )}
