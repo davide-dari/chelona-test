@@ -23,7 +23,6 @@ import { motion, AnimatePresence } from 'motion/react';
 import JSZip from 'jszip';
 import { lzw } from './utils/lzw';
 import { updateService, UpdateInfo } from './services/updateService';
-import { googleDrive } from './services/googleDriveService';
 import { App as CapApp } from '@capacitor/app';
 import { generateUUID } from './utils/uuid';
 import { SpeechRecognition } from '@capacitor-community/speech-recognition';
@@ -481,11 +480,6 @@ export default function App() {
     } else {
       console.warn('[App] Capacitor App plugin not available or addListener missing.');
     }
-  }, []);
-
-  // Listener per il redirect OAuth di Google Drive (custom scheme).
-  useEffect(() => {
-    googleDrive.registerRedirectListener();
   }, []);
 
   // Android back button: chiude il pannello/modal aperto più recente con logica a priorità.
