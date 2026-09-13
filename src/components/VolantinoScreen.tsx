@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import {
   ArrowLeft, Loader2, MapPin, Crosshair, X, ChevronRight,
   CalendarDays, Store, ChevronLeft, BarChart3, Search, Star,
-  LayoutGrid
+  LayoutGrid, ExternalLink
 } from 'lucide-react';
 import { VolantinoModule } from '../types';
 import { StoreLogo } from './StoreLogo';
@@ -18,6 +18,7 @@ import { DC_COMUNE_SLUG, DC_CAPOLUOGO_SLUG } from '../data/dcCityMap';
 import { comuniCaps } from '../data/comuniCaps';
 import { OFFER_GROUPS, OFFER_DATE, FIDELITY_CARDS, type OfferEntry, type OfferCategory } from '../data/offerStats';
 import { initDcData, useDcDataVersion } from '../services/dcData';
+import { VOLANTINI_DB, type VolantinoChain, type VolantinoFlyer } from '../data/volantiniDb';
 
 interface VolantinoScreenProps {
   module: VolantinoModule;
@@ -25,7 +26,11 @@ interface VolantinoScreenProps {
   initialOffer?: { fid: string; pg: number };
 }
 
-type ViewMode = 'home' | 'flyer' | 'stats' | 'browse';
+type ViewMode = 'home' | 'flyer' | 'stats' | 'browse' | 'chain' | 'calameo';
+
+/* URL del viewer Calameo per un volantino CentroVolantini */
+const calameoUrl = (f: VolantinoFlyer) =>
+  `https://v.calameo.com/?bkcode=${f.bkcode}&authid=${f.authid}&mode=viewer&clickto=view&clicktarget=_self`;
 
 interface DcCard {
   fid: string;
@@ -764,6 +769,166 @@ function PageViewer(props: {
   );
 }
 
+/* ═══════════════════════════════════════════════════════════════════
+   VIEW: VOLANTINI (CentroVolantini) — catene → volantini → Calameo
+   Fonte indipendente da dovecovene: https://www.centrovolantini.it
+   ═══════════════════════════════════════════════════════════════════ */
+function CentroView(props: { onChain: (slug: string) => void; onStats: () => void; onBrowse: () => void; }) {
+  const { onChain, onStats, onBrowse } = props;
+  const [query, setQuery] = useState('');
+  const q = query.trim().toLowerCase();
+  const chains = useMemo(() => {
+    const list = VOLANTINI_DB.chains.filter(c => c.flyers.length > 0);
+    if (!q) return list;
+    return list.filter(c => c.name.toLowerCase().includes(q) || c.slug.includes(q));
+  }, [q]);
+
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="px-4 pt-4 pb-8 max-w-2xl mx-auto w-full space-y-4">
+      <div className="flex gap-2">
+        <button
+          onClick={onStats}
+          className="shrink-0 inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs font-bold bg-amber-500/10 border border-amber-500/25 text-amber-600 hover:bg-amber-500/20 transition-colors"
+        >
+          <BarChart3 className="w-3.5 h-3.5" />
+          Confronta prezzi
+        </button>
+        <button
+          onClick={onBrowse}
+          className="shrink-0 inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs font-bold bg-violet-500/10 border border-violet-500/25 text-violet-600 hover:bg-violet-500/20 transition-colors"
+        >
+          <LayoutGrid className="w-3.5 h-3.5" />
+          Esplora
+        </button>
+      </div>
+
+      <div className="relative">
+        <Search className="w-4 h-4 text-[var(--text-muted)] absolute left-4 top-1/2 -translate-y-1/2" />
+        <input
+          value={query}
+          onChange={e => setQuery(e.target.value)}
+          placeholder="Cerca una catena (es. Lidl, Esselunga, Conad…)"
+          className="w-full pl-11 pr-10 py-3 rounded-2xl bg-[var(--card-bg)] border border-[var(--border)] text-[var(--text-main)] font-semibold text-sm outline-none focus:border-emerald-500/60 transition-colors"
+        />
+        {query && (
+          <button onClick={() => setQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors">
+            <X className="w-4 h-4" />
+          </button>
+        )}
+      </div>
+
+      <p className="text-[11px] text-[var(--text-muted)] font-medium">
+        {chains.length} catene · volantini via CentroVolantini (indipendente da dovecovene)
+      </p>
+
+      {chains.length === 0 ? (
+        <div className="py-16 text-center">
+          <Store className="w-10 h-10 text-[var(--text-muted)] mx-auto mb-3 opacity-40" />
+          <p className="text-sm font-semibold text-[var(--text-muted)]">Nessuna catena trovata per "{query}".</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          {chains.map(c => (
+            <button
+              key={c.slug}
+              onClick={() => onChain(c.slug)}
+              className="flex flex-col items-center gap-2 p-4 rounded-2xl bg-[var(--card-bg)] border border-[var(--border)] hover:border-emerald-500/40 hover:bg-[var(--surface-variant)] active:scale-[0.97] transition-all"
+            >
+              <div className="w-12 h-12 rounded-xl bg-white ring-1 ring-[var(--border)] flex items-center justify-center overflow-hidden">
+                <StoreLogo id={c.slug} short={c.name.slice(0, 2)} brandSlug={c.slug.replace('md-discount', 'md').replace('-italia', '').replace('iper-', '').replace('-market', '')} size={40} />
+              </div>
+              <p className="text-xs font-bold text-[var(--text-main)] text-center truncate w-full">{c.name}</p>
+              <p className="text-[10px] text-[var(--text-muted)] font-medium">{c.flyers.length} volantin{c.flyers.length === 1 ? 'o' : 'i'}</p>
+            </button>
+          ))}
+        </div>
+      )}
+    </motion.div>
+  );
+}
+
+function CentroChainView(props: { chain: VolantinoChain; onOpen: (f: VolantinoFlyer) => void; onBack: () => void; }) {
+  const { chain, onOpen, onBack } = props;
+  const active = chain.flyers.filter(f => !f.to || new Date(f.to) >= new Date());
+  const list = active.length ? active : chain.flyers;
+
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="px-4 pt-4 pb-8 max-w-2xl mx-auto w-full space-y-4">
+      <button onClick={onBack} className="inline-flex items-center gap-1.5 text-xs font-bold text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors">
+        <ChevronLeft className="w-4 h-4" /> Tutte le catene
+      </button>
+      <div className="flex items-center gap-3">
+        <div className="w-12 h-12 rounded-xl bg-white ring-1 ring-[var(--border)] flex items-center justify-center overflow-hidden">
+          <StoreLogo id={chain.slug} short={chain.name.slice(0, 2)} brandSlug={chain.slug.replace('md-discount', 'md').replace('-italia', '').replace('iper-', '').replace('-market', '')} size={40} />
+        </div>
+        <div>
+          <h2 className="text-lg font-black text-[var(--text-main)]">{chain.name}</h2>
+          <p className="text-[11px] text-[var(--text-muted)] font-medium">{list.length} volantin{list.length === 1 ? 'o' : 'i'}</p>
+        </div>
+      </div>
+
+      <div className="space-y-3">
+        {list.map(f => (
+          <button
+            key={f.id}
+            onClick={() => onOpen(f)}
+            className="w-full flex items-center gap-3 p-3 rounded-2xl bg-[var(--card-bg)] border border-[var(--border)] hover:border-emerald-500/40 hover:bg-[var(--surface-variant)] active:scale-[0.99] transition-all text-left"
+          >
+            {f.coverUrl && (
+              <img src={f.coverUrl} alt={f.title} loading="lazy" onError={e => { e.currentTarget.style.display = 'none'; }} className="w-14 h-20 object-cover rounded-lg bg-white ring-1 ring-[var(--border)] shrink-0" />
+            )}
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-bold text-[var(--text-main)] truncate">{f.title}</p>
+              {f.subtitle && <p className="text-[11px] text-[var(--text-muted)] truncate mt-0.5">{f.subtitle}</p>}
+              {(f.from || f.to) && (
+                <p className="text-[10px] text-[var(--text-muted)] font-medium mt-1 flex items-center gap-1">
+                  <CalendarDays className="w-3 h-3" />
+                  {f.from ? new Date(f.from).toLocaleDateString('it-IT') : '…'} → {f.to ? new Date(f.to).toLocaleDateString('it-IT') : '…'}
+                </p>
+              )}
+            </div>
+            <ExternalLink className="w-4 h-4 text-[var(--text-muted)] shrink-0" />
+          </button>
+        ))}
+      </div>
+    </motion.div>
+  );
+}
+
+/* Viewer Calameo a tutto schermo (iframe, senza dovecovene) */
+function CalameoViewer(props: { flyer: VolantinoFlyer; onBack: () => void; }) {
+  const { flyer, onBack } = props;
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[200] flex flex-col bg-[var(--bg)]">
+      <header className="flex items-center gap-3 pt-[max(env(safe-area-inset-top),16px)] px-4 pb-3 bg-[var(--card-bg)] border-b border-[var(--border)] shrink-0 z-30">
+        <button onClick={onBack} className="p-2.5 -ml-2 hover:bg-[var(--surface-variant)] rounded-full text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors shrink-0">
+          <ArrowLeft className="w-6 h-6" />
+        </button>
+        <div className="flex-1 min-w-0 text-center">
+          <h1 className="text-base font-black text-[var(--text-main)] truncate">{flyer.title}</h1>
+          {flyer.subtitle && <p className="text-[11px] text-[var(--text-muted)] font-medium truncate">{flyer.subtitle}</p>}
+        </div>
+        <button
+          onClick={() => window.open(calameoUrl(flyer), '_blank')}
+          className="p-2.5 -mr-2 hover:bg-[var(--surface-variant)] rounded-full text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors shrink-0"
+          title="Apri nel browser"
+        >
+          <ExternalLink className="w-5 h-5" />
+        </button>
+      </header>
+      <div className="flex-1 min-h-0 relative bg-black">
+        <iframe
+          src={calameoUrl(flyer)}
+          title={flyer.title}
+          className="w-full h-full border-0"
+          allow="fullscreen"
+          referrerPolicy="no-referrer"
+        />
+      </div>
+    </motion.div>
+  );
+}
+
 export default function VolantinoScreen({ module, onClose, initialOffer }: VolantinoScreenProps) {
   const [view, setView] = useState<ViewMode>('home');
   const [activeFlyer, setActiveFlyer] = useState<{ fid: string; flyer: DcFlyer } | null>(null);
@@ -789,7 +954,7 @@ export default function VolantinoScreen({ module, onClose, initialOffer }: Volan
 
   /* ── Zona dell'utente ── */
   const [zone, setZone] = useState<VolantiniZone | null>(() => loadZone());
-  const [zoneModalOpen, setZoneModalOpen] = useState<boolean>(() => !loadZone());
+  const [zoneModalOpen, setZoneModalOpen] = useState<boolean>(false);
   const [capInput, setCapInput] = useState('');
   const [cityInput, setCityInput] = useState('');
   const [pickedComune, setPickedComune] = useState<ReturnType<typeof searchComuni>[number] | null>(null);
@@ -825,6 +990,8 @@ export default function VolantinoScreen({ module, onClose, initialOffer }: Volan
   const [flyerQuery, setFlyerQuery] = useState('');
   const [browseCat, setBrowseCat] = useState<string | null>(null);
   const [browseQuery, setBrowseQuery] = useState('');
+  const [centroChain, setCentroChain] = useState<VolantinoChain | null>(null);
+  const [calameoFlyer, setCalameoFlyer] = useState<VolantinoFlyer | null>(null);
 
   const applyZone = (z: VolantiniZone) => {
     setZone(z);
@@ -981,7 +1148,13 @@ export default function VolantinoScreen({ module, onClose, initialOffer }: Volan
       onClose();
       return;
     }
-    if (view === 'flyer') {
+    if (view === 'calameo') {
+      setCalameoFlyer(null);
+      setView('chain');
+    } else if (view === 'chain') {
+      setCentroChain(null);
+      setView('home');
+    } else if (view === 'flyer') {
       setActiveFlyer(null);
       setView(statsOrigin ? 'stats' : 'home');
       setStatsOrigin(false);
@@ -1008,12 +1181,14 @@ export default function VolantinoScreen({ module, onClose, initialOffer }: Volan
     if (view === 'stats') {
       return `Confronto prezzi · rilevati dai volantini del ${OFFER_DATE}`;
     }
+    if (view === 'chain' && centroChain) {
+      return `${centroChain.flyers.length} volantini · CentroVolantini`;
+    }
     if (view === 'browse' && browseCat) {
       const catName = DC_CATEGORIES.find(c => c.slug === browseCat)?.name ?? '';
       return `Esplora tutti i volantini · ${catName}`;
     }
-    const base = cityLabel ? `${cityLabel} · ${shownCards.length} volantini` : `${shownCards.length} volantini · tutta Italia`;
-    return `${base} · ${DC_CATEGORIES.find(c => c.slug === cat)?.name ?? ''}`;
+    return `${VOLANTINI_DB.chains.length} catene · volantini aggiornati via CentroVolantini`;
   };
 
   return (
@@ -1039,23 +1214,16 @@ export default function VolantinoScreen({ module, onClose, initialOffer }: Volan
                 onError={e => { e.currentTarget.style.display = 'none'; }}
                 className="w-6 h-6 rounded-md object-contain bg-white ring-1 ring-[var(--border)]"
               />
+            ) : view === 'chain' && centroChain ? (
+              <span className="w-6 h-6 rounded-md bg-white ring-1 ring-[var(--border)] flex items-center justify-center overflow-hidden">
+                <StoreLogo id={centroChain.slug} short={centroChain.name.slice(0, 2)} brandSlug={centroChain.slug} size={20} />
+              </span>
             ) : (
               <Store className="w-5 h-5 text-emerald-500 shrink-0" />
             )}
-            {view === 'flyer' && activeFlyer ? activeFlyer.flyer.n : (module.title || 'Volantini & Offerte')}
+            {view === 'flyer' && activeFlyer ? activeFlyer.flyer.n : view === 'chain' && centroChain ? centroChain.name : (module.title || 'Volantini & Offerte')}
           </h1>
           <p className="text-[11px] text-[var(--text-muted)] font-medium truncate">{headerSubtitle()}</p>
-        </div>
-        <div className="flex items-center gap-1.5 shrink-0">
-          {view === 'home' && (
-            <button
-              onClick={() => setZoneModalOpen(true)}
-              className="p-2.5 rounded-2xl bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20 transition-colors"
-              title="Zona dei volantini"
-            >
-              <MapPin className="w-5 h-5" />
-            </button>
-          )}
         </div>
       </header>
 
@@ -1063,22 +1231,19 @@ export default function VolantinoScreen({ module, onClose, initialOffer }: Volan
       <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain custom-scrollbar scroll-smooth pb-[max(env(safe-area-inset-bottom),8px)]">
         <AnimatePresence mode="wait">
           {view === 'home' && (
-            <HomeView
-              key="home"
-              zone={zone}
-              cityLabel={cityLabel}
-              catCount={catCount}
-              cat={cat}
-              onCat={setCat}
-              favCats={favCats}
-              onToggleFav={toggleFav}
-              flyerQuery={flyerQuery}
-              onFlyerQuery={setFlyerQuery}
-              shownCards={shownCards}
-              onOpenFlyer={openFlyer}
-              onZone={() => setZoneModalOpen(true)}
+            <CentroView
+              key="centro"
+              onChain={(slug) => { const c = VOLANTINI_DB.chains.find(x => x.slug === slug); if (c) { setCentroChain(c); setView('chain'); } }}
               onStats={() => { setStatsQuery(''); setView('stats'); }}
-              onBrowse={(c) => { setBrowseCat(c); setBrowseQuery(''); setView('browse'); }}
+              onBrowse={() => { setBrowseCat(null); setBrowseQuery(''); setView('browse'); }}
+            />
+          )}
+          {view === 'chain' && centroChain && (
+            <CentroChainView
+              key={`chain-${centroChain.slug}`}
+              chain={centroChain}
+              onOpen={(f) => { setCalameoFlyer(f); setView('calameo'); }}
+              onBack={() => setView('home')}
             />
           )}
           {view === 'flyer' && activeFlyer && (
@@ -1092,10 +1257,10 @@ export default function VolantinoScreen({ module, onClose, initialOffer }: Volan
               onOfferPage={openOfferPage}
             />
           )}
-          {view === 'browse' && browseCat && (
+          {view === 'browse' && (
             <BrowseView
               key={`browse-${browseCat}`}
-              catSlug={browseCat}
+              catSlug={browseCat ?? 'iper-e-super'}
               query={browseQuery}
               onQuery={setBrowseQuery}
               onOpenFlyer={openFlyer}
@@ -1103,6 +1268,13 @@ export default function VolantinoScreen({ module, onClose, initialOffer }: Volan
           )}
         </AnimatePresence>
       </div>
+
+      {/* ═══ VIEWER CALAMEO A TUTTO SCHERMO ═══ */}
+      <AnimatePresence>
+        {view === 'calameo' && calameoFlyer && (
+          <CalameoViewer key={`calameo-${calameoFlyer.id}`} flyer={calameoFlyer} onBack={() => setView('chain')} />
+        )}
+      </AnimatePresence>
 
       {/* ═══ PAGINA A TUTTO SCHERMO ═══ */}
       <AnimatePresence>

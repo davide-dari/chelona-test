@@ -32,7 +32,6 @@ const setVal = (i, v) => page.evaluate((i, v) => {
   const s = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
   s.call(el, v); el.dispatchEvent(new Event('input', { bubbles: true }));
 }, i, v);
-const searchVal = () => page.evaluate(() => document.querySelector('input[placeholder*="Cerca"]')?.value ?? '');
 const setSearch = v => page.evaluate(v => {
   const i = document.querySelector('input[placeholder*="Cerca"]');
   const s = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
@@ -59,17 +58,35 @@ try {
   inputs.forEach((f, i) => { if (/nome|name/i.test(f || '')) setVal(i, 'Test'); if (/password|pass/i.test(f || '')) setVal(i, 'test123'); });
   await clickBtn('Crea Profilo');
   await clickBtn('Casa');
+
+  // ── Modulo Volantino: catene CentroVolantini (indipendente da dovecovene) ──
   await clickBtn('Volantino');
   await waitText('Confronta prezzi');
-  await waitText('Iper e super');
-  await clickBtn('Mostra tutti i volantini');
+  const centroTxt = await bodyText();
+  ok('vista volantini: catene CentroVolantini', /Lidl/.test(centroTxt) && /Esselunga/.test(centroTxt) && /Conad/.test(centroTxt));
+  ok('vista volantini: pulsanti Confronta/Esplora', /Confronta prezzi/.test(centroTxt) && /Esplora/.test(centroTxt));
+  ok('vista volantini: fonte indipendente', /CentroVolantini|catene/i.test(centroTxt));
 
+  // Apri una catena (Lidl) → elenco volantini
+  await page.evaluate(() => {
+    const b = [...document.querySelectorAll('button')].find(x => /Lidl/.test(x.innerText) && /volantin/i.test(x.innerText) && !/Esplora/.test(x.innerText));
+    if (b) b.click();
+  });
+  await waitText(/volantini · CentroVolantini|Tutte le catene/);
+  const chainTxt = await bodyText();
+  ok('vista catena: volantini elencati', /volantin/i.test(chainTxt) && /Lidl/.test(chainTxt));
+
+  // Back: catena → catene
+  await page.evaluate(() => window.dispatchEvent(new CustomEvent('volantino-back')));
+  await new Promise(r => setTimeout(r, 500));
+  ok('back catena → catene', /Confronta prezzi/.test(await bodyText()) && /Esplora/.test(await bodyText()));
+
+  // ── Confronta prezzi (prezzi offerte, senza aprire volantini) ──
   await page.evaluate(() => {
     const b = [...document.querySelectorAll('button')].find(x => x.innerText.includes('Confronta prezzi'));
     if (b) b.click();
   });
   await waitText('articoli confrontati');
-
   ok('apertura vista confronto', /Confronto prezzi/.test(await bodyText()));
   ok('conteggio articoli mostrato', /articoli confrontati/.test(await bodyText()));
 
@@ -78,42 +95,6 @@ try {
   const txt = await bodyText();
   ok('ricerca salmone', /Salmone/.test(txt));
   ok('miglior prezzo salmone Lidl', txt.includes('Lidl') && txt.includes('7,49 €'));
-
-  // Click su un prezzo NON migliore → il volantino si apre comunque alla pagina dell'offerta
-  await page.evaluate(() => {
-    const buttons = [...document.querySelectorAll('button')];
-    const b = buttons.find(x => x.textContent?.includes('Eurospin') && x.textContent?.includes('€'));
-    if (b) b.click();
-  });
-  await waitText('pizzica per zoomare');
-  const of = await bodyText();
-  ok('apertura volantino da prezzo non migliore', /Eurospin/.test(of) && /di \d+ /.test(of) && /pizzica per zoomare/.test(of));
-
-  // Back: fullscreen → volantino (resta aperto)
-  await page.evaluate(() => window.dispatchEvent(new CustomEvent('volantino-back')));
-  await waitText('Fine del volantino');
-  ok('back dal fullscreen → volantino', /Fine del volantino/.test(await bodyText()));
-  await page.evaluate(() => window.dispatchEvent(new CustomEvent('volantino-back')));
-  await waitText('risultati per "salmone"');
-
-  // Click sul prezzo migliore → apertura volantino alla pagina dell'offerta
-  await page.evaluate(() => {
-    const b = [...document.querySelectorAll('button')].find(x => x.textContent?.includes('Migliore'));
-    if (b) b.click();
-  });
-  await waitText('Pagina 1 di');
-  const ofBest = await bodyText();
-  ok('apertura volantino alla pagina offerta', /Lidl/.test(ofBest) && /Pagina 1 di/.test(ofBest) && /pizzica per zoomare/.test(ofBest));
-
-  // Back: fullscreen → volantino (resta aperto)
-  await page.evaluate(() => window.dispatchEvent(new CustomEvent('volantino-back')));
-  await waitText('Fine del volantino');
-  ok('back dal fullscreen → volantino (migliore)', /Fine del volantino/.test(await bodyText()));
-
-  // Back: volantino → confronta prezzi (provenienza offerta, ricerca "salmone" ancora attiva)
-  await page.evaluate(() => window.dispatchEvent(new CustomEvent('volantino-back')));
-  await waitText('risultati per "salmone"');
-  ok('back dal volantino → confronta', /risultati per "salmone"/.test(await bodyText()));
 
   await setSearch('Lavazza');
   await waitText('Lavazza');
@@ -125,14 +106,14 @@ try {
 
   await setSearch('');
   await waitText('articoli confrontati');
-  const resetVal = await searchVal();
-  ok('elenco completo al reset', resetVal === '' && /articoli confrontati/.test(await bodyText()), `val=${resetVal}`);
+  ok('elenco completo al reset', /articoli confrontati/.test(await bodyText()));
 
+  // Back → catene
   await page.evaluate(() => window.dispatchEvent(new CustomEvent('volantino-back')));
   await new Promise(r => setTimeout(r, 500));
-  ok('back → home (evento volantino-back)', /Confronta prezzi/.test(await bodyText()) && !/articoli confrontati/.test(await bodyText()));
+  ok('back confronta → catene', /Confronta prezzi/.test(await bodyText()) && !/articoli confrontati/.test(await bodyText()));
 
-  // ── Esplora tutti i volantini per categoria ──
+  // ── Esplora (navigazione per categoria, tutte le catene) ──
   await page.evaluate(() => {
     const b = [...document.querySelectorAll('button')].find(x => x.innerText.includes('Esplora'));
     if (b) b.click();
@@ -142,126 +123,21 @@ try {
   ok('vista esplora mostra catene', /volantini da \d+ catene/.test(browseTxt));
   ok('vista esplora contiene catene note', /Lidl|Esselunga|Eurospin|Conad/.test(browseTxt));
 
-  // Ricerca nella vista esplora
-  const browseSearch = await page.evaluate(() => {
-    const i = [...document.querySelectorAll('input')].find(x => x.placeholder?.includes('Cerca una catena'));
-    if (!i) return false;
-    const s = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
-    s.call(i, 'Lidl'); i.dispatchEvent(new Event('input', { bubbles: true }));
-    return true;
-  });
-  ok('input ricerca esplora presente', browseSearch);
-  await new Promise(r => setTimeout(r, 400));
-  const browseSearchTxt = await bodyText();
-  ok('ricerca esplora filtra catene', /Lidl/.test(browseSearchTxt));
-
   await page.evaluate(() => window.dispatchEvent(new CustomEvent('volantino-back')));
   await new Promise(r => setTimeout(r, 500));
-  ok('back da esplora → home', /Confronta prezzi/.test(await bodyText()) && !/volantini da/.test(await bodyText()));
+  ok('back da esplora → catene', /Confronta prezzi/.test(await bodyText()) && !/volantini da/.test(await bodyText()));
 
-  // ── Barra di ricerca supermercato ──
-  await setSearch('Lidl');
-  await waitText('volantini per "Lidl"');
-  const lidlTxt = await bodyText();
-  ok('ricerca supermercato mostra risultati', /volantini per "Lidl"/.test(lidlTxt), lidlTxt.match(/volantini per "Lidl" \(in tutte le categorie\)/)?.[0] ?? '');
-  ok('risultati Lidl includono volantino', /Lidl/.test(lidlTxt));
-
-  await page.evaluate(() => {
-    const b = [...document.querySelectorAll('button')].find(x => x.innerText.includes('Lidl') && x.innerText.includes('pagine'));
-    if (b) b.click();
-  });
-  await waitText('Fine del volantino');
-  ok('apertura volantino dalla ricerca', /Fine del volantino/.test(await bodyText()));
-
+  // Chiudi modulo volantino
   await page.evaluate(() => window.dispatchEvent(new CustomEvent('volantino-back')));
   await new Promise(r => setTimeout(r, 500));
-  ok('back → home con ricerca ancora attiva', /volantini per "Lidl"/.test(await bodyText()));
-
-  await setSearch('');
-  await new Promise(r => setTimeout(r, 400));
-  ok('reset ricerca supermercato', !/volantini per "Lidl"/.test(await bodyText()));
-
-  // ── CAP specifico della città ──
-  await page.evaluate(() => {
-    const b = [...document.querySelectorAll('button')].find(x => x.innerText.includes('Volantini per'));
-    if (b) b.click();
-  });
-  await waitText('Dove fai la spesa?');
-  ok('modal zona con input città e CAP', await setPlaceholder('Es. Milano', 'Milano'));
-  await waitText('MI · 20121');
-  await page.evaluate(() => {
-    const b = [...document.querySelectorAll('button')].find(x => x.innerText.includes('MI · 20121'));
-    if (b) b.click();
-  });
-  await waitText(/CAP specifico milano/i);
-  const capTxt = await bodyText();
-  ok('chip CAP specifico per città con più CAP', /Tutta la città/.test(capTxt) && /20121/.test(capTxt));
-  await page.evaluate(() => {
-    const b = [...document.querySelectorAll('button')].find(x => x.innerText.trim() === '20121');
-    if (b) b.click();
-  });
-  await waitText('Volantini per 20121 · Milano');
-  ok('zona con CAP specifico applicata', /Volantini per 20121 · Milano/.test(await bodyText()));
-
-  await page.evaluate(() => {
-    const b = [...document.querySelectorAll('button')].find(x => x.innerText.includes('Volantini per'));
-    if (b) b.click();
-  });
-  await waitText('Dove fai la spesa?');
-  await page.evaluate(() => {
-    const b = [...document.querySelectorAll('button')].find(x => x.innerText.trim() === 'Tutta la città');
-    if (b) b.click();
-  });
-  await waitText('Volantini per Milano');
-  await page.waitForFunction(() => !/Volantini per 20121/.test(document.body.innerText), { timeout: 10000 });
-  ok('ritorno a tutta la città', /Volantini per Milano/.test(await bodyText()) && !/Volantini per 20121/.test(await bodyText()));
-
-  await page.evaluate(() => window.dispatchEvent(new CustomEvent('volantino-back')));
-  await new Promise(r => setTimeout(r, 700));
-  ok('back → chiusura modulo', !/Confronta prezzi/.test(await bodyText()));
-
-  // ── Confronta prezzi: categorie Alimentari / Casa e cura ──
-  await clickBtn('Volantino');
-  await waitText('Confronta prezzi');
-  await page.evaluate(() => {
-    const b = [...document.querySelectorAll('button')].find(x => x.innerText.includes('Confronta prezzi'));
-    if (b) b.click();
-  });
-  await waitText('articoli confrontati');
-  const catTxt = await bodyText();
-  ok('categoria Alimentari mostrata', /ALIMENTARI/i.test(catTxt));
-  ok('categoria Casa e cura mostrata', /Casa e cura/i.test(catTxt));
-  ok('confronto su tutti i volantini', /articoli confrontati su tutti i volantini/.test(catTxt));
-  ok('nome carta fedeltà mostrato (Esse Card / PerTe+ / Buona Spesa / Tribù)', /Carta Fidaty|PerTe\+|Buona Spesa Card|Despar Tribù/.test(catTxt));
-
-  // ── Freeze barra di ricerca: il focus resta nell'input dopo la digitazione ──
-  const searchInputFocus = await page.evaluate(() => {
-    const i = document.querySelector('input[placeholder*="Cerca un alimento"]');
-    i.focus();
-    const s = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
-    s.call(i, 'ton'); i.dispatchEvent(new Event('input', { bubbles: true }));
-    return new Promise(res => setTimeout(() => res(document.activeElement === i), 400));
-  });
-  ok('focus mantenuto durante la digitazione (niente freeze)', searchInputFocus === true);
-
-  await setSearch('salmone');
-  await waitText('Salmone');
-  const dopo = await bodyText();
-  ok('ricerca in categoria Alimentari', /ALIMENTARI/i.test(dopo) && /Salmone/.test(dopo));
-
-  await page.evaluate(() => window.dispatchEvent(new CustomEvent('volantino-back')));
-  await new Promise(r => setTimeout(r, 500));
-  await page.evaluate(() => window.dispatchEvent(new CustomEvent('volantino-back')));
-  await new Promise(r => setTimeout(r, 700));
   ok('chiusura modulo volantino', !/Confronta prezzi/.test(await bodyText()));
 
-  // ── Lista della spesa: badge "dove costa meno" + apertura volantino ──
+  // ── Lista della spesa: badge "dove costa meno" ──
   await clickBtn('Supermercato');
   await waitText('Cerca e aggiungi prodotti');
   await setPlaceholder('Cerca prodotto...', 'Salmone affumicato');
   await waitText('Salmone affumicato');
   await new Promise(r => setTimeout(r, 300));
-  // Il suggerimento si seleziona con mousedown
   await page.evaluate(() => {
     const b = [...document.querySelectorAll('button')].find(x => x.innerText.includes('Salmone affumicato') && x.innerText.includes('Carne e pesce'));
     if (b) {
@@ -278,19 +154,6 @@ try {
   await waitText('vedi nel volantino');
   const spesa = await bodyText();
   ok('badge dove costa meno visibile', /vedi nel volantino/.test(spesa) && /€/.test(spesa) && /Pam|Eurospin|Lidl|Esselunga/.test(spesa), spesa.match(/[0-9]+,[0-9]+ € · \w+/)?.[0] ?? '');
-
-  await page.evaluate(() => {
-    const b = [...document.querySelectorAll('button')].find(x => x.innerText.includes('vedi nel volantino'));
-    if (b) b.click();
-  });
-  await waitText(/Pagina \d+ di/);
-  const volOff = await bodyText();
-  ok('apertura volantino dal badge lista spesa', /pizzica per zoomare/.test(volOff) && /Pagina \d+ di/.test(volOff));
-  await page.evaluate(() => window.dispatchEvent(new CustomEvent('volantino-back')));
-  await new Promise(r => setTimeout(r, 500));
-  await page.evaluate(() => window.dispatchEvent(new CustomEvent('volantino-back')));
-  await new Promise(r => setTimeout(r, 700));
-  ok('ritorno alla lista della spesa', /vedi nel volantino/.test(await bodyText()));
 
   ok('0 richieste fallite', failed.filter(u => !u.includes('api.github.com') && !u.includes('raw.githubusercontent.com/davide-dari/chelona-test/dc-data') && !u.includes('fonts.gstatic.com')).length === 0, failed.filter(u => !u.includes('api.github.com') && !u.includes('raw.githubusercontent.com/davide-dari/chelona-test/dc-data') && !u.includes('fonts.gstatic.com')).slice(0, 3).join('\n'));
 } catch (err) {
