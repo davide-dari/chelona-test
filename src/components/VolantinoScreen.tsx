@@ -922,6 +922,7 @@ function CalameoViewer(props: { flyer: VolantinoFlyer; onBack: () => void; }) {
           title={flyer.title}
           className="w-full h-full border-0"
           allow="fullscreen"
+          sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-popups-to-escape-sandbox"
           referrerPolicy="no-referrer"
         />
       </div>
