@@ -41,6 +41,25 @@ export function ChelonaChat({ onClose, modules, folders, username, showToast }: 
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
   }, [messages, status, busy]);
 
+  /* Se il modello è già in cache (scaricato in precedenza), caricalo subito
+     senza mostrare la schermata di download. */
+  useEffect(() => {
+    if (chelonaAI.isLoaded()) return;
+    let cancelled = false;
+    (async () => {
+      const cached = await chelonaAI.isCached();
+      if (cancelled || !cached) return;
+      setStatus('downloading');
+      try {
+        await chelonaAI.loadModel();
+        if (!cancelled) setStatus('ready');
+      } catch {
+        if (!cancelled) setStatus('idle');
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
   const downloadModel = useCallback(async () => {
     setStatus('downloading');
     setProgress(0);
@@ -133,13 +152,13 @@ export function ChelonaChat({ onClose, modules, folders, username, showToast }: 
       ) : status === 'downloading' ? (
         <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
           <Loader2 className="w-12 h-12 text-teal-500 animate-spin mb-5" />
-          <h2 className="text-lg font-black text-[var(--text-main)] mb-1">Scaricamento del modello…</h2>
+          <h2 className="text-lg font-black text-[var(--text-main)] mb-1">Caricamento del modello…</h2>
           <p className="text-xs text-[var(--text-muted)] max-w-xs mb-6 truncate">{progressFile || 'Preparazione…'}</p>
           <div className="w-full max-w-xs h-2.5 bg-[var(--surface-variant)] rounded-full overflow-hidden">
             <div className="h-full bg-gradient-to-r from-teal-500 to-emerald-600 rounded-full transition-all duration-300" style={{ width: `${Math.max(progress, 3)}%` }} />
           </div>
           <p className="text-[11px] text-[var(--text-muted)] mt-2 font-bold">{progress}%</p>
-          <p className="text-[10px] text-[var(--text-muted)] mt-4">Il primo caricamento può richiedere qualche minuto.</p>
+          <p className="text-[10px] text-[var(--text-muted)] mt-4">Il primo caricamento può richiedere qualche minuto; i successivi sono rapidi e offline.</p>
         </div>
       ) : status === 'error' ? (
         <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">

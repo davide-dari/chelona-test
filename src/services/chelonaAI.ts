@@ -3,8 +3,18 @@
  *
  * Usa transformers.js (WebAssembly) per eseguire un piccolo modello
  * linguistico interamente sul dispositivo: nessuna API esterna, nessun
- * invio di dati. Il modello viene scaricato una sola volta alla prima
- * esecuzione e poi resta in cache locale (funziona anche offline).
+ * invio di dati.
+ *
+ * Persistenza del modello:
+ *   - Il modello viene scaricato una sola volta e salvato nella OPFS
+ *     (Origin Private File System) tramite una cache custom, così resta
+ *     disponibile anche dopo il riavvio dell'app e funziona offline.
+ *   - Se OPFS non è disponibile, si ripiega sulla cache default di
+ *     transformers.js (Cache API del browser).
+ *
+ * Fluidità UI:
+ *   - L'inferenza WASM viene eseguita in un Web Worker (`proxy = true`)
+ *     così la chat non si blocca durante la generazione.
  *
  * Modello: onnx-community/Qwen3-0.6B-ONNX (quantizzato q4f16, ~350 MB).
  */
@@ -27,8 +37,70 @@ export interface ChelonaProgress {
 let generator: any = null;
 let loadPromise: Promise<void> | null = null;
 
+/* ── Cache custom su OPFS (persistente) ── */
+const hasOpfs = (): boolean =>
+  typeof navigator !== 'undefined' && 'storage' in navigator && typeof (navigator as any).storage?.getDirectory === 'function';
+
+const safeName = (key: string): string => {
+  let name = key;
+  // remoteURL: https://huggingface.co/{model}/{owner}/resolve/{rev}/{file}
+  const remote = key.match(/huggingface\.co\/([^/]+\/[^/]+)\/resolve\/[^/]+\/(.+)$/);
+  if (remote) {
+    name = `${remote[1]}/${remote[2]}`;
+  } else {
+    const local = key.match(/models\/(.+)$/);
+    if (local) name = local[1];
+  }
+  return name.replace(/[^a-zA-Z0-9._-]/g, '_');
+};
+
+const opfsCache = {
+  async match(key: string): Promise<Response | undefined> {
+    try {
+      const root = await (navigator as any).storage.getDirectory();
+      const dir = await root.getDirectoryHandle('chelona_model', { create: true });
+      const fileHandle = await dir.getFileHandle(safeName(key));
+      const file = await fileHandle.getFile();
+      return new Response(file, { status: 200, headers: { 'content-length': String(file.size) } });
+    } catch {
+      return undefined;
+    }
+  },
+  async put(key: string, response: Response): Promise<void> {
+    try {
+      const root = await (navigator as any).storage.getDirectory();
+      const dir = await root.getDirectoryHandle('chelona_model', { create: true });
+      const fileHandle = await dir.getFileHandle(safeName(key), { create: true });
+      const writable = await fileHandle.createWritable();
+      if (response.body) {
+        await response.body.pipeTo(writable);
+      } else {
+        await writable.write(await response.arrayBuffer());
+        await writable.close();
+      }
+    } catch (e) {
+      console.warn('[Chelona] OPFS cache put fallita', e);
+    }
+  },
+};
+
 export const chelonaAI = {
   isLoaded: () => generator !== null,
+
+  /* Verifica se il modello è già stato scaricato (presente nella cache OPFS). */
+  async isCached(): Promise<boolean> {
+    if (!hasOpfs()) return false;
+    try {
+      const root = await (navigator as any).storage.getDirectory();
+      const dir = await root.getDirectoryHandle('chelona_model', { create: true });
+      for await (const name of (dir as any).keys()) {
+        if (String(name).includes('config.json')) return true;
+      }
+      return false;
+    } catch {
+      return false;
+    }
+  },
 
   /* Carica il modello (una sola volta). onProgress riceve lo stato di download. */
   async loadModel(onProgress?: (p: ChelonaProgress) => void): Promise<void> {
@@ -37,8 +109,20 @@ export const chelonaAI = {
       loadPromise = (async () => {
         const { pipeline, env } = await import('@huggingface/transformers');
         env.allowRemoteModels = true;
-        env.useBrowserCache = true;
-        env.useFSCache = true;
+
+        // Esegue l'inferenza in un Web Worker per non bloccare l'interfaccia.
+        if (env.backends?.onnx?.wasm) {
+          env.backends.onnx.wasm.proxy = true;
+        }
+
+        // Cache persistente su OPFS (evita di riscaricare il modello ogni volta).
+        if (hasOpfs()) {
+          env.useCustomCache = true;
+          env.customCache = opfsCache as any;
+          env.useBrowserCache = false;
+          env.useFSCache = false;
+        }
+
         generator = await pipeline('text-generation', MODEL_ID, {
           dtype: 'q4f16',
           device: 'wasm',
