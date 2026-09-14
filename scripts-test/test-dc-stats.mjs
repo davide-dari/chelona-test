@@ -135,6 +135,15 @@ try {
   const spesa = await bodyText();
   ok('badge dove costa meno visibile', /vedi nel volantino/.test(spesa) && /€/.test(spesa) && /Pam|Eurospin|Lidl|Esselunga/.test(spesa), spesa.match(/[0-9]+,[0-9]+ € · \w+/)?.[0] ?? '');
 
+  // ── Chelona (assistente AI locale) ──
+  await page.evaluate(() => window.dispatchEvent(new CustomEvent('volantino-back')));
+  await new Promise(r => setTimeout(r, 500));
+  await page.evaluate(() => { const b = [...document.querySelectorAll('button')].find(x => x.title?.includes('Chelona')); if (b) b.click(); });
+  await waitText('Scarica il modello');
+  const chelonaTxt = await bodyText();
+  ok('Chelona: chat aperta con download modello', /Scarica il modello/.test(chelonaTxt) && /AI locale/.test(chelonaTxt));
+  ok('Chelona: funziona offline (nessuna API)', /senza internet|offline|locale/.test(chelonaTxt));
+
   ok('0 richieste fallite', failed.filter(u => !u.includes('api.github.com') && !u.includes('raw.githubusercontent.com/davide-dari/chelona-test/dc-data') && !u.includes('fonts.gstatic.com')).length === 0, failed.filter(u => !u.includes('api.github.com') && !u.includes('raw.githubusercontent.com/davide-dari/chelona-test/dc-data') && !u.includes('fonts.gstatic.com')).slice(0, 3).join('\n'));
 } catch (err) {
   ok('errore esecuzione', false, String(err).slice(0, 200));

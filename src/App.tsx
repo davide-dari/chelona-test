@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Sun, Moon, Wrench, Plus, LayoutDashboard, Settings, User, LogOut, Search, Mic, Bell, CreditCard, Fingerprint, ShieldCheck, Lock, Menu, X, StickyNote, FileText, Grid2X2, Car, QrCode, Folder as FolderIcon, Check, Edit2, Trash2, BookOpen, ArrowLeft, ArrowRight, Camera, FileDown, Hourglass, Users, Download, Receipt, MapPin, Image as ImageIcon, Lightbulb, Globe, ChevronLeft, Bus, Home, Armchair, Activity, ShoppingBasket, BadgePercent } from 'lucide-react';
+import { Sun, Moon, Wrench, Plus, LayoutDashboard, Settings, User, LogOut, Search, Mic, Bell, CreditCard, Fingerprint, ShieldCheck, Lock, Menu, X, StickyNote, FileText, Grid2X2, Car, QrCode, Folder as FolderIcon, Check, Edit2, Trash2, BookOpen, ArrowLeft, ArrowRight, Camera, FileDown, Hourglass, Users, Download, Receipt, MapPin, Image as ImageIcon, Lightbulb, Globe, ChevronLeft, Bus, Home, Armchair, Activity, ShoppingBasket, BadgePercent, Sparkles } from 'lucide-react';
 
 import { Module, ModuleType, Folder, DocumentModule } from './types';
 import { isModuleSensitive } from './utils/security';
@@ -47,6 +47,7 @@ const FurnitureScreen = React.lazy(() => import('./components/FurnitureScreen').
 const InstallmentsScreen = React.lazy(() => import('./components/InstallmentsScreen').then(m => ({ default: m.InstallmentsScreen })));
 const FitnessScreen = React.lazy(() => import('./components/FitnessScreen').then(m => ({ default: m.FitnessScreen })));
 const SupermarketScreen = React.lazy(() => import('./components/SupermarketScreen').then(m => ({ default: m.SupermarketScreen })));
+const ChelonaChat = React.lazy(() => import('./components/ChelonaChat').then(m => ({ default: m.ChelonaChat })));
 const VolantinoScreen = React.lazy(() => import('./components/VolantinoScreen').then(m => ({ default: m.default })));
 const ShareScreen = React.lazy(() => import('./components/ShareScreen').then(m => ({ default: m.ShareScreen })));
 // UI Libraries removed as per request (CSS Grid migration)
@@ -332,6 +333,7 @@ export default function App() {
   const [moduleToDelete, setModuleToDelete] = useState<Module | null>(null);
   const [folderToDelete, setFolderToDelete] = useState<string | null>(null);
   const [isAddressBookOpen, setIsAddressBookOpen] = useState(false);
+  const [isChelonaOpen, setIsChelonaOpen] = useState(false);
   const [isRecipesOpen, setIsRecipesOpen] = useState(false);
   const [initialRecipesSearch, setInitialRecipesSearch] = useState('');
   const [initialRecipeToOpen, setInitialRecipeToOpen] = useState<any>(null);
@@ -512,6 +514,7 @@ export default function App() {
       if (isArchiveOpen) { setIsArchiveOpen(false); return; }
       if (isRecipesOpen) { window.dispatchEvent(new CustomEvent('recipes-back')); return; }
       if (isAddressBookOpen) { setIsAddressBookOpen(false); return; }
+      if (isChelonaOpen) { setIsChelonaOpen(false); return; }
       if (isSidebarOpen) { setIsSidebarOpen(false); return; }
       if (selectedFolderId) { setSelectedFolderId(null); return; }
       if (selectedType) { setSelectedType(null); return; }
@@ -2148,6 +2151,13 @@ export default function App() {
                 {/* Right side: Avatar (Lock and Theme moved to Profile) */}
                 <div className="flex items-center gap-2 sm:gap-4">
 
+                  <button
+                    onClick={() => setIsChelonaOpen(true)}
+                    className="p-2 sm:p-2.5 bg-gradient-to-br from-teal-500 to-emerald-600 hover:opacity-90 rounded-full text-white transition-all flex items-center justify-center shadow-md shadow-teal-500/25"
+                    title="Chelona (assistente AI locale)"
+                  >
+                    <Sparkles className="w-5 h-5 sm:w-6 sm:h-6" />
+                  </button>
                   <button 
                     onClick={() => { setIsToolsOpen(true); setIsProfileOpen(false); setSelectedType(null); }}
                     className="p-2 sm:p-2.5 bg-[var(--surface-variant)] hover:bg-[var(--border)] rounded-full text-[var(--accent)] transition-all flex items-center justify-center shadow-sm hidden md:flex"
@@ -3869,9 +3879,24 @@ export default function App() {
              }} initialSearchQuery={initialRecipesSearch} initialRecipe={initialRecipeToOpen} initialCategory={initialRecipesCategory} />
            </motion.div>
          )}
-         {isAddressBookOpen && (
-            <AddressBookScreen onClose={() => setIsAddressBookOpen(false)} />
-         )}
+          {isAddressBookOpen && (
+             <AddressBookScreen onClose={() => setIsAddressBookOpen(false)} />
+          )}
+      </AnimatePresence>
+
+      {/* Chelona — assistente AI locale */}
+      <AnimatePresence>
+        {isChelonaOpen && (
+          <React.Suspense fallback={null}>
+            <ChelonaChat
+              onClose={() => setIsChelonaOpen(false)}
+              modules={modules}
+              folders={folders}
+              username={username}
+              showToast={showToast}
+            />
+          </React.Suspense>
+        )}
       </AnimatePresence>
 
       {/* Update Modal */}
