@@ -31,6 +31,7 @@ export function ChelonaChat({ onClose, modules, folders, username, showToast }: 
   const [progressFile, setProgressFile] = useState('');
   const [progressLoaded, setProgressLoaded] = useState(0);
   const [progressTotal, setProgressTotal] = useState(0);
+  const [step, setStep] = useState('Preparazione…');
   const [busy, setBusy] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const contextRef = useRef<string>('');
@@ -66,9 +67,14 @@ export function ChelonaChat({ onClose, modules, folders, username, showToast }: 
   const downloadModel = useCallback(async () => {
     setStatus('downloading');
     setProgress(0);
+    setStep('Preparazione…');
+    setProgressFile('');
     try {
       await chelonaAI.loadModel((p) => {
-        if (p.status === 'progress' || p.status === 'download') {
+        if (p.status === 'initiate') {
+          setStep('Preparazione del modello…');
+        } else if (p.status === 'progress' || p.status === 'download') {
+          setStep(`Scaricamento: ${p.file || '…'}`);
           // Throttle: aggiorna lo stato al massimo ogni 250ms per non bloccare la UI.
           const now = Date.now();
           if (p.status === 'progress' && now - lastProgressRef.current < 250) return;
@@ -96,6 +102,8 @@ export function ChelonaChat({ onClose, modules, folders, username, showToast }: 
     const next = [...messages, userMsg];
     setMessages(next);
     setBusy(true);
+    // Lascia renderizzare lo stato "pensando" prima dell'inferenza (che blocca il thread).
+    await new Promise(r => setTimeout(r, 100));
     try {
       const system: ChelonaMessage = {
         role: 'system',
@@ -162,7 +170,7 @@ export function ChelonaChat({ onClose, modules, folders, username, showToast }: 
         <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
           <Loader2 className="w-12 h-12 text-teal-500 animate-spin mb-5" />
           <h2 className="text-lg font-black text-[var(--text-main)] mb-1">Caricamento del modello…</h2>
-          <p className="text-xs text-[var(--text-muted)] max-w-xs mb-6 truncate">{progressFile || 'Preparazione…'}</p>
+          <p className="text-xs text-[var(--text-muted)] max-w-xs mb-6 truncate">{step}</p>
           <div className="w-full max-w-xs h-2.5 bg-[var(--surface-variant)] rounded-full overflow-hidden">
             <div className="h-full bg-gradient-to-r from-teal-500 to-emerald-600 rounded-full transition-all duration-300" style={{ width: `${Math.max(progress, 3)}%` }} />
           </div>

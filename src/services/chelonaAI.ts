@@ -43,6 +43,19 @@ let loadPromise: Promise<void> | null = null;
 const hasOpfs = (): boolean =>
   typeof navigator !== 'undefined' && 'storage' in navigator && typeof (navigator as any).storage?.getDirectory === 'function';
 
+/* Timeout: se OPFS si blocca, non deve bloccare il download. */
+const withTimeout = async <T>(promise: Promise<T>, ms: number): Promise<T> => {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<T>((_, reject) => { timer = setTimeout(() => reject(new Error('timeout')), ms); }),
+    ]);
+  } finally {
+    clearTimeout(timer);
+  }
+};
+
 const safeName = (key: string): string => {
   let name = key;
   // remoteURL: https://huggingface.co/{model}/{owner}/resolve/{rev}/{file}
@@ -59,9 +72,9 @@ const safeName = (key: string): string => {
 const opfsCache = {
   async match(key: string): Promise<Response | undefined> {
     try {
-      const root = await (navigator as any).storage.getDirectory();
-      const dir = await root.getDirectoryHandle('chelona_model', { create: true });
-      const fileHandle = await dir.getFileHandle(safeName(key));
+      const root: any = await withTimeout((navigator as any).storage.getDirectory(), 8000);
+      const dir: any = await withTimeout(root.getDirectoryHandle('chelona_model', { create: true }), 8000);
+      const fileHandle: any = await withTimeout(dir.getFileHandle(safeName(key)), 8000);
       const file = await fileHandle.getFile();
       return new Response(file, { status: 200, headers: { 'content-length': String(file.size) } });
     } catch {
@@ -71,9 +84,9 @@ const opfsCache = {
   async put(key: string, response: Response): Promise<void> {
     try {
       const buf = await response.arrayBuffer();
-      const root = await (navigator as any).storage.getDirectory();
-      const dir = await root.getDirectoryHandle('chelona_model', { create: true });
-      const fileHandle = await dir.getFileHandle(safeName(key), { create: true });
+      const root: any = await withTimeout((navigator as any).storage.getDirectory(), 8000);
+      const dir: any = await withTimeout(root.getDirectoryHandle('chelona_model', { create: true }), 8000);
+      const fileHandle: any = await withTimeout(dir.getFileHandle(safeName(key), { create: true }), 8000);
       const writable = await fileHandle.createWritable();
       await writable.write(buf);
       await writable.close();
@@ -106,13 +119,10 @@ export const chelonaAI = {
     if (generator) return;
     if (!loadPromise) {
       loadPromise = (async () => {
+        console.log('[Chelona] import transformers.js…');
         const { pipeline, env } = await import('@huggingface/transformers');
+        console.log('[Chelona] import completato');
         env.allowRemoteModels = true;
-
-        // Esegue l'inferenza in un Web Worker per non bloccare l'interfaccia.
-        if (env.backends?.onnx?.wasm) {
-          env.backends.onnx.wasm.proxy = true;
-        }
 
         // Cache persistente su OPFS (evita di riscaricare il modello ogni volta).
         if (hasOpfs()) {
@@ -120,8 +130,10 @@ export const chelonaAI = {
           env.customCache = opfsCache as any;
           env.useBrowserCache = false;
           env.useFSCache = false;
+          console.log('[Chelona] cache OPFS attiva');
         }
 
+        console.log('[Chelona] avvio pipeline…');
         generator = await pipeline('text-generation', MODEL_ID, {
           dtype: 'q4f16',
           device: 'wasm',
@@ -140,6 +152,7 @@ export const chelonaAI = {
             });
           },
         });
+        console.log('[Chelona] pipeline pronta');
       })();
     }
     await loadPromise;
