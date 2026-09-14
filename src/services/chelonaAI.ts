@@ -32,6 +32,8 @@ export interface ChelonaProgress {
   status: string;      // 'initiate' | 'download' | 'progress' | 'done'
   file: string;
   progress: number;    // 0..100
+  loaded?: number;     // bytes caricati
+  total?: number;      // bytes totali
 }
 
 let generator: any = null;
@@ -68,16 +70,13 @@ const opfsCache = {
   },
   async put(key: string, response: Response): Promise<void> {
     try {
+      const buf = await response.arrayBuffer();
       const root = await (navigator as any).storage.getDirectory();
       const dir = await root.getDirectoryHandle('chelona_model', { create: true });
       const fileHandle = await dir.getFileHandle(safeName(key), { create: true });
       const writable = await fileHandle.createWritable();
-      if (response.body) {
-        await response.body.pipeTo(writable);
-      } else {
-        await writable.write(await response.arrayBuffer());
-        await writable.close();
-      }
+      await writable.write(buf);
+      await writable.close();
     } catch (e) {
       console.warn('[Chelona] OPFS cache put fallita', e);
     }
@@ -127,9 +126,18 @@ export const chelonaAI = {
           dtype: 'q4f16',
           device: 'wasm',
           progress_callback: (p: any) => {
-            if (p && p.status) {
-              onProgress?.({ status: String(p.status), file: p.file || '', progress: p.progress ?? 0 });
+            if (!p || !p.status) return;
+            // Log solo ai confini di file (non a ogni chunk) per non intasare la console.
+            if (p.status === 'download' || p.status === 'done') {
+              console.log('[Chelona]', p.status, p.file || '');
             }
+            onProgress?.({
+              status: String(p.status),
+              file: p.file || '',
+              progress: p.progress ?? 0,
+              loaded: p.loaded,
+              total: p.total,
+            });
           },
         });
       })();

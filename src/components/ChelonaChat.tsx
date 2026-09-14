@@ -29,9 +29,12 @@ export function ChelonaChat({ onClose, modules, folders, username, showToast }: 
   const [status, setStatus] = useState<ModelStatus>(() => chelonaAI.isLoaded() ? 'ready' : 'idle');
   const [progress, setProgress] = useState(0);
   const [progressFile, setProgressFile] = useState('');
+  const [progressLoaded, setProgressLoaded] = useState(0);
+  const [progressTotal, setProgressTotal] = useState(0);
   const [busy, setBusy] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const contextRef = useRef<string>('');
+  const lastProgressRef = useRef<number>(0);
 
   useEffect(() => {
     contextRef.current = buildUserContext(modules, folders, username);
@@ -66,8 +69,14 @@ export function ChelonaChat({ onClose, modules, folders, username, showToast }: 
     try {
       await chelonaAI.loadModel((p) => {
         if (p.status === 'progress' || p.status === 'download') {
+          // Throttle: aggiorna lo stato al massimo ogni 250ms per non bloccare la UI.
+          const now = Date.now();
+          if (p.status === 'progress' && now - lastProgressRef.current < 250) return;
+          lastProgressRef.current = now;
           setProgressFile(p.file || '');
           if (typeof p.progress === 'number') setProgress(Math.round(p.progress));
+          if (typeof p.loaded === 'number') setProgressLoaded(p.loaded);
+          if (typeof p.total === 'number') setProgressTotal(p.total);
         }
       });
       setStatus('ready');
@@ -139,7 +148,7 @@ export function ChelonaChat({ onClose, modules, folders, username, showToast }: 
             Un modello AI che gira <b>direttamente sul tuo telefono</b>, usando la sua potenza di calcolo.
           </p>
           <p className="text-xs text-[var(--text-muted)] max-w-xs leading-relaxed mb-6">
-            Nessun dato viene inviato a server esterni. Il modello (~350 MB) va scaricato una sola volta; dopo funziona anche senza connessione.
+            Nessun dato viene inviato a server esterni. Il modello (~540 MB) va scaricato una sola volta; dopo funziona anche senza connessione.
           </p>
           <button
             onClick={downloadModel}
@@ -157,8 +166,12 @@ export function ChelonaChat({ onClose, modules, folders, username, showToast }: 
           <div className="w-full max-w-xs h-2.5 bg-[var(--surface-variant)] rounded-full overflow-hidden">
             <div className="h-full bg-gradient-to-r from-teal-500 to-emerald-600 rounded-full transition-all duration-300" style={{ width: `${Math.max(progress, 3)}%` }} />
           </div>
-          <p className="text-[11px] text-[var(--text-muted)] mt-2 font-bold">{progress}%</p>
-          <p className="text-[10px] text-[var(--text-muted)] mt-4">Il primo caricamento può richiedere qualche minuto; i successivi sono rapidi e offline.</p>
+          <p className="text-[11px] text-[var(--text-muted)] mt-2 font-bold">
+            {progressLoaded > 0 || progressTotal > 0
+              ? `${(progressLoaded / 1048576).toFixed(1)} MB / ${(progressTotal / 1048576).toFixed(1)} MB`
+              : `${progress}%`}
+          </p>
+          <p className="text-[10px] text-[var(--text-muted)] mt-4">Il primo download (~540 MB) richiede diversi minuti a seconda della connessione. Non chiudere l'app durante il download.</p>
         </div>
       ) : status === 'error' ? (
         <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
