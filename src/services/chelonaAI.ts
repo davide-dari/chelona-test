@@ -54,11 +54,22 @@ if (typeof window !== 'undefined' && typeof window.fetch === 'function') {
     });
 }
 
-/* ── Cache custom su OPFS (persistente) ── */
-const hasOpfs = (): boolean =>
-  typeof navigator !== 'undefined' && 'storage' in navigator && typeof (navigator as any).storage?.getDirectory === 'function';
+/* ── Cache custom su IndexedDB (persistente e più affidabile di OPFS) ── */
+const hasIdb = (): boolean =>
+  typeof indexedDB !== 'undefined';
 
-/* Timeout: se OPFS si blocca, non deve bloccare il download. */
+const DB_NAME = 'chelona_model_cache';
+const STORE = 'files';
+
+const openDb = (): Promise<IDBDatabase> =>
+  new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, 1);
+    req.onupgradeneeded = () => { req.result.createObjectStore(STORE); };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+
+/* Timeout: se IndexedDB si blocca, non deve bloccare il download. */
 const withTimeout = async <T>(promise: Promise<T>, ms: number): Promise<T> => {
   let timer: ReturnType<typeof setTimeout> | undefined;
   try {
@@ -84,29 +95,36 @@ const safeName = (key: string): string => {
   return name.replace(/[^a-zA-Z0-9._-]/g, '_');
 };
 
-const opfsCache = {
+const idbCache = {
   async match(key: string): Promise<Response | undefined> {
     try {
-      const root: any = await withTimeout((navigator as any).storage.getDirectory(), 8000);
-      const dir: any = await withTimeout(root.getDirectoryHandle('chelona_model', { create: true }), 8000);
-      const fileHandle: any = await withTimeout(dir.getFileHandle(safeName(key)), 8000);
-      const file = await fileHandle.getFile();
-      return new Response(file, { status: 200, headers: { 'content-length': String(file.size) } });
+      const db = await withTimeout(openDb(), 8000);
+      const blob = await withTimeout(new Promise<Blob | undefined>((resolve, reject) => {
+        const tx = db.transaction(STORE, 'readonly');
+        const req = tx.objectStore(STORE).get(safeName(key));
+        req.onsuccess = () => resolve(req.result as Blob | undefined);
+        req.onerror = () => reject(req.error);
+      }), 8000);
+      db.close();
+      if (!blob) return undefined;
+      return new Response(blob, { status: 200, headers: { 'content-length': String(blob.size) } });
     } catch {
       return undefined;
     }
   },
   async put(key: string, response: Response): Promise<void> {
     try {
-      const buf = await response.arrayBuffer();
-      const root: any = await withTimeout((navigator as any).storage.getDirectory(), 8000);
-      const dir: any = await withTimeout(root.getDirectoryHandle('chelona_model', { create: true }), 8000);
-      const fileHandle: any = await withTimeout(dir.getFileHandle(safeName(key), { create: true }), 8000);
-      const writable = await fileHandle.createWritable();
-      await writable.write(buf);
-      await writable.close();
+      const blob = await response.blob();
+      const db = await withTimeout(openDb(), 8000);
+      await withTimeout(new Promise<void>((resolve, reject) => {
+        const tx = db.transaction(STORE, 'readwrite');
+        tx.objectStore(STORE).put(blob, safeName(key));
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+      }), 8000);
+      db.close();
     } catch (e) {
-      console.warn('[Chelona] OPFS cache put fallita', e);
+      console.warn('[Chelona] IndexedDB cache put fallita', e);
     }
   },
 };
@@ -114,16 +132,19 @@ const opfsCache = {
 export const chelonaAI = {
   isLoaded: () => generator !== null,
 
-  /* Verifica se il modello è già stato scaricato (presente nella cache OPFS). */
+  /* Verifica se il modello è già stato scaricato (presente nella cache IndexedDB). */
   async isCached(): Promise<boolean> {
-    if (!hasOpfs()) return false;
+    if (!hasIdb()) return false;
     try {
-      const root = await (navigator as any).storage.getDirectory();
-      const dir = await root.getDirectoryHandle('chelona_model', { create: true });
-      for await (const name of (dir as any).keys()) {
-        if (String(name).includes('config.json')) return true;
-      }
-      return false;
+      const db = await withTimeout(openDb(), 5000);
+      const exists = await withTimeout(new Promise<boolean>((resolve) => {
+        const tx = db.transaction(STORE, 'readonly');
+        const req = tx.objectStore(STORE).getAllKeys();
+        req.onsuccess = () => resolve((req.result as string[]).some(k => k.includes('config.json')));
+        req.onerror = () => resolve(false);
+      }), 5000);
+      db.close();
+      return exists;
     } catch {
       return false;
     }
@@ -150,13 +171,13 @@ export const chelonaAI = {
         console.log('[Chelona] import completato');
         env.allowRemoteModels = true;
 
-        // Cache persistente su OPFS (evita di riscaricare il modello ogni volta).
-        if (hasOpfs()) {
+        // Cache persistente su IndexedDB (evita di riscaricare il modello ogni volta).
+        if (hasIdb()) {
           env.useCustomCache = true;
-          env.customCache = opfsCache as any;
+          env.customCache = idbCache as any;
           env.useBrowserCache = false;
           env.useFSCache = false;
-          console.log('[Chelona] cache OPFS attiva');
+          console.log('[Chelona] cache IndexedDB attiva');
         }
 
         onPhase?.('pipeline');
