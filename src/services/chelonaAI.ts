@@ -1,27 +1,18 @@
 /*
  * Chelona — assistente AI locale (on-device).
  *
- * Usa transformers.js (WebAssembly) per eseguire un piccolo modello
- * linguistico interamente sul dispositivo: nessuna API esterna, nessun
- * invio di dati.
+ * Esegue il modello linguistico in un Web Worker dedicato, sfruttando:
+ *   - WebGPU per accelerazione hardware su GPU mobile (Adreno / Mali)
+ *   - WASM SIMD multi-thread (CPU) come fallback
+ *   - Web Cache API nativa per memorizzare i pesi del modello in modo permanente
+ *   - Streaming in tempo reale dei token (nessun freeze dell'interfaccia)
  *
- * Persistenza del modello:
- *   - Il modello viene scaricato una sola volta e salvato nella OPFS
- *     (Origin Private File System) tramite una cache custom, così resta
- *     disponibile anche dopo il riavvio dell'app e funziona offline.
- *   - Se OPFS non è disponibile, si ripiega sulla cache default di
- *     transformers.js (Cache API del browser).
- *
- * Fluidità UI:
- *   - L'inferenza WASM viene eseguita in un Web Worker (`proxy = true`)
- *     così la chat non si blocca durante la generazione.
- *
- * Modello: onnx-community/Qwen3-0.6B-ONNX (quantizzato q4f16, ~350 MB).
+ * Modello: onnx-community/Qwen2.5-0.5B-Instruct (~350-480 MB, eccellente in italiano).
  */
 import type { Module, Folder } from '../types';
 import { storage } from './storage';
 
-const MODEL_ID = 'onnx-community/Qwen3-0.6B-ONNX';
+export const MODEL_ID = 'onnx-community/Qwen2.5-0.5B-Instruct';
 
 export interface ChelonaMessage {
   role: 'system' | 'user' | 'assistant';
@@ -31,202 +22,131 @@ export interface ChelonaMessage {
 export interface ChelonaProgress {
   status: string;      // 'initiate' | 'download' | 'progress' | 'done'
   file: string;
-  progress: number;    // 0..100
+  progress?: number;   // 0..100
   loaded?: number;     // bytes caricati
   total?: number;      // bytes totali
 }
 
-let generator: any = null;
+let workerInstance: Worker | null = null;
+let isModelReady = false;
+let activeDevice: 'webgpu' | 'wasm' = 'wasm';
 let loadPromise: Promise<void> | null = null;
 
-/* Timeout globale sul fetch: evita che un download resti appeso all'infinito.
-   (trasformers.js usa fetch per scaricare il modello da HuggingFace). */
-const FETCH_TIMEOUT_MS = 30 * 60 * 1000; // 30 minuti (il modello pesa ~540 MB)
-if (typeof window !== 'undefined' && typeof window.fetch === 'function') {
-  const originalFetch = window.fetch.bind(window);
-  (window as any).fetch = (input: any, init?: any) =>
-    new Promise((resolve, reject) => {
-      const timer = setTimeout(() => reject(new Error('fetch timeout')), FETCH_TIMEOUT_MS);
-      originalFetch(input, init).then(
-        (r) => { clearTimeout(timer); resolve(r); },
-        (e) => { clearTimeout(timer); reject(e); },
-      );
+function getWorker(): Worker {
+  if (!workerInstance) {
+    workerInstance = new Worker(new URL('../workers/aiWorker.ts', import.meta.url), {
+      type: 'module',
     });
+  }
+  return workerInstance;
 }
 
-/* ── Cache custom su IndexedDB (persistente e più affidabile di OPFS) ── */
-const hasIdb = (): boolean =>
-  typeof indexedDB !== 'undefined';
-
-const DB_NAME = 'chelona_model_cache';
-const STORE = 'files';
-
-const openDb = (): Promise<IDBDatabase> =>
-  new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB_NAME, 1);
-    req.onupgradeneeded = () => { req.result.createObjectStore(STORE); };
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(req.error);
-  });
-
-/* Timeout: se IndexedDB si blocca, non deve bloccare il download. */
-const withTimeout = async <T>(promise: Promise<T>, ms: number): Promise<T> => {
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  try {
-    return await Promise.race([
-      promise,
-      new Promise<T>((_, reject) => { timer = setTimeout(() => reject(new Error('timeout')), ms); }),
-    ]);
-  } finally {
-    clearTimeout(timer);
-  }
-};
-
-const safeName = (key: string): string => {
-  let name = key;
-  // remoteURL: https://huggingface.co/{model}/{owner}/resolve/{rev}/{file}
-  const remote = key.match(/huggingface\.co\/([^/]+\/[^/]+)\/resolve\/[^/]+\/(.+)$/);
-  if (remote) {
-    name = `${remote[1]}/${remote[2]}`;
-  } else {
-    const local = key.match(/models\/(.+)$/);
-    if (local) name = local[1];
-  }
-  return name.replace(/[^a-zA-Z0-9._-]/g, '_');
-};
-
-const idbCache = {
-  async match(key: string): Promise<Response | undefined> {
-    try {
-      const db = await withTimeout(openDb(), 8000);
-      const blob = await withTimeout(new Promise<Blob | undefined>((resolve, reject) => {
-        const tx = db.transaction(STORE, 'readonly');
-        const req = tx.objectStore(STORE).get(safeName(key));
-        req.onsuccess = () => resolve(req.result as Blob | undefined);
-        req.onerror = () => reject(req.error);
-      }), 8000);
-      db.close();
-      if (!blob) return undefined;
-      return new Response(blob, { status: 200, headers: { 'content-length': String(blob.size) } });
-    } catch {
-      return undefined;
-    }
-  },
-  async put(key: string, response: Response): Promise<void> {
-    try {
-      const blob = await response.blob();
-      const db = await withTimeout(openDb(), 8000);
-      await withTimeout(new Promise<void>((resolve, reject) => {
-        const tx = db.transaction(STORE, 'readwrite');
-        tx.objectStore(STORE).put(blob, safeName(key));
-        tx.oncomplete = () => resolve();
-        tx.onerror = () => reject(tx.error);
-      }), 8000);
-      db.close();
-    } catch (e) {
-      console.warn('[Chelona] IndexedDB cache put fallita', e);
-    }
-  },
-};
-
 export const chelonaAI = {
-  isLoaded: () => generator !== null,
+  isLoaded: () => isModelReady,
+  getDevice: () => activeDevice,
 
-  /* Verifica se il modello è già stato scaricato (presente nella cache IndexedDB). */
+  /* Verifica se il modello è già stato scaricato e memorizzato nella cache persistente. */
   async isCached(): Promise<boolean> {
-    if (!hasIdb()) return false;
+    if (typeof caches === 'undefined') return false;
     try {
-      const db = await withTimeout(openDb(), 5000);
-      const exists = await withTimeout(new Promise<boolean>((resolve) => {
-        const tx = db.transaction(STORE, 'readonly');
-        const req = tx.objectStore(STORE).getAllKeys();
-        req.onsuccess = () => resolve((req.result as string[]).some(k => k.includes('config.json')));
-        req.onerror = () => resolve(false);
-      }), 5000);
-      db.close();
-      return exists;
+      const cache = await caches.open('transformers-cache');
+      const requests = await cache.keys();
+      const urls = requests.map(r => r.url);
+      const hasConfig = urls.some(u => u.includes(MODEL_ID) && u.includes('config.json'));
+      const hasWeights = urls.some(u => u.includes(MODEL_ID) && (u.includes('.onnx') || u.includes('model_')));
+      return hasConfig && hasWeights;
     } catch {
       return false;
     }
   },
 
-  /* Carica il modello (una sola volta). onProgress riceve lo stato di download,
-     onPhase riceve la fase corrente ('import' | 'pipeline' | 'download'). */
-  async loadModel(
+  /* Carica o inizializza il modello tramite il Web Worker. */
+  loadModel(
     onProgress?: (p: ChelonaProgress) => void,
     onPhase?: (phase: string) => void,
   ): Promise<void> {
-    if (generator) return;
-    if (!loadPromise) {
-      loadPromise = (async () => {
-        onPhase?.('import');
-        console.log('[Chelona] import transformers.js…');
+    if (isModelReady) return Promise.resolve();
+    if (loadPromise) return loadPromise;
 
-        // Timeout sull'import: se la libreria non si carica entro 60s, fallisce.
-        const mod: any = await Promise.race([
-          import('@huggingface/transformers'),
-          new Promise((_, reject) => setTimeout(() => reject(new Error('timeout import')), 60000)),
-        ]);
-        const { pipeline, env } = mod;
-        console.log('[Chelona] import completato');
-        env.allowRemoteModels = true;
+    loadPromise = new Promise<void>((resolve, reject) => {
+      const worker = getWorker();
 
-        // Cache persistente su IndexedDB (evita di riscaricare il modello ogni volta).
-        if (hasIdb()) {
-          env.useCustomCache = true;
-          env.customCache = idbCache as any;
-          env.useBrowserCache = false;
-          env.useFSCache = false;
-          console.log('[Chelona] cache IndexedDB attiva');
+      const messageHandler = (event: MessageEvent) => {
+        const { type, phase, device, status, file, progress, loaded, total, error } = event.data || {};
+
+        if (type === 'phase') {
+          onPhase?.(phase);
+        } else if (type === 'progress') {
+          onProgress?.({ status, file, progress, loaded, total });
+        } else if (type === 'ready') {
+          worker.removeEventListener('message', messageHandler);
+          isModelReady = true;
+          activeDevice = device || 'wasm';
+          loadPromise = null;
+          console.log(`[ChelonaAI] Modello pronto su device: ${activeDevice}`);
+          resolve();
+        } else if (type === 'error') {
+          worker.removeEventListener('message', messageHandler);
+          loadPromise = null;
+          reject(new Error(error || 'Errore durante il caricamento del modello'));
         }
+      };
 
-        onPhase?.('pipeline');
-        console.log('[Chelona] avvio pipeline…');
-        generator = await pipeline('text-generation', MODEL_ID, {
-          dtype: 'q4f16',
-          device: 'wasm',
-          progress_callback: (p: any) => {
-            if (!p || !p.status) return;
-            if (p.status === 'download' || p.status === 'done') {
-              console.log('[Chelona]', p.status, p.file || '');
-            }
-            onProgress?.({
-              status: String(p.status),
-              file: p.file || '',
-              progress: p.progress ?? 0,
-              loaded: p.loaded,
-              total: p.total,
-            });
-          },
-        });
-        console.log('[Chelona] pipeline pronta');
-      })().catch((e) => {
-        console.error('[Chelona] loadModel error', e);
-        loadPromise = null;
-        throw e;
-      });
-    }
-    await loadPromise;
+      worker.addEventListener('message', messageHandler);
+      worker.postMessage({ type: 'load', payload: { modelId: MODEL_ID } });
+    });
+
+    return loadPromise;
   },
 
-  /* Genera una risposta a partire dalla cronologia dei messaggi. */
-  async generate(messages: ChelonaMessage[]): Promise<string> {
-    if (!generator) throw new Error('Modello non caricato');
-    const out = await generator(messages, {
-      max_new_tokens: 256,
-      do_sample: true,
-      temperature: 0.6,
-      top_p: 0.9,
+  /* Genera testo con streaming dei token in tempo reale (evita il freeze della UI). */
+  generateStream(
+    messages: ChelonaMessage[],
+    onToken?: (token: string) => void,
+  ): Promise<string> {
+    if (!isModelReady) {
+      return Promise.reject(new Error('Modello non pronto'));
+    }
+
+    return new Promise<string>((resolve, reject) => {
+      const worker = getWorker();
+      let fullReply = '';
+
+      const messageHandler = (event: MessageEvent) => {
+        const { type, token, reply, error } = event.data || {};
+
+        if (type === 'token' && typeof token === 'string') {
+          fullReply += token;
+          onToken?.(token);
+        } else if (type === 'complete') {
+          worker.removeEventListener('message', messageHandler);
+          resolve(reply || fullReply);
+        } else if (type === 'error') {
+          worker.removeEventListener('message', messageHandler);
+          reject(new Error(error || 'Errore durante la generazione'));
+        }
+      };
+
+      worker.addEventListener('message', messageHandler);
+      worker.postMessage({
+        type: 'generate',
+        payload: {
+          messages,
+          maxTokens: 300,
+        },
+      });
     });
-    const reply = out?.[0]?.generated_text?.at?.(-1)?.content;
-    if (typeof reply === 'string') return reply;
-    return '';
+  },
+
+  /* Fallback sincrono-promise: genera e restituisce il testo finale. */
+  async generate(messages: ChelonaMessage[]): Promise<string> {
+    return chelonaAI.generateStream(messages);
   },
 };
 
 /* ═══════════════════════════════════════════════════════════════════
    Contesto: riassume i dati dell'utente da passare al modello.
-   Tutto viene elaborato localmente, senza inviare nulla.
+   Tutto viene elaborato localmente sul dispositivo.
    ═══════════════════════════════════════════════════════════════════ */
 const readJson = (key: string): any[] => {
   try {
@@ -302,8 +222,7 @@ export function buildUserContext(modules: Module[], folders: Folder[], username:
   return lines.join('\n');
 }
 
-export const CHELONA_SYSTEM_PROMPT = `Sei Chelona, l'assistente AI integrata nell'app Chelona. Sei gentile, concisa e utile.
-Rispondi SEMPRE in italiano, in modo breve e diretto (2-4 frasi al massimo).
-Hai accesso ai dati dell'utente riportati qui sotto come "Contesto". Usali per rispondere a domande sulla lista della spesa, la dispensa, i documenti, le note, le auto, le spese, ecc.
-Se la domanda riguarda dati che non sono nel contesto, dillo chiaramente.
-Non inventare dati che non sono nel contesto.`;
+export const CHELONA_SYSTEM_PROMPT = `Sei Chelona, l'assistente AI personale integrata nell'app Chelona. Sei gentile, concisa, precisa e utile.
+Rispondi SEMPRE in italiano, in modo chiaro e diretto (2-4 frasi al massimo, salvo richiesta esplicita).
+Hai accesso ai dati dell'utente riportati sotto in "Contesto" (spesa, frigo, freezer, dispensa, note, documenti, rate, auto). Usali con precisione per rispondere.
+Se un'informazione richiesta non è presente nel contesto, dillo con chiarezza e gentilezza senza inventarla.`;

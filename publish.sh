@@ -73,7 +73,7 @@ RELEASE_JSON=$(curl -s -X POST \
   -d "{
     \"tag_name\": \"$TAG\",
     \"name\": \"Release $TAG\",
-    \"body\": \"🚀 **Chelona v$VERSION**\\n\\n### ✨ Bug Fixes:\\n- **🛠️ Fix Schermata Ricette (Dieta)**: Risolto un bug critico che causava una schermata bianca sui browser più datati a causa di un'espressione regolare non supportata.\\n- **🛠️ Fix Caricamento Ricette**: Corretto il percorso del file delle ricette per garantire il corretto caricamento anche in ambienti Capacitor.\",
+    \"body\": \"🚀 **Chelona v$VERSION**\\n\\n### ✨ Novità & Ottimizzazioni:\\n- **🧠 Nuovo Modello AI Locale**: Integrato Qwen 2.5 (0.5B Instruct) compatto e con eccellente supporto italiano.\\n- **⚡ Accelerazione Hardware**: Supporto WebGPU per GPU mobile e fallback WASM multi-thread.\\n- **🚀 Nessun Freeze UI**: Inferenza in Web Worker dedicato con streaming dei token in tempo reale.\\n- **💾 Cache Persistente**: Web Cache API affidabile, nessun riscaricamento del modello alla riapertura dell'app.\",
     \"draft\": false,
     \"prerelease\": false
   }")
