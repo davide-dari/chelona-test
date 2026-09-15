@@ -39,6 +39,21 @@ export interface ChelonaProgress {
 let generator: any = null;
 let loadPromise: Promise<void> | null = null;
 
+/* Timeout globale sul fetch: evita che un download resti appeso all'infinito.
+   (trasformers.js usa fetch per scaricare il modello da HuggingFace). */
+const FETCH_TIMEOUT_MS = 30 * 60 * 1000; // 30 minuti (il modello pesa ~540 MB)
+if (typeof window !== 'undefined' && typeof window.fetch === 'function') {
+  const originalFetch = window.fetch.bind(window);
+  (window as any).fetch = (input: any, init?: any) =>
+    new Promise((resolve, reject) => {
+      const timer = setTimeout(() => reject(new Error('fetch timeout')), FETCH_TIMEOUT_MS);
+      originalFetch(input, init).then(
+        (r) => { clearTimeout(timer); resolve(r); },
+        (e) => { clearTimeout(timer); reject(e); },
+      );
+    });
+}
+
 /* ── Cache custom su OPFS (persistente) ── */
 const hasOpfs = (): boolean =>
   typeof navigator !== 'undefined' && 'storage' in navigator && typeof (navigator as any).storage?.getDirectory === 'function';
@@ -114,13 +129,24 @@ export const chelonaAI = {
     }
   },
 
-  /* Carica il modello (una sola volta). onProgress riceve lo stato di download. */
-  async loadModel(onProgress?: (p: ChelonaProgress) => void): Promise<void> {
+  /* Carica il modello (una sola volta). onProgress riceve lo stato di download,
+     onPhase riceve la fase corrente ('import' | 'pipeline' | 'download'). */
+  async loadModel(
+    onProgress?: (p: ChelonaProgress) => void,
+    onPhase?: (phase: string) => void,
+  ): Promise<void> {
     if (generator) return;
     if (!loadPromise) {
       loadPromise = (async () => {
+        onPhase?.('import');
         console.log('[Chelona] import transformers.js…');
-        const { pipeline, env } = await import('@huggingface/transformers');
+
+        // Timeout sull'import: se la libreria non si carica entro 60s, fallisce.
+        const mod: any = await Promise.race([
+          import('@huggingface/transformers'),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('timeout import')), 60000)),
+        ]);
+        const { pipeline, env } = mod;
         console.log('[Chelona] import completato');
         env.allowRemoteModels = true;
 
@@ -133,13 +159,13 @@ export const chelonaAI = {
           console.log('[Chelona] cache OPFS attiva');
         }
 
+        onPhase?.('pipeline');
         console.log('[Chelona] avvio pipeline…');
         generator = await pipeline('text-generation', MODEL_ID, {
           dtype: 'q4f16',
           device: 'wasm',
           progress_callback: (p: any) => {
             if (!p || !p.status) return;
-            // Log solo ai confini di file (non a ogni chunk) per non intasare la console.
             if (p.status === 'download' || p.status === 'done') {
               console.log('[Chelona]', p.status, p.file || '');
             }
@@ -153,7 +179,11 @@ export const chelonaAI = {
           },
         });
         console.log('[Chelona] pipeline pronta');
-      })();
+      })().catch((e) => {
+        console.error('[Chelona] loadModel error', e);
+        loadPromise = null;
+        throw e;
+      });
     }
     await loadPromise;
   },

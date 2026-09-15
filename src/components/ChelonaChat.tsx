@@ -54,8 +54,18 @@ export function ChelonaChat({ onClose, modules, folders, username, showToast }: 
       const cached = await chelonaAI.isCached();
       if (cancelled || !cached) return;
       setStatus('downloading');
+      setStep('Caricamento libreria AI…');
       try {
-        await chelonaAI.loadModel();
+        await chelonaAI.loadModel(
+          (p) => {
+            if (p.status === 'initiate') setStep('Preparazione del modello…');
+            else if (p.status === 'progress' || p.status === 'download') setStep(`Scaricamento: ${p.file || '…'}`);
+          },
+          (phase) => {
+            if (phase === 'import') setStep('Caricamento libreria AI…');
+            else if (phase === 'pipeline') setStep('Preparazione del modello…');
+          },
+        );
         if (!cancelled) setStatus('ready');
       } catch {
         if (!cancelled) setStatus('idle');
@@ -70,21 +80,27 @@ export function ChelonaChat({ onClose, modules, folders, username, showToast }: 
     setStep('Preparazione…');
     setProgressFile('');
     try {
-      await chelonaAI.loadModel((p) => {
-        if (p.status === 'initiate') {
-          setStep('Preparazione del modello…');
-        } else if (p.status === 'progress' || p.status === 'download') {
-          setStep(`Scaricamento: ${p.file || '…'}`);
-          // Throttle: aggiorna lo stato al massimo ogni 250ms per non bloccare la UI.
-          const now = Date.now();
-          if (p.status === 'progress' && now - lastProgressRef.current < 250) return;
-          lastProgressRef.current = now;
-          setProgressFile(p.file || '');
-          if (typeof p.progress === 'number') setProgress(Math.round(p.progress));
-          if (typeof p.loaded === 'number') setProgressLoaded(p.loaded);
-          if (typeof p.total === 'number') setProgressTotal(p.total);
-        }
-      });
+      await chelonaAI.loadModel(
+        (p) => {
+          if (p.status === 'initiate') {
+            setStep('Preparazione del modello…');
+          } else if (p.status === 'progress' || p.status === 'download') {
+            setStep(`Scaricamento: ${p.file || '…'}`);
+            // Throttle: aggiorna lo stato al massimo ogni 250ms per non bloccare la UI.
+            const now = Date.now();
+            if (p.status === 'progress' && now - lastProgressRef.current < 250) return;
+            lastProgressRef.current = now;
+            setProgressFile(p.file || '');
+            if (typeof p.progress === 'number') setProgress(Math.round(p.progress));
+            if (typeof p.loaded === 'number') setProgressLoaded(p.loaded);
+            if (typeof p.total === 'number') setProgressTotal(p.total);
+          }
+        },
+        (phase) => {
+          if (phase === 'import') setStep('Caricamento libreria AI…');
+          else if (phase === 'pipeline') setStep('Preparazione del modello…');
+        },
+      );
       setStatus('ready');
       showToast('Chelona è pronta! Funziona completamente offline.', 'success');
     } catch (e) {
