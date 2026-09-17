@@ -19,6 +19,7 @@ import { notificationService } from './services/notificationService';
 import { biometricService } from './services/biometricService';
 import { chelonaMemory } from './services/chelonaMemory';
 import { APP_VERSION } from './constants/version';
+import { downloadState } from './services/chelonaAI';
 
 import { motion, AnimatePresence } from 'motion/react';
 import JSZip from 'jszip';
@@ -335,6 +336,37 @@ export default function App() {
   const [folderToDelete, setFolderToDelete] = useState<string | null>(null);
   const [isAddressBookOpen, setIsAddressBookOpen] = useState(false);
   const [isChelonaOpen, setIsChelonaOpen] = useState(false);
+  const [aiDownload, setAiDownload] = useState(() => ({
+    active: downloadState.active,
+    progress: downloadState.progress,
+    loaded: downloadState.loaded,
+    total: downloadState.total,
+  }));
+
+  useEffect(() => {
+    const unsub = downloadState.subscribe((e) => {
+      if (e.type === 'progress') {
+        setAiDownload({
+          active: true,
+          progress: e.progress,
+          loaded: e.loaded,
+          total: e.total,
+        });
+      } else if (e.type === 'done') {
+        setAiDownload({ active: false, progress: 100, loaded: 0, total: 0 });
+      } else if (e.type === 'error') {
+        setAiDownload({ active: false, progress: 0, loaded: 0, total: 0 });
+      }
+    });
+
+    const handleOpenChat = () => setIsChelonaOpen(true);
+    window.addEventListener('open-chelona-chat', handleOpenChat);
+
+    return () => {
+      unsub();
+      window.removeEventListener('open-chelona-chat', handleOpenChat);
+    };
+  }, []);
   const [isRecipesOpen, setIsRecipesOpen] = useState(false);
   const [initialRecipesSearch, setInitialRecipesSearch] = useState('');
   const [initialRecipeToOpen, setInitialRecipeToOpen] = useState<any>(null);
@@ -3902,6 +3934,47 @@ export default function App() {
           {isAddressBookOpen && (
              <AddressBookScreen onClose={() => setIsAddressBookOpen(false)} />
           )}
+      </AnimatePresence>
+
+      {/* Indicatore globale download AI in background */}
+      <AnimatePresence>
+        {aiDownload.active && !isChelonaOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: -20, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -20, scale: 0.95 }}
+            onClick={() => setIsChelonaOpen(true)}
+            className="fixed top-3 left-4 right-4 z-[150000] bg-[var(--card-bg)]/95 backdrop-blur-md border border-teal-500/40 rounded-2xl p-3 shadow-2xl flex items-center gap-3 cursor-pointer active:scale-[0.98] transition-all select-none"
+          >
+            <div className="w-10 h-10 rounded-xl bg-teal-500/15 flex items-center justify-center shrink-0 border border-teal-500/30">
+              <Sparkles className="w-5 h-5 text-teal-500 animate-pulse" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between gap-2 mb-1.5">
+                <span className="text-xs font-black text-[var(--text-main)] truncate">
+                  Download Llama 3.2 in corso…
+                </span>
+                <span className="text-xs font-black text-teal-500 shrink-0">
+                  {aiDownload.progress}%
+                </span>
+              </div>
+              <div className="w-full h-1.5 bg-[var(--surface-variant)] rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-gradient-to-r from-teal-500 to-emerald-500 rounded-full transition-all duration-300"
+                  style={{ width: `${Math.max(aiDownload.progress, 3)}%` }}
+                />
+              </div>
+              <div className="flex items-center justify-between text-[10px] text-[var(--text-muted)] mt-1 font-semibold">
+                <span>Tocca per aprire la chat</span>
+                {aiDownload.total > 0 && (
+                  <span>
+                    {(aiDownload.loaded / (1024 * 1024)).toFixed(0)} / {(aiDownload.total / (1024 * 1024)).toFixed(0)} MB
+                  </span>
+                )}
+              </div>
+            </div>
+          </motion.div>
+        )}
       </AnimatePresence>
 
       {/* Chelona — assistente AI locale */}

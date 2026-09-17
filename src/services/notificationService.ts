@@ -403,13 +403,105 @@ export const notificationService = {
         }
       }
     });
-  }
+  },
+
+  async ensureDownloadChannel(): Promise<boolean> {
+    if ((window as any).Capacitor?.isNativePlatform?.()) {
+      try {
+        const { LocalNotifications } = await import('@capacitor/local-notifications');
+        await LocalNotifications.createChannel({
+          id: 'chelona_download_channel',
+          name: 'Download AI Chelona',
+          description: 'Avanzamento download modello AI offline',
+          importance: 2, // Low importance: aggiorno la barra di stato silenziosamente senza squilli/pop-up
+          visibility: 1,
+          sound: undefined,
+          vibration: false,
+        });
+        return true;
+      } catch (e) {
+        return false;
+      }
+    }
+    return false;
+  },
+
+  async updateDownloadProgress(progress: number, loadedBytes: number, totalBytes: number) {
+    if (!(window as any).Capacitor?.isNativePlatform?.()) return;
+    const now = Date.now();
+    // Throttle: massimo una notifica ogni 1.5s o se cambia di almeno 3%
+    if (progress !== 100 && now - lastNotifTime < 1500 && Math.abs(progress - lastNotifProgress) < 3) {
+      return;
+    }
+    lastNotifTime = now;
+    lastNotifProgress = progress;
+
+    try {
+      await this.ensureDownloadChannel();
+      const { LocalNotifications } = await import('@capacitor/local-notifications');
+      const mbText = totalBytes > 0
+        ? `${(loadedBytes / (1024 * 1024)).toFixed(0)} / ${(totalBytes / (1024 * 1024)).toFixed(0)} MB`
+        : '';
+
+      await LocalNotifications.schedule({
+        notifications: [{
+          id: AI_DOWNLOAD_NOTIF_ID,
+          title: `🧠 Download Llama 3.2: ${progress}%`,
+          body: mbText ? `Avanzamento: ${mbText} · attivo in background` : `Download modello AI: ${progress}%`,
+          channelId: 'chelona_download_channel',
+          ongoing: true,
+          autoCancel: false,
+          extra: { type: 'ai_download' },
+        }],
+      });
+    } catch (e) {
+      console.warn('[NotificationService] updateDownloadProgress error:', e);
+    }
+  },
+
+  async completeDownloadNotification() {
+    if (!(window as any).Capacitor?.isNativePlatform?.()) return;
+    try {
+      const { LocalNotifications } = await import('@capacitor/local-notifications');
+      await LocalNotifications.cancel({ notifications: [{ id: AI_DOWNLOAD_NOTIF_ID }] });
+      await LocalNotifications.schedule({
+        notifications: [{
+          id: AI_DOWNLOAD_NOTIF_ID,
+          title: '✅ Chelona AI: Download Completato!',
+          body: 'Llama 3.2 (1B) è ora memorizzato sul telefono e pronto all\'uso offline.',
+          channelId: 'chelona_reminders',
+          ongoing: false,
+          autoCancel: true,
+          extra: { type: 'ai_download_complete' },
+        }],
+      });
+    } catch (e) {
+      console.warn('[NotificationService] completeDownloadNotification error:', e);
+    }
+  },
+
+  async cancelDownloadNotification() {
+    if (!(window as any).Capacitor?.isNativePlatform?.()) return;
+    try {
+      const { LocalNotifications } = await import('@capacitor/local-notifications');
+      await LocalNotifications.cancel({ notifications: [{ id: AI_DOWNLOAD_NOTIF_ID }] });
+    } catch {}
+  },
 };
+
+const AI_DOWNLOAD_NOTIF_ID = 999901;
+let lastNotifProgress = -1;
+let lastNotifTime = 0;
 
 try {
   import('@capacitor/local-notifications').then(({ LocalNotifications }) => {
-    LocalNotifications.addListener('localNotificationActionPerformed', () => {
-      window.dispatchEvent(new CustomEvent('trigger-auto-km-page'));
+    LocalNotifications.addListener('localNotificationActionPerformed', (action: any) => {
+      const extra = action?.notification?.extra;
+      if (extra?.type === 'ai_download' || extra?.type === 'ai_download_complete') {
+        window.dispatchEvent(new CustomEvent('open-chelona-chat'));
+      } else {
+        window.dispatchEvent(new CustomEvent('trigger-auto-km-page'));
+      }
     });
   });
 } catch (e) {

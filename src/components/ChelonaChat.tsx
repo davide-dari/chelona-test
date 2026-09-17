@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Sparkles, Send, Loader2, Brain, Download, WifiOff, User, Zap } from 'lucide-react';
-import { chelonaAI, buildUserContext, CHELONA_SYSTEM_PROMPT, type ChelonaMessage } from '../services/chelonaAI';
+import { chelonaAI, buildUserContext, CHELONA_SYSTEM_PROMPT, downloadState, type ChelonaMessage } from '../services/chelonaAI';
 import type { Module, Folder } from '../types';
 
 interface ChelonaChatProps {
@@ -26,11 +26,10 @@ export function ChelonaChat({ onClose, modules, folders, username, showToast }: 
     { role: 'assistant', content: 'Ciao! Sono Chelona, la tua assistente personale. Chiedimi qualsiasi cosa sui tuoi dati o sull\'app.' },
   ]);
   const [input, setInput] = useState('');
-  const [status, setStatus] = useState<ModelStatus>(() => chelonaAI.isLoaded() ? 'ready' : 'checking');
-  const [progress, setProgress] = useState(0);
-  const [progressLoaded, setProgressLoaded] = useState(0);
-  const [progressTotal, setProgressTotal] = useState(0);
-  const [step, setStep] = useState('Preparazione…');
+  const [status, setStatus] = useState<ModelStatus>(() => chelonaAI.isLoaded() ? 'ready' : (downloadState.active ? 'downloading' : 'checking'));
+  const [progress, setProgress] = useState(() => downloadState.progress);
+  const [progressLoaded, setProgressLoaded] = useState(() => downloadState.loaded);
+  const [progressTotal, setProgressTotal] = useState(() => downloadState.total);
   const [busy, setBusy] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const contextRef = useRef<string>('');
@@ -43,13 +42,36 @@ export function ChelonaChat({ onClose, modules, folders, username, showToast }: 
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
   }, [messages, status, busy]);
 
-  /* Verifica se il modello è già presente nella cache locale:
-     se presente, caricalo direttamente senza mostrare la richiesta di download. */
+  /* Verifica se il modello è già presente nella cache locale oppure
+     se c'è già un download in corso — in tal caso, agganciamoci. */
   useEffect(() => {
     if (chelonaAI.isLoaded()) {
       setStatus('ready');
       return;
     }
+
+    // Se il download è già in corso (avviato da un'istanza precedente), agganciamoci
+    if (downloadState.active) {
+      setStatus('downloading');
+      setProgress(downloadState.progress);
+      setProgressLoaded(downloadState.loaded);
+      setProgressTotal(downloadState.total);
+
+      const unsub = downloadState.subscribe((e) => {
+        if (e.type === 'progress') {
+          setProgress(e.progress);
+          setProgressLoaded(e.loaded);
+          setProgressTotal(e.total);
+        } else if (e.type === 'done') {
+          setStatus('ready');
+          showToast('Chelona è pronta! Il modello è memorizzato e funzionerà sempre offline.', 'success');
+        } else if (e.type === 'error') {
+          setStatus('error');
+        }
+      });
+      return unsub;
+    }
+
     let cancelled = false;
     (async () => {
       try {
@@ -57,14 +79,10 @@ export function ChelonaChat({ onClose, modules, folders, username, showToast }: 
         if (cancelled) return;
         if (cached) {
           setStatus('loading_local');
-          setStep('Caricamento modello dalla memoria…');
           await chelonaAI.loadModel(
-            (p) => {
-              if (p.file) setStep(`Inizializzazione: ${p.file}`);
-            },
+            undefined,
             (phase) => {
-              if (phase === 'device_detection') setStep('Rilevamento accelerazione hardware…');
-              else if (phase === 'loading_model') setStep('Avvio modello on-device…');
+              // Non mostrare nomi di file — lo stato globale gestisce
             },
           );
           if (!cancelled) setStatus('ready');
@@ -77,35 +95,37 @@ export function ChelonaChat({ onClose, modules, folders, username, showToast }: 
       }
     })();
     return () => { cancelled = true; };
-  }, []);
+  }, [showToast]);
 
   const downloadModel = useCallback(async () => {
     setStatus('downloading');
     setProgress(0);
-    setStep('Preparazione del download…');
+    setProgressLoaded(0);
+    setProgressTotal(0);
+
+    // Iscriviti allo stato globale per aggiornare la UI di questa sessione
+    const unsub = downloadState.subscribe((e) => {
+      if (e.type === 'progress') {
+        setProgress(e.progress);
+        setProgressLoaded(e.loaded);
+        setProgressTotal(e.total);
+      } else if (e.type === 'done') {
+        setStatus('ready');
+        showToast('Chelona è pronta! Il modello è memorizzato e funzionerà sempre offline.', 'success');
+        unsub();
+      } else if (e.type === 'error') {
+        setStatus('error');
+        showToast('Errore durante il download del modello. Verifica la connessione e riprova.', 'error');
+        unsub();
+      }
+    });
+
     try {
-      await chelonaAI.loadModel(
-        (p) => {
-          if (p.status === 'initiate') {
-            setStep('Preparazione del modello…');
-          } else if (p.status === 'progress' || p.status === 'download') {
-            setStep(`Download: ${p.file || 'componenti modello'}`);
-            if (typeof p.progress === 'number') setProgress(p.progress);
-            if (typeof p.loaded === 'number') setProgressLoaded(p.loaded);
-            if (typeof p.total === 'number') setProgressTotal(p.total);
-          }
-        },
-        (phase) => {
-          if (phase === 'device_detection') setStep('Rilevamento hardware (GPU/CPU)…');
-          else if (phase === 'loading_model') setStep('Preparazione pipeline…');
-        },
-      );
-      setStatus('ready');
-      showToast('Chelona è pronta! Il modello è memorizzato e funzionerà sempre offline.', 'success');
+      // avvia il download — il progresso è gestito tramite downloadState (nessun file name)
+      await chelonaAI.loadModel();
     } catch (e) {
       console.error('Chelona model error', e);
-      setStatus('error');
-      showToast('Errore durante il download del modello. Verifica la connessione e riprova.', 'error');
+      // L'errore è già notificato tramite subscriber
     }
   }, [showToast]);
 
@@ -208,7 +228,7 @@ export function ChelonaChat({ onClose, modules, folders, username, showToast }: 
         <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
           <Loader2 className="w-12 h-12 text-teal-500 animate-spin mb-4" />
           <h2 className="text-lg font-black text-[var(--text-main)] mb-1">Caricamento da memoria locale…</h2>
-          <p className="text-xs text-[var(--text-muted)] max-w-xs">{step}</p>
+          <p className="text-xs text-[var(--text-muted)] max-w-xs">Avvio del modello AI in corso</p>
           <span className="mt-4 text-[11px] font-medium text-emerald-600 bg-emerald-500/10 px-3 py-1 rounded-full">
             Pronto in 1-2 secondi · Nessun uso di dati
           </span>
@@ -235,25 +255,43 @@ export function ChelonaChat({ onClose, modules, folders, username, showToast }: 
         </div>
       ) : status === 'downloading' ? (
         <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
-          <Loader2 className="w-12 h-12 text-teal-500 animate-spin mb-5" />
-          <h2 className="text-lg font-black text-[var(--text-main)] mb-1">Download del modello…</h2>
-          <p className="text-xs text-[var(--text-muted)] max-w-xs mb-6 truncate">{step}</p>
-          <div className="w-full max-w-xs h-2.5 bg-[var(--surface-variant)] rounded-full overflow-hidden">
-            <div
-              className="h-full bg-gradient-to-r from-teal-500 to-emerald-600 rounded-full transition-all duration-300"
-              style={{ width: `${Math.max(progress, 3)}%` }}
-            />
+          {/* Icona animata */}
+          <div className="relative mb-8">
+            <div className="w-24 h-24 rounded-full bg-teal-500/10 flex items-center justify-center">
+              <Brain className="w-12 h-12 text-teal-500" />
+            </div>
+            <div className="absolute inset-0 rounded-full border-4 border-teal-500/30 border-t-teal-500 animate-spin" />
           </div>
-          <p className="text-[11px] text-[var(--text-muted)] mt-2 font-bold">
-            {progressLoaded > 0 && progressTotal > 0
-              ? `${(progressLoaded / (1024 * 1024)).toFixed(1)} MB / ${(progressTotal / (1024 * 1024)).toFixed(1)} MB (${progress}%)`
-              : progress > 0
-              ? `${progress}%`
-              : 'Download in corso…'}
+          <h2 className="text-xl font-black text-[var(--text-main)] mb-1">Download in corso…</h2>
+          <p className="text-sm text-[var(--text-muted)] mb-8">
+            Il download continua anche se esci dall'app
           </p>
-          <p className="text-[10px] text-[var(--text-muted)] mt-4">
-            Il primo download richiede una connessione attiva. Al termine, l'AI sarà salvata permanentemente sul dispositivo.
+          {/* Barra di avanzamento grande e pulita */}
+          <div className="w-full max-w-xs">
+            <div className="flex justify-between items-baseline mb-2">
+              <span className="text-3xl font-black text-teal-500">{progress}%</span>
+              <span className="text-xs text-[var(--text-muted)] font-medium">
+                {progressTotal > 0
+                  ? `${(progressLoaded / (1024 * 1024)).toFixed(0)} / ${(progressTotal / (1024 * 1024)).toFixed(0)} MB`
+                  : '~700 MB totali'}
+              </span>
+            </div>
+            <div className="w-full h-3 bg-[var(--surface-variant)] rounded-full overflow-hidden">
+              <div
+                className="h-full bg-gradient-to-r from-teal-500 to-emerald-500 rounded-full transition-all duration-500 ease-out"
+                style={{ width: `${Math.max(progress, 2)}%` }}
+              />
+            </div>
+          </div>
+          <p className="text-[10px] text-[var(--text-muted)] mt-4 max-w-xs">
+            Llama 3.2 · Prima installazione · Funziona al 100% offline
           </p>
+          <button
+            onClick={onClose}
+            className="mt-6 px-6 py-2.5 bg-[var(--surface-variant)] hover:bg-[var(--border)] active:scale-95 text-[var(--text-main)] rounded-2xl font-bold text-xs transition-all flex items-center gap-2 border border-[var(--border)] shadow-sm"
+          >
+            Nascondi e continua in background
+          </button>
         </div>
       ) : status === 'error' ? (
         <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">

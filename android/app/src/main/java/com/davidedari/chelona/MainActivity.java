@@ -29,7 +29,7 @@ public class MainActivity extends BridgeActivity {
             }
         });
 
-        // Espone l'interfaccia Javascript ChelonaNative per sincronizzare la rubrica indirizzi nativamente
+        // Espone l'interfaccia Javascript ChelonaNative per sincronizzare la rubrica e gestire download in background
         this.getBridge().getWebView().post(new Runnable() {
             @Override
             public void run() {
@@ -39,11 +39,69 @@ public class MainActivity extends BridgeActivity {
                         android.content.SharedPreferences prefs = getApplicationContext().getSharedPreferences("ChelonaPrefs", android.content.Context.MODE_PRIVATE);
                         prefs.edit().putString("address_book", json).apply();
                     }
+
+                    @android.webkit.JavascriptInterface
+                    public void setDownloadActive(final boolean active) {
+                        isAiDownloading = active;
+                        runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                try {
+                                    if (active) {
+                                        if (downloadWakeLock == null) {
+                                            android.os.PowerManager pm = (android.os.PowerManager) getSystemService(android.content.Context.POWER_SERVICE);
+                                            if (pm != null) {
+                                                downloadWakeLock = pm.newWakeLock(android.os.PowerManager.PARTIAL_WAKE_LOCK, "Chelona:AiDownload");
+                                                downloadWakeLock.acquire(45 * 60 * 1000L); // 45 minuti timeout
+                                            }
+                                        }
+                                    } else {
+                                        if (downloadWakeLock != null && downloadWakeLock.isHeld()) {
+                                            downloadWakeLock.release();
+                                            downloadWakeLock = null;
+                                        }
+                                    }
+                                } catch (Exception e) {
+                                    android.util.Log.e("ChelonaNative", "WakeLock error", e);
+                                }
+                            }
+                        });
+                    }
                 }, "ChelonaNative");
             }
         });
 
         handleIntent(getIntent());
+    }
+
+    private android.os.PowerManager.WakeLock downloadWakeLock = null;
+    private boolean isAiDownloading = false;
+
+    @Override
+    public void onPause() {
+        super.onPause();
+        if (isAiDownloading) {
+            // Mantieni attivi i timer JavaScript e i WebWorker anche quando l'app va in background
+            try {
+                WebView webView = this.getBridge().getWebView();
+                if (webView != null) {
+                    webView.resumeTimers();
+                }
+            } catch (Exception e) {
+                android.util.Log.w("ChelonaNative", "Error resuming timers in onPause", e);
+            }
+        }
+    }
+
+    @Override
+    public void onDestroy() {
+        if (downloadWakeLock != null && downloadWakeLock.isHeld()) {
+            try {
+                downloadWakeLock.release();
+            } catch (Exception ignored) {}
+            downloadWakeLock = null;
+        }
+        super.onDestroy();
     }
 
     @Override

@@ -12,6 +12,7 @@
 import type { Module, Folder } from '../types';
 import { storage } from './storage';
 import { chelonaMemory } from './chelonaMemory';
+import { notificationService } from './notificationService';
 
 export const MODEL_ID = 'onnx-community/Llama-3.2-1B-Instruct';
 
@@ -33,6 +34,30 @@ let isModelReady = false;
 let activeDevice: 'webgpu' | 'wasm' = 'wasm';
 let loadPromise: Promise<void> | null = null;
 
+/* ─── Global Download State ───────────────────────────────────────────
+   Stato del download accessibile globalmente anche quando ChelonaChat è
+   chiuso/smontato o l'app è in background. */
+type DownloadEvent =
+  | { type: 'phase'; phase: string }
+  | { type: 'progress'; progress: number; loaded: number; total: number }
+  | { type: 'done' }
+  | { type: 'error' };
+
+type DownloadListener = (e: DownloadEvent) => void;
+
+export const downloadState = {
+  active: false,
+  progress: 0,
+  loaded: 0,
+  total: 0,
+  phase: '',
+  listeners: new Set<DownloadListener>(),
+  subscribe(fn: DownloadListener): () => void {
+    this.listeners.add(fn);
+    return () => { this.listeners.delete(fn); };
+  },
+};
+
 function getWorker(): Worker {
   if (!workerInstance) {
     workerInstance = new Worker(new URL('../workers/aiWorker.ts', import.meta.url), {
@@ -41,6 +66,10 @@ function getWorker(): Worker {
   }
   return workerInstance;
 }
+
+// Mappa per tracciare i singoli file scaricati da transformers.js e aggregare la percentuale globale
+const fileProgressMap = new Map<string, { loaded: number; total: number }>();
+let lastReportedPercent = 0;
 
 export const chelonaAI = {
   isLoaded: () => isModelReady,
@@ -67,28 +96,143 @@ export const chelonaAI = {
     onPhase?: (phase: string) => void,
   ): Promise<void> {
     if (isModelReady) return Promise.resolve();
-    if (loadPromise) return loadPromise;
+    if (loadPromise) {
+      // Se il download è già in corso, aggancia listener extra senza riavviare
+      if (onProgress || onPhase) {
+        const extraHandler = (event: MessageEvent) => {
+          const { type, phase, status, file, progress, loaded, total } = event.data || {};
+          if (type === 'phase') onPhase?.(phase);
+          else if (type === 'progress') onProgress?.({ status, file, progress, loaded, total });
+          else if (type === 'ready' || type === 'error') {
+            getWorker().removeEventListener('message', extraHandler);
+          }
+        };
+        getWorker().addEventListener('message', extraHandler);
+      }
+      return loadPromise;
+    }
+
+    // Inizia il download — aggiorna lo stato globale
+    downloadState.active = true;
+    downloadState.progress = 0;
+    downloadState.loaded = 0;
+    downloadState.total = 0;
+    lastReportedPercent = 0;
+    fileProgressMap.clear();
+
+    // Attiva wake lock nativo Android se disponibile
+    if ((window as any).ChelonaNative?.setDownloadActive) {
+      try {
+        (window as any).ChelonaNative.setDownloadActive(true);
+      } catch (err) {
+        console.warn('[ChelonaAI] Errore attivazione ChelonaNative download lock:', err);
+      }
+    }
+
+    // Inizializza notifica di download su Android
+    notificationService.updateDownloadProgress(0, 0, 0);
 
     loadPromise = new Promise<void>((resolve, reject) => {
       const worker = getWorker();
 
       const messageHandler = (event: MessageEvent) => {
-        const { type, phase, device, status, file, progress, loaded, total, error } = event.data || {};
+        const { type, phase, device, status, file, loaded, total, error } = event.data || {};
 
         if (type === 'phase') {
           onPhase?.(phase);
+          downloadState.phase = phase;
+          downloadState.listeners.forEach(l => l({ type: 'phase', phase }));
         } else if (type === 'progress') {
-          onProgress?.({ status, file, progress, loaded, total });
+          // Traccia byte caricati per questo file
+          if (file) {
+            fileProgressMap.set(file, {
+              loaded: Number(loaded) || 0,
+              total: Number(total) || 0,
+            });
+          }
+
+          let sumLoaded = 0;
+          let sumTotal = 0;
+          let hasBigFile = false;
+
+          for (const item of fileProgressMap.values()) {
+            sumLoaded += item.loaded;
+            sumTotal += item.total;
+            if (item.total > 50 * 1024 * 1024) {
+              hasBigFile = true;
+            }
+          }
+
+          // Il modello pesa ~750MB-1GB. Finché non compare il file onnx principale, usiamo 750MB come riferimento
+          // in modo che i file piccoli di configurazione non facciano saltare la percentuale al 100%.
+          const effectiveTotal = hasBigFile ? sumTotal : Math.max(sumTotal, 750 * 1024 * 1024);
+          let calculatedPercent = Math.round((sumLoaded / effectiveTotal) * 100);
+
+          // Monotonicità garantita: la percentuale non retrocede mai
+          calculatedPercent = Math.min(99, Math.max(lastReportedPercent, calculatedPercent));
+          lastReportedPercent = calculatedPercent;
+
+          // Aggiorna lo stato globale — NESSUN NOME DI FILE esposto
+          downloadState.progress = calculatedPercent;
+          downloadState.loaded = sumLoaded;
+          downloadState.total = effectiveTotal;
+          downloadState.active = true;
+
+          downloadState.listeners.forEach(l => l({
+            type: 'progress',
+            progress: calculatedPercent,
+            loaded: sumLoaded,
+            total: effectiveTotal,
+          }));
+
+          onProgress?.({
+            status: status || 'progress',
+            file: '', // NON esporre il nome del file
+            progress: calculatedPercent,
+            loaded: sumLoaded,
+            total: effectiveTotal,
+          });
+
+          // Notifica continua in background per Android
+          notificationService.updateDownloadProgress(calculatedPercent, sumLoaded, effectiveTotal);
         } else if (type === 'ready') {
           worker.removeEventListener('message', messageHandler);
           isModelReady = true;
           activeDevice = device || 'wasm';
           loadPromise = null;
+          downloadState.active = false;
+          downloadState.progress = 100;
+          downloadState.listeners.forEach(l => l({ type: 'done' }));
+
+          // Rilascia wake lock nativo Android
+          if ((window as any).ChelonaNative?.setDownloadActive) {
+            try {
+              (window as any).ChelonaNative.setDownloadActive(false);
+            } catch {}
+          }
+
+          // Notifica download completato
+          notificationService.completeDownloadNotification();
+
           console.log(`[ChelonaAI] Modello pronto su device: ${activeDevice}`);
           resolve();
         } else if (type === 'error') {
           worker.removeEventListener('message', messageHandler);
           loadPromise = null;
+          downloadState.active = false;
+          downloadState.progress = 0;
+          downloadState.listeners.forEach(l => l({ type: 'error' }));
+
+          // Rilascia wake lock nativo Android
+          if ((window as any).ChelonaNative?.setDownloadActive) {
+            try {
+              (window as any).ChelonaNative.setDownloadActive(false);
+            } catch {}
+          }
+
+          // Cancella notifica progress
+          notificationService.cancelDownloadNotification();
+
           reject(new Error(error || 'Errore durante il caricamento del modello'));
         }
       };
