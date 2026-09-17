@@ -44,6 +44,7 @@ let notifFiredCache: Record<string, string> = {};
 // Helper to save to external file asynchronously
 const saveToExternalFile = async (filename: string, content: string) => {
   if (!Capacitor.isNativePlatform()) return;
+  // Try Documents first, fallback to Directory.Data (which is always permitted without special permissions on Android)
   try {
     await Filesystem.writeFile({
       path: `Chelona/${filename}`,
@@ -52,10 +53,20 @@ const saveToExternalFile = async (filename: string, content: string) => {
       encoding: Encoding.UTF8,
       recursive: true
     });
-    console.log(`[Storage] Saved to external file Chelona/${filename}`);
+    console.log(`[Storage] Saved to external file Chelona/${filename} (Documents)`);
   } catch (err) {
-    console.error(`[Storage] Error saving to external file Chelona/${filename}`, err);
-    throw err;
+    try {
+      await Filesystem.writeFile({
+        path: `Chelona/${filename}`,
+        data: content,
+        directory: Directory.Data,
+        encoding: Encoding.UTF8,
+        recursive: true
+      });
+      console.log(`[Storage] Saved to internal file Chelona/${filename} (Data)`);
+    } catch (err2) {
+      console.warn(`[Storage] Failed to save external file Chelona/${filename}`, err2);
+    }
   }
 };
 
@@ -68,11 +79,18 @@ const loadFromExternalFile = async (filename: string): Promise<string | null> =>
       directory: Directory.Documents,
       encoding: Encoding.UTF8
     });
-    console.log(`[Storage] Loaded from external file Chelona/${filename}`);
     return result.data as string;
-  } catch (err) {
-    console.warn(`[Storage] Error loading external file Chelona/${filename} (might not exist yet)`);
-    return null;
+  } catch {
+    try {
+      const result = await Filesystem.readFile({
+        path: `Chelona/${filename}`,
+        directory: Directory.Data,
+        encoding: Encoding.UTF8
+      });
+      return result.data as string;
+    } catch {
+      return null;
+    }
   }
 };
 
@@ -80,20 +98,20 @@ export const storage = {
   // Runs at app startup to sync external filesystem to in-memory cache
   initStorage: async () => {
     try {
-      // 1. Load Profiles list
-      let profilesEnc: string | null = null;
+      // 1. Load Profiles list (check localStorage first as guaranteed storage, then check external file)
+      let profilesEnc: string | null = localStorage.getItem(PROFILES_ENC_KEY);
       if (Capacitor.isNativePlatform()) {
-        profilesEnc = await loadFromExternalFile('profiles.enc');
-      }
-      if (!profilesEnc) {
-        // Fallback or migration check from localStorage
-        profilesEnc = localStorage.getItem(PROFILES_ENC_KEY);
-        if (profilesEnc && Capacitor.isNativePlatform()) {
-          // Migrate to external storage
-          await saveToExternalFile('profiles.enc', profilesEnc);
-          localStorage.removeItem(PROFILES_ENC_KEY);
+        const fileEnc = await loadFromExternalFile('profiles.enc');
+        if (fileEnc) {
+          profilesEnc = fileEnc;
+          // Keep localStorage in sync with external file
+          localStorage.setItem(PROFILES_ENC_KEY, fileEnc);
+        } else if (profilesEnc) {
+          // Backup existing localStorage to external file
+          saveToExternalFile('profiles.enc', profilesEnc).catch(() => {});
         }
       }
+
       if (profilesEnc) {
         profilesEncCache = profilesEnc;
         const decrypted = decryptText(profilesEnc);
@@ -113,13 +131,11 @@ export const storage = {
             const encrypted = encryptText(plaintextSaved);
             profilesCache = parsed;
             profilesEncCache = encrypted;
+            localStorage.setItem(PROFILES_ENC_KEY, encrypted);
             if (Capacitor.isNativePlatform()) {
               await saveToExternalFile('profiles.enc', encrypted);
-              localStorage.removeItem(PROFILES_KEY);
-            } else {
-              localStorage.setItem(PROFILES_ENC_KEY, encrypted);
-              localStorage.removeItem(PROFILES_KEY);
             }
+            localStorage.removeItem(PROFILES_KEY);
           } catch {}
         } else {
           // Migration check for legacy single user configuration
@@ -134,16 +150,14 @@ export const storage = {
               profilesCache = [defaultProfile];
               const encrypted = encryptText(JSON.stringify(profilesCache));
               profilesEncCache = encrypted;
+              localStorage.setItem(PROFILES_ENC_KEY, encrypted);
               if (Capacitor.isNativePlatform()) {
                 await saveToExternalFile('profiles.enc', encrypted);
-                localStorage.removeItem(LEGACY_AUTH_KEY);
-              } else {
-                localStorage.setItem(PROFILES_ENC_KEY, encrypted);
-                localStorage.removeItem(LEGACY_AUTH_KEY);
               }
+              localStorage.removeItem(LEGACY_AUTH_KEY);
             } catch {}
           }
-      }
+        }
       }
 
       // 1b. Migration: If any profile has biometrics enabled but lacks biometricServerKey, assign legacy 'chelona.app'
@@ -158,26 +172,30 @@ export const storage = {
       if (migrated) {
         const encrypted = encryptText(JSON.stringify(profilesCache));
         profilesEncCache = encrypted;
+        localStorage.setItem(PROFILES_ENC_KEY, encrypted);
         if (Capacitor.isNativePlatform()) {
-          await saveToExternalFile('profiles.enc', encrypted);
-        } else {
-          localStorage.setItem(PROFILES_ENC_KEY, encrypted);
+          saveToExternalFile('profiles.enc', encrypted).catch(() => {});
         }
       }
 
       // 2. Load States for all loaded profiles
       for (const p of profilesCache) {
-        let stateEnc: string | null = null;
+        const storageKey = getStorageKey(p.id);
+        let stateEnc: string | null = localStorage.getItem(storageKey);
+        
         if (Capacitor.isNativePlatform()) {
-          stateEnc = await loadFromExternalFile(`state_${p.id}.enc`);
+          const fileEnc = await loadFromExternalFile(`state_${p.id}.enc`);
+          if (fileEnc) {
+            stateEnc = fileEnc;
+            localStorage.setItem(storageKey, fileEnc);
+          } else if (stateEnc) {
+            saveToExternalFile(`state_${p.id}.enc`, stateEnc).catch(() => {});
+          }
         }
+
         if (!stateEnc) {
-          // Fallback or migration check from localStorage
-          const storageKey = getStorageKey(p.id);
-          stateEnc = localStorage.getItem(storageKey);
-          
           // MIGRATION fallback for old lifemod dashboard state
-          if (!stateEnc && p.id === 'default') {
+          if (p.id === 'default') {
             stateEnc = localStorage.getItem('chelona_dashboard_state_enc') || localStorage.getItem('lifemod_dashboard_state_enc_default');
           }
           if (!stateEnc) {
@@ -185,13 +203,14 @@ export const storage = {
             stateEnc = localStorage.getItem(legacyStateKey);
           }
 
-          if (stateEnc && Capacitor.isNativePlatform()) {
-            // Migrate to external storage
-            await saveToExternalFile(`state_${p.id}.enc`, stateEnc);
-            localStorage.removeItem(storageKey);
-            localStorage.removeItem(`lifemod_dashboard_state_enc_${p.id}`);
+          if (stateEnc) {
+            localStorage.setItem(storageKey, stateEnc);
+            if (Capacitor.isNativePlatform()) {
+              saveToExternalFile(`state_${p.id}.enc`, stateEnc).catch(() => {});
+            }
           }
         }
+
         if (stateEnc) {
           stateEncCache[p.id] = stateEnc;
         }
@@ -201,6 +220,10 @@ export const storage = {
       let addressBookEnc: string | null = null;
       if (Capacitor.isNativePlatform()) {
         addressBookEnc = await loadFromExternalFile('address_book.enc');
+        // Also check localStorage as fallback (guaranteed storage on Android WebView)
+        if (!addressBookEnc) {
+          addressBookEnc = localStorage.getItem('chelona_address_book_enc');
+        }
       }
       if (!addressBookEnc) {
         // Fallback/Migration: old AddressBook was stored as plaintext JSON in 'chelona_address_book'
@@ -218,7 +241,7 @@ export const storage = {
             }
           } catch {}
         } else {
-          // Web only fallback check if chelona_address_book_enc is present
+          // Web fallback check if chelona_address_book_enc is present
           addressBookEnc = localStorage.getItem('chelona_address_book_enc');
         }
       }
@@ -235,6 +258,10 @@ export const storage = {
       let notifPrefsEnc: string | null = null;
       if (Capacitor.isNativePlatform()) {
         notifPrefsEnc = await loadFromExternalFile('notification_prefs.enc');
+        // Also check localStorage as fallback (guaranteed storage on Android WebView)
+        if (!notifPrefsEnc) {
+          notifPrefsEnc = localStorage.getItem('chelona_notification_prefs_enc');
+        }
       }
       if (!notifPrefsEnc) {
         // Fallback/Migration: diari_notification_prefs / chelona_notification_prefs was stored in plaintext
@@ -331,30 +358,40 @@ export const storage = {
         profilesCache = JSON.parse(decrypted);
       } catch {}
     }
-    if (Capacitor.isNativePlatform()) {
-      await saveToExternalFile('profiles.enc', profilesEnc);
-    } else {
+    // Always persist to localStorage
+    try {
       localStorage.setItem(PROFILES_ENC_KEY, profilesEnc);
+    } catch (e) {
+      console.error('[Storage] Error saving raw profiles to localStorage', e);
+    }
+    if (Capacitor.isNativePlatform()) {
+      saveToExternalFile('profiles.enc', profilesEnc).catch(() => {});
     }
     window.dispatchEvent(new Event('chelona_profiles_updated'));
   },
 
   saveRawState: async (profileId: string, rawEncryptedState: string) => {
     stateEncCache[profileId] = rawEncryptedState;
-    if (Capacitor.isNativePlatform()) {
-      await saveToExternalFile(`state_${profileId}.enc`, rawEncryptedState);
-    } else {
+    try {
       localStorage.setItem(getStorageKey(profileId), rawEncryptedState);
+    } catch (e) {
+      console.error('[Storage] Error saving raw state to localStorage', e);
+    }
+    if (Capacitor.isNativePlatform()) {
+      saveToExternalFile(`state_${profileId}.enc`, rawEncryptedState).catch(() => {});
     }
   },
 
   saveState: async (state: AppState, key: CryptoKey, profileId: string) => {
     const encrypted = await encryption.encrypt(state, key);
     stateEncCache[profileId] = encrypted;
-    if (Capacitor.isNativePlatform()) {
-      await saveToExternalFile(`state_${profileId}.enc`, encrypted);
-    } else {
+    try {
       localStorage.setItem(getStorageKey(profileId), encrypted);
+    } catch (e) {
+      console.error('[Storage] Error saving state to localStorage', e);
+    }
+    if (Capacitor.isNativePlatform()) {
+      saveToExternalFile(`state_${profileId}.enc`, encrypted).catch(() => {});
     }
   },
 
@@ -365,19 +402,18 @@ export const storage = {
   savePublicState: async (state: AppState, profileId: string) => {
     const key = await storage.getPublicKey();
     const encrypted = await encryption.encrypt(state, key);
-    if (Capacitor.isNativePlatform()) {
-      await saveToExternalFile(`state_public_${profileId}.enc`, encrypted);
-    } else {
+    try {
       localStorage.setItem(`chelona_public_state_${profileId}`, encrypted);
+    } catch (e) {}
+    if (Capacitor.isNativePlatform()) {
+      saveToExternalFile(`state_public_${profileId}.enc`, encrypted).catch(() => {});
     }
   },
 
   loadPublicState: async (profileId: string): Promise<AppState> => {
-    let encrypted: string | null = null;
-    if (Capacitor.isNativePlatform()) {
+    let encrypted: string | null = localStorage.getItem(`chelona_public_state_${profileId}`);
+    if (!encrypted && Capacitor.isNativePlatform()) {
       encrypted = await loadFromExternalFile(`state_public_${profileId}.enc`);
-    } else {
-      encrypted = localStorage.getItem(`chelona_public_state_${profileId}`);
     }
     if (!encrypted) return { modules: [], folders: [] };
     try {
@@ -391,19 +427,18 @@ export const storage = {
 
   savePrivateState: async (privateModules: Module[], key: CryptoKey, profileId: string) => {
     const encrypted = await encryption.encrypt(privateModules, key);
-    if (Capacitor.isNativePlatform()) {
-      await saveToExternalFile(`state_private_${profileId}.enc`, encrypted);
-    } else {
+    try {
       localStorage.setItem(`chelona_private_state_${profileId}`, encrypted);
+    } catch (e) {}
+    if (Capacitor.isNativePlatform()) {
+      saveToExternalFile(`state_private_${profileId}.enc`, encrypted).catch(() => {});
     }
   },
 
   loadPrivateState: async (key: CryptoKey, profileId: string): Promise<Module[]> => {
-    let encrypted: string | null = null;
-    if (Capacitor.isNativePlatform()) {
+    let encrypted: string | null = localStorage.getItem(`chelona_private_state_${profileId}`);
+    if (!encrypted && Capacitor.isNativePlatform()) {
       encrypted = await loadFromExternalFile(`state_private_${profileId}.enc`);
-    } else {
-      encrypted = localStorage.getItem(`chelona_private_state_${profileId}`);
     }
     if (!encrypted) return [];
     try {
@@ -417,10 +452,9 @@ export const storage = {
   loadState: async (key: CryptoKey, profileId: string): Promise<AppState> => {
     let encrypted = stateEncCache[profileId];
     if (!encrypted) {
-      if (Capacitor.isNativePlatform()) {
-        encrypted = await loadFromExternalFile(`state_${profileId}.enc`);
-      } else {
-        encrypted = localStorage.getItem(getStorageKey(profileId));
+      encrypted = localStorage.getItem(getStorageKey(profileId)) || undefined;
+      if (!encrypted && Capacitor.isNativePlatform()) {
+        encrypted = (await loadFromExternalFile(`state_${profileId}.enc`)) || undefined;
       }
       if (encrypted) {
         stateEncCache[profileId] = encrypted;
@@ -441,10 +475,13 @@ export const storage = {
     profilesCache = profiles;
     const encrypted = encryptText(JSON.stringify(profiles));
     profilesEncCache = encrypted;
-    if (Capacitor.isNativePlatform()) {
-      saveToExternalFile('profiles.enc', encrypted).catch(console.error);
-    } else {
+    try {
       localStorage.setItem(PROFILES_ENC_KEY, encrypted);
+    } catch (e) {
+      console.error('[Storage] Error saving profiles to localStorage', e);
+    }
+    if (Capacitor.isNativePlatform()) {
+      saveToExternalFile('profiles.enc', encrypted).catch(() => {});
     }
     window.dispatchEvent(new Event('chelona_profiles_updated'));
   },
@@ -478,10 +515,14 @@ export const storage = {
   saveAddressBook: (addresses: any[]) => {
     addressBookCache = addresses;
     const encrypted = encryptText(JSON.stringify(addresses));
+    // Always write to localStorage first (guaranteed on Android WebView)
+    try {
+      localStorage.setItem('chelona_address_book_enc', encrypted);
+    } catch (e) {
+      console.error('[Storage] Error saving address book to localStorage', e);
+    }
     if (Capacitor.isNativePlatform()) {
       saveToExternalFile('address_book.enc', encrypted).catch(console.error);
-    } else {
-      localStorage.setItem('chelona_address_book_enc', encrypted);
     }
   },
 
@@ -492,10 +533,14 @@ export const storage = {
   saveNotificationPrefs: (prefs: any[]) => {
     notificationPrefsCache = prefs;
     const encrypted = encryptText(JSON.stringify(prefs));
+    // Always write to localStorage first (guaranteed on Android WebView)
+    try {
+      localStorage.setItem('chelona_notification_prefs_enc', encrypted);
+    } catch (e) {
+      console.error('[Storage] Error saving notification prefs to localStorage', e);
+    }
     if (Capacitor.isNativePlatform()) {
       saveToExternalFile('notification_prefs.enc', encrypted).catch(console.error);
-    } else {
-      localStorage.setItem('chelona_notification_prefs_enc', encrypted);
     }
   },
 
@@ -508,10 +553,14 @@ export const storage = {
     const key = `notif_fired_${prefId}`;
     notifFiredCache[key] = fireKey;
     const encrypted = encryptText(JSON.stringify(notifFiredCache));
+    // Always write to localStorage first (guaranteed on Android WebView)
+    try {
+      localStorage.setItem('chelona_notif_fired_enc', encrypted);
+    } catch (e) {
+      console.error('[Storage] Error saving notif fired to localStorage', e);
+    }
     if (Capacitor.isNativePlatform()) {
       saveToExternalFile('notif_fired.enc', encrypted).catch(console.error);
-    } else {
-      localStorage.setItem('chelona_notif_fired_enc', encrypted);
     }
   }
 };

@@ -209,8 +209,10 @@ export const LockScreen = ({ isVisible, onAuthenticated, onStartScan, onOpenTool
         isBiometricEnabled: false
       };
 
-      const updatedProfiles = [...profiles, newConfig];
+      const freshProfiles = storage.loadProfiles();
+      const updatedProfiles = [...freshProfiles.filter(p => p.id !== newConfig.id), newConfig];
       storage.saveProfiles(updatedProfiles);
+      setProfiles(updatedProfiles);
       
       const key = await encryption.deriveKey(password, salt);
       

@@ -185,12 +185,12 @@ export function ChelonaChat({ onClose, modules, folders, username, showToast }: 
                   : 'text-teal-600 bg-teal-500/10'
               }`}>
                 {device === 'webgpu' ? <Zap className="w-2.5 h-2.5" /> : null}
-                {device === 'webgpu' ? 'GPU' : 'CPU SIMD'}
+                {device === 'webgpu' ? 'GPU ARM' : 'CPU SIMD'}
               </span>
             )}
           </h1>
           <p className="text-[11px] text-[var(--text-muted)] font-medium truncate">
-            Qwen 2.5 (0.5B) · Risposte dai tuoi dati, 100% offline
+            Llama 3.2 (1B) · Ottimizzato ARM Mobile & Memoria Continua
           </p>
         </div>
         <button onClick={onClose} className="p-2.5 -mr-2 hover:bg-[var(--surface-variant)] rounded-full text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors shrink-0">
@@ -220,17 +220,17 @@ export function ChelonaChat({ onClose, modules, folders, username, showToast }: 
           </div>
           <h2 className="text-xl font-black text-[var(--text-main)] mb-2">Chelona, la tua AI locale</h2>
           <p className="text-sm text-[var(--text-muted)] max-w-xs leading-relaxed mb-2">
-            Modello <b>Qwen 2.5 (0.5B Instruct)</b> ottimizzato per Android con accelerazione GPU e pieno supporto italiano.
+            Modello <b>Meta Llama 3.2 (1B Instruct)</b> progettato per l'architettura ARM degli smartphone e con supporto alla <b>memoria dinamica continua</b>.
           </p>
           <p className="text-xs text-[var(--text-muted)] max-w-xs leading-relaxed mb-6">
-            Nessun dato viene inviato su internet. Il modello (~350 MB) va scaricato <b>una sola volta</b>; rimarrà memorizzato nel telefono per funzionare sempre offline.
+            Nessun dato viene inviato su internet. Il modello (~700 MB) va scaricato <b>una sola volta</b>; rimarrà memorizzato nel telefono per funzionare sempre offline.
           </p>
           <button
             onClick={downloadModel}
             className="px-8 py-3.5 bg-gradient-to-r from-teal-500 to-emerald-600 text-white rounded-2xl font-bold hover:opacity-90 transition-all flex items-center gap-2 shadow-lg shadow-teal-500/25 active:scale-95"
           >
             <Download className="w-5 h-5" />
-            Scarica modello (~350 MB)
+            Scarica modello (~700 MB)
           </button>
         </div>
       ) : status === 'downloading' ? (

@@ -17,6 +17,7 @@ import { TOOLS, TOOLS_UTILITY } from './constants/tools';
 import { ConfirmDialog } from './components/ConfirmDialog';
 import { notificationService } from './services/notificationService';
 import { biometricService } from './services/biometricService';
+import { chelonaMemory } from './services/chelonaMemory';
 import { APP_VERSION } from './constants/version';
 
 import { motion, AnimatePresence } from 'motion/react';
@@ -707,6 +708,25 @@ export default function App() {
 
     // Sincronizza le notifiche nativa di tutti i moduli in background
     notificationService.syncAllModuleNotifications(newModules).catch(console.error);
+
+    // Memoria continua per l'AI: impara dai dati aggiornati
+    try {
+      for (const m of newModules.slice(0, 15)) {
+        const title = (m as any).title || m.type;
+        if (m.type === 'supermarket') {
+          const items = ((m as any).data?.items || []) as any[];
+          if (items.length) {
+            chelonaMemory.learn('spesa', `Lista "${title}": ${items.slice(0, 8).map((i: any) => i.name).join(', ')}`);
+          }
+        } else if (m.type === 'generic' && (m as any).content) {
+          chelonaMemory.learn('nota', `"${title}": ${String((m as any).content).slice(0, 100)}`);
+        } else if (m.type === 'auto') {
+          chelonaMemory.learn('veicolo', `Auto ${(m as any).brand || ''} ${(m as any).model || ''} (${(m as any).plate || ''})`);
+        } else if (m.type === 'fitness') {
+          chelonaMemory.learn('fitness', `Scheda "${title}" attiva`);
+        }
+      }
+    } catch {}
   };
 
   useEffect(() => {

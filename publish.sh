@@ -5,7 +5,12 @@
 # and creating a GitHub Release with APK attachment.
 
 # Load environment variables
-export PATH=$PATH:/opt/homebrew/bin
+export PATH=$PATH:/opt/homebrew/bin:/usr/local/bin
+# Auto-detect JAVA_HOME on macOS if not already set
+if [ -z "$JAVA_HOME" ] && command -v /usr/libexec/java_home > /dev/null 2>&1; then
+    export JAVA_HOME=$(/usr/libexec/java_home 2>/dev/null)
+    export PATH=$PATH:$JAVA_HOME/bin
+fi
 if [ -f .env ]; then
     export $(grep -v '^#' .env | xargs)
 else
@@ -73,7 +78,7 @@ RELEASE_JSON=$(curl -s -X POST \
   -d "{
     \"tag_name\": \"$TAG\",
     \"name\": \"Release $TAG\",
-    \"body\": \"🚀 **Chelona v$VERSION**\\n\\n### ✨ Novità & Ottimizzazioni:\\n- **🧠 Nuovo Modello AI Locale**: Integrato Qwen 2.5 (0.5B Instruct) compatto e con eccellente supporto italiano.\\n- **⚡ Accelerazione Hardware**: Supporto WebGPU per GPU mobile e fallback WASM multi-thread.\\n- **🚀 Nessun Freeze UI**: Inferenza in Web Worker dedicato con streaming dei token in tempo reale.\\n- **💾 Cache Persistente**: Web Cache API affidabile, nessun riscaricamento del modello alla riapertura dell'app.\",
+    \"body\": \"🚀 **Chelona v$VERSION**\\n\\n### ✨ Novità & Ottimizzazioni:\\n- **🛡️ Fix Salvataggio Profili Locali**: Risolto il bug di persistenza dei nuovi utenti su Android; ora il salvataggio è sincrono, garantito e con fallback protetto.\\n- **🧠 Nuovo Modello Meta Llama 3.2 (1B)**: Addio Qwen! Integrato Llama 3.2 (1B Instruct), ottimizzato specificamente per processori ARM mobile, più scattante, leggero (~700 MB) e intelligente.\\n- **🔄 Memoria Dinamica Continua**: L'AI impara automaticamente in background ogni volta che aggiungi o modifichi dati (spesa, frigo, note, spese).\\n- **⚡ Accelerazione WebGPU / WASM SIMD**: Massimizza le prestazioni hardware dell'architettura ARM dello smartphone.\",
     \"draft\": false,
     \"prerelease\": false
   }")

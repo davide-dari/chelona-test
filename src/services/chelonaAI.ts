@@ -11,8 +11,9 @@
  */
 import type { Module, Folder } from '../types';
 import { storage } from './storage';
+import { chelonaMemory } from './chelonaMemory';
 
-export const MODEL_ID = 'onnx-community/Qwen2.5-0.5B-Instruct';
+export const MODEL_ID = 'onnx-community/Llama-3.2-1B-Instruct';
 
 export interface ChelonaMessage {
   role: 'system' | 'user' | 'assistant';
@@ -145,8 +146,8 @@ export const chelonaAI = {
 };
 
 /* ═══════════════════════════════════════════════════════════════════
-   Contesto: riassume i dati dell'utente da passare al modello.
-   Tutto viene elaborato localmente sul dispositivo.
+   Contesto: riassume i dati dell'utente per AI locali (ottimizzato)
+   Usa tag XML chiari perché i modelli piccoli (1.5B) li processano meglio.
    ═══════════════════════════════════════════════════════════════════ */
 const readJson = (key: string): any[] => {
   try {
@@ -162,67 +163,62 @@ const moduleSummary = (m: Module): string => {
   const t = (m as any).title || m.type;
   switch (m.type) {
     case 'generic':
-      return `Nota "${t}"${(m as any).content ? ': ' + String((m as any).content).slice(0, 200) : ''}`;
+      return `[Nota]: "${t}"${(m as any).content ? ' - Contenuto: ' + String((m as any).content).slice(0, 150) : ''}`;
     case 'auto':
-      return `Auto ${(m as any).brand || ''} ${(m as any).model || ''}${(m as any).plate ? ' targa ' + (m as any).plate : ''}`;
+      return `[Auto]: ${(m as any).brand || ''} ${(m as any).model || ''}${(m as any).plate ? ' targa ' + (m as any).plate : ''}`;
     case 'supermarket': {
       const items = ((m as any).data?.items || []) as any[];
-      return `Lista della spesa (${items.length} articoli): ${items.map(i => i.name).join(', ')}`;
+      return `[Lista Spesa]: ${items.length} articoli -> ${items.map(i => i.name).join(', ')}`;
     }
     case 'document':
-      return `Documento "${t}" (${(m as any).documentType || 'generico'})`;
+      return `[Documento]: "${t}" (${(m as any).documentType || 'generico'})`;
     case 'installments':
-      return `Rate "${t}"`;
+      return `[Rate]: "${t}"`;
     case 'split':
-      return `Spese condivise "${t}"`;
+      return `[Spese condivise]: "${t}"`;
     case 'wallet':
-      return `Portafoglio "${t}"`;
-    case 'travel':
-      return `Viaggi "${t}"`;
-    case 'study':
-      return `Studio "${t}"`;
-    case 'fitness':
-      return `Fitness "${t}"`;
+      return `[Portafoglio]: "${t}"`;
     default:
-      return `${m.type}: "${t}"`;
+      return `[${m.type.toUpperCase()}]: "${t}"`;
   }
 };
 
 export function buildUserContext(modules: Module[], folders: Folder[], username: string): string {
-  const lines: string[] = [];
-  lines.push(`Utente: ${username || 'profilo'}`);
-
-  if (folders.length) {
-    lines.push(`Cartelle (${folders.length}): ${folders.map(f => f.name).join(', ')}`);
-  }
-  if (modules.length) {
-    lines.push(`Moduli (${modules.length}):`);
-    for (const m of modules.slice(0, 120)) {
-      lines.push(`- ${moduleSummary(m)}`);
-    }
-  }
+  let ctx = `<DATI_UTENTE>\nNome: ${username || 'Profilo'}\n`;
 
   const fridge = readJson('chelona_fridge_ingredients');
   const freezer = readJson('chelona_freezer_ingredients');
   const pantry = readJson('chelona_pantry_ingredients');
-  if (fridge.length) lines.push(`Frigo: ${fridge.join(', ')}`);
-  if (freezer.length) lines.push(`Freezer: ${freezer.join(', ')}`);
-  if (pantry.length) lines.push(`Dispensa: ${pantry.join(', ')}`);
+  
+  ctx += `<CIBO_DISPONIBILE>\n`;
+  if (fridge.length) ctx += `- Frigo: ${fridge.join(', ')}\n`;
+  else ctx += `- Frigo: (vuoto)\n`;
+  if (freezer.length) ctx += `- Freezer: ${freezer.join(', ')}\n`;
+  else ctx += `- Freezer: (vuoto)\n`;
+  if (pantry.length) ctx += `- Dispensa: ${pantry.join(', ')}\n`;
+  else ctx += `- Dispensa: (vuota)\n`;
+  ctx += `</CIBO_DISPONIBILE>\n`;
 
-  const addressBook = storage.loadAddressBook();
-  if (addressBook.length) {
-    lines.push(`Rubrica (${addressBook.length} contatti): ${addressBook.map((a: any) => a.name || a.label || a.nome || 'contatto').join(', ')}`);
+  if (modules.length) {
+    ctx += `<MODULI>\n`;
+    for (const m of modules.slice(0, 60)) {
+      ctx += `- ${moduleSummary(m)}\n`;
+    }
+    ctx += `</MODULI>\n`;
   }
 
-  const profiles = storage.loadProfiles();
-  if (profiles.length) {
-    lines.push(`Profili (${profiles.length}): ${profiles.map(p => p.username).join(', ')}`);
+  const memoryPrompt = chelonaMemory.buildMemoryPrompt();
+  if (memoryPrompt) {
+    ctx += `${memoryPrompt}\n`;
   }
 
-  return lines.join('\n');
+  ctx += `</DATI_UTENTE>`;
+  return ctx;
 }
 
-export const CHELONA_SYSTEM_PROMPT = `Sei Chelona, l'assistente AI personale integrata nell'app Chelona. Sei gentile, concisa, precisa e utile.
-Rispondi SEMPRE in italiano, in modo chiaro e diretto (2-4 frasi al massimo, salvo richiesta esplicita).
-Hai accesso ai dati dell'utente riportati sotto in "Contesto" (spesa, frigo, freezer, dispensa, note, documenti, rate, auto). Usali con precisione per rispondere.
-Se un'informazione richiesta non è presente nel contesto, dillo con chiarezza e gentilezza senza inventarla.`;
+export const CHELONA_SYSTEM_PROMPT = `Sei Chelona, l'assistente AI locale su architettura ARM. Sei rapida, intelligente e concisa.
+RISPONDI SEMPRE IN ITALIANO. Non usare frasi prolisse.
+Usa i dati nei tag <DATI_UTENTE> (inclusi <CIBO_DISPONIBILE>, <MODULI> e <MEMORIA_CONTINUA>) per rispondere con precisione alle domande.
+Se ti viene chiesto del cibo o del frigo, consulta <CIBO_DISPONIBILE>. Se ti chiedono delle tue memorie recenti o novità apprese, consulta <MEMORIA_CONTINUA>.
+Se non trovi un'informazione, dillo con chiarezza e gentilezza senza inventarla.`;
+

@@ -5,7 +5,7 @@
  */
 import { pipeline, env, TextStreamer } from '@huggingface/transformers';
 
-const DEFAULT_MODEL_ID = 'onnx-community/Qwen2.5-0.5B-Instruct';
+const DEFAULT_MODEL_ID = 'onnx-community/Llama-3.2-1B-Instruct';
 
 let generator: any = null;
 let currentDevice: 'webgpu' | 'wasm' = 'wasm';
