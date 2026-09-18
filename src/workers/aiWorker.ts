@@ -19,11 +19,71 @@ let generator: any = null;
 let currentDevice: 'webgpu' | 'wasm' = 'wasm';
 let isInitializing = false;
 
-// ─── Storage: Cache API (OPFS causa crash su alcuni Android WebView) ────────
+// ─── Storage: IndexedDB Custom Cache (Persistente e non svuotato da Android) ────────
 env.allowRemoteModels = true;
-env.useBrowserCache = true;    // Ripristina Cache API
-env.useCustomCache = false;
-env.useFSCache = false;        // Disabilita OPFS per evitare SecurityError
+env.useBrowserCache = false;
+env.useFSCache = false;
+
+const DB_NAME = 'chelona_ai_idb_cache';
+const STORE_NAME = 'models';
+
+function getDB(): Promise<IDBDatabase> {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, 1);
+    req.onupgradeneeded = () => {
+      req.result.createObjectStore(STORE_NAME);
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+const idbCache = {
+  async match(request: any): Promise<Response | undefined> {
+    try {
+      const url = typeof request === 'string' ? request : request.url;
+      const db = await getDB();
+      return await new Promise((resolve) => {
+        const tx = db.transaction(STORE_NAME, 'readonly');
+        const store = tx.objectStore(STORE_NAME);
+        const req = store.get(url);
+        req.onsuccess = () => {
+          if (req.result) {
+            const headers = new Headers(req.result.headers || {});
+            resolve(new Response(req.result.buffer, { headers }));
+          } else {
+            resolve(undefined);
+          }
+        };
+        req.onerror = () => resolve(undefined);
+      });
+    } catch (e) {
+      console.warn('[AI Worker] IDB match error', e);
+      return undefined;
+    }
+  },
+  async put(request: any, response: Response): Promise<void> {
+    try {
+      const url = typeof request === 'string' ? request : request.url;
+      const buffer = await response.clone().arrayBuffer();
+      const headers: Record<string, string> = {};
+      response.headers.forEach((v, k) => { headers[k] = v; });
+      const db = await getDB();
+      await new Promise<void>((resolve, reject) => {
+        const tx = db.transaction(STORE_NAME, 'readwrite');
+        const store = tx.objectStore(STORE_NAME);
+        const req = store.put({ buffer, headers }, url);
+        req.onsuccess = () => resolve();
+        req.onerror = () => reject(req.error);
+      });
+    } catch (e) {
+      console.warn('[AI Worker] IDB put error', e);
+    }
+  }
+};
+
+env.useCustomCache = true;
+env.customCache = idbCache;
 
 // Throttle progress events per non intasare postMessage
 let lastProgressTime = 0;
@@ -37,13 +97,22 @@ self.onmessage = async (event: MessageEvent) => {
         const modelId = payload?.modelId || DEFAULT_MODEL_ID;
 
         let cached = false;
-        if (typeof caches !== 'undefined') {
-          const cache = await caches.open('transformers-cache');
-          const requests = await cache.keys();
-          const urls = requests.map(r => r.url);
-          const hasConfig = urls.some(u => u.includes(modelId) && u.includes('config.json'));
-          const hasWeights = urls.some(u => u.includes(modelId) && (u.includes('.onnx') || u.includes('model_')));
-          cached = hasConfig && hasWeights;
+        try {
+          const db = await getDB();
+          cached = await new Promise<boolean>((resolve) => {
+            const tx = db.transaction(STORE_NAME, 'readonly');
+            const store = tx.objectStore(STORE_NAME);
+            const req = store.getAllKeys();
+            req.onsuccess = () => {
+              const keys = req.result as string[];
+              const hasConfig = keys.some(k => k.includes(modelId) && k.includes('config.json'));
+              const hasWeights = keys.some(k => k.includes(modelId) && (k.includes('.onnx') || k.includes('model_')));
+              resolve(hasConfig && hasWeights);
+            };
+            req.onerror = () => resolve(false);
+          });
+        } catch {
+          cached = false;
         }
 
         self.postMessage({ type: 'check_cached_result', cached, modelId });

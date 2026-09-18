@@ -283,13 +283,17 @@ export const chelonaAI = {
     // Rimuovi flag
     try { localStorage.removeItem(LS_MODEL_READY_KEY); } catch {}
     
-    // Svuota cache
-    if (typeof caches !== 'undefined') {
-      try {
-        await caches.delete('transformers-cache');
-      } catch (err) {
-        console.warn('[ChelonaAI] Errore pulizia cache', err);
+    // Svuota cache IndexedDB
+    try {
+      if (typeof indexedDB !== 'undefined') {
+        indexedDB.deleteDatabase('chelona_ai_idb_cache');
       }
+      // Svuota per sicurezza anche la vecchia Cache API
+      if (typeof caches !== 'undefined') {
+        await caches.delete('transformers-cache');
+      }
+    } catch (err) {
+      console.warn('[ChelonaAI] Errore pulizia cache', err);
     }
 
     // Resetta il worker
