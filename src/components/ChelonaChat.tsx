@@ -211,7 +211,7 @@ export function ChelonaChat({ onClose, modules, folders, username, showToast }: 
             )}
           </h1>
           <p className="text-[11px] text-[var(--text-muted)] font-medium truncate">
-            Llama 3.2 (1B) · Ottimizzato ARM Mobile & Memoria Continua
+            Qwen2.5 (0.5B) · Ottimizzato ARM Mobile & Memoria Continua
           </p>
         </div>
         <button onClick={onClose} className="p-2.5 -mr-2 hover:bg-[var(--surface-variant)] rounded-full text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors shrink-0">

@@ -213,6 +213,8 @@ export const chelonaAI = {
           downloadState.progress = 100;
           downloadState.listeners.forEach(l => l({ type: 'done' }));
 
+          try { localStorage.setItem(LS_MODEL_READY_KEY, MODEL_ID); } catch {}
+
           // Rilascia wake lock nativo Android
           if ((window as any).ChelonaNative?.setDownloadActive) {
             try {
@@ -231,6 +233,8 @@ export const chelonaAI = {
           downloadState.active = false;
           downloadState.progress = 0;
           downloadState.listeners.forEach(l => l({ type: 'error' }));
+          
+          try { localStorage.removeItem(LS_MODEL_READY_KEY); } catch {}
 
           // Rilascia wake lock nativo Android
           if ((window as any).ChelonaNative?.setDownloadActive) {

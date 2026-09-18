@@ -14,18 +14,16 @@
 import { pipeline, env, TextStreamer } from '@huggingface/transformers';
 
 const DEFAULT_MODEL_ID = 'onnx-community/Qwen2.5-0.5B-Instruct';
-// Flag localStorage: identifica quale modello è stato scaricato con successo
-const LS_MODEL_READY_KEY = 'chelona_ai_model_ready_v2';
 
 let generator: any = null;
 let currentDevice: 'webgpu' | 'wasm' = 'wasm';
 let isInitializing = false;
 
-// ─── Storage: OPFS persistente (non svuotato da Android tra riavvii) ────────
+// ─── Storage: Cache API (OPFS causa crash su alcuni Android WebView) ────────
 env.allowRemoteModels = true;
-env.useBrowserCache = false;   // Cache API non è persistente su Android WebView
+env.useBrowserCache = true;    // Ripristina Cache API
 env.useCustomCache = false;
-env.useFSCache = true;         // OPFS: storage permanente su disco
+env.useFSCache = false;        // Disabilita OPFS per evitare SecurityError
 
 // Throttle progress events per non intasare postMessage
 let lastProgressTime = 0;
@@ -38,33 +36,14 @@ self.onmessage = async (event: MessageEvent) => {
       try {
         const modelId = payload?.modelId || DEFAULT_MODEL_ID;
 
-        // Check rapido via localStorage flag (scritto dopo download completato)
         let cached = false;
-        try {
-          cached = localStorage.getItem(LS_MODEL_READY_KEY) === modelId;
-        } catch {}
-
-        // Se il flag non c'è, verifica OPFS come fallback
-        if (!cached && typeof navigator !== 'undefined' && navigator.storage) {
-          try {
-            const root = await navigator.storage.getDirectory();
-            const modelDirName = `models--${modelId.replace('/', '--')}`;
-            const hfDir = await root.getDirectoryHandle('huggingface', { create: false });
-            const hubDir = await hfDir.getDirectoryHandle('hub', { create: false });
-            const modelDir = await hubDir.getDirectoryHandle(modelDirName, { create: false });
-            // Verifica che esistano file nella directory (modello presente)
-            let fileCount = 0;
-            for await (const _ of (modelDir as any).values()) {
-              fileCount++;
-              if (fileCount > 0) break;
-            }
-            cached = fileCount > 0;
-            if (cached) {
-              try { localStorage.setItem(LS_MODEL_READY_KEY, modelId); } catch {}
-            }
-          } catch {
-            cached = false;
-          }
+        if (typeof caches !== 'undefined') {
+          const cache = await caches.open('transformers-cache');
+          const requests = await cache.keys();
+          const urls = requests.map(r => r.url);
+          const hasConfig = urls.some(u => u.includes(modelId) && u.includes('config.json'));
+          const hasWeights = urls.some(u => u.includes(modelId) && (u.includes('.onnx') || u.includes('model_')));
+          cached = hasConfig && hasWeights;
         }
 
         self.postMessage({ type: 'check_cached_result', cached, modelId });
@@ -136,15 +115,11 @@ self.onmessage = async (event: MessageEvent) => {
           },
         });
 
-        // Scrivi il flag: il modello è ora memorizzato in OPFS
-        try { localStorage.setItem(LS_MODEL_READY_KEY, modelId); } catch {}
-
         isInitializing = false;
         self.postMessage({ type: 'ready', device: currentDevice, modelId });
       } catch (err: any) {
         isInitializing = false;
         generator = null;
-        try { localStorage.removeItem(LS_MODEL_READY_KEY); } catch {}
         console.error('[AI Worker] Errore caricamento modello', err);
         self.postMessage({ type: 'error', error: err?.message || 'Impossibile caricare il modello' });
       }
@@ -195,7 +170,6 @@ self.onmessage = async (event: MessageEvent) => {
         generator = null;
       }
       isInitializing = false;
-      try { localStorage.removeItem(LS_MODEL_READY_KEY); } catch {}
       self.postMessage({ type: 'reset_done' });
       break;
     }
