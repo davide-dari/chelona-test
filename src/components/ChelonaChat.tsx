@@ -75,6 +75,7 @@ export function ChelonaChat({ onClose, modules, folders, username, showToast }: 
     let cancelled = false;
     (async () => {
       try {
+        await chelonaAI.requestPersistence(); // Richiedi storage persistente per limitare eviction
         const cached = await chelonaAI.isCached();
         if (cancelled) return;
         if (cached) {
@@ -95,6 +96,15 @@ export function ChelonaChat({ onClose, modules, folders, username, showToast }: 
       }
     })();
     return () => { cancelled = true; };
+  }, [showToast]);
+
+  const handleDeleteModel = useCallback(async () => {
+    if (window.confirm('Sei sicuro di voler eliminare i file del modello AI (~460 MB) dal dispositivo? Potrai riscaricarli in futuro.')) {
+      await chelonaAI.deleteModel();
+      setStatus('idle');
+      setMessages([{ role: 'assistant', content: 'Ho eliminato il modello dal dispositivo. Puoi continuare a usare l\'app o riscaricarlo quando vuoi.' }]);
+      showToast('Modello AI rimosso con successo.', 'success');
+    }
   }, [showToast]);
 
   const downloadModel = useCallback(async () => {
@@ -214,6 +224,17 @@ export function ChelonaChat({ onClose, modules, folders, username, showToast }: 
             Qwen2.5 (0.5B) · Ottimizzato ARM Mobile & Memoria Continua
           </p>
         </div>
+        
+        {status === 'ready' && (
+          <button 
+            onClick={handleDeleteModel}
+            title="Elimina modello"
+            className="p-2 hover:bg-red-500/10 rounded-full text-red-400 hover:text-red-500 transition-colors shrink-0 mr-1"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+          </button>
+        )}
+
         <button onClick={onClose} className="p-2.5 -mr-2 hover:bg-[var(--surface-variant)] rounded-full text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors shrink-0">
           <X className="w-6 h-6" />
         </button>

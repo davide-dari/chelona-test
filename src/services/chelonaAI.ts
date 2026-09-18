@@ -257,6 +257,53 @@ export const chelonaAI = {
     return loadPromise;
   },
 
+  /* Richiede la persistenza del browser per evitare che svuoti la cache */
+  async requestPersistence(): Promise<boolean> {
+    if (typeof navigator !== 'undefined' && navigator.storage && navigator.storage.persist) {
+      try {
+        const isPersisted = await navigator.storage.persisted();
+        if (!isPersisted) {
+          const granted = await navigator.storage.persist();
+          console.log('[ChelonaAI] Richiesta persistenza storage:', granted);
+          return granted;
+        }
+        return true;
+      } catch {
+        return false;
+      }
+    }
+    return false;
+  },
+
+  /* Cancella il modello dal dispositivo per liberare spazio */
+  async deleteModel(): Promise<void> {
+    isModelReady = false;
+    loadPromise = null;
+    
+    // Rimuovi flag
+    try { localStorage.removeItem(LS_MODEL_READY_KEY); } catch {}
+    
+    // Svuota cache
+    if (typeof caches !== 'undefined') {
+      try {
+        await caches.delete('transformers-cache');
+      } catch (err) {
+        console.warn('[ChelonaAI] Errore pulizia cache', err);
+      }
+    }
+
+    // Resetta il worker
+    if (workerInstance) {
+      workerInstance.postMessage({ type: 'reset' });
+    }
+
+    // Aggiorna stato globale
+    downloadState.active = false;
+    downloadState.progress = 0;
+    downloadState.loaded = 0;
+    downloadState.total = 0;
+  },
+
   /* Genera testo con streaming dei token in tempo reale (evita il freeze della UI). */
   generateStream(
     messages: ChelonaMessage[],
