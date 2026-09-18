@@ -446,7 +446,7 @@ export const notificationService = {
       await LocalNotifications.schedule({
         notifications: [{
           id: AI_DOWNLOAD_NOTIF_ID,
-          title: `🧠 Download Llama 3.2: ${progress}%`,
+          title: `🧠 Download Qwen2.5 AI: ${progress}%`,
           body: mbText ? `Avanzamento: ${mbText} · attivo in background` : `Download modello AI: ${progress}%`,
           channelId: 'chelona_download_channel',
           ongoing: true,
@@ -468,7 +468,7 @@ export const notificationService = {
         notifications: [{
           id: AI_DOWNLOAD_NOTIF_ID,
           title: '✅ Chelona AI: Download Completato!',
-          body: 'Llama 3.2 (1B) è ora memorizzato sul telefono e pronto all\'uso offline.',
+          body: 'Qwen2.5 (0.5B) è ora memorizzato sul telefono e pronto all\'uso offline.',
           channelId: 'chelona_reminders',
           ongoing: false,
           autoCancel: true,

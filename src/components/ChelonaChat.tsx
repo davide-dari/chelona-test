@@ -144,9 +144,10 @@ export function ChelonaChat({ onClose, modules, folders, username, showToast }: 
     try {
       const system: ChelonaMessage = {
         role: 'system',
-        content: `${CHELONA_SYSTEM_PROMPT}\n\nContesto:\n${contextRef.current}`,
+        content: `${CHELONA_SYSTEM_PROMPT}\n\n${contextRef.current}`,
       };
 
+      // Limita la cronologia alle ultime 4 coppie per ridurre il context e prevenire OOM
       await chelonaAI.generateStream([system, ...nextHistory.slice(-8)], (token) => {
         setMessages(prev => {
           const updated = [...prev];
@@ -240,17 +241,17 @@ export function ChelonaChat({ onClose, modules, folders, username, showToast }: 
           </div>
           <h2 className="text-xl font-black text-[var(--text-main)] mb-2">Chelona, la tua AI locale</h2>
           <p className="text-sm text-[var(--text-muted)] max-w-xs leading-relaxed mb-2">
-            Modello <b>Meta Llama 3.2 (1B Instruct)</b> progettato per l'architettura ARM degli smartphone e con supporto alla <b>memoria dinamica continua</b>.
+            Modello <b>Qwen2.5 (0.5B Instruct)</b> ottimizzato per l'architettura ARM degli smartphone, con <b>memoria dinamica continua</b>.
           </p>
           <p className="text-xs text-[var(--text-muted)] max-w-xs leading-relaxed mb-6">
-            Nessun dato viene inviato su internet. Il modello (~700 MB) va scaricato <b>una sola volta</b>; rimarrà memorizzato nel telefono per funzionare sempre offline.
+            Nessun dato viene inviato su internet. Il modello (~460 MB) va scaricato <b>una sola volta</b> e rimane memorizzato sul dispositivo per sempre.
           </p>
           <button
             onClick={downloadModel}
             className="px-8 py-3.5 bg-gradient-to-r from-teal-500 to-emerald-600 text-white rounded-2xl font-bold hover:opacity-90 transition-all flex items-center gap-2 shadow-lg shadow-teal-500/25 active:scale-95"
           >
             <Download className="w-5 h-5" />
-            Scarica modello (~700 MB)
+            Scarica modello (~460 MB)
           </button>
         </div>
       ) : status === 'downloading' ? (
@@ -273,7 +274,7 @@ export function ChelonaChat({ onClose, modules, folders, username, showToast }: 
               <span className="text-xs text-[var(--text-muted)] font-medium">
                 {progressTotal > 0
                   ? `${(progressLoaded / (1024 * 1024)).toFixed(0)} / ${(progressTotal / (1024 * 1024)).toFixed(0)} MB`
-                  : '~700 MB totali'}
+                  : '~460 MB totali'}
               </span>
             </div>
             <div className="w-full h-3 bg-[var(--surface-variant)] rounded-full overflow-hidden">
@@ -284,7 +285,7 @@ export function ChelonaChat({ onClose, modules, folders, username, showToast }: 
             </div>
           </div>
           <p className="text-[10px] text-[var(--text-muted)] mt-4 max-w-xs">
-            Llama 3.2 · Prima installazione · Funziona al 100% offline
+            Qwen2.5 0.5B · Prima installazione · Funziona al 100% offline
           </p>
           <button
             onClick={onClose}

@@ -3952,7 +3952,7 @@ export default function App() {
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between gap-2 mb-1.5">
                 <span className="text-xs font-black text-[var(--text-main)] truncate">
-                  Download Llama 3.2 in corso…
+                  Download Qwen2.5 AI in corso…
                 </span>
                 <span className="text-xs font-black text-teal-500 shrink-0">
                   {aiDownload.progress}%

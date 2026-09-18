@@ -14,7 +14,8 @@ import { storage } from './storage';
 import { chelonaMemory } from './chelonaMemory';
 import { notificationService } from './notificationService';
 
-export const MODEL_ID = 'onnx-community/Llama-3.2-1B-Instruct';
+export const MODEL_ID = 'onnx-community/Qwen2.5-0.5B-Instruct';
+const LS_MODEL_READY_KEY = 'chelona_ai_model_ready_v2';
 
 export interface ChelonaMessage {
   role: 'system' | 'user' | 'assistant';
@@ -22,11 +23,11 @@ export interface ChelonaMessage {
 }
 
 export interface ChelonaProgress {
-  status: string;      // 'initiate' | 'download' | 'progress' | 'done'
+  status: string;
   file: string;
-  progress?: number;   // 0..100
-  loaded?: number;     // bytes caricati
-  total?: number;      // bytes totali
+  progress?: number;
+  loaded?: number;
+  total?: number;
 }
 
 let workerInstance: Worker | null = null;
@@ -34,9 +35,7 @@ let isModelReady = false;
 let activeDevice: 'webgpu' | 'wasm' = 'wasm';
 let loadPromise: Promise<void> | null = null;
 
-/* ─── Global Download State ───────────────────────────────────────────
-   Stato del download accessibile globalmente anche quando ChelonaChat è
-   chiuso/smontato o l'app è in background. */
+/* ─── Global Download State ─────────────────────────────────────────── */
 type DownloadEvent =
   | { type: 'phase'; phase: string }
   | { type: 'progress'; progress: number; loaded: number; total: number }
@@ -67,7 +66,6 @@ function getWorker(): Worker {
   return workerInstance;
 }
 
-// Mappa per tracciare i singoli file scaricati da transformers.js e aggregare la percentuale globale
 const fileProgressMap = new Map<string, { loaded: number; total: number }>();
 let lastReportedPercent = 0;
 
@@ -75,19 +73,30 @@ export const chelonaAI = {
   isLoaded: () => isModelReady,
   getDevice: () => activeDevice,
 
-  /* Verifica se il modello è già stato scaricato e memorizzato nella cache persistente. */
+  /* Verifica se il modello è memorizzato in OPFS (persistente su Android). */
   async isCached(): Promise<boolean> {
-    if (typeof caches === 'undefined') return false;
+    // Check rapido: localStorage flag scritto dopo download completato
     try {
-      const cache = await caches.open('transformers-cache');
-      const requests = await cache.keys();
-      const urls = requests.map(r => r.url);
-      const hasConfig = urls.some(u => u.includes(MODEL_ID) && u.includes('config.json'));
-      const hasWeights = urls.some(u => u.includes(MODEL_ID) && (u.includes('.onnx') || u.includes('model_')));
-      return hasConfig && hasWeights;
-    } catch {
-      return false;
-    }
+      if (localStorage.getItem(LS_MODEL_READY_KEY) === MODEL_ID) return true;
+    } catch {}
+
+    // Fallback: interroga il worker per verifica via OPFS
+    return new Promise<boolean>((resolve) => {
+      const worker = getWorker();
+      const handler = (e: MessageEvent) => {
+        if (e.data?.type === 'check_cached_result') {
+          worker.removeEventListener('message', handler);
+          resolve(e.data.cached === true);
+        }
+      };
+      worker.addEventListener('message', handler);
+      worker.postMessage({ type: 'check_cached', payload: { modelId: MODEL_ID } });
+      // Timeout di sicurezza: se il worker non risponde in 3s, assume non cached
+      setTimeout(() => {
+        worker.removeEventListener('message', handler);
+        resolve(false);
+      }, 3000);
+    });
   },
 
   /* Carica o inizializza il modello tramite il Web Worker. */
@@ -277,7 +286,7 @@ export const chelonaAI = {
         type: 'generate',
         payload: {
           messages,
-          maxTokens: 300,
+          maxTokens: 200,
         },
       });
     });
@@ -291,8 +300,11 @@ export const chelonaAI = {
 
 /* ═══════════════════════════════════════════════════════════════════
    Contesto: riassume i dati dell'utente per AI locali (ottimizzato)
-   Usa tag XML chiari perché i modelli piccoli (1.5B) li processano meglio.
+   Usa tag XML semplici — Qwen2.5 li processa meglio dei modelli più piccoli.
+   IMPORTANTE: mantieni il contesto < 800 caratteri per evitare OOM su Android.
    ═══════════════════════════════════════════════════════════════════ */
+const MAX_CONTEXT_CHARS = 800;
+
 const readJson = (key: string): any[] => {
   try {
     const raw = localStorage.getItem(key);
@@ -307,62 +319,64 @@ const moduleSummary = (m: Module): string => {
   const t = (m as any).title || m.type;
   switch (m.type) {
     case 'generic':
-      return `[Nota]: "${t}"${(m as any).content ? ' - Contenuto: ' + String((m as any).content).slice(0, 150) : ''}`;
+      // Tronca contenuto a 80 chars per risparmiare spazio
+      return `[Nota]: "${t}"${(m as any).content ? ': ' + String((m as any).content).slice(0, 80) : ''}`;
     case 'auto':
       return `[Auto]: ${(m as any).brand || ''} ${(m as any).model || ''}${(m as any).plate ? ' targa ' + (m as any).plate : ''}`;
     case 'supermarket': {
       const items = ((m as any).data?.items || []) as any[];
-      return `[Lista Spesa]: ${items.length} articoli -> ${items.map(i => i.name).join(', ')}`;
+      // Mostra solo i primi 8 articoli
+      const preview = items.slice(0, 8).map((i: any) => i.name).join(', ');
+      return `[Spesa]: ${preview}${items.length > 8 ? '…' : ''}`;
     }
     case 'document':
-      return `[Documento]: "${t}" (${(m as any).documentType || 'generico'})`;
+      return `[Doc]: "${t}"`;
     case 'installments':
       return `[Rate]: "${t}"`;
     case 'split':
-      return `[Spese condivise]: "${t}"`;
-    case 'wallet':
-      return `[Portafoglio]: "${t}"`;
+      return `[Spese]: "${t}"`;
+    case 'auto':
+      return `[Auto]: "${t}"`;
     default:
-      return `[${m.type.toUpperCase()}]: "${t}"`;
+      return `[${m.type}]: "${t}"`;
   }
 };
 
 export function buildUserContext(modules: Module[], folders: Folder[], username: string): string {
-  let ctx = `<DATI_UTENTE>\nNome: ${username || 'Profilo'}\n`;
+  let ctx = `<DATI>\nUtente: ${username || 'Utente'}\n`;
 
-  const fridge = readJson('chelona_fridge_ingredients');
-  const freezer = readJson('chelona_freezer_ingredients');
-  const pantry = readJson('chelona_pantry_ingredients');
-  
-  ctx += `<CIBO_DISPONIBILE>\n`;
-  if (fridge.length) ctx += `- Frigo: ${fridge.join(', ')}\n`;
-  else ctx += `- Frigo: (vuoto)\n`;
-  if (freezer.length) ctx += `- Freezer: ${freezer.join(', ')}\n`;
-  else ctx += `- Freezer: (vuoto)\n`;
-  if (pantry.length) ctx += `- Dispensa: ${pantry.join(', ')}\n`;
-  else ctx += `- Dispensa: (vuota)\n`;
-  ctx += `</CIBO_DISPONIBILE>\n`;
+  // Cibo disponibile (compatto)
+  const fridge = readJson('chelona_fridge_ingredients').slice(0, 10);
+  const pantry = readJson('chelona_pantry_ingredients').slice(0, 10);
+  if (fridge.length || pantry.length) {
+    ctx += `<CIBO>`;
+    if (fridge.length) ctx += `Frigo: ${fridge.join(', ')}. `;
+    if (pantry.length) ctx += `Dispensa: ${pantry.join(', ')}.`;
+    ctx += `</CIBO>\n`;
+  }
 
+  // Moduli (max 20, riassunti brevi)
   if (modules.length) {
     ctx += `<MODULI>\n`;
-    for (const m of modules.slice(0, 60)) {
+    for (const m of modules.slice(0, 20)) {
       ctx += `- ${moduleSummary(m)}\n`;
     }
     ctx += `</MODULI>\n`;
   }
 
+  // Memoria continua
   const memoryPrompt = chelonaMemory.buildMemoryPrompt();
-  if (memoryPrompt) {
-    ctx += `${memoryPrompt}\n`;
+  if (memoryPrompt) ctx += `${memoryPrompt}\n`;
+
+  ctx += `</DATI>`;
+
+  // Hard cap: tronca se supera il limite per evitare OOM
+  if (ctx.length > MAX_CONTEXT_CHARS) {
+    ctx = ctx.slice(0, MAX_CONTEXT_CHARS) + '\n…(troncato)</DATI>';
   }
 
-  ctx += `</DATI_UTENTE>`;
   return ctx;
 }
 
-export const CHELONA_SYSTEM_PROMPT = `Sei Chelona, l'assistente AI locale su architettura ARM. Sei rapida, intelligente e concisa.
-RISPONDI SEMPRE IN ITALIANO. Non usare frasi prolisse.
-Usa i dati nei tag <DATI_UTENTE> (inclusi <CIBO_DISPONIBILE>, <MODULI> e <MEMORIA_CONTINUA>) per rispondere con precisione alle domande.
-Se ti viene chiesto del cibo o del frigo, consulta <CIBO_DISPONIBILE>. Se ti chiedono delle tue memorie recenti o novità apprese, consulta <MEMORIA_CONTINUA>.
-Se non trovi un'informazione, dillo con chiarezza e gentilezza senza inventarla.`;
-
+export const CHELONA_SYSTEM_PROMPT = `Sei Chelona, l'assistente AI di questa app. Rispondi in italiano, in modo conciso e utile.
+Usa i dati in <DATI> per rispondere con precisione. Se l'informazione non c'è, dillo chiaramente.`;
