@@ -354,7 +354,7 @@ export const chelonaAI = {
    Usa tag XML semplici — Qwen2.5 li processa meglio dei modelli più piccoli.
    IMPORTANTE: mantieni il contesto < 800 caratteri per evitare OOM su Android.
    ═══════════════════════════════════════════════════════════════════ */
-const MAX_CONTEXT_CHARS = 800;
+const MAX_CONTEXT_CHARS = 3000;
 
 const readJson = (key: string): any[] => {
   try {
@@ -370,15 +370,14 @@ const moduleSummary = (m: Module): string => {
   const t = (m as any).title || m.type;
   switch (m.type) {
     case 'generic':
-      // Tronca contenuto a 80 chars per risparmiare spazio
-      return `[Nota]: "${t}"${(m as any).content ? ': ' + String((m as any).content).slice(0, 80) : ''}`;
+      // Estrai il contenuto fino a 200 chars per contesti lunghi
+      return `[Nota]: "${t}"${(m as any).content ? ': ' + String((m as any).content).slice(0, 200) : ''}`;
     case 'auto':
       return `[Auto]: ${(m as any).brand || ''} ${(m as any).model || ''}${(m as any).plate ? ' targa ' + (m as any).plate : ''}`;
     case 'supermarket': {
       const items = ((m as any).data?.items || []) as any[];
-      // Mostra solo i primi 8 articoli
-      const preview = items.slice(0, 8).map((i: any) => i.name).join(', ');
-      return `[Spesa]: ${preview}${items.length > 8 ? '…' : ''}`;
+      const preview = items.slice(0, 20).map((i: any) => i.name).join(', ');
+      return `[Spesa]: ${preview}${items.length > 20 ? '…' : ''}`;
     }
     case 'document':
       return `[Doc]: "${t}"`;
@@ -386,8 +385,6 @@ const moduleSummary = (m: Module): string => {
       return `[Rate]: "${t}"`;
     case 'split':
       return `[Spese]: "${t}"`;
-    case 'auto':
-      return `[Auto]: "${t}"`;
     default:
       return `[${m.type}]: "${t}"`;
   }
@@ -397,8 +394,8 @@ export function buildUserContext(modules: Module[], folders: Folder[], username:
   let ctx = `<DATI>\nUtente: ${username || 'Utente'}\n`;
 
   // Cibo disponibile (compatto)
-  const fridge = readJson('chelona_fridge_ingredients').slice(0, 10);
-  const pantry = readJson('chelona_pantry_ingredients').slice(0, 10);
+  const fridge = readJson('chelona_fridge_ingredients').slice(0, 30);
+  const pantry = readJson('chelona_pantry_ingredients').slice(0, 30);
   if (fridge.length || pantry.length) {
     ctx += `<CIBO>`;
     if (fridge.length) ctx += `Frigo: ${fridge.join(', ')}. `;
@@ -406,10 +403,10 @@ export function buildUserContext(modules: Module[], folders: Folder[], username:
     ctx += `</CIBO>\n`;
   }
 
-  // Moduli (max 20, riassunti brevi)
+  // Moduli (max 100, riassunti brevi)
   if (modules.length) {
     ctx += `<MODULI>\n`;
-    for (const m of modules.slice(0, 20)) {
+    for (const m of modules.slice(0, 100)) {
       ctx += `- ${moduleSummary(m)}\n`;
     }
     ctx += `</MODULI>\n`;
@@ -429,5 +426,5 @@ export function buildUserContext(modules: Module[], folders: Folder[], username:
   return ctx;
 }
 
-export const CHELONA_SYSTEM_PROMPT = `Sei Chelona, l'assistente AI di questa app. Rispondi in italiano, in modo conciso e utile.
-Usa i dati in <DATI> per rispondere con precisione. Se l'informazione non c'è, dillo chiaramente.`;
+export const CHELONA_SYSTEM_PROMPT = `Sei Chelona, assistente AI locale. Parla in italiano perfetto, colloquiale e naturale.
+Usa i <DATI> forniti. Sii estremamente sintetica, diretta e precisissima (risposte fulminee e brevi).`;

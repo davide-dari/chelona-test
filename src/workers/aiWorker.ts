@@ -65,10 +65,10 @@ self.onmessage = async (event: MessageEvent) => {
       try {
         self.postMessage({ type: 'phase', phase: 'device_detection' });
 
-        // Su Android WASM: q4 è il bilanciamento ottimale qualità/RAM (~460MB)
+        // Su Android WASM: q4f16 pesa solo 460MB (contro i 750MB di q4), risparmia molta RAM e previene crash
         // WebGPU su Android WebView non è stabile — usiamo WASM come default
         let device: 'webgpu' | 'wasm' = 'wasm';
-        const dtype = 'q4';
+        const dtype = 'q4f16';
 
         // Prova WebGPU solo se disponibile (dispositivi flagship)
         if (typeof navigator !== 'undefined' && 'gpu' in navigator && (navigator as any).gpu) {
