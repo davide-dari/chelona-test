@@ -30,8 +30,9 @@ import { SpeechRecognition } from '@capacitor-community/speech-recognition';
 import { Share } from '@capacitor/share';
 import { Device } from '@capacitor/device';
 
+import { QrScanner } from './components/QrScanner';
+
 // Lazy loaded components for code-splitting & download size optimization
-const QrScanner = React.lazy(() => import('./components/QrScanner').then(m => ({ default: m.QrScanner })));
 const DocumentScanner = React.lazy(() => import('./components/DocumentScanner').then(m => ({ default: m.DocumentScanner })));
 const ProfileScreen = React.lazy(() => import('./components/ProfileScreen').then(m => ({ default: m.ProfileScreen })));
 const ToolsScreen = React.lazy(() => import('./components/ToolsScreen').then(m => ({ default: m.ToolsScreen })));
@@ -66,7 +67,7 @@ const fileToBase64 = (file: File): Promise<string> => {
 
 interface ErrorBoundaryState {
   hasError: boolean;
-  error: Error | null;
+  error: any;
   errorInfo: React.ErrorInfo | null;
   copied: boolean;
 }
@@ -80,23 +81,45 @@ class ErrorBoundary extends React.Component<
     this.state = { hasError: false, error: null, errorInfo: null, copied: false };
   }
 
-  static getDerivedStateFromError(error: Error) {
+  static getDerivedStateFromError(error: any) {
     return { hasError: true, error };
   }
 
-  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+  componentDidCatch(error: any, errorInfo: React.ErrorInfo) {
     console.error('ErrorBoundary caught:', error, errorInfo);
     this.setState({ errorInfo });
   }
 
   formatErrorDetails = () => {
+    const err = this.state.error;
+    let errMessage = 'Errore sconosciuto';
+    let stackTrace = 'Nessuno stack trace disponibile';
+
+    if (err) {
+      if (typeof err === 'string') {
+        errMessage = err;
+      } else if (err instanceof Error) {
+        errMessage = `${err.name}: ${err.message}`;
+        stackTrace = err.stack || stackTrace;
+      } else if (typeof err === 'object') {
+        try {
+          errMessage = JSON.stringify(err);
+        } catch {
+          errMessage = String(err);
+        }
+        if (err.stack) stackTrace = String(err.stack);
+      } else {
+        errMessage = String(err);
+      }
+    }
+
     return [
       `🛑 CHELONA CRASH REPORT (v${APP_VERSION})`,
       `📅 Data/Ora: ${new Date().toLocaleString()}`,
       `📱 Dispositivo: ${navigator.userAgent}`,
-      `⚠️ Errore: ${this.state.error?.message || 'Errore sconosciuto'}`,
+      `⚠️ Errore: ${errMessage}`,
       `\n--- STACK TRACE ---`,
-      this.state.error?.stack || 'Nessuno stack trace disponibile',
+      stackTrace,
       this.state.errorInfo?.componentStack ? `\n--- COMPONENT STACK ---\n${this.state.errorInfo.componentStack}` : ''
     ].join('\n');
   };
@@ -141,9 +164,11 @@ class ErrorBoundary extends React.Component<
           </p>
 
           <pre className="bg-black/40 border border-red-500/20 p-4 rounded-2xl shadow-inner text-left text-xs text-red-400 overflow-auto max-w-full w-full max-w-lg max-h-56 font-mono select-all mb-6">
-            {this.state.error?.message}
-            {'\n\n'}
-            {this.state.error?.stack}
+            {this.state.error instanceof Error
+              ? `${this.state.error.name}: ${this.state.error.message}\n\n${this.state.error.stack}`
+              : typeof this.state.error === 'object'
+                ? JSON.stringify(this.state.error, null, 2)
+                : String(this.state.error || 'Errore imprevisto')}
           </pre>
 
           <div className="flex flex-col sm:flex-row items-center gap-3 w-full max-w-md">
@@ -929,7 +954,19 @@ export default function App() {
         return;
       }
 
-      // 4. Gestione Moduli Condivisi (Solo se loggati)
+      // 4. Gestione QR Fitness & Dieta Partner (fit_v2 o fitness_plan)
+      if (parsedData.type === 'fit_v2' || parsedData.t === 'fit_v2' || parsedData.type === 'fitness_plan') {
+        const fitnessModule = modules.find(m => m.type === 'fitness');
+        if (fitnessModule) {
+          setEditingFitnessModule(fitnessModule as any);
+          showToast('Codice rilevato! Apri "Ricevi da Partner" in Fitness & Dieta per applicarlo.', 'info');
+        } else {
+          showToast('Crea o apri una scheda Fitness & Dieta per importare questo piano.', 'info');
+        }
+        return;
+      }
+
+      // 5. Gestione Moduli Condivisi (Solo se loggati)
       if (typeof parsedData.type === 'string' && parsedData.type.startsWith('shared_')) {
         const moduleType = parsedData.type.replace('shared_', '');
         
@@ -2134,6 +2171,7 @@ export default function App() {
       )}
 
     <ErrorBoundary>
+      <React.Suspense fallback={<div className="min-h-screen bg-[var(--bg,#0b0f19)]" />}>
       <AnimatePresence>
         {isSplashScreenActive && (
           <motion.div
@@ -4548,6 +4586,7 @@ export default function App() {
       </React.Suspense>
 
       </div>
+      </React.Suspense>
     </ErrorBoundary>
     </div>
   );

@@ -17,7 +17,7 @@ export const QrScanner: React.FC<QrScannerProps> = ({ onScan, onClose }) => {
   const [isTorchOn, setIsTorchOn] = useState(false);
   const [isReady, setIsReady] = useState(false);
   
-  const scannerRef = React.useRef<Html5Qrcode | null>(null);
+  const scannerRef = useRef<Html5Qrcode | null>(null);
 
   useEffect(() => {
     let html5QrCode: Html5Qrcode | null = null;
