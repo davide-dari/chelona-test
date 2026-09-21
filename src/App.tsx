@@ -19,7 +19,6 @@ import { notificationService } from './services/notificationService';
 import { biometricService } from './services/biometricService';
 import { chelonaMemory } from './services/chelonaMemory';
 import { APP_VERSION } from './constants/version';
-import { downloadState } from './services/chelonaAI';
 
 import { motion, AnimatePresence } from 'motion/react';
 import JSZip from 'jszip';
@@ -50,7 +49,6 @@ const FurnitureScreen = React.lazy(() => import('./components/FurnitureScreen').
 const InstallmentsScreen = React.lazy(() => import('./components/InstallmentsScreen').then(m => ({ default: m.InstallmentsScreen })));
 const FitnessScreen = React.lazy(() => import('./components/FitnessScreen').then(m => ({ default: m.FitnessScreen })));
 const SupermarketScreen = React.lazy(() => import('./components/SupermarketScreen').then(m => ({ default: m.SupermarketScreen })));
-const ChelonaChat = React.lazy(() => import('./components/ChelonaChat').then(m => ({ default: m.ChelonaChat })));
 const VolantinoScreen = React.lazy(() => import('./components/VolantinoScreen').then(m => ({ default: m.default })));
 const ShareScreen = React.lazy(() => import('./components/ShareScreen').then(m => ({ default: m.ShareScreen })));
 // UI Libraries removed as per request (CSS Grid migration)
@@ -403,38 +401,6 @@ export default function App() {
   const [moduleToDelete, setModuleToDelete] = useState<Module | null>(null);
   const [folderToDelete, setFolderToDelete] = useState<string | null>(null);
   const [isAddressBookOpen, setIsAddressBookOpen] = useState(false);
-  const [isChelonaOpen, setIsChelonaOpen] = useState(false);
-  const [aiDownload, setAiDownload] = useState(() => ({
-    active: downloadState.active,
-    progress: downloadState.progress,
-    loaded: downloadState.loaded,
-    total: downloadState.total,
-  }));
-
-  useEffect(() => {
-    const unsub = downloadState.subscribe((e) => {
-      if (e.type === 'progress') {
-        setAiDownload({
-          active: true,
-          progress: e.progress,
-          loaded: e.loaded,
-          total: e.total,
-        });
-      } else if (e.type === 'done') {
-        setAiDownload({ active: false, progress: 100, loaded: 0, total: 0 });
-      } else if (e.type === 'error') {
-        setAiDownload({ active: false, progress: 0, loaded: 0, total: 0 });
-      }
-    });
-
-    const handleOpenChat = () => setIsChelonaOpen(true);
-    window.addEventListener('open-chelona-chat', handleOpenChat);
-
-    return () => {
-      unsub();
-      window.removeEventListener('open-chelona-chat', handleOpenChat);
-    };
-  }, []);
   const [isRecipesOpen, setIsRecipesOpen] = useState(false);
   const [initialRecipesSearch, setInitialRecipesSearch] = useState('');
   const [initialRecipeToOpen, setInitialRecipeToOpen] = useState<any>(null);
@@ -615,7 +581,6 @@ export default function App() {
       if (isArchiveOpen) { setIsArchiveOpen(false); return; }
       if (isRecipesOpen) { window.dispatchEvent(new CustomEvent('recipes-back')); return; }
       if (isAddressBookOpen) { setIsAddressBookOpen(false); return; }
-      if (isChelonaOpen) { setIsChelonaOpen(false); return; }
       if (isSidebarOpen) { setIsSidebarOpen(false); return; }
       if (selectedFolderId) { setSelectedFolderId(null); return; }
       if (selectedType) { setSelectedType(null); return; }
@@ -2270,14 +2235,6 @@ export default function App() {
 
                 {/* Right side: Avatar (Lock and Theme moved to Profile) */}
                 <div className="flex items-center gap-2 sm:gap-4">
-
-                  <button
-                    onClick={() => setIsChelonaOpen(true)}
-                    className="p-2 sm:p-2.5 bg-gradient-to-br from-teal-500 to-emerald-600 hover:opacity-90 rounded-full text-white transition-all flex items-center justify-center shadow-md shadow-teal-500/25"
-                    title="Chelona (assistente AI locale)"
-                  >
-                    <Sparkles className="w-5 h-5 sm:w-6 sm:h-6" />
-                  </button>
                   <button 
                     onClick={() => { setIsToolsOpen(true); setIsProfileOpen(false); setSelectedType(null); }}
                     className="p-2 sm:p-2.5 bg-[var(--surface-variant)] hover:bg-[var(--border)] rounded-full text-[var(--accent)] transition-all flex items-center justify-center shadow-sm hidden md:flex"
@@ -4005,60 +3962,7 @@ export default function App() {
       </AnimatePresence>
 
       {/* Indicatore globale download AI in background */}
-      <AnimatePresence>
-        {aiDownload.active && !isChelonaOpen && (
-          <motion.div
-            initial={{ opacity: 0, y: -20, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -20, scale: 0.95 }}
-            onClick={() => setIsChelonaOpen(true)}
-            className="fixed top-3 left-4 right-4 z-[150000] bg-[var(--card-bg)]/95 backdrop-blur-md border border-teal-500/40 rounded-2xl p-3 shadow-2xl flex items-center gap-3 cursor-pointer active:scale-[0.98] transition-all select-none"
-          >
-            <div className="w-10 h-10 rounded-xl bg-teal-500/15 flex items-center justify-center shrink-0 border border-teal-500/30">
-              <Sparkles className="w-5 h-5 text-teal-500 animate-pulse" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center justify-between gap-2 mb-1.5">
-                <span className="text-xs font-black text-[var(--text-main)] truncate">
-                  Download Qwen2.5 AI in corso…
-                </span>
-                <span className="text-xs font-black text-teal-500 shrink-0">
-                  {aiDownload.progress}%
-                </span>
-              </div>
-              <div className="w-full h-1.5 bg-[var(--surface-variant)] rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-gradient-to-r from-teal-500 to-emerald-500 rounded-full transition-all duration-300"
-                  style={{ width: `${Math.max(aiDownload.progress, 3)}%` }}
-                />
-              </div>
-              <div className="flex items-center justify-between text-[10px] text-[var(--text-muted)] mt-1 font-semibold">
-                <span>Tocca per aprire la chat</span>
-                {aiDownload.total > 0 && (
-                  <span>
-                    {(aiDownload.loaded / (1024 * 1024)).toFixed(0)} / {(aiDownload.total / (1024 * 1024)).toFixed(0)} MB
-                  </span>
-                )}
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
-      {/* Chelona — assistente AI locale */}
-      <AnimatePresence>
-        {isChelonaOpen && (
-          <React.Suspense fallback={null}>
-            <ChelonaChat
-              onClose={() => setIsChelonaOpen(false)}
-              modules={modules}
-              folders={folders}
-              username={username}
-              showToast={showToast}
-            />
-          </React.Suspense>
-        )}
-      </AnimatePresence>
 
       {/* Update Modal */}
       <AnimatePresence>
