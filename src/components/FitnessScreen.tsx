@@ -523,6 +523,47 @@ function adaptMealPlanToCalories(sourcePlan: MealDay[], targetCalories: number):
   });
 }
 
+// --- SAFE QR CODE COMPONENT ---
+
+class SafeQRCode extends React.Component<{ value: string; size: number; level: 'L' | 'M' | 'Q' | 'H' }, { hasError: boolean }> {
+  constructor(props: any) {
+    super(props);
+    this.state = { hasError: false };
+  }
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+  componentDidCatch(error: any) {
+    console.warn('SafeQRCode caught rendering error (e.g. data too long):', error);
+  }
+  componentDidUpdate(prevProps: any) {
+    if (prevProps.value !== this.props.value && this.state.hasError) {
+      this.setState({ hasError: false });
+    }
+  }
+  render() {
+    if (this.state.hasError || this.props.value.length > 2100) {
+      return (
+        <div className="flex flex-col items-center justify-center p-6 text-center max-w-[260px] bg-amber-500/10 border border-amber-500/25 rounded-2xl">
+          <Share2 className="w-10 h-10 text-amber-500 mb-2.5 animate-pulse" />
+          <p className="text-xs font-black text-[var(--text-main)] mb-1">Piano Molto Dettagliato</p>
+          <p className="text-[11px] text-[var(--text-muted)] font-medium leading-relaxed">
+            I dati completi sono troppo ricchi per un QR code. Condividili istantaneamente toccando <b>"Invia ad App"</b> o <b>"Copia Codice"</b> qui sotto!
+          </p>
+        </div>
+      );
+    }
+    return (
+      <QRCodeSVG 
+        value={this.props.value} 
+        size={this.props.size} 
+        level={this.props.level} 
+        includeMargin={false}
+      />
+    );
+  }
+}
+
 // --- MAIN COMPONENT ---
 
 export function FitnessScreen({ module, onClose, onSave }: FitnessScreenProps) {
@@ -572,7 +613,7 @@ export function FitnessScreen({ module, onClose, onSave }: FitnessScreenProps) {
     }
   }, [partnerToastMsg]);
 
-  // Genera il payload condivisibile (compresso con LZW per densità QR ottimale)
+  // Genera il payload condivisibile (ultra-ottimizzato senza stringhe pesanti per massima densità QR)
   const sharePayload = useMemo(() => {
     const dataToSend: any = {
       title: formData.title || 'Fitness & Dieta',
@@ -580,15 +621,42 @@ export function FitnessScreen({ module, onClose, onSave }: FitnessScreenProps) {
 
     if (shareSubtype === 'diet' || shareSubtype === 'all') {
       if (formData.dietProfile) dataToSend.dietProfile = formData.dietProfile;
-      if (formData.mealPlanWeekly) dataToSend.mealPlanWeekly = formData.mealPlanWeekly;
       if (formData.targetCalories) dataToSend.targetCalories = formData.targetCalories;
       if (formData.bmr) dataToSend.bmr = formData.bmr;
       if (formData.tdee) dataToSend.tdee = formData.tdee;
+      if (formData.mealPlanWeekly) {
+        // Rimuoviamo description, recipeUrl e campi ridondanti:
+        // Vengono reidratati all'importazione usando MEAL_LIBRARY!
+        dataToSend.mealPlanWeekly = formData.mealPlanWeekly.map(day => ({
+          meals: day.meals.map(m => ({
+            name: m.name,
+            calories: m.calories,
+            protein: m.protein,
+            carbs: m.carbs,
+            fat: m.fat,
+            time: m.time
+          }))
+        }));
+      }
     }
 
     if (shareSubtype === 'workout' || shareSubtype === 'all') {
       if (formData.fitnessProfile) dataToSend.fitnessProfile = formData.fitnessProfile;
-      if (formData.workoutPlan) dataToSend.workoutPlan = formData.workoutPlan;
+      if (formData.workoutPlan) {
+        // Rimuoviamo gifUrl (link github molto lunghi) per non eccedere la capacità del QR:
+        // Vengono reidratati all'importazione usando EXERCISE_LIBRARY!
+        dataToSend.workoutPlan = formData.workoutPlan.map(day => ({
+          dayLabel: day.dayLabel,
+          focus: day.focus,
+          exercises: day.exercises.map(e => ({
+            name: e.name,
+            sets: e.sets,
+            reps: e.reps,
+            rest: e.rest,
+            muscleGroup: e.muscleGroup
+          }))
+        }));
+      }
     }
 
     const payload = {
@@ -652,6 +720,41 @@ export function FitnessScreen({ module, onClose, onSave }: FitnessScreenProps) {
 
       const payloadData = parsed.d || parsed.data || parsed;
       const subtype = parsed.subtype || (payloadData.mealPlanWeekly && payloadData.workoutPlan ? 'all' : payloadData.mealPlanWeekly ? 'diet' : 'workout');
+
+      // Reidratazione automatica da librerie locali (gifUrl, descrizioni, ricette)
+      if (payloadData.workoutPlan) {
+        payloadData.workoutPlan = payloadData.workoutPlan.map((day: any) => ({
+          ...day,
+          exercises: (day.exercises || []).map((e: any) => {
+            const match = EXERCISE_LIBRARY.find(ex => ex.name.toLowerCase() === e.name.toLowerCase());
+            return {
+              ...e,
+              gifUrl: match?.gifUrl || e.gifUrl
+            };
+          })
+        }));
+      }
+
+      if (payloadData.mealPlanWeekly) {
+        payloadData.mealPlanWeekly = payloadData.mealPlanWeekly.map((day: any) => {
+          const meals = (day.meals || []).map((m: any) => {
+            const match = MEAL_LIBRARY.find(ml => ml.name.toLowerCase() === m.name.toLowerCase());
+            return {
+              ...m,
+              description: m.description || match?.description || '',
+              recipeUrl: m.recipeUrl || match?.recipeUrl,
+              isSimple: m.isSimple !== undefined ? m.isSimple : match?.isSimple
+            };
+          });
+          return {
+            meals,
+            totalCalories: meals.reduce((acc: number, m: any) => acc + (m.calories || 0), 0),
+            totalProtein: meals.reduce((acc: number, m: any) => acc + (m.protein || 0), 0),
+            totalCarbs: meals.reduce((acc: number, m: any) => acc + (m.carbs || 0), 0),
+            totalFat: meals.reduce((acc: number, m: any) => acc + (m.fat || 0), 0)
+          };
+        });
+      }
 
       setParsedIncomingData({
         ...payloadData,
@@ -2174,15 +2277,18 @@ export function FitnessScreen({ module, onClose, onSave }: FitnessScreenProps) {
                 {/* QR Code Container */}
                 <div className="flex flex-col items-center justify-center my-2 shrink-0">
                   <div className="bg-white p-4 sm:p-5 rounded-3xl shadow-xl border-4 border-white/80 inline-block">
-                    <QRCodeSVG 
+                    <SafeQRCode 
                       value={sharePayload} 
                       size={210} 
-                      level="M" 
-                      includeMargin={false}
+                      level="L" 
                     />
                   </div>
                   <p className="text-xs text-center text-[var(--text-muted)] font-semibold mt-4 max-w-xs leading-relaxed">
-                    Fai inquadrare questo QR al tuo partner dalla sua app Chelona (tasto <b>Ricevi da Partner</b>) per importare il piano in 1 secondo!
+                    {sharePayload.length > 2100 ? (
+                      <span>Tocca <b>Invia ad App</b> per inviare l'intero piano via WhatsApp o Telegram.</span>
+                    ) : (
+                      <span>Fai inquadrare questo QR al tuo partner dalla sua app Chelona (tasto <b>Ricevi da Partner</b>) per importare il piano in 1 secondo!</span>
+                    )}
                   </p>
                 </div>
 

@@ -28,6 +28,7 @@ import { updateService, UpdateInfo } from './services/updateService';
 import { App as CapApp } from '@capacitor/app';
 import { generateUUID } from './utils/uuid';
 import { SpeechRecognition } from '@capacitor-community/speech-recognition';
+import { Share } from '@capacitor/share';
 import { Device } from '@capacitor/device';
 
 // Lazy loaded components for code-splitting & download size optimization
@@ -65,13 +66,20 @@ const fileToBase64 = (file: File): Promise<string> => {
   });
 };
 
+interface ErrorBoundaryState {
+  hasError: boolean;
+  error: Error | null;
+  errorInfo: React.ErrorInfo | null;
+  copied: boolean;
+}
+
 class ErrorBoundary extends React.Component<
   { children: React.ReactNode },
-  { hasError: boolean; error: Error | null }
+  ErrorBoundaryState
 > {
   constructor(props: { children: React.ReactNode }) {
     super(props);
-    this.state = { hasError: false, error: null };
+    this.state = { hasError: false, error: null, errorInfo: null, copied: false };
   }
 
   static getDerivedStateFromError(error: Error) {
@@ -80,27 +88,87 @@ class ErrorBoundary extends React.Component<
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     console.error('ErrorBoundary caught:', error, errorInfo);
+    this.setState({ errorInfo });
   }
+
+  formatErrorDetails = () => {
+    return [
+      `🛑 CHELONA CRASH REPORT (v${APP_VERSION})`,
+      `📅 Data/Ora: ${new Date().toLocaleString()}`,
+      `📱 Dispositivo: ${navigator.userAgent}`,
+      `⚠️ Errore: ${this.state.error?.message || 'Errore sconosciuto'}`,
+      `\n--- STACK TRACE ---`,
+      this.state.error?.stack || 'Nessuno stack trace disponibile',
+      this.state.errorInfo?.componentStack ? `\n--- COMPONENT STACK ---\n${this.state.errorInfo.componentStack}` : ''
+    ].join('\n');
+  };
+
+  handleShareError = async () => {
+    const errorDetails = this.formatErrorDetails();
+    try {
+      (window as any).__chelona_bypass_lock = true;
+      await Share.share({
+        title: `Chelona Error Report v${APP_VERSION}`,
+        text: errorDetails,
+        dialogTitle: 'Condividi Errore con WhatsApp/Messaggi'
+      });
+    } catch {
+      await navigator.clipboard.writeText(errorDetails);
+      this.setState({ copied: true });
+      setTimeout(() => this.setState({ copied: false }), 3000);
+    }
+  };
+
+  handleCopyError = async () => {
+    const errorDetails = this.formatErrorDetails();
+    try {
+      await navigator.clipboard.writeText(errorDetails);
+      this.setState({ copied: true });
+      setTimeout(() => this.setState({ copied: false }), 3000);
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   render() {
     if (this.state.hasError) {
       return (
-        <div className="min-h-screen bg-red-50 flex flex-col items-center justify-center p-6 text-center">
-          <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center text-red-500 mb-6">
+        <div className="min-h-screen bg-[var(--bg,#0b0f19)] text-[var(--text-main,#ffffff)] flex flex-col items-center justify-center p-6 text-center select-text">
+          <div className="w-20 h-20 bg-red-500/10 border border-red-500/30 rounded-3xl flex items-center justify-center text-red-500 mb-6 shadow-xl shadow-red-500/10">
             <X className="w-10 h-10" />
           </div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">Errore di Rendering</h1>
-          <p className="text-gray-600 mb-6">L'applicazione si è bloccata. Ecco i dettagli tecnici:</p>
-          <pre className="bg-white p-4 rounded-xl shadow-sm text-left text-xs sm:text-sm text-red-600 border border-red-100 overflow-auto max-w-full w-full max-h-96">
+          <h1 className="text-2xl font-black mb-2">Errore di Rendering</h1>
+          <p className="text-sm text-gray-400 mb-6 max-w-md">
+            Si è verificato un errore imprevisto. Puoi condividere subito i dettagli dell'errore per farlo risolvere in un attimo!
+          </p>
+
+          <pre className="bg-black/40 border border-red-500/20 p-4 rounded-2xl shadow-inner text-left text-xs text-red-400 overflow-auto max-w-full w-full max-w-lg max-h-56 font-mono select-all mb-6">
             {this.state.error?.message}
             {'\n\n'}
             {this.state.error?.stack}
           </pre>
-          <button 
-            onClick={() => window.location.reload()} 
-            className="mt-8 px-8 py-4 bg-gray-900 text-white font-bold rounded-2xl hover:bg-gray-800"
+
+          <div className="flex flex-col sm:flex-row items-center gap-3 w-full max-w-md">
+            <button
+              onClick={this.handleShareError}
+              className="w-full py-4 px-6 bg-gradient-to-r from-red-500 to-orange-500 hover:opacity-95 text-white font-black text-sm rounded-2xl shadow-lg shadow-red-500/25 transition-all flex items-center justify-center gap-2 active:scale-95"
+            >
+              <span>Condividi Errore (WhatsApp/App) 📲</span>
+            </button>
+
+            <button
+              onClick={this.handleCopyError}
+              className="w-full py-4 px-6 bg-white/10 hover:bg-white/15 text-white font-bold text-sm rounded-2xl border border-white/10 transition-all flex items-center justify-center gap-2 active:scale-95"
+            >
+              <span>{this.state.copied ? 'Copiato! ✓' : 'Copia Dettagli 📋'}</span>
+            </button>
+          </div>
+
+          <button
+            onClick={() => window.location.reload()}
+            className="mt-6 text-xs text-gray-400 hover:text-white underline font-semibold transition-colors"
           >
-            Ricarica App
+            Ricarica applicazione
           </button>
         </div>
       );
