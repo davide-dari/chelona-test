@@ -18,12 +18,35 @@ export const QrScanner: React.FC<QrScannerProps> = ({ onScan, onClose }) => {
   const [isReady, setIsReady] = useState(false);
   
   const scannerRef = useRef<Html5Qrcode | null>(null);
+  const onScanRef = useRef(onScan);
+  onScanRef.current = onScan;
+  const isStoppingRef = useRef(false);
+  const readerIdRef = useRef(`qr-reader-${Math.random().toString(36).substring(2, 9)}`);
 
   useEffect(() => {
     let html5QrCode: Html5Qrcode | null = null;
     let isMounted = true;
-    
-    const runScanner = () => {
+
+    const safeStopScanner = async (scanner: Html5Qrcode | null) => {
+      if (!scanner || isStoppingRef.current) return;
+      isStoppingRef.current = true;
+      try {
+        const isScanning = (scanner as any).isScanning || 
+          (typeof scanner.getState === 'function' && scanner.getState() === 2);
+        if (isScanning) {
+          await scanner.stop();
+        }
+      } catch (e) {
+        console.warn('[QrScanner] safeStop caught non-fatal exception:', e);
+      }
+      try {
+        scanner.clear();
+      } catch (e) {
+        console.warn('[QrScanner] safeClear caught non-fatal exception:', e);
+      }
+    };
+
+    const runScanner = async () => {
       if (!isMounted) return;
       
       if (!window.isSecureContext) {
@@ -32,13 +55,13 @@ export const QrScanner: React.FC<QrScannerProps> = ({ onScan, onClose }) => {
       }
 
       try {
-        html5QrCode = new Html5Qrcode('reader', {
+        html5QrCode = new Html5Qrcode(readerIdRef.current, {
           formatsToSupport: [0], // QR Code only per massima reattività e zero consumo superfluo
           verbose: false
         });
         scannerRef.current = html5QrCode;
         
-        html5QrCode.start(
+        await html5QrCode.start(
           { 
             facingMode: 'environment',
             width: { min: 640, ideal: 1280, max: 1920 },
@@ -57,47 +80,46 @@ export const QrScanner: React.FC<QrScannerProps> = ({ onScan, onClose }) => {
             }
           } as any,
           (decodedText) => {
-            if (isMounted) {
-              if (navigator.vibrate) navigator.vibrate(100);
-              html5QrCode?.stop().then(() => {
-                html5QrCode?.clear();
-                onScan(decodedText);
-              }).catch((e) => {
-                console.error('Stop on scan error', e);
-                onScan(decodedText);
-              });
-            }
+            if (!isMounted) return;
+            if (navigator.vibrate) navigator.vibrate(100);
+            safeStopScanner(html5QrCode).finally(() => {
+              if (isMounted) {
+                onScanRef.current(decodedText);
+              }
+            });
           },
           () => {}
-        ).then(() => {
-          if (!isMounted) return;
-          
-          setIsReady(true);
-          
-          // Rilevamento capacità hardware
-          try {
-            const capabilities = html5QrCode?.getRunningTrackCapabilities() as any;
-            if (capabilities) {
-              if (capabilities.zoom) {
-                setMinZoom(capabilities.zoom.min || 1);
-                setMaxZoom(capabilities.zoom.max || 1);
-                setZoom(capabilities.zoom.min || 1);
-              }
-              if (capabilities.torch) {
-                setHasTorch(true);
-              }
+        );
+
+        if (!isMounted) {
+          safeStopScanner(html5QrCode);
+          return;
+        }
+        
+        setIsReady(true);
+        
+        // Rilevamento capacità hardware
+        try {
+          const capabilities = html5QrCode?.getRunningTrackCapabilities() as any;
+          if (capabilities) {
+            if (capabilities.zoom) {
+              setMinZoom(capabilities.zoom.min || 1);
+              setMaxZoom(capabilities.zoom.max || 1);
+              setZoom(capabilities.zoom.min || 1);
             }
-          } catch (e) {
-            console.warn("Failed to get track capabilities", e);
+            if (capabilities.torch) {
+              setHasTorch(true);
+            }
           }
-        }).catch((err) => {
-          if (isMounted) {
-            console.error('Camera start error:', err);
-            setError('Impossibile accedere alla fotocamera. Assicurati di aver concesso i permessi.');
-          }
-        });
-      } catch (e) {
-        console.error("Html5Qrcode init error", e);
+        } catch (e) {
+          console.warn("Failed to get track capabilities", e);
+        }
+      } catch (err: any) {
+        if (isMounted) {
+          console.error('Camera start error:', err);
+          const msg = typeof err === 'string' ? err : err?.message || 'Impossibile accedere alla fotocamera. Assicurati di aver concesso i permessi.';
+          setError(msg);
+        }
       }
     };
 
@@ -105,14 +127,12 @@ export const QrScanner: React.FC<QrScannerProps> = ({ onScan, onClose }) => {
 
     return () => {
       isMounted = false;
-      if (html5QrCode) {
-        html5QrCode.stop().then(() => {
-          html5QrCode?.clear();
-        }).catch(() => {});
-      }
       scannerRef.current = null;
+      if (html5QrCode) {
+        safeStopScanner(html5QrCode);
+      }
     };
-  }, [onScan]);
+  }, []);
 
   const handleZoomChange = async (newZoom: number) => {
     if (!scannerRef.current) return;
@@ -151,7 +171,7 @@ export const QrScanner: React.FC<QrScannerProps> = ({ onScan, onClose }) => {
         
         <div className="p-6">
           <div className="relative rounded-3xl overflow-hidden aspect-square bg-black border-2 border-[var(--border)]">
-            <div id="reader" className="w-full h-full object-cover"></div>
+            <div id={readerIdRef.current} className="w-full h-full object-cover"></div>
             
             {/* Overlay Scanner UI */}
             <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
@@ -266,7 +286,7 @@ export const QrScanner: React.FC<QrScannerProps> = ({ onScan, onClose }) => {
             video::-webkit-media-controls-start-playback-button {
               display: none !important;
             }
-            #reader video {
+            [id^="qr-reader-"] video, #reader video {
               object-fit: cover !important;
               width: 100% !important;
               height: 100% !important;
