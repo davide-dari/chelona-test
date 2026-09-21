@@ -413,7 +413,7 @@ export const AddressBookScreen = ({ onClose }: AddressBookScreenProps) => {
               </p>
 
               <div className="p-4 bg-white rounded-3xl shadow-md mb-6 border border-gray-100 flex items-center justify-center">
-                <QRCodeSVG value={sharePayload} size={200} />
+                <QRCodeSVG value={sharePayload} size={240} level="L" includeMargin={true} />
               </div>
 
               <div className="w-full max-w-sm mb-6 bg-[var(--bg)] p-4 rounded-2xl border border-[var(--border)] text-left">

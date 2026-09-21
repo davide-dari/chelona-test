@@ -32,20 +32,29 @@ export const QrScanner: React.FC<QrScannerProps> = ({ onScan, onClose }) => {
       }
 
       try {
-        html5QrCode = new Html5Qrcode('reader');
+        html5QrCode = new Html5Qrcode('reader', {
+          formatsToSupport: [0], // QR Code only per massima reattività e zero consumo superfluo
+          verbose: false
+        });
         scannerRef.current = html5QrCode;
         
         html5QrCode.start(
-          { facingMode: 'environment' }, 
           { 
-            fps: 24,
+            facingMode: 'environment',
+            width: { min: 640, ideal: 1280, max: 1920 },
+            height: { min: 480, ideal: 720, max: 1080 }
+          }, 
+          { 
+            fps: 20,
             qrbox: (viewfinderWidth, viewfinderHeight) => {
               const minEdge = Math.min(viewfinderWidth, viewfinderHeight);
-              const qrboxSize = Math.floor(minEdge * 0.8); // Box leggermente più grande
+              const qrboxSize = Math.floor(minEdge * 0.88);
               return { width: qrboxSize, height: qrboxSize };
             },
             aspectRatio: 1.0,
-            useBarCodeDetectorIfSupported: true
+            experimentalFeatures: {
+              useBarCodeDetectorIfSupported: true
+            }
           } as any,
           (decodedText) => {
             if (isMounted) {

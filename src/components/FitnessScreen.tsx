@@ -558,7 +558,7 @@ class SafeQRCode extends React.Component<{ value: string; size: number; level: '
         value={this.props.value} 
         size={this.props.size} 
         level={this.props.level} 
-        includeMargin={false}
+        includeMargin={true}
       />
     );
   }
@@ -613,60 +613,58 @@ export function FitnessScreen({ module, onClose, onSave }: FitnessScreenProps) {
     }
   }, [partnerToastMsg]);
 
-  // Genera il payload condivisibile (ultra-ottimizzato senza stringhe pesanti per massima densità QR)
+  // Genera il payload condivisibile ultracompatto (indici numerici per densità QR minima)
   const sharePayload = useMemo(() => {
     const dataToSend: any = {
       title: formData.title || 'Fitness & Dieta',
     };
 
     if (shareSubtype === 'diet' || shareSubtype === 'all') {
-      if (formData.dietProfile) dataToSend.dietProfile = formData.dietProfile;
+      if (formData.dietProfile) dataToSend.dp = formData.dietProfile;
       if (formData.targetCalories) dataToSend.targetCalories = formData.targetCalories;
       if (formData.bmr) dataToSend.bmr = formData.bmr;
       if (formData.tdee) dataToSend.tdee = formData.tdee;
       if (formData.mealPlanWeekly) {
-        // Rimuoviamo description, recipeUrl e campi ridondanti:
-        // Vengono reidratati all'importazione usando MEAL_LIBRARY!
-        dataToSend.mealPlanWeekly = formData.mealPlanWeekly.map(day => ({
-          meals: day.meals.map(m => ({
-            name: m.name,
-            calories: m.calories,
-            protein: m.protein,
-            carbs: m.carbs,
-            fat: m.fat,
-            time: m.time
-          }))
-        }));
+        // Codifica ultracompatta per QR: [indiceLibreria, calorie] oppure oggetto essenziale
+        dataToSend.m = formData.mealPlanWeekly.map(day =>
+          day.meals.map(m => {
+            const idx = MEAL_LIBRARY.findIndex(x => x.name.toLowerCase() === m.name.toLowerCase());
+            if (idx !== -1) {
+              return [idx, m.calories];
+            }
+            return { n: m.name, c: m.calories, p: m.protein, cb: m.carbs, f: m.fat };
+          })
+        );
       }
     }
 
     if (shareSubtype === 'workout' || shareSubtype === 'all') {
-      if (formData.fitnessProfile) dataToSend.fitnessProfile = formData.fitnessProfile;
+      if (formData.fitnessProfile) dataToSend.fp = formData.fitnessProfile;
       if (formData.workoutPlan) {
-        // Rimuoviamo gifUrl (link github molto lunghi) per non eccedere la capacità del QR:
-        // Vengono reidratati all'importazione usando EXERCISE_LIBRARY!
-        dataToSend.workoutPlan = formData.workoutPlan.map(day => ({
-          dayLabel: day.dayLabel,
-          focus: day.focus,
-          exercises: day.exercises.map(e => ({
-            name: e.name,
-            sets: e.sets,
-            reps: e.reps,
-            rest: e.rest,
-            muscleGroup: e.muscleGroup
-          }))
+        // Codifica ultracompatta per QR: [indiceLibreria, serie, ripetizioni, riposo]
+        dataToSend.w = formData.workoutPlan.map(day => ({
+          f: day.focus,
+          e: day.exercises.map(e => {
+            const idx = EXERCISE_LIBRARY.findIndex(x => x.name.toLowerCase() === e.name.toLowerCase());
+            if (idx !== -1) {
+              return [idx, e.sets, e.reps, e.rest];
+            }
+            return { n: e.name, s: e.sets, r: e.reps, st: e.rest, mg: e.muscleGroup };
+          })
         }));
       }
     }
 
     const payload = {
-      t: 'shared_fitness',
-      subtype: shareSubtype,
-      v: 1,
+      t: 'fit_v2',
+      sub: shareSubtype,
       d: dataToSend
     };
 
-    return lzw.compress(JSON.stringify(payload));
+    const rawJson = JSON.stringify(payload);
+    // Scegli sempre la codifica più breve tra JSON compatto e LZW per minimizzare la densità del QR
+    const compressed = lzw.compress(rawJson);
+    return compressed.length < rawJson.length ? compressed : rawJson;
   }, [formData, shareSubtype]);
 
   const handleShareNative = async () => {
@@ -719,24 +717,57 @@ export function FitnessScreen({ module, onClose, onSave }: FitnessScreenProps) {
       if (!parsed) throw new Error("Dati non validi");
 
       const payloadData = parsed.d || parsed.data || parsed;
-      const subtype = parsed.subtype || (payloadData.mealPlanWeekly && payloadData.workoutPlan ? 'all' : payloadData.mealPlanWeekly ? 'diet' : 'workout');
+      const subtype = parsed.sub || parsed.subtype || (
+        (payloadData.m || payloadData.mealPlanWeekly) && (payloadData.w || payloadData.workoutPlan) 
+          ? 'all' 
+          : (payloadData.m || payloadData.mealPlanWeekly) ? 'diet' : 'workout'
+      );
 
-      // Reidratazione automatica da librerie locali (gifUrl, descrizioni, ricette)
-      if (payloadData.workoutPlan) {
-        payloadData.workoutPlan = payloadData.workoutPlan.map((day: any) => ({
-          ...day,
-          exercises: (day.exercises || []).map((e: any) => {
-            const match = EXERCISE_LIBRARY.find(ex => ex.name.toLowerCase() === e.name.toLowerCase());
-            return {
-              ...e,
-              gifUrl: match?.gifUrl || e.gifUrl
-            };
-          })
-        }));
-      }
+      // 1. Reidratazione Dieta (da indici fit_v2 o da formato legacy)
+      let reconstructedMealPlanWeekly = payloadData.mealPlanWeekly;
+      if (payloadData.m && Array.isArray(payloadData.m)) {
+        reconstructedMealPlanWeekly = payloadData.m.map((dayMeals: any[]) => {
+          const meals = (dayMeals || []).map((item: any, mealIndex: number) => {
+            if (Array.isArray(item)) {
+              const [idx, cal] = item;
+              const template = MEAL_LIBRARY[idx] || MEAL_LIBRARY[0];
+              const factor = (cal || template.baseCalories) / (template.baseCalories || 1);
+              return {
+                name: template.name,
+                description: template.description,
+                calories: cal || template.baseCalories,
+                protein: Math.round(template.baseProtein * factor),
+                carbs: Math.round(template.baseCarbs * factor),
+                fat: Math.round(template.baseFat * factor),
+                isSimple: template.isSimple,
+                recipeUrl: template.recipeUrl,
+                time: mealIndex === 0 ? '08:00' : mealIndex === 1 ? '13:00' : mealIndex === 2 ? '17:00' : '20:30'
+              };
+            } else if (typeof item === 'object' && item.n) {
+              return {
+                name: item.n,
+                description: '',
+                calories: item.c || 400,
+                protein: item.p || 20,
+                carbs: item.cb || 40,
+                fat: item.f || 10,
+                isSimple: true,
+                time: mealIndex === 0 ? '08:00' : mealIndex === 1 ? '13:00' : mealIndex === 2 ? '17:00' : '20:30'
+              };
+            }
+            return item;
+          });
 
-      if (payloadData.mealPlanWeekly) {
-        payloadData.mealPlanWeekly = payloadData.mealPlanWeekly.map((day: any) => {
+          return {
+            meals,
+            totalCalories: meals.reduce((acc: number, m: any) => acc + (m.calories || 0), 0),
+            totalProtein: meals.reduce((acc: number, m: any) => acc + (m.protein || 0), 0),
+            totalCarbs: meals.reduce((acc: number, m: any) => acc + (m.carbs || 0), 0),
+            totalFat: meals.reduce((acc: number, m: any) => acc + (m.fat || 0), 0)
+          };
+        });
+      } else if (payloadData.mealPlanWeekly) {
+        reconstructedMealPlanWeekly = payloadData.mealPlanWeekly.map((day: any) => {
           const meals = (day.meals || []).map((m: any) => {
             const match = MEAL_LIBRARY.find(ml => ml.name.toLowerCase() === m.name.toLowerCase());
             return {
@@ -756,8 +787,61 @@ export function FitnessScreen({ module, onClose, onSave }: FitnessScreenProps) {
         });
       }
 
+      // 2. Reidratazione Allenamento (da indici fit_v2 o da formato legacy)
+      let reconstructedWorkoutPlan = payloadData.workoutPlan;
+      if (payloadData.w && Array.isArray(payloadData.w)) {
+        reconstructedWorkoutPlan = payloadData.w.map((dayItem: any, dayIdx: number) => {
+          const exercises = (dayItem.e || []).map((eItem: any) => {
+            if (Array.isArray(eItem)) {
+              const [idx, sets, reps, rest] = eItem;
+              const template = EXERCISE_LIBRARY[idx] || EXERCISE_LIBRARY[0];
+              return {
+                name: template.name,
+                sets: sets || 3,
+                reps: reps || '10-12',
+                rest: rest || '60s',
+                muscleGroup: template.muscleGroup,
+                gifUrl: template.gifUrl
+              };
+            } else if (typeof eItem === 'object' && eItem.n) {
+              return {
+                name: eItem.n,
+                sets: eItem.s || 3,
+                reps: eItem.r || '10-12',
+                rest: eItem.st || '60s',
+                muscleGroup: eItem.mg || 'full_body',
+                gifUrl: undefined
+              };
+            }
+            return eItem;
+          });
+
+          return {
+            dayLabel: `Giorno ${dayIdx + 1}`,
+            focus: dayItem.f || 'Full Body',
+            exercises,
+            isCompleted: false
+          };
+        });
+      } else if (payloadData.workoutPlan) {
+        reconstructedWorkoutPlan = payloadData.workoutPlan.map((day: any) => ({
+          ...day,
+          exercises: (day.exercises || []).map((e: any) => {
+            const match = EXERCISE_LIBRARY.find(ex => ex.name.toLowerCase() === e.name.toLowerCase());
+            return {
+              ...e,
+              gifUrl: match?.gifUrl || e.gifUrl
+            };
+          })
+        }));
+      }
+
       setParsedIncomingData({
         ...payloadData,
+        dietProfile: payloadData.dp || payloadData.dietProfile,
+        fitnessProfile: payloadData.fp || payloadData.fitnessProfile,
+        mealPlanWeekly: reconstructedMealPlanWeekly,
+        workoutPlan: reconstructedWorkoutPlan,
         _subtype: subtype
       });
 
@@ -2279,7 +2363,7 @@ export function FitnessScreen({ module, onClose, onSave }: FitnessScreenProps) {
                   <div className="bg-white p-4 sm:p-5 rounded-3xl shadow-xl border-4 border-white/80 inline-block">
                     <SafeQRCode 
                       value={sharePayload} 
-                      size={210} 
+                      size={245} 
                       level="L" 
                     />
                   </div>

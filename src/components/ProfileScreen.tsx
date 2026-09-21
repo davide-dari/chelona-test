@@ -108,10 +108,11 @@ export function ProfileScreen({
 
     const json = JSON.stringify(backup);
     const compressed = lzw.compress(json);
-    if (compressed.length > 2900) {
+    const finalPayload = compressed.length < json.length ? compressed : json;
+    if (finalPayload.length > 2900) {
       alert("Attenzione: I dati nel profilo sono molto grandi. Se il QR Code è troppo denso per la scansione, si raccomanda di utilizzare l'opzione Esporta ZIP.");
     }
-    setBackupJSON(compressed);
+    setBackupJSON(finalPayload);
     setShowBackupQR(true);
   };
 

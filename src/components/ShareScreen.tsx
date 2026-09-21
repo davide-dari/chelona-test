@@ -113,7 +113,8 @@ export const ShareScreen = ({ module, onClose }: ShareScreenProps) => {
     }
 
     const json = JSON.stringify(payload);
-    return module.type === 'split' ? lzw.compress(json) : json;
+    const comp = lzw.compress(json);
+    return comp.length < json.length ? comp : json;
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [module, totalDurationMs, qrKey, isAutodestruct]);
 

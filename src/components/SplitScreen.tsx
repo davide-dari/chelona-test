@@ -105,7 +105,8 @@ export const SplitScreen = ({ module, onClose, onSave, onAutoSave, onSaveToSandb
       t: 'shared_split',
       d: cleanModule
     });
-    return lzw.compress(json);
+    const comp = lzw.compress(json);
+    return comp.length < json.length ? comp : json;
   }, [title, currency, participants, expenses]);
 
   const shareAsFile = async (payloadType: string, isGroup: boolean) => {
@@ -1211,7 +1212,7 @@ export const SplitScreen = ({ module, onClose, onSave, onAutoSave, onSaveToSandb
                     </button>
                   </div>
                 ) : (
-                  <QRCodeSVG value={sharePayload} size={200} />
+                  <QRCodeSVG value={sharePayload} size={240} level="L" includeMargin={true} />
                 )}
               </div>
 
@@ -1279,7 +1280,7 @@ export const SplitScreen = ({ module, onClose, onSave, onAutoSave, onSaveToSandb
                     </button>
                   </div>
                 ) : (
-                  <QRCodeSVG value={groupSharePayload} size={200} />
+                  <QRCodeSVG value={groupSharePayload} size={240} level="L" includeMargin={true} />
                 )}
               </div>
 
