@@ -1,6 +1,14 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { ArrowLeft, ArrowRight, Check, ChevronDown, ChevronUp, RefreshCw, Play, Award, TrendingUp, Target, Activity, Heart, Dumbbell, Utensils, ExternalLink, X, Bell, Clock } from 'lucide-react';
+import { 
+  ArrowLeft, ArrowRight, Check, ChevronDown, ChevronUp, RefreshCw, Play, Award, 
+  TrendingUp, Target, Activity, Heart, Dumbbell, Utensils, ExternalLink, X, Bell, 
+  Clock, QrCode, Share2, Users, Copy, CheckCheck, Camera, Sparkles, Scale, ChefHat 
+} from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { QRCodeSVG } from 'qrcode.react';
+import { QrScanner } from './QrScanner';
+import { lzw } from '../utils/lzw';
+import { Share } from '@capacitor/share';
 import { findRecipeForMeal } from '../services/recipeSearchService';
 import { notificationService } from '../services/notificationService';
 
@@ -100,6 +108,14 @@ export interface FitnessModule {
   bmr?: number;
   tdee?: number;
   targetCalories?: number;
+  partnerName?: string;
+  partnerFitnessProfile?: FitnessProfile;
+  partnerWorkoutPlan?: WorkoutDay[];
+  partnerDietProfile?: DietProfile;
+  partnerMealPlanWeekly?: MealDay[];
+  partnerBmr?: number;
+  partnerTdee?: number;
+  partnerTargetCalories?: number;
   x: number;
   y: number;
   w: number;
@@ -476,6 +492,37 @@ function generateMealPlanWeekly(profile: DietProfile, targetCalories: number): M
   return week;
 }
 
+/**
+ * Adatta e ricalcola proporzionalmente le calorie e i macronutrienti di una dieta
+ * su un target calorico differente, mantenendo esattamente le stesse ricette e piatti.
+ */
+function adaptMealPlanToCalories(sourcePlan: MealDay[], targetCalories: number): MealDay[] {
+  return sourcePlan.map(day => {
+    const dayTotal = day.totalCalories || 1;
+    const factor = targetCalories / dayTotal;
+    const scaledMeals: Meal[] = day.meals.map(m => {
+      const scaledCal = Math.max(20, Math.round(m.calories * factor));
+      const scaledProt = Math.max(1, Math.round(m.protein * factor));
+      const scaledCarbs = Math.max(1, Math.round(m.carbs * factor));
+      const scaledFat = Math.max(1, Math.round(m.fat * factor));
+      return {
+        ...m,
+        calories: scaledCal,
+        protein: scaledProt,
+        carbs: scaledCarbs,
+        fat: scaledFat
+      };
+    });
+    return {
+      meals: scaledMeals,
+      totalCalories: scaledMeals.reduce((acc, m) => acc + m.calories, 0),
+      totalProtein: scaledMeals.reduce((acc, m) => acc + m.protein, 0),
+      totalCarbs: scaledMeals.reduce((acc, m) => acc + m.carbs, 0),
+      totalFat: scaledMeals.reduce((acc, m) => acc + m.fat, 0)
+    };
+  });
+}
+
 // --- MAIN COMPONENT ---
 
 export function FitnessScreen({ module, onClose, onSave }: FitnessScreenProps) {
@@ -493,6 +540,226 @@ export function FitnessScreen({ module, onClose, onSave }: FitnessScreenProps) {
   const [expandedDayIndex, setExpandedDayIndex] = useState<number | null>(null);
   const [enlargedGifUrl, setEnlargedGifUrl] = useState<string | null>(null);
   const [swappingMealInfo, setSwappingMealInfo] = useState<{ dayIndex: number; mealIndex: number; meal: Meal } | null>(null);
+
+  // Partner & Share state
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [shareSubtype, setShareSubtype] = useState<'all' | 'diet' | 'workout'>('diet');
+  const [hasCopiedShareCode, setHasCopiedShareCode] = useState(false);
+
+  const [showReceiveModal, setShowReceiveModal] = useState(false);
+  const [isScanningPartnerQr, setIsScanningPartnerQr] = useState(false);
+  const [manualCodeInput, setManualCodeInput] = useState('');
+  const [parsedIncomingData, setParsedIncomingData] = useState<any | null>(null);
+  const [customScaleCalories, setCustomScaleCalories] = useState<number>(
+    formData.targetCalories || 1800
+  );
+  const [partnerDisplayName, setPartnerDisplayName] = useState<string>(
+    formData.partnerName || 'Partner'
+  );
+  
+  // View mode in Diet plan: 'me' | 'partner' | 'couple'
+  const [dietViewMode, setDietViewMode] = useState<'me' | 'partner' | 'couple'>(
+    formData.partnerMealPlanWeekly ? 'couple' : 'me'
+  );
+  // View mode in Workout plan: 'me' | 'partner'
+  const [workoutViewMode, setWorkoutViewMode] = useState<'me' | 'partner'>('me');
+  const [partnerToastMsg, setPartnerToastMsg] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (partnerToastMsg) {
+      const timer = setTimeout(() => setPartnerToastMsg(null), 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [partnerToastMsg]);
+
+  // Genera il payload condivisibile (compresso con LZW per densità QR ottimale)
+  const sharePayload = useMemo(() => {
+    const dataToSend: any = {
+      title: formData.title || 'Fitness & Dieta',
+    };
+
+    if (shareSubtype === 'diet' || shareSubtype === 'all') {
+      if (formData.dietProfile) dataToSend.dietProfile = formData.dietProfile;
+      if (formData.mealPlanWeekly) dataToSend.mealPlanWeekly = formData.mealPlanWeekly;
+      if (formData.targetCalories) dataToSend.targetCalories = formData.targetCalories;
+      if (formData.bmr) dataToSend.bmr = formData.bmr;
+      if (formData.tdee) dataToSend.tdee = formData.tdee;
+    }
+
+    if (shareSubtype === 'workout' || shareSubtype === 'all') {
+      if (formData.fitnessProfile) dataToSend.fitnessProfile = formData.fitnessProfile;
+      if (formData.workoutPlan) dataToSend.workoutPlan = formData.workoutPlan;
+    }
+
+    const payload = {
+      t: 'shared_fitness',
+      subtype: shareSubtype,
+      v: 1,
+      d: dataToSend
+    };
+
+    return lzw.compress(JSON.stringify(payload));
+  }, [formData, shareSubtype]);
+
+  const handleShareNative = async () => {
+    const textMsg = `🏋️‍♂️🥗 Ecco il mio piano Chelona Fitness & Dieta!\n\nImportalo aprendo Fitness & Dieta su Chelona, clicca "Ricevi da Partner" e usa la fotocamera o incolla questo codice:\n\n${sharePayload}`;
+    try {
+      (window as any).__chelona_bypass_lock = true;
+      await Share.share({
+        title: 'Condividi Piano Fitness & Dieta',
+        text: textMsg,
+        dialogTitle: 'Condividi con il partner'
+      });
+    } catch {
+      try {
+        await navigator.clipboard.writeText(sharePayload);
+        setHasCopiedShareCode(true);
+        setTimeout(() => setHasCopiedShareCode(false), 2500);
+      } catch (e) {
+        console.error(e);
+      }
+    }
+  };
+
+  const handleCopyShareCode = async () => {
+    try {
+      await navigator.clipboard.writeText(sharePayload);
+      setHasCopiedShareCode(true);
+      setTimeout(() => setHasCopiedShareCode(false), 2500);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const processIncomingData = (raw: string) => {
+    try {
+      let text = raw.trim();
+      if (text.startsWith('LZW:')) {
+        text = lzw.decompress(text);
+      }
+      let parsed: any = null;
+      try {
+        parsed = JSON.parse(text);
+      } catch {
+        const lzwMatch = text.match(/LZW:[A-Za-z0-9+/=]+/);
+        if (lzwMatch) {
+          text = lzw.decompress(lzwMatch[0]);
+          parsed = JSON.parse(text);
+        }
+      }
+
+      if (!parsed) throw new Error("Dati non validi");
+
+      const payloadData = parsed.d || parsed.data || parsed;
+      const subtype = parsed.subtype || (payloadData.mealPlanWeekly && payloadData.workoutPlan ? 'all' : payloadData.mealPlanWeekly ? 'diet' : 'workout');
+
+      setParsedIncomingData({
+        ...payloadData,
+        _subtype: subtype
+      });
+
+      if (payloadData.targetCalories) {
+        setCustomScaleCalories(formData.targetCalories || payloadData.targetCalories);
+      }
+
+      setIsScanningPartnerQr(false);
+      setManualCodeInput('');
+    } catch (err) {
+      alert("Codice o QR non valido per Fitness & Dieta. Assicurati che provenga da Chelona.");
+    }
+  };
+
+  const handleApplyImport = (mode: 'scale_diet' | 'exact_diet' | 'partner_diet_only' | 'replace_workout' | 'partner_workout_only' | 'all') => {
+    if (!parsedIncomingData) return;
+    let updated: FitnessModule = { ...formData };
+
+    if (mode === 'scale_diet') {
+      const targetCals = customScaleCalories || formData.targetCalories || 1800;
+      const scaledMeals = adaptMealPlanToCalories(parsedIncomingData.mealPlanWeekly, targetCals);
+      
+      updated = {
+        ...updated,
+        mealPlanWeekly: scaledMeals,
+        targetCalories: targetCals,
+        partnerMealPlanWeekly: parsedIncomingData.mealPlanWeekly,
+        partnerTargetCalories: parsedIncomingData.targetCalories,
+        partnerDietProfile: parsedIncomingData.dietProfile,
+        partnerName: partnerDisplayName || 'Partner'
+      };
+      setDietViewMode('couple');
+      setCurrentView('diet-plan');
+      setPartnerToastMsg(`Dieta sincronizzata! Stessi piatti, porzioni calibrate a ${targetCals} kcal.`);
+    } else if (mode === 'exact_diet') {
+      updated = {
+        ...updated,
+        mealPlanWeekly: parsedIncomingData.mealPlanWeekly,
+        targetCalories: parsedIncomingData.targetCalories,
+        dietProfile: parsedIncomingData.dietProfile,
+        partnerMealPlanWeekly: parsedIncomingData.mealPlanWeekly,
+        partnerTargetCalories: parsedIncomingData.targetCalories,
+        partnerName: partnerDisplayName || 'Partner'
+      };
+      setDietViewMode('me');
+      setCurrentView('diet-plan');
+      setPartnerToastMsg(`Dieta del partner importata con porzioni originali 1:1!`);
+    } else if (mode === 'partner_diet_only') {
+      updated = {
+        ...updated,
+        partnerMealPlanWeekly: parsedIncomingData.mealPlanWeekly,
+        partnerTargetCalories: parsedIncomingData.targetCalories,
+        partnerDietProfile: parsedIncomingData.dietProfile,
+        partnerName: partnerDisplayName || 'Partner'
+      };
+      setDietViewMode('couple');
+      setCurrentView('diet-plan');
+      setPartnerToastMsg(`Dieta salvata per ${partnerDisplayName || 'Partner'}! Puoi visualizzare le porzioni di coppia.`);
+    } else if (mode === 'replace_workout') {
+      updated = {
+        ...updated,
+        workoutPlan: parsedIncomingData.workoutPlan,
+        fitnessProfile: parsedIncomingData.fitnessProfile,
+        partnerWorkoutPlan: parsedIncomingData.workoutPlan,
+        partnerFitnessProfile: parsedIncomingData.fitnessProfile,
+        partnerName: partnerDisplayName || 'Partner'
+      };
+      setWorkoutViewMode('me');
+      setCurrentView('fitness-plan');
+      setPartnerToastMsg(`Scheda allenamento del partner importata con successo!`);
+    } else if (mode === 'partner_workout_only') {
+      updated = {
+        ...updated,
+        partnerWorkoutPlan: parsedIncomingData.workoutPlan,
+        partnerFitnessProfile: parsedIncomingData.fitnessProfile,
+        partnerName: partnerDisplayName || 'Partner'
+      };
+      setWorkoutViewMode('partner');
+      setCurrentView('fitness-plan');
+      setPartnerToastMsg(`Scheda di ${partnerDisplayName || 'Partner'} salvata con successo!`);
+    } else if (mode === 'all') {
+      const targetCals = customScaleCalories || formData.targetCalories || parsedIncomingData.targetCalories || 1800;
+      const scaledMeals = parsedIncomingData.mealPlanWeekly ? adaptMealPlanToCalories(parsedIncomingData.mealPlanWeekly, targetCals) : undefined;
+
+      updated = {
+        ...updated,
+        workoutPlan: parsedIncomingData.workoutPlan || updated.workoutPlan,
+        fitnessProfile: parsedIncomingData.fitnessProfile || updated.fitnessProfile,
+        mealPlanWeekly: scaledMeals || updated.mealPlanWeekly,
+        targetCalories: targetCals,
+        partnerMealPlanWeekly: parsedIncomingData.mealPlanWeekly,
+        partnerTargetCalories: parsedIncomingData.targetCalories,
+        partnerWorkoutPlan: parsedIncomingData.workoutPlan,
+        partnerFitnessProfile: parsedIncomingData.fitnessProfile,
+        partnerName: partnerDisplayName || 'Partner'
+      };
+      setDietViewMode('couple');
+      setPartnerToastMsg(`Scheda Allenamento e Dieta sincronizzate con successo!`);
+    }
+
+    setFormData(updated);
+    onSave(updated);
+    setParsedIncomingData(null);
+    setShowReceiveModal(false);
+  };
 
   const handleSwapMeal = (alternativeTemplate: MealTemplate) => {
     if (!swappingMealInfo || !activeMealPlanWeekly) return;
@@ -720,20 +987,63 @@ export function FitnessScreen({ module, onClose, onSave }: FitnessScreenProps) {
     <div className="fixed inset-0 z-[150] bg-[var(--bg)] flex flex-col h-[100dvh] overflow-hidden font-sans transition-colors duration-300">
       
       {/* Header */}
-      <header className="h-20 border-b border-[var(--border)] bg-[var(--header-bg)] backdrop-blur-2xl px-6 flex items-center justify-between shrink-0 z-20 safe-area-header">
-        <div className="flex items-center gap-4">
-          <button onClick={handleBack} className="p-3 bg-[var(--card-bg)] border border-[var(--border)] hover:bg-[var(--border)] rounded-2xl transition-all shadow-sm">
-            <ArrowLeft className="w-6 h-6 text-[var(--text-main)]" />
+      <header className="h-20 border-b border-[var(--border)] bg-[var(--header-bg)] backdrop-blur-2xl px-4 sm:px-6 flex items-center justify-between shrink-0 z-20 safe-area-header gap-2">
+        <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+          <button onClick={handleBack} className="p-2.5 sm:p-3 bg-[var(--card-bg)] border border-[var(--border)] hover:bg-[var(--border)] rounded-2xl transition-all shadow-sm shrink-0">
+            <ArrowLeft className="w-5 h-5 sm:w-6 sm:h-6 text-[var(--text-main)]" />
           </button>
-          <div>
-            <h2 className="text-xl font-bold text-[var(--text-main)]">{formData.title}</h2>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--text-muted)]">
+          <div className="min-w-0">
+            <h2 className="text-lg sm:text-xl font-bold text-[var(--text-main)] truncate">{formData.title}</h2>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--text-muted)] truncate">
               {currentView === 'catalog' ? 'Seleziona un percorso' : 
                currentView.includes('wizard') ? 'Configurazione' : 'Piano Attivo'}
             </p>
           </div>
         </div>
+
+        {/* Action Buttons: Condividi & Ricevi Partner */}
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+          {(formData.mealPlanWeekly || formData.workoutPlan) && (
+            <button
+              onClick={() => {
+                if (currentView === 'diet-plan') setShareSubtype('diet');
+                else if (currentView === 'fitness-plan') setShareSubtype('workout');
+                else setShareSubtype('all');
+                setShowShareModal(true);
+              }}
+              className="p-2 sm:px-3 sm:py-2 bg-[var(--card-bg)] border border-[var(--border)] hover:border-amber-500/50 hover:bg-amber-500/10 text-[var(--text-main)] hover:text-amber-500 rounded-xl sm:rounded-2xl transition-all shadow-sm flex items-center gap-1.5 text-xs font-bold"
+              title="Passa la scheda o la dieta al partner"
+            >
+              <Share2 className="w-4 h-4 text-amber-500" />
+              <span className="hidden md:inline">Invia al Partner</span>
+            </button>
+          )}
+
+          <button
+            onClick={() => setShowReceiveModal(true)}
+            className="p-2 sm:px-3.5 sm:py-2 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-xl sm:rounded-2xl transition-all shadow-md shadow-emerald-500/20 hover:opacity-90 active:scale-95 flex items-center gap-1.5 text-xs font-bold"
+            title="Ricevi dal partner (QR o Codice)"
+          >
+            <QrCode className="w-4 h-4" />
+            <span className="hidden md:inline">Ricevi da Partner</span>
+          </button>
+        </div>
       </header>
+
+      {/* Floating Partner Notification Toast */}
+      <AnimatePresence>
+        {partnerToastMsg && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="bg-emerald-500 text-white px-6 py-3 text-center text-xs font-extrabold shadow-xl flex items-center justify-center gap-2 z-30 shrink-0"
+          >
+            <Check className="w-4 h-4 shrink-0" />
+            <span>{partnerToastMsg}</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Main Content */}
       <div className="flex-1 overflow-y-auto pb-32">
@@ -745,6 +1055,45 @@ export function FitnessScreen({ module, onClose, onSave }: FitnessScreenProps) {
               <div className="text-center space-y-2 mb-8">
                 <h3 className="text-2xl font-black text-[var(--text-main)]">Scegli il tuo percorso</h3>
                 <p className="text-xs font-bold text-[var(--text-muted)]">Seleziona Fitness o Dieta per generare il tuo piano personalizzato.</p>
+              </div>
+
+              {/* Partner Quick Sync Banner */}
+              <div className="bg-gradient-to-br from-indigo-500/10 via-purple-500/5 to-pink-500/10 border border-indigo-500/20 rounded-[2.5rem] p-6 relative overflow-hidden shadow-sm">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-5 relative z-10">
+                  <div className="flex items-center gap-4">
+                    <div className="w-14 h-14 bg-gradient-to-br from-indigo-500 to-purple-600 text-white rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-500/20 shrink-0">
+                      <Users className="w-7 h-7" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2 mb-0.5">
+                        <span className="text-[10px] font-black uppercase tracking-widest text-indigo-500 bg-indigo-500/10 px-2.5 py-0.5 rounded-full">Coppia & Partner</span>
+                      </div>
+                      <h4 className="text-base sm:text-lg font-black text-[var(--text-main)]">Passa Scheda o Dieta al Partner</h4>
+                      <p className="text-xs font-medium text-[var(--text-muted)] mt-1 leading-relaxed">
+                        Condividi la tua dieta per <b>cucinare gli stessi piatti insieme</b> (calcolando le porzioni esatte per ciascuno) o scambia la scheda di allenamento.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+                    {(formData.mealPlanWeekly || formData.workoutPlan) && (
+                      <button
+                        onClick={() => { setShareSubtype('all'); setShowShareModal(true); }}
+                        className="px-4 py-2.5 bg-[var(--card-bg)] border border-indigo-500/30 hover:border-indigo-500 text-[var(--text-main)] rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm hover:bg-indigo-500/10"
+                      >
+                        <Share2 className="w-4 h-4 text-indigo-500" />
+                        <span>Invia</span>
+                      </button>
+                    )}
+                    <button
+                      onClick={() => setShowReceiveModal(true)}
+                      className="px-4 py-2.5 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-xl text-xs font-black shadow-md shadow-indigo-500/25 hover:opacity-95 transition-all flex items-center gap-1.5 active:scale-95"
+                    >
+                      <QrCode className="w-4 h-4" />
+                      <span>Ricevi da Partner</span>
+                    </button>
+                  </div>
+                </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -1173,29 +1522,68 @@ export function FitnessScreen({ module, onClose, onSave }: FitnessScreenProps) {
         )}
 
         {/* FITNESS PLAN VIEW */}
-        {currentView === 'fitness-plan' && formData.workoutPlan && (
+        {currentView === 'fitness-plan' && (formData.workoutPlan || formData.partnerWorkoutPlan) && (
           <div className="px-6 py-8">
             <div className="max-w-3xl mx-auto space-y-6">
+
+              {/* Partner Workout Selector */}
+              {formData.partnerWorkoutPlan && (
+                <div className="flex bg-[var(--surface-variant)] p-1.5 rounded-2xl gap-1.5 border border-[var(--border)] shadow-inner">
+                  <button
+                    onClick={() => setWorkoutViewMode('me')}
+                    className={`flex-1 py-2.5 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 ${
+                      workoutViewMode === 'me'
+                        ? 'bg-emerald-500 text-white shadow-md'
+                        : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
+                    }`}
+                  >
+                    <span>👤 La Mia Scheda</span>
+                  </button>
+                  <button
+                    onClick={() => setWorkoutViewMode('partner')}
+                    className={`flex-1 py-2.5 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 ${
+                      workoutViewMode === 'partner'
+                        ? 'bg-emerald-500 text-white shadow-md'
+                        : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
+                    }`}
+                  >
+                    <span>👥 Scheda {formData.partnerName || 'Partner'}</span>
+                  </button>
+                </div>
+              )}
               
               {/* Profile Summary */}
-              <div className="bg-[var(--card-bg)] border border-[var(--border)] rounded-[2rem] p-6 flex flex-wrap items-center gap-4 justify-between">
+              <div className="bg-[var(--card-bg)] border border-[var(--border)] rounded-[2rem] p-6 flex flex-wrap items-center gap-4 justify-between shadow-sm">
                 <div>
                   <h3 className="text-xl font-black text-[var(--text-main)] flex items-center gap-2">
                     <Dumbbell className="w-5 h-5 text-emerald-500" />
-                    Il tuo Piano Allenamento
+                    {workoutViewMode === 'partner' ? `Scheda di ${formData.partnerName || 'Partner'}` : 'Il tuo Piano Allenamento'}
                   </h3>
                   <p className="text-sm font-semibold text-[var(--text-muted)] mt-1">
-                    {formData.fitnessProfile?.daysPerWeek} giorni/settimana • Obiettivo: {formData.fitnessProfile?.goal}
+                    {workoutViewMode === 'partner'
+                      ? `${formData.partnerFitnessProfile?.daysPerWeek || (formData.partnerWorkoutPlan?.length || 3)} giorni/settimana • Obiettivo: ${formData.partnerFitnessProfile?.goal || 'Fitness'}`
+                      : `${formData.fitnessProfile?.daysPerWeek} giorni/settimana • Obiettivo: ${formData.fitnessProfile?.goal}`}
                   </p>
                 </div>
-                <button onClick={() => setCurrentView('fitness-wizard')} className="p-3 bg-emerald-500/10 text-emerald-500 rounded-xl hover:bg-emerald-500/20 transition-colors">
-                  <RefreshCw className="w-5 h-5" />
-                </button>
+
+                <div className="flex items-center gap-2">
+                  <button 
+                    onClick={() => { setShareSubtype('workout'); setShowShareModal(true); }}
+                    className="p-3 bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20 rounded-xl transition-colors flex items-center gap-1.5 text-xs font-bold"
+                    title="Passa questa scheda al partner"
+                  >
+                    <Share2 className="w-4 h-4" />
+                    <span className="hidden sm:inline">Invia Scheda</span>
+                  </button>
+                  <button onClick={() => setCurrentView('fitness-wizard')} className="p-3 bg-[var(--surface-variant)] text-[var(--text-muted)] hover:text-[var(--text-main)] rounded-xl transition-colors">
+                    <RefreshCw className="w-5 h-5" />
+                  </button>
+                </div>
               </div>
 
               {/* Workout Days */}
               <div className="space-y-4">
-                {formData.workoutPlan.map((day, idx) => (
+                {(((workoutViewMode === 'partner' && formData.partnerWorkoutPlan) ? formData.partnerWorkoutPlan : formData.workoutPlan) || []).map((day, idx) => (
                   <div key={idx} className={`bg-[var(--card-bg)] border rounded-[2rem] overflow-hidden transition-all ${day.isCompleted ? 'border-emerald-500/50 opacity-80' : 'border-[var(--border)]'}`}>
                     <div 
                       className="p-6 flex items-center justify-between cursor-pointer"
@@ -1299,43 +1687,146 @@ export function FitnessScreen({ module, onClose, onSave }: FitnessScreenProps) {
         </AnimatePresence>
 
         {/* DIET PLAN VIEW */}
-        {currentView === 'diet-plan' && activeMealPlanWeekly && (
+        {currentView === 'diet-plan' && (activeMealPlanWeekly || formData.partnerMealPlanWeekly) && (
           <div className="px-6 py-8">
             <div className="max-w-3xl mx-auto space-y-6">
-              
-              {/* Macro Summary */}
-              <div className="bg-[var(--card-bg)] border border-[var(--border)] rounded-[2rem] p-6">
-                <div className="flex items-center justify-between mb-8">
-                  <h3 className="text-xl font-black text-[var(--text-main)] flex items-center gap-2">
-                    <Target className="w-5 h-5 text-amber-500" />
-                    Obiettivo Giornaliero
-                  </h3>
-                  <button onClick={() => setCurrentView('diet-wizard')} className="p-3 bg-amber-500/10 text-amber-500 rounded-xl hover:bg-amber-500/20 transition-colors">
-                    <RefreshCw className="w-5 h-5" />
+
+              {/* Partner Mode Selector if Partner Diet is available */}
+              {formData.partnerMealPlanWeekly && (
+                <div className="flex bg-[var(--surface-variant)] p-1.5 rounded-2xl gap-1.5 border border-[var(--border)] shadow-inner">
+                  <button
+                    onClick={() => setDietViewMode('me')}
+                    className={`flex-1 py-2.5 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 ${
+                      dietViewMode === 'me'
+                        ? 'bg-amber-500 text-white shadow-md'
+                        : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
+                    }`}
+                  >
+                    <span>👤 Le mie porzioni</span>
+                  </button>
+
+                  <button
+                    onClick={() => setDietViewMode('couple')}
+                    className={`flex-1 py-2.5 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 ${
+                      dietViewMode === 'couple'
+                        ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-md'
+                        : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
+                    }`}
+                  >
+                    <ChefHat className="w-4 h-4" />
+                    <span>🍳 Cucina Insieme (x2)</span>
+                  </button>
+
+                  <button
+                    onClick={() => setDietViewMode('partner')}
+                    className={`flex-1 py-2.5 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 ${
+                      dietViewMode === 'partner'
+                        ? 'bg-amber-500 text-white shadow-md'
+                        : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
+                    }`}
+                  >
+                    <span>👥 {formData.partnerName || 'Partner'}</span>
                   </button>
                 </div>
+              )}
 
-                <div className="text-center mb-8">
-                  <p className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] mb-1">Calorie Target</p>
-                  <p className="text-5xl font-black text-amber-500">{formData.targetCalories} <span className="text-xl text-[var(--text-muted)]">kcal</span></p>
-                  <p className="text-xs font-semibold text-[var(--text-muted)] mt-2">BMR: {formData.bmr} kcal • TDEE: {formData.tdee} kcal</p>
+              {/* Partner Invite Banner if no partner diet is loaded yet */}
+              {!formData.partnerMealPlanWeekly && (
+                <div className="bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-amber-500/5 border border-amber-500/20 rounded-[2rem] p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm">
+                  <div className="flex items-center gap-3.5">
+                    <div className="w-11 h-11 rounded-2xl bg-amber-500/20 flex items-center justify-center text-amber-500 shrink-0">
+                      <ChefHat className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <h4 className="font-black text-sm text-[var(--text-main)]">Cucina insieme al tuo Partner 🍳</h4>
+                      <p className="text-xs text-[var(--text-muted)] mt-0.5">
+                        Passagli la tua dieta con un QR: cucinerete gli stessi piatti calcolando le porzioni esatte per ciascuno!
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+                    <button
+                      onClick={() => { setShareSubtype('diet'); setShowShareModal(true); }}
+                      className="px-3.5 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-black shadow-md shadow-amber-500/20 transition-all flex items-center gap-1.5 active:scale-95"
+                    >
+                      <Share2 className="w-3.5 h-3.5" />
+                      <span>Invia Dieta</span>
+                    </button>
+                    <button
+                      onClick={() => setShowReceiveModal(true)}
+                      className="px-3.5 py-2 bg-[var(--card-bg)] border border-[var(--border)] hover:bg-[var(--surface-variant)] text-[var(--text-main)] rounded-xl text-xs font-bold transition-all flex items-center gap-1.5"
+                    >
+                      <QrCode className="w-3.5 h-3.5" />
+                      <span>Ricevi</span>
+                    </button>
+                  </div>
                 </div>
+              )}
+              
+              {/* Macro Summary */}
+              {(() => {
+                const isPartnerView = dietViewMode === 'partner' && formData.partnerMealPlanWeekly;
+                const currentPlan = isPartnerView ? formData.partnerMealPlanWeekly! : (activeMealPlanWeekly || []);
+                const currentCalories = isPartnerView ? (formData.partnerTargetCalories || 0) : (formData.targetCalories || 0);
+                const currentDay = currentPlan[expandedDayIndex || 0] || currentPlan[0];
 
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="bg-[var(--bg)] p-4 rounded-2xl text-center border-b-4 border-blue-500">
-                    <p className="text-lg font-black text-[var(--text-main)]">{Math.round(activeMealPlanWeekly[expandedDayIndex || 0].totalCarbs)}g</p>
-                    <p className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest mt-1">Carboidrati</p>
+                return (
+                  <div className="bg-[var(--card-bg)] border border-[var(--border)] rounded-[2rem] p-6 shadow-sm">
+                    <div className="flex items-center justify-between mb-8">
+                      <h3 className="text-xl font-black text-[var(--text-main)] flex items-center gap-2">
+                        <Target className="w-5 h-5 text-amber-500" />
+                        {dietViewMode === 'partner' 
+                          ? `Fabbisogno di ${formData.partnerName || 'Partner'}` 
+                          : dietViewMode === 'couple' 
+                          ? 'Porzioni Calibrate di Coppia' 
+                          : 'Obiettivo Giornaliero'}
+                      </h3>
+                      <div className="flex items-center gap-2">
+                        <button 
+                          onClick={() => { setShareSubtype('diet'); setShowShareModal(true); }}
+                          className="p-3 bg-amber-500/10 text-amber-500 rounded-xl hover:bg-amber-500/20 transition-colors flex items-center gap-1 text-xs font-bold"
+                          title="Invia la dieta al partner"
+                        >
+                          <Share2 className="w-4 h-4" />
+                          <span className="hidden sm:inline">Invia</span>
+                        </button>
+                        <button onClick={() => setCurrentView('diet-wizard')} className="p-3 bg-[var(--surface-variant)] text-[var(--text-muted)] hover:text-[var(--text-main)] rounded-xl transition-colors">
+                          <RefreshCw className="w-5 h-5" />
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="text-center mb-8">
+                      <p className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] mb-1">
+                        {dietViewMode === 'partner' ? `Calorie Target Partner` : 'Calorie Target'}
+                      </p>
+                      <p className="text-5xl font-black text-amber-500">{currentCalories} <span className="text-xl text-[var(--text-muted)]">kcal</span></p>
+                      <p className="text-xs font-semibold text-[var(--text-muted)] mt-2">
+                        {dietViewMode === 'partner' 
+                          ? `Piano alimentare personalizzato per ${formData.partnerName || 'Partner'}` 
+                          : `BMR: ${formData.bmr || '—'} kcal • TDEE: ${formData.tdee || '—'} kcal`}
+                      </p>
+                    </div>
+
+                    {currentDay && (
+                      <div className="grid grid-cols-3 gap-4">
+                        <div className="bg-[var(--bg)] p-4 rounded-2xl text-center border-b-4 border-blue-500">
+                          <p className="text-lg font-black text-[var(--text-main)]">{Math.round(currentDay.totalCarbs)}g</p>
+                          <p className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest mt-1">Carboidrati</p>
+                        </div>
+                        <div className="bg-[var(--bg)] p-4 rounded-2xl text-center border-b-4 border-red-500">
+                          <p className="text-lg font-black text-[var(--text-main)]">{Math.round(currentDay.totalProtein)}g</p>
+                          <p className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest mt-1">Proteine</p>
+                        </div>
+                        <div className="bg-[var(--bg)] p-4 rounded-2xl text-center border-b-4 border-yellow-500">
+                          <p className="text-lg font-black text-[var(--text-main)]">{Math.round(currentDay.totalFat)}g</p>
+                          <p className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest mt-1">Grassi</p>
+                        </div>
+                      </div>
+                    )}
                   </div>
-                  <div className="bg-[var(--bg)] p-4 rounded-2xl text-center border-b-4 border-red-500">
-                    <p className="text-lg font-black text-[var(--text-main)]">{Math.round(activeMealPlanWeekly[expandedDayIndex || 0].totalProtein)}g</p>
-                    <p className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest mt-1">Proteine</p>
-                  </div>
-                  <div className="bg-[var(--bg)] p-4 rounded-2xl text-center border-b-4 border-yellow-500">
-                    <p className="text-lg font-black text-[var(--text-main)]">{Math.round(activeMealPlanWeekly[expandedDayIndex || 0].totalFat)}g</p>
-                    <p className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest mt-1">Grassi</p>
-                  </div>
-                </div>
-              </div>
+                );
+              })()}
 
               {/* Day Selector */}
               <div className="flex gap-2 overflow-x-auto custom-scrollbar pb-2">
@@ -1355,108 +1846,158 @@ export function FitnessScreen({ module, onClose, onSave }: FitnessScreenProps) {
               </div>
 
               {/* Meals for selected day */}
-              <div className="space-y-4">
-                <div className="flex items-center justify-between ml-2 mr-1">
-                  <h4 className="font-bold text-[var(--text-muted)] uppercase tracking-widest text-xs">Pasti Consigliati del Giorno</h4>
-                  <div className="flex items-center gap-2">
-                    <button 
-                      onClick={() => handleToggleAllMealNotifications(true)}
-                      className="px-2.5 py-1 bg-amber-500/10 hover:bg-amber-500/20 text-amber-500 rounded-xl text-[10px] font-extrabold transition-colors flex items-center gap-1 border border-amber-500/20"
-                      title="Attiva le notifiche per tutti i pasti di questo piano"
-                    >
-                      <Bell className="w-3 h-3" />
-                      <span>Attiva Tutti</span>
-                    </button>
-                    <button 
-                      onClick={() => handleToggleAllMealNotifications(false)}
-                      className="px-2 py-1 bg-[var(--surface-variant)] hover:bg-[var(--border)] text-[var(--text-muted)] rounded-xl text-[10px] font-bold transition-colors"
-                      title="Disattiva tutte le notifiche dei pasti"
-                    >
-                      Off
-                    </button>
-                  </div>
-                </div>
+              {(() => {
+                const isPartnerView = dietViewMode === 'partner' && formData.partnerMealPlanWeekly;
+                const activePlan = isPartnerView ? formData.partnerMealPlanWeekly! : (activeMealPlanWeekly || []);
+                const selectedDay = activePlan[expandedDayIndex || 0] || activePlan[0];
+                const partnerDay = formData.partnerMealPlanWeekly?.[expandedDayIndex || 0] || formData.partnerMealPlanWeekly?.[0];
 
-                {activeMealPlanWeekly[expandedDayIndex || 0].meals.map((meal, idx) => {
-                  const key = `${expandedDayIndex || 0}_${idx}`;
-                  const isSearching = isSearchingRecipe[key];
-                  const mealTime = meal.time || (idx === 0 ? '08:00' : idx === 1 ? '10:30' : idx === 2 ? '13:00' : idx === 3 ? '16:30' : '20:00');
-                  
-                  return (
-                  <div key={idx} className="bg-[var(--card-bg)] border border-[var(--border)] rounded-[2rem] overflow-hidden shadow-sm">
-                    {/* Card Header */}
-                    <div className="p-5 flex flex-col gap-3">
-                      <div className="flex justify-between items-start">
-                        <div className="flex-1 min-w-0 pr-2">
-                          <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-                            <span className="text-[10px] font-black uppercase tracking-widest text-amber-500">Pasto {idx + 1}</span>
-                            
-                            {/* Time Badge Input */}
-                            <div className="flex items-center gap-1 bg-[var(--bg)] border border-[var(--border)] rounded-xl px-2 py-0.5 text-xs font-bold text-[var(--text-main)] shadow-inner">
-                              <Clock className="w-3 h-3 text-amber-500 shrink-0" />
-                              <input 
-                                type="time" 
-                                value={mealTime} 
-                                onChange={(e) => handleUpdateMealTime(expandedDayIndex || 0, idx, e.target.value)}
-                                className="bg-transparent text-[var(--text-main)] font-extrabold text-xs outline-none cursor-pointer w-14"
-                              />
+                if (!selectedDay) return null;
+
+                return (
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between ml-2 mr-1">
+                      <h4 className="font-bold text-[var(--text-muted)] uppercase tracking-widest text-xs">
+                        {dietViewMode === 'couple' ? 'Pasti di Coppia (Cucina Insieme)' : isPartnerView ? `Pasti di ${formData.partnerName || 'Partner'}` : 'Pasti Consigliati del Giorno'}
+                      </h4>
+                      <div className="flex items-center gap-2">
+                        <button 
+                          onClick={() => handleToggleAllMealNotifications(true)}
+                          className="px-2.5 py-1 bg-amber-500/10 hover:bg-amber-500/20 text-amber-500 rounded-xl text-[10px] font-extrabold transition-colors flex items-center gap-1 border border-amber-500/20"
+                          title="Attiva le notifiche per tutti i pasti di questo piano"
+                        >
+                          <Bell className="w-3 h-3" />
+                          <span>Attiva Tutti</span>
+                        </button>
+                        <button 
+                          onClick={() => handleToggleAllMealNotifications(false)}
+                          className="px-2 py-1 bg-[var(--surface-variant)] hover:bg-[var(--border)] text-[var(--text-muted)] rounded-xl text-[10px] font-bold transition-colors"
+                          title="Disattiva tutte le notifiche dei pasti"
+                        >
+                          Off
+                        </button>
+                      </div>
+                    </div>
+
+                    {selectedDay.meals.map((meal, idx) => {
+                      const key = `${expandedDayIndex || 0}_${idx}`;
+                      const isSearching = isSearchingRecipe[key];
+                      const mealTime = meal.time || (idx === 0 ? '08:00' : idx === 1 ? '10:30' : idx === 2 ? '13:00' : idx === 3 ? '16:30' : '20:00');
+                      const partnerMeal = partnerDay?.meals?.[idx];
+
+                      return (
+                      <div key={idx} className="bg-[var(--card-bg)] border border-[var(--border)] rounded-[2rem] overflow-hidden shadow-sm transition-all hover:border-amber-500/30">
+                        {/* Card Header */}
+                        <div className="p-5 flex flex-col gap-3">
+                          <div className="flex justify-between items-start">
+                            <div className="flex-1 min-w-0 pr-2">
+                              <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                                <span className="text-[10px] font-black uppercase tracking-widest text-amber-500">Pasto {idx + 1}</span>
+                                
+                                {/* Time Badge Input */}
+                                <div className="flex items-center gap-1 bg-[var(--bg)] border border-[var(--border)] rounded-xl px-2 py-0.5 text-xs font-bold text-[var(--text-main)] shadow-inner">
+                                  <Clock className="w-3 h-3 text-amber-500 shrink-0" />
+                                  <input 
+                                    type="time" 
+                                    value={mealTime} 
+                                    onChange={(e) => handleUpdateMealTime(expandedDayIndex || 0, idx, e.target.value)}
+                                    className="bg-transparent text-[var(--text-main)] font-extrabold text-xs outline-none cursor-pointer w-14"
+                                  />
+                                </div>
+
+                                {/* Notification Toggle Button */}
+                                <button
+                                  onClick={() => handleToggleMealNotification(expandedDayIndex || 0, idx)}
+                                  className={`px-2 py-0.5 rounded-xl border transition-all flex items-center gap-1 text-[10px] font-extrabold ${
+                                    meal.notificationsEnabled 
+                                      ? 'bg-amber-500 text-white border-amber-500 shadow-md shadow-amber-500/20' 
+                                      : 'bg-[var(--bg)] text-[var(--text-muted)] border-[var(--border)] hover:border-amber-500 hover:text-amber-500'
+                                  }`}
+                                  title={meal.notificationsEnabled ? `Notifica attiva per le ${mealTime}` : `Attiva notifica per le ${mealTime}`}
+                                >
+                                  <Bell className="w-3 h-3 shrink-0" />
+                                  <span>{meal.notificationsEnabled ? 'Notifica ON' : 'Notifica'}</span>
+                                </button>
+                              </div>
+                              <h5 className="font-bold text-base text-[var(--text-main)] leading-tight">{meal.name}</h5>
                             </div>
 
-                            {/* Notification Toggle Button */}
-                            <button
-                              onClick={() => handleToggleMealNotification(expandedDayIndex || 0, idx)}
-                              className={`px-2 py-0.5 rounded-xl border transition-all flex items-center gap-1 text-[10px] font-extrabold ${
-                                meal.notificationsEnabled 
-                                  ? 'bg-amber-500 text-white border-amber-500 shadow-md shadow-amber-500/20' 
-                                  : 'bg-[var(--bg)] text-[var(--text-muted)] border-[var(--border)] hover:border-amber-500 hover:text-amber-500'
-                              }`}
-                              title={meal.notificationsEnabled ? `Notifica attiva per le ${mealTime}` : `Attiva notifica per le ${mealTime}`}
-                            >
-                              <Bell className="w-3 h-3 shrink-0" />
-                              <span>{meal.notificationsEnabled ? 'Notifica ON' : 'Notifica'}</span>
-                            </button>
+                            <div className="text-right shrink-0 ml-3 bg-amber-500/10 rounded-2xl px-3 py-2">
+                              <p className="font-black text-lg text-amber-500 leading-none">{meal.calories}</p>
+                              <p className="text-[10px] font-bold text-amber-500/70 uppercase">kcal</p>
+                            </div>
                           </div>
-                          <h5 className="font-bold text-base text-[var(--text-main)] leading-tight">{meal.name}</h5>
-                        </div>
-                        <div className="text-right shrink-0 ml-3 bg-amber-500/10 rounded-2xl px-3 py-2">
-                          <p className="font-black text-lg text-amber-500 leading-none">{meal.calories}</p>
-                          <p className="text-[10px] font-bold text-amber-500/70 uppercase">kcal</p>
-                        </div>
-                      </div>
-                      <p className="text-sm text-[var(--text-muted)] font-medium leading-relaxed">{meal.description}</p>
-                    </div>
-                    {/* Card Footer */}
-                    <div className="border-t border-[var(--border)] bg-[var(--bg)] px-5 py-3 flex items-center justify-between gap-3 flex-wrap">
-                      <div className="flex items-center gap-2 text-xs font-bold flex-wrap">
-                        <span className="bg-blue-500/10 text-blue-500 px-2.5 py-1 rounded-lg">🍞 {meal.carbs}g</span>
-                        <span className="bg-red-500/10 text-red-500 px-2.5 py-1 rounded-lg">💪 {meal.protein}g</span>
-                        <span className="bg-yellow-500/10 text-yellow-500 px-2.5 py-1 rounded-lg">🫒 {meal.fat}g</span>
-                      </div>
-                      <div className="flex items-center gap-2 shrink-0">
-                        <button
-                          onClick={() => setSwappingMealInfo({ dayIndex: expandedDayIndex || 0, mealIndex: idx, meal })}
-                          className="px-3 py-1.5 bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5"
-                          title="Sostituisci questo piatto con un'alternativa"
-                        >
-                          <RefreshCw className="w-3.5 h-3.5" />
-                          <span>Cambia Piatto</span>
-                        </button>
+                          <p className="text-sm text-[var(--text-muted)] font-medium leading-relaxed">{meal.description}</p>
 
-                        {!meal.isSimple && (
-                          <button 
-                            onClick={() => loadAndFindRecipe(meal.name, meal.description, key, meal.recipeUrl)}
-                            disabled={isSearching}
-                            className="px-3 py-1.5 bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5"
-                          >
-                            {isSearching ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <span>Ricetta 📖</span>}
-                          </button>
-                        )}
+                          {/* Dual-Portion Comparison Card for Couple Cooking */}
+                          {partnerMeal && (dietViewMode === 'couple' || (!isPartnerView && formData.partnerMealPlanWeekly)) && (
+                            <div className="mt-2 bg-[var(--bg)] border border-amber-500/20 rounded-2xl p-3.5 space-y-2.5 shadow-inner">
+                              <div className="flex items-center justify-between text-xs font-black text-amber-500">
+                                <span className="flex items-center gap-1.5">
+                                  <ChefHat className="w-4 h-4" /> Porzioni di Coppia (Stessa Ricetta)
+                                </span>
+                                <span className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider">Cucina Insieme</span>
+                              </div>
+                              
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                                <div className="bg-[var(--card-bg)] p-3 rounded-xl border border-[var(--border)] flex flex-col justify-between">
+                                  <div className="flex items-center justify-between">
+                                    <span className="font-extrabold text-[var(--text-main)]">👤 Tu</span>
+                                    <span className="text-amber-500 font-black">{meal.calories} kcal</span>
+                                  </div>
+                                  <p className="text-[11px] text-[var(--text-muted)] mt-1.5 font-semibold">
+                                    🍞 {meal.carbs}g • 💪 {meal.protein}g • 🫒 {meal.fat}g
+                                  </p>
+                                </div>
+
+                                <div className="bg-[var(--card-bg)] p-3 rounded-xl border border-amber-500/30 flex flex-col justify-between">
+                                  <div className="flex items-center justify-between">
+                                    <span className="font-extrabold text-[var(--text-main)]">👥 {formData.partnerName || 'Partner'}</span>
+                                    <span className="text-amber-500 font-black">{partnerMeal.calories} kcal</span>
+                                  </div>
+                                  <p className="text-[11px] text-[var(--text-muted)] mt-1.5 font-semibold">
+                                    🍞 {partnerMeal.carbs}g • 💪 {partnerMeal.protein}g • 🫒 {partnerMeal.fat}g
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Card Footer */}
+                        <div className="border-t border-[var(--border)] bg-[var(--bg)] px-5 py-3 flex items-center justify-between gap-3 flex-wrap">
+                          <div className="flex items-center gap-2 text-xs font-bold flex-wrap">
+                            <span className="bg-blue-500/10 text-blue-500 px-2.5 py-1 rounded-lg">🍞 {meal.carbs}g</span>
+                            <span className="bg-red-500/10 text-red-500 px-2.5 py-1 rounded-lg">💪 {meal.protein}g</span>
+                            <span className="bg-yellow-500/10 text-yellow-500 px-2.5 py-1 rounded-lg">🫒 {meal.fat}g</span>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <button
+                              onClick={() => setSwappingMealInfo({ dayIndex: expandedDayIndex || 0, mealIndex: idx, meal })}
+                              className="px-3 py-1.5 bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5"
+                              title="Sostituisci questo piatto con un'alternativa"
+                            >
+                              <RefreshCw className="w-3.5 h-3.5" />
+                              <span>Cambia Piatto</span>
+                            </button>
+
+                            {!meal.isSimple && (
+                              <button 
+                                onClick={() => loadAndFindRecipe(meal.name, meal.description, key, meal.recipeUrl)}
+                                disabled={isSearching}
+                                className="px-3 py-1.5 bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5"
+                              >
+                                {isSearching ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <span>Ricetta 📖</span>}
+                              </button>
+                            )}
+                          </div>
+                        </div>
                       </div>
-                    </div>
+                      );
+                    })}
                   </div>
-                  );
-                })}
-              </div>
+                );
+              })()}
             </div>
           </div>
         )}
@@ -1546,6 +2087,430 @@ export function FitnessScreen({ module, onClose, onSave }: FitnessScreenProps) {
                     ));
                   })()}
                 </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* ─── MODAL 1: CONDIVIDI CON PARTNER ────────────────────── */}
+        <AnimatePresence>
+          {showShareModal && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowShareModal(false)}
+              className="fixed inset-0 z-[220] bg-black/75 backdrop-blur-md flex items-center justify-center p-4"
+            >
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0, y: 20 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                exit={{ scale: 0.9, opacity: 0, y: 20 }}
+                onClick={(e) => e.stopPropagation()}
+                className="bg-[var(--card-bg)] border border-[var(--border)] rounded-[2.5rem] p-6 sm:p-8 max-w-lg w-full max-h-[90vh] flex flex-col shadow-2xl overflow-y-auto custom-scrollbar"
+              >
+                {/* Header */}
+                <div className="flex items-center justify-between pb-4 border-b border-[var(--border)] shrink-0">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-2xl bg-amber-500/10 flex items-center justify-center text-amber-500 shrink-0">
+                      <Share2 className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg sm:text-xl font-black text-[var(--text-main)]">Condividi con il Partner</h3>
+                      <p className="text-xs text-[var(--text-muted)] font-medium">Passa la tua scheda o la tua dieta</p>
+                    </div>
+                  </div>
+                  <button 
+                    onClick={() => setShowShareModal(false)}
+                    className="p-2.5 bg-[var(--surface-variant)] hover:bg-[var(--border)] rounded-xl text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                {/* Subtype Selector */}
+                <div className="my-5 flex bg-[var(--surface-variant)] p-1.5 rounded-2xl gap-1 border border-[var(--border)] shrink-0">
+                  {formData.mealPlanWeekly && (
+                    <button
+                      onClick={() => setShareSubtype('diet')}
+                      className={`flex-1 py-2 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 ${
+                        shareSubtype === 'diet'
+                          ? 'bg-amber-500 text-white shadow-md'
+                          : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
+                      }`}
+                    >
+                      <Utensils className="w-3.5 h-3.5" />
+                      <span>Solo Dieta</span>
+                    </button>
+                  )}
+                  {formData.workoutPlan && (
+                    <button
+                      onClick={() => setShareSubtype('workout')}
+                      className={`flex-1 py-2 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 ${
+                        shareSubtype === 'workout'
+                          ? 'bg-emerald-500 text-white shadow-md'
+                          : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
+                      }`}
+                    >
+                      <Dumbbell className="w-3.5 h-3.5" />
+                      <span>Solo Fitness</span>
+                    </button>
+                  )}
+                  {formData.mealPlanWeekly && formData.workoutPlan && (
+                    <button
+                      onClick={() => setShareSubtype('all')}
+                      className={`flex-1 py-2 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 ${
+                        shareSubtype === 'all'
+                          ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-md'
+                          : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
+                      }`}
+                    >
+                      <Sparkles className="w-3.5 h-3.5" />
+                      <span>Tutto</span>
+                    </button>
+                  )}
+                </div>
+
+                {/* QR Code Container */}
+                <div className="flex flex-col items-center justify-center my-2 shrink-0">
+                  <div className="bg-white p-4 sm:p-5 rounded-3xl shadow-xl border-4 border-white/80 inline-block">
+                    <QRCodeSVG 
+                      value={sharePayload} 
+                      size={210} 
+                      level="M" 
+                      includeMargin={false}
+                    />
+                  </div>
+                  <p className="text-xs text-center text-[var(--text-muted)] font-semibold mt-4 max-w-xs leading-relaxed">
+                    Fai inquadrare questo QR al tuo partner dalla sua app Chelona (tasto <b>Ricevi da Partner</b>) per importare il piano in 1 secondo!
+                  </p>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="grid grid-cols-2 gap-3 mt-6 pt-4 border-t border-[var(--border)] shrink-0">
+                  <button
+                    onClick={handleCopyShareCode}
+                    className="py-3.5 px-4 bg-[var(--surface-variant)] hover:bg-[var(--border)] active:scale-95 text-[var(--text-main)] font-black text-xs rounded-2xl transition-all flex items-center justify-center gap-2 border border-[var(--border)]"
+                  >
+                    {hasCopiedShareCode ? (
+                      <>
+                        <CheckCheck className="w-4 h-4 text-emerald-500" />
+                        <span className="text-emerald-500">Copiato! ✓</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-4 h-4 text-[var(--text-muted)]" />
+                        <span>Copia Codice</span>
+                      </>
+                    )}
+                  </button>
+
+                  <button
+                    onClick={handleShareNative}
+                    className="py-3.5 px-4 bg-gradient-to-r from-amber-500 to-orange-500 hover:opacity-95 active:scale-95 text-white font-black text-xs rounded-2xl shadow-lg shadow-amber-500/25 transition-all flex items-center justify-center gap-2"
+                  >
+                    <Share2 className="w-4 h-4" />
+                    <span>Invia ad App</span>
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* ─── MODAL 2: RICEVI DA PARTNER ────────────────────────── */}
+        <AnimatePresence>
+          {showReceiveModal && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowReceiveModal(false)}
+              className="fixed inset-0 z-[220] bg-black/75 backdrop-blur-md flex items-center justify-center p-4"
+            >
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0, y: 20 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                exit={{ scale: 0.9, opacity: 0, y: 20 }}
+                onClick={(e) => e.stopPropagation()}
+                className="bg-[var(--card-bg)] border border-[var(--border)] rounded-[2.5rem] p-6 sm:p-8 max-w-lg w-full max-h-[90vh] flex flex-col shadow-2xl overflow-y-auto custom-scrollbar"
+              >
+                {/* Header */}
+                <div className="flex items-center justify-between pb-4 border-b border-[var(--border)] shrink-0">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 flex items-center justify-center text-emerald-500 shrink-0">
+                      <QrCode className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg sm:text-xl font-black text-[var(--text-main)]">Ricevi da Partner</h3>
+                      <p className="text-xs text-[var(--text-muted)] font-medium">Scansiona o incolla la scheda/dieta</p>
+                    </div>
+                  </div>
+                  <button 
+                    onClick={() => setShowReceiveModal(false)}
+                    className="p-2.5 bg-[var(--surface-variant)] hover:bg-[var(--border)] rounded-xl text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                {/* Main Action: Camera Scanner */}
+                <div className="my-6 space-y-4">
+                  <button
+                    onClick={() => setIsScanningPartnerQr(true)}
+                    className="w-full p-6 bg-gradient-to-br from-emerald-500 to-teal-600 hover:opacity-95 active:scale-[0.98] text-white rounded-3xl shadow-xl shadow-emerald-500/25 transition-all flex flex-col items-center justify-center gap-3 group text-center"
+                  >
+                    <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center text-white group-hover:scale-110 transition-transform">
+                      <Camera className="w-8 h-8" />
+                    </div>
+                    <div>
+                      <p className="font-black text-lg">Inquadra il QR del Partner</p>
+                      <p className="text-xs text-white/80 font-medium mt-0.5">Apri la fotocamera e inquadra lo schermo del partner</p>
+                    </div>
+                  </button>
+
+                  <div className="flex items-center gap-3 my-4">
+                    <div className="h-[1px] bg-[var(--border)] flex-1" />
+                    <span className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)]">oppure incolla codice</span>
+                    <div className="h-[1px] bg-[var(--border)] flex-1" />
+                  </div>
+
+                  {/* Manual Paste */}
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider block">
+                      Codice condiviso (es. via WhatsApp)
+                    </label>
+                    <textarea
+                      rows={3}
+                      value={manualCodeInput}
+                      onChange={(e) => setManualCodeInput(e.target.value)}
+                      placeholder="Incolla qui il codice LZW:... ricevuto dal partner"
+                      className="w-full bg-[var(--bg)] border border-[var(--border)] rounded-2xl p-3 text-xs text-[var(--text-main)] font-mono outline-none focus:border-emerald-500 resize-none transition-colors"
+                    />
+                    <button
+                      onClick={() => {
+                        if (!manualCodeInput.trim()) {
+                          alert("Incolla prima il codice.");
+                          return;
+                        }
+                        processIncomingData(manualCodeInput);
+                      }}
+                      disabled={!manualCodeInput.trim()}
+                      className="w-full py-3 bg-[var(--card-bg)] border border-[var(--border)] hover:border-emerald-500 hover:bg-emerald-500/10 text-[var(--text-main)] hover:text-emerald-500 font-bold text-xs rounded-xl transition-all disabled:opacity-40"
+                    >
+                      Analizza e Importa Codice
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* ─── FULLSCREEN QR SCANNER ─────────────────────────────── */}
+        {isScanningPartnerQr && (
+          <QrScanner
+            onScan={(decodedText) => processIncomingData(decodedText)}
+            onClose={() => setIsScanningPartnerQr(false)}
+          />
+        )}
+
+        {/* ─── MODAL 3: DIALOGO INTELLIGENTE IMPORTAZIONE E ADATTAMENTO ─── */}
+        <AnimatePresence>
+          {parsedIncomingData && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setParsedIncomingData(null)}
+              className="fixed inset-0 z-[230] bg-black/80 backdrop-blur-md flex items-center justify-center p-4"
+            >
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0, y: 20 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                exit={{ scale: 0.9, opacity: 0, y: 20 }}
+                onClick={(e) => e.stopPropagation()}
+                className="bg-[var(--card-bg)] border border-[var(--border)] rounded-[2.5rem] p-6 sm:p-8 max-w-lg w-full max-h-[90vh] flex flex-col shadow-2xl overflow-y-auto custom-scrollbar space-y-6"
+              >
+                {/* Header */}
+                <div className="flex items-center justify-between pb-4 border-b border-[var(--border)] shrink-0">
+                  <div className="flex items-center gap-3">
+                    <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 text-white flex items-center justify-center shrink-0 shadow-lg shadow-amber-500/25">
+                      <Sparkles className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg sm:text-xl font-black text-[var(--text-main)]">Piano Partner Ricevuto!</h3>
+                      <p className="text-xs text-[var(--text-muted)] font-medium">Scegli come importare i dati</p>
+                    </div>
+                  </div>
+                  <button 
+                    onClick={() => setParsedIncomingData(null)}
+                    className="p-2.5 bg-[var(--surface-variant)] hover:bg-[var(--border)] rounded-xl text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                {/* Content Overview */}
+                <div className="bg-[var(--bg)] border border-[var(--border)] rounded-2xl p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-[var(--text-muted)]">Nome Partner</span>
+                    <input
+                      type="text"
+                      value={partnerDisplayName}
+                      onChange={(e) => setPartnerDisplayName(e.target.value)}
+                      className="bg-[var(--card-bg)] border border-[var(--border)] rounded-xl px-3 py-1 text-xs font-bold text-[var(--text-main)] text-right outline-none focus:border-amber-500 w-32"
+                      placeholder="Partner"
+                    />
+                  </div>
+
+                  {parsedIncomingData.mealPlanWeekly && (
+                    <div className="flex items-center justify-between text-xs pt-2 border-t border-[var(--border)]">
+                      <span className="text-[var(--text-muted)] font-semibold flex items-center gap-1.5">
+                        <Utensils className="w-4 h-4 text-amber-500" /> Dieta Ricevuta
+                      </span>
+                      <span className="font-extrabold text-[var(--text-main)]">
+                        {parsedIncomingData.mealPlanWeekly.length} giorni • {parsedIncomingData.targetCalories || '—'} kcal
+                      </span>
+                    </div>
+                  )}
+
+                  {parsedIncomingData.workoutPlan && (
+                    <div className="flex items-center justify-between text-xs pt-2 border-t border-[var(--border)]">
+                      <span className="text-[var(--text-muted)] font-semibold flex items-center gap-1.5">
+                        <Dumbbell className="w-4 h-4 text-emerald-500" /> Scheda Allenamento
+                      </span>
+                      <span className="font-extrabold text-[var(--text-main)]">
+                        {parsedIncomingData.workoutPlan.length} giorni di esercizi
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                {/* DIET IMPORT OPTIONS */}
+                {parsedIncomingData.mealPlanWeekly && (
+                  <div className="space-y-4">
+                    <div className="space-y-1">
+                      <h4 className="text-sm font-black text-[var(--text-main)] flex items-center gap-2">
+                        <ChefHat className="w-4 h-4 text-amber-500" />
+                        Opzioni per Cucinare Insieme
+                      </h4>
+                      <p className="text-xs text-[var(--text-muted)]">
+                        Vuoi cucinare gli stessi piatti ma con porzioni adatte al tuo fabbisogno calorico?
+                      </p>
+                    </div>
+
+                    {/* Target Calories Input for Recipient */}
+                    <div className="bg-amber-500/10 border border-amber-500/25 rounded-2xl p-4 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <label className="text-xs font-bold text-[var(--text-main)]">
+                          Le TUE Calorie Giornaliere:
+                        </label>
+                        <div className="flex items-center gap-1.5 bg-[var(--card-bg)] border border-amber-500/30 rounded-xl px-3 py-1 shadow-sm">
+                          <input
+                            type="number"
+                            value={customScaleCalories || ''}
+                            onChange={(e) => setCustomScaleCalories(parseInt(e.target.value) || 0)}
+                            className="bg-transparent font-black text-base text-amber-500 outline-none w-20 text-right"
+                          />
+                          <span className="text-xs font-bold text-[var(--text-muted)]">kcal</span>
+                        </div>
+                      </div>
+                      <p className="text-[11px] text-[var(--text-muted)] leading-relaxed">
+                        Tutti i piatti del partner verranno ricalcolati esattamente per raggiungere {customScaleCalories} kcal. Potrete cucinare la stessa pietanza pesando le rispettive porzioni!
+                      </p>
+                    </div>
+
+                    <div className="space-y-2.5">
+                      {/* Option 1: Scale & Cook Together (Recommended) */}
+                      <button
+                        onClick={() => handleApplyImport('scale_diet')}
+                        className="w-full p-4 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white rounded-2xl text-left shadow-lg shadow-amber-500/20 transition-all flex items-start gap-3.5 group active:scale-[0.98]"
+                      >
+                        <div className="w-8 h-8 rounded-xl bg-white/20 flex items-center justify-center shrink-0 mt-0.5">
+                          <ChefHat className="w-5 h-5 text-white" />
+                        </div>
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <p className="font-black text-sm">Cuciniamo Insieme (Consigliato)</p>
+                            <span className="bg-white/20 text-white text-[9px] font-black px-2 py-0.5 rounded-full uppercase">Top</span>
+                          </div>
+                          <p className="text-xs text-white/90 mt-0.5 font-medium leading-relaxed">
+                            Stessi identici piatti del partner, ma porzioni e grammi ricalcolati sulle tue <b>{customScaleCalories} kcal</b>.
+                          </p>
+                        </div>
+                      </button>
+
+                      {/* Option 2: Exact 1:1 */}
+                      <button
+                        onClick={() => handleApplyImport('exact_diet')}
+                        className="w-full p-4 bg-[var(--bg)] border border-[var(--border)] hover:border-amber-500/50 rounded-2xl text-left transition-all flex items-start gap-3.5 group active:scale-[0.98]"
+                      >
+                        <div className="w-8 h-8 rounded-xl bg-[var(--surface-variant)] flex items-center justify-center shrink-0 mt-0.5 text-[var(--text-muted)] group-hover:text-amber-500">
+                          <Copy className="w-4 h-4" />
+                        </div>
+                        <div className="flex-1">
+                          <p className="font-bold text-sm text-[var(--text-main)] group-hover:text-amber-500 transition-colors">
+                            Copia Esatta 1:1 ({parsedIncomingData.targetCalories || '—'} kcal)
+                          </p>
+                          <p className="text-xs text-[var(--text-muted)] mt-0.5 font-medium leading-relaxed">
+                            Importa la dieta tale e quale con le stesse identiche grammature del partner.
+                          </p>
+                        </div>
+                      </button>
+
+                      {/* Option 3: Save as Partner Only */}
+                      <button
+                        onClick={() => handleApplyImport('partner_diet_only')}
+                        className="w-full p-3.5 bg-[var(--bg)] border border-[var(--border)] hover:border-indigo-500/50 rounded-2xl text-left transition-all flex items-center gap-3 text-xs font-bold text-[var(--text-muted)] hover:text-[var(--text-main)]"
+                      >
+                        <Users className="w-4 h-4 text-indigo-500 shrink-0" />
+                        <span>Salva solo come scheda partner (mantieni la mia dieta attuale)</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* WORKOUT IMPORT OPTIONS */}
+                {parsedIncomingData.workoutPlan && (
+                  <div className="space-y-3 pt-4 border-t border-[var(--border)]">
+                    <h4 className="text-sm font-black text-[var(--text-main)] flex items-center gap-2">
+                      <Dumbbell className="w-4 h-4 text-emerald-500" />
+                      Scheda Allenamento
+                    </h4>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                      <button
+                        onClick={() => handleApplyImport('replace_workout')}
+                        className="p-3.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-2xl text-left text-xs font-bold shadow-md shadow-emerald-500/20 transition-all flex flex-col justify-between gap-1"
+                      >
+                        <span className="font-black text-sm">Adotta Questa Scheda</span>
+                        <span className="text-[11px] opacity-90 font-normal">Sostituisci il tuo attuale piano allenamento</span>
+                      </button>
+
+                      <button
+                        onClick={() => handleApplyImport('partner_workout_only')}
+                        className="p-3.5 bg-[var(--bg)] border border-[var(--border)] hover:border-emerald-500 text-[var(--text-main)] rounded-2xl text-left text-xs font-bold transition-all flex flex-col justify-between gap-1"
+                      >
+                        <span className="font-black text-sm">Salva come Scheda Partner</span>
+                        <span className="text-[11px] text-[var(--text-muted)] font-normal">Tienila memorizzata per consultarla</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* IMPORT ALL OPTION */}
+                {parsedIncomingData.mealPlanWeekly && parsedIncomingData.workoutPlan && (
+                  <div className="pt-2">
+                    <button
+                      onClick={() => handleApplyImport('all')}
+                      className="w-full py-4 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white font-black text-sm rounded-2xl shadow-xl shadow-indigo-500/25 transition-all hover:opacity-95 active:scale-[0.98] flex items-center justify-center gap-2"
+                    >
+                      <Sparkles className="w-5 h-5" />
+                      <span>Sincronizza Tutto Insieme (Fitness + Dieta Calibrata)</span>
+                    </button>
+                  </div>
+                )}
               </motion.div>
             </motion.div>
           )}

@@ -256,6 +256,14 @@ export interface FitnessModule extends BaseModule {
   bmr?: number;
   tdee?: number;
   targetCalories?: number;
+  partnerName?: string;
+  partnerFitnessProfile?: import('./components/FitnessScreen').FitnessProfile;
+  partnerWorkoutPlan?: import('./components/FitnessScreen').WorkoutDay[];
+  partnerDietProfile?: import('./components/FitnessScreen').DietProfile;
+  partnerMealPlanWeekly?: import('./components/FitnessScreen').MealDay[];
+  partnerBmr?: number;
+  partnerTdee?: number;
+  partnerTargetCalories?: number;
 }
 
 export interface StudyModule extends BaseModule {
