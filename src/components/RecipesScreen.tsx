@@ -810,14 +810,40 @@ export function RecipesScreen({ onClose, initialSearchQuery, initialRecipe, init
                 <div className="space-y-8">
                   {selectedMeal.ingredients && selectedMeal.ingredients.length > 0 && (
                     <section>
-                      <h3 className="text-lg font-bold text-orange-500 mb-3 border-b border-[var(--border)] pb-2">Ingredienti</h3>
+                      <h3 className="text-lg font-bold text-orange-500 mb-3 border-b border-[var(--border)] pb-2">
+                        Ingredienti <span className="text-sm font-normal text-[var(--text-muted)]">({selectedMeal.ingredients.length})</span>
+                      </h3>
                       <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                         {selectedMeal.ingredients.map((ing: string, i: number) => {
                           const isMissing = selectedCategory === 'fridge' && selectedMeal.missingIngredients?.includes(ing);
+                          // Parse quantity: match patterns like "400 g", "2 cucchiai", "q.b.", "1/2", "1,5 kg" etc.
+                          // Format 1: "Nome ingrediente 400 g" → qty at the end
+                          // Format 2: "400 g Nome ingrediente" → qty at the start
+                          const qtyEndMatch = ing.match(/^(.*?)\s+((?:\d[\d.,/]*(?:\s*[-–]\s*\d[\d.,/]*)?)\s*(?:g|kg|ml|l|cl|dl|oz|lb|tazza|tazze|cucchiai[oe]?|cucchiaino|cucchiaini|spicchi?|fette?|foglie|foglia|pizzico|rametti?|q\.b\.?|pezzi?|n°?\s*\d+|\d+\s*pezzi?|mazzetti?|mazzo|filetti?|bustina|bustine|lattine?|barattolo|bicchiere|bicchieri|fetta|fette|scatola|sacchetti?|confezione|pacchetto|fascio|cespo|gambi?|grappolo)?)$/i);
+                          const qtyStartMatch = ing.match(/^((?:\d[\d.,/]*(?:\s*[-–]\s*\d[\d.,/]*)?)\s*(?:g|kg|ml|l|cl|dl|oz|lb|tazze?|cucchiai[oe]?|cucchiaino|cucchiaini|spicchi?|fette?|foglie|foglia|pizzico|rametti?|q\.b\.?|pezzi?|mazzetti?|mazzo|filetti?|bustine?|lattine?|barattolo|bicchieri?|fette?|scatola|sacchetti?|confezione|pacchetto|fascio|cespo|gambi?|grappolo)?)\s+(.+)$/i);
+                          
+                          let name = ing;
+                          let qty = '';
+                          
+                          if (qtyEndMatch && qtyEndMatch[2]?.trim()) {
+                            name = qtyEndMatch[1].trim();
+                            qty = qtyEndMatch[2].trim();
+                          } else if (qtyStartMatch && /^\d/.test(qtyStartMatch[1]) && qtyStartMatch[2]?.trim()) {
+                            qty = qtyStartMatch[1].trim();
+                            name = qtyStartMatch[2].trim();
+                          }
+                          
                           return (
-                            <li key={i} className={`flex items-start gap-2 text-sm ${isMissing ? 'text-red-400/80' : 'text-[var(--text-main)]'}`}>
-                              <span className={`w-1.5 h-1.5 rounded-full ${isMissing ? 'bg-red-500/50' : 'bg-orange-400'} mt-1.5 shrink-0`} />
-                              <span className="flex-1" dangerouslySetInnerHTML={{ __html: ing }} />
+                            <li key={i} className={`flex items-center gap-2 text-sm py-1.5 px-2 rounded-xl ${isMissing ? 'bg-red-900/20' : 'hover:bg-[var(--surface-variant)]'} transition-colors`}>
+                              <span className={`w-1.5 h-1.5 rounded-full ${isMissing ? 'bg-red-500/50' : 'bg-orange-400'} shrink-0`} />
+                              <span className={`flex-1 font-medium ${isMissing ? 'text-red-400/80' : 'text-[var(--text-main)]'}`}>
+                                {name}
+                              </span>
+                              {qty && (
+                                <span className="text-xs font-bold text-orange-500 bg-orange-500/10 px-2 py-0.5 rounded-full shrink-0 border border-orange-500/20">
+                                  {qty}
+                                </span>
+                              )}
                               {isMissing && <span className="text-[10px] font-bold bg-red-900/30 text-red-400 px-1.5 py-0.5 rounded ml-1 shrink-0">Manca</span>}
                             </li>
                           );
