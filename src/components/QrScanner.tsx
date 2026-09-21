@@ -62,11 +62,7 @@ export const QrScanner: React.FC<QrScannerProps> = ({ onScan, onClose }) => {
         scannerRef.current = html5QrCode;
         
         await html5QrCode.start(
-          { 
-            facingMode: 'environment',
-            width: { min: 640, ideal: 1280, max: 1920 },
-            height: { min: 480, ideal: 720, max: 1080 }
-          }, 
+          { facingMode: 'environment' },
           { 
             fps: 20,
             qrbox: (viewfinderWidth, viewfinderHeight) => {
@@ -75,6 +71,11 @@ export const QrScanner: React.FC<QrScannerProps> = ({ onScan, onClose }) => {
               return { width: qrboxSize, height: qrboxSize };
             },
             aspectRatio: 1.0,
+            videoConstraints: {
+              facingMode: 'environment',
+              width: { min: 320, ideal: 1280, max: 1920 },
+              height: { min: 240, ideal: 720, max: 1080 }
+            },
             experimentalFeatures: {
               useBarCodeDetectorIfSupported: true
             }
