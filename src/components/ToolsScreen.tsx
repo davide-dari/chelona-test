@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { DocumentScanner } from './DocumentScanner';
 import { ImageFilterTool } from './ImageFilterTool';
+import { VintedHelperTool } from './VintedHelperTool';
 import { PDFDocument, rgb, degrees } from 'pdf-lib';
 import { Module } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
@@ -405,9 +406,15 @@ export const ToolsScreen = ({ showToast, onSaveToSandbox, initialToolId, onReset
                )}
              </div>
 
-             <div className="flex-1 overflow-y-auto px-6 py-8 pb-32">
-                <div className="max-w-xl mx-auto space-y-6">
-                  {activeTool === 'scanner' ? (
+             <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-6 pb-32">
+                <div className={`${activeTool === 'vinted' ? 'max-w-3xl' : 'max-w-xl'} mx-auto space-y-6`}>
+                  {activeTool === 'vinted' ? (
+                    <VintedHelperTool
+                      onClose={reset}
+                      onSaveToSandbox={onSaveToSandbox}
+                      showToast={showToast}
+                    />
+                  ) : activeTool === 'scanner' ? (
                     <DocumentScanner 
                       onClose={reset} 
                       downloadOnly={!onSaveToSandbox}

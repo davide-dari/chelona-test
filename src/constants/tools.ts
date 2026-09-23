@@ -1,6 +1,6 @@
 import { 
   Layers, RotateCw, FileDown, Minimize, 
-  ImageIcon, Percent, Scan
+  ImageIcon, Percent, Scan, Shirt
 } from 'lucide-react';
 
 export const TOOLS_PDF = [
@@ -12,6 +12,7 @@ export const TOOLS_PDF = [
 ];
 
 export const TOOLS_UTILITY = [
+  { id: 'vinted', title: 'Aiuto Vinted', desc: 'Misure su foto, titoli e descrizioni top.', icon: Shirt, color: 'text-teal-500', bg: 'bg-teal-500/10', category: 'utility' },
   { id: 'scanner', title: 'Scanner', desc: 'Scansiona e crea PDF.', icon: Scan, color: 'text-[var(--success)]', bg: 'bg-[var(--success)]/10', category: 'utility' },
   { id: 'percent', title: 'Percentuale', desc: 'Sconti e variazioni.', icon: Percent, color: 'text-indigo-500', bg: 'bg-indigo-500/10', category: 'utility' },
   { id: 'image-filter', title: 'Filtri Immagine', desc: 'Applica filtri stile Instagram.', icon: ImageIcon, color: 'text-pink-500', bg: 'bg-pink-500/10', category: 'utility' }
