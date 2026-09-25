@@ -1,13 +1,14 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { 
   Store, Search, X, ChevronLeft, BarChart3, ExternalLink, CalendarDays, 
-  Star, Sparkles, MapPin, Navigation, Clock, AlertTriangle, RefreshCw, CheckCircle2 
+  Star, Sparkles, MapPin, Clock, AlertTriangle, RefreshCw, CheckCircle2 
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { StoreLogo } from './StoreLogo';
 import { VOLANTINI_DB, type VolantiniDb, type VolantinoChain, type VolantinoFlyer } from '../data/volantiniDb';
 import { OFFER_GROUPS, OFFER_DATE, FIDELITY_CARDS, type OfferEntry, type OfferCategory } from '../data/offerStats';
 import { loadZone, saveZone, resolveCap, type VolantiniZone } from '../services/zoneService';
+import { nearbySupermarketService } from '../services/nearbySupermarketService';
 import { 
   getLiveVolantiniDb, syncVolantiniRemote, formatUpdateDate, 
   getFlyerExpiryInfo, type FlyerExpiryInfo 
@@ -40,6 +41,7 @@ function fmtUnit(u: string) {
 // ── Categorie Stile Doveconviene con Gruppo GROS e In Scadenza ──
 export const DC_INDEX_CATEGORIES = [
   { slug: 'all', name: 'Tutti', icon: '🛒' },
+  { slug: 'nearby', name: 'Vicini a te', icon: '📍' },
   { slug: 'fav', name: 'Preferiti', icon: '⭐' },
   { slug: 'expiring', name: 'In scadenza', icon: '⏳' },
   { slug: 'gros', name: 'Gruppo GROS', icon: '🏛️' },
@@ -306,17 +308,10 @@ function CapModal(props: {
           </div>
         </div>
 
-        <div className="pt-2 border-t border-[var(--border)]">
-          <button
-            onClick={() => {
-              const q = encodeURIComponent(`supermercati vicino a ${currentZone?.city || (capInput ? `CAP ${capInput}` : 'me')}`);
-              window.open(`https://www.google.com/maps/search/${q}`, '_blank');
-            }}
-            className="w-full py-2.5 rounded-xl bg-blue-500/10 border border-blue-500/25 text-blue-600 font-bold text-xs flex items-center justify-center gap-2 hover:bg-blue-500/15 transition-colors"
-          >
-            <Navigation className="w-4 h-4" />
-            Cerca supermercati su Google Maps
-          </button>
+        <div className="pt-2 border-t border-[var(--border)] text-center">
+          <p className="text-[11px] text-[var(--text-muted)] font-medium leading-relaxed">
+            📍 I supermercati e i volantini verranno rilevati automaticamente in base al tuo CAP.
+          </p>
         </div>
       </div>
     </div>
@@ -345,7 +340,38 @@ function CentroView(props: {
   } = props;
   const [query, setQuery] = useState('');
   const [activeCat, setActiveCat] = useState<string>('all');
+  const [nearbySlugs, setNearbySlugs] = useState<string[]>([]);
+  const [nearbyStoresCount, setNearbyStoresCount] = useState<number>(0);
+  const [loadingNearby, setLoadingNearby] = useState<boolean>(false);
   const q = query.trim().toLowerCase();
+
+  // Recupera i supermercati vicini al CAP tramite coordinate geografiche Maps
+  useEffect(() => {
+    if (!zone || zone.kind === 'all') {
+      setNearbySlugs([]);
+      setNearbyStoresCount(0);
+      return;
+    }
+    let isCurrent = true;
+    setLoadingNearby(true);
+    nearbySupermarketService.getNearbySupermarkets(zone)
+      .then(res => {
+        if (isCurrent) {
+          setNearbySlugs(res.nearbySlugs);
+          setNearbyStoresCount(res.nearbyStoresCount);
+          setLoadingNearby(false);
+          // Se ci sono catene vicine identificate, attiva la vista 'nearby' come predefinita
+          if (res.nearbySlugs.length > 0) {
+            setActiveCat('nearby');
+          }
+        }
+      })
+      .catch(() => {
+        if (isCurrent) setLoadingNearby(false);
+      });
+
+    return () => { isCurrent = false; };
+  }, [zone]);
 
   const allChains = useMemo(() => {
     return db.chains.filter(c => c.flyers.length > 0);
@@ -354,6 +380,12 @@ function CentroView(props: {
   const favChains = useMemo(() => {
     return allChains.filter(c => favorites.includes(c.slug));
   }, [allChains, favorites]);
+
+  // Catene vicine al CAP rilevate da Maps
+  const nearbyChains = useMemo(() => {
+    if (nearbySlugs.length === 0) return [];
+    return allChains.filter(c => nearbySlugs.includes(c.slug));
+  }, [allChains, nearbySlugs]);
 
   // Catene con volantini in scadenza (oggi, domani o entro 3 giorni)
   const expiringChains = useMemo(() => {
@@ -373,6 +405,7 @@ function CentroView(props: {
   const catCounts = useMemo(() => {
     const counts: Record<string, number> = {
       all: allChains.length,
+      nearby: nearbyChains.length,
       fav: favorites.length,
       expiring: expiringChains.length,
     };
@@ -381,12 +414,14 @@ function CentroView(props: {
       counts[cat] = (counts[cat] || 0) + 1;
     }
     return counts;
-  }, [allChains, favorites.length, expiringChains.length]);
+  }, [allChains, nearbyChains.length, favorites.length, expiringChains.length]);
 
   // Filtro catene per categoria selezionata e barra di ricerca
   const chains = useMemo(() => {
     let list = allChains;
-    if (activeCat === 'fav') {
+    if (activeCat === 'nearby') {
+      list = nearbyChains.length > 0 ? nearbyChains : allChains;
+    } else if (activeCat === 'fav') {
       list = favChains;
     } else if (activeCat === 'expiring') {
       list = expiringChains;
@@ -402,7 +437,7 @@ function CentroView(props: {
         catSlug.includes(q)
       );
     });
-  }, [activeCat, favChains, expiringChains, allChains, q]);
+  }, [activeCat, nearbyChains, favChains, expiringChains, allChains, q]);
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="px-4 pt-4 pb-8 max-w-2xl mx-auto w-full space-y-4">
@@ -425,35 +460,43 @@ function CentroView(props: {
         </button>
       </div>
 
-      {/* ── BARRA CAP E GOOGLE MAPS ── */}
+      {/* ── BARRA CAP E FILTRO SUPERMERCATI VICINI (Dati da Maps) ── */}
       <div className="flex items-center justify-between gap-2 p-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/25">
         <button
           onClick={onOpenCapModal}
-          className="flex items-center gap-2.5 min-w-0 text-left hover:opacity-80 transition-opacity"
+          className="flex items-center gap-2.5 min-w-0 text-left hover:opacity-80 transition-opacity cursor-pointer"
         >
-          <MapPin className="w-4 h-4 text-emerald-600 shrink-0" />
+          <div className="w-9 h-9 rounded-xl bg-emerald-500 text-white flex items-center justify-center shrink-0 shadow-xs">
+            <MapPin className="w-5 h-5" />
+          </div>
           <div className="min-w-0">
-            <p className="text-xs font-bold text-[var(--text-main)] truncate">
-              {zone ? zone.label : 'Nessun CAP impostato'}
+            <p className="text-xs font-black text-emerald-800 dark:text-emerald-300 truncate">
+              {zone?.city ? `${zone.city} (CAP ${zone.cap})` : zone?.cap ? `CAP ${zone.cap}` : 'Tutta Italia (Nessun CAP)'}
             </p>
-            <p className="text-[10px] text-emerald-700 dark:text-emerald-400 font-semibold">
-              {zone ? 'Tocca per cambiare CAP o zona' : 'Tocca qui per inserire il tuo CAP'}
+            <p className="text-[10px] text-emerald-700 dark:text-emerald-400 font-semibold truncate">
+              {loadingNearby 
+                ? 'Rilevamento negozi vicini da Maps…' 
+                : nearbyChains.length > 0 
+                  ? `${nearbyChains.length} catene rilevate nella tua zona`
+                  : 'Tocca per impostare o cambiare CAP'}
             </p>
           </div>
         </button>
 
-        <button
-          onClick={() => {
-            const loc = zone?.city || (zone?.cap ? `CAP ${zone.cap}` : 'me');
-            const q = encodeURIComponent(`supermercati vicino a ${loc}`);
-            window.open(`https://www.google.com/maps/search/${q}`, '_blank');
-          }}
-          className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white dark:bg-zinc-800 border border-emerald-500/30 text-emerald-700 dark:text-emerald-300 font-bold text-xs hover:bg-emerald-500/10 transition-colors shadow-xs"
-          title="Cerca supermercati vicini su Google Maps"
-        >
-          <Navigation className="w-3.5 h-3.5 text-emerald-600" />
-          Google Maps
-        </button>
+        {zone && (
+          <button
+            onClick={() => setActiveCat(prev => prev === 'nearby' ? 'all' : 'nearby')}
+            className={`shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border font-bold text-xs transition-all shadow-xs cursor-pointer ${
+              activeCat === 'nearby'
+                ? 'bg-emerald-500 text-white border-emerald-500'
+                : 'bg-white dark:bg-zinc-800 border-emerald-500/30 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/10'
+            }`}
+            title="Mostra solo i supermercati vicini alla tua zona"
+          >
+            <MapPin className="w-3.5 h-3.5" />
+            <span>{activeCat === 'nearby' ? 'Mostra tutti' : 'Solo vicini'}</span>
+          </button>
+        )}
       </div>
 
       {/* ── BARRA STATO CATALOGO & DATA AGGIORNAMENTO + SYNC ── */}
@@ -747,20 +790,16 @@ function CentroView(props: {
                   <Star className={`w-3.5 h-3.5 ${isFav ? 'fill-amber-500' : ''}`} />
                 </button>
 
-                {/* Tasto Google Maps rapido per la catena */}
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    const loc = zone?.city || (zone?.cap ? `CAP ${zone.cap}` : 'me');
-                    const q = encodeURIComponent(`${c.name} supermercato ${loc}`);
-                    window.open(`https://www.google.com/maps/search/${q}`, '_blank');
-                  }}
-                  className="absolute bottom-2 right-2 p-1.5 rounded-full bg-black/5 dark:bg-white/5 text-[var(--text-muted)] hover:text-emerald-600 hover:bg-emerald-500/10 transition-all z-10"
-                  title={`Trova ${c.name} su Google Maps`}
-                >
-                  <MapPin className="w-3.5 h-3.5" />
-                </button>
+                {/* Badge supermercato vicino rilevato da Maps / CAP */}
+                {nearbySlugs.includes(c.slug) && (
+                  <span 
+                    className="absolute bottom-2 right-2 px-1.5 py-0.5 rounded-md bg-emerald-500/15 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 text-[9px] font-extrabold flex items-center gap-0.5 z-10 pointer-events-none"
+                    title="Supermercato presente nella tua zona"
+                  >
+                    <MapPin className="w-2.5 h-2.5" />
+                    <span>Vicino</span>
+                  </span>
+                )}
 
                 <div className="w-12 h-12 rounded-xl bg-white ring-1 ring-[var(--border)] flex items-center justify-center overflow-hidden mt-1">
                   <StoreLogo id={c.slug} short={c.name.slice(0, 2)} brandSlug={c.slug.replace('md-discount', 'md').replace('-italia', '').replace('iper-', '').replace('-market', '')} size={40} />
@@ -811,18 +850,6 @@ function CentroChainView(props: {
         </div>
 
         <div className="flex items-center gap-1.5 shrink-0">
-          <button
-            onClick={() => {
-              const loc = zone?.city || (zone?.cap ? `CAP ${zone.cap}` : 'me');
-              const q = encodeURIComponent(`${chain.name} supermercato ${loc}`);
-              window.open(`https://www.google.com/maps/search/${q}`, '_blank');
-            }}
-            className="p-2 rounded-full bg-[var(--surface-variant)] text-[var(--text-muted)] hover:text-emerald-500 transition-colors"
-            title="Trova negozio su Google Maps"
-          >
-            <MapPin className="w-4 h-4" />
-          </button>
-
           <button
             onClick={onToggleFavorite}
             className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all flex items-center gap-1.5 ${
@@ -1255,17 +1282,6 @@ export default function VolantinoScreen({ module, onClose, initialOffer }: Volan
           <div className="flex items-center gap-1 shrink-0">
             {centroChain && (
               <>
-                <button
-                  onClick={() => {
-                    const loc = zone?.city || (zone?.cap ? `CAP ${zone.cap}` : 'me');
-                    const q = encodeURIComponent(`${centroChain.name} supermercato ${loc}`);
-                    window.open(`https://www.google.com/maps/search/${q}`, '_blank');
-                  }}
-                  className="p-2.5 rounded-full hover:bg-[var(--surface-variant)] text-[var(--text-muted)] hover:text-emerald-500 transition-colors"
-                  title="Trova negozio su Google Maps"
-                >
-                  <MapPin className="w-5 h-5" />
-                </button>
                 <button
                   onClick={() => toggleFavorite(centroChain.slug)}
                   className={`p-2.5 rounded-full hover:bg-[var(--surface-variant)] transition-colors ${
