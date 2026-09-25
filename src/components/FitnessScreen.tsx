@@ -2,11 +2,12 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { 
   ArrowLeft, ArrowRight, Check, ChevronDown, ChevronUp, RefreshCw, Play, Award, 
   TrendingUp, Target, Activity, Heart, Dumbbell, Utensils, ExternalLink, X, Bell, 
-  Clock, QrCode, Share2, Users, Copy, CheckCheck, Camera, Sparkles, Scale, ChefHat 
+  Clock, QrCode, Share2, Users, Copy, CheckCheck, Camera, Sparkles, Scale, ChefHat, Info 
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { QRCodeSVG } from 'qrcode.react';
 import { QrScanner } from './QrScanner';
+import { IngredientModal } from './IngredientModal';
 import { lzw } from '../utils/lzw';
 import { Share } from '@capacitor/share';
 import { findRecipeForMeal } from '../services/recipeSearchService';
@@ -1200,6 +1201,7 @@ export function FitnessScreen({ module, onClose, onSave }: FitnessScreenProps) {
   const [expandedDayIndex, setExpandedDayIndex] = useState<number | null>(null);
   const [enlargedGifUrl, setEnlargedGifUrl] = useState<string | null>(null);
   const [swappingMealInfo, setSwappingMealInfo] = useState<{ dayIndex: number; mealIndex: number; meal: Meal } | null>(null);
+  const [selectedIngredient, setSelectedIngredient] = useState<{ name: string; amount?: number; unit?: string } | null>(null);
 
   // Partner & Share state
   const [showShareModal, setShowShareModal] = useState(false);
@@ -2809,17 +2811,25 @@ export function FitnessScreen({ module, onClose, onSave }: FitnessScreenProps) {
                                   <span className="flex items-center gap-1.5">
                                     <Scale className="w-3.5 h-3.5" /> Grammi & Dosi (Peso a crudo)
                                   </span>
-                                  <span className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider">Bilancia da Cucina</span>
+                                  <span className="text-[10px] font-bold text-amber-500/80 uppercase tracking-wider flex items-center gap-1">
+                                    <Info className="w-3 h-3" /> Tocca per info
+                                  </span>
                                 </div>
                                 <div className="flex flex-wrap gap-1.5">
                                   {safeMeal.ingredients.map((ing, iIdx) => (
-                                    <span 
+                                    <button 
                                       key={iIdx}
-                                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-bold bg-[var(--card-bg)] text-[var(--text-main)] border border-[var(--border)] shadow-xs"
+                                      type="button"
+                                      onClick={() => setSelectedIngredient({ name: ing.name, amount: ing.amount, unit: ing.unit })}
+                                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-bold bg-[var(--card-bg)] text-[var(--text-main)] border border-[var(--border)] shadow-xs hover:border-amber-500/50 hover:bg-amber-500/5 active:scale-95 transition-all text-left cursor-pointer group"
+                                      title="Tocca per visualizzare la scheda enciclopedica e nutrizionale"
                                     >
                                       <span className="text-amber-500 font-extrabold">{ing.amount}{ing.unit}</span>
-                                      <span className="text-[var(--text-muted)] font-medium">{ing.name}</span>
-                                    </span>
+                                      <span className="text-[var(--text-muted)] group-hover:text-[var(--text-main)] font-medium flex items-center gap-1">
+                                        {ing.name}
+                                        <Info className="w-3 h-3 text-amber-500/60 opacity-60 group-hover:opacity-100 transition-opacity" />
+                                      </span>
+                                    </button>
                                   ))}
                                 </div>
                               </div>
@@ -2854,9 +2864,15 @@ export function FitnessScreen({ module, onClose, onSave }: FitnessScreenProps) {
                                       <span className="text-[10px] font-black text-amber-500 uppercase tracking-wider block">Grammi per Te:</span>
                                       <div className="flex flex-wrap gap-1">
                                         {safeMeal.ingredients.map((ing, iIdx) => (
-                                          <span key={iIdx} className="text-[10px] font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 px-1.5 py-0.5 rounded-lg border border-amber-500/20">
+                                          <button 
+                                            key={iIdx}
+                                            type="button"
+                                            onClick={() => setSelectedIngredient({ name: ing.name, amount: ing.amount, unit: ing.unit })}
+                                            className="text-[10px] font-bold bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 px-1.5 py-0.5 rounded-lg border border-amber-500/20 active:scale-95 transition-all cursor-pointer text-left"
+                                            title="Tocca per info alimento"
+                                          >
                                             {ing.amount}{ing.unit} {ing.name}
-                                          </span>
+                                          </button>
                                         ))}
                                       </div>
                                     </div>
@@ -2878,9 +2894,15 @@ export function FitnessScreen({ module, onClose, onSave }: FitnessScreenProps) {
                                       <span className="text-[10px] font-black text-amber-500 uppercase tracking-wider block">Grammi per {formData.partnerName || 'Partner'}:</span>
                                       <div className="flex flex-wrap gap-1">
                                         {safePartnerMeal.ingredients.map((ing, iIdx) => (
-                                          <span key={iIdx} className="text-[10px] font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 px-1.5 py-0.5 rounded-lg border border-amber-500/20">
+                                          <button 
+                                            key={iIdx}
+                                            type="button"
+                                            onClick={() => setSelectedIngredient({ name: ing.name, amount: ing.amount, unit: ing.unit })}
+                                            className="text-[10px] font-bold bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 px-1.5 py-0.5 rounded-lg border border-amber-500/20 active:scale-95 transition-all cursor-pointer text-left"
+                                            title="Tocca per info alimento"
+                                          >
                                             {ing.amount}{ing.unit} {ing.name}
-                                          </span>
+                                          </button>
                                         ))}
                                       </div>
                                     </div>
@@ -2993,9 +3015,18 @@ export function FitnessScreen({ module, onClose, onSave }: FitnessScreenProps) {
                             {alt.ingredients && alt.ingredients.length > 0 && (
                               <div className="flex flex-wrap gap-1 mt-2">
                                 {alt.ingredients.map((ing, iIdx) => (
-                                  <span key={iIdx} className="text-[10px] font-bold bg-[var(--card-bg)] text-[var(--text-main)] px-2 py-0.5 rounded-lg border border-[var(--border)]">
+                                  <button 
+                                    key={iIdx} 
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setSelectedIngredient({ name: ing.name, amount: ing.baseAmount, unit: ing.unit });
+                                    }}
+                                    className="text-[10px] font-bold bg-[var(--card-bg)] text-[var(--text-main)] px-2 py-0.5 rounded-lg border border-[var(--border)] hover:border-amber-500/50 hover:text-amber-500 transition-colors cursor-pointer text-left"
+                                    title="Tocca per visualizzare la scheda alimento"
+                                  >
                                     <span className="text-amber-500 font-extrabold">{ing.baseAmount}{ing.unit}</span> {ing.name}
-                                  </span>
+                                  </button>
                                 ))}
                               </div>
                             )}
@@ -3454,6 +3485,12 @@ export function FitnessScreen({ module, onClose, onSave }: FitnessScreenProps) {
             </motion.div>
           )}
         </AnimatePresence>
+
+        {/* Encylopedic & Nutritional Food Wikipedia Modal */}
+        <IngredientModal 
+          ingredient={selectedIngredient} 
+          onClose={() => setSelectedIngredient(null)} 
+        />
       </div>
     </div>
   );
