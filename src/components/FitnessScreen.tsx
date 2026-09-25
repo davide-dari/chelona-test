@@ -50,6 +50,18 @@ export interface FitnessProfile {
   equipment: 'gym' | 'home' | 'bands' | 'bodyweight';
 }
 
+export interface MealIngredient {
+  name: string;
+  baseAmount: number;
+  unit: string;
+}
+
+export interface ScaledIngredient {
+  name: string;
+  amount: number;
+  unit: string;
+}
+
 export interface MealTemplate {
   name: string;
   type: 'breakfast' | 'lunch' | 'dinner' | 'snack';
@@ -59,6 +71,7 @@ export interface MealTemplate {
   baseFat: number;
   restrictions: string[];
   description: string;
+  ingredients: MealIngredient[];
   isSimple?: boolean;
   recipeUrl?: string;
 }
@@ -66,6 +79,7 @@ export interface MealTemplate {
 export interface Meal {
   name: string;
   description: string;
+  ingredients?: ScaledIngredient[];
   calories: number;
   protein: number;
   carbs: number;
@@ -246,47 +260,607 @@ const EXERCISE_LIBRARY: ExerciseTemplate[] = [
 // --- DATA: MEAL LIBRARY ---
 const MEAL_LIBRARY: MealTemplate[] = [
   // Breakfast
-  { name: 'Porridge di Avena con Banana e Miele', type: 'breakfast', baseCalories: 400, baseProtein: 15, baseCarbs: 65, baseFat: 8, restrictions: ['vegetarian'], description: 'Avena, latte, banana e miele.', isSimple: false, recipeUrl: 'https://ricette.giallozafferano.it/Porridge.html' },
-  { name: 'Yogurt Greco con Frutta Secca e Mirtilli', type: 'breakfast', baseCalories: 350, baseProtein: 20, baseCarbs: 30, baseFat: 15, restrictions: ['vegetarian', 'gluten-free'], description: 'Yogurt greco intero con noci e mirtilli freschi.', isSimple: true },
-  { name: 'Uova Strapazzate con Pane Integrale', type: 'breakfast', baseCalories: 450, baseProtein: 25, baseCarbs: 35, baseFat: 20, restrictions: ['vegetarian'], description: '3 uova, 2 fette di pane integrale tostato.', isSimple: true },
-  { name: 'Pancake Proteici con Sciroppo d\'Acero', type: 'breakfast', baseCalories: 380, baseProtein: 30, baseCarbs: 45, baseFat: 6, restrictions: ['vegetarian'], description: 'Pancake fatti con avena e proteine in polvere.', isSimple: false },
-  { name: 'Toast Avocado e Uovo', type: 'breakfast', baseCalories: 420, baseProtein: 18, baseCarbs: 30, baseFat: 24, restrictions: ['vegetarian'], description: 'Pane integrale, mezzo avocado, 1 uovo in camicia.', isSimple: true },
-  { name: 'Smoothie Proteico alla Frutta', type: 'breakfast', baseCalories: 300, baseProtein: 25, baseCarbs: 40, baseFat: 4, restrictions: ['vegetarian', 'gluten-free'], description: 'Latte, proteine whey, banana e frutti di bosco.', isSimple: true },
-  { name: 'Fette Biscottate con Marmellata e Ricotta', type: 'breakfast', baseCalories: 320, baseProtein: 12, baseCarbs: 50, baseFat: 8, restrictions: ['vegetarian'], description: '4 fette biscottate integrali, ricotta fresca e marmellata.', isSimple: true },
-  { name: 'Bowl di Acai', type: 'breakfast', baseCalories: 360, baseProtein: 8, baseCarbs: 60, baseFat: 10, restrictions: ['vegetarian', 'vegan'], description: 'Acai, granola, cocco e frutta fresca.', isSimple: true },
-  { name: 'Müsli con Latte di Mandorla', type: 'breakfast', baseCalories: 340, baseProtein: 10, baseCarbs: 55, baseFat: 12, restrictions: ['vegetarian', 'vegan'], description: 'Müsli croccante con latte vegetale.', isSimple: true },
+  {
+    name: 'Porridge di Avena con Banana e Miele',
+    type: 'breakfast',
+    baseCalories: 400,
+    baseProtein: 15,
+    baseCarbs: 65,
+    baseFat: 8,
+    restrictions: ['vegetarian'],
+    description: 'Fiocchi d\'avena cotti nel latte caldo con fettine di banana e miele.',
+    ingredients: [
+      { name: 'Fiocchi d\'avena', baseAmount: 50, unit: 'g' },
+      { name: 'Latte (o bevanda veg)', baseAmount: 150, unit: 'ml' },
+      { name: 'Banana fresca', baseAmount: 100, unit: 'g' },
+      { name: 'Miele millefiori', baseAmount: 15, unit: 'g' }
+    ],
+    isSimple: false,
+    recipeUrl: 'https://ricette.giallozafferano.it/Porridge.html'
+  },
+  {
+    name: 'Yogurt Greco con Frutta Secca e Mirtilli',
+    type: 'breakfast',
+    baseCalories: 350,
+    baseProtein: 20,
+    baseCarbs: 30,
+    baseFat: 15,
+    restrictions: ['vegetarian', 'gluten-free'],
+    description: 'Yogurt greco denso arricchito con mirtilli freschi e noci croccanti.',
+    ingredients: [
+      { name: 'Yogurt greco naturale', baseAmount: 170, unit: 'g' },
+      { name: 'Mirtilli freschi', baseAmount: 80, unit: 'g' },
+      { name: 'Gherigli di noce o mandorle', baseAmount: 20, unit: 'g' },
+      { name: 'Miele', baseAmount: 10, unit: 'g' }
+    ],
+    isSimple: true
+  },
+  {
+    name: 'Uova Strapazzate con Pane Integrale',
+    type: 'breakfast',
+    baseCalories: 450,
+    baseProtein: 25,
+    baseCarbs: 35,
+    baseFat: 20,
+    restrictions: ['vegetarian'],
+    description: 'Uova strapazzate cremose servite con pane integrale tostato.',
+    ingredients: [
+      { name: 'Uova intere medie', baseAmount: 2, unit: 'pz' },
+      { name: 'Albume d\'uovo', baseAmount: 50, unit: 'g' },
+      { name: 'Pane integrale tostato', baseAmount: 70, unit: 'g' },
+      { name: 'Olio extravergine d\'oliva', baseAmount: 5, unit: 'g' }
+    ],
+    isSimple: true
+  },
+  {
+    name: 'Pancake Proteici con Sciroppo d\'Acero',
+    type: 'breakfast',
+    baseCalories: 380,
+    baseProtein: 30,
+    baseCarbs: 45,
+    baseFat: 6,
+    restrictions: ['vegetarian'],
+    description: 'Pancake soffici ricchi di proteine con filo di sciroppo d\'acero.',
+    ingredients: [
+      { name: 'Farina d\'avena', baseAmount: 50, unit: 'g' },
+      { name: 'Albume d\'uovo', baseAmount: 120, unit: 'g' },
+      { name: 'Proteine whey in polvere', baseAmount: 20, unit: 'g' },
+      { name: 'Sciroppo d\'acero', baseAmount: 15, unit: 'g' }
+    ],
+    isSimple: false
+  },
+  {
+    name: 'Toast Avocado e Uovo',
+    type: 'breakfast',
+    baseCalories: 420,
+    baseProtein: 18,
+    baseCarbs: 30,
+    baseFat: 24,
+    restrictions: ['vegetarian'],
+    description: 'Pane tostato con polpa di avocado fresco e uovo.',
+    ingredients: [
+      { name: 'Pane integrale a fette', baseAmount: 60, unit: 'g' },
+      { name: 'Avocado fresco', baseAmount: 70, unit: 'g' },
+      { name: 'Uovo medio (in camicia o piatto)', baseAmount: 1, unit: 'pz' },
+      { name: 'Olio EVO e semi misti', baseAmount: 5, unit: 'g' }
+    ],
+    isSimple: true
+  },
+  {
+    name: 'Smoothie Proteico alla Frutta',
+    type: 'breakfast',
+    baseCalories: 300,
+    baseProtein: 25,
+    baseCarbs: 40,
+    baseFat: 4,
+    restrictions: ['vegetarian', 'gluten-free'],
+    description: 'Frullato fresco ed energetico con frutta e proteine in polvere.',
+    ingredients: [
+      { name: 'Latte o bevanda di mandorla', baseAmount: 200, unit: 'ml' },
+      { name: 'Proteine whey isolate', baseAmount: 25, unit: 'g' },
+      { name: 'Banana a rondelle', baseAmount: 80, unit: 'g' },
+      { name: 'Frutti di bosco freschi o surgelati', baseAmount: 60, unit: 'g' }
+    ],
+    isSimple: true
+  },
+  {
+    name: 'Fette Biscottate con Marmellata e Ricotta',
+    type: 'breakfast',
+    baseCalories: 320,
+    baseProtein: 12,
+    baseCarbs: 50,
+    baseFat: 8,
+    restrictions: ['vegetarian'],
+    description: 'Fette biscottate integrali spalmate con ricotta fresca e confettura.',
+    ingredients: [
+      { name: 'Fette biscottate integrali', baseAmount: 36, unit: 'g' },
+      { name: 'Ricotta vaccina fresca', baseAmount: 80, unit: 'g' },
+      { name: 'Marmellata 100% frutta', baseAmount: 30, unit: 'g' }
+    ],
+    isSimple: true
+  },
+  {
+    name: 'Bowl di Acai',
+    type: 'breakfast',
+    baseCalories: 360,
+    baseProtein: 8,
+    baseCarbs: 60,
+    baseFat: 10,
+    restrictions: ['vegetarian', 'vegan'],
+    description: 'Crema di açai guarnita con granola croccante, frutta fresca e cocco.',
+    ingredients: [
+      { name: 'Purea di Açai al naturale', baseAmount: 100, unit: 'g' },
+      { name: 'Granola croccante d\'avena', baseAmount: 40, unit: 'g' },
+      { name: 'Frutta fresca mista (banana/frutti rossi)', baseAmount: 80, unit: 'g' },
+      { name: 'Cocco rapè essiccato', baseAmount: 15, unit: 'g' },
+      { name: 'Semi di chia', baseAmount: 5, unit: 'g' }
+    ],
+    isSimple: true
+  },
+  {
+    name: 'Müsli con Latte di Mandorla',
+    type: 'breakfast',
+    baseCalories: 340,
+    baseProtein: 10,
+    baseCarbs: 55,
+    baseFat: 12,
+    restrictions: ['vegetarian', 'vegan'],
+    description: 'Cereali müsli croccanti immersi in latte vegetale di mandorla.',
+    ingredients: [
+      { name: 'Müsli croccante ai cereali', baseAmount: 60, unit: 'g' },
+      { name: 'Latte di mandorla senza zuccheri', baseAmount: 200, unit: 'ml' },
+      { name: 'Semi misti di girasole/zucca', baseAmount: 10, unit: 'g' }
+    ],
+    isSimple: true
+  },
   
   // Lunch
-  { name: 'Petto di Pollo alla Griglia con Riso Basmati', type: 'lunch', baseCalories: 600, baseProtein: 45, baseCarbs: 70, baseFat: 10, restrictions: ['gluten-free', 'lactose-free'], description: 'Pollo alla griglia, riso basmati e un filo d\'olio EVO.', isSimple: false, recipeUrl: 'https://ricette.giallozafferano.it/Petto-di-pollo-in-padella.html' },
-  { name: 'Pasta Integrale al Tonno', type: 'lunch', baseCalories: 650, baseProtein: 35, baseCarbs: 85, baseFat: 15, restrictions: ['lactose-free'], description: 'Pasta integrale con tonno al naturale e pomodorini.', isSimple: false, recipeUrl: 'https://ricette.giallozafferano.it/Spaghetti-al-tonno.html' },
-  { name: 'Insalatona con Quinoa e Feta', type: 'lunch', baseCalories: 550, baseProtein: 20, baseCarbs: 60, baseFat: 25, restrictions: ['vegetarian', 'gluten-free'], description: 'Quinoa, feta, pomodorini, olive e cetrioli.', isSimple: false, recipeUrl: 'https://ricette.giallozafferano.it/Insalata-di-quinoa.html' },
-  { name: 'Bowl di Riso con Salmone e Avocado', type: 'lunch', baseCalories: 700, baseProtein: 35, baseCarbs: 65, baseFat: 30, restrictions: ['gluten-free', 'lactose-free'], description: 'Riso da sushi, salmone crudo, avocado e salsa di soia.', isSimple: true },
-  { name: 'Wrap Integrale con Tacchino', type: 'lunch', baseCalories: 500, baseProtein: 35, baseCarbs: 50, baseFat: 15, restrictions: ['lactose-free'], description: 'Piadina integrale, fesa di tacchino, insalata e maionese leggera.', isSimple: true },
-  { name: 'Pasta con Ragù di Lenticchie', type: 'lunch', baseCalories: 620, baseProtein: 25, baseCarbs: 90, baseFat: 12, restrictions: ['vegetarian', 'vegan'], description: 'Pasta integrale con sugo di pomodoro e lenticchie.', isSimple: false, recipeUrl: 'https://ricette.giallozafferano.it/Ragu-di-lenticchie.html' },
-  { name: 'Poke Bowl con Riso e Edamame', type: 'lunch', baseCalories: 580, baseProtein: 25, baseCarbs: 75, baseFat: 18, restrictions: ['vegetarian', 'vegan'], description: 'Riso, edamame, tofu marinato, carote e cavolo rosso.', isSimple: false },
-  { name: 'Risotto ai Funghi', type: 'lunch', baseCalories: 600, baseProtein: 15, baseCarbs: 85, baseFat: 20, restrictions: ['vegetarian', 'gluten-free'], description: 'Riso Carnaroli con funghi porcini e parmigiano.', isSimple: false, recipeUrl: 'https://ricette.giallozafferano.it/Risotto-ai-funghi.html' },
-  { name: 'Couscous con Verdure Grigliate e Ceci', type: 'lunch', baseCalories: 550, baseProtein: 20, baseCarbs: 80, baseFat: 15, restrictions: ['vegetarian', 'vegan'], description: 'Couscous integrale con verdure miste e ceci.', isSimple: false, recipeUrl: 'https://ricette.giallozafferano.it/Couscous-alle-verdure.html' },
+  {
+    name: 'Petto di Pollo alla Griglia con Riso Basmati',
+    type: 'lunch',
+    baseCalories: 600,
+    baseProtein: 45,
+    baseCarbs: 70,
+    baseFat: 10,
+    restrictions: ['gluten-free', 'lactose-free'],
+    description: 'Petto di pollo grigliato con riso basmati profumato e verdure.',
+    ingredients: [
+      { name: 'Petto di pollo a fette (a crudo)', baseAmount: 180, unit: 'g' },
+      { name: 'Riso basmati (a crudo)', baseAmount: 85, unit: 'g' },
+      { name: 'Zucchine o verdure grigliate', baseAmount: 150, unit: 'g' },
+      { name: 'Olio extravergine d\'oliva', baseAmount: 10, unit: 'g' }
+    ],
+    isSimple: false,
+    recipeUrl: 'https://ricette.giallozafferano.it/Petto-di-pollo-in-padella.html'
+  },
+  {
+    name: 'Pasta Integrale al Tonno',
+    type: 'lunch',
+    baseCalories: 650,
+    baseProtein: 35,
+    baseCarbs: 85,
+    baseFat: 15,
+    restrictions: ['lactose-free'],
+    description: 'Pasta integrale saltata con tonno al naturale, pomodorini e origano.',
+    ingredients: [
+      { name: 'Pasta integrale (a crudo)', baseAmount: 95, unit: 'g' },
+      { name: 'Tonno al naturale sgocciolato', baseAmount: 110, unit: 'g' },
+      { name: 'Pomodorini ciliegino freschi', baseAmount: 120, unit: 'g' },
+      { name: 'Olio extravergine d\'oliva', baseAmount: 12, unit: 'g' }
+    ],
+    isSimple: false,
+    recipeUrl: 'https://ricette.giallozafferano.it/Spaghetti-al-tonno.html'
+  },
+  {
+    name: 'Insalatona con Quinoa e Feta',
+    type: 'lunch',
+    baseCalories: 550,
+    baseProtein: 20,
+    baseCarbs: 60,
+    baseFat: 25,
+    restrictions: ['vegetarian', 'gluten-free'],
+    description: 'Insalata mediterranea con quinoa, cubetti di feta, olive e cetrioli.',
+    ingredients: [
+      { name: 'Quinoa (a crudo)', baseAmount: 70, unit: 'g' },
+      { name: 'Formaggio Feta DOP', baseAmount: 60, unit: 'g' },
+      { name: 'Pomodorini e cetrioli a cubetti', baseAmount: 150, unit: 'g' },
+      { name: 'Olive nere snocciolate', baseAmount: 20, unit: 'g' },
+      { name: 'Olio extravergine d\'oliva', baseAmount: 10, unit: 'g' }
+    ],
+    isSimple: false,
+    recipeUrl: 'https://ricette.giallozafferano.it/Insalata-di-quinoa.html'
+  },
+  {
+    name: 'Bowl di Riso con Salmone e Avocado',
+    type: 'lunch',
+    baseCalories: 700,
+    baseProtein: 35,
+    baseCarbs: 65,
+    baseFat: 30,
+    restrictions: ['gluten-free', 'lactose-free'],
+    description: 'Riso servito con trancio di salmone fresco, avocado ed edamame.',
+    ingredients: [
+      { name: 'Riso basmati o sushi (a crudo)', baseAmount: 80, unit: 'g' },
+      { name: 'Trancio o filetto di salmone (a crudo)', baseAmount: 130, unit: 'g' },
+      { name: 'Avocado fresco maturo', baseAmount: 60, unit: 'g' },
+      { name: 'Cetrioli ed edamame', baseAmount: 80, unit: 'g' },
+      { name: 'Salsa di soia e semi di sesamo', baseAmount: 10, unit: 'g' }
+    ],
+    isSimple: true
+  },
+  {
+    name: 'Wrap Integrale con Tacchino',
+    type: 'lunch',
+    baseCalories: 500,
+    baseProtein: 35,
+    baseCarbs: 50,
+    baseFat: 15,
+    restrictions: ['lactose-free'],
+    description: 'Wrap di piadina integrale farcito con fesa di tacchino, lattuga e pomodoro.',
+    ingredients: [
+      { name: 'Piadina / Wrap integrale', baseAmount: 65, unit: 'g' },
+      { name: 'Fesa di tacchino a fette', baseAmount: 140, unit: 'g' },
+      { name: 'Insalata iceberg e pomodoro', baseAmount: 80, unit: 'g' },
+      { name: 'Formaggio spalmabile light o salsa yogurt', baseAmount: 25, unit: 'g' },
+      { name: 'Olio extravergine d\'oliva', baseAmount: 5, unit: 'g' }
+    ],
+    isSimple: true
+  },
+  {
+    name: 'Pasta con Ragù di Lenticchie',
+    type: 'lunch',
+    baseCalories: 620,
+    baseProtein: 25,
+    baseCarbs: 90,
+    baseFat: 12,
+    restrictions: ['vegetarian', 'vegan'],
+    description: 'Pasta con sugo ricco a base di lenticchie stufate e passata di pomodoro.',
+    ingredients: [
+      { name: 'Pasta integrale (a crudo)', baseAmount: 90, unit: 'g' },
+      { name: 'Lenticchie lessate sgocciolate', baseAmount: 140, unit: 'g' },
+      { name: 'Passata di pomodoro e carote', baseAmount: 100, unit: 'g' },
+      { name: 'Olio extravergine d\'oliva', baseAmount: 10, unit: 'g' }
+    ],
+    isSimple: false,
+    recipeUrl: 'https://ricette.giallozafferano.it/Ragu-di-lenticchie.html'
+  },
+  {
+    name: 'Poke Bowl con Riso e Edamame',
+    type: 'lunch',
+    baseCalories: 580,
+    baseProtein: 25,
+    baseCarbs: 75,
+    baseFat: 18,
+    restrictions: ['vegetarian', 'vegan'],
+    description: 'Riso servito con cubetti di tofu marinato, edamame e verdure croccanti.',
+    ingredients: [
+      { name: 'Riso basmati (a crudo)', baseAmount: 80, unit: 'g' },
+      { name: 'Tofu al naturale a dadini', baseAmount: 120, unit: 'g' },
+      { name: 'Edamame sgranati', baseAmount: 60, unit: 'g' },
+      { name: 'Carote julienne e cavolo rosso', baseAmount: 100, unit: 'g' },
+      { name: 'Olio di sesamo / EVO', baseAmount: 10, unit: 'g' }
+    ],
+    isSimple: false
+  },
+  {
+    name: 'Risotto ai Funghi',
+    type: 'lunch',
+    baseCalories: 600,
+    baseProtein: 15,
+    baseCarbs: 85,
+    baseFat: 20,
+    restrictions: ['vegetarian', 'gluten-free'],
+    description: 'Risotto mantecato con funghi freschi, brodo vegetale e parmigiano.',
+    ingredients: [
+      { name: 'Riso Carnaroli (a crudo)', baseAmount: 90, unit: 'g' },
+      { name: 'Funghi porcini o champignon freschi', baseAmount: 150, unit: 'g' },
+      { name: 'Parmigiano Reggiano grattugiato', baseAmount: 20, unit: 'g' },
+      { name: 'Olio extravergine d\'oliva', baseAmount: 12, unit: 'g' }
+    ],
+    isSimple: false,
+    recipeUrl: 'https://ricette.giallozafferano.it/Risotto-ai-funghi.html'
+  },
+  {
+    name: 'Couscous con Verdure Grigliate e Ceci',
+    type: 'lunch',
+    baseCalories: 550,
+    baseProtein: 20,
+    baseCarbs: 80,
+    baseFat: 15,
+    restrictions: ['vegetarian', 'vegan'],
+    description: 'Granelli di couscous conditi con verdure estive e ceci lessati.',
+    ingredients: [
+      { name: 'Couscous precotto (a crudo)', baseAmount: 85, unit: 'g' },
+      { name: 'Ceci cotti sgocciolati', baseAmount: 120, unit: 'g' },
+      { name: 'Zucchine e peperoni grigliati', baseAmount: 150, unit: 'g' },
+      { name: 'Olio extravergine d\'oliva', baseAmount: 10, unit: 'g' }
+    ],
+    isSimple: false,
+    recipeUrl: 'https://ricette.giallozafferano.it/Couscous-alle-verdure.html'
+  },
 
   // Dinner
-  { name: 'Salmone al Forno con Patate Dolci', type: 'dinner', baseCalories: 650, baseProtein: 40, baseCarbs: 50, baseFat: 28, restrictions: ['gluten-free', 'lactose-free'], description: 'Trancio di salmone al forno, patate dolci arrosto.', isSimple: false, recipeUrl: 'https://ricette.giallozafferano.it/Salmone-al-forno.html' },
-  { name: 'Petto di Tacchino con Verdure al Vapore', type: 'dinner', baseCalories: 450, baseProtein: 45, baseCarbs: 20, baseFat: 18, restrictions: ['gluten-free', 'lactose-free'], description: 'Tacchino ai ferri con broccoli e carote al vapore, olio EVO.', isSimple: true },
-  { name: 'Omelette con Spinaci e Feta', type: 'dinner', baseCalories: 400, baseProtein: 25, baseCarbs: 10, baseFat: 28, restrictions: ['vegetarian', 'gluten-free'], description: '3 uova sbattute con spinaci freschi e formaggio feta.', isSimple: true },
-  { name: 'Merluzzo al Cartoccio con Zucchine', type: 'dinner', baseCalories: 420, baseProtein: 35, baseCarbs: 15, baseFat: 20, restrictions: ['gluten-free', 'lactose-free'], description: 'Filetto di merluzzo cotto al forno con zucchine e pomodorini.', isSimple: true },
-  { name: 'Pollo al Curry con Riso', type: 'dinner', baseCalories: 680, baseProtein: 45, baseCarbs: 75, baseFat: 20, restrictions: ['gluten-free'], description: 'Bocconcini di pollo al curry con latte di cocco e riso basmati.', isSimple: false, recipeUrl: 'https://ricette.giallozafferano.it/Pollo-al-curry.html' },
-  { name: 'Hamburger di Tacchino con Insalata', type: 'dinner', baseCalories: 500, baseProtein: 40, baseCarbs: 35, baseFat: 20, restrictions: ['lactose-free'], description: 'Hamburger di tacchino fatto in casa, panino integrale, abbondante insalata.', isSimple: false, recipeUrl: 'https://ricette.giallozafferano.it/Hamburger-di-tacchino.html' },
-  { name: 'Zuppa di Legumi', type: 'dinner', baseCalories: 450, baseProtein: 25, baseCarbs: 65, baseFat: 10, restrictions: ['vegetarian', 'vegan', 'gluten-free'], description: 'Zuppa calda di ceci, fagioli e lenticchie con crostini.', isSimple: false, recipeUrl: 'https://ricette.giallozafferano.it/Zuppa-di-legumi-e-cereali.html' },
-  { name: 'Filetto di Orata con Ratatouille', type: 'dinner', baseCalories: 480, baseProtein: 38, baseCarbs: 25, baseFat: 22, restrictions: ['gluten-free', 'lactose-free'], description: 'Orata al forno con mix di verdure in padella.', isSimple: false, recipeUrl: 'https://ricette.giallozafferano.it/Orata-al-forno.html' },
-  { name: 'Tofu Saltato con Verdure e Riso', type: 'dinner', baseCalories: 550, baseProtein: 25, baseCarbs: 70, baseFat: 18, restrictions: ['vegetarian', 'vegan', 'gluten-free'], description: 'Tofu marinato saltato con verdure croccanti e riso.', isSimple: false },
+  {
+    name: 'Salmone al Forno con Patate Dolci',
+    type: 'dinner',
+    baseCalories: 650,
+    baseProtein: 40,
+    baseCarbs: 50,
+    baseFat: 28,
+    restrictions: ['gluten-free', 'lactose-free'],
+    description: 'Trancio di salmone cotto al forno con contorno di patate dolci arrosto.',
+    ingredients: [
+      { name: 'Trancio di salmone fresco (a crudo)', baseAmount: 160, unit: 'g' },
+      { name: 'Patate dolci tagliate a tocchetti (a crudo)', baseAmount: 220, unit: 'g' },
+      { name: 'Olio extravergine d\'oliva', baseAmount: 10, unit: 'g' }
+    ],
+    isSimple: false,
+    recipeUrl: 'https://ricette.giallozafferano.it/Salmone-al-forno.html'
+  },
+  {
+    name: 'Petto di Tacchino con Verdure al Vapore',
+    type: 'dinner',
+    baseCalories: 450,
+    baseProtein: 45,
+    baseCarbs: 20,
+    baseFat: 18,
+    restrictions: ['gluten-free', 'lactose-free'],
+    description: 'Bistecca di tacchino ai ferri con contorno leggero di broccoli e carote al vapore.',
+    ingredients: [
+      { name: 'Petto di tacchino a fette (a crudo)', baseAmount: 180, unit: 'g' },
+      { name: 'Broccoli e carote al vapore', baseAmount: 250, unit: 'g' },
+      { name: 'Olio extravergine d\'oliva', baseAmount: 15, unit: 'g' }
+    ],
+    isSimple: true
+  },
+  {
+    name: 'Omelette con Spinaci e Feta',
+    type: 'dinner',
+    baseCalories: 400,
+    baseProtein: 25,
+    baseCarbs: 10,
+    baseFat: 28,
+    restrictions: ['vegetarian', 'gluten-free'],
+    description: 'Frittatina soffice ripiena di spinaci saltati e formaggio feta sbriciolato.',
+    ingredients: [
+      { name: 'Uova intere medie', baseAmount: 2, unit: 'pz' },
+      { name: 'Albume d\'uovo pastorizzato', baseAmount: 50, unit: 'g' },
+      { name: 'Spinaci freschi cotti in padella', baseAmount: 150, unit: 'g' },
+      { name: 'Formaggio Feta DOP', baseAmount: 40, unit: 'g' },
+      { name: 'Olio extravergine d\'oliva', baseAmount: 8, unit: 'g' }
+    ],
+    isSimple: true
+  },
+  {
+    name: 'Merluzzo al Cartoccio con Zucchine',
+    type: 'dinner',
+    baseCalories: 420,
+    baseProtein: 35,
+    baseCarbs: 15,
+    baseFat: 20,
+    restrictions: ['gluten-free', 'lactose-free'],
+    description: 'Cuore di merluzzo cotto delicatamente al cartoccio con zucchine e pomodorini.',
+    ingredients: [
+      { name: 'Filetto di merluzzo fresco o surgelato', baseAmount: 200, unit: 'g' },
+      { name: 'Zucchine a rondelle', baseAmount: 200, unit: 'g' },
+      { name: 'Pomodorini ciliegino', baseAmount: 100, unit: 'g' },
+      { name: 'Olio extravergine d\'oliva', baseAmount: 15, unit: 'g' }
+    ],
+    isSimple: true
+  },
+  {
+    name: 'Pollo al Curry con Riso',
+    type: 'dinner',
+    baseCalories: 680,
+    baseProtein: 45,
+    baseCarbs: 75,
+    baseFat: 20,
+    restrictions: ['gluten-free'],
+    description: 'Bocconcini di pollo cotti al curry in crema di cocco con riso basmati.',
+    ingredients: [
+      { name: 'Petto di pollo a bocconcini (a crudo)', baseAmount: 180, unit: 'g' },
+      { name: 'Riso basmati (a crudo)', baseAmount: 80, unit: 'g' },
+      { name: 'Latte di cocco leggero da cucina', baseAmount: 60, unit: 'ml' },
+      { name: 'Olio extravergine d\'oliva', baseAmount: 10, unit: 'g' }
+    ],
+    isSimple: false,
+    recipeUrl: 'https://ricette.giallozafferano.it/Pollo-al-curry.html'
+  },
+  {
+    name: 'Hamburger di Tacchino con Insalata',
+    type: 'dinner',
+    baseCalories: 500,
+    baseProtein: 40,
+    baseCarbs: 35,
+    baseFat: 20,
+    restrictions: ['lactose-free'],
+    description: 'Hamburger di pura carne di tacchino in panino integrale con insalata e pomodori.',
+    ingredients: [
+      { name: 'Macinato di tacchino (a crudo)', baseAmount: 170, unit: 'g' },
+      { name: 'Panino per burger integrale', baseAmount: 60, unit: 'g' },
+      { name: 'Insalata verde e pomodoro a fette', baseAmount: 100, unit: 'g' },
+      { name: 'Olio extravergine d\'oliva', baseAmount: 10, unit: 'g' }
+    ],
+    isSimple: false,
+    recipeUrl: 'https://ricette.giallozafferano.it/Hamburger-di-tacchino.html'
+  },
+  {
+    name: 'Zuppa di Legumi',
+    type: 'dinner',
+    baseCalories: 450,
+    baseProtein: 25,
+    baseCarbs: 65,
+    baseFat: 10,
+    restrictions: ['vegetarian', 'vegan', 'gluten-free'],
+    description: 'Zuppa calda di ceci, fagioli e lenticchie con cubetti di pane tostato.',
+    ingredients: [
+      { name: 'Legumi misti cotti (ceci, lenticchie, fagioli)', baseAmount: 220, unit: 'g' },
+      { name: 'Brodo di verdure con carote e sedano', baseAmount: 250, unit: 'ml' },
+      { name: 'Pane integrale tostato a dadini', baseAmount: 40, unit: 'g' },
+      { name: 'Olio extravergine d\'oliva', baseAmount: 10, unit: 'g' }
+    ],
+    isSimple: false,
+    recipeUrl: 'https://ricette.giallozafferano.it/Zuppa-di-legumi-e-cereali.html'
+  },
+  {
+    name: 'Filetto di Orata con Ratatouille',
+    type: 'dinner',
+    baseCalories: 480,
+    baseProtein: 38,
+    baseCarbs: 25,
+    baseFat: 22,
+    restrictions: ['gluten-free', 'lactose-free'],
+    description: 'Filetto di orata cotto alla piastra accompagnato da dadolata di verdure in padella.',
+    ingredients: [
+      { name: 'Filetto di orata fresco (a crudo)', baseAmount: 190, unit: 'g' },
+      { name: 'Ratatouille di verdure miste', baseAmount: 220, unit: 'g' },
+      { name: 'Olio extravergine d\'oliva', baseAmount: 15, unit: 'g' }
+    ],
+    isSimple: false,
+    recipeUrl: 'https://ricette.giallozafferano.it/Orata-al-forno.html'
+  },
+  {
+    name: 'Tofu Saltato con Verdure e Riso',
+    type: 'dinner',
+    baseCalories: 550,
+    baseProtein: 25,
+    baseCarbs: 70,
+    baseFat: 18,
+    restrictions: ['vegetarian', 'vegan', 'gluten-free'],
+    description: 'Tofu a cubetti saltato con verdure miste, salsa tamari e riso basmati.',
+    ingredients: [
+      { name: 'Tofu al naturale a dadini', baseAmount: 160, unit: 'g' },
+      { name: 'Riso basmati (a crudo)', baseAmount: 75, unit: 'g' },
+      { name: 'Verdure miste saltate in padella', baseAmount: 150, unit: 'g' },
+      { name: 'Olio extravergine d\'oliva o sesamo', baseAmount: 10, unit: 'g' }
+    ],
+    isSimple: false
+  },
 
   // Snacks
-  { name: 'Mix di Frutta Secca', type: 'snack', baseCalories: 200, baseProtein: 5, baseCarbs: 8, baseFat: 18, restrictions: ['vegetarian', 'vegan', 'gluten-free', 'lactose-free'], description: 'Noci, mandorle e nocciole (circa 30g).', isSimple: true },
-  { name: 'Barretta Proteica Fatta in Casa', type: 'snack', baseCalories: 250, baseProtein: 15, baseCarbs: 30, baseFat: 8, restrictions: ['vegetarian'], description: 'Barretta con avena, burro di arachidi e proteine.', isSimple: false },
-  { name: 'Mela con Burro di Arachidi', type: 'snack', baseCalories: 220, baseProtein: 6, baseCarbs: 25, baseFat: 12, restrictions: ['vegetarian', 'vegan', 'gluten-free', 'lactose-free'], description: 'Una mela media tagliata a fette con un cucchiaio di burro di arachidi.', isSimple: true },
-  { name: 'Crackers Integrali con Hummus', type: 'snack', baseCalories: 240, baseProtein: 8, baseCarbs: 30, baseFat: 10, restrictions: ['vegetarian', 'vegan', 'lactose-free'], description: 'Crackers di segale con hummus di ceci.', isSimple: true },
-  { name: 'Cottage Cheese con Miele', type: 'snack', baseCalories: 180, baseProtein: 18, baseCarbs: 15, baseFat: 6, restrictions: ['vegetarian', 'gluten-free'], description: 'Fiocchi di latte con un cucchiaino di miele.', isSimple: true },
-  { name: 'Banana con Cioccolato Fondente', type: 'snack', baseCalories: 200, baseProtein: 3, baseCarbs: 35, baseFat: 7, restrictions: ['vegetarian', 'vegan', 'gluten-free'], description: 'Una banana con 15g di cioccolato fondente >75%.', isSimple: true },
-  { name: 'Edamame', type: 'snack', baseCalories: 150, baseProtein: 12, baseCarbs: 10, baseFat: 6, restrictions: ['vegetarian', 'vegan', 'gluten-free', 'lactose-free'], description: 'Baccelli di soia bolliti e salati.', isSimple: true },
-  { name: 'Carote con Guacamole', type: 'snack', baseCalories: 180, baseProtein: 3, baseCarbs: 15, baseFat: 14, restrictions: ['vegetarian', 'vegan', 'gluten-free', 'lactose-free'], description: 'Bastoncini di carota cruda con salsa guacamole.', isSimple: true }
+  {
+    name: 'Mix di Frutta Secca',
+    type: 'snack',
+    baseCalories: 200,
+    baseProtein: 5,
+    baseCarbs: 8,
+    baseFat: 18,
+    restrictions: ['vegetarian', 'vegan', 'gluten-free', 'lactose-free'],
+    description: 'Mix energetico di noci, mandorle e nocciole tostate al naturale.',
+    ingredients: [
+      { name: 'Gherigli di noce', baseAmount: 15, unit: 'g' },
+      { name: 'Mandorle sgusciate al naturale', baseAmount: 10, unit: 'g' },
+      { name: 'Nocciole tostate', baseAmount: 10, unit: 'g' }
+    ],
+    isSimple: true
+  },
+  {
+    name: 'Barretta Proteica Fatta in Casa',
+    type: 'snack',
+    baseCalories: 250,
+    baseProtein: 15,
+    baseCarbs: 30,
+    baseFat: 8,
+    restrictions: ['vegetarian'],
+    description: 'Barretta energetica a base di avena, burro di arachidi puro e proteine in polvere.',
+    ingredients: [
+      { name: 'Fiocchi d\'avena macinati', baseAmount: 35, unit: 'g' },
+      { name: 'Proteine in polvere whey o vegan', baseAmount: 15, unit: 'g' },
+      { name: 'Burro di arachidi 100% naturale', baseAmount: 15, unit: 'g' },
+      { name: 'Miele millefiori', baseAmount: 10, unit: 'g' }
+    ],
+    isSimple: false
+  },
+  {
+    name: 'Mela con Burro di Arachidi',
+    type: 'snack',
+    baseCalories: 220,
+    baseProtein: 6,
+    baseCarbs: 25,
+    baseFat: 12,
+    restrictions: ['vegetarian', 'vegan', 'gluten-free', 'lactose-free'],
+    description: 'Spicchi di mela fresca croccante intinti in crema di burro di arachidi.',
+    ingredients: [
+      { name: 'Mela fresca a spicchi', baseAmount: 180, unit: 'g' },
+      { name: 'Burro di arachidi 100% puro', baseAmount: 20, unit: 'g' }
+    ],
+    isSimple: true
+  },
+  {
+    name: 'Crackers Integrali con Hummus',
+    type: 'snack',
+    baseCalories: 240,
+    baseProtein: 8,
+    baseCarbs: 30,
+    baseFat: 10,
+    restrictions: ['vegetarian', 'vegan', 'lactose-free'],
+    description: 'Crackers integrali o di segale accompagnati da morbido hummus di ceci.',
+    ingredients: [
+      { name: 'Crackers integrali o di segale', baseAmount: 35, unit: 'g' },
+      { name: 'Hummus di ceci classico', baseAmount: 50, unit: 'g' }
+    ],
+    isSimple: true
+  },
+  {
+    name: 'Cottage Cheese con Miele',
+    type: 'snack',
+    baseCalories: 180,
+    baseProtein: 18,
+    baseCarbs: 15,
+    baseFat: 6,
+    restrictions: ['vegetarian', 'gluten-free'],
+    description: 'Fiocchi di latte magri dolcificati con un goccio di miele millefiori.',
+    ingredients: [
+      { name: 'Fiocchi di latte magri (Cottage cheese)', baseAmount: 150, unit: 'g' },
+      { name: 'Miele millefiori', baseAmount: 15, unit: 'g' }
+    ],
+    isSimple: true
+  },
+  {
+    name: 'Banana con Cioccolato Fondente',
+    type: 'snack',
+    baseCalories: 200,
+    baseProtein: 3,
+    baseCarbs: 35,
+    baseFat: 7,
+    restrictions: ['vegetarian', 'vegan', 'gluten-free'],
+    description: 'Una banana fresca accompagnata da quadratini di cioccolato fondente >75%.',
+    ingredients: [
+      { name: 'Banana matura', baseAmount: 120, unit: 'g' },
+      { name: 'Cioccolato fondente 85%', baseAmount: 15, unit: 'g' }
+    ],
+    isSimple: true
+  },
+  {
+    name: 'Edamame',
+    type: 'snack',
+    baseCalories: 150,
+    baseProtein: 12,
+    baseCarbs: 10,
+    baseFat: 6,
+    restrictions: ['vegetarian', 'vegan', 'gluten-free', 'lactose-free'],
+    description: 'Baccelli di soia edamame sbollentati e spolverati con fiocchi di sale.',
+    ingredients: [
+      { name: 'Edamame in baccello freschi o surgelati', baseAmount: 130, unit: 'g' },
+      { name: 'Sale fino e fiocchi di sale', baseAmount: 2, unit: 'g' }
+    ],
+    isSimple: true
+  },
+  {
+    name: 'Carote con Guacamole',
+    type: 'snack',
+    baseCalories: 180,
+    baseProtein: 3,
+    baseCarbs: 15,
+    baseFat: 14,
+    restrictions: ['vegetarian', 'vegan', 'gluten-free', 'lactose-free'],
+    description: 'Bastoncini croccanti di carota fresca da intingere in guacamole di avocado.',
+    ingredients: [
+      { name: 'Bastoncini di carota cruda', baseAmount: 150, unit: 'g' },
+      { name: 'Salsa guacamole di avocado fresco', baseAmount: 60, unit: 'g' }
+    ],
+    isSimple: true
+  }
 ];
 
 // --- LOGIC: WORKOUT GENERATOR ---
@@ -417,6 +991,31 @@ function getMealsByType(type: 'breakfast' | 'lunch' | 'dinner' | 'snack', restri
   });
 }
 
+export function formatIngredients(ingredients: ScaledIngredient[]): string {
+  return ingredients.map(i => `${i.amount}${i.unit} ${i.name}`).join(', ');
+}
+
+export function getMealWithIngredients(meal: Meal): Meal {
+  if (meal.ingredients && meal.ingredients.length > 0) {
+    return meal;
+  }
+  const template = MEAL_LIBRARY.find(t => t.name.toLowerCase() === meal.name.toLowerCase());
+  if (template && template.ingredients) {
+    const factor = meal.calories ? (meal.calories / template.baseCalories) : 1;
+    const scaledIngredients: ScaledIngredient[] = template.ingredients.map(ing => ({
+      name: ing.name,
+      amount: Math.max(1, Math.round(ing.baseAmount * factor)),
+      unit: ing.unit
+    }));
+    return {
+      ...meal,
+      ingredients: scaledIngredients,
+      description: formatIngredients(scaledIngredients)
+    };
+  }
+  return meal;
+}
+
 function generateMealPlanWeekly(profile: DietProfile, targetCalories: number): MealDay[] {
   const macros = {
     protein: profile.goal === 'bulk' ? profile.weight * 2.2 : profile.weight * 2.0,
@@ -452,9 +1051,16 @@ function generateMealPlanWeekly(profile: DietProfile, targetCalories: number): M
       usedMeals.add(template.name);
       
       const scale = (targetCalories * targetCalFraction) / template.baseCalories;
+      const scaledIngredients: ScaledIngredient[] = (template.ingredients || []).map(ing => ({
+        name: ing.name,
+        amount: Math.max(1, Math.round(ing.baseAmount * scale)),
+        unit: ing.unit
+      }));
+
       const meal: Meal = {
         name: template.name,
-        description: template.description,
+        description: scaledIngredients.length > 0 ? formatIngredients(scaledIngredients) : template.description,
+        ingredients: scaledIngredients,
         calories: Math.round(template.baseCalories * scale),
         protein: Math.round(template.baseProtein * scale),
         carbs: Math.round(template.baseCarbs * scale),
@@ -500,13 +1106,26 @@ function adaptMealPlanToCalories(sourcePlan: MealDay[], targetCalories: number):
   return sourcePlan.map(day => {
     const dayTotal = day.totalCalories || 1;
     const factor = targetCalories / dayTotal;
-    const scaledMeals: Meal[] = day.meals.map(m => {
+    const scaledMeals: Meal[] = day.meals.map(rawMeal => {
+      const m = getMealWithIngredients(rawMeal);
       const scaledCal = Math.max(20, Math.round(m.calories * factor));
       const scaledProt = Math.max(1, Math.round(m.protein * factor));
       const scaledCarbs = Math.max(1, Math.round(m.carbs * factor));
       const scaledFat = Math.max(1, Math.round(m.fat * factor));
+
+      const mealFactor = m.calories > 0 ? (scaledCal / m.calories) : factor;
+      const scaledIngredients: ScaledIngredient[] | undefined = m.ingredients?.map(ing => ({
+        name: ing.name,
+        amount: Math.max(1, Math.round(ing.amount * mealFactor)),
+        unit: ing.unit
+      }));
+
       return {
         ...m,
+        description: scaledIngredients && scaledIngredients.length > 0 
+          ? formatIngredients(scaledIngredients) 
+          : m.description,
+        ingredients: scaledIngredients,
         calories: scaledCal,
         protein: scaledProt,
         carbs: scaledCarbs,
@@ -612,6 +1231,53 @@ export function FitnessScreen({ module, onClose, onSave }: FitnessScreenProps) {
       return () => clearTimeout(timer);
     }
   }, [partnerToastMsg]);
+
+  // Retrocompatibilità automatica: arricchisce i pasti salvati in precedenza con ingredienti e grammi esatti
+  useEffect(() => {
+    let changed = false;
+    let newMealPlanWeekly = formData.mealPlanWeekly;
+    let newPartnerPlanWeekly = formData.partnerMealPlanWeekly;
+
+    if (newMealPlanWeekly) {
+      const enriched = newMealPlanWeekly.map(day => ({
+        ...day,
+        meals: day.meals.map(m => {
+          if (!m.ingredients || m.ingredients.length === 0) {
+            changed = true;
+            return getMealWithIngredients(m);
+          }
+          return m;
+        })
+      }));
+      if (changed) newMealPlanWeekly = enriched;
+    }
+
+    if (newPartnerPlanWeekly) {
+      const enrichedPartner = newPartnerPlanWeekly.map(day => ({
+        ...day,
+        meals: day.meals.map(m => {
+          if (!m.ingredients || m.ingredients.length === 0) {
+            changed = true;
+            return getMealWithIngredients(m);
+          }
+          return m;
+        })
+      }));
+      if (changed) newPartnerPlanWeekly = enrichedPartner;
+    }
+
+    if (changed) {
+      setFormData(prev => {
+        const updated = {
+          ...prev,
+          mealPlanWeekly: newMealPlanWeekly,
+          partnerMealPlanWeekly: newPartnerPlanWeekly
+        };
+        onSave(updated);
+        return updated;
+      });
+    }
+  }, []);
 
   // Genera il payload condivisibile ultracompatto (indici numerici per densità QR minima)
   const sharePayload = useMemo(() => {
@@ -732,9 +1398,15 @@ export function FitnessScreen({ module, onClose, onSave }: FitnessScreenProps) {
               const [idx, cal] = item;
               const template = MEAL_LIBRARY[idx] || MEAL_LIBRARY[0];
               const factor = (cal || template.baseCalories) / (template.baseCalories || 1);
+              const scaledIngredients: ScaledIngredient[] = (template.ingredients || []).map(ing => ({
+                name: ing.name,
+                amount: Math.max(1, Math.round(ing.baseAmount * factor)),
+                unit: ing.unit
+              }));
               return {
                 name: template.name,
-                description: template.description,
+                description: scaledIngredients.length > 0 ? formatIngredients(scaledIngredients) : template.description,
+                ingredients: scaledIngredients,
                 calories: cal || template.baseCalories,
                 protein: Math.round(template.baseProtein * factor),
                 carbs: Math.round(template.baseCarbs * factor),
@@ -744,9 +1416,20 @@ export function FitnessScreen({ module, onClose, onSave }: FitnessScreenProps) {
                 time: mealIndex === 0 ? '08:00' : mealIndex === 1 ? '13:00' : mealIndex === 2 ? '17:00' : '20:30'
               };
             } else if (typeof item === 'object' && item.n) {
+              const match = MEAL_LIBRARY.find(ml => ml.name.toLowerCase() === item.n.toLowerCase());
+              const baseCal = match?.baseCalories || item.c || 400;
+              const factor = (item.c || 400) / baseCal;
+              const scaledIngredients: ScaledIngredient[] = match?.ingredients 
+                ? match.ingredients.map(ing => ({
+                    name: ing.name,
+                    amount: Math.max(1, Math.round(ing.baseAmount * factor)),
+                    unit: ing.unit
+                  }))
+                : [];
               return {
                 name: item.n,
-                description: '',
+                description: scaledIngredients.length > 0 ? formatIngredients(scaledIngredients) : '',
+                ingredients: scaledIngredients.length > 0 ? scaledIngredients : undefined,
                 calories: item.c || 400,
                 protein: item.p || 20,
                 carbs: item.cb || 40,
@@ -769,13 +1452,7 @@ export function FitnessScreen({ module, onClose, onSave }: FitnessScreenProps) {
       } else if (payloadData.mealPlanWeekly) {
         reconstructedMealPlanWeekly = payloadData.mealPlanWeekly.map((day: any) => {
           const meals = (day.meals || []).map((m: any) => {
-            const match = MEAL_LIBRARY.find(ml => ml.name.toLowerCase() === m.name.toLowerCase());
-            return {
-              ...m,
-              description: m.description || match?.description || '',
-              recipeUrl: m.recipeUrl || match?.recipeUrl,
-              isSimple: m.isSimple !== undefined ? m.isSimple : match?.isSimple
-            };
+            return getMealWithIngredients(m);
           });
           return {
             meals,
@@ -955,9 +1632,16 @@ export function FitnessScreen({ module, onClose, onSave }: FitnessScreenProps) {
     const targetCalories = currentMeal.calories || alternativeTemplate.baseCalories;
     const factor = targetCalories / alternativeTemplate.baseCalories;
 
+    const scaledIngredients: ScaledIngredient[] = (alternativeTemplate.ingredients || []).map(ing => ({
+      name: ing.name,
+      amount: Math.max(1, Math.round(ing.baseAmount * factor)),
+      unit: ing.unit
+    }));
+
     const newMeal: Meal = {
       name: alternativeTemplate.name,
-      description: alternativeTemplate.description,
+      description: scaledIngredients.length > 0 ? formatIngredients(scaledIngredients) : alternativeTemplate.description,
+      ingredients: scaledIngredients,
       calories: Math.round(alternativeTemplate.baseCalories * factor),
       protein: Math.round(alternativeTemplate.baseProtein * factor),
       carbs: Math.round(alternativeTemplate.baseCarbs * factor),
@@ -2067,10 +2751,12 @@ export function FitnessScreen({ module, onClose, onSave }: FitnessScreenProps) {
                     </div>
 
                     {selectedDay.meals.map((meal, idx) => {
+                      const safeMeal = getMealWithIngredients(meal);
                       const key = `${expandedDayIndex || 0}_${idx}`;
                       const isSearching = isSearchingRecipe[key];
-                      const mealTime = meal.time || (idx === 0 ? '08:00' : idx === 1 ? '10:30' : idx === 2 ? '13:00' : idx === 3 ? '16:30' : '20:00');
+                      const mealTime = safeMeal.time || (idx === 0 ? '08:00' : idx === 1 ? '10:30' : idx === 2 ? '13:00' : idx === 3 ? '16:30' : '20:00');
                       const partnerMeal = partnerDay?.meals?.[idx];
+                      const safePartnerMeal = partnerMeal ? getMealWithIngredients(partnerMeal) : undefined;
 
                       return (
                       <div key={idx} className="bg-[var(--card-bg)] border border-[var(--border)] rounded-[2rem] overflow-hidden shadow-sm transition-all hover:border-amber-500/30">
@@ -2096,28 +2782,54 @@ export function FitnessScreen({ module, onClose, onSave }: FitnessScreenProps) {
                                 <button
                                   onClick={() => handleToggleMealNotification(expandedDayIndex || 0, idx)}
                                   className={`px-2 py-0.5 rounded-xl border transition-all flex items-center gap-1 text-[10px] font-extrabold ${
-                                    meal.notificationsEnabled 
+                                    safeMeal.notificationsEnabled 
                                       ? 'bg-amber-500 text-white border-amber-500 shadow-md shadow-amber-500/20' 
                                       : 'bg-[var(--bg)] text-[var(--text-muted)] border-[var(--border)] hover:border-amber-500 hover:text-amber-500'
                                   }`}
-                                  title={meal.notificationsEnabled ? `Notifica attiva per le ${mealTime}` : `Attiva notifica per le ${mealTime}`}
+                                  title={safeMeal.notificationsEnabled ? `Notifica attiva per le ${mealTime}` : `Attiva notifica per le ${mealTime}`}
                                 >
                                   <Bell className="w-3 h-3 shrink-0" />
-                                  <span>{meal.notificationsEnabled ? 'Notifica ON' : 'Notifica'}</span>
+                                  <span>{safeMeal.notificationsEnabled ? 'Notifica ON' : 'Notifica'}</span>
                                 </button>
                               </div>
-                              <h5 className="font-bold text-base text-[var(--text-main)] leading-tight">{meal.name}</h5>
+                              <h5 className="font-bold text-base text-[var(--text-main)] leading-tight">{safeMeal.name}</h5>
                             </div>
 
                             <div className="text-right shrink-0 ml-3 bg-amber-500/10 rounded-2xl px-3 py-2">
-                              <p className="font-black text-lg text-amber-500 leading-none">{meal.calories}</p>
+                              <p className="font-black text-lg text-amber-500 leading-none">{safeMeal.calories}</p>
                               <p className="text-[10px] font-bold text-amber-500/70 uppercase">kcal</p>
                             </div>
                           </div>
-                          <p className="text-sm text-[var(--text-muted)] font-medium leading-relaxed">{meal.description}</p>
+
+                          {/* Ingredient Grams Breakdown & Description */}
+                          <div className="space-y-2.5">
+                            {safeMeal.ingredients && safeMeal.ingredients.length > 0 ? (
+                              <div className="bg-[var(--bg)] border border-amber-500/20 rounded-2xl p-3 space-y-2 shadow-inner">
+                                <div className="flex items-center justify-between text-xs font-black text-amber-500">
+                                  <span className="flex items-center gap-1.5">
+                                    <Scale className="w-3.5 h-3.5" /> Grammi & Dosi (Peso a crudo)
+                                  </span>
+                                  <span className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider">Bilancia da Cucina</span>
+                                </div>
+                                <div className="flex flex-wrap gap-1.5">
+                                  {safeMeal.ingredients.map((ing, iIdx) => (
+                                    <span 
+                                      key={iIdx}
+                                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-bold bg-[var(--card-bg)] text-[var(--text-main)] border border-[var(--border)] shadow-xs"
+                                    >
+                                      <span className="text-amber-500 font-extrabold">{ing.amount}{ing.unit}</span>
+                                      <span className="text-[var(--text-muted)] font-medium">{ing.name}</span>
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+                            ) : (
+                              <p className="text-sm text-[var(--text-muted)] font-medium leading-relaxed">{safeMeal.description}</p>
+                            )}
+                          </div>
 
                           {/* Dual-Portion Comparison Card for Couple Cooking */}
-                          {partnerMeal && (dietViewMode === 'couple' || (!isPartnerView && formData.partnerMealPlanWeekly)) && (
+                          {safePartnerMeal && (dietViewMode === 'couple' || (!isPartnerView && formData.partnerMealPlanWeekly)) && (
                             <div className="mt-2 bg-[var(--bg)] border border-amber-500/20 rounded-2xl p-3.5 space-y-2.5 shadow-inner">
                               <div className="flex items-center justify-between text-xs font-black text-amber-500">
                                 <span className="flex items-center gap-1.5">
@@ -2126,25 +2838,53 @@ export function FitnessScreen({ module, onClose, onSave }: FitnessScreenProps) {
                                 <span className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider">Cucina Insieme</span>
                               </div>
                               
-                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-                                <div className="bg-[var(--card-bg)] p-3 rounded-xl border border-[var(--border)] flex flex-col justify-between">
-                                  <div className="flex items-center justify-between">
-                                    <span className="font-extrabold text-[var(--text-main)]">👤 Tu</span>
-                                    <span className="text-amber-500 font-black">{meal.calories} kcal</span>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs">
+                                <div className="bg-[var(--card-bg)] p-3 rounded-xl border border-[var(--border)] flex flex-col justify-between gap-2">
+                                  <div>
+                                    <div className="flex items-center justify-between">
+                                      <span className="font-extrabold text-[var(--text-main)]">👤 Tu</span>
+                                      <span className="text-amber-500 font-black">{safeMeal.calories} kcal</span>
+                                    </div>
+                                    <p className="text-[11px] text-[var(--text-muted)] mt-1 font-semibold">
+                                      🍞 {safeMeal.carbs}g • 💪 {safeMeal.protein}g • 🫒 {safeMeal.fat}g
+                                    </p>
                                   </div>
-                                  <p className="text-[11px] text-[var(--text-muted)] mt-1.5 font-semibold">
-                                    🍞 {meal.carbs}g • 💪 {meal.protein}g • 🫒 {meal.fat}g
-                                  </p>
+                                  {safeMeal.ingredients && safeMeal.ingredients.length > 0 && (
+                                    <div className="pt-2 border-t border-[var(--border)] space-y-1">
+                                      <span className="text-[10px] font-black text-amber-500 uppercase tracking-wider block">Grammi per Te:</span>
+                                      <div className="flex flex-wrap gap-1">
+                                        {safeMeal.ingredients.map((ing, iIdx) => (
+                                          <span key={iIdx} className="text-[10px] font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 px-1.5 py-0.5 rounded-lg border border-amber-500/20">
+                                            {ing.amount}{ing.unit} {ing.name}
+                                          </span>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
                                 </div>
 
-                                <div className="bg-[var(--card-bg)] p-3 rounded-xl border border-amber-500/30 flex flex-col justify-between">
-                                  <div className="flex items-center justify-between">
-                                    <span className="font-extrabold text-[var(--text-main)]">👥 {formData.partnerName || 'Partner'}</span>
-                                    <span className="text-amber-500 font-black">{partnerMeal.calories} kcal</span>
+                                <div className="bg-[var(--card-bg)] p-3 rounded-xl border border-amber-500/30 flex flex-col justify-between gap-2">
+                                  <div>
+                                    <div className="flex items-center justify-between">
+                                      <span className="font-extrabold text-[var(--text-main)]">👥 {formData.partnerName || 'Partner'}</span>
+                                      <span className="text-amber-500 font-black">{safePartnerMeal.calories} kcal</span>
+                                    </div>
+                                    <p className="text-[11px] text-[var(--text-muted)] mt-1 font-semibold">
+                                      🍞 {safePartnerMeal.carbs}g • 💪 {safePartnerMeal.protein}g • 🫒 {safePartnerMeal.fat}g
+                                    </p>
                                   </div>
-                                  <p className="text-[11px] text-[var(--text-muted)] mt-1.5 font-semibold">
-                                    🍞 {partnerMeal.carbs}g • 💪 {partnerMeal.protein}g • 🫒 {partnerMeal.fat}g
-                                  </p>
+                                  {safePartnerMeal.ingredients && safePartnerMeal.ingredients.length > 0 && (
+                                    <div className="pt-2 border-t border-[var(--border)] space-y-1">
+                                      <span className="text-[10px] font-black text-amber-500 uppercase tracking-wider block">Grammi per {formData.partnerName || 'Partner'}:</span>
+                                      <div className="flex flex-wrap gap-1">
+                                        {safePartnerMeal.ingredients.map((ing, iIdx) => (
+                                          <span key={iIdx} className="text-[10px] font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 px-1.5 py-0.5 rounded-lg border border-amber-500/20">
+                                            {ing.amount}{ing.unit} {ing.name}
+                                          </span>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
                                 </div>
                               </div>
                             </div>
@@ -2154,13 +2894,13 @@ export function FitnessScreen({ module, onClose, onSave }: FitnessScreenProps) {
                         {/* Card Footer */}
                         <div className="border-t border-[var(--border)] bg-[var(--bg)] px-5 py-3 flex items-center justify-between gap-3 flex-wrap">
                           <div className="flex items-center gap-2 text-xs font-bold flex-wrap">
-                            <span className="bg-blue-500/10 text-blue-500 px-2.5 py-1 rounded-lg">🍞 {meal.carbs}g</span>
-                            <span className="bg-red-500/10 text-red-500 px-2.5 py-1 rounded-lg">💪 {meal.protein}g</span>
-                            <span className="bg-yellow-500/10 text-yellow-500 px-2.5 py-1 rounded-lg">🫒 {meal.fat}g</span>
+                            <span className="bg-blue-500/10 text-blue-500 px-2.5 py-1 rounded-lg">🍞 {safeMeal.carbs}g</span>
+                            <span className="bg-red-500/10 text-red-500 px-2.5 py-1 rounded-lg">💪 {safeMeal.protein}g</span>
+                            <span className="bg-yellow-500/10 text-yellow-500 px-2.5 py-1 rounded-lg">🫒 {safeMeal.fat}g</span>
                           </div>
                           <div className="flex items-center gap-2 shrink-0">
                             <button
-                              onClick={() => setSwappingMealInfo({ dayIndex: expandedDayIndex || 0, mealIndex: idx, meal })}
+                              onClick={() => setSwappingMealInfo({ dayIndex: expandedDayIndex || 0, mealIndex: idx, meal: safeMeal })}
                               className="px-3 py-1.5 bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5"
                               title="Sostituisci questo piatto con un'alternativa"
                             >
@@ -2168,9 +2908,9 @@ export function FitnessScreen({ module, onClose, onSave }: FitnessScreenProps) {
                               <span>Cambia Piatto</span>
                             </button>
 
-                            {!meal.isSimple && (
+                            {!safeMeal.isSimple && (
                               <button 
-                                onClick={() => loadAndFindRecipe(meal.name, meal.description, key, meal.recipeUrl)}
+                                onClick={() => loadAndFindRecipe(safeMeal.name, safeMeal.description, key, safeMeal.recipeUrl)}
                                 disabled={isSearching}
                                 className="px-3 py-1.5 bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5"
                               >
@@ -2250,6 +2990,15 @@ export function FitnessScreen({ module, onClose, onSave }: FitnessScreenProps) {
                           <div className="flex-1 min-w-0 pr-3">
                             <h4 className="font-bold text-base text-[var(--text-main)] group-hover:text-amber-500 transition-colors leading-tight">{alt.name}</h4>
                             <p className="text-xs text-[var(--text-muted)] mt-1 font-medium leading-relaxed">{alt.description}</p>
+                            {alt.ingredients && alt.ingredients.length > 0 && (
+                              <div className="flex flex-wrap gap-1 mt-2">
+                                {alt.ingredients.map((ing, iIdx) => (
+                                  <span key={iIdx} className="text-[10px] font-bold bg-[var(--card-bg)] text-[var(--text-main)] px-2 py-0.5 rounded-lg border border-[var(--border)]">
+                                    <span className="text-amber-500 font-extrabold">{ing.baseAmount}{ing.unit}</span> {ing.name}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
                           </div>
                           <div className="text-right shrink-0 bg-amber-500/10 px-3 py-1.5 rounded-xl">
                             <span className="font-black text-sm text-amber-500">{alt.baseCalories}</span>
