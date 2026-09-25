@@ -13,8 +13,8 @@ import {
   PRODUCT_CATEGORY_LABEL, normalizeProduct
 } from '../data/supermarketProducts';
 import { findOffersForName } from '../data/offerStats';
-import { DC_FLYERS } from '../data/doveconvieneDb';
-import { initDcData, useDcDataVersion } from '../services/dcData';
+
+
 
 interface SupermarketScreenProps {
   module: SupermarketModule;
@@ -194,8 +194,8 @@ export const SupermarketScreen = ({ module, onSave, onClose, onShare }: Supermar
   const qtyRef = useRef<HTMLInputElement>(null);
 
   /* Dati volantini: fallback sul bundle, poi aggiornati dal servizio live */
-  useDcDataVersion();
-  useEffect(() => { initDcData(); }, []);
+  
+  
 
   useEffect(() => {
     const handleFridge = () => setFridgeIngredients(loadFridge());
@@ -369,7 +369,7 @@ export const SupermarketScreen = ({ module, onSave, onClose, onShare }: Supermar
   }, [data.items]);
 
   const openOfferFlyer = (fid: string, pg: number) => {
-    if (!DC_FLYERS[fid]) return;
+    
     window.dispatchEvent(new CustomEvent('open-flyer-offer', { detail: { fid, pg } }));
   };
 

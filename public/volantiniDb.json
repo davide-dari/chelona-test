@@ -1,31 +1,4 @@
-// GENERATO da scripts/enrich-volantini.mjs — non modificare a mano.
-// Fonte: CentroVolantini + Calaméo + CeDiGros (Gruppo GROS)
-export interface VolantinoFlyer {
-  id: number;
-  title: string;
-  subtitle?: string;
-  coverUrl?: string;
-  from?: string;
-  to?: string;
-  bkcode?: string;
-  authid?: string;
-  directUrl?: string;
-}
-
-export interface VolantinoChain {
-  slug: string;
-  name: string;
-  logoId?: string;
-  flyers: VolantinoFlyer[];
-}
-
-export interface VolantiniDb {
-  updatedAt: string;
-  source: string;
-  chains: VolantinoChain[];
-}
-
-export const VOLANTINI_DB: VolantiniDb = {
+{
   "updatedAt": "2026-09-25T11:52:03.748Z",
   "source": "centrovolantini.it",
   "chains": [
@@ -2651,4 +2624,4 @@ export const VOLANTINI_DB: VolantiniDb = {
       ]
     }
   ]
-};
+}

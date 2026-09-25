@@ -1,24 +1,18 @@
-import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
-import {
-  ArrowLeft, Loader2, MapPin, Crosshair, X, ChevronRight,
-  CalendarDays, Store, ChevronLeft, BarChart3, Search, Star,
-  LayoutGrid, ExternalLink
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import { 
+  Store, Search, X, ChevronLeft, BarChart3, ExternalLink, CalendarDays, 
+  Star, Sparkles, MapPin, Navigation, Clock, AlertTriangle, RefreshCw, CheckCircle2 
 } from 'lucide-react';
-import { VolantinoModule } from '../types';
+import { motion, AnimatePresence } from 'motion/react';
 import { StoreLogo } from './StoreLogo';
-import { ALL_ITALY_ZONE, loadZone, resolveCap, resolveCity, resolveGps, saveZone, type VolantiniZone } from '../services/zoneService';
-import { searchComuni, comuniByCap, findComune } from '../services/comuniService';
-import {
-  DC_CATEGORIES, DC_CITY_SLUGS, DC_FLYERS, DC_CITY_FLYERS,
-  dcCoverUrl, dcLogoUrl, dcPageUrl, dcAllFidsForCategory,
-  type DcFlyer
-} from '../data/doveconvieneDb';
-import { DC_COMUNE_SLUG, DC_CAPOLUOGO_SLUG } from '../data/dcCityMap';
-import { comuniCaps } from '../data/comuniCaps';
+import { VOLANTINI_DB, type VolantiniDb, type VolantinoChain, type VolantinoFlyer } from '../data/volantiniDb';
 import { OFFER_GROUPS, OFFER_DATE, FIDELITY_CARDS, type OfferEntry, type OfferCategory } from '../data/offerStats';
-import { initDcData, useDcDataVersion } from '../services/dcData';
-import { VOLANTINI_DB, type VolantinoChain, type VolantinoFlyer } from '../data/volantiniDb';
+import { loadZone, saveZone, resolveCap, type VolantiniZone } from '../services/zoneService';
+import { 
+  getLiveVolantiniDb, syncVolantiniRemote, formatUpdateDate, 
+  getFlyerExpiryInfo, type FlyerExpiryInfo 
+} from '../services/volantiniSync';
+import { VolantinoModule } from '../types';
 
 interface VolantinoScreenProps {
   module: VolantinoModule;
@@ -26,369 +20,759 @@ interface VolantinoScreenProps {
   initialOffer?: { fid: string; pg: number };
 }
 
-type ViewMode = 'home' | 'flyer' | 'stats' | 'browse' | 'centro' | 'chain' | 'calameo';
+type ViewMode = 'centro' | 'chain' | 'stats' | 'calameo';
 
-/* URL del viewer Calameo per un volantino CentroVolantini */
-const calameoUrl = (f: VolantinoFlyer) =>
-  `https://v.calameo.com/?bkcode=${f.bkcode}&authid=${f.authid}&mode=viewer&clickto=view&clicktarget=_self`;
-
-interface DcCard {
-  fid: string;
-  dist: number; // metri
-  flyer: DcFlyer;
+function fmtPrice(n: number) {
+  return n.toFixed(2).replace('.', ',') + ' €';
 }
 
-const fmtDist = (m: number) => {
-  if (m <= 0) return '';
-  if (m < 1000) return `${m} m`;
-  return `${(m / 1000).toFixed(1).replace('.', ',')} km`;
+function unitPrice(e: OfferEntry) {
+  return e.p / e.q;
+}
+
+function fmtUnit(u: string) {
+  if (u === 'kg') return 'al kg';
+  if (u === 'l') return 'al litro';
+  if (u === 'pz') return 'al pezzo';
+  return '';
+}
+
+// ── Categorie Stile Doveconviene con Gruppo GROS e In Scadenza ──
+export const DC_INDEX_CATEGORIES = [
+  { slug: 'all', name: 'Tutti', icon: '🛒' },
+  { slug: 'fav', name: 'Preferiti', icon: '⭐' },
+  { slug: 'expiring', name: 'In scadenza', icon: '⏳' },
+  { slug: 'gros', name: 'Gruppo GROS', icon: '🏛️' },
+  { slug: 'iper-e-super', name: 'Iper e Super', icon: '🏪' },
+  { slug: 'discount', name: 'Discount', icon: '🏷️' },
+  { slug: 'elettronica', name: 'Elettronica', icon: '📱' },
+  { slug: 'cura-casa-e-corpo', name: 'Cura casa e corpo', icon: '🧼' },
+  { slug: 'bricolage', name: 'Bricolage', icon: '🔨' },
+  { slug: 'arredamento', name: 'Arredamento', icon: '🛋️' },
+] as const;
+
+// ── Mappatura Catene → Categoria Doveconviene ──
+const CHAIN_CATEGORY_MAP: Record<string, string> = {
+  // Gruppo GROS (Roma e Lazio)
+  'pewex': 'gros',
+  'pim': 'gros',
+  'dem': 'gros',
+  'il-castoro': 'gros',
+  'ipertriscount': 'gros',
+  'ipercarni': 'gros',
+  'cts': 'gros',
+  'top': 'gros',
+  'effepiu': 'gros',
+  'sir': 'gros',
+  'sacoph': 'gros',
+  'idromarket': 'gros',
+  'ma': 'gros',
+  'gros': 'gros',
+
+  // Iper e Super
+  'conad': 'iper-e-super',
+  'coop': 'iper-e-super',
+  'ipercoop': 'iper-e-super',
+  'esselunga': 'iper-e-super',
+  'carrefour': 'iper-e-super',
+  'pam': 'iper-e-super',
+  'panorama': 'iper-e-super',
+  'despar': 'iper-e-super',
+  'bennet': 'iper-e-super',
+  'famila': 'iper-e-super',
+  'il-gigante': 'iper-e-super',
+  'iper-la-grande-i': 'iper-e-super',
+  'iperal': 'iper-e-super',
+  'basko': 'iper-e-super',
+  'tigros': 'iper-e-super',
+  'ali-supermercati': 'iper-e-super',
+  'migross': 'iper-e-super',
+  'unes': 'iper-e-super',
+  'oasi': 'iper-e-super',
+  'tigre': 'iper-e-super',
+  'coal': 'iper-e-super',
+  'italmark': 'iper-e-super',
+  'deco': 'iper-e-super',
+  'crai': 'iper-e-super',
+  'cc': 'iper-e-super',
+  'pan-iperpan-e-superpan': 'iper-e-super',
+  'emisfero-ipermercati': 'iper-e-super',
+  'aeo': 'iper-e-super',
+  'metro': 'iper-e-super',
+  'naturasi': 'iper-e-super',
+  'picard': 'iper-e-super',
+
+  // Discount
+  'lidl': 'discount',
+  'eurospin': 'discount',
+  'md-discount': 'discount',
+  'aldi': 'discount',
+  'penny-market': 'discount',
+  'todis': 'discount',
+  'ins': 'discount',
+  'dpiu': 'discount',
+  'prix': 'discount',
+  'hardis': 'discount',
+
+  // Elettronica
+  'mediaworld-italia': 'elettronica',
+  'unieuro': 'elettronica',
+  'euronics': 'elettronica',
+  'expert-italia': 'elettronica',
+  'trony': 'elettronica',
+  'comet': 'elettronica',
+
+  // Cura casa e corpo
+  'acqua-e-sapone': 'cura-casa-e-corpo',
+  'tigota': 'cura-casa-e-corpo',
+  'risparmiocasa': 'cura-casa-e-corpo',
+  'magazzini-maurys': 'cura-casa-e-corpo',
+
+  // Bricolage
+  'leroy-merlin': 'bricolage',
+  'tecnomat': 'bricolage',
+  'bricofer': 'bricolage',
+  'brico-io': 'bricolage',
+
+  // Arredamento
+  'mondo-convenienza': 'arredamento',
 };
 
-/* ═══ Pinch-to-zoom per le pagine del volantino ═══ */
-function PinchZoom({ children, onScale }: { children: React.ReactNode; onScale?: (s: number) => void }) {
-  const ref = useRef<HTMLDivElement>(null);
-  const st = useRef({ s: 1, x: 0, y: 0 });
-  const pinch = useRef<{
-    d0: number; m0x: number; m0y: number; s0: number; x0: number; y0: number;
-  } | null>(null);
-  const drag = useRef<{ x0: number; y0: number; sx: number; sy: number; t0: number } | null>(null);
-  const lastTap = useRef<{ t: number; x: number; y: number } | null>(null);
+// Mappa nomi insegna (da confronto prezzi) → slug (volantiniDb)
+const STORE_SLUG_MAP: Record<string, string> = {
+  'Pewex': 'pewex',
+  'Pim': 'pim',
+  'Dem': 'dem',
+  'Il Castoro': 'il-castoro',
+  'Ipertriscount': 'ipertriscount',
+  'Ipercarni': 'ipercarni',
+  'CTS': 'cts',
+  'Top': 'top',
+  'Effepiù': 'effepiu',
+  'Sir': 'sir',
+  'Sacoph': 'sacoph',
+  'Idromarket': 'idromarket',
+  'MA': 'ma',
+  'Gros': 'gros',
+  'Crai': 'crai',
+  'Decò': 'deco',
+  'Esselunga': 'esselunga',
+  'Eurospin': 'eurospin',
+  'Interspar': 'despar',
+  'Despar': 'despar',
+  'Lidl': 'lidl',
+  'MD': 'md-discount',
+  'Pam': 'pam',
+  'Todis': 'todis',
+  'Conad': 'conad',
+  'Coop': 'coop',
+  'Ipercoop': 'ipercoop',
+  'Aldi': 'aldi',
+  'Carrefour': 'carrefour',
+  'Penny': 'penny-market',
+  'Bennet': 'bennet',
+  'Famila': 'famila',
+  'Il Gigante': 'il-gigante',
+  'Iperal': 'iperal',
+  'Tigros': 'tigros',
+  'Basko': 'basko',
+  'Migross': 'migross',
+  'Alì': 'ali-supermercati',
+  'Unes': 'unes',
+  'Acqua e Sapone': 'acqua-e-sapone',
+  'Acqua & Sapone': 'acqua-e-sapone',
+  'Tigotà': 'tigota',
+  'Risparmio Casa': 'risparmiocasa',
+  'NaturaSì': 'naturasi',
+  'In\'s': 'ins',
+  'Dpiù': 'dpiu',
+  'Oasi': 'oasi',
+  'Tigre': 'tigre',
+  'Coal': 'coal',
+  'Italmark': 'italmark',
+  'Prix': 'prix',
+  'Metro': 'metro',
+};
 
-  const apply = (s: number, x: number, y: number) => {
-    const el = ref.current;
-    if (!el) return;
-    st.current = { s, x, y };
-    el.style.transform = `translate(${x}px, ${y}px) scale(${s})`;
-    el.style.touchAction = s > 1.01 ? 'none' : 'pan-y';
-    onScale?.(s);
-  };
+// Helper URL volantino (supporta player Calaméo pulito integrato o diretto CeDiGros)
+const getFlyerUrl = (f: VolantinoFlyer) => {
+  if (f.directUrl) return f.directUrl;
+  return `https://v.calameo.com/?bkcode=${f.bkcode}${f.authid ? `&authid=${f.authid}` : ''}&mode=viewer`;
+};
 
-  const maxScale = () => {
-    const el = ref.current;
-    const img = el?.querySelector('img');
-    if (el && img && img.naturalWidth > 0) {
-      return Math.min(4, Math.max(2, img.naturalWidth / Math.max(el.clientWidth, 1)));
+// URL per apertura nel browser esterno
+const getBrowserUrl = (f: VolantinoFlyer) => {
+  if (f.directUrl) return f.directUrl;
+  return `https://www.calameo.com/read/${f.bkcode}${f.authid ? `?authid=${f.authid}` : ''}`;
+};
+
+/* ═══════════════════════════════════════════════════════════════════
+   CAP MODAL: Selezione CAP e Geolocalizzazione
+   ═══════════════════════════════════════════════════════════════════ */
+function CapModal(props: {
+  isOpen: boolean;
+  currentZone: VolantiniZone | null;
+  onSave: (z: VolantiniZone) => void;
+  onClose: () => void;
+}) {
+  const { isOpen, currentZone, onSave, onClose } = props;
+  const [capInput, setCapInput] = useState(currentZone?.cap || '');
+  const [error, setError] = useState('');
+
+  if (!isOpen) return null;
+
+  const handleSave = (capVal: string) => {
+    const res = resolveCap(capVal);
+    if (res) {
+      setError('');
+      onSave(res);
+      onClose();
+    } else {
+      setError('CAP non valido. Inserisci un CAP italiano di 5 cifre.');
     }
-    return 3;
   };
 
-  const onTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
-    if (e.touches.length === 2) {
-      drag.current = null;
-      const [a, b] = [e.touches[0], e.touches[1]];
-      pinch.current = {
-        d0: Math.max(Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY), 1),
-        m0x: (a.clientX + b.clientX) / 2,
-        m0y: (a.clientY + b.clientY) / 2,
-        s0: st.current.s,
-        x0: st.current.x,
-        y0: st.current.y,
-      };
-    } else if (e.touches.length === 1) {
-      pinch.current = null;
-      drag.current = {
-        x0: e.touches[0].clientX,
-        y0: e.touches[0].clientY,
-        sx: st.current.x,
-        sy: st.current.y,
-        t0: Date.now(),
-      };
-    }
-  };
-
-  const onTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
-    const p = pinch.current;
-    if (p && e.touches.length === 2) {
-      const [a, b] = [e.touches[0], e.touches[1]];
-      const d = Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
-      const mx = (a.clientX + b.clientX) / 2;
-      const my = (a.clientY + b.clientY) / 2;
-      let s = p.s0 * (d / p.d0);
-      s = Math.min(Math.max(s, 1), maxScale());
-      apply(s, p.x0 + (mx - p.m0x), p.y0 + (my - p.m0y));
-    } else if (drag.current && e.touches.length === 1 && st.current.s > 1.01) {
-      const d = drag.current;
-      apply(st.current.s, d.sx + (e.touches[0].clientX - d.x0), d.sy + (e.touches[0].clientY - d.y0));
-    }
-  };
-
-  const onTouchEnd = (e: React.TouchEvent<HTMLDivElement>) => {
-    const wasPinch = pinch.current !== null;
-    pinch.current = null;
-    const d = drag.current;
-    drag.current = null;
-
-    // Tap (tocco breve senza movimento) → doppio tap per zoom/reset
-    if (!wasPinch && d && e.changedTouches.length === 1 && Date.now() - d.t0 < 300) {
-      const t = e.changedTouches[0];
-      const moved = Math.hypot(t.clientX - d.x0, t.clientY - d.y0);
-      if (moved < 10) {
-        const now = Date.now();
-        const last = lastTap.current;
-        if (last && now - last.t < 300 && Math.hypot(t.clientX - last.x, t.clientY - last.y) < 40) {
-          lastTap.current = null;
-          const el = ref.current;
-          const rect = el?.getBoundingClientRect();
-          if (st.current.s > 1.01) {
-            apply(1, 0, 0);
-          } else if (el && rect) {
-            const cx = t.clientX - rect.left;
-            const cy = t.clientY - rect.top;
-            const s = Math.min(2.5, maxScale());
-            apply(s, rect.width / 2 - cx * s, rect.height / 2 - cy * s);
-          }
-        } else {
-          lastTap.current = { t: now, x: t.clientX, y: t.clientY };
-        }
-        return;
-      }
-    }
-    lastTap.current = null;
-    if (st.current.s <= 1.01) apply(1, 0, 0);
-  };
+  const QUICK_CAPS = [
+    { city: 'Roma', cap: '00100' },
+    { city: 'Milano', cap: '20100' },
+    { city: 'Napoli', cap: '80100' },
+    { city: 'Torino', cap: '10100' },
+    { city: 'Firenze', cap: '50100' },
+    { city: 'Bologna', cap: '40100' },
+    { city: 'Palermo', cap: '90100' },
+    { city: 'Bari', cap: '70100' },
+  ];
 
   return (
-    <div
-      ref={ref}
-      onTouchStart={onTouchStart}
-      onTouchMove={onTouchMove}
-      onTouchEnd={onTouchEnd}
-      className="w-full h-full will-change-transform select-none"
-      style={{ touchAction: 'pan-y' }}
-    >
-      {children}
+    <div className="fixed inset-0 z-[200] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+      <div className="w-full max-w-sm rounded-3xl bg-[var(--card-bg)] border border-[var(--border)] p-6 space-y-4 shadow-xl">
+        <div className="flex items-start justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-2xl bg-emerald-500/15 text-emerald-600 flex items-center justify-center">
+              <MapPin className="w-5 h-5" />
+            </div>
+            <div>
+              <h2 className="text-base font-black text-[var(--text-main)]">Imposta il tuo CAP</h2>
+              <p className="text-[11px] text-[var(--text-muted)] font-medium">Trova i supermercati e i volantini vicini</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="p-1 rounded-full text-[var(--text-muted)] hover:text-[var(--text-main)]">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <div>
+          <label className="text-xs font-bold text-[var(--text-muted)] block mb-1.5">Inserisci il tuo CAP (5 cifre):</label>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              maxLength={5}
+              value={capInput}
+              onChange={(e) => {
+                setCapInput(e.target.value.replace(/\D/g, ''));
+                setError('');
+              }}
+              placeholder="es. 00100"
+              className="flex-1 px-4 py-2.5 rounded-xl bg-[var(--surface-variant)] border border-[var(--border)] font-bold text-sm text-[var(--text-main)] outline-none focus:border-emerald-500/60"
+            />
+            <button
+              onClick={() => handleSave(capInput)}
+              className="px-4 py-2.5 rounded-xl bg-emerald-500 text-white font-bold text-xs hover:bg-emerald-600 active:scale-95 transition-all"
+            >
+              Conferma
+            </button>
+          </div>
+          {error && <p className="text-[11px] text-red-500 font-semibold mt-1.5">{error}</p>}
+        </div>
+
+        <div>
+          <p className="text-[11px] font-bold text-[var(--text-muted)] mb-2">Città veloci:</p>
+          <div className="grid grid-cols-4 gap-1.5">
+            {QUICK_CAPS.map(q => (
+              <button
+                key={q.cap}
+                onClick={() => {
+                  setCapInput(q.cap);
+                  handleSave(q.cap);
+                }}
+                className={`py-1.5 px-2 rounded-xl text-[11px] font-bold border transition-colors ${
+                  capInput === q.cap
+                    ? 'bg-emerald-500 text-white border-emerald-500'
+                    : 'bg-[var(--surface-variant)] border-[var(--border)] text-[var(--text-main)] hover:border-emerald-500/50'
+                }`}
+              >
+                {q.city}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="pt-2 border-t border-[var(--border)]">
+          <button
+            onClick={() => {
+              const q = encodeURIComponent(`supermercati vicino a ${currentZone?.city || (capInput ? `CAP ${capInput}` : 'me')}`);
+              window.open(`https://www.google.com/maps/search/${q}`, '_blank');
+            }}
+            className="w-full py-2.5 rounded-xl bg-blue-500/10 border border-blue-500/25 text-blue-600 font-bold text-xs flex items-center justify-center gap-2 hover:bg-blue-500/15 transition-colors"
+          >
+            <Navigation className="w-4 h-4" />
+            Cerca supermercati su Google Maps
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
 
-/* Slug della città dell'utente (fallback: capoluogo provincia, poi nazionale) */
-const dcSlugForZone = (zone: VolantiniZone | null): string => {
-  if (!zone || zone.kind === 'all') return '';
-  const city = zone.city ?? '';
-  if (!city) return '';
-  if (DC_COMUNE_SLUG[city]) return DC_COMUNE_SLUG[city];
-  const sigla = zone.provincia;
-  if (sigla && DC_CAPOLUOGO_SLUG[sigla]) return DC_CAPOLUOGO_SLUG[sigla];
-  const comune = findComune(city);
-  if (comune) {
-    if (DC_COMUNE_SLUG[comune.n]) return DC_COMUNE_SLUG[comune.n];
-    if (DC_CAPOLUOGO_SLUG[comune.p]) return DC_CAPOLUOGO_SLUG[comune.p];
-  }
-  return '';
-};
-
-const parseCards = (s: string): DcCard[] => {
-  const out: DcCard[] = [];
-  for (const part of s.split(',')) {
-    if (!part) continue;
-    const [fid, dist] = part.split(':');
-    const flyer = DC_FLYERS[fid];
-    if (!flyer) continue;
-    out.push({ fid, dist: parseInt(dist || '0', 10) || 0, flyer });
-  }
-  return out;
-};
-
-/* Mappa il nome catena di offerStats allo slug dovecovene (per il fallback) */
-const chainSlugForName = (name: string): string => {
-  const n = name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '');
-  const map: Record<string, string> = {
-    esselunga: 'esselunga', md: 'md', eurospin: 'eurospin', pam: 'pam',
-    crai: 'crai', deco: 'deco', lidl: 'lidl', interspar: 'interspar',
-    todis: 'todis', conad: 'conad', coop: 'coop', carrefour: 'carrefour',
-    despar: 'despar', penny: 'penny', aldi: 'aldi', famila: 'famila',
-  };
-  return map[n] || n;
-};
-
-/* Prezzo unitario normalizzato (€/kg, €/litro o €/pezzo) */
-const unitPrice = (e: OfferEntry) => (e.u === 'pz' ? e.p / e.q : e.p / e.q);
-
-const fmtUnit = (u: OfferEntry['u']) => (u === 'kg' ? '€/kg' : u === 'l' ? '€/litro' : '€/pezzo');
-
-const fmtPrice = (n: number) => `${n.toFixed(2).replace('.', ',')} €`;
-
 /* ═══════════════════════════════════════════════════════════════════
-   VIEW 1: HOME — categorie + volantini della città
+   CENTRO VIEW: Indice Categorie + Volantini + Integrazione Google Maps
    ═══════════════════════════════════════════════════════════════════ */
-function HomeView(props: {
+function CentroView(props: {
+  db: VolantiniDb;
+  onChain: (slug: string) => void;
+  onStats: (favOnly?: boolean) => void;
+  onBack: () => void;
+  favorites: string[];
+  onToggleFavorite: (slug: string) => void;
   zone: VolantiniZone | null;
-  cityLabel: string;
-  catCount: number;
-  cat: string;
-  onCat: (c: string) => void;
-  favCats: Set<string>;
-  onToggleFav: (c: string) => void;
-  flyerQuery: string;
-  onFlyerQuery: (q: string) => void;
-  shownCards: DcCard[];
-  onOpenFlyer: (c: DcCard) => void;
-  onZone: () => void;
-  onStats: () => void;
-  onBrowse: (catSlug: string) => void;
-  onCentro: () => void;
+  onOpenCapModal: () => void;
+  isSyncing: boolean;
+  onSync: () => void;
+  syncFeedback: string | null;
 }) {
-  const { zone, cityLabel, catCount, cat, onCat, favCats, onToggleFav, flyerQuery, onFlyerQuery, shownCards, onOpenFlyer, onZone, onStats, onBrowse, onCentro } = props;
+  const { 
+    db, onChain, onStats, onBack, favorites, onToggleFavorite, 
+    zone, onOpenCapModal, isSyncing, onSync, syncFeedback 
+  } = props;
+  const [query, setQuery] = useState('');
+  const [activeCat, setActiveCat] = useState<string>('all');
+  const q = query.trim().toLowerCase();
 
-  /* Le categorie preferite compaiono per prime, in ordine di preferenza */
-  const orderedCats = useMemo(() => {
-    const favs = DC_CATEGORIES.filter(c => favCats.has(c.slug));
-    const others = DC_CATEGORIES.filter(c => !favCats.has(c.slug));
-    return [...favs, ...others];
-  }, [favCats]);
+  const allChains = useMemo(() => {
+    return db.chains.filter(c => c.flyers.length > 0);
+  }, [db]);
+
+  const favChains = useMemo(() => {
+    return allChains.filter(c => favorites.includes(c.slug));
+  }, [allChains, favorites]);
+
+  // Catene con volantini in scadenza (oggi, domani o entro 3 giorni)
+  const expiringChains = useMemo(() => {
+    return allChains.filter(c =>
+      c.flyers.some(f => {
+        const info = getFlyerExpiryInfo(f);
+        return info.status === 'today' || info.status === 'tomorrow' || info.status === 'soon';
+      })
+    );
+  }, [allChains]);
+
+  const totalFlyersCount = useMemo(() => {
+    return allChains.reduce((sum, c) => sum + c.flyers.length, 0);
+  }, [allChains]);
+
+  // Conteggio per ogni categoria
+  const catCounts = useMemo(() => {
+    const counts: Record<string, number> = {
+      all: allChains.length,
+      fav: favorites.length,
+      expiring: expiringChains.length,
+    };
+    for (const c of allChains) {
+      const cat = CHAIN_CATEGORY_MAP[c.slug] || 'iper-e-super';
+      counts[cat] = (counts[cat] || 0) + 1;
+    }
+    return counts;
+  }, [allChains, favorites.length, expiringChains.length]);
+
+  // Filtro catene per categoria selezionata e barra di ricerca
+  const chains = useMemo(() => {
+    let list = allChains;
+    if (activeCat === 'fav') {
+      list = favChains;
+    } else if (activeCat === 'expiring') {
+      list = expiringChains;
+    } else if (activeCat !== 'all') {
+      list = allChains.filter(c => (CHAIN_CATEGORY_MAP[c.slug] || 'iper-e-super') === activeCat);
+    }
+    if (!q) return list;
+    return list.filter(c => {
+      const catSlug = CHAIN_CATEGORY_MAP[c.slug] || '';
+      return (
+        c.name.toLowerCase().includes(q) ||
+        c.slug.includes(q) ||
+        catSlug.includes(q)
+      );
+    });
+  }, [activeCat, favChains, expiringChains, allChains, q]);
+
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="px-4 pt-4 pb-8 max-w-2xl mx-auto w-full space-y-5">
-      {/* ── Banner zona ── */}
-      <button
-        onClick={onZone}
-        className="w-full flex items-center gap-2.5 p-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/25 text-left transition-colors hover:bg-emerald-500/15"
-      >
-        <MapPin className="w-4 h-4 text-emerald-500 shrink-0" />
-        <div className="flex-1 min-w-0">
-          <p className="text-xs font-bold text-[var(--text-main)]">
-            {zone && zone.cap ? `Volantini per ${zone.label}` : cityLabel ? `Volantini per ${cityLabel}` : zone && zone.kind !== 'all' ? `Volantini per ${zone.label}` : 'Volantini per tutta Italia'}
-            {!cityLabel && zone && zone.kind !== 'all' ? ' · nazionali' : ''}
-          </p>
-          <p className="text-[10px] text-[var(--text-muted)] font-medium">
-            {catCount} volantini · tocca per cambiare zona
-          </p>
-        </div>
-        <ChevronRight className="w-4 h-4 text-emerald-500 shrink-0" />
-      </button>
-
-      {/* ── Categorie ── */}
-      <div className="flex gap-2 overflow-x-auto custom-scrollbar pb-1 -mx-4 px-4">
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="px-4 pt-4 pb-8 max-w-2xl mx-auto w-full space-y-4">
+      {/* ── Top Bar con Azioni ── */}
+      <div className="flex items-center justify-between gap-2">
         <button
-          onClick={onStats}
-          className={`shrink-0 inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs font-bold transition-colors ${
-            'bg-amber-500/10 border border-amber-500/25 text-amber-600 hover:bg-amber-500/20'
-          }`}
+          onClick={onBack}
+          className="shrink-0 inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs font-bold bg-[var(--card-bg)] border border-[var(--border)] text-[var(--text-muted)] hover:bg-[var(--surface-variant)] transition-colors"
+        >
+          <ChevronLeft className="w-3.5 h-3.5" />
+          Esci
+        </button>
+
+        <button
+          onClick={() => onStats(false)}
+          className="shrink-0 inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs font-bold bg-amber-500/10 border border-amber-500/25 text-amber-600 hover:bg-amber-500/20 transition-colors"
         >
           <BarChart3 className="w-3.5 h-3.5" />
           Confronta prezzi
         </button>
-        <button
-          onClick={() => onBrowse(cat)}
-          className="shrink-0 inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs font-bold transition-colors bg-violet-500/10 border border-violet-500/25 text-violet-600 hover:bg-violet-500/20"
-        >
-          <LayoutGrid className="w-3.5 h-3.5" />
-          Esplora
-        </button>
-        <button
-          onClick={onCentro}
-          className="shrink-0 inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs font-bold transition-colors bg-sky-500/10 border border-sky-500/25 text-sky-600 hover:bg-sky-500/20"
-        >
-          <Store className="w-3.5 h-3.5" />
-          Catene volantini
-        </button>
-        {orderedCats.map(c => {
-          const isFav = favCats.has(c.slug);
-          return (
-            <div key={c.slug} className="shrink-0 inline-flex items-center gap-1 rounded-full border transition-colors overflow-hidden ${
-              cat === c.slug
-                ? 'border-emerald-500 bg-emerald-500'
-                : 'border-[var(--border)] bg-[var(--card-bg)]'
-            }">
-              <button
-                onClick={() => onCat(c.slug)}
-                className={`pl-3.5 py-2 text-xs font-bold transition-colors ${
-                  cat === c.slug ? 'text-white' : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
-                }`}
-              >
-                {c.name}
-              </button>
-              <button
-                onClick={() => onToggleFav(c.slug)}
-                title={isFav ? 'Rimuovi dai preferiti' : 'Aggiungi ai preferiti'}
-                className={`pr-2 py-2 transition-colors ${
-                  cat === c.slug ? 'text-white' : isFav ? 'text-amber-500' : 'text-[var(--text-muted)] opacity-50 hover:opacity-100'
-                }`}
-              >
-                <Star className={`w-3.5 h-3.5 ${isFav ? 'fill-current' : ''}`} />
-              </button>
-            </div>
-          );
-        })}
       </div>
 
-      {/* ── Ricerca supermercato ── */}
+      {/* ── BARRA CAP E GOOGLE MAPS ── */}
+      <div className="flex items-center justify-between gap-2 p-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/25">
+        <button
+          onClick={onOpenCapModal}
+          className="flex items-center gap-2.5 min-w-0 text-left hover:opacity-80 transition-opacity"
+        >
+          <MapPin className="w-4 h-4 text-emerald-600 shrink-0" />
+          <div className="min-w-0">
+            <p className="text-xs font-bold text-[var(--text-main)] truncate">
+              {zone ? zone.label : 'Nessun CAP impostato'}
+            </p>
+            <p className="text-[10px] text-emerald-700 dark:text-emerald-400 font-semibold">
+              {zone ? 'Tocca per cambiare CAP o zona' : 'Tocca qui per inserire il tuo CAP'}
+            </p>
+          </div>
+        </button>
+
+        <button
+          onClick={() => {
+            const loc = zone?.city || (zone?.cap ? `CAP ${zone.cap}` : 'me');
+            const q = encodeURIComponent(`supermercati vicino a ${loc}`);
+            window.open(`https://www.google.com/maps/search/${q}`, '_blank');
+          }}
+          className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white dark:bg-zinc-800 border border-emerald-500/30 text-emerald-700 dark:text-emerald-300 font-bold text-xs hover:bg-emerald-500/10 transition-colors shadow-xs"
+          title="Cerca supermercati vicini su Google Maps"
+        >
+          <Navigation className="w-3.5 h-3.5 text-emerald-600" />
+          Google Maps
+        </button>
+      </div>
+
+      {/* ── BARRA STATO CATALOGO & DATA AGGIORNAMENTO + SYNC ── */}
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 p-3 rounded-2xl bg-[var(--card-bg)] border border-[var(--border)] shadow-xs">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+          <div className="min-w-0">
+            <p className="text-xs font-bold text-[var(--text-main)] truncate">
+              Volantini aggiornati al {formatUpdateDate(db.updatedAt)}
+            </p>
+            <p className="text-[10px] text-[var(--text-muted)] font-medium truncate">
+              {allChains.length} catene attive · {totalFlyersCount} volantini ufficiali
+            </p>
+          </div>
+        </div>
+
+        <button
+          onClick={onSync}
+          disabled={isSyncing}
+          className="shrink-0 inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl bg-[var(--surface-variant)] hover:bg-[var(--border)] text-[var(--text-main)] text-xs font-bold transition-all disabled:opacity-50"
+          title="Verifica se ci sono nuovi volantini online"
+        >
+          <RefreshCw className={`w-3.5 h-3.5 text-emerald-600 ${isSyncing ? 'animate-spin' : ''}`} />
+          <span>{isSyncing ? 'Verifica in corso…' : 'Aggiorna'}</span>
+        </button>
+      </div>
+
+      {syncFeedback && (
+        <div className="p-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/25 flex items-center gap-2 text-xs font-semibold text-emerald-700 dark:text-emerald-300">
+          <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />
+          <span>{syncFeedback}</span>
+        </div>
+      )}
+
+      {/* ── AVVISO VOLANTINI IN SCADENZA (Se presenti e non siamo già nella scheda) ── */}
+      {expiringChains.length > 0 && activeCat !== 'expiring' && (
+        <div
+          onClick={() => setActiveCat('expiring')}
+          className="p-3.5 rounded-2xl bg-gradient-to-r from-amber-500/15 via-orange-500/10 to-transparent border border-amber-500/30 flex items-center justify-between gap-3 cursor-pointer hover:border-amber-500 transition-all shadow-xs"
+        >
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-9 h-9 rounded-xl bg-amber-500/20 text-amber-600 flex items-center justify-center shrink-0">
+              <Clock className="w-5 h-5 animate-pulse" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs font-bold text-[var(--text-main)] truncate">
+                ⚠️ {expiringChains.length} catene con offerte in scadenza!
+              </p>
+              <p className="text-[10px] text-amber-700 dark:text-amber-400 font-semibold truncate">
+                Volantini che terminano oggi o nei prossimi giorni. Tocca per vederli
+              </p>
+            </div>
+          </div>
+          <span className="shrink-0 text-xs font-bold text-amber-600 dark:text-amber-400 flex items-center gap-1">
+            Vedi tutti →
+          </span>
+        </div>
+      )}
+
+      {/* ── Barra di Ricerca ── */}
       <div className="relative">
         <Search className="w-4 h-4 text-[var(--text-muted)] absolute left-4 top-1/2 -translate-y-1/2" />
         <input
-          value={flyerQuery}
-          onChange={e => onFlyerQuery(e.target.value)}
-          placeholder="Cerca il volantino di un supermercato (es. Esselunga, Lidl, Trony…)"
+          value={query}
+          onChange={e => setQuery(e.target.value)}
+          placeholder="Cerca supermercato, Gruppo Gros o marca…"
           className="w-full pl-11 pr-10 py-3 rounded-2xl bg-[var(--card-bg)] border border-[var(--border)] text-[var(--text-main)] font-semibold text-sm outline-none focus:border-emerald-500/60 transition-colors"
         />
-        {flyerQuery && (
-          <button
-            onClick={() => onFlyerQuery('')}
-            className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors"
-            title="Cancella"
-          >
+        {query && (
+          <button onClick={() => setQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors">
             <X className="w-4 h-4" />
           </button>
         )}
       </div>
 
-      {flyerQuery && (
-        <p className="text-[11px] text-[var(--text-muted)] font-medium">
-          {shownCards.length === 0
-            ? `Nessun volantino per "${flyerQuery}" in ${cityLabel || 'tutta Italia'}`
-            : `${shownCards.length} volantini per "${flyerQuery}" (in tutte le categorie)`}
-        </p>
-      )}
-
-      {/* ── Volantini della categoria ── */}
-      {shownCards.length === 0 ? (
-        <div className="py-16 text-center">
-          <Store className="w-10 h-10 text-[var(--text-muted)] mx-auto mb-3 opacity-40" />
-          <p className="text-sm font-semibold text-[var(--text-muted)]">
-            {flyerQuery
-              ? `Nessun volantino trovato per "${flyerQuery}".`
-              : `Nessun volantino in questa categoria per ${cityLabel || 'la tua zona'}.`}
-          </p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-3 gap-3">
-          {shownCards.map(c => (
+      {/* ── INDICE CATEGORIE STILE DOVECONVIENE (Scroll Orizzontale) ── */}
+      <div className="flex gap-2 overflow-x-auto custom-scrollbar pb-1 -mx-4 px-4 pt-1">
+        {DC_INDEX_CATEGORIES.map(cat => {
+          const isActive = activeCat === cat.slug;
+          const count = catCounts[cat.slug] || 0;
+          return (
             <button
-              key={c.fid}
-              onClick={() => onOpenFlyer(c)}
-              className="group relative overflow-hidden rounded-2xl bg-[var(--card-bg)] border border-[var(--border)] aspect-[3/4] focus:outline-none focus:ring-2 focus:ring-emerald-500/40 flex flex-col hover:border-emerald-500/40"
+              key={cat.slug}
+              onClick={() => setActiveCat(cat.slug)}
+              className={`shrink-0 inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs font-bold transition-all ${
+                isActive
+                  ? cat.slug === 'fav'
+                    ? 'bg-amber-500 text-white shadow-sm'
+                    : cat.slug === 'expiring'
+                      ? 'bg-orange-500 text-white shadow-sm'
+                      : 'bg-emerald-500 text-white shadow-sm'
+                  : 'bg-[var(--card-bg)] border border-[var(--border)] text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--surface-variant)]'
+              }`}
             >
-              <div className="flex-1 min-h-0 relative bg-white">
-                <img
-                  src={dcCoverUrl(c.fid)}
-                  alt={c.flyer.n}
-                  loading="lazy"
-                  onError={e => {
-                    e.currentTarget.style.display = 'none';
-                    const logo = e.currentTarget.nextElementSibling as HTMLElement | null;
-                    if (logo) logo.style.display = 'flex';
-                  }}
-                  className="w-full h-full object-cover"
-                />
-                <div
-                  className="absolute inset-0 items-center justify-center"
-                  style={{ display: 'none' }}
-                >
-                  <StoreLogo id={c.flyer.s} short={c.flyer.n.slice(0, 2)} brandSlug={c.flyer.s} size={56} />
-                </div>
-                {c.dist > 0 && (
-                  <span className="absolute top-1.5 left-1.5 text-[9px] font-bold text-emerald-700 bg-emerald-500/90 rounded-full px-1.5 py-0.5 shadow">
-                    {fmtDist(c.dist)}
-                  </span>
-                )}
-              </div>
-              <div className="px-2 pb-2 pt-1.5">
-                <span className="block text-[10px] font-extrabold text-[var(--text-main)] text-center truncate">{c.flyer.n}</span>
-                <span className="block text-[9px] text-[var(--text-muted)] font-medium text-center mt-0.5">
-                  {c.flyer.p.length} pagine
+              <span>{cat.icon}</span>
+              <span>{cat.name}</span>
+              {count > 0 && (
+                <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-semibold ${
+                  isActive ? 'bg-black/20 text-white' : 'bg-[var(--surface-variant)] text-[var(--text-muted)]'
+                }`}>
+                  {count}
                 </span>
-              </div>
+              )}
             </button>
-          ))}
+          );
+        })}
+      </div>
+
+      {/* ── SEZIONE PREFERITI IN PRIMO PIANO (Se in vista "Tutti" e ci sono preferiti) ── */}
+      {activeCat === 'all' && !query && favChains.length > 0 && (
+        <div className="space-y-3 pt-1">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xs font-black uppercase tracking-wider text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
+              <Star className="w-3.5 h-3.5 fill-current" />
+              I tuoi Supermercati Preferiti ({favChains.length})
+            </h2>
+            <button
+              onClick={() => setActiveCat('fav')}
+              className="text-[11px] font-bold text-[var(--text-muted)] hover:text-[var(--text-main)]"
+            >
+              Vedi solo questi →
+            </button>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            {favChains.map(c => {
+              const activeFlyers = c.flyers.filter(f => !f.to || new Date(f.to) >= new Date());
+              const primaryFlyer = (activeFlyers.length ? activeFlyers : c.flyers)[0];
+              const expiry = getFlyerExpiryInfo(primaryFlyer);
+              const isExpiringSoon = expiry.status === 'today' || expiry.status === 'tomorrow' || expiry.status === 'soon';
+
+              return (
+                <div
+                  key={`fav-${c.slug}`}
+                  onClick={() => onChain(c.slug)}
+                  className="relative flex flex-col items-center gap-2 p-3.5 rounded-2xl bg-[var(--card-bg)] border-2 border-amber-500/30 hover:border-amber-500 hover:bg-[var(--surface-variant)] active:scale-[0.97] transition-all cursor-pointer shadow-sm"
+                >
+                  {/* Badge Scadenza se vicino */}
+                  {isExpiringSoon && (
+                    <div className="absolute top-2 left-2 z-10">
+                      <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-bold border backdrop-blur-md shadow-xs ${expiry.badgeBg} ${expiry.textColor} ${expiry.borderColor}`}>
+                        {expiry.iconType === 'alert' ? <AlertTriangle className="w-2.5 h-2.5" /> : <Clock className="w-2.5 h-2.5" />}
+                        <span>{expiry.shortLabel}</span>
+                      </span>
+                    </div>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onToggleFavorite(c.slug);
+                    }}
+                    className="absolute top-2 right-2 p-1.5 rounded-full bg-amber-500/15 text-amber-500 hover:bg-amber-500/30 transition-all z-10"
+                    title="Rimuovi dai preferiti"
+                  >
+                    <Star className="w-3.5 h-3.5 fill-amber-500" />
+                  </button>
+                  <div className="w-12 h-12 rounded-xl bg-white ring-1 ring-[var(--border)] flex items-center justify-center overflow-hidden mt-1">
+                    <StoreLogo id={c.slug} short={c.name.slice(0, 2)} brandSlug={c.slug.replace('md-discount', 'md').replace('-italia', '').replace('iper-', '').replace('-market', '')} size={40} />
+                  </div>
+                  <p className="text-xs font-bold text-[var(--text-main)] text-center w-full truncate">{c.name}</p>
+                  <p className={`text-[10px] font-semibold text-center truncate w-full ${isExpiringSoon ? expiry.textColor : 'text-amber-600'}`}>
+                    {isExpiringSoon ? expiry.label : `${c.flyers.length} volantini`}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* ── CARD CONFRONTA PREZZI SUI PREFERITI ── */}
+          <div className="p-4 rounded-2xl bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent border border-amber-500/25 flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-600 flex items-center justify-center shrink-0">
+                <BarChart3 className="w-5 h-5" />
+              </div>
+              <div>
+                <p className="text-xs font-black text-[var(--text-main)]">Confronta prezzi tra i tuoi preferiti</p>
+                <p className="text-[11px] text-[var(--text-muted)] font-medium">
+                  Scopri chi vende al prezzo più basso tra {favChains.slice(0, 3).map(c => c.name).join(', ')}{favChains.length > 3 ? ` e altri ${favChains.length - 3}` : ''}!
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => onStats(true)}
+              className="w-full sm:w-auto shrink-0 px-4 py-2 rounded-xl bg-amber-500 text-white font-bold text-xs hover:bg-amber-600 active:scale-95 transition-all shadow-sm flex items-center justify-center gap-1.5"
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              Confronta subito
+            </button>
+          </div>
+
+          <div className="flex items-center gap-2 pt-2">
+            <h2 className="text-xs font-black uppercase tracking-wider text-[var(--text-muted)]">
+              Tutti i Supermercati e Negozi ({allChains.length})
+            </h2>
+            <div className="flex-1 h-px bg-[var(--border)]" />
+          </div>
+        </div>
+      )}
+
+      {/* ── SE NESSUN PREFERITO E IN TAB PREFERITI ── */}
+      {activeCat === 'fav' && favChains.length === 0 && (
+        <div className="p-6 rounded-3xl bg-[var(--card-bg)] border border-[var(--border)] text-center space-y-3">
+          <Star className="w-10 h-10 text-amber-500 mx-auto opacity-50" />
+          <p className="text-sm font-bold text-[var(--text-main)]">Non hai ancora aggiunto negozi ai preferiti</p>
+          <p className="text-xs text-[var(--text-muted)] max-w-sm mx-auto">
+            Tocca la stella ⭐ su qualunque catena per aggiungerla ai tuoi preferiti e visualizzarla subito qui!
+          </p>
+          <button
+            onClick={() => setActiveCat('all')}
+            className="px-4 py-2 rounded-xl bg-emerald-500 text-white text-xs font-bold"
+          >
+            Sfoglia tutti i negozi
+          </button>
+        </div>
+      )}
+
+      {/* ── SE NESSUN VOLANTINO IN SCADENZA E IN TAB IN SCADENZA ── */}
+      {activeCat === 'expiring' && expiringChains.length === 0 && (
+        <div className="p-6 rounded-3xl bg-[var(--card-bg)] border border-[var(--border)] text-center space-y-3">
+          <Clock className="w-10 h-10 text-emerald-500 mx-auto opacity-50" />
+          <p className="text-sm font-bold text-[var(--text-main)]">Nessuna offerta in scadenza immediata</p>
+          <p className="text-xs text-[var(--text-muted)] max-w-sm mx-auto">
+            Tutti i volantini attivi sono validi ancora per diversi giorni!
+          </p>
+          <button
+            onClick={() => setActiveCat('all')}
+            className="px-4 py-2 rounded-xl bg-emerald-500 text-white text-xs font-bold"
+          >
+            Torna a tutti i volantini
+          </button>
+        </div>
+      )}
+
+      {/* ── ELENCO CATENE FILTRATO ── */}
+      {chains.length === 0 ? (
+        activeCat !== 'fav' && activeCat !== 'expiring' && (
+          <div className="py-16 text-center">
+            <Store className="w-10 h-10 text-[var(--text-muted)] mx-auto mb-3 opacity-40" />
+            <p className="text-sm font-semibold text-[var(--text-muted)]">
+              Nessun negozio trovato per "{query}".
+            </p>
+          </div>
+        )
+      ) : (
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          {chains.map(c => {
+            const isFav = favorites.includes(c.slug);
+            const activeFlyers = c.flyers.filter(f => !f.to || new Date(f.to) >= new Date());
+            const primaryFlyer = (activeFlyers.length ? activeFlyers : c.flyers)[0];
+            const expiry = getFlyerExpiryInfo(primaryFlyer);
+            const isExpiringSoon = expiry.status === 'today' || expiry.status === 'tomorrow' || expiry.status === 'soon';
+
+            return (
+              <div
+                key={c.slug}
+                onClick={() => onChain(c.slug)}
+                className={`relative flex flex-col items-center gap-2 p-3.5 rounded-2xl bg-[var(--card-bg)] border transition-all cursor-pointer active:scale-[0.97] ${
+                  isFav
+                    ? 'border-amber-500/40 bg-amber-500/[0.02] shadow-sm'
+                    : isExpiringSoon
+                      ? 'border-orange-500/40 hover:border-orange-500 hover:bg-[var(--surface-variant)]'
+                      : 'border-[var(--border)] hover:border-emerald-500/40 hover:bg-[var(--surface-variant)]'
+                }`}
+              >
+                {/* Badge Scadenza rapido a video */}
+                {isExpiringSoon && (
+                  <div className="absolute top-2 left-2 z-10">
+                    <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-bold border backdrop-blur-md shadow-xs ${expiry.badgeBg} ${expiry.textColor} ${expiry.borderColor}`}>
+                      {expiry.iconType === 'alert' ? <AlertTriangle className="w-2.5 h-2.5" /> : <Clock className="w-2.5 h-2.5" />}
+                      <span>{expiry.shortLabel}</span>
+                    </span>
+                  </div>
+                )}
+
+                {/* Stella Preferiti rapida con stopPropagation */}
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onToggleFavorite(c.slug);
+                  }}
+                  className={`absolute top-2 right-2 p-1.5 rounded-full transition-all z-10 ${
+                    isFav
+                      ? 'bg-amber-500/20 text-amber-500 hover:bg-amber-500/30'
+                      : 'bg-black/5 dark:bg-white/5 text-[var(--text-muted)] hover:text-amber-500 hover:bg-amber-500/10'
+                  }`}
+                  title={isFav ? "Rimuovi dai preferiti" : "Aggiungi ai preferiti"}
+                >
+                  <Star className={`w-3.5 h-3.5 ${isFav ? 'fill-amber-500' : ''}`} />
+                </button>
+
+                {/* Tasto Google Maps rapido per la catena */}
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const loc = zone?.city || (zone?.cap ? `CAP ${zone.cap}` : 'me');
+                    const q = encodeURIComponent(`${c.name} supermercato ${loc}`);
+                    window.open(`https://www.google.com/maps/search/${q}`, '_blank');
+                  }}
+                  className="absolute bottom-2 right-2 p-1.5 rounded-full bg-black/5 dark:bg-white/5 text-[var(--text-muted)] hover:text-emerald-600 hover:bg-emerald-500/10 transition-all z-10"
+                  title={`Trova ${c.name} su Google Maps`}
+                >
+                  <MapPin className="w-3.5 h-3.5" />
+                </button>
+
+                <div className="w-12 h-12 rounded-xl bg-white ring-1 ring-[var(--border)] flex items-center justify-center overflow-hidden mt-1">
+                  <StoreLogo id={c.slug} short={c.name.slice(0, 2)} brandSlug={c.slug.replace('md-discount', 'md').replace('-italia', '').replace('iper-', '').replace('-market', '')} size={40} />
+                </div>
+                <p className="text-xs font-bold text-[var(--text-main)] text-center w-full truncate">{c.name}</p>
+                <p className={`text-[10px] font-semibold text-center truncate w-full ${isExpiringSoon ? expiry.textColor : 'text-[var(--text-muted)]'}`}>
+                  {isExpiringSoon ? expiry.label : `${c.flyers.length} volantini`}
+                </p>
+              </div>
+            );
+          })}
         </div>
       )}
     </motion.div>
@@ -396,85 +780,140 @@ function HomeView(props: {
 }
 
 /* ═══════════════════════════════════════════════════════════════════
-   VIEW 2: VOLANTINO — pagine immagine con swipe verticale
+   CHAIN VIEW: Volantini di una singola catena
    ═══════════════════════════════════════════════════════════════════ */
-function FlyerView(props: {
-  activeFlyer: { fid: string; flyer: DcFlyer };
-  cityLabel: string;
-  onFullPage: (i: number) => void;
+function CentroChainView(props: {
+  chain: VolantinoChain;
+  onOpen: (f: VolantinoFlyer) => void;
+  onBack: () => void;
+  isFavorite: boolean;
+  onToggleFavorite: () => void;
+  zone: VolantiniZone | null;
 }) {
-  const { fid, flyer } = props.activeFlyer;
-  const { cityLabel, onFullPage } = props;
+  const { chain, onOpen, onBack, isFavorite, onToggleFavorite, zone } = props;
+  const active = chain.flyers.filter(f => !f.to || new Date(f.to) >= new Date());
+  const list = active.length ? active : chain.flyers;
+
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex flex-col h-full max-w-2xl mx-auto w-full">
-      <div className="px-4 py-3 shrink-0 flex items-center gap-3 border-b border-[var(--border)] bg-[var(--card-bg)]">
-        <div className="w-10 h-10 rounded-xl bg-white ring-1 ring-[var(--border)] flex items-center justify-center overflow-hidden shrink-0">
-          <img
-            src={dcLogoUrl(flyer.s)}
-            alt={flyer.n}
-            onError={e => { e.currentTarget.style.display = 'none'; }}
-            className="w-8 h-8 object-contain"
-          />
-        </div>
-        <div className="flex-1 min-w-0">
-          <p className="font-black text-[var(--text-main)] text-sm leading-tight truncate">{flyer.n}</p>
-          <p className="text-[11px] text-[var(--text-muted)] font-semibold truncate">
-            {cityLabel || 'Tutta Italia'} · {flyer.p.length} pagine
-          </p>
-        </div>
-        {flyer.p.length > 1 && (
-          <span className="shrink-0 inline-flex items-center gap-1 text-[10px] font-bold text-emerald-500 bg-emerald-500/10 rounded-full px-2.5 py-1">
-            <CalendarDays className="w-3 h-3" /> {flyer.p.length} pagine
-          </span>
-        )}
-      </div>
-      <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain custom-scrollbar bg-white">
-        {flyer.p.length === 0 ? (
-          <div className="py-16 text-center">
-            <p className="text-sm font-semibold text-[var(--text-muted)]">Anteprima non disponibile</p>
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="px-4 pt-4 pb-8 max-w-2xl mx-auto w-full space-y-4">
+      <button onClick={onBack} className="inline-flex items-center gap-1.5 text-xs font-bold text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors">
+        <ChevronLeft className="w-4 h-4" /> Tutte le catene
+      </button>
+
+      <div className="flex items-center justify-between gap-3 p-3 rounded-2xl bg-[var(--card-bg)] border border-[var(--border)]">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="w-12 h-12 rounded-xl bg-white ring-1 ring-[var(--border)] flex items-center justify-center overflow-hidden shrink-0">
+            <StoreLogo id={chain.slug} short={chain.name.slice(0, 2)} brandSlug={chain.slug.replace('md-discount', 'md').replace('-italia', '').replace('iper-', '').replace('-market', '')} size={40} />
           </div>
-        ) : (
-          flyer.p.map((_, i) => (
-            <div key={`${fid}-${i}`} className="w-full relative group">
-              <img
-                src={dcPageUrl(fid, i, 4)}
-                alt={`${flyer.n} pagina ${i + 1}`}
-                loading={i === 0 ? 'eager' : 'lazy'}
-                onError={e => { e.currentTarget.style.display = 'none'; }}
-                className="w-full h-auto block cursor-pointer"
-                draggable={false}
-                onClick={() => onFullPage(i)}
-              />
-            </div>
-          ))
-        )}
-        {flyer.p.length > 0 && (
-          <p className="py-4 text-center text-xs font-semibold text-[var(--text-muted)]">Fine del volantino</p>
-        )}
+          <div className="min-w-0">
+            <h2 className="text-base font-black text-[var(--text-main)] truncate">{chain.name}</h2>
+            <p className="text-[11px] text-[var(--text-muted)] font-medium">{list.length} volantin{list.length === 1 ? 'o' : 'i'}</p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-1.5 shrink-0">
+          <button
+            onClick={() => {
+              const loc = zone?.city || (zone?.cap ? `CAP ${zone.cap}` : 'me');
+              const q = encodeURIComponent(`${chain.name} supermercato ${loc}`);
+              window.open(`https://www.google.com/maps/search/${q}`, '_blank');
+            }}
+            className="p-2 rounded-full bg-[var(--surface-variant)] text-[var(--text-muted)] hover:text-emerald-500 transition-colors"
+            title="Trova negozio su Google Maps"
+          >
+            <MapPin className="w-4 h-4" />
+          </button>
+
+          <button
+            onClick={onToggleFavorite}
+            className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all flex items-center gap-1.5 ${
+              isFavorite
+                ? 'bg-amber-500/15 text-amber-600 border border-amber-500/30'
+                : 'bg-[var(--surface-variant)] text-[var(--text-muted)] hover:text-amber-500'
+            }`}
+          >
+            <Star className={`w-3.5 h-3.5 ${isFavorite ? 'fill-amber-500' : ''}`} />
+            {isFavorite ? 'Preferito' : 'Salva'}
+          </button>
+        </div>
+      </div>
+
+      <div className="space-y-3">
+        {list.map(f => {
+          const expiry = getFlyerExpiryInfo(f);
+          return (
+            <button
+              key={f.id}
+              onClick={() => onOpen(f)}
+              className="w-full flex items-center gap-3 p-3 rounded-2xl bg-[var(--card-bg)] border border-[var(--border)] hover:border-emerald-500/40 hover:bg-[var(--surface-variant)] active:scale-[0.99] transition-all text-left"
+            >
+              {f.coverUrl && (
+                <img src={f.coverUrl} alt={f.title} loading="lazy" onError={e => { e.currentTarget.style.display = 'none'; }} className="w-14 h-20 object-cover rounded-lg bg-white ring-1 ring-[var(--border)] shrink-0" />
+              )}
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-bold text-[var(--text-main)] truncate">{f.title}</p>
+                {f.subtitle && <p className="text-[11px] text-[var(--text-muted)] truncate mt-0.5">{f.subtitle}</p>}
+                
+                <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                  <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border ${expiry.badgeBg} ${expiry.textColor} ${expiry.borderColor}`}>
+                    {expiry.iconType === 'alert' ? <AlertTriangle className="w-2.5 h-2.5" /> : <Clock className="w-2.5 h-2.5" />}
+                    <span>{expiry.label}</span>
+                  </span>
+                  {(f.from || f.to) && (
+                    <span className="text-[10px] text-[var(--text-muted)] font-medium">
+                      {f.from ? new Date(f.from).toLocaleDateString('it-IT') : '…'} → {f.to ? new Date(f.to).toLocaleDateString('it-IT') : '…'}
+                    </span>
+                  )}
+                </div>
+              </div>
+              <ExternalLink className="w-4 h-4 text-[var(--text-muted)] shrink-0" />
+            </button>
+          );
+        })}
       </div>
     </motion.div>
   );
 }
 
 /* ═══════════════════════════════════════════════════════════════════
-   VIEW 4: CONFRONTA PREZZI — statistiche da articolo o marca specifica
+   STATS VIEW: Confronto Prezzi (con filtro Preferiti)
    ═══════════════════════════════════════════════════════════════════ */
 function StatsView(props: {
+  db: VolantiniDb;
   query: string;
   onQuery: (q: string) => void;
-  onOfferPage: (chainName: string, fid: string, pg: number) => void;
+  onOpenFlyer: (storeName: string) => void;
+  favorites: string[];
+  initialFilterFavorites?: boolean;
 }) {
-  const { query, onQuery, onOfferPage } = props;
+  const { db, query, onQuery, onOpenFlyer, favorites, initialFilterFavorites = false } = props;
+  const [onlyFavorites, setOnlyFavorites] = useState(initialFilterFavorites || (favorites.length > 0));
   const q = query.trim().toLowerCase();
 
-  /* Confronto completo su tutti i volantini attivi, raggruppati per categoria */
+  // Set di slug preferiti
+  const favSlugSet = useMemo(() => new Set(favorites), [favorites]);
+
+  // Funzione per capire se un'insegna è tra i preferiti dell'utente
+  const isStoreFav = useCallback((storeName: string) => {
+    const slug = STORE_SLUG_MAP[storeName]?.toLowerCase();
+    if (slug && favSlugSet.has(slug)) return true;
+    const lower = storeName.toLowerCase();
+    return favorites.some(f => f.toLowerCase() === lower || lower.includes(f.toLowerCase()));
+  }, [favSlugSet, favorites]);
+
   const groups = useMemo(() => {
-    return OFFER_GROUPS.filter(g =>
-      !q ||
-      g.g.toLowerCase().includes(q) ||
-      g.o.some(e => e.n.toLowerCase().includes(q) || e.b.toLowerCase().includes(q))
-    );
-  }, [q]);
+    return OFFER_GROUPS.map(g => {
+      // Se filtro preferiti attivo, tieni solo le offerte dei negozi preferiti
+      const offers = onlyFavorites && favorites.length > 0
+        ? g.o.filter(e => isStoreFav(e.s))
+        : g.o;
+      return { ...g, o: offers };
+    }).filter(g => {
+      if (g.o.length === 0) return false;
+      if (!q) return true;
+      return g.g.toLowerCase().includes(q) || g.o.some(e => e.n.toLowerCase().includes(q) || e.b.toLowerCase().includes(q));
+    });
+  }, [q, onlyFavorites, favorites.length, isStoreFav]);
 
   const categories = useMemo(() => {
     const cats: { id: OfferCategory; label: string; emoji: string; groups: typeof groups }[] = [
@@ -513,20 +952,55 @@ function StatsView(props: {
         )}
       </div>
 
+      {/* ── Filtro Preferiti ── */}
+      {favorites.length > 0 && (
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setOnlyFavorites(true)}
+            className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all flex items-center gap-1.5 ${
+              onlyFavorites
+                ? 'bg-amber-500 text-white shadow-sm'
+                : 'bg-[var(--card-bg)] border border-[var(--border)] text-[var(--text-muted)] hover:text-[var(--text-main)]'
+            }`}
+          >
+            <Star className="w-3.5 h-3.5 fill-current" />
+            I tuoi preferiti ({favorites.length})
+          </button>
+          <button
+            onClick={() => setOnlyFavorites(false)}
+            className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all ${
+              !onlyFavorites
+                ? 'bg-amber-500 text-white shadow-sm'
+                : 'bg-[var(--card-bg)] border border-[var(--border)] text-[var(--text-muted)] hover:text-[var(--text-main)]'
+            }`}
+          >
+            Tutti i negozi
+          </button>
+        </div>
+      )}
+
       <p className="text-[11px] text-[var(--text-muted)] font-medium">
-        {groups.length === OFFER_GROUPS.length
-          ? `${OFFER_GROUPS.length} articoli confrontati su tutti i volantini · tocca un prezzo per vederlo nel volantino`
-          : `${groups.length} risultati per "${query}"`}
+        {onlyFavorites && favorites.length > 0
+          ? `${groups.length} prodotti confrontati tra i tuoi supermercati preferiti`
+          : `${groups.length} prodotti confrontati sui volantini nazionali`}
       </p>
 
-      {/* ── Gruppi per categoria ── */}
       {groups.length === 0 ? (
-        <div className="py-16 text-center">
-          <BarChart3 className="w-10 h-10 text-[var(--text-muted)] mx-auto mb-3 opacity-40" />
+        <div className="py-16 text-center space-y-3">
+          <BarChart3 className="w-10 h-10 text-[var(--text-muted)] mx-auto opacity-40" />
           <p className="text-sm font-semibold text-[var(--text-muted)]">
-            Nessun articolo trovato per "{query}".
+            {onlyFavorites && favorites.length > 0
+              ? 'Nessun prodotto trovato tra i tuoi preferiti.'
+              : `Nessun articolo trovato per "${query}".`}
           </p>
-          <p className="text-xs text-[var(--text-muted)] font-medium mt-1">Prova con: salmone, tonno, prosciutto, gelato, birra…</p>
+          {onlyFavorites && favorites.length > 0 && (
+            <button
+              onClick={() => setOnlyFavorites(false)}
+              className="px-4 py-2 rounded-xl bg-amber-500 text-white font-bold text-xs"
+            >
+              Vedi offerte di tutte le catene
+            </button>
+          )}
         </div>
       ) : (
         categories.map(cat => (
@@ -557,27 +1031,36 @@ function StatsView(props: {
                     <div className="px-2 pb-2 space-y-0.5">
                       {g.o.map((e, i) => {
                         const isBest = g.o.length > 1 && e === b;
+                        const isFav = isStoreFav(e.s);
+                        const hasFlyer = !!(STORE_SLUG_MAP[e.s] && db.chains.find(c => c.slug === STORE_SLUG_MAP[e.s])?.flyers.length);
                         return (
                           <button
                             key={`${e.s}-${i}`}
-                            onClick={() => onOfferPage(e.s, e.fid, e.pg)}
-                            title="Apri il volantino alla pagina dell'offerta"
+                            onClick={() => hasFlyer && onOpenFlyer(e.s)}
+                            title={hasFlyer ? `Apri volantino ${e.s}` : undefined}
                             className={`w-full flex items-center gap-3 px-2.5 py-2 rounded-2xl text-left transition-colors ${
                               isBest
-                                ? 'bg-emerald-500/10 ring-1 ring-emerald-500/25 hover:bg-emerald-500/15 active:bg-emerald-500/20'
-                                : 'hover:bg-[var(--surface-variant)]/60 active:bg-[var(--surface-variant)]'
+                                ? 'bg-emerald-500/10 ring-1 ring-emerald-500/25 active:bg-emerald-500/20'
+                                : isFav
+                                  ? 'bg-amber-500/5 ring-1 ring-amber-500/20 hover:bg-amber-500/10'
+                                  : hasFlyer ? 'hover:bg-[var(--surface-variant)] active:bg-[var(--surface-variant)]' : 'bg-transparent'
                             }`}
                           >
-                            <span className={`shrink-0 w-2 h-2 rounded-full ${isBest ? 'bg-emerald-500' : 'bg-[var(--border)]'}`} />
+                            <span className={`shrink-0 w-2 h-2 rounded-full ${isBest ? 'bg-emerald-500' : isFav ? 'bg-amber-500' : 'bg-[var(--border)]'}`} />
                             <div className="flex-1 min-w-0">
-                              <p className={`text-xs font-bold truncate ${isBest ? 'text-emerald-600' : 'text-[var(--text-main)]'}`}>
-                                {e.s} {e.b !== e.s ? `· ${e.b}` : ''}
+                              <p className={`text-xs font-bold truncate flex items-center gap-1.5 ${isBest ? 'text-emerald-600' : 'text-[var(--text-main)]'}`}>
+                                <span>{e.s} {e.b !== e.s ? `· ${e.b}` : ''}</span>
+                                {isFav && (
+                                  <span className="text-[9px] font-bold text-amber-600 bg-amber-500/15 rounded-full px-1.5 py-0.2">
+                                    ★ Preferito
+                                  </span>
+                                )}
                                 {FIDELITY_CARDS[e.s] && (
-                                  <span className={`ml-1.5 align-middle inline-block text-[9px] font-bold rounded-full px-1.5 py-0.5 ${isBest ? 'bg-emerald-500/15 text-emerald-700' : 'bg-[var(--surface-variant)] text-[var(--text-muted)]'}`}>
+                                  <span className={`text-[9px] font-bold rounded-full px-1.5 py-0.5 ${isBest ? 'bg-emerald-500/15 text-emerald-700' : 'bg-[var(--surface-variant)] text-[var(--text-muted)]'}`}>
                                     {FIDELITY_CARDS[e.s]}
                                   </span>
                                 )}
-                                {isBest && <span className="ml-1.5 text-[9px] font-black uppercase tracking-wide bg-emerald-500 text-white rounded-full px-1.5 py-0.5 align-middle">Migliore</span>}
+                                {isBest && <span className="text-[9px] font-black uppercase tracking-wide bg-emerald-500 text-white rounded-full px-1.5 py-0.5">Migliore</span>}
                               </p>
                               <p className="text-[10px] text-[var(--text-muted)] font-medium truncate">{e.n}</p>
                             </div>
@@ -587,7 +1070,12 @@ function StatsView(props: {
                                 {unitPrice(e).toFixed(2).replace('.', ',')} {fmtUnit(e.u)}
                               </p>
                             </div>
-                            {isBest ? <Store className="w-4 h-4 text-emerald-500 shrink-0" /> : <ChevronRight className="w-4 h-4 text-[var(--text-muted)] shrink-0" />}
+                            {isBest
+                              ? <Store className="w-4 h-4 shrink-0 text-emerald-500" />
+                              : hasFlyer
+                                ? <ExternalLink className="w-3.5 h-3.5 shrink-0 text-emerald-500 opacity-60" />
+                                : <Store className="w-4 h-4 shrink-0 text-[var(--text-muted)]" />
+                            }
                           </button>
                         );
                       })}
@@ -599,642 +1087,135 @@ function StatsView(props: {
           </section>
         ))
       )}
-
-      <p className="text-[10px] text-[var(--text-muted)] font-medium text-center pt-1">
-        Prezzi rilevati dai volantini attivi ({OFFER_DATE}). Possono variare per punto vendita: verifica sempre in negozio.
-      </p>
     </motion.div>
   );
 }
 
 /* ═══════════════════════════════════════════════════════════════════
-   VIEW 3: ESPLORA — tutti i volantini per categoria, raggruppati per catena
+   MAIN SCREEN COMPONENT
    ═══════════════════════════════════════════════════════════════════ */
-function BrowseView(props: {
-  catSlug: string;
-  query: string;
-  onQuery: (q: string) => void;
-  onOpenFlyer: (c: DcCard) => void;
-}) {
-  const { catSlug, query, onQuery, onOpenFlyer } = props;
-  const dcVer = useDcDataVersion();
-
-  /* Tutti i fid unici per la categoria, con dedup per retailer */
-  const allCards = useMemo(() => {
-    const fids = dcAllFidsForCategory(catSlug);
-    return fids.map(fid => {
-      const flyer = DC_FLYERS[fid];
-      return flyer ? { fid, dist: 0, flyer } : null;
-    }).filter(Boolean) as DcCard[];
-  }, [catSlug, dcVer]);
-
-  /* Raggruppa per retailer slug */
-  const grouped = useMemo(() => {
-    const map = new Map<string, { name: string; cards: DcCard[] }>();
-    for (const card of allCards) {
-      const key = card.flyer.s;
-      let entry = map.get(key);
-      if (!entry) {
-        entry = { name: card.flyer.n, cards: [] };
-        map.set(key, entry);
-      }
-      entry.cards.push(card);
-    }
-    const q = query.trim().toLowerCase();
-    let entries = [...map.entries()];
-    if (q) entries = entries.filter(([slug, e]) =>
-      slug.includes(q) || e.name.toLowerCase().includes(q)
-    );
-    return entries.sort((a, b) => a[1].name.localeCompare(b[1].name));
-  }, [allCards, query]);
-
-  return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="px-4 pt-4 pb-8 max-w-2xl mx-auto w-full space-y-4">
-      <div className="relative">
-        <Search className="w-4 h-4 text-[var(--text-muted)] absolute left-4 top-1/2 -translate-y-1/2" />
-        <input
-          value={query}
-          onChange={e => onQuery(e.target.value)}
-          placeholder="Cerca una catena (es. Lidl, IKEA, Trony…)"
-          className="w-full pl-11 pr-10 py-3 rounded-2xl bg-[var(--card-bg)] border border-[var(--border)] text-[var(--text-main)] font-semibold text-sm outline-none focus:border-violet-500/60 transition-colors"
-        />
-        {query && (
-          <button
-            onClick={() => onQuery('')}
-            className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors"
-            title="Cancella"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        )}
-      </div>
-
-      <p className="text-[11px] text-[var(--text-muted)] font-medium">
-        {query
-          ? `${grouped.length} risultati per "${query}"`
-          : `${allCards.length} volantini da ${grouped.length} catene`}
-      </p>
-
-      {grouped.length === 0 ? (
-        <div className="py-16 text-center">
-          <LayoutGrid className="w-10 h-10 text-[var(--text-muted)] mx-auto mb-3 opacity-40" />
-          <p className="text-sm font-semibold text-[var(--text-muted)]">
-            Nessuna catena trovata per "{query}".
-          </p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-          {grouped.map(([slug, entry]) => (
-            <button
-              key={slug}
-              onClick={() => { if (entry.cards.length === 1) onOpenFlyer(entry.cards[0]); }}
-              className={`flex flex-col items-center gap-2 p-4 rounded-2xl bg-[var(--card-bg)] border border-[var(--border)] transition-colors ${entry.cards.length === 1 ? 'hover:border-emerald-500/40 active:bg-emerald-500/10' : 'hover:border-violet-500/40'}`}
-            >
-              <img
-                src={dcLogoUrl(slug)}
-                alt={entry.name}
-                onError={e => { e.currentTarget.style.display = 'none'; }}
-                className="w-10 h-10 rounded-lg object-contain bg-white ring-1 ring-[var(--border)]"
-              />
-              <p className="text-xs font-bold text-[var(--text-main)] text-center truncate w-full">{entry.name}</p>
-              <p className="text-[10px] text-[var(--text-muted)] font-medium">
-                {entry.cards.length === 1 ? '1 volantino' : `${entry.cards.length} volantini`}
-              </p>
-            </button>
-          ))}
-        </div>
-      )}
-    </motion.div>
-  );
-}
-
-/* ═══════════════════════════════════════════════════════════════════
-   VIEW 4: PAGINA A TUTTO SCHERMO — zoom (pinch/doppio tap) e swipe
-   ═══════════════════════════════════════════════════════════════════ */
-function PageViewer(props: {
-  activeFlyer: { fid: string; flyer: DcFlyer };
-  fullPage: number;
-  onFullPage: (n: number | null) => void;
-}) {
-  const { fid, flyer } = props.activeFlyer;
-  const { fullPage, onFullPage } = props;
-  const total = Math.max(flyer.p.length, 1);
-  const scaleRef = useRef(1);
-  const swipeStart = useRef<number | null>(null);
-
-  const setPage = (n: number) => onFullPage(Math.min(Math.max(n, 0), total - 1));
-
-  return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[200] flex flex-col bg-black"
-      onTouchStart={e => { if (e.touches.length === 1 && scaleRef.current <= 1.01) swipeStart.current = e.touches[0].clientX; else swipeStart.current = null; }}
-      onTouchEnd={e => {
-        if (swipeStart.current === null) return;
-        const dx = e.changedTouches[0].clientX - swipeStart.current;
-        swipeStart.current = null;
-        if (Math.abs(dx) > 60) setPage(fullPage + (dx < 0 ? 1 : -1));
-      }}
-    >
-      <header className="flex items-center gap-3 pt-[max(env(safe-area-inset-top),16px)] px-4 pb-3 shrink-0 z-30">
-        <button
-          onClick={() => onFullPage(null)}
-          className="p-2.5 -ml-2 hover:bg-white/10 rounded-full text-white transition-colors shrink-0"
-        >
-          <ArrowLeft className="w-6 h-6" />
-        </button>
-        <div className="flex-1 min-w-0 text-center">
-          <h1 className="text-base font-black text-white truncate">{flyer.n}</h1>
-          <p className="text-[11px] text-white/60 font-semibold">
-            Pagina {fullPage + 1} di {total} · pizzica per zoomare
-          </p>
-        </div>
-        <div className="w-9 shrink-0" />
-      </header>
-
-      <div className="flex-1 min-h-0 relative flex items-center justify-center overflow-hidden">
-        <PinchZoom key={`${fid}-${fullPage}`} onScale={s => { scaleRef.current = s; }}>
-          <img
-            src={dcPageUrl(fid, fullPage, 4)}
-            alt={`${flyer.n} pagina ${fullPage + 1}`}
-            className="w-full h-full object-contain select-none"
-            draggable={false}
-          />
-        </PinchZoom>
-
-        {total > 1 && (
-          <>
-            <button
-              onClick={() => setPage(fullPage - 1)}
-              disabled={fullPage === 0}
-              className="absolute left-2 top-1/2 -translate-y-1/2 p-2.5 rounded-full bg-white/10 text-white hover:bg-white/20 disabled:opacity-30 transition-colors"
-              title="Pagina precedente"
-            >
-              <ChevronLeft className="w-6 h-6" />
-            </button>
-            <button
-              onClick={() => setPage(fullPage + 1)}
-              disabled={fullPage === total - 1}
-              className="absolute right-2 top-1/2 -translate-y-1/2 p-2.5 rounded-full bg-white/10 text-white hover:bg-white/20 disabled:opacity-30 transition-colors"
-              title="Pagina successiva"
-            >
-              <ChevronRight className="w-6 h-6" />
-            </button>
-          </>
-        )}
-      </div>
-    </motion.div>
-  );
-}
-
-/* ═══════════════════════════════════════════════════════════════════
-   VIEW: VOLANTINI (CentroVolantini) — catene → volantini → Calameo
-   Fonte indipendente da dovecovene: https://www.centrovolantini.it
-   ═══════════════════════════════════════════════════════════════════ */
-function CentroView(props: { onChain: (slug: string) => void; onStats: () => void; onBrowse: () => void; onBack: () => void; }) {
-  const { onChain, onStats, onBrowse, onBack } = props;
-  const [query, setQuery] = useState('');
-  const q = query.trim().toLowerCase();
-  const chains = useMemo(() => {
-    const list = VOLANTINI_DB.chains.filter(c => c.flyers.length > 0);
-    if (!q) return list;
-    return list.filter(c => c.name.toLowerCase().includes(q) || c.slug.includes(q));
-  }, [q]);
-
-  return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="px-4 pt-4 pb-8 max-w-2xl mx-auto w-full space-y-4">
-      <div className="flex gap-2">
-        <button
-          onClick={onBack}
-          className="shrink-0 inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs font-bold bg-[var(--card-bg)] border border-[var(--border)] text-[var(--text-muted)] hover:bg-[var(--surface-variant)] transition-colors"
-        >
-          <ChevronLeft className="w-3.5 h-3.5" />
-          Indietro
-        </button>
-        <button
-          onClick={onStats}
-          className="shrink-0 inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs font-bold bg-amber-500/10 border border-amber-500/25 text-amber-600 hover:bg-amber-500/20 transition-colors"
-        >
-          <BarChart3 className="w-3.5 h-3.5" />
-          Confronta prezzi
-        </button>
-        <button
-          onClick={onBrowse}
-          className="shrink-0 inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs font-bold bg-violet-500/10 border border-violet-500/25 text-violet-600 hover:bg-violet-500/20 transition-colors"
-        >
-          <LayoutGrid className="w-3.5 h-3.5" />
-          Esplora
-        </button>
-      </div>
-
-      <div className="relative">
-        <Search className="w-4 h-4 text-[var(--text-muted)] absolute left-4 top-1/2 -translate-y-1/2" />
-        <input
-          value={query}
-          onChange={e => setQuery(e.target.value)}
-          placeholder="Cerca una catena (es. Lidl, Esselunga, Conad…)"
-          className="w-full pl-11 pr-10 py-3 rounded-2xl bg-[var(--card-bg)] border border-[var(--border)] text-[var(--text-main)] font-semibold text-sm outline-none focus:border-emerald-500/60 transition-colors"
-        />
-        {query && (
-          <button onClick={() => setQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors">
-            <X className="w-4 h-4" />
-          </button>
-        )}
-      </div>
-
-      <p className="text-[11px] text-[var(--text-muted)] font-medium">
-        {chains.length} catene · volantini via CentroVolantini (indipendente da dovecovene)
-      </p>
-
-      {chains.length === 0 ? (
-        <div className="py-16 text-center">
-          <Store className="w-10 h-10 text-[var(--text-muted)] mx-auto mb-3 opacity-40" />
-          <p className="text-sm font-semibold text-[var(--text-muted)]">Nessuna catena trovata per "{query}".</p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-          {chains.map(c => (
-            <button
-              key={c.slug}
-              onClick={() => onChain(c.slug)}
-              className="flex flex-col items-center gap-2 p-4 rounded-2xl bg-[var(--card-bg)] border border-[var(--border)] hover:border-emerald-500/40 hover:bg-[var(--surface-variant)] active:scale-[0.97] transition-all"
-            >
-              <div className="w-12 h-12 rounded-xl bg-white ring-1 ring-[var(--border)] flex items-center justify-center overflow-hidden">
-                <StoreLogo id={c.slug} short={c.name.slice(0, 2)} brandSlug={c.slug.replace('md-discount', 'md').replace('-italia', '').replace('iper-', '').replace('-market', '')} size={40} />
-              </div>
-              <p className="text-xs font-bold text-[var(--text-main)] text-center truncate w-full">{c.name}</p>
-              <p className="text-[10px] text-[var(--text-muted)] font-medium">{c.flyers.length} volantin{c.flyers.length === 1 ? 'o' : 'i'}</p>
-            </button>
-          ))}
-        </div>
-      )}
-    </motion.div>
-  );
-}
-
-function CentroChainView(props: { chain: VolantinoChain; onOpen: (f: VolantinoFlyer) => void; onBack: () => void; }) {
-  const { chain, onOpen, onBack } = props;
-  const active = chain.flyers.filter(f => !f.to || new Date(f.to) >= new Date());
-  const list = active.length ? active : chain.flyers;
-
-  return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="px-4 pt-4 pb-8 max-w-2xl mx-auto w-full space-y-4">
-      <button onClick={onBack} className="inline-flex items-center gap-1.5 text-xs font-bold text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors">
-        <ChevronLeft className="w-4 h-4" /> Tutte le catene
-      </button>
-      <div className="flex items-center gap-3">
-        <div className="w-12 h-12 rounded-xl bg-white ring-1 ring-[var(--border)] flex items-center justify-center overflow-hidden">
-          <StoreLogo id={chain.slug} short={chain.name.slice(0, 2)} brandSlug={chain.slug.replace('md-discount', 'md').replace('-italia', '').replace('iper-', '').replace('-market', '')} size={40} />
-        </div>
-        <div>
-          <h2 className="text-lg font-black text-[var(--text-main)]">{chain.name}</h2>
-          <p className="text-[11px] text-[var(--text-muted)] font-medium">{list.length} volantin{list.length === 1 ? 'o' : 'i'}</p>
-        </div>
-      </div>
-
-      <div className="space-y-3">
-        {list.map(f => (
-          <button
-            key={f.id}
-            onClick={() => onOpen(f)}
-            className="w-full flex items-center gap-3 p-3 rounded-2xl bg-[var(--card-bg)] border border-[var(--border)] hover:border-emerald-500/40 hover:bg-[var(--surface-variant)] active:scale-[0.99] transition-all text-left"
-          >
-            {f.coverUrl && (
-              <img src={f.coverUrl} alt={f.title} loading="lazy" onError={e => { e.currentTarget.style.display = 'none'; }} className="w-14 h-20 object-cover rounded-lg bg-white ring-1 ring-[var(--border)] shrink-0" />
-            )}
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-bold text-[var(--text-main)] truncate">{f.title}</p>
-              {f.subtitle && <p className="text-[11px] text-[var(--text-muted)] truncate mt-0.5">{f.subtitle}</p>}
-              {(f.from || f.to) && (
-                <p className="text-[10px] text-[var(--text-muted)] font-medium mt-1 flex items-center gap-1">
-                  <CalendarDays className="w-3 h-3" />
-                  {f.from ? new Date(f.from).toLocaleDateString('it-IT') : '…'} → {f.to ? new Date(f.to).toLocaleDateString('it-IT') : '…'}
-                </p>
-              )}
-            </div>
-            <ExternalLink className="w-4 h-4 text-[var(--text-muted)] shrink-0" />
-          </button>
-        ))}
-      </div>
-    </motion.div>
-  );
-}
-
-/* Viewer Calameo a tutto schermo (iframe, senza dovecovene) */
-function CalameoViewer(props: { flyer: VolantinoFlyer; onBack: () => void; }) {
-  const { flyer, onBack } = props;
-  return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[200] flex flex-col bg-[var(--bg)]">
-      <header className="flex items-center gap-3 pt-[max(env(safe-area-inset-top),16px)] px-4 pb-3 bg-[var(--card-bg)] border-b border-[var(--border)] shrink-0 z-30">
-        <button onClick={onBack} className="p-2.5 -ml-2 hover:bg-[var(--surface-variant)] rounded-full text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors shrink-0">
-          <ArrowLeft className="w-6 h-6" />
-        </button>
-        <div className="flex-1 min-w-0 text-center">
-          <h1 className="text-base font-black text-[var(--text-main)] truncate">{flyer.title}</h1>
-          {flyer.subtitle && <p className="text-[11px] text-[var(--text-muted)] font-medium truncate">{flyer.subtitle}</p>}
-        </div>
-        <button
-          onClick={() => window.open(calameoUrl(flyer), '_blank')}
-          className="p-2.5 -mr-2 hover:bg-[var(--surface-variant)] rounded-full text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors shrink-0"
-          title="Apri nel browser"
-        >
-          <ExternalLink className="w-5 h-5" />
-        </button>
-      </header>
-      <div className="flex-1 min-h-0 relative bg-black">
-        <iframe
-          src={calameoUrl(flyer)}
-          title={flyer.title}
-          className="w-full h-full border-0"
-          allow="fullscreen"
-          sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-popups-to-escape-sandbox"
-          referrerPolicy="no-referrer"
-        />
-      </div>
-    </motion.div>
-  );
-}
-
 export default function VolantinoScreen({ module, onClose, initialOffer }: VolantinoScreenProps) {
-  const [view, setView] = useState<ViewMode>('home');
-  const [activeFlyer, setActiveFlyer] = useState<{ fid: string; flyer: DcFlyer } | null>(null);
-  const [fullPage, setFullPage] = useState<number | null>(null);
-
-  /* Dati volantini: fallback sul bundle, poi aggiornati dal servizio live */
-  const dcVer = useDcDataVersion();
-  useEffect(() => { initDcData(); }, []);
-
-  /* Apre direttamente l'offerta richiesta da un altro modulo (es. Lista della Spesa) */
-  useEffect(() => {
-    if (!initialOffer) return;
-    const flyer = DC_FLYERS[initialOffer.fid];
-    if (!flyer) return;
-    setActiveFlyer({ fid: initialOffer.fid, flyer });
-    setView('flyer');
-    setFullPage(initialOffer.pg);
-    setFromBadge(true);
-  }, [initialOffer]);
-
-  /* Il volantino è stato aperto dalla Lista della Spesa: al back si torna alla lista */
-  const [fromBadge, setFromBadge] = useState(false);
-
-  /* ── Zona dell'utente ── */
-  const [zone, setZone] = useState<VolantiniZone | null>(() => loadZone());
-  const [zoneModalOpen, setZoneModalOpen] = useState<boolean>(() => !loadZone());
-  const [capInput, setCapInput] = useState('');
-  const [cityInput, setCityInput] = useState('');
-  const [pickedComune, setPickedComune] = useState<ReturnType<typeof searchComuni>[number] | null>(null);
-  const [citySuggestions, setCitySuggestions] = useState<ReturnType<typeof searchComuni>>([]);
-  const [capSuggestions, setCapSuggestions] = useState<ReturnType<typeof comuniByCap>>([]);
-  const [zoneBusy, setZoneBusy] = useState<'gps' | null>(null);
-  const [zoneError, setZoneError] = useState<string | null>(null);
-
-  /* ── Categoria selezionata ── */
-  const [cat, setCat] = useState<string>('iper-e-super');
-
-  /* ── Categorie preferite (stella), persistite ── */
-  const [favCats, setFavCats] = useState<Set<string>>(() => {
-    try {
-      const raw = localStorage.getItem('chelona:dc:favCats');
-      return new Set(raw ? JSON.parse(raw) : []);
-    } catch { return new Set(); }
-  });
-  const toggleFav = (slug: string) => {
-    setFavCats(prev => {
-      const next = new Set(prev);
-      if (next.has(slug)) next.delete(slug); else next.add(slug);
-      try { localStorage.setItem('chelona:dc:favCats', JSON.stringify([...next])); } catch {}
-      return next;
-    });
-  };
-
-  /* ── Ricerca statistiche ── */
-  const [statsQuery, setStatsQuery] = useState('');
-  const [statsOrigin, setStatsOrigin] = useState(false);
-
-  /* ── Ricerca volantino per supermercato ── */
-  const [flyerQuery, setFlyerQuery] = useState('');
-  const [browseCat, setBrowseCat] = useState<string | null>(null);
-  const [browseQuery, setBrowseQuery] = useState('');
+  const [view, setView] = useState<ViewMode>('centro');
   const [centroChain, setCentroChain] = useState<VolantinoChain | null>(null);
   const [calameoFlyer, setCalameoFlyer] = useState<VolantinoFlyer | null>(null);
+  const [statsQuery, setStatsQuery] = useState('');
+  const [statsFavOnly, setStatsFavOnly] = useState(false);
 
-  const applyZone = (z: VolantiniZone) => {
-    setZone(z);
-    saveZone(z);
-    setZoneModalOpen(false);
-    setZoneError(null);
-  };
+  // Database sincronizzato (cache locale o bundled)
+  const [db, setDb] = useState<VolantiniDb>(getLiveVolantiniDb);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncFeedback, setSyncFeedback] = useState<string | null>(null);
+  const [dismissExpiryAlert, setDismissExpiryAlert] = useState(false);
 
-  const submitCap = () => {
-    setZoneError(null);
-    const z = resolveCap(capInput);
-    if (!z) {
-      setZoneError('CAP non valido. Inserisci un codice di 5 cifre.');
-      return;
-    }
-    applyZone(z);
-  };
-
-  const onCityChange = (v: string) => {
-    setCityInput(v);
-    setZoneError(null);
-    if (v.trim().length >= 2) setCitySuggestions(searchComuni(v));
-    else setCitySuggestions([]);
-  };
-
-  const pickCity = (s: ReturnType<typeof searchComuni>[number]) => {
-    setCityInput(`${s.n} (${s.p})`);
-    setCitySuggestions([]);
-    setPickedComune(s);
-    setCapInput(s.c);
-    setCapSuggestions(comuniByCap(s.c));
-    const z = resolveCity(s.n);
-    if (!z) return;
-    setZone({ ...z, cap: undefined });
-    setZoneError(null);
-    if (comuniCaps(s.n)) {
-      saveZone({ ...z, cap: undefined });
-    } else {
-      applyZone({ ...z, cap: undefined });
-    }
-  };
-
-  /* Applica una zona con un CAP specifico della città (es. 20121 per Milano) */
-  const applySpecificCap = (s: ReturnType<typeof searchComuni>[number], cap: string) => {
-    const base = resolveCap(cap);
-    if (!base) return;
-    applyZone({
-      kind: 'cap',
-      cap,
-      region: base.region,
-      city: s.n,
-      provincia: s.p,
-      label: `${cap} · ${s.n}`,
-    });
-  };
-
-  /* All'apertura della modal, precompila città/CAP dalla zona salvata */
+  // Reset alert di scadenza quando cambia volantino
   useEffect(() => {
-    if (!zoneModalOpen) return;
-    if (zone && zone.city) {
-      const f = findComune(zone.city);
-      if (f) {
-        setCityInput(`${f.n} (${f.p})`);
-        setPickedComune(f);
-        setCapInput(zone.cap ?? f.c);
-      } else {
-        setCityInput(zone.city);
-      }
-    } else {
-      setCityInput('');
-      setCapInput('');
-      setPickedComune(null);
-    }
-  }, [zoneModalOpen, zone]);
+    setDismissExpiryAlert(false);
+  }, [calameoFlyer]);
 
-  const onCapChange = (v: string) => {
-    setCapInput(v);
-    setZoneError(null);
-    setCapSuggestions(v.length === 5 ? comuniByCap(v) : []);
+  // Ascolta aggiornamenti del database da eventi globali
+  useEffect(() => {
+    const handleUpdated = (e: any) => {
+      if (e.detail?.chains) setDb(e.detail);
+    };
+    window.addEventListener('chelona_volantini_updated', handleUpdated);
+    return () => window.removeEventListener('chelona_volantini_updated', handleUpdated);
+  }, []);
+
+  // Gestione sincronizzazione manuale con il server remoto
+  const handleSync = async () => {
+    setIsSyncing(true);
+    setSyncFeedback(null);
+    const res = await syncVolantiniRemote();
+    setIsSyncing(false);
+    if (res.updated) {
+      setDb(res.db);
+    }
+    setSyncFeedback(res.message);
+    setTimeout(() => setSyncFeedback(null), 4500);
   };
 
-  const useGps = async () => {
-    setZoneError(null);
-    setZoneBusy('gps');
-    const z = await resolveGps();
-    setZoneBusy(null);
-    if (!z) {
-      setZoneError('Impossibile rilevare la posizione. Riprova o inserisci il CAP.');
-      return;
+  // Zona / CAP dell'utente
+  const [zone, setZone] = useState<VolantiniZone | null>(() => loadZone());
+  const [showCapModal, setShowCapModal] = useState<boolean>(() => !loadZone());
+
+  // Preferiti salvati in localStorage
+  const [favorites, setFavorites] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem('chelona_fav_chains');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
     }
-    applyZone(z);
-  };
+  });
 
-  /* ── Volantini per la città selezionata ── */
-  const dcSlug = useMemo(() => dcSlugForZone(zone), [zone]);
+  const toggleFavorite = useCallback((slug: string) => {
+    setFavorites(prev => {
+      const next = prev.includes(slug) ? prev.filter(s => s !== slug) : [...prev, slug];
+      try {
+        localStorage.setItem('chelona_fav_chains', JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+  }, []);
 
-  const cards = useMemo(() => {
-    const data = dcSlug && DC_CITY_FLYERS[dcSlug] ? DC_CITY_FLYERS[dcSlug] : DC_CITY_FLYERS['--nazionale--'];
-    const list = parseCards(data[cat] ?? '');
-    return list.sort((a, b) => a.dist - b.dist || (parseInt(a.fid) - parseInt(b.fid)));
-  }, [dcSlug, cat, dcVer]);
+  const handleSaveZone = useCallback((newZone: VolantiniZone) => {
+    setZone(newZone);
+    saveZone(newZone);
+  }, []);
 
-  /* Tutti i volantini della città (tutte le categorie) per la ricerca supermercato */
-  const allCards = useMemo(() => {
-    const data = dcSlug && DC_CITY_FLYERS[dcSlug] ? DC_CITY_FLYERS[dcSlug] : DC_CITY_FLYERS['--nazionale--'];
-    const out: DcCard[] = [];
-    for (const c of DC_CATEGORIES) out.push(...parseCards(data[c.slug] ?? ''));
-    const seen = new Set<string>();
-    return out.filter(c => (seen.has(c.fid) ? false : (seen.add(c.fid), true)));
-  }, [dcSlug, dcVer]);
-
-  const shownCards = useMemo(() => {
-    const q = flyerQuery.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-    if (!q) return cards;
-    return allCards.filter(c => c.flyer.n.toLowerCase().includes(q));
-  }, [flyerQuery, cards, allCards]);
-
-  const cityLabel = useMemo(() => {
-    if (dcSlug && DC_CITY_SLUGS[dcSlug]) return DC_CITY_SLUGS[dcSlug];
-    return '';
-  }, [dcSlug]);
-
-  const catCount = useMemo(() => {
-    const data = dcSlug && DC_CITY_FLYERS[dcSlug] ? DC_CITY_FLYERS[dcSlug] : DC_CITY_FLYERS['--nazionale--'];
-    let n = 0;
-    for (const c of DC_CATEGORIES) n += parseCards(data[c.slug] ?? '').length;
-    return n;
-  }, [dcSlug, dcVer]);
-
-  const openFlyer = (card: DcCard) => {
-    setActiveFlyer({ fid: card.fid, flyer: card.flyer });
-    setFullPage(null);
-    setStatsOrigin(false);
-    setView('flyer');
-  };
-
-  /* Apre il volantino della catena (fallback sul volantino corrente se il fid
-     dell'offerta non è più presente nei dati aggiornati). */
-  const openOfferPage = (chainName: string, fid: string, pg: number) => {
-    let flyer = DC_FLYERS[fid];
-    let targetPg = pg;
-    if (!flyer) {
-      // fallback: trova il volantino corrente della catena per nome/slug
-      const slug = chainSlugForName(chainName);
-      const candidates = Object.entries(DC_FLYERS).filter(([, x]) => x.s === slug && x.p && x.p.length);
-      if (candidates.length) {
-        fid = candidates[0][0];
-        flyer = candidates[0][1];
-        targetPg = 0;
-      }
-    }
-    if (!flyer) return;
-    setActiveFlyer({ fid, flyer });
-    setView('flyer');
-    setFullPage(targetPg);
-    setStatsOrigin(true);
-  };
-
-  const goBack = () => {
-    if (fullPage !== null) {
-      setFullPage(null);
-      return;
-    }
-    if (fromBadge) {
-      setFromBadge(false);
-      onClose();
-      return;
-    }
+  const goBack = useCallback(() => {
     if (view === 'calameo') {
       setCalameoFlyer(null);
-      setView('chain');
+      const active = centroChain?.flyers.filter(f => !f.to || new Date(f.to) >= new Date()) || [];
+      const list = active.length ? active : (centroChain?.flyers || []);
+      if (list.length <= 1) {
+        setCentroChain(null);
+        setView('centro');
+      } else {
+        setView('chain');
+      }
     } else if (view === 'chain') {
       setCentroChain(null);
       setView('centro');
-    } else if (view === 'centro') {
-      setView('home');
-    } else if (view === 'flyer') {
-      setActiveFlyer(null);
-      setView(statsOrigin ? 'stats' : 'home');
-      setStatsOrigin(false);
     } else if (view === 'stats') {
-      setView('home');
-    } else if (view === 'browse') {
-      setBrowseCat(null);
-      setBrowseQuery('');
-      setView('home');
-    } else onClose();
-  };
+      setView('centro');
+    } else {
+      onClose();
+    }
+  }, [view, centroChain, onClose]);
 
-  // Back hardware Android: chiude un livello alla volta (come le altre sezioni)
+  // Ascolta il tasto back di Android (gestito da App.tsx → dispatch 'volantino-back')
   useEffect(() => {
-    const onBack = () => goBack();
-    window.addEventListener('volantino-back', onBack);
-    return () => window.removeEventListener('volantino-back', onBack);
-  });
+    const handler = () => goBack();
+    window.addEventListener('volantino-back', handler);
+    return () => window.removeEventListener('volantino-back', handler);
+  }, [goBack]);
+
+  // Apri il volantino di una catena a partire dal nome negozio (es. "Lidl")
+  const onOpenFlyer = useCallback((storeName: string) => {
+    const slug = STORE_SLUG_MAP[storeName];
+    if (!slug) return;
+    const chain = db.chains.find(c => c.slug === slug);
+    if (!chain || chain.flyers.length === 0) return;
+    const active = chain.flyers.filter(f => !f.to || new Date(f.to) >= new Date());
+    const flyer = (active.length ? active : chain.flyers)[0];
+    setCentroChain(chain);
+    setCalameoFlyer(flyer);
+    setView('calameo');
+  }, [db]);
 
   const headerSubtitle = () => {
-    if (view === 'flyer' && activeFlyer) {
-      return `${activeFlyer.flyer.n} · ${activeFlyer.flyer.p.length} pagine · tocca una pagina per ingrandire`;
+    if (view === 'calameo' && calameoFlyer) {
+      const expiry = getFlyerExpiryInfo(calameoFlyer);
+      return `${expiry.label} · ${calameoFlyer.subtitle || 'Volantino Digitale'}`;
+    }
+    if (view === 'chain' && centroChain) {
+      return `${centroChain.flyers.length} volantini`;
     }
     if (view === 'stats') {
       return `Confronto prezzi · rilevati dai volantini del ${OFFER_DATE}`;
     }
-    if (view === 'chain' && centroChain) {
-      return `${centroChain.flyers.length} volantini · CentroVolantini`;
-    }
-    if (view === 'browse' && browseCat) {
-      const catName = DC_CATEGORIES.find(c => c.slug === browseCat)?.name ?? '';
-      return `Esplora tutti i volantini · ${catName}`;
-    }
-    if (view === 'centro') {
-      return `${VOLANTINI_DB.chains.length} catene · volantini via CentroVolantini`;
-    }
-    const base = cityLabel ? `${cityLabel} · ${shownCards.length} volantini` : `${shownCards.length} volantini · tutta Italia`;
-    return `${base} · ${DC_CATEGORIES.find(c => c.slug === cat)?.name ?? ''}`;
+    return `${db.chains.length} catene disponibili · ${zone ? zone.label : 'Tutta Italia'}`;
   };
 
   return (
@@ -1243,321 +1224,190 @@ export default function VolantinoScreen({ module, onClose, initialOffer }: Volan
       animate={{ opacity: 1, y: 0 }}
       className="fixed inset-0 z-[150] flex flex-col h-[100dvh] w-full bg-[var(--bg)] overflow-hidden"
     >
-      {/* ═══ HEADER ═══ */}
       <header className="flex items-center gap-3 pt-[max(env(safe-area-inset-top),16px)] px-4 pb-3 bg-[var(--card-bg)] border-b border-[var(--border)] shrink-0 z-30">
         <button
           onClick={goBack}
           className="p-2.5 -ml-2 hover:bg-[var(--surface-variant)] rounded-full text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors shrink-0"
         >
-          <ArrowLeft className="w-6 h-6" />
+          <ChevronLeft className="w-6 h-6" />
         </button>
         <div className="flex-1 min-w-0 text-center">
-          <h1 className="text-lg font-black text-[var(--text-main)] truncate flex items-center justify-center gap-2">
-            {view === 'flyer' && activeFlyer ? (
-              <img
-                src={dcLogoUrl(activeFlyer.flyer.s)}
-                alt={activeFlyer.flyer.n}
-                onError={e => { e.currentTarget.style.display = 'none'; }}
-                className="w-6 h-6 rounded-md object-contain bg-white ring-1 ring-[var(--border)]"
-              />
+          <h1 className="text-base font-black text-[var(--text-main)] flex items-center justify-center gap-2">
+            {view === 'calameo' && calameoFlyer ? (
+              <span className="truncate">{calameoFlyer.title}</span>
             ) : view === 'chain' && centroChain ? (
-              <span className="w-6 h-6 rounded-md bg-white ring-1 ring-[var(--border)] flex items-center justify-center overflow-hidden">
-                <StoreLogo id={centroChain.slug} short={centroChain.name.slice(0, 2)} brandSlug={centroChain.slug} size={20} />
-              </span>
+              <>
+                <span className="w-6 h-6 rounded-md bg-white ring-1 ring-[var(--border)] flex items-center justify-center overflow-hidden shrink-0">
+                  <StoreLogo id={centroChain.slug} short={centroChain.name.slice(0, 2)} brandSlug={centroChain.slug.replace('md-discount', 'md').replace('-italia', '').replace('iper-', '').replace('-market', '')} size={20} />
+                </span>
+                <span className="truncate">{centroChain.name}</span>
+              </>
             ) : (
-              <Store className="w-5 h-5 text-emerald-500 shrink-0" />
+              <>
+                <Store className="w-5 h-5 text-emerald-500 shrink-0" />
+                <span className="truncate">{module.title || 'Volantini & Offerte'}</span>
+              </>
             )}
-            {view === 'flyer' && activeFlyer ? activeFlyer.flyer.n : view === 'chain' && centroChain ? centroChain.name : view === 'centro' ? 'Catene volantini' : (module.title || 'Volantini & Offerte')}
           </h1>
           <p className="text-[11px] text-[var(--text-muted)] font-medium truncate">{headerSubtitle()}</p>
         </div>
-        <div className="flex items-center gap-1.5 shrink-0">
-          {view === 'home' && (
+        
+        {view === 'calameo' && calameoFlyer ? (
+          <div className="flex items-center gap-1 shrink-0">
+            {centroChain && (
+              <>
+                <button
+                  onClick={() => {
+                    const loc = zone?.city || (zone?.cap ? `CAP ${zone.cap}` : 'me');
+                    const q = encodeURIComponent(`${centroChain.name} supermercato ${loc}`);
+                    window.open(`https://www.google.com/maps/search/${q}`, '_blank');
+                  }}
+                  className="p-2.5 rounded-full hover:bg-[var(--surface-variant)] text-[var(--text-muted)] hover:text-emerald-500 transition-colors"
+                  title="Trova negozio su Google Maps"
+                >
+                  <MapPin className="w-5 h-5" />
+                </button>
+                <button
+                  onClick={() => toggleFavorite(centroChain.slug)}
+                  className={`p-2.5 rounded-full hover:bg-[var(--surface-variant)] transition-colors ${
+                    favorites.includes(centroChain.slug) ? 'text-amber-500' : 'text-[var(--text-muted)] hover:text-amber-500'
+                  }`}
+                  title={favorites.includes(centroChain.slug) ? "Rimuovi dai preferiti" : "Aggiungi ai preferiti"}
+                >
+                  <Star className={`w-5 h-5 ${favorites.includes(centroChain.slug) ? 'fill-amber-500' : ''}`} />
+                </button>
+              </>
+            )}
             <button
-              onClick={() => setZoneModalOpen(true)}
-              className="p-2.5 rounded-2xl bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20 transition-colors"
-              title="Zona dei volantini"
+              onClick={() => window.open(getBrowserUrl(calameoFlyer), '_blank')}
+              className="p-2.5 -mr-2 hover:bg-[var(--surface-variant)] rounded-full text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors"
+              title="Apri nel browser esterno"
             >
-              <MapPin className="w-5 h-5" />
+              <ExternalLink className="w-5 h-5" />
             </button>
-          )}
-        </div>
+          </div>
+        ) : (
+          <div className="w-9 shrink-0" />
+        )}
       </header>
 
-      {/* ═══ CONTENT ═══ */}
-      <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain custom-scrollbar scroll-smooth pb-[max(env(safe-area-inset-bottom),8px)]">
-        <AnimatePresence mode="wait">
-          {view === 'home' && (
-            <HomeView
-              key="home"
-              zone={zone}
-              cityLabel={cityLabel}
-              catCount={catCount}
-              cat={cat}
-              onCat={setCat}
-              favCats={favCats}
-              onToggleFav={toggleFav}
-              flyerQuery={flyerQuery}
-              onFlyerQuery={setFlyerQuery}
-              shownCards={shownCards}
-              onOpenFlyer={openFlyer}
-              onZone={() => setZoneModalOpen(true)}
-              onStats={() => { setStatsQuery(''); setView('stats'); }}
-              onBrowse={(c) => { setBrowseCat(c); setBrowseQuery(''); setView('browse'); }}
-              onCentro={() => setView('centro')}
-            />
-          )}
-          {view === 'centro' && (
-            <CentroView
-              key="centro"
-              onChain={(slug) => { const c = VOLANTINI_DB.chains.find(x => x.slug === slug); if (c) { setCentroChain(c); setView('chain'); } }}
-              onStats={() => { setStatsQuery(''); setView('stats'); }}
-              onBrowse={() => { setBrowseCat(null); setBrowseQuery(''); setView('browse'); }}
-              onBack={() => setView('home')}
-            />
-          )}
-          {view === 'chain' && centroChain && (
-            <CentroChainView
-              key={`chain-${centroChain.slug}`}
-              chain={centroChain}
-              onOpen={(f) => { setCalameoFlyer(f); setView('calameo'); }}
-              onBack={() => setView('centro')}
-            />
-          )}
-          {view === 'flyer' && activeFlyer && (
-            <FlyerView key={activeFlyer.fid} activeFlyer={activeFlyer} cityLabel={cityLabel} onFullPage={setFullPage} />
-          )}
-          {view === 'stats' && (
-            <StatsView
-              key="stats"
-              query={statsQuery}
-              onQuery={setStatsQuery}
-              onOfferPage={openOfferPage}
-            />
-          )}
-          {view === 'browse' && (
-            <BrowseView
-              key={`browse-${browseCat}`}
-              catSlug={browseCat ?? 'iper-e-super'}
-              query={browseQuery}
-              onQuery={setBrowseQuery}
-              onOpenFlyer={openFlyer}
-            />
-          )}
-        </AnimatePresence>
-      </div>
-
-      {/* ═══ VIEWER CALAMEO A TUTTO SCHERMO ═══ */}
-      <AnimatePresence>
-        {view === 'calameo' && calameoFlyer && (
-          <CalameoViewer key={`calameo-${calameoFlyer.id}`} flyer={calameoFlyer} onBack={() => setView('chain')} />
-        )}
-      </AnimatePresence>
-
-      {/* ═══ PAGINA A TUTTO SCHERMO ═══ */}
-      <AnimatePresence>
-        {view === 'flyer' && fullPage !== null && activeFlyer && (
-          <PageViewer key={`page-${activeFlyer?.fid}-${fullPage}`} activeFlyer={activeFlyer} fullPage={fullPage} onFullPage={setFullPage} />
-        )}
-      </AnimatePresence>
-
-      {/* ═══ MODAL ZONA ═══ */}
-      <AnimatePresence>
-        {zoneModalOpen && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-5 bg-black/60 backdrop-blur-sm"
-          >
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 12 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 12 }}
-              transition={{ type: 'spring', stiffness: 380, damping: 30 }}
-              className="w-full max-w-sm rounded-3xl bg-[var(--card-bg)] border border-[var(--border)] p-6 shadow-2xl"
-            >
-              <div className="flex items-start justify-between mb-1">
-                <h2 className="text-lg font-black text-[var(--text-main)] flex items-center gap-2">
-                  <MapPin className="w-5 h-5 text-emerald-500" />
-                  Dove fai la spesa?
-                </h2>
-                <button onClick={() => setZoneModalOpen(false)} className="p-1.5 -mr-1.5 text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors">
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-              <p className="text-xs text-[var(--text-muted)] font-medium mb-4">
-                Inserisci il CAP o la tua città, oppure usa la posizione per mostrare i volantini della tua zona.
-              </p>
-
-              {/* ── Città con autocomplete ── */}
-              <label className="block text-[11px] font-bold uppercase tracking-wider text-[var(--text-muted)] mb-1.5">
-                Città
-              </label>
-              <div className="relative mb-3">
-                <input
-                  value={cityInput}
-                  onChange={e => onCityChange(e.target.value)}
-                  onFocus={() => { if (cityInput.trim().length >= 2) setCitySuggestions(searchComuni(cityInput)); }}
-                  onKeyDown={e => {
-                    if (e.key === 'Enter' && citySuggestions.length) pickCity(citySuggestions[0]);
-                  }}
-                  placeholder="Es. Milano"
-                  className="w-full px-4 py-3 rounded-2xl bg-[var(--bg)] border border-[var(--border)] text-[var(--text-main)] font-semibold text-base outline-none focus:border-emerald-500/60 transition-colors"
-                />
-                {citySuggestions.length > 0 && (
-                  <div className="absolute z-20 top-full left-0 right-0 mt-1.5 rounded-2xl bg-[var(--card-bg)] border border-[var(--border)] shadow-xl overflow-hidden max-h-56 overflow-y-auto custom-scrollbar">
-                    {citySuggestions.map(s => (
-                      <button
-                        key={`${s.n}-${s.p}`}
-                        onClick={() => pickCity(s)}
-                        className="w-full flex items-center justify-between gap-2 px-4 py-2.5 text-left hover:bg-emerald-500/10 transition-colors"
-                      >
-                        <span className="text-sm font-semibold text-[var(--text-main)]">{s.n}</span>
-                        <span className="text-[11px] font-bold text-[var(--text-muted)] shrink-0">
-                          {s.p} · {s.c}
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* ── CAP specifico della città (per le città con più CAP) ── */}
-              {pickedComune && comuniCaps(pickedComune.n) && (
-                <div className="mb-3">
-                  <label className="block text-[11px] font-bold uppercase tracking-wider text-[var(--text-muted)] mb-1.5">
-                    CAP specifico {pickedComune.n} · {pickedComune.p}
-                  </label>
-                  <div className="flex gap-1.5 overflow-x-auto custom-scrollbar pb-1 -mx-4 px-4">
-                    <button
-                      onClick={() => {
-                        setCapInput(pickedComune.c);
-                        const z = resolveCity(pickedComune.n);
-                        if (z) applyZone({ ...z, cap: undefined });
-                      }}
-                      className={`shrink-0 px-3 py-1.5 rounded-full text-[11px] font-bold transition-colors ${
-                        zone && zone.city === pickedComune.n && !zone.cap
-                          ? 'bg-emerald-500 text-white'
-                          : 'bg-[var(--bg)] border border-[var(--border)] text-[var(--text-muted)] hover:text-[var(--text-main)]'
-                      }`}
-                    >
-                      Tutta la città
-                    </button>
-                    {comuniCaps(pickedComune.n)!.map(cap => (
-                      <button
-                        key={cap}
-                        onClick={() => {
-                          setCapInput(cap);
-                          applySpecificCap(pickedComune, cap);
-                        }}
-                        className={`shrink-0 px-3 py-1.5 rounded-full text-[11px] font-bold tracking-wide transition-colors ${
-                          zone && zone.city === pickedComune.n && zone.cap === cap
-                            ? 'bg-emerald-500 text-white'
-                            : 'bg-[var(--bg)] border border-[var(--border)] text-[var(--text-muted)] hover:text-[var(--text-main)]'
-                        }`}
-                      >
-                        {cap}
-                      </button>
-                    ))}
-                  </div>
-                  <p className="text-[10px] text-[var(--text-muted)] font-medium mt-1">
-                    {zone && zone.city === pickedComune.n && zone.cap
-                      ? `Volantini per ${zone.cap} · ${pickedComune.n}`
-                      : `Volantini per tutta ${pickedComune.n}`}
-                  </p>
-                </div>
-              )}
-
-              <div className="flex items-center gap-3 my-2">
-                <div className="flex-1 h-px bg-[var(--border)]" />
-                <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">oppure</span>
-                <div className="flex-1 h-px bg-[var(--border)]" />
-              </div>
-
-              <label className="block text-[11px] font-bold uppercase tracking-wider text-[var(--text-muted)] mb-1.5">
-                Codice di avviamento postale
-              </label>
-              <div className="relative flex gap-2 mb-3">
-                <input
-                  value={capInput}
-                  onChange={e => onCapChange(e.target.value.replace(/\D/g, '').slice(0, 5))}
-                  onKeyDown={e => {
-                    if (e.key === 'Enter') {
-                      if (capSuggestions.length) {
-                        const s = capSuggestions[0];
-                        setCityInput(`${s.n} (${s.p})`);
-                        setPickedComune(s);
-                        setCapSuggestions([]);
-                        const z = resolveCap(capInput) ?? resolveCity(s.n);
-                        if (z) applyZone(z);
-                      } else submitCap();
+      {view !== 'calameo' ? (
+        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain custom-scrollbar scroll-smooth pb-[max(env(safe-area-inset-bottom),8px)]">
+          <AnimatePresence mode="wait">
+            {view === 'centro' && (
+              <CentroView
+                key="centro"
+                db={db}
+                onChain={(slug) => { 
+                  const c = db.chains.find(x => x.slug === slug); 
+                  if (c) { 
+                    setCentroChain(c); 
+                    const active = c.flyers.filter(f => !f.to || new Date(f.to) >= new Date());
+                    const list = active.length ? active : c.flyers;
+                    if (list.length > 0) {
+                      setCalameoFlyer(list[0]);
+                      setView('calameo');
+                    } else {
+                      setView('chain'); 
                     }
-                  }}
-                  inputMode="numeric"
-                  placeholder="Es. 20100"
-                  className="flex-1 min-w-0 px-4 py-3 rounded-2xl bg-[var(--bg)] border border-[var(--border)] text-[var(--text-main)] font-bold text-base tracking-widest outline-none focus:border-emerald-500/60 transition-colors"
-                />
-                <button
-                  onClick={submitCap}
-                  disabled={capInput.length !== 5}
-                  className="shrink-0 px-5 py-3 rounded-2xl bg-emerald-500 hover:bg-emerald-600 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold text-sm transition-colors"
-                >
-                  OK
-                </button>
-                {capSuggestions.length > 0 && (
-                  <div className="absolute z-20 top-full left-0 right-0 mt-1.5 rounded-2xl bg-[var(--card-bg)] border border-[var(--border)] shadow-xl overflow-hidden">
-                    {capSuggestions.map(s => (
-                      <button
-                        key={`${s.n}-${s.p}`}
-                        onClick={() => {
-                          setCapInput(s.c);
-                          setCityInput(`${s.n} (${s.p})`);
-                          setPickedComune(s);
-                          setCapSuggestions([]);
-                          const z = resolveCap(s.c) ?? resolveCity(s.n);
-                          if (z) applyZone(z);
-                        }}
-                        className="w-full flex items-center justify-between gap-2 px-4 py-2.5 text-left hover:bg-emerald-500/10 transition-colors"
-                      >
-                        <span className="text-sm font-semibold text-[var(--text-main)]">{s.n}</span>
-                        <span className="text-[11px] font-bold text-[var(--text-muted)] shrink-0">{s.p} · {s.c}</span>
-                      </button>
-                    ))}
+                  } 
+                }}
+                onStats={(favOnly) => {
+                  setStatsFavOnly(!!favOnly);
+                  setStatsQuery('');
+                  setView('stats');
+                }}
+                onBack={onClose}
+                favorites={favorites}
+                onToggleFavorite={toggleFavorite}
+                zone={zone}
+                onOpenCapModal={() => setShowCapModal(true)}
+                isSyncing={isSyncing}
+                onSync={handleSync}
+                syncFeedback={syncFeedback}
+              />
+            )}
+            {view === 'chain' && centroChain && (
+              <CentroChainView
+                key={`chain-${centroChain.slug}`}
+                chain={centroChain}
+                onOpen={(f) => { setCalameoFlyer(f); setView('calameo'); }}
+                onBack={() => setView('centro')}
+                isFavorite={favorites.includes(centroChain.slug)}
+                onToggleFavorite={() => toggleFavorite(centroChain.slug)}
+                zone={zone}
+              />
+            )}
+            {view === 'stats' && (
+              <StatsView
+                key="stats"
+                db={db}
+                query={statsQuery}
+                onQuery={setStatsQuery}
+                onOpenFlyer={onOpenFlyer}
+                favorites={favorites}
+                initialFilterFavorites={statsFavOnly}
+              />
+            )}
+          </AnimatePresence>
+        </div>
+      ) : calameoFlyer ? (
+        <div className="flex-1 min-h-0 flex flex-col relative bg-[var(--bg)]">
+          {/* ── AVVISO DI SCADENZA A VIDEO NEL LETTORE VOLANTINO ── */}
+          {!dismissExpiryAlert && (() => {
+            const expiry = getFlyerExpiryInfo(calameoFlyer);
+            if (expiry.status === 'today' || expiry.status === 'tomorrow' || expiry.status === 'soon') {
+              return (
+                <div className={`px-4 py-2 flex items-center justify-between text-xs border-b shrink-0 transition-all ${expiry.badgeBg} ${expiry.textColor} ${expiry.borderColor}`}>
+                  <div className="flex items-center gap-2 min-w-0">
+                    {expiry.iconType === 'alert' ? (
+                      <AlertTriangle className="w-4 h-4 shrink-0 animate-bounce" />
+                    ) : (
+                      <Clock className="w-4 h-4 shrink-0 animate-pulse" />
+                    )}
+                    <p className="min-w-0 truncate">
+                      <span className="font-black uppercase tracking-wide mr-1.5 px-2 py-0.5 rounded-full bg-black/10 dark:bg-white/10">
+                        {expiry.status === 'today' ? 'Scade Oggi' : expiry.status === 'tomorrow' ? 'Scade Domani' : `Scade tra ${expiry.daysLeft} gg`}
+                      </span>
+                      <span className="font-semibold">{calameoFlyer.title}</span>
+                      {calameoFlyer.to && (
+                        <span className="opacity-80 ml-1 hidden sm:inline">· Offerte valide fino al {new Date(calameoFlyer.to).toLocaleDateString('it-IT')}</span>
+                      )}
+                    </p>
                   </div>
-                )}
-              </div>
+                  <button
+                    onClick={() => setDismissExpiryAlert(true)}
+                    className="p-1 rounded-lg hover:bg-black/10 dark:hover:bg-white/10 shrink-0 ml-2"
+                    title="Chiudi avviso"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              );
+            }
+            return null;
+          })()}
 
-              <div className="flex items-center gap-3 my-4">
-                <div className="flex-1 h-px bg-[var(--border)]" />
-                <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">oppure</span>
-                <div className="flex-1 h-px bg-[var(--border)]" />
-              </div>
+          <div className="flex-1 min-h-0 relative">
+            <iframe
+              src={getFlyerUrl(calameoFlyer)}
+              title={calameoFlyer.title}
+              className="w-full h-full border-0"
+              allow="fullscreen"
+              sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-popups-to-escape-sandbox"
+              referrerPolicy="no-referrer"
+            />
+          </div>
+        </div>
+      ) : null}
 
-              <button
-                onClick={useGps}
-                disabled={zoneBusy !== null}
-                className="w-full inline-flex items-center justify-center gap-2 px-5 py-3.5 rounded-2xl bg-amber-500 hover:bg-amber-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold text-sm transition-colors"
-              >
-                {zoneBusy === 'gps' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Crosshair className="w-4 h-4" />}
-                {zoneBusy === 'gps' ? 'Rilevamento posizione...' : 'Usa la mia posizione'}
-              </button>
-
-              {zoneError && (
-                <p className="mt-3 text-xs font-semibold text-red-500 text-center">{zoneError}</p>
-              )}
-
-              <button
-                onClick={() => applyZone(ALL_ITALY_ZONE)}
-                className="mt-4 w-full text-center text-xs font-bold text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors"
-              >
-                Mostra tutti i volantini (tutta Italia)
-              </button>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* Modal di richiesta / cambio CAP */}
+      <CapModal
+        isOpen={showCapModal}
+        currentZone={zone}
+        onSave={handleSaveZone}
+        onClose={() => setShowCapModal(false)}
+      />
     </motion.div>
   );
 }
-
