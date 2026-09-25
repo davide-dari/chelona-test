@@ -194,16 +194,15 @@ const STORE_SLUG_MAP: Record<string, string> = {
   'Metro': 'metro',
 };
 
-// Helper URL volantino (supporta player Calaméo pulito integrato o diretto CeDiGros)
+// Helper URL volantino: apre direttamente il reader completo Calaméo (esattamente il link del tasto in alto a destra)
 const getFlyerUrl = (f: VolantinoFlyer) => {
   if (f.directUrl) return f.directUrl;
-  return `https://v.calameo.com/?bkcode=${f.bkcode}${f.authid ? `&authid=${f.authid}` : ''}&mode=viewer`;
+  return `https://www.calameo.com/read/${f.bkcode}${f.authid ? `?authid=${f.authid}` : ''}`;
 };
 
 // URL per apertura nel browser esterno
 const getBrowserUrl = (f: VolantinoFlyer) => {
-  if (f.directUrl) return f.directUrl;
-  return `https://www.calameo.com/read/${f.bkcode}${f.authid ? `?authid=${f.authid}` : ''}`;
+  return getFlyerUrl(f);
 };
 
 /* ═══════════════════════════════════════════════════════════════════
@@ -1390,6 +1389,7 @@ export default function VolantinoScreen({ module, onClose, initialOffer }: Volan
 
           <div className="flex-1 min-h-0 relative">
             <iframe
+              key={`flyer-frame-${calameoFlyer.id}-${calameoFlyer.bkcode || ''}`}
               src={getFlyerUrl(calameoFlyer)}
               title={calameoFlyer.title}
               className="w-full h-full border-0"

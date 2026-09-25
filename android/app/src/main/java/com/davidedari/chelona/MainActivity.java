@@ -71,6 +71,26 @@ public class MainActivity extends BridgeActivity {
             }
         });
 
+        // Avvia il controllo periodico degli aggiornamenti in background (ogni 4 ore)
+        try {
+            androidx.work.Constraints constraints = new androidx.work.Constraints.Builder()
+                    .setRequiredNetworkType(androidx.work.NetworkType.CONNECTED)
+                    .build();
+
+            androidx.work.PeriodicWorkRequest updateCheckRequest =
+                    new androidx.work.PeriodicWorkRequest.Builder(UpdateCheckWorker.class, 4, java.util.concurrent.TimeUnit.HOURS)
+                            .setConstraints(constraints)
+                            .build();
+
+            androidx.work.WorkManager.getInstance(getApplicationContext()).enqueueUniquePeriodicWork(
+                    "ChelonaPeriodicUpdateCheck",
+                    androidx.work.ExistingPeriodicWorkPolicy.KEEP,
+                    updateCheckRequest
+            );
+        } catch (Exception e) {
+            android.util.Log.e("MainActivity", "Failed to schedule UpdateCheckWorker", e);
+        }
+
         handleIntent(getIntent());
     }
 
@@ -115,6 +135,48 @@ public class MainActivity extends BridgeActivity {
         String action = intent.getAction();
         String type = intent.getType();
 
+        // 1. Notifiche native (es: UpdateCheckWorker o Intent con extra route)
+        if (intent.hasExtra("route")) {
+            final String route = intent.getStringExtra("route");
+            final String version = intent.hasExtra("version") ? intent.getStringExtra("version") : "";
+            final String moduleId = intent.hasExtra("moduleId") ? intent.getStringExtra("moduleId") : "";
+            final String routeAction = intent.hasExtra("action") ? intent.getStringExtra("action") : "";
+
+            this.getBridge().getWebView().post(new Runnable() {
+                @Override
+                public void run() {
+                    String js = "window.pendingNotificationRoute = { route: '" + route + "', version: '" + version + "', moduleId: '" + moduleId + "', action: '" + routeAction + "' }; " +
+                                "window.dispatchEvent(new CustomEvent('notificationRouteReceived', { detail: window.pendingNotificationRoute }));";
+                    MainActivity.this.getBridge().getWebView().evaluateJavascript(js, null);
+                }
+            });
+        }
+
+        // 2. Notifiche programmate di Capacitor LocalNotifications aperte da app chiusa
+        if (intent.hasExtra("LocalNotficationObject")) {
+            try {
+                String notifJsonStr = intent.getStringExtra("LocalNotficationObject");
+                if (notifJsonStr != null) {
+                    org.json.JSONObject notifJson = new org.json.JSONObject(notifJsonStr);
+                    org.json.JSONObject extra = notifJson.optJSONObject("extra");
+                    if (extra != null && extra.has("route")) {
+                        final String route = extra.optString("route");
+                        final String moduleId = extra.optString("moduleId", "");
+                        final String routeAction = extra.optString("action", "");
+                        this.getBridge().getWebView().post(new Runnable() {
+                            @Override
+                            public void run() {
+                                String js = "window.pendingNotificationRoute = { route: '" + route + "', moduleId: '" + moduleId + "', action: '" + routeAction + "' }; " +
+                                            "window.dispatchEvent(new CustomEvent('notificationRouteReceived', { detail: window.pendingNotificationRoute }));";
+                                MainActivity.this.getBridge().getWebView().evaluateJavascript(js, null);
+                            }
+                        });
+                    }
+                }
+            } catch (Exception ignored) {}
+        }
+
+        // 3. Condivisione testo da altre app
         if (Intent.ACTION_SEND.equals(action) && type != null) {
             if ("text/plain".equals(type)) {
                 final String sharedText = intent.getStringExtra(Intent.EXTRA_TEXT);

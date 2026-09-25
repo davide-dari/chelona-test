@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Sun, Moon, Wrench, Plus, LayoutDashboard, Settings, User, LogOut, Search, Mic, Bell, CreditCard, Fingerprint, ShieldCheck, Lock, Menu, X, StickyNote, FileText, Grid2X2, Car, QrCode, Folder as FolderIcon, Check, Edit2, Trash2, BookOpen, ArrowLeft, ArrowRight, Camera, FileDown, Hourglass, Users, Download, Receipt, MapPin, Image as ImageIcon, Lightbulb, Globe, ChevronLeft, Bus, Home, Armchair, Activity, ShoppingBasket, BadgePercent, Sparkles } from 'lucide-react';
+import { Sun, Moon, Wrench, Plus, LayoutDashboard, Settings, User, LogOut, Search, Mic, Bell, CreditCard, Fingerprint, ShieldCheck, Lock, Menu, X, StickyNote, FileText, Grid2X2, Car, QrCode, Folder as FolderIcon, Check, Edit2, Trash2, BookOpen, ArrowLeft, ArrowRight, Camera, FileDown, Hourglass, Users, Download, Receipt, MapPin, Image as ImageIcon, Lightbulb, Globe, ChevronLeft, Bus, Home, Armchair, Activity, ShoppingBasket, BadgePercent, Sparkles, CalendarClock, Calendar, AlertCircle, CheckCircle2, Battery, Wallet, Flame, ArrowUpRight } from 'lucide-react';
 
 import { Module, ModuleType, Folder, DocumentModule } from './types';
 import { isModuleSensitive } from './utils/security';
@@ -284,6 +284,8 @@ export default function App() {
   const [editingSupermarketModule, setEditingSupermarketModule] = useState<import('./types').SupermarketModule | null>(null);
   const [editingVolantinoModule, setEditingVolantinoModule] = useState<import('./types').VolantinoModule | null>(null);
   const [flyerInitialOffer, setFlyerInitialOffer] = useState<{ fid: string; pg: number } | null>(null);
+  const [activeNavTab, setActiveNavTab] = useState<'home' | 'deadlines' | 'tools' | 'profile'>('home');
+  const [deadlinesFilter, setDeadlinesFilter] = useState<'all' | 'auto' | 'document' | 'installment'>('all');
 
   useEffect(() => {
     // Show splash screen briefly, then go to lock screen immediately
@@ -760,19 +762,240 @@ export default function App() {
     return () => window.removeEventListener('chelona_update_available', handleManualUpdate);
   }, [handleCheckUpdate]);
 
-  useEffect(() => {
-    const handleTriggerWeeklyKm = () => {
-      const autoMod = modules.find(m => m.type === 'auto');
+  const handleNotificationRoute = React.useCallback((routeData: { route?: string; moduleId?: string; field?: string; action?: string; extra?: any }) => {
+    if (!routeData || !routeData.route) return;
+    console.log('[App] handleNotificationRoute received:', routeData);
+    const { route, moduleId, action } = routeData;
+
+    if (route === 'update') {
+      handleCheckUpdate(false);
+      return;
+    }
+
+    if (route === 'auto') {
+      const autoMod = moduleId ? modules.find(m => m.id === moduleId) : modules.find(m => m.type === 'auto');
       if (autoMod) {
         setEditingAutoModule(autoMod as any);
-        setTimeout(() => {
-          window.dispatchEvent(new CustomEvent('open-auto-km-update'));
-        }, 500);
+        if (action === 'open-km') {
+          setTimeout(() => {
+            window.dispatchEvent(new CustomEvent('open-auto-km-update'));
+          }, 400);
+        }
+      } else {
+        setSelectedType('auto');
+      }
+      return;
+    }
+
+    if (route === 'document') {
+      setSelectedType('document');
+      if (moduleId) {
+        const docMod = modules.find(m => m.id === moduleId);
+        if (docMod) setEditingDocumentModule(docMod as any);
+      }
+      return;
+    }
+
+    if (route === 'installments') {
+      const instMod = moduleId ? modules.find(m => m.id === moduleId) : modules.find(m => m.type === 'installments');
+      if (instMod) {
+        setEditingInstallmentsModule(instMod as any);
+      } else {
+        setSelectedType('split');
+      }
+      return;
+    }
+
+    if (route === 'single-expense' || route === 'split') {
+      if (moduleId) {
+        const expMod = modules.find(m => m.id === moduleId);
+        if (expMod?.type === 'split') setEditingSplitModule(expMod as any);
+        else if (expMod?.type === 'single-expense') setEditingSingleExpenseModule(expMod as any);
+        else setSelectedType('split');
+      } else {
+        setSelectedType('split');
+      }
+      return;
+    }
+
+    if (route === 'fitness') {
+      const fitMod = moduleId ? modules.find(m => m.id === moduleId) : modules.find(m => m.type === 'fitness');
+      if (fitMod) {
+        setEditingFitnessModule(fitMod as any);
+      }
+      return;
+    }
+  }, [modules, handleCheckUpdate]);
+
+  useEffect(() => {
+    const handleRouteEvent = (e: any) => {
+      if (e.detail) {
+        handleNotificationRoute(e.detail);
       }
     };
+    const handleTriggerWeeklyKm = () => {
+      handleNotificationRoute({ route: 'auto', action: 'open-km' });
+    };
+
+    window.addEventListener('notificationRouteReceived', handleRouteEvent);
     window.addEventListener('trigger-auto-km-page', handleTriggerWeeklyKm);
-    return () => window.removeEventListener('trigger-auto-km-page', handleTriggerWeeklyKm);
+
+    // Controlla se c'è un intent pendente al cold start
+    if ((window as any).pendingNotificationRoute) {
+      const pending = (window as any).pendingNotificationRoute;
+      (window as any).pendingNotificationRoute = null;
+      setTimeout(() => handleNotificationRoute(pending), 500);
+    }
+
+    return () => {
+      window.removeEventListener('notificationRouteReceived', handleRouteEvent);
+      window.removeEventListener('trigger-auto-km-page', handleTriggerWeeklyKm);
+    };
+  }, [handleNotificationRoute]);
+
+  // Calcolo centralizzato di tutte le scadenze (Auto, Documenti, Rate, Spese)
+  const allUpcomingDeadlines = useMemo(() => {
+    const list: Array<{
+      id: string;
+      title: string;
+      subtitle: string;
+      dueDate: Date;
+      daysLeft: number;
+      category: 'auto' | 'document' | 'installment' | 'expense';
+      icon: any;
+      color: string;
+      openAction: () => void;
+    }> = [];
+
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+    modules.forEach(m => {
+      // 1. Scadenze Auto
+      if (m.type === 'auto') {
+        const carName = `${m.brand || ''} ${m.model || ''}`.trim() || 'Auto';
+        const fields = [
+          { key: 'lastInsurance', label: 'Assicurazione Auto', icon: Car, color: 'text-rose-500' },
+          { key: 'lastTax', label: 'Bollo Auto', icon: Receipt, color: 'text-amber-500' },
+          { key: 'lastRevision', label: 'Revisione Auto', icon: Wrench, color: 'text-blue-500' },
+          { key: 'battery12vExpiryDate', label: 'Batteria 12V', icon: Battery, color: 'text-yellow-500' },
+          { key: 'hybridBatteryExpiryDate', label: 'Batteria Ibrida', icon: Battery, color: 'text-emerald-500' },
+          { key: 'lastGplCylinder', label: 'Bombola GPL', icon: Flame, color: 'text-orange-500' },
+          { key: 'lastMethaneCylinder', label: 'Bombola Metano', icon: Flame, color: 'text-cyan-500' },
+        ];
+        fields.forEach(f => {
+          const val = (m as any)[f.key];
+          if (val) {
+            const d = new Date(val);
+            if (!isNaN(d.getTime())) {
+              const target = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+              const diffDays = Math.ceil((target.getTime() - today.getTime()) / 86400000);
+              if (diffDays >= -30 && diffDays <= 60) {
+                list.push({
+                  id: `auto_${m.id}_${f.key}`,
+                  title: f.label,
+                  subtitle: carName,
+                  dueDate: target,
+                  daysLeft: diffDays,
+                  category: 'auto',
+                  icon: f.icon,
+                  color: f.color,
+                  openAction: () => setEditingAutoModule(m as any)
+                });
+              }
+            }
+          }
+        });
+      }
+
+      // 2. Scadenze Documenti
+      if (m.type === 'document' && m.expiryDate) {
+        const d = new Date(m.expiryDate);
+        if (!isNaN(d.getTime())) {
+          const target = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+          const diffDays = Math.ceil((target.getTime() - today.getTime()) / 86400000);
+          if (diffDays >= -30 && diffDays <= 60) {
+            list.push({
+              id: `doc_${m.id}`,
+              title: m.title || 'Documento',
+              subtitle: 'Scadenza documento',
+              dueDate: target,
+              daysLeft: diffDays,
+              category: 'document',
+              icon: FileText,
+              color: 'text-blue-500',
+              openAction: () => {
+                setSelectedType('document');
+                setEditingDocumentModule(m as any);
+              }
+            });
+          }
+        }
+      }
+
+      // 3. Scadenze Rate
+      if (m.type === 'installments' && m.payments && Array.isArray(m.payments)) {
+        m.payments.forEach((p: any, idx: number) => {
+          if (!p.isPaid && p.dueDate) {
+            const d = new Date(p.dueDate);
+            if (!isNaN(d.getTime())) {
+              const target = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+              const diffDays = Math.ceil((target.getTime() - today.getTime()) / 86400000);
+              if (diffDays >= -30 && diffDays <= 60) {
+                list.push({
+                  id: `inst_${m.id}_${idx}`,
+                  title: `${m.title || 'Rata'} (Rata ${idx + 1})`,
+                  subtitle: `€${Number(p.amount || 0).toFixed(2)}`,
+                  dueDate: target,
+                  daysLeft: diffDays,
+                  category: 'installment',
+                  icon: CreditCard,
+                  color: 'text-purple-500',
+                  openAction: () => setEditingInstallmentsModule(m as any)
+                });
+              }
+            }
+          }
+        });
+      }
+
+      // 4. Scadenze Spese Singole
+      if (m.type === 'single-expense' && m.expiryDate) {
+        const d = new Date(m.expiryDate);
+        if (!isNaN(d.getTime())) {
+          const target = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+          const diffDays = Math.ceil((target.getTime() - today.getTime()) / 86400000);
+          if (diffDays >= -30 && diffDays <= 60) {
+            list.push({
+              id: `exp_${m.id}`,
+              title: m.description || 'Spesa',
+              subtitle: 'Scadenza pagamento',
+              dueDate: target,
+              daysLeft: diffDays,
+              category: 'expense',
+              icon: Receipt,
+              color: 'text-amber-500',
+              openAction: () => setEditingSingleExpenseModule(m as any)
+            });
+          }
+        }
+      }
+    });
+
+    return list.sort((a, b) => a.daysLeft - b.daysLeft);
   }, [modules]);
+
+  const urgentDeadlines = useMemo(() => {
+    return allUpcomingDeadlines.filter(d => d.daysLeft <= 7);
+  }, [allUpcomingDeadlines]);
+
+  const filteredDeadlines = useMemo(() => {
+    if (deadlinesFilter === 'all') return allUpcomingDeadlines;
+    if (deadlinesFilter === 'auto') return allUpcomingDeadlines.filter(d => d.category === 'auto');
+    if (deadlinesFilter === 'document') return allUpcomingDeadlines.filter(d => d.category === 'document');
+    if (deadlinesFilter === 'installment') return allUpcomingDeadlines.filter(d => d.category === 'installment' || d.category === 'expense');
+    return allUpcomingDeadlines;
+  }, [allUpcomingDeadlines, deadlinesFilter]);
 
 
   const saveAppState = async (newModules: Module[], newFolders: Folder[]) => {
@@ -2257,17 +2480,31 @@ export default function App() {
               <header className="h-16 lg:h-20 bg-[var(--bg)] px-6 lg:px-12 flex items-center justify-between shrink-0 z-10 safe-area-header transition-all">
                 {/* Left side: Contextual Title */}
                 <div className="flex items-center gap-4">
-                  {(isToolsOpen || selectedType || selectedFolderId) && (
+                  {(activeNavTab !== 'home' || isToolsOpen || isProfileOpen || selectedType || selectedFolderId) && (
                     <button 
-                      onClick={() => { setIsToolsOpen(false); setSelectedType(null); setSelectedFolderId(null); setActiveToolId(null); }}
-                      className="p-2 hover:bg-[var(--surface-variant)] rounded-full text-[var(--text-muted)] transition-all flex items-center justify-center"
-                      title="Torna alla Dashboard"
+                      onClick={() => { 
+                        setActiveNavTab('home'); 
+                        setIsToolsOpen(false); 
+                        setIsProfileOpen(false); 
+                        setSelectedType(null); 
+                        setSelectedFolderId(null); 
+                        setActiveToolId(null); 
+                      }}
+                      className="px-3.5 py-1.5 bg-[var(--surface-variant)] hover:bg-[var(--border)] rounded-2xl text-[var(--text-main)] font-black text-xs transition-all flex items-center gap-1.5 border border-[var(--border)] shadow-sm active:scale-95"
+                      title="Torna alla Home"
                     >
-                      <ArrowLeft className="w-6 h-6" />
+                      <ArrowLeft className="w-4 h-4 text-[var(--accent)]" />
+                      <span>Home</span>
                     </button>
                   )}
                   <h1 className="text-xl lg:text-2xl font-bold text-[var(--text-main)] tracking-tight">
-                    {isToolsOpen ? 'Strumenti' : selectedFolderId ? (folders.find(f => f.id === selectedFolderId)?.name || 'Cartella') : selectedType ? (TEMPLATES[selectedType as keyof typeof TEMPLATES]?.title || 'Sandbox') : 'Dashboard'}
+                    {activeNavTab === 'deadlines' ? 'Scadenze & Promemoria' :
+                     isToolsOpen ? 'Strumenti' : 
+                     isProfileOpen ? 'Profilo' :
+                     selectedFolderId ? (folders.find(f => f.id === selectedFolderId)?.name || 'Cartella') : 
+                     selectedType === 'home' ? 'Casa, Offerte & Spesa' :
+                     selectedType === 'split' ? 'Spese & Conti' :
+                     selectedType ? (TEMPLATES[selectedType as keyof typeof TEMPLATES]?.title || 'Sandbox') : 'Chelona'}
                   </h1>
                 </div>
 
@@ -3318,8 +3555,162 @@ export default function App() {
                       </div>
                     )}
 
-                    {!selectedType && !selectedFolderId && !searchQuery.trim() ? (
+                    {activeNavTab === 'deadlines' ? (
+                      /* Dedicated Scadenze & Promemoria View */
+                      <div className="px-4 lg:px-8 pb-40 pt-2 max-w-4xl mx-auto animate-fade-in">
+                        {/* Filter Chips */}
+                        <div className="flex items-center gap-2 overflow-x-auto pb-4 custom-scrollbar">
+                          {[
+                            { id: 'all', label: `Tutte (${allUpcomingDeadlines.length})` },
+                            { id: 'auto', label: `Auto (${allUpcomingDeadlines.filter(d => d.category === 'auto').length})` },
+                            { id: 'document', label: `Documenti (${allUpcomingDeadlines.filter(d => d.category === 'document').length})` },
+                            { id: 'installment', label: `Rate & Spese (${allUpcomingDeadlines.filter(d => d.category === 'installment' || d.category === 'expense').length})` }
+                          ].map(chip => (
+                            <button
+                              key={chip.id}
+                              onClick={() => setDeadlinesFilter(chip.id as any)}
+                              className={`px-4 py-2.5 rounded-2xl text-xs font-black transition-all shrink-0 border ${
+                                deadlinesFilter === chip.id
+                                  ? 'bg-[var(--accent)] text-white border-[var(--accent)] shadow-md shadow-[var(--accent)]/20'
+                                  : 'bg-[var(--surface-variant)] text-[var(--text-muted)] border-[var(--border)] hover:bg-[var(--card-bg)]'
+                              }`}
+                            >
+                              {chip.label}
+                            </button>
+                          ))}
+                        </div>
+
+                        {/* Deadlines List */}
+                        {filteredDeadlines.length === 0 ? (
+                          <div className="bg-[var(--card-bg)] border border-[var(--border)] rounded-[2.5rem] p-8 text-center my-6 shadow-sm">
+                            <div className="w-16 h-16 bg-emerald-500/10 text-emerald-500 rounded-3xl flex items-center justify-center mx-auto mb-4">
+                              <CheckCircle2 className="w-8 h-8" />
+                            </div>
+                            <h3 className="text-lg font-black text-[var(--text-main)] mb-1">Nessuna scadenza trovata</h3>
+                            <p className="text-sm text-[var(--text-muted)]">Non ci sono scadenze imminenti in questa categoria.</p>
+                          </div>
+                        ) : (
+                          <div className="space-y-3 mt-2">
+                            {filteredDeadlines.map(item => {
+                              const isExpired = item.daysLeft < 0;
+                              const isToday = item.daysLeft === 0;
+                              const isUrgent = item.daysLeft > 0 && item.daysLeft <= 7;
+
+                              return (
+                                <div
+                                  key={item.id}
+                                  onClick={item.openAction}
+                                  className="bg-[var(--card-bg)] border border-[var(--border)] hover:border-[var(--accent)] p-5 rounded-3xl shadow-sm transition-all flex items-center justify-between gap-4 cursor-pointer group active:scale-[0.99]"
+                                >
+                                  <div className="flex items-center gap-4 min-w-0">
+                                    <div className={`w-12 h-12 rounded-2xl bg-[var(--surface-variant)] flex items-center justify-center shrink-0 ${item.color} shadow-inner`}>
+                                      <item.icon className="w-6 h-6" />
+                                    </div>
+                                    <div className="min-w-0">
+                                      <h4 className="font-black text-sm lg:text-base text-[var(--text-main)] truncate">{item.title}</h4>
+                                      <p className="text-xs text-[var(--text-muted)] font-medium truncate mt-0.5">{item.subtitle}</p>
+                                      <p className="text-[11px] text-[var(--text-muted)] font-semibold mt-1">
+                                        Scadenza: {item.dueDate.toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' })}
+                                      </p>
+                                    </div>
+                                  </div>
+
+                                  <div className="flex flex-col items-end shrink-0 gap-1.5">
+                                    <span className={`px-3 py-1 rounded-xl text-xs font-black tracking-wider uppercase border ${
+                                      isExpired
+                                        ? 'bg-rose-500/10 text-rose-500 border-rose-500/30'
+                                        : isToday
+                                        ? 'bg-amber-500 text-white border-amber-500 shadow-sm animate-pulse'
+                                        : isUrgent
+                                        ? 'bg-orange-500/10 text-orange-500 border-orange-500/30'
+                                        : 'bg-emerald-500/10 text-emerald-500 border-emerald-500/30'
+                                    }`}>
+                                      {isExpired ? `Scaduta (${Math.abs(item.daysLeft)}gg)` : isToday ? 'Oggi!' : `Tra ${item.daysLeft} gg`}
+                                    </span>
+                                    <span className="text-[11px] font-bold text-[var(--accent)] group-hover:underline flex items-center gap-0.5">
+                                      Apri <ArrowRight className="w-3.5 h-3.5" />
+                                    </span>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    ) : !selectedType && !selectedFolderId && !searchQuery.trim() ? (
                       <div className="px-4 lg:px-8 pb-40">
+                        {/* 1. OGGI PER TE (Promemoria & Scadenze Rapide) */}
+                        <div className="mb-8">
+                          {urgentDeadlines.length > 0 ? (
+                            <div className="bg-gradient-to-r from-amber-500/15 via-rose-500/10 to-amber-500/5 border border-amber-500/30 rounded-[2.5rem] p-6 shadow-lg shadow-amber-500/5">
+                              <div className="flex items-center justify-between gap-4 mb-4">
+                                <div className="flex items-center gap-3">
+                                  <div className="w-10 h-10 rounded-2xl bg-amber-500 text-white flex items-center justify-center font-bold shadow-md shadow-amber-500/30">
+                                    <AlertCircle className="w-5 h-5" />
+                                  </div>
+                                  <div>
+                                    <h3 className="font-black text-base text-[var(--text-main)]">Oggi per Te</h3>
+                                    <p className="text-xs text-[var(--text-muted)] font-medium">
+                                      {urgentDeadlines.length} {urgentDeadlines.length === 1 ? 'scadenza urgente nei prossimi giorni' : 'scadenze urgenti nei prossimi giorni'}
+                                    </p>
+                                  </div>
+                                </div>
+                                <button
+                                  onClick={() => setActiveNavTab('deadlines')}
+                                  className="px-3.5 py-1.5 bg-amber-500 text-white text-xs font-black rounded-xl shadow-md active:scale-95 transition-all flex items-center gap-1 shrink-0"
+                                >
+                                  <span>Tutte</span>
+                                  <ArrowRight className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+
+                              <div className="space-y-2.5">
+                                {urgentDeadlines.slice(0, 3).map(item => (
+                                  <div
+                                    key={item.id}
+                                    onClick={item.openAction}
+                                    className="bg-[var(--card-bg)]/90 backdrop-blur-sm border border-[var(--border)] p-3.5 rounded-2xl flex items-center justify-between gap-3 cursor-pointer hover:border-amber-500/50 transition-all active:scale-[0.99]"
+                                  >
+                                    <div className="flex items-center gap-3 min-w-0">
+                                      <div className={`w-8 h-8 rounded-xl bg-[var(--surface-variant)] flex items-center justify-center shrink-0 ${item.color}`}>
+                                        <item.icon className="w-4 h-4" />
+                                      </div>
+                                      <div className="min-w-0">
+                                        <p className="font-bold text-xs text-[var(--text-main)] truncate">{item.title}</p>
+                                        <p className="text-[11px] text-[var(--text-muted)] truncate">{item.subtitle}</p>
+                                      </div>
+                                    </div>
+                                    <span className={`px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider shrink-0 ${
+                                      item.daysLeft < 0 ? 'bg-rose-500/10 text-rose-500' : item.daysLeft === 0 ? 'bg-amber-500 text-white font-bold' : 'bg-orange-500/10 text-orange-500'
+                                    }`}>
+                                      {item.daysLeft < 0 ? `Scaduta` : item.daysLeft === 0 ? 'Oggi!' : `Tra ${item.daysLeft} gg`}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent border border-emerald-500/20 rounded-[2.5rem] p-5 flex items-center justify-between gap-4 shadow-sm">
+                              <div className="flex items-center gap-3.5">
+                                <div className="w-11 h-11 rounded-2xl bg-emerald-500/15 text-emerald-500 flex items-center justify-center font-bold shadow-inner shrink-0">
+                                  <CheckCircle2 className="w-6 h-6" />
+                                </div>
+                                <div>
+                                  <h3 className="font-black text-sm text-[var(--text-main)]">Tutto in Regola per Oggi</h3>
+                                  <p className="text-xs text-[var(--text-muted)] font-medium">Nessuna scadenza urgente nei prossimi 7 giorni.</p>
+                                </div>
+                              </div>
+                              <button
+                                onClick={() => setActiveNavTab('deadlines')}
+                                className="px-3.5 py-2 bg-[var(--surface-variant)] hover:bg-[var(--border)] text-[var(--text-main)] text-xs font-bold rounded-xl transition-all flex items-center gap-1.5 shrink-0"
+                              >
+                                <span>Scadenze</span>
+                                <ArrowRight className="w-3.5 h-3.5 text-[var(--accent)]" />
+                              </button>
+                            </div>
+                          )}
+                        </div>
+
                         {/* Widgets Section (Shortcuts) */}
                         {(pinnedToolIds.length > 0 || pinnedCategoryIds.length > 0) && (
                           <div className="mb-10">
@@ -3366,77 +3757,185 @@ export default function App() {
                           </div>
                         )}
 
-                        {/* All Categories Grid (Main Entry Point) */}
-                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 pb-12">
-                          {Object.entries(TEMPLATES)
-                            .filter(([key]) => key !== 'single-expense' && key !== 'recipes' && key !== 'furniture')
-                            .map(([key, t]) => {
-                            return (
-                              <button
-                                key={key}
-                                onClick={() => {
-                                  handleSelectCategoryWithSecurity(key as ModuleType, () => {
-                                    if (key === 'recipes') {
-                                      setInitialRecipesCategory(null);
-                                      setIsRecipesOpen(true);
-                                    } else if (key === 'travel') {
-                                      const existingTravel = modules.find(m => m.type === 'travel') as import('./types').TravelModule;
-                                      if (existingTravel) {
-                                        setEditingTravelModule(existingTravel);
-                                      } else {
-                                        const newTravel: import('./types').TravelModule = {
-                                          id: generateUUID(),
-                                          type: 'travel',
-                                          title: 'Viaggi',
-                                          destinations: [],
-                                          x: 0, y: 0, w: 3, h: 3,
-                                          folderId: selectedFolderId || undefined
-                                        };
-                                        setModules(prev => {
-                                          const updated = [newTravel, ...prev];
-                                          saveAppState(updated, folders).catch(console.error);
-                                          return updated;
-                                        });
-                                        setEditingTravelModule(newTravel);
-                                      }
-                                    } else if (key === 'fitness') {
-                                      const existingFitness = modules.find(m => m.type === 'fitness');
-                                      if (existingFitness) {
-                                        setEditingFitnessModule(existingFitness as import('./types').FitnessModule);
-                                      } else {
-                                        const newFitness: import('./types').FitnessModule = {
-                                          id: generateUUID(),
-                                          type: 'fitness',
-                                          title: 'Fitness & Dieta',
-                                          x: (modules.length * 2) % 12,
-                                          y: Infinity,
-                                          w: 3,
-                                          h: 2,
-                                          folderId: selectedFolderId || undefined
-                                        };
-                                        setModules(prev => {
-                                          const updated = [newFitness, ...prev];
-                                          saveAppState(updated, folders).catch(console.error);
-                                          return updated;
-                                        });
-                                        setEditingFitnessModule(newFitness);
-                                      }
-                                    } else {
-                                      setSelectedType(key as ModuleType);
-                                    }
-                                  });
-                                }}
-                                className="bg-[var(--card-bg)] p-6 lg:p-8 rounded-[2.5rem] border border-[var(--border)] shadow-sm hover:border-[var(--accent)] hover:shadow-lg hover:-translate-y-1 transition-all group flex flex-col items-center text-center gap-4"
-                              >
-                                <div className={`w-14 h-14 lg:w-16 lg:h-16 bg-[var(--bg)] rounded-3xl flex items-center justify-center ${t.color} group-hover:bg-[var(--accent-bg)] transition-colors shadow-inner`}>
-                                  <t.icon className="w-7 h-7 lg:w-8 lg:h-8" />
-                                </div>
-                                <div>
-                                  <p className="font-black text-[var(--text-main)] text-sm">{t.title}</p>
-                                </div>
-                              </button>
-                            );
-                          })}
+                        {/* 5 MACRO-HUBS UNIFICATI */}
+                        <div className="mb-4">
+                          <h3 className="text-lg font-black text-[var(--text-main)] mb-4 flex items-center gap-2">
+                            <span>Aree Principali</span>
+                          </h3>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pb-12">
+                          {/* 1. Auto & Mobilità */}
+                          <button
+                            onClick={() => {
+                              const existingAuto = modules.find(m => m.type === 'auto') as import('./types').AutoModule;
+                              if (existingAuto) {
+                                setEditingAutoModule(existingAuto);
+                              } else {
+                                setSelectedType('auto');
+                              }
+                            }}
+                            className="bg-[var(--card-bg)] p-6 lg:p-7 rounded-[2.5rem] border border-[var(--border)] hover:border-rose-500/50 shadow-sm hover:shadow-lg transition-all text-left flex items-start gap-4 group active:scale-[0.99] relative overflow-hidden"
+                          >
+                            <div className="w-14 h-14 rounded-3xl bg-rose-500/10 text-rose-500 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform shadow-inner">
+                              <Car className="w-7 h-7" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center justify-between gap-2 mb-1">
+                                <h4 className="font-black text-base lg:text-lg text-[var(--text-main)]">Auto & Mobilità</h4>
+                                <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-rose-500/10 text-rose-500 border border-rose-500/20">
+                                  {modules.filter(m => m.type === 'auto').length > 0 ? `${modules.filter(m => m.type === 'auto').length} Veicol${modules.filter(m => m.type === 'auto').length > 1 ? 'i' : 'o'}` : 'Configura'}
+                                </span>
+                              </div>
+                              <p className="text-xs text-[var(--text-muted)] line-clamp-2 leading-relaxed">
+                                Assicurazione, bollo, revisione, chilometri e manutenzioni
+                              </p>
+                            </div>
+                          </button>
+
+                          {/* 2. Documenti & Scadenze */}
+                          <button
+                            onClick={() => setSelectedType('document')}
+                            className="bg-[var(--card-bg)] p-6 lg:p-7 rounded-[2.5rem] border border-[var(--border)] hover:border-blue-500/50 shadow-sm hover:shadow-lg transition-all text-left flex items-start gap-4 group active:scale-[0.99] relative overflow-hidden"
+                          >
+                            <div className="w-14 h-14 rounded-3xl bg-blue-500/10 text-blue-500 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform shadow-inner">
+                              <FileText className="w-7 h-7" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center justify-between gap-2 mb-1">
+                                <h4 className="font-black text-base lg:text-lg text-[var(--text-main)]">Documenti</h4>
+                                <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-blue-500/10 text-blue-500 border border-blue-500/20">
+                                  {modules.filter(m => m.type === 'document').length} Salvati
+                                </span>
+                              </div>
+                              <p className="text-xs text-[var(--text-muted)] line-clamp-2 leading-relaxed">
+                                Carte d'identità, patenti, ricevute fiscali, contratti e scadenze
+                              </p>
+                            </div>
+                          </button>
+
+                          {/* 3. Spese & Conti */}
+                          <button
+                            onClick={() => setSelectedType('split')}
+                            className="bg-[var(--card-bg)] p-6 lg:p-7 rounded-[2.5rem] border border-[var(--border)] hover:border-purple-500/50 shadow-sm hover:shadow-lg transition-all text-left flex items-start gap-4 group active:scale-[0.99] relative overflow-hidden"
+                          >
+                            <div className="w-14 h-14 rounded-3xl bg-purple-500/10 text-purple-500 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform shadow-inner">
+                              <Wallet className="w-7 h-7" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center justify-between gap-2 mb-1">
+                                <h4 className="font-black text-base lg:text-lg text-[var(--text-main)]">Spese & Conti</h4>
+                                <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-purple-500/10 text-purple-500 border border-purple-500/20">
+                                  Finanze
+                                </span>
+                              </div>
+                              <p className="text-xs text-[var(--text-muted)] line-clamp-2 leading-relaxed">
+                                Spese quotidiane, conti condivisi in gruppo, rate e mutui
+                              </p>
+                            </div>
+                          </button>
+
+                          {/* 4. Casa, Spesa & Offerte */}
+                          <button
+                            onClick={() => setSelectedType('home')}
+                            className="bg-[var(--card-bg)] p-6 lg:p-7 rounded-[2.5rem] border border-[var(--border)] hover:border-teal-500/50 shadow-sm hover:shadow-lg transition-all text-left flex items-start gap-4 group active:scale-[0.99] relative overflow-hidden"
+                          >
+                            <div className="w-14 h-14 rounded-3xl bg-teal-500/10 text-teal-500 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform shadow-inner">
+                              <Home className="w-7 h-7" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center justify-between gap-2 mb-1">
+                                <h4 className="font-black text-base lg:text-lg text-[var(--text-main)]">Casa, Offerte & Spesa</h4>
+                                <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-teal-500/10 text-teal-500 border border-teal-500/20">
+                                  Offerte & Casa
+                                </span>
+                              </div>
+                              <p className="text-xs text-[var(--text-muted)] line-clamp-2 leading-relaxed">
+                                Volantini sconti supermercati, lista della spesa, ricettario e arredo
+                              </p>
+                            </div>
+                          </button>
+
+                          {/* 5. Salute, Fitness & Dieta */}
+                          <button
+                            onClick={() => {
+                              const existingFitness = modules.find(m => m.type === 'fitness');
+                              if (existingFitness) {
+                                setEditingFitnessModule(existingFitness as import('./types').FitnessModule);
+                              } else {
+                                const newFitness: import('./types').FitnessModule = {
+                                  id: generateUUID(),
+                                  type: 'fitness',
+                                  title: 'Fitness & Dieta',
+                                  x: 0, y: 0, w: 3, h: 2,
+                                  folderId: selectedFolderId || undefined
+                                };
+                                setModules(prev => {
+                                  const updated = [newFitness, ...prev];
+                                  saveAppState(updated, folders).catch(console.error);
+                                  return updated;
+                                });
+                                setEditingFitnessModule(newFitness);
+                              }
+                            }}
+                            className="bg-[var(--card-bg)] p-6 lg:p-7 rounded-[2.5rem] border border-[var(--border)] hover:border-emerald-500/50 shadow-sm hover:shadow-lg transition-all text-left flex items-start gap-4 group active:scale-[0.99] relative overflow-hidden"
+                          >
+                            <div className="w-14 h-14 rounded-3xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform shadow-inner">
+                              <Activity className="w-7 h-7" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center justify-between gap-2 mb-1">
+                                <h4 className="font-black text-base lg:text-lg text-[var(--text-main)]">Salute, Fitness & Dieta</h4>
+                                <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
+                                  Trainer
+                                </span>
+                              </div>
+                              <p className="text-xs text-[var(--text-muted)] line-clamp-2 leading-relaxed">
+                                Schede allenamento, timer recupero e pasti con grammature esatte
+                              </p>
+                            </div>
+                          </button>
+
+                          {/* Viaggi (se presente o per esplorare) */}
+                          <button
+                            onClick={() => {
+                              const existingTravel = modules.find(m => m.type === 'travel') as import('./types').TravelModule;
+                              if (existingTravel) {
+                                setEditingTravelModule(existingTravel);
+                              } else {
+                                const newTravel: import('./types').TravelModule = {
+                                  id: generateUUID(),
+                                  type: 'travel',
+                                  title: 'Viaggi',
+                                  destinations: [],
+                                  x: 0, y: 0, w: 3, h: 3,
+                                  folderId: selectedFolderId || undefined
+                                };
+                                setModules(prev => {
+                                  const updated = [newTravel, ...prev];
+                                  saveAppState(updated, folders).catch(console.error);
+                                  return updated;
+                                });
+                                setEditingTravelModule(newTravel);
+                              }
+                            }}
+                            className="bg-[var(--card-bg)] p-6 lg:p-7 rounded-[2.5rem] border border-[var(--border)] hover:border-indigo-500/50 shadow-sm hover:shadow-lg transition-all text-left flex items-start gap-4 group active:scale-[0.99] relative overflow-hidden"
+                          >
+                            <div className="w-14 h-14 rounded-3xl bg-indigo-500/10 text-indigo-500 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform shadow-inner">
+                              <Globe className="w-7 h-7" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center justify-between gap-2 mb-1">
+                                <h4 className="font-black text-base lg:text-lg text-[var(--text-main)]">Viaggi & Mete</h4>
+                                <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-indigo-500/10 text-indigo-500 border border-indigo-500/20">
+                                  Itinerari
+                                </span>
+                              </div>
+                              <p className="text-xs text-[var(--text-muted)] line-clamp-2 leading-relaxed">
+                                Pianifica mete, tappe del viaggio e scadenze valigie
+                              </p>
+                            </div>
+                          </button>
                         </div>
                       </div>
                     ) : selectedType === 'home' ? (
@@ -3713,24 +4212,76 @@ export default function App() {
           {/* Mobile Bottom Navigation Bar - Hidden during full-screen edit/modals */}
           {/* Mobile Bottom Navigation (M3 Style) */}
           {!isAdding && !isScanning && !editingModuleId && !isArchiveOpen && (
-            <nav className="md:hidden fixed bottom-0 left-0 right-0 h-20 bg-[var(--bg)] border-t border-[var(--border)] z-50 px-4 flex items-center justify-around safe-area-inset-bottom shadow-[0_-4px_12px_rgba(0,0,0,0.03)]">
+            <nav className="md:hidden fixed bottom-0 left-0 right-0 h-20 bg-[var(--bg)] border-t border-[var(--border)] z-50 px-3 flex items-center justify-around safe-area-inset-bottom shadow-[0_-4px_12px_rgba(0,0,0,0.03)]">
               {[
-                { id: 'dashboard', icon: LayoutDashboard, label: 'Dashboard', action: () => { setIsToolsOpen(false); setSelectedType(null); setIsProfileOpen(false); } },
-                { id: 'tools', icon: Wrench, label: 'Strumenti', action: () => { setIsToolsOpen(true); setIsProfileOpen(false); } }
+                { 
+                  id: 'home', 
+                  icon: LayoutDashboard, 
+                  label: 'Home', 
+                  action: () => { 
+                    setActiveNavTab('home'); 
+                    setIsToolsOpen(false); 
+                    setSelectedType(null); 
+                    setIsProfileOpen(false); 
+                  } 
+                },
+                { 
+                  id: 'deadlines', 
+                  icon: CalendarClock, 
+                  label: 'Scadenze', 
+                  badge: urgentDeadlines.length,
+                  action: () => { 
+                    setActiveNavTab('deadlines'); 
+                    setIsToolsOpen(false); 
+                    setSelectedType(null); 
+                    setIsProfileOpen(false); 
+                  } 
+                },
+                { 
+                  id: 'tools', 
+                  icon: Wrench, 
+                  label: 'Strumenti', 
+                  action: () => { 
+                    setActiveNavTab('tools'); 
+                    setIsToolsOpen(true); 
+                    setIsProfileOpen(false); 
+                    setSelectedType(null); 
+                  } 
+                },
+                { 
+                  id: 'profile', 
+                  icon: User, 
+                  label: 'Profilo', 
+                  action: () => { 
+                    setActiveNavTab('profile'); 
+                    setIsProfileOpen(true); 
+                    setIsToolsOpen(false); 
+                    setSelectedType(null); 
+                  } 
+                }
               ].map(item => {
-                const isActive = item.id === 'dashboard' ? (!isToolsOpen && !selectedType && !isProfileOpen) : 
-                                 item.id === 'tools' ? isToolsOpen : 
-                                 item.id === 'profile' ? isProfileOpen : false;
+                const isActive = item.id === 'home' 
+                  ? (activeNavTab === 'home' && !isToolsOpen && !isProfileOpen && !selectedType) 
+                  : item.id === 'deadlines'
+                  ? (activeNavTab === 'deadlines' && !isToolsOpen && !isProfileOpen)
+                  : item.id === 'tools' 
+                  ? isToolsOpen 
+                  : isProfileOpen;
                 return (
                   <button 
                     key={item.id}
                     onClick={item.action}
-                    className="flex flex-col items-center gap-1 group flex-1 pb-1"
+                    className="flex flex-col items-center gap-1 group flex-1 pb-1 relative"
                   >
-                    <div className={`px-5 py-1.5 rounded-full transition-all duration-300 ${isActive ? 'bg-[var(--accent-container)] text-[var(--accent-on-container)]' : 'text-[var(--text-muted)] group-hover:bg-[var(--surface-variant)]'}`}>
+                    <div className={`px-4 py-1.5 rounded-full transition-all duration-300 relative ${isActive ? 'bg-[var(--accent-container)] text-[var(--accent-on-container)]' : 'text-[var(--text-muted)] group-hover:bg-[var(--surface-variant)]'}`}>
                       <item.icon size={22} strokeWidth={isActive ? 2.5 : 2} />
+                      {Boolean(item.badge && item.badge > 0) && (
+                        <span className="absolute -top-1 -right-1 w-4 h-4 bg-rose-500 text-white rounded-full text-[9px] font-black flex items-center justify-center shadow-sm">
+                          {item.badge}
+                        </span>
+                      )}
                     </div>
-                    <span className={`text-[10px] font-bold tracking-tight transition-colors ${isActive ? 'text-[var(--text-main)]' : 'text-[var(--text-muted)]'}`}>
+                    <span className={`text-[10px] tracking-tight transition-colors ${isActive ? 'text-[var(--text-main)] font-black' : 'text-[var(--text-muted)] font-bold'}`}>
                       {item.label}
                     </span>
                   </button>
@@ -4004,7 +4555,7 @@ export default function App() {
 
       {/* Update Modal */}
       <AnimatePresence>
-        {availableUpdate && encryptionKey && (
+        {availableUpdate && (
           <div className="fixed inset-0 z-[200000] flex items-center justify-center p-6">
             <motion.div
               initial={{ opacity: 0 }}

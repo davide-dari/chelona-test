@@ -92,7 +92,7 @@ export const notificationService = {
     return this.ensurePermissionsAndChannel();
   },
 
-  async fire(title: string, body: string) {
+  async fire(title: string, body: string, extra?: Record<string, any>) {
     if ((window as any).Capacitor?.isNativePlatform?.()) {
       try {
         await this.ensurePermissionsAndChannel();
@@ -103,7 +103,8 @@ export const notificationService = {
             body,
             id: Math.floor(Math.random() * 1000000) + 1,
             schedule: { at: new Date(Date.now() + 500) },
-            channelId: 'chelona_reminders'
+            channelId: 'chelona_reminders',
+            extra: extra || { route: 'home' }
           }]
         });
       } catch (e) {
@@ -130,7 +131,7 @@ export const notificationService = {
     if (!isGranted) return;
 
     const now = new Date();
-    const scheduledNotifs: Array<{ id: number; title: string; body: string; at: Date }> = [];
+    const scheduledNotifs: Array<{ id: number; title: string; body: string; at: Date; extra: Record<string, any> }> = [];
 
     modules.forEach(m => {
       // 1. AUTO
@@ -162,7 +163,8 @@ export const notificationService = {
                   id: stringToNumericId(`auto_${m.id}_${f.key}`),
                   title: `⏰ Scadenza ${f.label}`,
                   body: `La scadenza per ${carName} è il ${new Date(val).toLocaleDateString('it-IT')}!`,
-                  at: remindDate
+                  at: remindDate,
+                  extra: { route: 'auto', moduleId: m.id, field: f.key }
                 });
               }
             }
@@ -183,7 +185,8 @@ export const notificationService = {
             id: stringToNumericId(`doc_${m.id}_7d`),
             title: `📄 Scadenza Documento`,
             body: `Il documento "${docName}" scade tra 7 giorni (${new Date(m.expiryDate).toLocaleDateString('it-IT')})!`,
-            at: remindDate
+            at: remindDate,
+            extra: { route: 'document', moduleId: m.id }
           });
         }
 
@@ -195,7 +198,8 @@ export const notificationService = {
             id: stringToNumericId(`doc_${m.id}_0d`),
             title: `⚠️ Documento in Scadenza Oggi`,
             body: `Il documento "${docName}" scade oggi (${new Date(m.expiryDate).toLocaleDateString('it-IT')})!`,
-            at: dayOfRemind
+            at: dayOfRemind,
+            extra: { route: 'document', moduleId: m.id }
           });
         }
       }
@@ -214,7 +218,8 @@ export const notificationService = {
                 id: stringToNumericId(`inst_${m.id}_${idx}_3d`),
                 title: `💳 Scadenza Rata: ${title}`,
                 body: `Rata ${idx + 1} di €${Number(p.amount || 0).toFixed(2)} in scadenza il ${new Date(p.dueDate).toLocaleDateString('it-IT')}!`,
-                at: remindDate
+                at: remindDate,
+                extra: { route: 'installments', moduleId: m.id }
               });
             }
           }
@@ -233,7 +238,8 @@ export const notificationService = {
             id: stringToNumericId(`exp_${m.id}_3d`),
             title: `🏷️ Scadenza Spesa: ${title}`,
             body: `La spesa "${title}" ha una scadenza prevista per il ${new Date(m.expiryDate).toLocaleDateString('it-IT')}!`,
-            at: remindDate
+            at: remindDate,
+            extra: { route: 'single-expense', moduleId: m.id }
           });
         }
       }
@@ -257,7 +263,8 @@ export const notificationService = {
                     id: stringToNumericId(`fit_${m.id}_${dayIdx}_${mealIdx}`),
                     title: `⏰ Ora del pasto! (${meal.time})`,
                     body: `È il momento di preparare o gustare: ${meal.name} (${meal.calories} kcal)`,
-                    at: mealDate
+                    at: mealDate,
+                    extra: { route: 'fitness', moduleId: m.id }
                   });
                 }
               }
@@ -282,7 +289,8 @@ export const notificationService = {
               title: n.title,
               body: n.body,
               schedule: { at: n.at },
-              channelId: 'chelona_reminders'
+              channelId: 'chelona_reminders',
+              extra: n.extra
             }))
           });
         }
@@ -397,7 +405,8 @@ export const notificationService = {
         if (lastFired !== fireKey) {
           this.fire(
             `🚗 Aggiorna i Chilometri`,
-            `È passata una settimana dall'ultimo aggiornamento km per la tua ${a.brand || 'auto'}. Tocca qui per aggiornarli!`
+            `È passata una settimana dall'ultimo aggiornamento km per la tua ${a.brand || 'auto'}. Tocca qui per aggiornarli!`,
+            { route: 'auto', moduleId: a.id, action: 'open-km' }
           );
           storage.saveNotifFired(prefId, fireKey);
         }
@@ -408,8 +417,18 @@ export const notificationService = {
 
 try {
   import('@capacitor/local-notifications').then(({ LocalNotifications }) => {
-    LocalNotifications.addListener('localNotificationActionPerformed', () => {
-      window.dispatchEvent(new CustomEvent('trigger-auto-km-page'));
+    LocalNotifications.addListener('localNotificationActionPerformed', (notificationAction) => {
+      console.log('[NotificationService] Notification action performed:', notificationAction);
+      const extra = notificationAction.notification?.extra || {};
+      window.dispatchEvent(new CustomEvent('notificationRouteReceived', {
+        detail: {
+          route: extra.route || 'home',
+          moduleId: extra.moduleId,
+          field: extra.field,
+          action: extra.action,
+          extra
+        }
+      }));
     });
   });
 } catch (e) {

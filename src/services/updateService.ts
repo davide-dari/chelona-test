@@ -132,7 +132,7 @@ class UpdateService {
         
         const lastNotified = localStorage.getItem('chelona_last_notified_update');
         if (lastNotified !== latestVersion) {
-          notificationService.fire('Aggiornamento Disponibile', `La versione ${latestVersion} di Chelona è ora disponibile!`);
+          notificationService.fire('Aggiornamento Disponibile', `La versione ${latestVersion} di Chelona è ora disponibile!`, { route: 'update' });
           localStorage.setItem('chelona_last_notified_update', latestVersion);
         }
 
