@@ -1792,6 +1792,36 @@ export function FitnessScreen({ module, onClose, onSave }: FitnessScreenProps) {
   });
 
   const handleBack = () => {
+    // 1. Modale Wikipedia ingredienti (priorità assoluta: torna a fitness e dieta)
+    if (selectedIngredient) {
+      setSelectedIngredient(null);
+      return;
+    }
+    // 2. Modale cambio piatto
+    if (swappingMealInfo) {
+      setSwappingMealInfo(null);
+      return;
+    }
+    // 3. Modali condivisione / ricezione partner
+    if (isScanningPartnerQr) {
+      setIsScanningPartnerQr(false);
+      return;
+    }
+    if (showShareModal) {
+      setShowShareModal(false);
+      return;
+    }
+    if (showReceiveModal) {
+      setShowReceiveModal(false);
+      return;
+    }
+    // 4. Anteprima GIF ingrandita
+    if (enlargedGifUrl) {
+      setEnlargedGifUrl(null);
+      return;
+    }
+
+    // 5. Schermate e wizard interni
     if (currentView === 'fitness-plan' || currentView === 'diet-plan') {
       setCurrentView('catalog');
     } else if (currentView === 'fitness-wizard') {
@@ -1804,6 +1834,26 @@ export function FitnessScreen({ module, onClose, onSave }: FitnessScreenProps) {
       onClose();
     }
   };
+
+  // Ascolta il tasto back / gesture swipe di sistema da App.tsx
+  useEffect(() => {
+    const onFitnessBack = () => {
+      handleBack();
+    };
+    window.addEventListener('fitness-back', onFitnessBack);
+    return () => window.removeEventListener('fitness-back', onFitnessBack);
+  }, [
+    selectedIngredient,
+    swappingMealInfo,
+    isScanningPartnerQr,
+    showShareModal,
+    showReceiveModal,
+    enlargedGifUrl,
+    currentView,
+    fitWizardStep,
+    dietWizardStep,
+    onClose
+  ]);
 
   const generateFitnessPlan = () => {
     const plan = generateWorkoutPlan(fitProfile);

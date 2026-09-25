@@ -1,10 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { 
   X, ExternalLink, Sparkles, Scale, BookOpen, Flame, 
   Dumbbell, Droplets, CheckCircle2, Loader2, Wheat, Apple,
-  ShieldCheck, Info
+  ShieldCheck, Info, ChevronDown
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence, useDragControls } from 'motion/react';
 import { foodWikiService, FoodDetail } from '../services/foodWikiService';
 
 export interface IngredientModalProps {
@@ -19,6 +19,9 @@ export interface IngredientModalProps {
 export function IngredientModal({ ingredient, onClose }: IngredientModalProps) {
   const [detail, setDetail] = useState<FoodDetail | null>(null);
   const [loading, setLoading] = useState(false);
+  const dragControls = useDragControls();
+  const touchStartRef = useRef<{ x: number; y: number; time: number } | null>(null);
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (!ingredient) {
@@ -55,6 +58,36 @@ export function IngredientModal({ ingredient, onClose }: IngredientModalProps) {
     }
   };
 
+  // Gestione swipe touch: swipe orizzontale (back gesture) o swipe verticale verso il basso
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartRef.current = {
+      x: e.touches[0].clientX,
+      y: e.touches[0].clientY,
+      time: Date.now()
+    };
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (!touchStartRef.current) return;
+    const deltaX = e.changedTouches[0].clientX - touchStartRef.current.x;
+    const deltaY = e.changedTouches[0].clientY - touchStartRef.current.y;
+    const deltaTime = Date.now() - touchStartRef.current.time;
+    touchStartRef.current = null;
+
+    // 1. Swipe orizzontale da sinistra a destra (edge swipe / swipe back gesture)
+    if (deltaX > 75 && Math.abs(deltaY) < 65 && deltaTime < 450) {
+      onClose();
+      return;
+    }
+
+    // 2. Swipe verticale verso il basso quando si è in cima al contenuto
+    const isAtTop = scrollContainerRef.current ? scrollContainerRef.current.scrollTop <= 5 : true;
+    if (isAtTop && deltaY > 90 && Math.abs(deltaX) < 65 && deltaTime < 450) {
+      onClose();
+      return;
+    }
+  };
+
   const getCategoryLabel = (cat?: string) => {
     switch (cat) {
       case 'superfood': return '🫐 Superfood';
@@ -72,45 +105,71 @@ export function IngredientModal({ ingredient, onClose }: IngredientModalProps) {
     <AnimatePresence>
       {ingredient && (
         <div 
-          className="fixed inset-0 z-[200] bg-black/65 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4"
+          className="fixed inset-0 z-[200] bg-black/65 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 touch-pan-y"
           onClick={onClose}
         >
           <motion.div
-            initial={{ opacity: 0, y: 50, scale: 0.98 }}
+            initial={{ opacity: 0, y: 70, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 50, scale: 0.98 }}
-            transition={{ type: "spring", damping: 25, stiffness: 300 }}
+            exit={{ opacity: 0, y: 70, scale: 0.98 }}
+            transition={{ type: "spring", damping: 26, stiffness: 320 }}
+            drag="y"
+            dragListener={false}
+            dragControls={dragControls}
+            dragConstraints={{ top: 0, bottom: 0 }}
+            dragElastic={{ top: 0.05, bottom: 0.7 }}
+            onDragEnd={(_, info) => {
+              if (info.offset.y > 80 || info.velocity.y > 350) {
+                onClose();
+              }
+            }}
             className="bg-[var(--card-bg)] border border-[var(--border)] rounded-t-[2.2rem] sm:rounded-3xl shadow-2xl w-full sm:max-w-lg max-h-[90vh] sm:max-h-[85vh] flex flex-col overflow-hidden text-[var(--text-main)]"
             onClick={(e) => e.stopPropagation()}
+            onTouchStart={handleTouchStart}
+            onTouchEnd={handleTouchEnd}
           >
-            {/* Mobile swipe grab bar */}
-            <div className="w-12 h-1.5 bg-gray-400/30 rounded-full mx-auto mt-2.5 mb-1 sm:hidden shrink-0" />
+            {/* Header & Drag Grab Area per swipe-down immediato */}
+            <div 
+              onPointerDown={(e) => dragControls.start(e)}
+              className="cursor-grab active:cursor-grabbing select-none shrink-0 bg-[var(--surface-variant)]/40 border-b border-[var(--border)]"
+            >
+              {/* Mobile swipe grab bar */}
+              <div className="w-12 h-1.5 bg-gray-400/40 hover:bg-gray-400/60 rounded-full mx-auto mt-2.5 mb-1 sm:hidden transition-colors" />
 
-            {/* Header */}
-            <div className="px-5 py-3.5 border-b border-[var(--border)] flex items-center justify-between shrink-0 bg-[var(--surface-variant)]/40">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-xl bg-amber-500/15 flex items-center justify-center text-amber-500">
-                  <BookOpen className="w-4 h-4" />
-                </div>
-                <div>
-                  <h3 className="font-extrabold text-sm sm:text-base leading-tight">Scheda Alimento</h3>
-                  <div className="flex items-center gap-1.5 text-[10px] text-[var(--text-muted)] font-semibold">
-                    <ShieldCheck className="w-3 h-3 text-emerald-500" />
-                    <span>Wikipedia Open Knowledge (CC BY-SA 4.0)</span>
+              {/* Header content */}
+              <div className="px-5 py-3 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-xl bg-amber-500/15 flex items-center justify-center text-amber-500">
+                    <BookOpen className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className="font-extrabold text-sm sm:text-base leading-tight">Scheda Alimento</h3>
+                    <div className="flex items-center gap-1.5 text-[10px] text-[var(--text-muted)] font-semibold">
+                      <ShieldCheck className="w-3 h-3 text-emerald-500" />
+                      <span>Wikipedia Open Knowledge (CC BY-SA 4.0)</span>
+                    </div>
                   </div>
                 </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="hidden sm:inline-block text-[10px] text-[var(--text-muted)] font-bold uppercase tracking-wider">
+                    Swipe per chiudere
+                  </span>
+                  <button
+                    onClick={onClose}
+                    className="p-2 rounded-xl bg-[var(--surface-variant)] hover:bg-[var(--border)] text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors cursor-pointer"
+                    aria-label="Chiudi"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
               </div>
-              <button
-                onClick={onClose}
-                className="p-2 rounded-xl bg-[var(--surface-variant)] hover:bg-[var(--border)] text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors"
-                aria-label="Chiudi"
-              >
-                <X className="w-5 h-5" />
-              </button>
             </div>
 
             {/* Modal Body */}
-            <div className="flex-1 overflow-y-auto p-5 space-y-4 custom-scrollbar">
+            <div 
+              ref={scrollContainerRef}
+              className="flex-1 overflow-y-auto p-5 space-y-4 custom-scrollbar overscroll-contain"
+            >
               {loading ? (
                 <div className="py-16 flex flex-col items-center justify-center space-y-3">
                   <Loader2 className="w-8 h-8 animate-spin text-amber-500" />

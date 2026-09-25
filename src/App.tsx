@@ -598,7 +598,7 @@ export default function App() {
       if (editingSupermarketModule) { setEditingSupermarketModule(null); return; }
       if (editingVolantinoModule) { window.dispatchEvent(new CustomEvent('volantino-back')); return; }
       if (editingInstallmentsModule) { setEditingInstallmentsModule(null); return; }
-      if (editingFitnessModule) { setEditingFitnessModule(null); return; }
+      if (editingFitnessModule) { window.dispatchEvent(new CustomEvent('fitness-back')); return; }
       if (editingModuleId) { setEditingModuleId(null); setFormData({}); return; }
       if (isAdding) { setIsAdding(false); setFormData({}); setSpesaSubMenu(false); return; }
       if (isProfileOpen) { setIsProfileOpen(false); return; }
