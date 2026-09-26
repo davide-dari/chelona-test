@@ -1,16 +1,32 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Search, X, BookOpen, Star, ChefHat } from 'lucide-react';
+import { 
+  ArrowLeft, Search, X, BookOpen, Star, ChefHat, Sparkles, 
+  ShoppingCart, Check, RefreshCw, Lock, Unlock, Utensils, 
+  Wine, ArrowRight, CheckCircle2, ChevronRight, Eye, AlertCircle 
+} from 'lucide-react';
+import { 
+  parseIngredient, classifyRecipeTheme, generateHarmoniousMenu, 
+  getAlternativeDishes, type RecipeItem, type HarmoniousMenu, 
+  type DietTheme, type MealType 
+} from '../services/menuPlannerService';
 
 interface RecipeScreenProps {
   onClose: () => void;
   initialSearchQuery?: string;
   initialRecipe?: any;
   initialCategory?: string;
+  onAddToShoppingList?: (items: { name: string; quantity?: string; category?: string }[]) => void;
 }
 
-export function RecipesScreen({ onClose, initialSearchQuery, initialRecipe, initialCategory }: RecipeScreenProps) {
-  const [allMeals, setAllMeals] = useState<any[]>([]);
+export function RecipesScreen({ 
+  onClose, 
+  initialSearchQuery, 
+  initialRecipe, 
+  initialCategory,
+  onAddToShoppingList 
+}: RecipeScreenProps) {
+  const [allMeals, setAllMeals] = useState<RecipeItem[]>([]);
   const [loading, setLoading] = useState(true);
   
   const [selectedCategory, setSelectedCategory] = useState<string | null>(initialCategory || null);
@@ -18,6 +34,27 @@ export function RecipesScreen({ onClose, initialSearchQuery, initialRecipe, init
   
   const [selectedMeal, setSelectedMeal] = useState<any | null>(null);
   const [favorites, setFavorites] = useState<any[]>([]);
+
+  // Ingredient multi-selection inside recipe view
+  const [selectedMealIngredients, setSelectedMealIngredients] = useState<Set<string>>(new Set());
+  const [mealAddedToCart, setMealAddedToCart] = useState(false);
+
+  // "Cosa mangiare oggi?" Menu Planner state
+  const [isMenuPlannerOpen, setIsMenuPlannerOpen] = useState(false);
+  const [plannerMealType, setPlannerMealType] = useState<MealType>(() => new Date().getHours() < 15 ? 'pranzo' : 'cena');
+  const [plannerTheme, setPlannerTheme] = useState<DietTheme>('sorprendimi');
+  const [currentMenu, setCurrentMenu] = useState<HarmoniousMenu | null>(null);
+  const [lockedCourses, setLockedCourses] = useState<{ antipasto: boolean; primo: boolean; secondo: boolean }>({
+    antipasto: false,
+    primo: false,
+    secondo: false
+  });
+  const [activeCourseSwapModal, setActiveCourseSwapModal] = useState<'Antipasti' | 'Primi' | 'Secondi' | null>(null);
+  const [swapSearchQuery, setSwapSearchQuery] = useState('');
+  const [harmonizeNotice, setHarmonizeNotice] = useState<{ message: string; targetTheme: 'carne' | 'pesce' | 'vegetariano' } | null>(null);
+  const [showShoppingReviewModal, setShowShoppingReviewModal] = useState(false);
+  const [menuShoppingIngredients, setMenuShoppingIngredients] = useState<Set<string>>(new Set());
+  const [menuAddedToCart, setMenuAddedToCart] = useState(false);
 
   // Inventory state
   const [fridgeIngredients, setFridgeIngredients] = useState<string[]>(() => {
@@ -100,6 +137,16 @@ export function RecipesScreen({ onClose, initialSearchQuery, initialRecipe, init
     }
   }, [initialRecipe]);
 
+  // Quando si apre una ricetta, seleziona tutti gli ingredienti di default
+  useEffect(() => {
+    if (selectedMeal && Array.isArray(selectedMeal.ingredients)) {
+      setSelectedMealIngredients(new Set(selectedMeal.ingredients));
+      setMealAddedToCart(false);
+    } else {
+      setSelectedMealIngredients(new Set());
+    }
+  }, [selectedMeal]);
+
   useEffect(() => {
     if (initialSearchQuery !== undefined) {
       setSearchQuery(initialSearchQuery);
@@ -107,13 +154,27 @@ export function RecipesScreen({ onClose, initialSearchQuery, initialRecipe, init
   }, [initialSearchQuery]);
 
   const handleBack = useCallback(() => {
+    if (showShoppingReviewModal) {
+      setShowShoppingReviewModal(false);
+      return;
+    }
+    if (activeCourseSwapModal) {
+      setActiveCourseSwapModal(null);
+      return;
+    }
     if (selectedMeal) {
       if (initialRecipe) {
         onClose();
       } else {
         setSelectedMeal(null);
       }
-    } else if (selectedCategory || searchQuery) {
+      return;
+    }
+    if (isMenuPlannerOpen) {
+      setIsMenuPlannerOpen(false);
+      return;
+    }
+    if (selectedCategory || searchQuery) {
       if (initialSearchQuery || initialCategory) {
         onClose();
       } else {
@@ -123,7 +184,18 @@ export function RecipesScreen({ onClose, initialSearchQuery, initialRecipe, init
     } else {
       onClose();
     }
-  }, [selectedMeal, selectedCategory, searchQuery, onClose, initialRecipe, initialSearchQuery, initialCategory]);
+  }, [
+    showShoppingReviewModal, 
+    activeCourseSwapModal, 
+    selectedMeal, 
+    isMenuPlannerOpen, 
+    selectedCategory, 
+    searchQuery, 
+    onClose, 
+    initialRecipe, 
+    initialSearchQuery, 
+    initialCategory
+  ]);
 
   useEffect(() => {
     window.addEventListener('recipes-back', handleBack);
@@ -131,66 +203,71 @@ export function RecipesScreen({ onClose, initialSearchQuery, initialRecipe, init
   }, [handleBack]);
 
   const loadRecipes = useCallback(() => {
-    fetch('ricette_mondo.json').then(res => res.json().catch(() => []))
-    .then((mondoData) => {
-      let combined: any[] = [];
-      if (Array.isArray(mondoData)) {
-        const formatted = mondoData
-          .filter((m: any) => m.image) // Only recipes with images
-          .map((m: any, i: number) => {
-            let cat = m.category || m.categoria || 'Primi';
-            if (cat === 'Primi Piatti') cat = 'Primi';
-            if (cat === 'Secondi Piatti') cat = 'Secondi';
-            
-            let parsedSteps: string[] = [];
-            if (Array.isArray(m.steps)) parsedSteps = m.steps;
-            else if (Array.isArray(m.procedimento)) parsedSteps = m.procedimento;
-            else if (typeof m.procedimento === 'string') {
-              parsedSteps = m.procedimento
-                .split(/\n+/)
-                .map(s => s.trim())
-                .filter(s => s.length > 0)
-                .reduce((acc: string[], curr) => {
-                  if (curr.length > 200) {
-                    const sentences = curr.replace(/([.!?])\s+([A-Z])/g, '$1|SPLIT|$2').split('|SPLIT|');
-                    acc.push(...sentences);
-                  } else {
-                    acc.push(curr);
-                  }
-                  return acc;
-                }, []);
-            }
+    fetch('ricette_mondo.json')
+      .then(res => res.json().catch(() => []))
+      .then((mondoData) => {
+        let combined: any[] = [];
+        if (Array.isArray(mondoData)) {
+          const formatted = mondoData
+            .filter((m: any) => m.image) // Only recipes with images
+            .map((m: any, i: number) => {
+              let cat = m.category || m.categoria || 'Primi';
+              if (cat === 'Primi Piatti') cat = 'Primi';
+              if (cat === 'Secondi Piatti') cat = 'Secondi';
+              
+              let parsedSteps: string[] = [];
+              if (Array.isArray(m.steps)) parsedSteps = m.steps;
+              else if (Array.isArray(m.procedimento)) parsedSteps = m.procedimento;
+              else if (typeof m.procedimento === 'string') {
+                parsedSteps = m.procedimento
+                  .split(/\n+/)
+                  .map((s: string) => s.trim())
+                  .filter((s: string) => s.length > 0)
+                  .reduce((acc: string[], curr: string) => {
+                    if (curr.length > 200) {
+                      const sentences = curr.replace(/([.!?])\s+([A-Z])/g, '$1|SPLIT|$2').split('|SPLIT|');
+                      acc.push(...sentences);
+                    } else {
+                      acc.push(curr);
+                    }
+                    return acc;
+                  }, []);
+              }
 
-            return {
-              id: m.id || `gz_${i}`,
-              title: m.title || m.nome,
-              image: m.image,
-              category: cat,
-              ingredients: m.ingredients || m.ingredienti || [],
-              steps: parsedSteps
-            };
-          });
-        combined = [...formatted];
-      }
-
-      try {
-        const custom = localStorage.getItem('chelona_custom_recipes');
-        if (custom) {
-          const customRecipes = JSON.parse(custom);
-          // prepend custom recipes so they appear first
-          combined = [...customRecipes, ...combined];
+              return {
+                id: m.id || `gz_${i}`,
+                title: m.title || m.nome,
+                image: m.image,
+                category: cat,
+                ingredients: m.ingredients || m.ingredienti || [],
+                steps: parsedSteps,
+                calories: m.calories,
+                protein: m.protein,
+                carbs: m.carbs,
+                fat: m.fat,
+                tags: m.tags
+              };
+            });
+          combined = [...formatted];
         }
-      } catch (e) {
-        console.error('Failed to load custom recipes from localStorage', e);
-      }
 
-      setAllMeals(combined);
-      setLoading(false);
-    })
-    .catch(e => {
-      console.error("Failed to load recipes", e);
-      setLoading(false);
-    });
+        try {
+          const custom = localStorage.getItem('chelona_custom_recipes');
+          if (custom) {
+            const customRecipes = JSON.parse(custom);
+            combined = [...customRecipes, ...combined];
+          }
+        } catch (e) {
+          console.error('Failed to load custom recipes from localStorage', e);
+        }
+
+        setAllMeals(combined);
+        setLoading(false);
+      })
+      .catch(e => {
+        console.error("Failed to load recipes", e);
+        setLoading(false);
+      });
   }, []);
 
   useEffect(() => {
@@ -201,6 +278,116 @@ export function RecipesScreen({ onClose, initialSearchQuery, initialRecipe, init
     window.addEventListener('recipes-updated', loadRecipes);
     return () => window.removeEventListener('recipes-updated', loadRecipes);
   }, [loadRecipes]);
+
+  // Inizializza il menu armonioso appena le ricette sono disponibili
+  useEffect(() => {
+    if (!currentMenu && allMeals.length > 0) {
+      const generated = generateHarmoniousMenu(allMeals, {
+        mealType: plannerMealType,
+        theme: plannerTheme,
+        locked: lockedCourses
+      });
+      setCurrentMenu(generated);
+    }
+  }, [allMeals, currentMenu, plannerMealType, plannerTheme, lockedCourses]);
+
+  // Gestione generazione menu con tema o pasto aggiornato
+  const handleRegenerateMenu = (overrideTheme?: DietTheme, overrideMealType?: MealType) => {
+    const themeToUse = overrideTheme !== undefined ? overrideTheme : plannerTheme;
+    const mealTypeToUse = overrideMealType !== undefined ? overrideMealType : plannerMealType;
+    
+    if (overrideTheme !== undefined) setPlannerTheme(overrideTheme);
+    if (overrideMealType !== undefined) setPlannerMealType(overrideMealType);
+
+    const generated = generateHarmoniousMenu(allMeals, {
+      mealType: mealTypeToUse,
+      theme: themeToUse,
+      currentMenu: currentMenu || undefined,
+      locked: lockedCourses
+    });
+    setCurrentMenu(generated);
+    setHarmonizeNotice(null);
+    setMenuAddedToCart(false);
+  };
+
+  // Toggle blocco portata
+  const toggleCourseLock = (course: 'antipasto' | 'primo' | 'secondo') => {
+    setLockedCourses(prev => ({ ...prev, [course]: !prev[course] }));
+  };
+
+  // Sostituzione di un piatto specifico con rilevamento armonizzazione
+  const handleSelectAlternativeDish = (course: 'Antipasti' | 'Primi' | 'Secondi', dish: RecipeItem) => {
+    if (!currentMenu) return;
+
+    const courseKey = course === 'Antipasti' ? 'antipasto' : course === 'Primi' ? 'primo' : 'secondo';
+    const updatedMenu = { ...currentMenu, [courseKey]: dish };
+
+    const newDishTheme = classifyRecipeTheme(dish);
+    const currentTheme = currentMenu.theme;
+
+    // Se il tema del piatto scelto è diverso da quello attuale (es. Primo a pesce in menu carne)
+    if (newDishTheme !== currentTheme && newDishTheme !== 'vegetariano') {
+      const courseLabel = course === 'Antipasti' ? 'Antipasto' : course === 'Primi' ? 'Primo' : 'Secondo';
+      const themeLabel = newDishTheme === 'pesce' ? 'Pesce 🐟' : 'Carne 🥩';
+      setHarmonizeNotice({
+        message: `Hai selezionato un ${courseLabel} a tema ${themeLabel}! Vuoi armonizzare tutto il menu a tema ${newDishTheme}?`,
+        targetTheme: newDishTheme
+      });
+    } else {
+      setHarmonizeNotice(null);
+    }
+
+    setCurrentMenu(updatedMenu);
+    setActiveCourseSwapModal(null);
+    setMenuAddedToCart(false);
+  };
+
+  // Applicazione armonizzazione completa su richiesta
+  const handleApplyHarmonization = (targetTheme: 'carne' | 'pesce' | 'vegetariano') => {
+    setPlannerTheme(targetTheme);
+    const newMenu = generateHarmoniousMenu(allMeals, {
+      mealType: plannerMealType,
+      theme: targetTheme,
+      currentMenu: currentMenu || undefined,
+      locked: lockedCourses
+    });
+    setCurrentMenu(newMenu);
+    setHarmonizeNotice(null);
+  };
+
+  // Apertura review carrello per tutti gli ingredienti del menu
+  const handleOpenShoppingReviewForMenu = () => {
+    if (!currentMenu) return;
+    const allIngs: string[] = [];
+    if (currentMenu.antipasto?.ingredients) allIngs.push(...currentMenu.antipasto.ingredients);
+    if (currentMenu.primo?.ingredients) allIngs.push(...currentMenu.primo.ingredients);
+    if (currentMenu.secondo?.ingredients) allIngs.push(...currentMenu.secondo.ingredients);
+    
+    setMenuShoppingIngredients(new Set(allIngs));
+    setShowShoppingReviewModal(true);
+  };
+
+  // Conferma aggiunta ingredienti del menu alla lista della spesa
+  const handleConfirmMenuShopping = () => {
+    const itemsToAdd = Array.from(menuShoppingIngredients).map(ing => parseIngredient(ing));
+    if (onAddToShoppingList) {
+      onAddToShoppingList(itemsToAdd);
+    }
+    setShowShoppingReviewModal(false);
+    setMenuAddedToCart(true);
+    setTimeout(() => setMenuAddedToCart(false), 3000);
+  };
+
+  // Aggiungi ingredienti selezionati di una singola ricetta alla spesa
+  const handleAddSelectedToShoppingList = () => {
+    if (selectedMealIngredients.size === 0) return;
+    const itemsToAdd = Array.from(selectedMealIngredients).map(ing => parseIngredient(ing));
+    if (onAddToShoppingList) {
+      onAddToShoppingList(itemsToAdd);
+    }
+    setMealAddedToCart(true);
+    setTimeout(() => setMealAddedToCart(false), 3000);
+  };
 
   const FIXED_CATEGORIES = ['Fitness & Dieta', 'Antipasti', 'Primi', 'Secondi', 'Dolci', 'Colazione'];
 
@@ -235,13 +422,13 @@ export function RecipesScreen({ onClose, initialSearchQuery, initialRecipe, init
         });
 
         return { ...meal, fridgeScore: score, missingIngredients };
-      }).filter(m => m.fridgeScore > 0);
+      }).filter(m => (m as any).fridgeScore > 0);
       
       return scored.sort((a, b) => {
-        if (b.fridgeScore !== a.fridgeScore) {
-          return b.fridgeScore - a.fridgeScore; // Most matched ingredients first
+        if ((b as any).fridgeScore !== (a as any).fridgeScore) {
+          return (b as any).fridgeScore - (a as any).fridgeScore; // Most matched ingredients first
         }
-        return a.missingIngredients.length - b.missingIngredients.length; // Least missing ingredients first
+        return (a as any).missingIngredients.length - (b as any).missingIngredients.length; // Least missing ingredients first
       });
     }
 
@@ -251,64 +438,6 @@ export function RecipesScreen({ onClose, initialSearchQuery, initialRecipe, init
       return matchCat && matchSearch;
     });
   }, [allMeals, selectedCategory, searchQuery, favorites, fridgeIngredients, freezerIngredients, pantryIngredients]);
-
-  const availableIngredients = useMemo(() => {
-    const commonSet = new Set([
-      // Aromatiche e Spezie
-      'aglio', 'aglio orsino', 'aglio nero', 'alloro', 'aneto', 'basilico', 'cannella', 'capperi',
-      'chiodi di garofano', 'curcuma', 'curry', 'erba cipollina', 'finocchietto', 'menta',
-      'noce moscata', 'origano', 'pepe', 'peperoncino', 'peperoncino fresco', 'peperoncino secco',
-      'prezzemolo', 'rosmarino', 'sale', 'salvia', 'senape', 'timo', 'vaniglia', 'zafferano', 'zenzero',
-      
-      // Ortaggi e Verdure (con varianti)
-      'asparagi', 'asparagi verdi', 'asparagi bianchi', 'asparagi selvatici',
-      'carciofi', 'carciofi romaneschi', 'carciofi spinosi', 'carote',
-      'cavolfiore', 'cavolo', 'cavolo nero', 'cavolo verza', 'cavolo cappuccio', 'cavolini di bruxelles',
-      'cetrioli', 'cipolla', 'cipolla rossa', 'cipolla bianca', 'cipolla dorata', 'cipolla di tropea',
-      'cipollotto', 'cipolline borettane',
-      'fagiolini', 'taccole', 'finocchio',
-      'funghi', 'funghi porcini', 'funghi champignon', 'funghi chiodini', 'funghi finferli',
-      'insalata', 'lattuga', 'rucola', 'valeriana', 'indivia', 'scarola', 'iceberg', 'songino',
-      'melanzane', 'melanzane tonde', 'melanzane lunghe', 'melanzane perlina',
-      'olive', 'olive nere', 'olive verdi', 'olive taggiasche',
-      'patate', 'patate novelle', 'patate rosse', 'patate dolci', 'patate gialle',
-      'peperoni', 'peperoni rossi', 'peperoni gialli', 'peperoni verdi', 'peperoni cruschi', 'friggitelli',
-      'pomodori', 'pomodorini', 'pomodori secchi', 'pomodori pelati', 'pomodorini ciliegino', 'pomodorini datterini',
-      'pomodori ramati', 'pomodori cuore di bue', 'pomodori san marzano', 'passata di pomodoro',
-      'porri', 'radicchio', 'radicchio rosso', 'radicchio trevigiano',
-      'sedano', 'sedano rapa', 'spinaci', 'cime di rapa', 'broccoletti',
-      'zucca', 'zucca mantovana', 'zucca delica', 'zucca butternut', 'zucca napoletana', 'fiori di zucca',
-      'zucchine', 'zucchine tonde', 'zucchine chiare', 'zucchine romanesche', 'zucchine scure',
-      
-      // Legumi
-      'ceci', 'fagioli', 'fagioli borlotti', 'fagioli cannellini', 'fagioli neri', 'fave',
-      'lenticchie', 'lenticchie rosse', 'lenticchie nere', 'piselli', 'soia', 'lupini',
-      
-      // Frutta
-      'arachidi', 'arancia', 'avocado', 'cedro', 'datteri', 'fichi', 'fragole', 'kiwi',
-      'lampone', 'limone', 'mela', 'mirtilli', 'noci', 'nocciole', 'mandorle', 'pera', 'pesca',
-      'pinoli', 'pistacchi', 'prugne', 'uva', 'castagne',
-      
-      // Carne, Pesce e Latticini (Base)
-      'bacon', 'bresaola', 'brodo', 'burro', 'cacao', 'caffe', 'calamari', 'carne', 'cioccolato',
-      'cozze', 'farina', 'farro', 'formaggio', 'gamberi', 'gorgonzola', 'grana', 'guanciale',
-      'latte', 'lievito', 'maiale', 'maionese', 'mais', 'manzo', 'margarina', 'mascarpone',
-      'miele', 'mozzarella', 'olio', 'olio extravergine', 'orzo', 'pancetta', 'pane', 'panna', 'parmigiano',
-      'pesce', 'pollo', 'petto di pollo', 'prosciutto', 'ricotta', 'riso', 'salmone', 'salsiccia',
-      'seppie', 'speck', 'tacchino', 'tonno', 'uova', 'vitello', 'vongole', 'zabaione', 'zucchero'
-    ]);
-
-    const stopWords = new Set(['di', 'da', 'in', 'con', 'su', 'per', 'tra', 'fra', 'il', 'lo', 'la', 'i', 'gli', 'le', 'un', 'uno', 'una', 'q.b.', 'qb', 'g', 'ml', 'kg', 'litro', 'litri', 'cucchiaio', 'cucchiai', 'cucchiaino', 'cucchiaini', 'spicchio', 'spicchi', 'pizzico', 'pizzichi', 'foglia', 'foglie', 'fresco', 'freschi', 'fresche', 'tritato', 'tritati', 'tagliato', 'tagliati', 'a', 'al', 'alla', 'alle', 'agli', 'allo', 'del', 'della', 'delle', 'degli', 'dello', 'quanto', 'basta', 'circa', 'mezzo', 'mezza', 'intero', 'intera', 'temperatura', 'ambiente', 'caldo', 'freddo', 'tiepido', 'bollente', 'scaglie', 'gocce', 'cubetti', 'fette', 'pezzi', 'spolverata', 'macinata', 'q.b', 'qb.']);
-
-    allMeals.forEach(meal => {
-      (meal.ingredients || []).forEach((ingStr: string) => {
-        const words = ingStr.toLowerCase().split(/[\s,()0-9'"+-]/).filter(w => w.length > 2 && !stopWords.has(w));
-        words.forEach(w => commonSet.add(w));
-      });
-    });
-
-    return Array.from(commonSet).sort();
-  }, [allMeals]);
 
   const toggleFavorite = (meal: any, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
@@ -333,7 +462,7 @@ export function RecipesScreen({ onClose, initialSearchQuery, initialRecipe, init
         <div className="flex items-center gap-4">
           <button 
             onClick={handleBack}
-            className="p-2 hover:bg-[var(--surface-variant)] rounded-full text-[var(--text-muted)] transition-all flex items-center justify-center"
+            className="p-2 hover:bg-[var(--surface-variant)] rounded-full text-[var(--text-muted)] transition-all flex items-center justify-center cursor-pointer"
           >
             <ArrowLeft className="w-6 h-6" />
           </button>
@@ -344,6 +473,20 @@ export function RecipesScreen({ onClose, initialSearchQuery, initialRecipe, init
             <h1 className="text-xl lg:text-2xl font-bold text-[var(--text-main)]">Ricettario</h1>
           </div>
         </div>
+
+        {/* Pulsante rapido header "Cosa mangiare oggi?" */}
+        <button
+          onClick={() => {
+            if (!currentMenu && allMeals.length > 0) {
+              handleRegenerateMenu();
+            }
+            setIsMenuPlannerOpen(true);
+          }}
+          className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold text-xs shadow-md shadow-orange-500/20 hover:scale-105 active:scale-95 transition-all cursor-pointer"
+        >
+          <Sparkles className="w-3.5 h-3.5" />
+          <span>Cosa mangiare oggi?</span>
+        </button>
       </header>
 
       <main className="flex-1 overflow-y-auto p-4 md:p-8 custom-scrollbar">
@@ -360,6 +503,40 @@ export function RecipesScreen({ onClose, initialSearchQuery, initialRecipe, init
               />
             </div>
 
+            {/* ── BANNER HERO: COSA MANGIARE OGGI? ── */}
+            <motion.div
+              whileHover={{ scale: 1.01 }}
+              onClick={() => {
+                if (!currentMenu && allMeals.length > 0) {
+                  handleRegenerateMenu();
+                }
+                setIsMenuPlannerOpen(true);
+              }}
+              className="relative overflow-hidden rounded-[2.5rem] bg-gradient-to-r from-amber-500 via-orange-500 to-rose-500 p-6 md:p-8 text-white shadow-xl shadow-orange-500/25 cursor-pointer border border-white/20 group"
+            >
+              <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-5">
+                <div className="space-y-2 max-w-xl">
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/20 backdrop-blur-md text-xs font-black uppercase tracking-wider text-white">
+                    <Sparkles className="w-3.5 h-3.5" />
+                    Novità · Assistente Menu Intelligente
+                  </div>
+                  <h3 className="text-2xl md:text-3xl font-black tracking-tight flex items-center gap-2">
+                    Cosa mangiare oggi? 🍽️
+                  </h3>
+                  <p className="text-white/95 text-xs md:text-sm font-medium leading-relaxed">
+                    Crea in un tocco un menu coordinato (Antipasto, Primo e Secondo) in perfetto abbinamento tra Carne, Pesce o Vegetariano. Se cambi un piatto, l'assistente adatta il resto del menu e puoi inviare tutti gli ingredienti direttamente alla tua Lista della Spesa!
+                  </p>
+                </div>
+                <div className="shrink-0 flex items-center gap-3">
+                  <div className="px-5 py-3.5 rounded-2xl bg-white text-orange-600 font-black text-sm shadow-xl group-hover:scale-105 active:scale-95 transition-all flex items-center gap-2">
+                    <span>Crea Menu Ora</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </div>
+                </div>
+              </div>
+              <div className="absolute -right-12 -bottom-12 w-48 h-48 bg-white/10 rounded-full blur-2xl pointer-events-none" />
+            </motion.div>
+
             <div>
               <h2 className="text-2xl font-bold text-[var(--text-main)] mb-6 flex items-center gap-2">
                 <ChefHat className="w-6 h-6 text-orange-500" /> Categorie
@@ -372,11 +549,28 @@ export function RecipesScreen({ onClose, initialSearchQuery, initialRecipe, init
                 </div>
               ) : (
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                  {/* Tile speciale "Cosa mangiare oggi?" in griglia */}
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => {
+                      if (!currentMenu && allMeals.length > 0) {
+                        handleRegenerateMenu();
+                      }
+                      setIsMenuPlannerOpen(true);
+                    }}
+                    className="flex flex-col items-center justify-center p-4 bg-gradient-to-br from-amber-500/15 via-orange-500/10 to-rose-500/15 border-2 border-orange-500/40 rounded-2xl transition-all shadow-sm group hover:shadow-md cursor-pointer"
+                  >
+                    <div className="text-3xl mb-1.5 group-hover:scale-110 transition-transform">✨🍽️</div>
+                    <span className="font-extrabold text-orange-600 dark:text-orange-400 text-sm text-center">Cosa mangiare?</span>
+                    <span className="text-[10px] text-[var(--text-muted)] font-semibold mt-0.5">Menu coordinato</span>
+                  </motion.button>
+
                   <motion.button
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                     onClick={() => setSelectedCategory('favorites')}
-                    className="flex flex-col items-center justify-center p-4 bg-gradient-to-br from-yellow-100 to-amber-200 border border-yellow-300 rounded-2xl transition-all shadow-sm group hover:shadow-md"
+                    className="flex flex-col items-center justify-center p-4 bg-gradient-to-br from-yellow-100 to-amber-200 border border-yellow-300 rounded-2xl transition-all shadow-sm group hover:shadow-md cursor-pointer"
                   >
                     <Star className="w-8 h-8 text-yellow-600 mb-2 fill-yellow-600" />
                     <span className="font-bold text-yellow-800 text-sm text-center">Le mie Preferite</span>
@@ -386,23 +580,18 @@ export function RecipesScreen({ onClose, initialSearchQuery, initialRecipe, init
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                     onClick={() => setSelectedCategory('fridge')}
-                    className="flex flex-col items-center justify-center p-4 bg-gradient-to-br from-cyan-100 to-blue-200 border border-cyan-300 rounded-2xl transition-all shadow-sm group hover:shadow-md"
+                    className="flex flex-col items-center justify-center p-4 bg-gradient-to-br from-cyan-100 to-blue-200 border border-cyan-300 rounded-2xl transition-all shadow-sm group hover:shadow-md cursor-pointer"
                   >
-                    <span
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap ${
-                      ['fridge', 'freezer', 'pantry'].includes(selectedCategory || '')
-                        ? 'bg-orange-500 text-white shadow-md'
-                        : 'bg-[var(--surface-variant)] text-[var(--text-muted)]'
-                    }`}
-                  >
-                    📦 Inventario
-                  </span>
-                    <div className="text-3xl mb-2">❄️</div>
+                    <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap bg-[var(--surface-variant)] text-[var(--text-muted)] mb-1">
+                      📦 Inventario
+                    </span>
+                    <div className="text-3xl mb-1">❄️</div>
                     <span className="font-bold text-blue-800 text-sm text-center">Il mio Frigo</span>
                   </motion.button>
                   
-                  {categories.map((cat, i) => {
+                  {categories.map((cat) => {
                     const emojiMap: Record<string, string> = {
+                      'Fitness & Dieta': '💪',
                       'Antipasti': '🥗',
                       'Primi': '🍝',
                       'Secondi': '🥩',
@@ -412,18 +601,18 @@ export function RecipesScreen({ onClose, initialSearchQuery, initialRecipe, init
                     const emoji = emojiMap[cat] || '🍽️';
                     
                     return (
-                    <motion.button
-                      key={cat}
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                      onClick={() => setSelectedCategory(cat)}
-                      className="flex flex-col items-center justify-center p-4 bg-[var(--card-bg)] border border-[var(--border)] rounded-2xl hover:border-orange-500 hover:bg-orange-50/10 transition-all shadow-sm group"
-                    >
-                      <span className="text-2xl mb-2 group-hover:scale-110 transition-transform">{emoji}</span>
-                      <span className="font-bold text-[var(--text-main)] text-sm text-center capitalize">
-                        {cat}
-                      </span>
-                    </motion.button>
+                      <motion.button
+                        key={cat}
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() => setSelectedCategory(cat)}
+                        className="flex flex-col items-center justify-center p-4 bg-[var(--card-bg)] border border-[var(--border)] rounded-2xl hover:border-orange-500 hover:bg-orange-50/10 transition-all shadow-sm group cursor-pointer"
+                      >
+                        <span className="text-2xl mb-2 group-hover:scale-110 transition-transform">{emoji}</span>
+                        <span className="font-bold text-[var(--text-main)] text-sm text-center capitalize">
+                          {cat}
+                        </span>
+                      </motion.button>
                     );
                   })}
                 </div>
@@ -461,6 +650,7 @@ export function RecipesScreen({ onClose, initialSearchQuery, initialRecipe, init
               )}
             </div>
 
+            {/* Inventory Controls */}
             {['fridge', 'freezer', 'pantry'].includes(selectedCategory || '') && (() => {
               const allInventoryCount = fridgeIngredients.length + freezerIngredients.length + pantryIngredients.length;
               
@@ -499,11 +689,10 @@ export function RecipesScreen({ onClose, initialSearchQuery, initialRecipe, init
 
               return (
               <div className="bg-[var(--card-bg)] p-6 rounded-[2.5rem] border border-[var(--border)] shadow-xl space-y-6">
-                {/* Header & Count Banner */}
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-[var(--border)]">
                   <div>
                     <h3 className="text-xl font-black text-[var(--text-main)] flex items-center gap-2">
-                      <span className="text-2xl">📦</span> Inventario Virtus
+                      <span className="text-2xl">📦</span> Inventario Casa
                     </h3>
                     <p className="text-xs font-semibold text-[var(--text-muted)] mt-1">
                       {allInventoryCount === 0 
@@ -520,82 +709,55 @@ export function RecipesScreen({ onClose, initialSearchQuery, initialRecipe, init
                         localStorage.removeItem('chelona_fridge_ingredients');
                         localStorage.removeItem('chelona_freezer_ingredients');
                         localStorage.removeItem('chelona_pantry_ingredients');
-                      }} 
-                      className="px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-xl text-xs font-bold transition-all border border-red-500/20 shrink-0"
+                      }}
+                      className="text-xs font-bold text-red-500 hover:text-red-600 px-3 py-1.5 rounded-xl border border-red-500/20 hover:bg-red-500/10 transition-colors"
                     >
-                      🗑️ Svuota Tutto
+                      Svuota tutto
                     </button>
                   )}
                 </div>
 
-                {/* Tabs for Fridge, Freezer, Pantry */}
-                <div className="flex bg-[var(--surface-variant)] p-1 rounded-2xl">
+                {/* Sub-Tabs: Frigo, Freezer, Dispensa */}
+                <div className="flex items-center gap-2 overflow-x-auto pb-1 custom-scrollbar">
                   {[
-                    { id: 'fridge', label: 'Frigo', icon: '🧊', count: fridgeIngredients.length },
-                    { id: 'freezer', label: 'Freezer', icon: '❄️', count: freezerIngredients.length },
-                    { id: 'pantry', label: 'Dispensa', icon: '📦', count: pantryIngredients.length }
+                    { id: 'fridge', label: '🧊 Frigorifero', count: fridgeIngredients.length },
+                    { id: 'freezer', label: '❄️ Freezer', count: freezerIngredients.length },
+                    { id: 'pantry', label: '📦 Dispensa', count: pantryIngredients.length }
                   ].map(tab => (
                     <button
                       key={tab.id}
                       onClick={() => setSelectedCategory(tab.id)}
-                      className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-bold transition-all ${
+                      className={`px-4 py-2 rounded-xl text-xs font-extrabold transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer ${
                         selectedCategory === tab.id
-                          ? 'bg-[var(--card-bg)] text-[var(--text-main)] shadow-sm'
-                          : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
+                          ? 'bg-orange-500 text-white shadow-md shadow-orange-500/20'
+                          : 'bg-[var(--surface-variant)] text-[var(--text-muted)] hover:text-[var(--text-main)]'
                       }`}
                     >
-                      <span>{tab.icon}</span>
                       <span>{tab.label}</span>
-                      {tab.count > 0 && (
-                        <span className="bg-orange-500 text-white px-1.5 py-0.5 rounded-full text-[9px]">
-                          {tab.count}
-                        </span>
-                      )}
+                      <span className="px-1.5 py-0.5 rounded-full bg-black/15 text-[10px]">{tab.count}</span>
                     </button>
                   ))}
                 </div>
 
-                {/* Input & Search Autocomplete */}
-                <div className="flex gap-2 relative">
-                  <div className="relative flex-1">
-                    <input 
-                      type="text"
-                      placeholder={`Aggiungi a ${selectedCategory === 'fridge' ? 'Frigo' : selectedCategory === 'freezer' ? 'Freezer' : 'Dispensa'}...`}
-                      value={inventoryInput}
-                      onChange={(e) => setInventoryInput(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' && inventoryInput.trim()) {
-                          const val = inventoryInput.trim().toLowerCase();
-                          if (!activeList.includes(val)) {
-                            setActiveList(prev => [...prev, val]);
-                          }
-                          setInventoryInput('');
+                {/* Manual Add Input */}
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    placeholder={`Aggiungi a ${selectedCategory === 'fridge' ? 'Frigo' : selectedCategory === 'freezer' ? 'Freezer' : 'Dispensa'}...`}
+                    value={inventoryInput}
+                    onChange={(e) => setInventoryInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && inventoryInput.trim()) {
+                        const val = inventoryInput.trim().toLowerCase();
+                        if (!activeList.includes(val)) {
+                          setActiveList(prev => [...prev, val]);
                         }
-                      }}
-                      className="w-full bg-[var(--bg)] border border-[var(--border)] rounded-2xl py-3.5 px-5 text-[var(--text-main)] outline-none focus:border-orange-500 font-medium text-sm transition-colors shadow-inner"
-                    />
-                    {inventoryInput.trim().length > 0 && (
-                      <div className="absolute top-full left-0 right-0 mt-2 bg-[var(--card-bg)] border border-[var(--border)] rounded-2xl shadow-2xl max-h-56 overflow-y-auto z-[100] custom-scrollbar">
-                        {availableIngredients
-                          .filter(ing => ing.includes(inventoryInput.toLowerCase().trim()) && !activeList.includes(ing))
-                          .slice(0, 30)
-                          .map(ing => (
-                            <button
-                              key={ing}
-                              onClick={() => {
-                                setActiveList(prev => [...prev, ing]);
-                                setInventoryInput('');
-                              }}
-                              className="w-full text-left px-5 py-2.5 hover:bg-orange-500/10 text-[var(--text-main)] capitalize font-semibold text-sm border-b border-[var(--border)] last:border-b-0 flex items-center justify-between"
-                            >
-                              <span>{ing}</span>
-                              <span className="text-xs text-orange-500 font-bold">+ Aggiungi</span>
-                            </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                  <button 
+                        setInventoryInput('');
+                      }
+                    }}
+                    className="flex-1 bg-[var(--surface-variant)] border border-[var(--border)] rounded-2xl px-4 py-3 text-sm text-[var(--text-main)] outline-none focus:ring-2 focus:ring-orange-500"
+                  />
+                  <button
                     onClick={() => {
                       if (inventoryInput.trim()) {
                         const val = inventoryInput.trim().toLowerCase();
@@ -605,7 +767,7 @@ export function RecipesScreen({ onClose, initialSearchQuery, initialRecipe, init
                         setInventoryInput('');
                       }
                     }}
-                    className="px-6 py-3.5 bg-orange-500 hover:bg-orange-600 text-white rounded-2xl font-bold text-sm transition-all shadow-lg shadow-orange-500/20 active:scale-95 shrink-0"
+                    className="px-6 py-3.5 bg-orange-500 hover:bg-orange-600 text-white rounded-2xl font-bold text-sm transition-all shadow-lg shadow-orange-500/20 active:scale-95 shrink-0 cursor-pointer"
                   >
                     + Aggiungi
                   </button>
@@ -617,11 +779,11 @@ export function RecipesScreen({ onClose, initialSearchQuery, initialRecipe, init
                     <p className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest mb-3">Ingredienti in {selectedCategory === 'fridge' ? 'Frigo' : selectedCategory === 'freezer' ? 'Freezer' : 'Dispensa'} ({activeList.length})</p>
                     <div className="flex flex-wrap gap-2">
                       {activeList.map(ing => (
-                        <span key={ing} className={`inline-flex items-center gap-1.5 ${style.chip} px-3.5 py-1.5 rounded-xl text-xs font-extrabold capitalize shadow-sm`}>
+                        <span key={ing} className={`inline-flex items-center gap-1.5 ${style.chip} px-3.5 py-1.5 rounded-xl text-xs font-extrabold capitalize shadow-xs`}>
                           <span>{getIcon(selectedCategory!)} {ing}</span>
                           <button 
                             onClick={() => setActiveList(prev => prev.filter(i => i !== ing))} 
-                            className={`w-4 h-4 rounded-full ${style.remove} hover:bg-red-500/30 hover:text-red-500 flex items-center justify-center text-xs transition-colors ml-1`}
+                            className={`w-4 h-4 rounded-full ${style.remove} hover:bg-red-500/30 hover:text-red-500 flex items-center justify-center text-xs transition-colors ml-1 cursor-pointer`}
                             title="Rimuovi"
                           >
                             ×
@@ -631,64 +793,6 @@ export function RecipesScreen({ onClose, initialSearchQuery, initialRecipe, init
                     </div>
                   </div>
                 )}
-                {/* Quick Add Ingredient Categories */}
-                <div className="space-y-4 pt-2">
-                  <p className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest">Tocca gli ingredienti per aggiungerli o rimuoverli rapidamente</p>
-                  {[
-                    {
-                      name: '🥛 Latticini & Uova',
-                      items: ['uova', 'ricotta', 'mozzarella', 'yogurt greco', 'feta', 'latte', 'parmigiano', 'fiocchi di latte']
-                    },
-                    {
-                      name: '🥩 Carne & Pesce',
-                      items: ['pollo', 'tacchino', 'salmone', 'tonno', 'merluzzo', 'orata', 'hamburger']
-                    },
-                    {
-                      name: '🥦 Verdure & Ortica',
-                      items: ['pomodorini', 'zucchine', 'spinaci', 'broccoli', 'carote', 'cetriolo', 'avocado', 'funghi', 'melanzane']
-                    },
-                    {
-                      name: '🍚 Cereali & Legumi',
-                      items: ['riso basmati', 'pasta integrale', 'avena', 'quinoa', 'ceci', 'lenticchie', 'edamame', 'pane integrale', 'couscous', 'tofu']
-                    },
-                    {
-                      name: '🍎 Frutta & Secca',
-                      items: ['banana', 'mirtilli', 'mela', 'noci', 'mandorle', 'frutta secca']
-                    },
-                    {
-                      name: '🧂 Condimenti & Altro',
-                      items: ['olio evo', 'miele', 'burro di arachidi', 'sciroppo d\'acero', 'limone', 'cioccolato fondente', 'guacamole', 'hummus']
-                    }
-                  ].map((catGroup, idx) => (
-                    <div key={idx} className="space-y-2">
-                      <p className="text-xs font-bold text-[var(--text-main)]">{catGroup.name}</p>
-                      <div className="flex flex-wrap gap-1.5">
-                        {catGroup.items.map(item => {
-                          const isSelected = activeList.includes(item.toLowerCase());
-                          return (
-                            <button
-                              key={item}
-                              onClick={() => {
-                                if (isSelected) {
-                                  setActiveList(prev => prev.filter(i => i !== item.toLowerCase()));
-                                } else {
-                                  setActiveList(prev => [...prev, item.toLowerCase()]);
-                                }
-                              }}
-                              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all active:scale-95 border ${
-                                isSelected
-                                  ? style.selected
-                                  : `bg-[var(--bg)] text-[var(--text-muted)] border-[var(--border)] ${style.hover} hover:text-[var(--text-main)]`
-                              }`}
-                            >
-                              {isSelected ? `✓ ${item}` : `+ ${item}`}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  ))}
-                </div>
               </div>
               );
             })()}
@@ -723,7 +827,7 @@ export function RecipesScreen({ onClose, initialSearchQuery, initialRecipe, init
                       <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                       <button 
                         onClick={(e) => toggleFavorite(meal, e)}
-                        className="absolute top-4 right-4 w-10 h-10 bg-black/40 backdrop-blur-md rounded-full flex items-center justify-center hover:bg-black/60 transition-colors z-10"
+                        className="absolute top-4 right-4 w-10 h-10 bg-black/40 backdrop-blur-md rounded-full flex items-center justify-center hover:bg-black/60 transition-colors z-10 cursor-pointer"
                       >
                         <Star className={`w-5 h-5 ${isFavorite(meal.id) ? 'fill-yellow-400 text-yellow-400' : 'text-white'}`} />
                       </button>
@@ -731,14 +835,14 @@ export function RecipesScreen({ onClose, initialSearchQuery, initialRecipe, init
                     <div className="p-4 flex-1 flex flex-col justify-center">
                       <div className="flex items-center justify-between mb-1 gap-2">
                         <span className="text-xs font-bold text-orange-500 uppercase tracking-wider truncate">{meal.category}</span>
-                        {selectedCategory === 'fridge' && meal.missingIngredients !== undefined && (
-                          meal.missingIngredients.length === 0 ? (
+                        {selectedCategory === 'fridge' && (meal as any).missingIngredients !== undefined && (
+                          (meal as any).missingIngredients.length === 0 ? (
                             <span className="text-[10px] font-bold text-green-400 bg-green-900/30 px-2 py-0.5 rounded-full whitespace-nowrap">
                               ✅ Hai tutto!
                             </span>
                           ) : (
                             <span className="text-[10px] font-bold text-red-400 bg-red-900/30 px-2 py-0.5 rounded-full whitespace-nowrap">
-                              ❌ Mancano {meal.missingIngredients.length}
+                              ❌ Mancano {(meal as any).missingIngredients.length}
                             </span>
                           )
                         )}
@@ -753,13 +857,541 @@ export function RecipesScreen({ onClose, initialSearchQuery, initialRecipe, init
         )}
       </main>
 
+      {/* ═══════════════════════════════════════════════════════════════════
+          MODAL SCHERMATA: "COSA MANGIARE OGGI?" (ASSISTENTE MENU)
+          ═══════════════════════════════════════════════════════════════════ */}
+      <AnimatePresence>
+        {isMenuPlannerOpen && currentMenu && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[120] bg-black/50 backdrop-blur-md flex flex-col h-[100dvh] w-full bg-[var(--bg)] overflow-hidden"
+          >
+            {/* Header del Menu Planner */}
+            <header className="flex items-center justify-between pt-[max(env(safe-area-inset-top),16px)] px-4 pb-3 bg-[var(--card-bg)] border-b border-[var(--border)] shrink-0 z-30">
+              <button
+                onClick={() => setIsMenuPlannerOpen(false)}
+                className="p-2.5 -ml-2 hover:bg-[var(--surface-variant)] rounded-full text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors cursor-pointer"
+              >
+                <ArrowLeft className="w-6 h-6" />
+              </button>
+              <div className="flex-1 min-w-0 text-center px-2">
+                <h2 className="text-base font-black text-[var(--text-main)] flex items-center justify-center gap-1.5">
+                  <Sparkles className="w-4 h-4 text-orange-500" />
+                  <span>Cosa mangiare oggi?</span>
+                </h2>
+                <p className="text-[11px] text-[var(--text-muted)] font-semibold truncate">
+                  Menu armonioso coordinato per il tuo pasto
+                </p>
+              </div>
+              <button
+                onClick={() => handleRegenerateMenu()}
+                className="p-2.5 -mr-2 hover:bg-orange-500/10 text-orange-500 rounded-full transition-colors cursor-pointer"
+                title="Rigenera menu casuale"
+              >
+                <RefreshCw className="w-5 h-5" />
+              </button>
+            </header>
+
+            {/* Contenuto scrollabile del Menu Planner */}
+            <div className="flex-1 overflow-y-auto p-4 md:p-6 custom-scrollbar max-w-4xl mx-auto w-full space-y-6 pb-24">
+              
+              {/* Barra Controlli: Pranzo / Cena & Tema */}
+              <div className="bg-[var(--card-bg)] p-4 rounded-3xl border border-[var(--border)] shadow-sm space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  {/* Selettore Pranzo / Cena */}
+                  <div className="flex items-center gap-1.5 p-1 rounded-2xl bg-[var(--surface-variant)]/60 border border-[var(--border)]">
+                    <button
+                      onClick={() => handleRegenerateMenu(undefined, 'pranzo')}
+                      className={`flex-1 sm:flex-initial px-4 py-2 rounded-xl text-xs font-extrabold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                        plannerMealType === 'pranzo'
+                          ? 'bg-amber-500 text-white shadow-sm'
+                          : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
+                      }`}
+                    >
+                      <span>☀️</span>
+                      <span>Pranzo</span>
+                    </button>
+                    <button
+                      onClick={() => handleRegenerateMenu(undefined, 'cena')}
+                      className={`flex-1 sm:flex-initial px-4 py-2 rounded-xl text-xs font-extrabold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                        plannerMealType === 'cena'
+                          ? 'bg-indigo-600 text-white shadow-sm'
+                          : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
+                      }`}
+                    >
+                      <span>🌙</span>
+                      <span>Cena</span>
+                    </button>
+                  </div>
+
+                  {/* Selettore Tema: Carne / Pesce / Vegetariano / Sorprendimi */}
+                  <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 custom-scrollbar">
+                    {[
+                      { id: 'carne', label: 'Carne', emoji: '🥩', color: 'rose' },
+                      { id: 'pesce', label: 'Pesce', emoji: '🐟', color: 'cyan' },
+                      { id: 'vegetariano', label: 'Vegetariano', emoji: '🥦', color: 'emerald' },
+                      { id: 'sorprendimi', label: 'Sorprendimi', emoji: '🎲', color: 'orange' }
+                    ].map(themeItem => {
+                      const isSelected = plannerTheme === themeItem.id;
+                      return (
+                        <button
+                          key={themeItem.id}
+                          onClick={() => handleRegenerateMenu(themeItem.id as DietTheme)}
+                          className={`px-3 py-1.5 rounded-xl text-xs font-extrabold whitespace-nowrap transition-all flex items-center gap-1 cursor-pointer border ${
+                            isSelected
+                              ? 'bg-orange-500 text-white border-orange-500 shadow-xs'
+                              : 'bg-[var(--card-bg)] text-[var(--text-muted)] border-[var(--border)] hover:border-orange-500/30 hover:text-[var(--text-main)]'
+                          }`}
+                        >
+                          <span>{themeItem.emoji}</span>
+                          <span>{themeItem.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Banner Notifica Armonizzazione (se utente ha cambiato portata a tema diverso) */}
+                {harmonizeNotice && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="p-3.5 rounded-2xl bg-amber-500/15 border border-amber-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs"
+                  >
+                    <div className="flex items-center gap-2">
+                      <AlertCircle className="w-4 h-4 text-amber-500 shrink-0" />
+                      <p className="font-bold text-[var(--text-main)]">{harmonizeNotice.message}</p>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <button
+                        onClick={() => handleApplyHarmonization(harmonizeNotice.targetTheme)}
+                        className="px-3 py-1.5 rounded-xl bg-orange-500 text-white font-extrabold text-xs shadow-xs hover:bg-orange-600 transition-colors cursor-pointer"
+                      >
+                        ✨ Armonizza Menu
+                      </button>
+                      <button
+                        onClick={() => setHarmonizeNotice(null)}
+                        className="p-1 rounded-lg text-[var(--text-muted)] hover:bg-black/5 dark:hover:bg-white/5 cursor-pointer"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </motion.div>
+                )}
+
+                {/* Box Consiglio dello Chef & Sommelier */}
+                <div className="p-3.5 rounded-2xl bg-gradient-to-r from-orange-500/10 via-amber-500/10 to-transparent border border-orange-500/20 text-xs space-y-1.5">
+                  <div className="flex items-center gap-1.5 font-black text-orange-600 dark:text-orange-400 uppercase tracking-wider text-[10px]">
+                    <ChefHat className="w-3.5 h-3.5" />
+                    <span>Consiglio dello Chef</span>
+                  </div>
+                  <p className="text-[var(--text-main)] font-semibold leading-relaxed">
+                    {currentMenu.chefAdvice}
+                  </p>
+                  <p className="text-xs text-[var(--text-muted)] flex items-center gap-1 font-medium pt-1 border-t border-[var(--border)]/50">
+                    <Wine className="w-3.5 h-3.5 text-rose-500 shrink-0" />
+                    <span>{currentMenu.wineAdvice}</span>
+                  </p>
+                </div>
+              </div>
+
+              {/* ── LE 3 PORTATE ARMONIOSE (ANTIPASTO, PRIMO, SECONDO) ── */}
+              <div className="space-y-4">
+                {[
+                  {
+                    key: 'antipasto' as const,
+                    courseLabel: 'Antipasti' as const,
+                    title: 'Antipasto',
+                    emoji: '🥗',
+                    dish: currentMenu.antipasto
+                  },
+                  {
+                    key: 'primo' as const,
+                    courseLabel: 'Primi' as const,
+                    title: 'Primo Piatto',
+                    emoji: '🍝',
+                    dish: currentMenu.primo
+                  },
+                  {
+                    key: 'secondo' as const,
+                    courseLabel: 'Secondi' as const,
+                    title: 'Secondo Piatto',
+                    emoji: currentMenu.theme === 'pesce' ? '🐟' : currentMenu.theme === 'carne' ? '🥩' : '🥦',
+                    dish: currentMenu.secondo
+                  }
+                ].map(({ key, courseLabel, title, emoji, dish }) => {
+                  const isLocked = lockedCourses[key];
+                  const dishTheme = dish ? classifyRecipeTheme(dish) : currentMenu.theme;
+
+                  return (
+                    <motion.div
+                      key={key}
+                      initial={{ opacity: 0, y: 12 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="bg-[var(--card-bg)] rounded-3xl border border-[var(--border)] overflow-hidden shadow-sm hover:shadow-md transition-all flex flex-col sm:flex-row relative"
+                    >
+                      {/* Immagine Piatto */}
+                      <div className="sm:w-48 h-40 sm:h-auto relative bg-[var(--surface-variant)] shrink-0 overflow-hidden">
+                        {dish?.image ? (
+                          <img
+                            src={dish.image}
+                            alt={dish.title}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-4xl">
+                            {emoji}
+                          </div>
+                        )}
+                        <span className="absolute top-3 left-3 px-2.5 py-1 rounded-xl bg-black/60 backdrop-blur-md text-white font-extrabold text-[11px] flex items-center gap-1">
+                          <span>{emoji}</span>
+                          <span>{title}</span>
+                        </span>
+                      </div>
+
+                      {/* Dettagli e Azioni Portata */}
+                      <div className="p-4 sm:p-5 flex-1 flex flex-col justify-between gap-3 min-w-0">
+                        <div>
+                          <div className="flex items-center justify-between gap-2 mb-1">
+                            <span className={`px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider ${
+                              dishTheme === 'pesce'
+                                ? 'bg-cyan-500/15 text-cyan-600 border border-cyan-500/30'
+                                : dishTheme === 'carne'
+                                  ? 'bg-rose-500/15 text-rose-600 border border-rose-500/30'
+                                  : 'bg-emerald-500/15 text-emerald-600 border border-emerald-500/30'
+                            }`}>
+                              {dishTheme === 'pesce' ? '🐟 Pesce' : dishTheme === 'carne' ? '🥩 Carne' : '🥦 Vegetariano'}
+                            </span>
+                            
+                            <span className="text-[11px] text-[var(--text-muted)] font-semibold">
+                              {dish?.ingredients ? `${dish.ingredients.length} ingredienti` : ''}
+                            </span>
+                          </div>
+
+                          <h4 className="text-base sm:text-lg font-black text-[var(--text-main)] line-clamp-2 leading-snug">
+                            {dish?.title || 'Piatto non selezionato'}
+                          </h4>
+                        </div>
+
+                        {/* Bottoni interattivi: Blocca / Cambia / Ricetta */}
+                        <div className="flex items-center justify-between pt-2 border-t border-[var(--border)] gap-2">
+                          <button
+                            onClick={() => toggleCourseLock(key)}
+                            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                              isLocked
+                                ? 'bg-amber-500/20 text-amber-600 border border-amber-500/40'
+                                : 'bg-[var(--surface-variant)] text-[var(--text-muted)] hover:text-[var(--text-main)]'
+                            }`}
+                            title={isLocked ? "Piatto bloccato (non cambierà)" : "Blocca questo piatto per i prossimi abbinamenti"}
+                          >
+                            {isLocked ? <Lock className="w-3.5 h-3.5 text-amber-500" /> : <Unlock className="w-3.5 h-3.5" />}
+                            <span>{isLocked ? 'Bloccato' : 'Blocca'}</span>
+                          </button>
+
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => {
+                                setActiveCourseSwapModal(courseLabel);
+                                setSwapSearchQuery('');
+                              }}
+                              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-[var(--surface-variant)] hover:bg-orange-500/15 text-[var(--text-main)] hover:text-orange-500 text-xs font-bold transition-colors cursor-pointer"
+                            >
+                              <RefreshCw className="w-3.5 h-3.5" />
+                              <span>Cambia</span>
+                            </button>
+
+                            {dish && (
+                              <button
+                                onClick={() => setSelectedMeal(dish)}
+                                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-orange-500 text-white text-xs font-bold hover:bg-orange-600 transition-colors shadow-xs cursor-pointer"
+                              >
+                                <Eye className="w-3.5 h-3.5" />
+                                <span>Ricetta</span>
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </motion.div>
+                  );
+                })}
+              </div>
+
+              {/* Barra Azioni Inferiore: Rigenera & Aggiungi tutto alla Spesa */}
+              <div className="pt-2 flex flex-col sm:flex-row items-center gap-3">
+                <button
+                  onClick={() => handleRegenerateMenu()}
+                  className="w-full sm:w-1/3 py-3.5 px-4 rounded-2xl border border-[var(--border)] bg-[var(--card-bg)] hover:bg-[var(--surface-variant)] text-[var(--text-main)] font-extrabold text-sm flex items-center justify-center gap-2 transition-colors cursor-pointer"
+                >
+                  <RefreshCw className="w-4 h-4 text-orange-500" />
+                  <span>Nuovo Abbinamento</span>
+                </button>
+
+                <button
+                  onClick={handleOpenShoppingReviewForMenu}
+                  className={`w-full sm:w-2/3 py-3.5 px-6 rounded-2xl font-black text-sm flex items-center justify-center gap-2 transition-all shadow-lg active:scale-98 cursor-pointer ${
+                    menuAddedToCart
+                      ? 'bg-emerald-600 text-white shadow-emerald-500/25'
+                      : 'bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white shadow-orange-500/25'
+                  }`}
+                >
+                  {menuAddedToCart ? (
+                    <>
+                      <Check className="w-5 h-5 stroke-[3]" />
+                      <span>Ingredienti Aggiunti alla Spesa!</span>
+                    </>
+                  ) : (
+                    <>
+                      <ShoppingCart className="w-5 h-5" />
+                      <span>Aggiungi tutto alla Spesa (3 Piatti)</span>
+                    </>
+                  )}
+                </button>
+              </div>
+
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ═══════════════════════════════════════════════════════════════════
+          DRAWER / MODAL: SCELTA PIATTO ALTERNATIVO PER UNA PORTATA
+          ═══════════════════════════════════════════════════════════════════ */}
+      <AnimatePresence>
+        {activeCourseSwapModal && currentMenu && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[130] bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4"
+            onClick={() => setActiveCourseSwapModal(null)}
+          >
+            <motion.div
+              initial={{ y: '100%' }}
+              animate={{ y: 0 }}
+              exit={{ y: '100%' }}
+              transition={{ type: 'spring', damping: 25, stiffness: 250 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-xl bg-[var(--card-bg)] border border-[var(--border)] rounded-t-[2.5rem] sm:rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col max-h-[85vh]"
+            >
+              <div className="p-5 border-b border-[var(--border)] flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-black text-[var(--text-main)] flex items-center gap-2">
+                    <span>Scegli {activeCourseSwapModal === 'Antipasti' ? "un Antipasto" : activeCourseSwapModal === 'Primi' ? "un Primo" : "un Secondo"}</span>
+                  </h3>
+                  <p className="text-xs text-[var(--text-muted)] font-medium">
+                    I piatti coordinati con il tema del menu sono evidenziati per primi
+                  </p>
+                </div>
+                <button
+                  onClick={() => setActiveCourseSwapModal(null)}
+                  className="p-2 rounded-full hover:bg-[var(--surface-variant)] text-[var(--text-muted)] cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Ricerca interna piatti alternativi */}
+              <div className="px-5 pt-3">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-muted)]" />
+                  <input
+                    type="text"
+                    placeholder="Cerca piatto alternativo..."
+                    value={swapSearchQuery}
+                    onChange={(e) => setSwapSearchQuery(e.target.value)}
+                    className="w-full bg-[var(--surface-variant)] border border-[var(--border)] rounded-xl py-2 pl-9 pr-3 text-xs text-[var(--text-main)] outline-none"
+                  />
+                </div>
+              </div>
+
+              {/* Lista piatti alternativi */}
+              <div className="p-5 overflow-y-auto custom-scrollbar space-y-2.5 flex-1">
+                {(() => {
+                  const alternatives = getAlternativeDishes(
+                    allMeals,
+                    activeCourseSwapModal,
+                    currentMenu.theme
+                  ).filter(dish => !swapSearchQuery || dish.title.toLowerCase().includes(swapSearchQuery.toLowerCase()));
+
+                  if (alternatives.length === 0) {
+                    return (
+                      <div className="py-12 text-center text-[var(--text-muted)] text-sm">
+                        Nessun piatto alternativo trovato.
+                      </div>
+                    );
+                  }
+
+                  return alternatives.map(dish => {
+                    const dishTheme = classifyRecipeTheme(dish);
+                    const isHarmonious = dishTheme === currentMenu.theme || dishTheme === 'vegetariano';
+
+                    return (
+                      <div
+                        key={dish.id}
+                        onClick={() => handleSelectAlternativeDish(activeCourseSwapModal, dish)}
+                        className="flex items-center gap-3 p-3 rounded-2xl border border-[var(--border)] hover:border-orange-500 hover:bg-orange-500/5 transition-all cursor-pointer group"
+                      >
+                        <img
+                          src={dish.image}
+                          alt={dish.title}
+                          className="w-16 h-16 rounded-xl object-cover shrink-0 bg-[var(--surface-variant)]"
+                        />
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-1.5 mb-0.5">
+                            <span className={`px-1.5 py-0.5 rounded text-[9px] font-black uppercase ${
+                              dishTheme === 'pesce'
+                                ? 'bg-cyan-500/15 text-cyan-600'
+                                : dishTheme === 'carne'
+                                  ? 'bg-rose-500/15 text-rose-600'
+                                  : 'bg-emerald-500/15 text-emerald-600'
+                            }`}>
+                              {dishTheme}
+                            </span>
+                            {isHarmonious && (
+                              <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 flex items-center gap-0.5">
+                                <Sparkles className="w-2.5 h-2.5" />
+                                <span>Coordinato</span>
+                              </span>
+                            )}
+                          </div>
+                          <p className="font-bold text-sm text-[var(--text-main)] group-hover:text-orange-500 transition-colors truncate">
+                            {dish.title}
+                          </p>
+                          <p className="text-[11px] text-[var(--text-muted)] truncate">
+                            {dish.ingredients.length} ingredienti
+                          </p>
+                        </div>
+                        <ChevronRight className="w-4 h-4 text-[var(--text-muted)] group-hover:text-orange-500 shrink-0" />
+                      </div>
+                    );
+                  });
+                })()}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ═══════════════════════════════════════════════════════════════════
+          MODAL: REVISIONE INGREDIENTI DEL MENU PRIMA DI AGGIUNGERE ALLA SPESA
+          ═══════════════════════════════════════════════════════════════════ */}
+      <AnimatePresence>
+        {showShoppingReviewModal && currentMenu && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[130] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
+            onClick={() => setShowShoppingReviewModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, y: 16 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, y: 16 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-lg bg-[var(--card-bg)] border border-[var(--border)] rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col max-h-[85vh]"
+            >
+              <div className="p-6 border-b border-[var(--border)] flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-black text-[var(--text-main)] flex items-center gap-2">
+                    <ShoppingCart className="w-5 h-5 text-orange-500" />
+                    <span>Ingredienti del Menu ({menuShoppingIngredients.size})</span>
+                  </h3>
+                  <p className="text-xs text-[var(--text-muted)] font-medium">
+                    Deseleziona gli ingredienti che hai già in cucina prima di aggiungerli alla spesa
+                  </p>
+                </div>
+                <button
+                  onClick={() => setShowShoppingReviewModal(false)}
+                  className="p-2 rounded-full hover:bg-[var(--surface-variant)] text-[var(--text-muted)] cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="p-6 overflow-y-auto custom-scrollbar space-y-4 flex-1">
+                {[
+                  { course: 'Antipasto', dish: currentMenu.antipasto },
+                  { course: 'Primo', dish: currentMenu.primo },
+                  { course: 'Secondo', dish: currentMenu.secondo }
+                ].filter(c => c.dish && c.dish.ingredients.length > 0).map(({ course, dish }) => (
+                  <div key={course} className="space-y-2">
+                    <p className="text-xs font-black uppercase tracking-wider text-orange-600 dark:text-orange-400">
+                      {course}: {dish!.title}
+                    </p>
+                    <div className="space-y-1.5">
+                      {dish!.ingredients.map((ing, i) => {
+                        const isChecked = menuShoppingIngredients.has(ing);
+                        const parsed = parseIngredient(ing);
+                        return (
+                          <div
+                            key={i}
+                            onClick={() => {
+                              setMenuShoppingIngredients(prev => {
+                                const next = new Set(prev);
+                                if (next.has(ing)) next.delete(ing);
+                                else next.add(ing);
+                                return next;
+                              });
+                            }}
+                            className={`flex items-center gap-2.5 p-2.5 rounded-xl border text-xs font-semibold cursor-pointer transition-colors ${
+                              isChecked
+                                ? 'bg-orange-500/10 border-orange-500/30 text-[var(--text-main)]'
+                                : 'bg-[var(--surface-variant)]/40 border-[var(--border)] text-[var(--text-muted)] line-through'
+                            }`}
+                          >
+                            <div className={`w-4 h-4 rounded flex items-center justify-center ${
+                              isChecked ? 'bg-orange-500 text-white' : 'border border-[var(--border)]'
+                            }`}>
+                              {isChecked && <Check className="w-3 h-3 stroke-[3]" />}
+                            </div>
+                            <span className="flex-1 truncate">{parsed.name}</span>
+                            {parsed.quantity && (
+                              <span className="font-bold text-orange-600 shrink-0">
+                                {parsed.quantity}
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="p-4 border-t border-[var(--border)] bg-[var(--surface-variant)]/20 flex gap-2">
+                <button
+                  onClick={() => setShowShoppingReviewModal(false)}
+                  className="w-1/3 py-3 rounded-2xl border border-[var(--border)] font-bold text-xs text-[var(--text-muted)] hover:bg-[var(--surface-variant)] transition-colors cursor-pointer"
+                >
+                  Annulla
+                </button>
+                <button
+                  onClick={handleConfirmMenuShopping}
+                  disabled={menuShoppingIngredients.size === 0}
+                  className="w-2/3 py-3 rounded-2xl bg-orange-500 hover:bg-orange-600 text-white font-black text-xs shadow-md shadow-orange-500/25 transition-all active:scale-95 cursor-pointer disabled:opacity-50"
+                >
+                  Conferma e Aggiungi ({menuShoppingIngredients.size})
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ═══════════════════════════════════════════════════════════════════
+          MODAL DETTAGLIO RICETTA (CON SELEZIONE INGREDIENTI & AGGIUNTA SPESA)
+          ═══════════════════════════════════════════════════════════════════ */}
       <AnimatePresence>
         {selectedMeal && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[100] bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 md:p-8 overflow-y-auto"
+            className="fixed inset-0 z-[140] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 md:p-8 overflow-y-auto"
             onClick={() => setSelectedMeal(null)}
           >
             <motion.div
@@ -767,7 +1399,7 @@ export function RecipesScreen({ onClose, initialSearchQuery, initialRecipe, init
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.95, y: 20 }}
               onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-4xl bg-[var(--card-bg)] border border-[var(--border)] rounded-[2rem] shadow-2xl overflow-hidden flex flex-col md:flex-row my-auto relative"
+              className="w-full max-w-4xl bg-[var(--card-bg)] border border-[var(--border)] rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col md:flex-row my-auto relative max-h-[90vh]"
             >
               <div className="w-full md:w-2/5 h-64 md:h-auto relative shrink-0 bg-[var(--surface-variant)]">
                 <img 
@@ -777,22 +1409,22 @@ export function RecipesScreen({ onClose, initialSearchQuery, initialRecipe, init
                 />
                 <button 
                   onClick={handleBack}
-                  className="absolute top-4 left-4 w-10 h-10 bg-black/50 backdrop-blur-md rounded-full text-white flex items-center justify-center hover:bg-black/70 md:hidden"
+                  className="absolute top-4 left-4 w-10 h-10 bg-black/50 backdrop-blur-md rounded-full text-white flex items-center justify-center hover:bg-black/70 md:hidden cursor-pointer"
                 >
                   <X className="w-5 h-5" />
                 </button>
                 <button 
                   onClick={() => toggleFavorite(selectedMeal)}
-                  className="absolute top-4 right-4 w-12 h-12 bg-black/50 backdrop-blur-md rounded-full flex items-center justify-center hover:bg-black/70 transition-colors z-10 shadow-lg"
+                  className="absolute top-4 right-4 w-12 h-12 bg-black/50 backdrop-blur-md rounded-full flex items-center justify-center hover:bg-black/70 transition-colors z-10 shadow-lg cursor-pointer"
                 >
                   <Star className={`w-6 h-6 ${isFavorite(selectedMeal.id) ? 'fill-yellow-400 text-yellow-400' : 'text-white'}`} />
                 </button>
               </div>
 
-              <div className="w-full md:w-3/5 p-6 md:p-8 flex flex-col max-h-[80vh] overflow-y-auto custom-scrollbar">
+              <div className="w-full md:w-3/5 p-6 md:p-8 flex flex-col overflow-y-auto custom-scrollbar">
                 <div className="flex items-start justify-between gap-4 mb-6">
                   <div>
-                    <span className="inline-block px-3 py-1 bg-orange-100 text-orange-700 rounded-full text-xs font-bold uppercase tracking-wider mb-2">
+                    <span className="inline-block px-3 py-1 bg-orange-100 dark:bg-orange-950/40 text-orange-700 dark:text-orange-400 rounded-full text-xs font-bold uppercase tracking-wider mb-2">
                       {selectedMeal.category}
                     </span>
                     <h2 className="text-2xl md:text-3xl font-extrabold text-[var(--text-main)] leading-tight">
@@ -801,64 +1433,133 @@ export function RecipesScreen({ onClose, initialSearchQuery, initialRecipe, init
                   </div>
                   <button 
                     onClick={handleBack}
-                    className="w-10 h-10 bg-[var(--surface-variant)] rounded-full text-[var(--text-muted)] flex items-center justify-center hover:bg-[var(--border)] hidden md:flex shrink-0"
+                    className="w-10 h-10 bg-[var(--surface-variant)] rounded-full text-[var(--text-muted)] flex items-center justify-center hover:bg-[var(--border)] hidden md:flex shrink-0 cursor-pointer"
                   >
                     <X className="w-5 h-5" />
                   </button>
                 </div>
 
                 <div className="space-y-8">
+                  {/* SEZIONE INGREDIENTI CON SELEZIONE MULTIPLA E AGGIUNTA ALLA SPESA */}
                   {selectedMeal.ingredients && selectedMeal.ingredients.length > 0 && (
                     <section>
-                      <h3 className="text-lg font-bold text-orange-500 mb-3 border-b border-[var(--border)] pb-2">
-                        Ingredienti <span className="text-sm font-normal text-[var(--text-muted)]">({selectedMeal.ingredients.length})</span>
-                      </h3>
+                      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--border)] pb-2 mb-3">
+                        <h3 className="text-lg font-bold text-orange-500 flex items-center gap-2">
+                          <span>Ingredienti</span>
+                          <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-orange-500/10 text-orange-600 dark:text-orange-400">
+                            {selectedMealIngredients.size} / {selectedMeal.ingredients.length} selezionati
+                          </span>
+                        </h3>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (selectedMealIngredients.size === selectedMeal.ingredients.length) {
+                                setSelectedMealIngredients(new Set());
+                              } else {
+                                setSelectedMealIngredients(new Set(selectedMeal.ingredients));
+                              }
+                            }}
+                            className="text-xs font-bold text-[var(--text-muted)] hover:text-orange-500 transition-colors cursor-pointer"
+                          >
+                            {selectedMealIngredients.size === selectedMeal.ingredients.length ? 'Deseleziona tutti' : 'Seleziona tutti'}
+                          </button>
+                        </div>
+                      </div>
+
                       <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                         {selectedMeal.ingredients.map((ing: string, i: number) => {
+                          const isChecked = selectedMealIngredients.has(ing);
+                          const parsed = parseIngredient(ing);
                           const isMissing = selectedCategory === 'fridge' && selectedMeal.missingIngredients?.includes(ing);
-                          // Parse quantity: match patterns like "400 g", "2 cucchiai", "q.b.", "1/2", "1,5 kg" etc.
-                          // Format 1: "Nome ingrediente 400 g" → qty at the end
-                          // Format 2: "400 g Nome ingrediente" → qty at the start
-                          const qtyEndMatch = ing.match(/^(.*?)\s+((?:\d[\d.,/]*(?:\s*[-–]\s*\d[\d.,/]*)?)\s*(?:g|kg|ml|l|cl|dl|oz|lb|tazza|tazze|cucchiai[oe]?|cucchiaino|cucchiaini|spicchi?|fette?|foglie|foglia|pizzico|rametti?|q\.b\.?|pezzi?|n°?\s*\d+|\d+\s*pezzi?|mazzetti?|mazzo|filetti?|bustina|bustine|lattine?|barattolo|bicchiere|bicchieri|fetta|fette|scatola|sacchetti?|confezione|pacchetto|fascio|cespo|gambi?|grappolo)?)$/i);
-                          const qtyStartMatch = ing.match(/^((?:\d[\d.,/]*(?:\s*[-–]\s*\d[\d.,/]*)?)\s*(?:g|kg|ml|l|cl|dl|oz|lb|tazze?|cucchiai[oe]?|cucchiaino|cucchiaini|spicchi?|fette?|foglie|foglia|pizzico|rametti?|q\.b\.?|pezzi?|mazzetti?|mazzo|filetti?|bustine?|lattine?|barattolo|bicchieri?|fette?|scatola|sacchetti?|confezione|pacchetto|fascio|cespo|gambi?|grappolo)?)\s+(.+)$/i);
-                          
-                          let name = ing;
-                          let qty = '';
-                          
-                          if (qtyEndMatch && qtyEndMatch[2]?.trim()) {
-                            name = qtyEndMatch[1].trim();
-                            qty = qtyEndMatch[2].trim();
-                          } else if (qtyStartMatch && /^\d/.test(qtyStartMatch[1]) && qtyStartMatch[2]?.trim()) {
-                            qty = qtyStartMatch[1].trim();
-                            name = qtyStartMatch[2].trim();
-                          }
-                          
+
                           return (
-                            <li key={i} className={`flex items-center gap-2 text-sm py-1.5 px-2 rounded-xl ${isMissing ? 'bg-red-900/20' : 'hover:bg-[var(--surface-variant)]'} transition-colors`}>
-                              <span className={`w-1.5 h-1.5 rounded-full ${isMissing ? 'bg-red-500/50' : 'bg-orange-400'} shrink-0`} />
-                              <span className={`flex-1 font-medium ${isMissing ? 'text-red-400/80' : 'text-[var(--text-main)]'}`}>
-                                {name}
+                            <li
+                              key={i}
+                              onClick={() => {
+                                setSelectedMealIngredients(prev => {
+                                  const next = new Set(prev);
+                                  if (next.has(ing)) next.delete(ing);
+                                  else next.add(ing);
+                                  return next;
+                                });
+                              }}
+                              className={`flex items-center gap-2.5 text-sm py-2 px-3 rounded-2xl border transition-all cursor-pointer select-none ${
+                                isChecked
+                                  ? 'bg-orange-500/10 border-orange-500/30 text-[var(--text-main)] shadow-xs'
+                                  : 'bg-[var(--surface-variant)]/40 border-[var(--border)] text-[var(--text-muted)] hover:border-orange-500/20'
+                              } ${isMissing ? 'ring-1 ring-red-500/40' : ''}`}
+                            >
+                              <div className={`w-5 h-5 rounded-lg flex items-center justify-center transition-colors shrink-0 ${
+                                isChecked ? 'bg-orange-500 text-white' : 'border border-[var(--border)] bg-[var(--card-bg)] text-transparent'
+                              }`}>
+                                <Check className="w-3.5 h-3.5 stroke-[3]" />
+                              </div>
+
+                              <span className={`flex-1 font-medium text-xs sm:text-sm truncate ${isChecked ? 'text-[var(--text-main)] font-semibold' : 'text-[var(--text-muted)]'}`}>
+                                {parsed.name}
                               </span>
-                              {qty && (
-                                <span className="text-xs font-bold text-orange-500 bg-orange-500/10 px-2 py-0.5 rounded-full shrink-0 border border-orange-500/20">
-                                  {qty}
+
+                              {parsed.quantity && (
+                                <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full shrink-0 border ${
+                                  isChecked
+                                    ? 'bg-orange-500/20 text-orange-600 dark:text-orange-400 border-orange-500/30'
+                                    : 'bg-[var(--surface-variant)] text-[var(--text-muted)] border-transparent'
+                                }`}>
+                                  {parsed.quantity}
                                 </span>
                               )}
-                              {isMissing && <span className="text-[10px] font-bold bg-red-900/30 text-red-400 px-1.5 py-0.5 rounded ml-1 shrink-0">Manca</span>}
+
+                              {isMissing && (
+                                <span className="text-[10px] font-black bg-red-900/30 text-red-400 px-1.5 py-0.5 rounded ml-1 shrink-0">
+                                  Manca
+                                </span>
+                              )}
                             </li>
                           );
                         })}
                       </ul>
+
+                      {/* Bottone Aggiungi alla Spesa */}
+                      <div className="mt-4 pt-2">
+                        <button
+                          type="button"
+                          disabled={selectedMealIngredients.size === 0}
+                          onClick={handleAddSelectedToShoppingList}
+                          className={`w-full py-3.5 px-5 rounded-2xl font-black text-sm flex items-center justify-center gap-2 transition-all shadow-md active:scale-98 cursor-pointer ${
+                            mealAddedToCart
+                              ? 'bg-emerald-600 text-white shadow-emerald-500/25'
+                              : selectedMealIngredients.size > 0
+                                ? 'bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white shadow-orange-500/25'
+                                : 'bg-[var(--surface-variant)] text-[var(--text-muted)] cursor-not-allowed opacity-60'
+                          }`}
+                        >
+                          {mealAddedToCart ? (
+                            <>
+                              <Check className="w-5 h-5 stroke-[3]" />
+                              <span>Aggiunti alla Lista della Spesa!</span>
+                            </>
+                          ) : (
+                            <>
+                              <ShoppingCart className="w-5 h-5" />
+                              <span>
+                                Aggiungi {selectedMealIngredients.size} {selectedMealIngredients.size === 1 ? 'ingrediente' : 'ingredienti'} alla Spesa
+                              </span>
+                            </>
+                          )}
+                        </button>
+                      </div>
                     </section>
                   )}
 
+                  {/* Preparazione Steps */}
                   {selectedMeal.steps && selectedMeal.steps.length > 0 && (
                     <section>
                       <h3 className="text-lg font-bold text-orange-500 mb-3 border-b border-[var(--border)] pb-2">Preparazione</h3>
                       <div className="space-y-6 mt-4">
                         {selectedMeal.steps.map((step: string, i: number) => (
                           <div key={i} className="flex gap-4 items-start">
-                            <div className="w-8 h-8 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center font-bold shrink-0 mt-1 shadow-sm">
+                            <div className="w-8 h-8 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center font-bold shrink-0 mt-1 shadow-xs">
                               {i + 1}
                             </div>
                             <p className="text-[var(--text-main)] text-[15px] leading-relaxed flex-1" dangerouslySetInnerHTML={{ __html: step }} />

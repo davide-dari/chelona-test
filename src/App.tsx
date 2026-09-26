@@ -1439,6 +1439,45 @@ export default function App() {
     });
   };
 
+  const handleAddItemsToShoppingList = (newItems: { name: string; quantity?: string; category?: string }[]) => {
+    if (!newItems || newItems.length === 0) return;
+    const existingSupermarket = modules.find(m => m.type === 'supermarket') as import('./types').SupermarketModule;
+    let updatedModules = [...modules];
+
+    const itemsToAdd: import('./types').SupermarketItem[] = newItems.map(item => ({
+      id: generateUUID(),
+      name: item.name,
+      quantity: item.quantity,
+      category: (item.category as any) || 'dispensa',
+      checked: false
+    }));
+
+    if (existingSupermarket) {
+      const updatedSupermarket: import('./types').SupermarketModule = {
+        ...existingSupermarket,
+        items: [...existingSupermarket.items, ...itemsToAdd]
+      };
+      updatedModules = updatedModules.map(m => m.id === updatedSupermarket.id ? updatedSupermarket : m);
+    } else {
+      const newSupermarket: import('./types').SupermarketModule = {
+        id: generateUUID(),
+        type: 'supermarket',
+        title: 'Lista della Spesa',
+        items: itemsToAdd,
+        x: (modules.length * 2) % 12,
+        y: Infinity,
+        w: 3,
+        h: 3,
+        folderId: selectedFolderId || undefined
+      };
+      updatedModules = [newSupermarket, ...updatedModules];
+    }
+
+    setModules(updatedModules);
+    saveAppState(updatedModules, folders).catch(console.error);
+    showToast(`Aggiunti ${newItems.length} ingredienti alla Lista della Spesa!`, 'success');
+  };
+
   const deleteModule = async (id: string) => {
     if (!encryptionKey) return;
     const updated = modules.filter(m => m.id !== id);
@@ -4572,12 +4611,18 @@ export default function App() {
              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
              className="fixed inset-0 z-[200]"
            >
-             <RecipesScreen onClose={() => {
-               setIsRecipesOpen(false);
-               setInitialRecipesSearch('');
-               setInitialRecipeToOpen(null);
-               setInitialRecipesCategory(null);
-             }} initialSearchQuery={initialRecipesSearch} initialRecipe={initialRecipeToOpen} initialCategory={initialRecipesCategory} />
+             <RecipesScreen
+               onClose={() => {
+                 setIsRecipesOpen(false);
+                 setInitialRecipesSearch('');
+                 setInitialRecipeToOpen(null);
+                 setInitialRecipesCategory(null);
+               }}
+               initialSearchQuery={initialRecipesSearch}
+               initialRecipe={initialRecipeToOpen}
+               initialCategory={initialRecipesCategory}
+               onAddToShoppingList={handleAddItemsToShoppingList}
+             />
            </motion.div>
          )}
           {isAddressBookOpen && (
