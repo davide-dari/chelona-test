@@ -4142,19 +4142,106 @@ export default function App() {
           </div>
           
           {/* Global FAB (Only on main dashboard and specific categories except gallery/travel) */}
-          {/* Global FAB (Only on main dashboard and specific categories except gallery/travel) */}
           {(selectedType !== 'gallery') && !editingTravelModule && !editingStudyModule && !editingFitnessModule && !isAdding && !editingModuleId && !isArchiveOpen && !isToolsOpen && !editingAutoModule && !editingSplitModule && !editingSingleExpenseModule && !editingDocumentModule && !editingGenericModule && !editingFurnitureModule && !editingInstallmentsModule && !editingSupermarketModule && !editingVolantinoModule && (
-            <motion.button
-              initial={{ scale: 0, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => setIsScanning(true)}
-              className="fixed bottom-24 right-6 md:bottom-10 md:right-10 z-[60] w-13 h-13 md:w-14 md:h-14 bg-gradient-to-tr from-emerald-600 to-teal-600 text-white rounded-2xl shadow-xl shadow-emerald-500/30 flex items-center justify-center border border-white/20 animate-fade-in hover:scale-105 active:scale-95 transition-all cursor-pointer"
-              title="Scansiona scheda"
-            >
-              <QrCode className="w-6 h-6" />
-            </motion.button>
+            <>
+              {/* Scan QR Button: on homepage it sits at right-6, in categories it sits to the left of the + button */}
+              <motion.button
+                initial={{ scale: 0, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => setIsScanning(true)}
+                className={`fixed bottom-24 ${selectedType ? 'right-22 md:right-28' : 'right-6 md:right-10'} md:bottom-10 z-[60] w-13 h-13 md:w-14 md:h-14 bg-gradient-to-tr from-emerald-600 to-teal-600 text-white rounded-2xl shadow-xl shadow-emerald-500/30 flex items-center justify-center border border-white/20 animate-fade-in hover:scale-105 active:scale-95 transition-all cursor-pointer`}
+                title="Scansiona scheda"
+              >
+                <QrCode className="w-6 h-6" />
+              </motion.button>
+
+              {/* Tasto + solo nelle categorie (NON nella homepage) */}
+              {selectedType && (
+                <motion.button
+                  initial={{ scale: 0, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => {
+                    if (selectedType === 'travel') {
+                      const newTravel: import('./types').TravelModule = {
+                        id: generateUUID(),
+                        type: 'travel',
+                        title: 'Viaggi',
+                        destinations: [],
+                        x: 0, y: 0, w: 3, h: 3,
+                        folderId: selectedFolderId || undefined
+                      };
+                      setModules(prev => {
+                        const updated = [newTravel, ...prev];
+                        saveAppState(updated, folders).catch(console.error);
+                        return updated;
+                      });
+                      setEditingTravelModule(newTravel);
+                    } else if (selectedType === 'fitness') {
+                      const newFitness: import('./types').FitnessModule = {
+                        id: generateUUID(),
+                        type: 'fitness',
+                        title: 'Fitness & Dieta',
+                        x: 0, y: 0, w: 3, h: 3,
+                        folderId: selectedFolderId || undefined
+                      };
+                      setModules(prev => {
+                        const updated = [newFitness, ...prev];
+                        saveAppState(updated, folders).catch(console.error);
+                        return updated;
+                      });
+                      setEditingFitnessModule(newFitness);
+                    } else if (selectedType === 'study') {
+                      const newStudy: import('./types').StudyModule = {
+                        id: generateUUID(),
+                        type: 'study',
+                        title: 'Percorso di Studio',
+                        status: 'wizard',
+                        topics: [],
+                        x: 0, y: 0, w: 3, h: 3,
+                        folderId: selectedFolderId || undefined
+                      };
+                      setModules(prev => {
+                        const updated = [newStudy, ...prev];
+                        saveAppState(updated, folders).catch(console.error);
+                        return updated;
+                      });
+                      setEditingStudyModule(newStudy);
+                    } else if (selectedType === 'volantino') {
+                      const newVolantino: import('./types').VolantinoModule = {
+                        id: generateUUID(),
+                        type: 'volantino',
+                        title: 'Volantini',
+                        offers: [],
+                        flyers: [],
+                        x: 0, y: 0, w: 3, h: 3,
+                        folderId: selectedFolderId || undefined
+                      };
+                      setModules(prev => {
+                        const updated = [newVolantino, ...prev];
+                        saveAppState(updated, folders).catch(console.error);
+                        return updated;
+                      });
+                      setEditingVolantinoModule(newVolantino);
+                    } else if (selectedType === 'split' || selectedType === 'single-expense') {
+                      setSpesaSubMenu(true);
+                      setIsAdding(true);
+                    } else {
+                      setFormData(selectedType ? { template: selectedType } : {});
+                      setAutoFormStep(0);
+                      setIsAdding(true);
+                    }
+                  }}
+                  className="fixed bottom-24 right-6 md:bottom-10 md:right-10 z-[60] w-13 h-13 md:w-14 md:h-14 bg-gradient-to-tr from-blue-600 to-indigo-600 text-white rounded-2xl shadow-xl shadow-blue-500/30 flex items-center justify-center border border-white/20 animate-fade-in hover:scale-105 active:scale-95 transition-all cursor-pointer"
+                  title="Aggiungi scheda"
+                >
+                  <Plus className="w-6 h-6" />
+                </motion.button>
+              )}
+            </>
           )}
 
           {/* Mobile Bottom Navigation Bar - Hidden during full-screen edit/modals */}

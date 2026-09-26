@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { brandImageUrl } from '../data/brandImages';
+import { logoFor } from '../data/supermarketLogos';
 
 interface StoreLogoProps {
   id: string;
@@ -14,20 +15,24 @@ interface StoreLogoProps {
 const F = 'Arial, Helvetica, sans-serif';
 
 export function StoreLogo({ id, short, size = 40, logo: logoUrl, hex, brandSlug }: StoreLogoProps) {
-  const ofUrl = !logoUrl && brandSlug ? brandImageUrl(brandSlug) : undefined;
+  const [imgError, setImgError] = useState(false);
+  const localLogo = logoUrl || logoFor(id) || (brandSlug ? logoFor(brandSlug) : undefined);
+  const ofUrl = !localLogo && brandSlug ? brandImageUrl(brandSlug) : undefined;
+  const finalSrc = localLogo || ofUrl;
 
-  if (logoUrl || ofUrl) {
+  if (finalSrc && !imgError) {
     return (
       <span
         style={{ width: size, height: size, aspectRatio: '1 / 1' }}
-        className="inline-flex items-center justify-center shrink-0 rounded-[14px] bg-white ring-1 ring-[var(--border)] overflow-hidden"
+        className="inline-flex items-center justify-center shrink-0 rounded-[14px] bg-white ring-1 ring-[var(--border)] overflow-hidden p-0.5"
       >
         <img
-          src={logoUrl ?? ofUrl}
+          src={finalSrc}
           alt={short || id}
-          style={{ width: size * 0.82, height: size * 0.82, objectFit: 'contain' }}
-          className="shrink-0"
+          style={{ width: size * 0.88, height: size * 0.88, objectFit: 'contain' }}
+          className="shrink-0 max-w-full max-h-full"
           loading="lazy"
+          onError={() => setImgError(true)}
         />
       </span>
     );

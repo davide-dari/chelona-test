@@ -851,6 +851,18 @@ function CentroChainView(props: {
 
         <div className="flex items-center gap-1.5 shrink-0">
           <button
+            onClick={() => {
+              const loc = zone?.city || (zone?.cap ? `CAP ${zone.cap}` : '');
+              const q = encodeURIComponent(`${chain.name} supermercato ${loc}`.trim());
+              window.open(`https://www.google.com/maps/search/${q}`, '_blank');
+            }}
+            className="p-2 rounded-full bg-[var(--surface-variant)] text-[var(--text-muted)] hover:text-emerald-500 transition-colors"
+            title="Trova negozio più vicino su Google Maps"
+          >
+            <MapPin className="w-4 h-4 text-emerald-500" />
+          </button>
+
+          <button
             onClick={onToggleFavorite}
             className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all flex items-center gap-1.5 ${
               isFavorite
@@ -1281,18 +1293,29 @@ export default function VolantinoScreen({ module, onClose, initialOffer }: Volan
         {view === 'calameo' && calameoFlyer ? (
           <div className="flex items-center gap-1 shrink-0">
             {centroChain && (
-              <>
-                <button
-                  onClick={() => toggleFavorite(centroChain.slug)}
-                  className={`p-2.5 rounded-full hover:bg-[var(--surface-variant)] transition-colors ${
-                    favorites.includes(centroChain.slug) ? 'text-amber-500' : 'text-[var(--text-muted)] hover:text-amber-500'
-                  }`}
-                  title={favorites.includes(centroChain.slug) ? "Rimuovi dai preferiti" : "Aggiungi ai preferiti"}
-                >
-                  <Star className={`w-5 h-5 ${favorites.includes(centroChain.slug) ? 'fill-amber-500' : ''}`} />
-                </button>
-              </>
+              <button
+                onClick={() => toggleFavorite(centroChain.slug)}
+                className={`p-2.5 rounded-full hover:bg-[var(--surface-variant)] transition-colors ${
+                  favorites.includes(centroChain.slug) ? 'text-amber-500' : 'text-[var(--text-muted)] hover:text-amber-500'
+                }`}
+                title={favorites.includes(centroChain.slug) ? "Rimuovi dai preferiti" : "Aggiungi ai preferiti"}
+              >
+                <Star className={`w-5 h-5 ${favorites.includes(centroChain.slug) ? 'fill-amber-500' : ''}`} />
+              </button>
             )}
+            <button
+              onClick={() => {
+                const targetChain = centroChain || db.chains.find(c => c.flyers.some(f => f.id === calameoFlyer.id));
+                const chainName = targetChain?.name || calameoFlyer.title.replace(/^Volantino\s+/i, '').split(' ')[0] || 'supermercato';
+                const loc = zone?.city || (zone?.cap ? `CAP ${zone.cap}` : '');
+                const q = encodeURIComponent(`${chainName} supermercato ${loc}`.trim());
+                window.open(`https://www.google.com/maps/search/${q}`, '_blank');
+              }}
+              className="p-2.5 rounded-full hover:bg-[var(--surface-variant)] text-[var(--text-muted)] hover:text-emerald-500 transition-colors"
+              title="Trova il supermercato più vicino su Google Maps"
+            >
+              <MapPin className="w-5 h-5 text-emerald-500" />
+            </button>
             <button
               onClick={() => window.open(getBrowserUrl(calameoFlyer), '_blank')}
               className="p-2.5 -mr-2 hover:bg-[var(--surface-variant)] rounded-full text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors"
