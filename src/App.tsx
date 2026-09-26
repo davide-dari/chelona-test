@@ -611,7 +611,11 @@ export default function App() {
       if (isAddressBookOpen) { setIsAddressBookOpen(false); return; }
       if (isSidebarOpen) { setIsSidebarOpen(false); return; }
       if (selectedFolderId) { setSelectedFolderId(null); return; }
-      if (selectedType) { setSelectedType(null); return; }
+      if (selectedType) { 
+        setSelectedType(null); 
+        setIsSensitiveUnlocked(false);
+        return; 
+      }
       // Niente di aperto: esci dall'app
       CapApp.exitApp();
     });
@@ -775,47 +779,63 @@ export default function App() {
 
     if (route === 'auto') {
       const autoMod = moduleId ? modules.find(m => m.id === moduleId) : modules.find(m => m.type === 'auto');
-      if (autoMod) {
-        setEditingAutoModule(autoMod as any);
-        if (action === 'open-km') {
-          setTimeout(() => {
-            window.dispatchEvent(new CustomEvent('open-auto-km-update'));
-          }, 400);
+      const doAction = () => {
+        if (autoMod) {
+          setEditingAutoModule(autoMod as any);
+          if (action === 'open-km') {
+            setTimeout(() => {
+              window.dispatchEvent(new CustomEvent('open-auto-km-update'));
+            }, 400);
+          }
+        } else {
+          setSelectedType('auto');
         }
-      } else {
-        setSelectedType('auto');
-      }
+      };
+      if (!isSensitiveUnlocked) unlockAndProceed(doAction);
+      else doAction();
       return;
     }
 
     if (route === 'document') {
-      setSelectedType('document');
-      if (moduleId) {
-        const docMod = modules.find(m => m.id === moduleId);
-        if (docMod) setEditingDocumentModule(docMod as any);
-      }
+      const doAction = () => {
+        setSelectedType('document');
+        if (moduleId) {
+          const docMod = modules.find(m => m.id === moduleId);
+          if (docMod) setEditingDocumentModule(docMod as any);
+        }
+      };
+      if (!isSensitiveUnlocked) unlockAndProceed(doAction);
+      else doAction();
       return;
     }
 
     if (route === 'installments') {
-      const instMod = moduleId ? modules.find(m => m.id === moduleId) : modules.find(m => m.type === 'installments');
-      if (instMod) {
-        setEditingInstallmentsModule(instMod as any);
-      } else {
-        setSelectedType('split');
-      }
+      const doAction = () => {
+        const instMod = moduleId ? modules.find(m => m.id === moduleId) : modules.find(m => m.type === 'installments');
+        if (instMod) {
+          setEditingInstallmentsModule(instMod as any);
+        } else {
+          setSelectedType('split');
+        }
+      };
+      if (!isSensitiveUnlocked) unlockAndProceed(doAction);
+      else doAction();
       return;
     }
 
     if (route === 'single-expense' || route === 'split') {
-      if (moduleId) {
-        const expMod = modules.find(m => m.id === moduleId);
-        if (expMod?.type === 'split') setEditingSplitModule(expMod as any);
-        else if (expMod?.type === 'single-expense') setEditingSingleExpenseModule(expMod as any);
-        else setSelectedType('split');
-      } else {
-        setSelectedType('split');
-      }
+      const doAction = () => {
+        if (moduleId) {
+          const expMod = modules.find(m => m.id === moduleId);
+          if (expMod?.type === 'split') setEditingSplitModule(expMod as any);
+          else if (expMod?.type === 'single-expense') setEditingSingleExpenseModule(expMod as any);
+          else setSelectedType('split');
+        } else {
+          setSelectedType('split');
+        }
+      };
+      if (!isSensitiveUnlocked) unlockAndProceed(doAction);
+      else doAction();
       return;
     }
 
@@ -901,7 +921,7 @@ export default function App() {
                   category: 'auto',
                   icon: f.icon,
                   color: f.color,
-                  openAction: () => setEditingAutoModule(m as any)
+                  openAction: () => openEditModalWithSecurity(m as any)
                 });
               }
             }
@@ -925,10 +945,7 @@ export default function App() {
               category: 'document',
               icon: FileText,
               color: 'text-blue-500',
-              openAction: () => {
-                setSelectedType('document');
-                setEditingDocumentModule(m as any);
-              }
+              openAction: () => openEditModalWithSecurity(m as any)
             });
           }
         }
@@ -952,7 +969,7 @@ export default function App() {
                   category: 'installment',
                   icon: CreditCard,
                   color: 'text-purple-500',
-                  openAction: () => setEditingInstallmentsModule(m as any)
+                  openAction: () => openEditModalWithSecurity(m as any)
                 });
               }
             }
@@ -976,7 +993,7 @@ export default function App() {
               category: 'expense',
               icon: Receipt,
               color: 'text-amber-500',
-              openAction: () => setEditingSingleExpenseModule(m as any)
+              openAction: () => openEditModalWithSecurity(m as any)
             });
           }
         }
@@ -1295,17 +1312,25 @@ export default function App() {
         // verifyIdentity mostra SEMPRE il prompt nativo (impronta / Face ID / PIN dispositivo).
         // getMasterKey da solo NON apre il prompt su Android (la chiave Keystore non richiede auth).
         const verified = await biometricService.verifyIdentity(`Sblocca la sezione sensibile di ${profile.username}`);
-        if (!verified) {
-          console.warn('[BiometricAuth] Biometric authentication cancelled or failed.');
-        } else {
+        if (verified) {
+          let key = encryptionKey;
           const masterKeyStr = await biometricService.getMasterKey(profile.id, profile.biometricServerKey);
           if (masterKeyStr) {
-            // La master key salvata è il raw AES export: va reimportata, NON riderivata (PBKDF2)
-            const key = await encryption.importKey(masterKeyStr);
+            try {
+              key = await encryption.importKey(masterKeyStr);
+              setEncryptionKey(key);
+            } catch (e) {
+              console.warn('[BiometricAuth] Failed to import master key:', e);
+            }
+          }
+          if (!key) {
+            key = await storage.getPublicKey();
             setEncryptionKey(key);
-            setIsSensitiveUnlocked(true);
+          }
+          setIsSensitiveUnlocked(true);
 
-            // Load private state & full state into memory
+          // Load private state & full state into memory
+          if (key) {
             try {
               const fullState = await storage.loadState(key, profile.id);
               if (fullState && fullState.modules && fullState.modules.length > 0) {
@@ -1317,21 +1342,25 @@ export default function App() {
                   return priv ? { ...pubMod, ...priv } : pubMod;
                 }));
               }
-            } catch (e) {}
-
-            callback();
-            return;
+            } catch (e) {
+              console.warn('[BiometricAuth] Failed to load private state:', e);
+            }
           }
+
+          callback();
+          return;
+        } else {
+          console.warn('[BiometricAuth] Biometric authentication cancelled or failed.');
         }
       } catch (err) {
         console.warn('[BiometricAuth] Biometric authentication failed or cancelled:', err);
       }
 
-      // Biometria attiva ma verifica fallita/annullata:
+      // Biometria attiva ma verifica fallita o annullata:
       // - con password -> fallback al modal password (LockScreen)
-      // - senza password -> NON auto-sbloccare, la sezione resta bloccata
+      // - senza password -> la sezione resta bloccata
       if (profile?.hasPassword === false) {
-        showToast('Impronta non riconosciuta. Sezione bloccata.', 'error');
+        showToast('Accesso biometrico annullato o non riconosciuto.', 'error');
         return;
       }
       setPendingAction(() => callback);
@@ -1597,16 +1626,7 @@ export default function App() {
       const profiles = storage.loadProfiles();
       const profile = profiles.find(p => p.id === currentProfileId);
       
-      // Delete old credentials if they exist to prevent leakage/accumulation
-      if (profile && profile.biometricServerKey) {
-        try {
-          await m.biometricService.deleteCredentials(currentProfileId, profile.biometricServerKey);
-        } catch (delErr) {
-          console.warn('[App] Failed to delete old credentials, continuing:', delErr);
-        }
-      }
-
-      // Generate a brand new completely unique server key for this profile to prevent conflict with others
+      // Generate a brand new completely unique server key for this profile
       const uniqueSuffix = Math.random().toString(36).substring(2, 7) + '.' + Date.now();
       const serverKey = 'chelona.app.' + currentProfileId + '.' + uniqueSuffix;
 
@@ -2563,6 +2583,7 @@ export default function App() {
                         setSelectedType(null); 
                         setSelectedFolderId(null); 
                         setActiveToolId(null); 
+                        setIsSensitiveUnlocked(false);
                       }}
                       className="px-3.5 py-1.5 bg-[var(--surface-variant)] hover:bg-[var(--border)] rounded-2xl text-[var(--text-main)] font-black text-xs transition-all flex items-center gap-1.5 border border-[var(--border)] shadow-sm active:scale-95"
                       title="Torna alla Home"
@@ -2683,14 +2704,6 @@ export default function App() {
                   </div>
                 </div>
               </motion.div>
-            ) : editingAutoModule ? (
-              <AutoManagementScreen
-                module={editingAutoModule}
-                onSave={handleSaveAutoEdit}
-                onCancel={() => setEditingAutoModule(null)}
-                onDelete={deleteModule}
-                onShare={setSharingModule as any}
-              />
             ) : editingTravelModule ? (
               <TravelScreen
                 module={editingTravelModule}
@@ -2788,10 +2801,14 @@ export default function App() {
                       <button
                             key={key}
                             onClick={() => {
-                              if ((key === 'auto' || key === 'document') && !encryptionKey) {
-                                setPendingAction(() => () => setFormData({ ...formData, template: key, title: t.title, content: t.content }));
-                                setShowVaultLock(true);
-                                return;
+                              if (key === 'auto' || key === 'document') {
+                                if (!isSensitiveUnlocked) {
+                                  unlockAndProceed(() => {
+                                    setFormData({ ...formData, template: key, title: t.title, content: t.content });
+                                    setAutoFormStep(0);
+                                  });
+                                  return;
+                                }
                               }
                               if (key === 'split') {
                                 setSpesaSubMenu(true);
@@ -2825,12 +2842,19 @@ export default function App() {
 
                          <button
                            onClick={() => {
-                             setSelectedType('split');
-                             setSplitModalTitle('Gruppo Spese');
-                             setSplitModalCurrency('EUR');
-                             setSplitModalBudget('');
-                             setSplitModalParticipants(['', '']);
-                             setShowSplitModal(true);
+                             const doOpen = () => {
+                               setSelectedType('split');
+                               setSplitModalTitle('Gruppo Spese');
+                               setSplitModalCurrency('EUR');
+                               setSplitModalBudget('');
+                               setSplitModalParticipants(['', '']);
+                               setShowSplitModal(true);
+                             };
+                             if (!isSensitiveUnlocked) {
+                               unlockAndProceed(doOpen);
+                             } else {
+                               doOpen();
+                             }
                            }}
                            className="flex flex-col items-center justify-center gap-4 p-8 rounded-2xl border border-[var(--border)] hover:border-indigo-500/60 hover:bg-indigo-500/10 transition-all group text-center h-full text-[var(--text-main)]"
                          >
@@ -2842,10 +2866,17 @@ export default function App() {
                          </button>
                          <button
                            onClick={() => {
-                             setSelectedType('split');
-                             setSpesaSubMenu(false);
-                             setFormData({ ...formData, template: 'single-expense', title: 'Spesa Singola', content: '' });
-                             setAutoFormStep(0);
+                             const doOpen = () => {
+                               setSelectedType('split');
+                               setSpesaSubMenu(false);
+                               setFormData({ ...formData, template: 'single-expense', title: 'Spesa Singola', content: '' });
+                               setAutoFormStep(0);
+                             };
+                             if (!isSensitiveUnlocked) {
+                               unlockAndProceed(doOpen);
+                             } else {
+                               doOpen();
+                             }
                            }}
                            className="flex flex-col items-center justify-center gap-4 p-8 rounded-2xl border border-[var(--border)] hover:border-emerald-500/60 hover:bg-emerald-500/10 transition-all group text-center h-full text-[var(--text-main)]"
                          >
@@ -2857,28 +2888,35 @@ export default function App() {
                          </button>
                          <button
                            onClick={() => {
-                             setSelectedType('split');
-                             setSpesaSubMenu(false);
-                             setIsAdding(false);
-                             const newInstallments: import('./types').InstallmentsModule = {
-                               id: generateUUID(),
-                               type: 'installments',
-                               title: 'Rate',
-                               targetAmount: 0,
-                               finalDueDate: new Date().toISOString().substring(0, 10),
-                               payments: [],
-                               x: (modules.length * 2) % 12,
-                               y: Infinity,
-                               w: 3,
-                               h: 3,
-                               folderId: selectedFolderId || undefined
+                             const doOpen = () => {
+                               setSelectedType('split');
+                               setSpesaSubMenu(false);
+                               setIsAdding(false);
+                               const newInstallments: import('./types').InstallmentsModule = {
+                                 id: generateUUID(),
+                                 type: 'installments',
+                                 title: 'Rate',
+                                 targetAmount: 0,
+                                 finalDueDate: new Date().toISOString().substring(0, 10),
+                                 payments: [],
+                                 x: (modules.length * 2) % 12,
+                                 y: Infinity,
+                                 w: 3,
+                                 h: 3,
+                                 folderId: selectedFolderId || undefined
+                               };
+                               setModules(prev => {
+                                 const updated = [newInstallments, ...prev];
+                                 saveAppState(updated, folders).catch(console.error);
+                                 return updated;
+                               });
+                               setEditingInstallmentsModule(newInstallments);
                              };
-                             setModules(prev => {
-                               const updated = [newInstallments, ...prev];
-                               saveAppState(updated, folders).catch(console.error);
-                               return updated;
-                             });
-                             setEditingInstallmentsModule(newInstallments);
+                             if (!isSensitiveUnlocked) {
+                               unlockAndProceed(doOpen);
+                             } else {
+                               doOpen();
+                             }
                            }}
                            className="flex flex-col items-center justify-center gap-4 p-8 rounded-2xl border border-[var(--border)] hover:border-amber-500/60 hover:bg-amber-500/10 transition-all group text-center h-full text-[var(--text-main)]"
                          >
@@ -3540,7 +3578,7 @@ export default function App() {
                     </div>
                   </div>
 
-                  {!encryptionKey && (
+                  {!isSensitiveUnlocked && (
                     <div className="mt-4 max-w-2xl mx-auto">
                       <motion.button
                         whileHover={{ scale: 1.01 }}
@@ -3844,9 +3882,9 @@ export default function App() {
                             onClick={() => {
                               const existingAuto = modules.find(m => m.type === 'auto') as import('./types').AutoModule;
                               if (existingAuto) {
-                                setEditingAutoModule(existingAuto);
+                                openEditModalWithSecurity(existingAuto);
                               } else {
-                                setSelectedType('auto');
+                                handleSelectCategoryWithSecurity('auto');
                               }
                             }}
                             className="bg-[var(--card-bg)] p-6 lg:p-7 rounded-[2.5rem] border border-[var(--border)] hover:border-rose-500/50 shadow-sm hover:shadow-lg transition-all text-left flex items-start gap-4 group active:scale-[0.99] relative overflow-hidden"
@@ -3869,7 +3907,7 @@ export default function App() {
 
                           {/* 2. Documenti & Scadenze */}
                           <button
-                            onClick={() => setSelectedType('document')}
+                            onClick={() => handleSelectCategoryWithSecurity('document')}
                             className="bg-[var(--card-bg)] p-6 lg:p-7 rounded-[2.5rem] border border-[var(--border)] hover:border-blue-500/50 shadow-sm hover:shadow-lg transition-all text-left flex items-start gap-4 group active:scale-[0.99] relative overflow-hidden"
                           >
                             <div className="w-14 h-14 rounded-3xl bg-blue-500/10 text-blue-500 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform shadow-inner">
@@ -3890,7 +3928,7 @@ export default function App() {
 
                           {/* 3. Spese & Conti */}
                           <button
-                            onClick={() => setSelectedType('split')}
+                            onClick={() => handleSelectCategoryWithSecurity('split')}
                             className="bg-[var(--card-bg)] p-6 lg:p-7 rounded-[2.5rem] border border-[var(--border)] hover:border-purple-500/50 shadow-sm hover:shadow-lg transition-all text-left flex items-start gap-4 group active:scale-[0.99] relative overflow-hidden"
                           >
                             <div className="w-14 h-14 rounded-3xl bg-purple-500/10 text-purple-500 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform shadow-inner">
@@ -4332,6 +4370,7 @@ export default function App() {
                     setIsToolsOpen(false); 
                     setSelectedType(null); 
                     setIsProfileOpen(false); 
+                    setIsSensitiveUnlocked(false);
                   } 
                 },
                 { 
@@ -4779,7 +4818,10 @@ export default function App() {
           <AutoManagementScreen 
             module={editingAutoModule} 
             onSave={handleSaveAutoEdit} 
-            onCancel={() => setEditingAutoModule(null)} 
+            onCancel={() => {
+              setEditingAutoModule(null);
+              if (!selectedType || selectedType === 'home') setIsSensitiveUnlocked(false);
+            }} 
             onDelete={deleteModule}
             onShare={(m) => setSharingModule(m)}
           />
@@ -4798,7 +4840,10 @@ export default function App() {
               updateModuleDirect(updated);
               setEditingSplitModule(updated);
             }}
-            onClose={() => setEditingSplitModule(null)}
+            onClose={() => {
+              setEditingSplitModule(null);
+              if (!selectedType || selectedType === 'home') setIsSensitiveUnlocked(false);
+            }}
             onDelete={deleteModule}
           />
         )}
@@ -4843,7 +4888,10 @@ export default function App() {
               });
               setEditingSingleExpenseModule(null);
             }}
-            onClose={() => setEditingSingleExpenseModule(null)}
+            onClose={() => {
+              setEditingSingleExpenseModule(null);
+              if (!selectedType || selectedType === 'home') setIsSensitiveUnlocked(false);
+            }}
             onDelete={deleteModule}
           />
         )}
@@ -4867,6 +4915,7 @@ export default function App() {
                  deleteModule(editingInstallmentsModule.id);
               }
               setEditingInstallmentsModule(null);
+              if (!selectedType || selectedType === 'home') setIsSensitiveUnlocked(false);
             }}
             onDelete={deleteModule}
           />
@@ -4884,7 +4933,10 @@ export default function App() {
               saveAppState(updatedModules, folders);
               setEditingDocumentModule(null);
             }}
-            onCancel={() => setEditingDocumentModule(null)}
+            onCancel={() => {
+              setEditingDocumentModule(null);
+              if (!selectedType || selectedType === 'home') setIsSensitiveUnlocked(false);
+            }}
             onDelete={deleteModule}
             onShare={setSharingModule as any}
           />

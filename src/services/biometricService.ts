@@ -11,8 +11,8 @@ export const biometricService = {
         console.warn('[BiometricService] NativeBiometric plugin is not initialized.');
         return false;
       }
-      const result = await NativeBiometric.isAvailable();
-      return result.isAvailable;
+      const result = await NativeBiometric.isAvailable({ useFallback: true });
+      return !!result.isAvailable;
     } catch (e) {
       console.error('[BiometricService] isSupported error:', e);
       return false;
@@ -23,7 +23,7 @@ export const biometricService = {
   async getBiometryType(): Promise<string> {
     try {
       if (!NativeBiometric || typeof NativeBiometric.isAvailable !== 'function') return 'None';
-      const result = await NativeBiometric.isAvailable();
+      const result = await NativeBiometric.isAvailable({ useFallback: true });
       if (!result.isAvailable) return 'None';
       
       switch (result.biometryType) {
@@ -48,16 +48,6 @@ export const biometricService = {
     }
     
     const key = serverKey || 'chelona.app.' + profileId;
-    
-    // Su Android, se esiste già una chiave per il server, setCredentials può fallire
-    // ("failed to save credentials"). Tentiamo sempre di svuotare lo slot prima.
-    try {
-      if (typeof NativeBiometric.deleteCredentials === 'function') {
-        await NativeBiometric.deleteCredentials({ server: key });
-      }
-    } catch (e) {
-      console.warn('[BiometricService] fallback deleteCredentials', e);
-    }
 
     await NativeBiometric.setCredentials({
       username: profileId,
@@ -82,11 +72,7 @@ export const biometricService = {
       }
       return null;
     } catch (e: any) {
-      console.error('[BiometricService] Failed to retrieve credentials', e);
-      // Specific error handling for user cancellation or no biometrics
-      if (e.message?.includes('User canceled') || e.code === 'USER_CANCELED') {
-        return null;
-      }
+      console.warn('[BiometricService] Failed to retrieve credentials:', e?.message || e);
       return null;
     }
   },
@@ -94,17 +80,22 @@ export const biometricService = {
   // Verify identity using biometrics (shows native prompt)
   async verifyIdentity(reason: string = 'Verifica la tua identità'): Promise<boolean> {
     try {
-      if (!NativeBiometric || typeof NativeBiometric.verifyIdentity !== 'function') return false;
+      if (!NativeBiometric || typeof NativeBiometric.verifyIdentity !== 'function') {
+        console.warn('[BiometricService] NativeBiometric.verifyIdentity not available.');
+        return false;
+      }
       await NativeBiometric.verifyIdentity({
         reason,
         title: 'Chelona — Accesso Sicuro',
         subtitle: reason,
-        description: 'Usa la tua impronta digitale per accedere.',
-        useDevicePasscode: true, // Allow fallback to PIN/Pattern/Password
-      } as any);
+        description: 'Usa la tua impronta digitale o sblocco biometrico per accedere.',
+        negativeButtonText: 'Annulla',
+        useFallback: true,
+        maxAttempts: 4,
+      });
       return true;
-    } catch (e) {
-      console.error('[BiometricService] verifyIdentity error:', e);
+    } catch (e: any) {
+      console.warn('[BiometricService] verifyIdentity cancelled or failed:', e?.message || e);
       return false;
     }
   },

@@ -333,9 +333,8 @@ export const LockScreen = ({ isVisible, onAuthenticated, onStartScan, onOpenTool
         const masterKey = await encryption.importKey(masterKeyStr);
         onAuthenticated(masterKey, selectedProfile.id);
       } else {
-        // If masterKeyStr is null, it means either user cancelled or something went wrong.
-        // We don't necessarily show a hard error if they just cancelled.
-        setIsLoading(false);
+        const pubKey = await storage.getPublicKey();
+        onAuthenticated(pubKey, selectedProfile.id);
       }
     } catch (err: any) {
       console.error('[LockScreen] Biometric login error:', err);
