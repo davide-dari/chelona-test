@@ -262,9 +262,36 @@ export default function App() {
   const [modules, setModules] = useState<Module[]>([]);
   const [folders, setFolders] = useState<Folder[]>([]);
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
-  const [isAdding, setIsAdding] = useState(false);
-  const [formData, setFormData] = useState<any>({});
-  const [editingModuleId, setEditingModuleId] = useState<string | null>(null);
+  const [isAdding, setIsAdding] = useState<boolean>(() => {
+    try {
+      const raw = localStorage.getItem('chelona_form_draft');
+      if (raw) {
+        const d = JSON.parse(raw);
+        if (d && (d.formData?.template || d.formData?.type || d.editingModuleId)) return true;
+      }
+    } catch {}
+    return false;
+  });
+  const [formData, setFormData] = useState<any>(() => {
+    try {
+      const raw = localStorage.getItem('chelona_form_draft');
+      if (raw) {
+        const d = JSON.parse(raw);
+        if (d && d.formData) return d.formData;
+      }
+    } catch {}
+    return {};
+  });
+  const [editingModuleId, setEditingModuleId] = useState<string | null>(() => {
+    try {
+      const raw = localStorage.getItem('chelona_form_draft');
+      if (raw) {
+        const d = JSON.parse(raw);
+        if (d?.editingModuleId) return d.editingModuleId;
+      }
+    } catch {}
+    return null;
+  });
   const [editingAutoModule, setEditingAutoModule] = useState<import('./types').AutoModule | null>(null);
   const [editingSplitModule, setEditingSplitModule] = useState<import('./types').SplitModule | null>(null);
   const [editingSingleExpenseModule, setEditingSingleExpenseModule] = useState<import('./types').SingleExpenseModule | null>(null);
@@ -491,7 +518,47 @@ export default function App() {
     window.addEventListener('open-flyer-offer', handleOpenFlyerOffer);
     return () => window.removeEventListener('open-flyer-offer', handleOpenFlyerOffer);
   }, [modules, folders, selectedFolderId]);
-  const [autoFormStep, setAutoFormStep] = useState(0);
+  const [autoFormStep, setAutoFormStep] = useState<number>(() => {
+    try {
+      const raw = localStorage.getItem('chelona_form_draft');
+      if (raw) {
+        const d = JSON.parse(raw);
+        if (typeof d?.autoFormStep === 'number') return d.autoFormStep;
+      }
+    } catch {}
+    return 0;
+  });
+
+  // Auto-salvataggio persistente della bozza del form
+  useEffect(() => {
+    if (isAdding && (formData.template || formData.type || editingModuleId)) {
+      try {
+        const draft = {
+          isAdding: true,
+          formData,
+          autoFormStep,
+          editingModuleId,
+          updatedAt: Date.now()
+        };
+        localStorage.setItem('chelona_form_draft', JSON.stringify(draft));
+      } catch (e) {
+        console.warn('Failed to save form draft', e);
+      }
+    }
+  }, [isAdding, formData, autoFormStep, editingModuleId]);
+
+  // Notifica all'avvio se una bozza è stata ripristinata
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('chelona_form_draft');
+      if (raw) {
+        const d = JSON.parse(raw);
+        if (d && (d.formData?.template === 'auto' || d.formData?.type === 'auto') && typeof d.autoFormStep === 'number' && d.autoFormStep > 0) {
+          showToast(`Bozza ripristinata: riprendi dal passo ${d.autoFormStep + 1}`, 'info');
+        }
+      }
+    } catch {}
+  }, []);
   const [picker, setPicker] = useState<'brand' | 'model' | null>(null);
   const [pendingImportModule, setPendingImportModule] = useState<Module | null>(null);
   const [showGalleryViewer, setShowGalleryViewer] = useState(false);
@@ -560,7 +627,10 @@ export default function App() {
           setIsSensitiveUnlocked(false);
           setIsProfileOpen(false);
           setIsSettingsOpen(false);
-          setIsAdding(false);
+          const hasDraft = !!localStorage.getItem('chelona_form_draft');
+          if (!hasDraft) {
+            setIsAdding(false);
+          }
           setIsToolsOpen(false);
         } else {
           // Quando torniamo in foreground resettiamo sempre i flag
@@ -601,7 +671,18 @@ export default function App() {
       if (editingInstallmentsModule) { setEditingInstallmentsModule(null); return; }
       if (editingFitnessModule) { window.dispatchEvent(new CustomEvent('fitness-back')); return; }
       if (editingModuleId) { setEditingModuleId(null); setFormData({}); return; }
-      if (isAdding) { setIsAdding(false); setFormData({}); setSpesaSubMenu(false); return; }
+      if (isAdding) {
+        if ((formData.template === 'auto' || formData.type === 'auto') && autoFormStep > 0) {
+          setAutoFormStep(prev => prev - 1);
+          return;
+        }
+        setIsAdding(false);
+        setFormData({});
+        setAutoFormStep(0);
+        setSpesaSubMenu(false);
+        localStorage.removeItem('chelona_form_draft');
+        return;
+      }
       if (isProfileOpen) { setIsProfileOpen(false); return; }
 
       if (activeToolId) { setActiveToolId(null); return; }
@@ -1121,6 +1202,8 @@ export default function App() {
     setIsAdding(false);
     setEditingModuleId(null);
     setFormData({});
+    setAutoFormStep(0);
+    localStorage.removeItem('chelona_form_draft');
   };
 
   const handleScan = async (data: string) => {
@@ -2782,11 +2865,11 @@ export default function App() {
             ) : isAdding ? (
               <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="max-w-3xl mx-auto h-full flex flex-col w-full">
                 <div className="flex items-center gap-4 mb-8">
-                  <button onClick={() => { setIsAdding(false); setEditingModuleId(null); setFormData({}); setAutoFormStep(0); setSpesaSubMenu(false); setHomeSubMenu(false); }} className="p-2 hover:bg-[var(--card-bg)] rounded-xl text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors">
+                  <button onClick={() => { setIsAdding(false); setEditingModuleId(null); setFormData({}); setAutoFormStep(0); setSpesaSubMenu(false); setHomeSubMenu(false); localStorage.removeItem('chelona_form_draft'); }} className="p-2 hover:bg-[var(--card-bg)] rounded-xl text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors">
                     <X className="w-6 h-6" />
                   </button>
                   <h2 className="text-2xl lg:text-3xl font-bold text-[var(--text-main)]">
-                    {editingModuleId ? 'Modifica' : 'Nuovo'} {(formData.template === 'document' || formData.type === 'document') ? 'Documento' : 'Appunto'}
+                    {editingModuleId ? 'Modifica' : 'Nuovo'} {(formData.template === 'document' || formData.type === 'document') ? 'Documento' : (formData.template === 'auto' || formData.type === 'auto') ? 'Veicolo' : 'Appunto'}
                   </h2>
                 </div>
 
@@ -3139,9 +3222,24 @@ export default function App() {
                             return (
                               <div className="space-y-6">
                                 <div className="text-center mb-8">
-                                  <span className="text-xs font-bold text-[var(--accent)] uppercase tracking-widest bg-[var(--accent-bg)] px-3 py-1 rounded-full border border-[var(--accent)]/20">
-                                    Passo {Math.min(autoFormStep + 1, steps.length)} di {steps.length}
-                                  </span>
+                                  <div className="flex items-center justify-center gap-3">
+                                    <span className="text-xs font-bold text-[var(--accent)] uppercase tracking-widest bg-[var(--accent-bg)] px-3 py-1 rounded-full border border-[var(--accent)]/20 shadow-sm">
+                                      Passo {Math.min(autoFormStep + 1, steps.length)} di {steps.length}
+                                    </span>
+                                    {autoFormStep > 0 && (
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setAutoFormStep(0);
+                                          showToast('Ricomincia dal passo 1');
+                                        }}
+                                        className="text-[11px] font-bold text-[var(--text-muted)] hover:text-amber-500 underline transition-colors cursor-pointer"
+                                        title="Torna al primo passo"
+                                      >
+                                        Ricomincia dal passo 1
+                                      </button>
+                                    )}
+                                  </div>
                                   <h3 className="text-xl font-bold text-[var(--text-main)] mt-4 h-8">{currentStep.title}</h3>
                                 </div>
 
