@@ -63,8 +63,7 @@ export function RecipesScreen({
   const [menuShoppingIngredients, setMenuShoppingIngredients] = useState<Set<string>>(new Set());
   const [menuAddedToCart, setMenuAddedToCart] = useState(false);
 
-  // Planner mode: 'auto' (Chelona consiglia) o 'custom' (Componi tu)
-  const [plannerMode, setPlannerMode] = useState<'auto' | 'custom'>('auto');
+
 
   // Ricerca piatti per modalità Componi Tu
   const [isCustomDishSearchOpen, setIsCustomDishSearchOpen] = useState(false);
@@ -594,7 +593,6 @@ export function RecipesScreen({
     });
     setPlannerMealType(menu.mealType);
     setPlannerTheme(menu.theme);
-    setPlannerMode('custom');
     setIsSavedMenusOpen(false);
     setIsMenuPlannerOpen(true);
   };
@@ -1160,7 +1158,7 @@ export function RecipesScreen({
                   <span>Cosa mangiare oggi?</span>
                 </h2>
                 <p className="text-[11px] text-[var(--text-muted)] font-semibold truncate">
-                  {plannerMode === 'auto' ? 'Menu coordinato automatico' : 'Componi il tuo menu con i consigli dello Chef'}
+                  Compila il tuo menu con i consigli dello Chef Chelona
                 </p>
               </div>
               <div className="flex items-center gap-1 -mr-2">
@@ -1182,255 +1180,191 @@ export function RecipesScreen({
                 >
                   <Share2 className="w-5 h-5" />
                 </button>
-                {plannerMode === 'auto' && (
-                  <button
-                    onClick={() => handleRegenerateMenu()}
-                    className="p-2 hover:bg-orange-500/10 text-orange-500 rounded-full transition-colors cursor-pointer"
-                    title="Rigenera menu casuale"
-                  >
-                    <RefreshCw className="w-5 h-5" />
-                  </button>
-                )}
+                <button
+                  onClick={() => handleRegenerateMenu()}
+                  className="p-2 hover:bg-orange-500/10 text-orange-500 rounded-full transition-colors cursor-pointer"
+                  title="Consigliami un nuovo menu coordinato"
+                >
+                  <RefreshCw className="w-5 h-5" />
+                </button>
               </div>
             </header>
 
             {/* Contenuto scrollabile del Menu Planner */}
-            <div className="flex-1 overflow-y-auto p-4 md:p-6 custom-scrollbar max-w-4xl mx-auto w-full space-y-5 pb-24">
+            <div className="flex-1 overflow-y-auto p-4 md:p-6 custom-scrollbar max-w-4xl mx-auto w-full space-y-4 pb-24">
               
-              {/* Switcher Modalità: Chelona Consiglia / Componi Tu */}
-              <div className="flex items-center p-1 rounded-2xl bg-[var(--surface-variant)]/80 border border-[var(--border)] max-w-sm mx-auto w-full">
-                <button
-                  onClick={() => setPlannerMode('auto')}
-                  className={`flex-1 py-2 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                    plannerMode === 'auto'
-                      ? 'bg-orange-500 text-white shadow-xs'
-                      : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
-                  }`}
+              {/* ── BARRA CERCA RICETTE PER IL MENU (IN EVIDENZA) ── */}
+              <div className="bg-[var(--card-bg)] p-4 sm:p-5 rounded-3xl border-2 border-orange-500/40 shadow-sm space-y-3 bg-gradient-to-r from-orange-500/5 via-[var(--card-bg)] to-amber-500/5">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs font-black uppercase tracking-wider text-orange-600 dark:text-orange-400 flex items-center gap-1.5">
+                    <Search className="w-4 h-4 text-orange-500" />
+                    <span>Cerca Ricette per il Menu</span>
+                  </span>
+                  <span className="text-[11px] font-bold text-[var(--text-muted)]">
+                    {allMeals.length} ricette disponibili
+                  </span>
+                </div>
+
+                <div
+                  onClick={() => {
+                    setCustomSearchCourseFilter('all');
+                    setCustomDishSearchQuery('');
+                    setIsCustomDishSearchOpen(true);
+                  }}
+                  className="relative flex items-center cursor-pointer group"
                 >
-                  <Sparkles className="w-3.5 h-3.5" />
-                  <span>Chelona Consiglia</span>
-                </button>
-                <button
-                  onClick={() => setPlannerMode('custom')}
-                  className={`flex-1 py-2 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                    plannerMode === 'custom'
-                      ? 'bg-orange-500 text-white shadow-xs'
-                      : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
-                  }`}
-                >
-                  <ChefHat className="w-3.5 h-3.5" />
-                  <span>Componi Tu</span>
-                </button>
+                  <Search className="absolute left-4 w-5 h-5 text-orange-500 group-hover:scale-110 transition-transform" />
+                  <div className="w-full bg-[var(--surface-variant)] hover:bg-[var(--surface-variant)]/80 border border-orange-500/30 group-hover:border-orange-500 rounded-2xl py-3.5 pl-12 pr-28 text-xs sm:text-sm text-[var(--text-muted)] group-hover:text-[var(--text-main)] transition-all shadow-inner flex items-center">
+                    <span>Cerca per nome piatto o ingrediente (es. Carbonara, Salmone)...</span>
+                  </div>
+                  <button
+                    type="button"
+                    className="absolute right-2 px-4 py-2 rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-black text-xs shadow-md flex items-center gap-1.5 transition-all group-hover:scale-105 active:scale-95 cursor-pointer"
+                  >
+                    <Search className="w-3.5 h-3.5 stroke-[2.5]" />
+                    <span>Cerca</span>
+                  </button>
+                </div>
               </div>
 
-              {/* Sezione Controlli e Assistente per AUTO MODE */}
-              {plannerMode === 'auto' && (
-                <div className="bg-[var(--card-bg)] p-4 rounded-3xl border border-[var(--border)] shadow-sm space-y-4">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    {/* Selettore Pranzo / Cena */}
-                    <div className="flex items-center gap-1.5 p-1 rounded-2xl bg-[var(--surface-variant)]/60 border border-[var(--border)]">
-                      <button
-                        onClick={() => handleRegenerateMenu(undefined, 'pranzo')}
-                        className={`flex-1 sm:flex-initial px-4 py-2 rounded-xl text-xs font-extrabold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                          plannerMealType === 'pranzo'
-                            ? 'bg-amber-500 text-white shadow-sm'
-                            : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
-                        }`}
-                      >
-                        <span>☀️</span>
-                        <span>Pranzo</span>
-                      </button>
-                      <button
-                        onClick={() => handleRegenerateMenu(undefined, 'cena')}
-                        className={`flex-1 sm:flex-initial px-4 py-2 rounded-xl text-xs font-extrabold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                          plannerMealType === 'cena'
-                            ? 'bg-indigo-600 text-white shadow-sm'
-                            : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
-                        }`}
-                      >
-                        <span>🌙</span>
-                        <span>Cena</span>
-                      </button>
-                    </div>
-
-                    {/* Selettore Tema: Carne / Pesce / Vegetariano / Sorprendimi */}
-                    <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 custom-scrollbar">
-                      {[
-                        { id: 'carne', label: 'Carne', emoji: '🥩' },
-                        { id: 'pesce', label: 'Pesce', emoji: '🐟' },
-                        { id: 'vegetariano', label: 'Vegetariano', emoji: '🥦' },
-                        { id: 'sorprendimi', label: 'Sorprendimi', emoji: '🎲' }
-                      ].map(themeItem => {
-                        const isSelected = plannerTheme === themeItem.id;
-                        return (
-                          <button
-                            key={themeItem.id}
-                            onClick={() => handleRegenerateMenu(themeItem.id as DietTheme)}
-                            className={`px-3 py-1.5 rounded-xl text-xs font-extrabold whitespace-nowrap transition-all flex items-center gap-1 cursor-pointer border ${
-                              isSelected
-                                ? 'bg-orange-500 text-white border-orange-500 shadow-xs'
-                                : 'bg-[var(--card-bg)] text-[var(--text-muted)] border-[var(--border)] hover:border-orange-500/30 hover:text-[var(--text-main)]'
-                            }`}
-                          >
-                            <span>{themeItem.emoji}</span>
-                            <span>{themeItem.label}</span>
-                          </button>
-                        );
-                      })}
-                    </div>
+              {/* ── CONTROLLI & ASSISTENTE CHELONA INTEGRATI NELLA STESSA UI ── */}
+              <div className="bg-[var(--card-bg)] p-4 sm:p-5 rounded-3xl border border-[var(--border)] shadow-sm space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  {/* Selettore Pranzo / Cena */}
+                  <div className="flex items-center gap-1.5 p-1 rounded-2xl bg-[var(--surface-variant)]/60 border border-[var(--border)]">
+                    <button
+                      onClick={() => {
+                        setPlannerMealType('pranzo');
+                        if (currentMenu) setCurrentMenu({ ...currentMenu, mealType: 'pranzo' });
+                      }}
+                      className={`flex-1 sm:flex-initial px-4 py-2 rounded-xl text-xs font-extrabold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                        plannerMealType === 'pranzo'
+                          ? 'bg-amber-500 text-white shadow-sm'
+                          : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
+                      }`}
+                    >
+                      <span>☀️</span>
+                      <span>Pranzo</span>
+                    </button>
+                    <button
+                      onClick={() => {
+                        setPlannerMealType('cena');
+                        if (currentMenu) setCurrentMenu({ ...currentMenu, mealType: 'cena' });
+                      }}
+                      className={`flex-1 sm:flex-initial px-4 py-2 rounded-xl text-xs font-extrabold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                        plannerMealType === 'cena'
+                          ? 'bg-indigo-600 text-white shadow-sm'
+                          : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
+                      }`}
+                    >
+                      <span>🌙</span>
+                      <span>Cena</span>
+                    </button>
                   </div>
 
-                  {/* Banner Notifica Armonizzazione */}
-                  {harmonizeNotice && (
-                    <motion.div
-                      initial={{ opacity: 0, y: -8 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className="p-3.5 rounded-2xl bg-amber-500/15 border border-amber-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs"
+                  {/* Azioni con Chelona Consiglia & Svuota */}
+                  <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap justify-end">
+                    <button
+                      onClick={() => handleRegenerateMenu()}
+                      className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white text-xs font-black shadow-xs flex items-center gap-1.5 cursor-pointer transition-all active:scale-95"
+                      title="Chiedi a Chelona di consigliarti o rigenerare un menu coordinato"
                     >
-                      <div className="flex items-center gap-2">
-                        <AlertCircle className="w-4 h-4 text-amber-500 shrink-0" />
-                        <p className="font-bold text-[var(--text-main)]">{harmonizeNotice.message}</p>
-                      </div>
-                      <div className="flex items-center gap-2 shrink-0">
-                        <button
-                          onClick={() => handleApplyHarmonization(harmonizeNotice.targetTheme)}
-                          className="px-3 py-1.5 rounded-xl bg-orange-500 text-white font-extrabold text-xs shadow-xs hover:bg-orange-600 transition-colors cursor-pointer"
-                        >
-                          ✨ Armonizza Menu
-                        </button>
-                        <button
-                          onClick={() => setHarmonizeNotice(null)}
-                          className="p-1 rounded-lg text-[var(--text-muted)] hover:bg-black/5 dark:hover:bg-white/5 cursor-pointer"
-                        >
-                          <X className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </motion.div>
-                  )}
+                      <Sparkles className="w-3.5 h-3.5" />
+                      <span>Chelona Consiglia</span>
+                    </button>
 
-                  {/* Box Consiglio dello Chef & Sommelier */}
-                  <div className="p-3.5 rounded-2xl bg-gradient-to-r from-orange-500/10 via-amber-500/10 to-transparent border border-orange-500/20 text-xs space-y-1.5">
-                    <div className="flex items-center gap-1.5 font-black text-orange-600 dark:text-orange-400 uppercase tracking-wider text-[10px]">
-                      <ChefHat className="w-3.5 h-3.5" />
-                      <span>Consiglio dello Chef</span>
-                    </div>
-                    <p className="text-[var(--text-main)] font-semibold leading-relaxed">
-                      {currentMenu.chefAdvice}
-                    </p>
-                    <p className="text-xs text-[var(--text-muted)] flex items-center gap-1 font-medium pt-1 border-t border-[var(--border)]/50">
-                      <Wine className="w-3.5 h-3.5 text-rose-500 shrink-0" />
-                      <span>{currentMenu.wineAdvice}</span>
-                    </p>
+                    {(!currentMenu.antipasto || !currentMenu.primo || !currentMenu.secondo) && (
+                      <button
+                        onClick={handleAutoCompleteMenu}
+                        className="px-3.5 py-2 rounded-xl bg-orange-500/15 hover:bg-orange-500 text-orange-600 dark:text-orange-400 hover:text-white text-xs font-black shadow-xs flex items-center gap-1.5 cursor-pointer transition-all active:scale-95"
+                        title="Completa automaticamente le portate mancanti"
+                      >
+                        <ChefHat className="w-3.5 h-3.5" />
+                        <span>Completa per Me</span>
+                      </button>
+                    )}
+
+                    <button
+                      onClick={() => {
+                        setCurrentMenu({
+                          id: `menu_${Date.now()}`,
+                          mealType: plannerMealType,
+                          theme: 'pesce',
+                          antipasto: null,
+                          primo: null,
+                          secondo: null,
+                          chefAdvice: '',
+                          wineAdvice: ''
+                        });
+                      }}
+                      className="px-3 py-2 rounded-xl border border-[var(--border)] hover:bg-[var(--surface-variant)] text-[var(--text-muted)] hover:text-[var(--text-main)] text-xs font-bold transition-colors cursor-pointer"
+                      title="Svuota il menu per comporlo da zero"
+                    >
+                      Svuota
+                    </button>
                   </div>
                 </div>
-              )}
 
-              {/* Sezione Controlli e Assistente per CUSTOM MODE (Componi Tu) */}
-              {plannerMode === 'custom' && (
-                <div className="space-y-4">
-                  <div className="bg-[var(--card-bg)] p-4 rounded-3xl border border-[var(--border)] shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    {/* Selettore Pranzo / Cena */}
-                    <div className="flex items-center gap-1.5 p-1 rounded-2xl bg-[var(--surface-variant)]/60 border border-[var(--border)]">
-                      <button
-                        onClick={() => {
-                          setPlannerMealType('pranzo');
-                          if (currentMenu) setCurrentMenu({ ...currentMenu, mealType: 'pranzo' });
-                        }}
-                        className={`flex-1 sm:flex-initial px-4 py-2 rounded-xl text-xs font-extrabold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                          plannerMealType === 'pranzo'
-                            ? 'bg-amber-500 text-white shadow-sm'
-                            : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
-                        }`}
-                      >
-                        <span>☀️</span>
-                        <span>Pranzo</span>
-                      </button>
-                      <button
-                        onClick={() => {
-                          setPlannerMealType('cena');
-                          if (currentMenu) setCurrentMenu({ ...currentMenu, mealType: 'cena' });
-                        }}
-                        className={`flex-1 sm:flex-initial px-4 py-2 rounded-xl text-xs font-extrabold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                          plannerMealType === 'cena'
-                            ? 'bg-indigo-600 text-white shadow-sm'
-                            : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
-                        }`}
-                      >
-                        <span>🌙</span>
-                        <span>Cena</span>
-                      </button>
-                    </div>
-
-                    <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap justify-end">
-                      <button
-                        onClick={() => {
-                          setCustomSearchCourseFilter('all');
-                          setCustomDishSearchQuery('');
-                          setIsCustomDishSearchOpen(true);
-                        }}
-                        className="px-3.5 py-1.5 rounded-xl bg-orange-500 hover:bg-orange-600 text-white text-xs font-black shadow-xs flex items-center gap-1.5 cursor-pointer transition-all active:scale-95"
-                        title="Cerca piatti nella raccolta da aggiungere al menu"
-                      >
-                        <Search className="w-3.5 h-3.5" />
-                        <span>Cerca Piatti</span>
-                      </button>
-
-                      <button
-                        onClick={() => {
-                          setCurrentMenu({
-                            id: `menu_${Date.now()}`,
-                            mealType: plannerMealType,
-                            theme: 'pesce',
-                            antipasto: null,
-                            primo: null,
-                            secondo: null,
-                            chefAdvice: '',
-                            wineAdvice: ''
-                          });
-                        }}
-                        className="px-3 py-1.5 rounded-xl border border-[var(--border)] hover:bg-[var(--surface-variant)] text-[var(--text-muted)] hover:text-[var(--text-main)] text-xs font-bold transition-colors cursor-pointer"
-                      >
-                        Svuota Menu
-                      </button>
-                      {(!currentMenu.antipasto || !currentMenu.primo || !currentMenu.secondo) && (
+                {/* Filtro Tema Chelona Consiglia (Carne / Pesce / Veg / Sorprendimi) */}
+                <div className="pt-2 border-t border-[var(--border)]/60 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                  <span className="text-[11px] font-black uppercase text-[var(--text-muted)] flex items-center gap-1">
+                    <Sparkles className="w-3 h-3 text-orange-500" />
+                    <span>Tema consigli Chelona:</span>
+                  </span>
+                  <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 custom-scrollbar">
+                    {[
+                      { id: 'sorprendimi', label: 'Tutti / Sorprendimi', emoji: '🎲' },
+                      { id: 'pesce', label: 'Pesce', emoji: '🐟' },
+                      { id: 'carne', label: 'Carne', emoji: '🥩' },
+                      { id: 'vegetariano', label: 'Vegetariano', emoji: '🥦' }
+                    ].map(themeItem => {
+                      const isSelected = plannerTheme === themeItem.id;
+                      return (
                         <button
-                          onClick={handleAutoCompleteMenu}
-                          className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white text-xs font-black shadow-xs flex items-center gap-1.5 cursor-pointer transition-all active:scale-95"
+                          key={themeItem.id}
+                          onClick={() => handleRegenerateMenu(themeItem.id as DietTheme)}
+                          className={`px-3 py-1.5 rounded-xl text-xs font-extrabold whitespace-nowrap transition-all flex items-center gap-1 cursor-pointer border ${
+                            isSelected
+                              ? 'bg-orange-500 text-white border-orange-500 shadow-xs'
+                              : 'bg-[var(--card-bg)] text-[var(--text-muted)] border-[var(--border)] hover:border-orange-500/30 hover:text-[var(--text-main)]'
+                          }`}
                         >
-                          <Sparkles className="w-3.5 h-3.5" />
-                          <span>Completa per Me</span>
+                          <span>{themeItem.emoji}</span>
+                          <span>{themeItem.label}</span>
                         </button>
-                      )}
-                    </div>
+                      );
+                    })}
                   </div>
+                </div>
+              </div>
 
-                  {/* Barra Rapida Cerca Piatti per Componi Tu */}
-                  <div
-                    onClick={() => {
-                      setCustomSearchCourseFilter('all');
-                      setCustomDishSearchQuery('');
-                      setIsCustomDishSearchOpen(true);
-                    }}
-                    className="p-3.5 sm:p-4 rounded-3xl bg-[var(--card-bg)] border border-[var(--border)] hover:border-orange-500/50 shadow-xs flex items-center justify-between gap-3 cursor-pointer transition-all group"
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-9 h-9 rounded-2xl bg-orange-500/10 text-orange-500 flex items-center justify-center shrink-0 group-hover:bg-orange-500 group-hover:text-white transition-all shadow-xs">
-                        <Search className="w-4 h-4" />
-                      </div>
-                      <div className="text-left min-w-0">
-                        <p className="text-xs sm:text-sm font-black text-[var(--text-main)] group-hover:text-orange-500 transition-colors truncate">
-                          Cerca un piatto da aggiungere al menu...
-                        </p>
-                        <p className="text-[11px] text-[var(--text-muted)] font-medium truncate">
-                          Tocca per cercare tra Antipasti, Primi e Secondi per nome o ingrediente
-                        </p>
-                      </div>
-                    </div>
-                    <span className="px-3 py-1.5 rounded-xl bg-orange-500 text-white text-xs font-black shadow-xs shrink-0 flex items-center gap-1 group-hover:scale-105 transition-transform">
-                      <Search className="w-3 h-3" />
-                      <span>Cerca</span>
-                    </span>
+              {/* Banner Notifica Armonizzazione */}
+              {harmonizeNotice && (
+                <motion.div
+                  initial={{ opacity: 0, y: -8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="p-3.5 rounded-2xl bg-amber-500/15 border border-amber-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs"
+                >
+                  <div className="flex items-center gap-2">
+                    <AlertCircle className="w-4 h-4 text-amber-500 shrink-0" />
+                    <p className="font-bold text-[var(--text-main)]">{harmonizeNotice.message}</p>
                   </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      onClick={() => handleApplyHarmonization(harmonizeNotice.targetTheme)}
+                      className="px-3 py-1.5 rounded-xl bg-orange-500 text-white font-extrabold text-xs shadow-xs hover:bg-orange-600 transition-colors cursor-pointer"
+                    >
+                      ✨ Armonizza Menu
+                    </button>
+                    <button
+                      onClick={() => setHarmonizeNotice(null)}
+                      className="p-1 rounded-lg text-[var(--text-muted)] hover:bg-black/5 dark:hover:bg-white/5 cursor-pointer"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                </motion.div>
+              )}
 
                   {/* Box Intelligenza Chelona: Consigli di Continuazione */}
                   {continuationAdvice && (
@@ -1592,8 +1526,6 @@ export function RecipesScreen({
                       )}
                     </motion.div>
                   )}
-                </div>
-              )}
 
               {/* ── LE 3 PORTATE (ANTIPASTO, PRIMO, SECONDO) ── */}
               <div className="space-y-4">
@@ -1727,21 +1659,21 @@ export function RecipesScreen({
                         </div>
 
                         {/* Bottoni interattivi */}
-                        <div className="flex items-center justify-between pt-2 border-t border-[var(--border)] gap-2">
-                          {plannerMode === 'auto' ? (
+                        <div className="flex items-center justify-between pt-2 border-t border-[var(--border)] gap-2 flex-wrap sm:flex-nowrap">
+                          <div className="flex items-center gap-1.5">
                             <button
                               onClick={() => toggleCourseLock(key)}
-                              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                              className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                                 isLocked
                                   ? 'bg-amber-500/20 text-amber-600 border border-amber-500/40'
                                   : 'bg-[var(--surface-variant)] text-[var(--text-muted)] hover:text-[var(--text-main)]'
                               }`}
-                              title={isLocked ? "Piatto bloccato (non cambierà)" : "Blocca questo piatto per i prossimi abbinamenti"}
+                              title={isLocked ? "Piatto bloccato (non cambierà se chiedi consigli a Chelona)" : "Blocca questo piatto per i prossimi consigli di Chelona"}
                             >
                               {isLocked ? <Lock className="w-3.5 h-3.5 text-amber-500" /> : <Unlock className="w-3.5 h-3.5" />}
                               <span>{isLocked ? 'Bloccato' : 'Blocca'}</span>
                             </button>
-                          ) : (
+
                             <button
                               onClick={() => handleRemoveCourse(key)}
                               className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-[var(--text-muted)] hover:text-rose-500 hover:bg-rose-500/10 text-xs font-bold transition-colors cursor-pointer"
@@ -1750,23 +1682,21 @@ export function RecipesScreen({
                               <Trash2 className="w-3.5 h-3.5" />
                               <span>Rimuovi</span>
                             </button>
-                          )}
+                          </div>
 
                           <div className="flex items-center gap-2">
-                            {plannerMode === 'custom' && (
-                              <button
-                                onClick={() => {
-                                  setCustomSearchCourseFilter(courseLabel);
-                                  setCustomDishSearchQuery('');
-                                  setIsCustomDishSearchOpen(true);
-                                }}
-                                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-orange-500/10 hover:bg-orange-500 text-orange-600 dark:text-orange-400 hover:text-white text-xs font-bold transition-colors cursor-pointer"
-                                title={`Cerca un piatto per ${title}`}
-                              >
-                                <Search className="w-3.5 h-3.5" />
-                                <span>Cerca</span>
-                              </button>
-                            )}
+                            <button
+                              onClick={() => {
+                                setCustomSearchCourseFilter(courseLabel);
+                                setCustomDishSearchQuery('');
+                                setIsCustomDishSearchOpen(true);
+                              }}
+                              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-orange-500/10 hover:bg-orange-500 text-orange-600 dark:text-orange-400 hover:text-white text-xs font-bold transition-colors cursor-pointer"
+                              title={`Cerca un piatto per ${title}`}
+                            >
+                              <Search className="w-3.5 h-3.5" />
+                              <span>Cerca</span>
+                            </button>
 
                             <button
                               onClick={() => {
@@ -1939,9 +1869,6 @@ export function RecipesScreen({
                       dish.title.toLowerCase().includes(q) ||
                       (dish.ingredients && dish.ingredients.some(ing => ing.toLowerCase().includes(q)))
                     );
-                  } else if (plannerMode === 'auto' && swapThemeFilter === 'all') {
-                    // In modalità auto senza query, privilegia il tema del menu
-                    dishes = getAlternativeDishes(allMeals, activeCourseSwapModal, currentMenu.theme);
                   }
 
                   // Ordina: metti piatti coordinati col menu corrente in cima
