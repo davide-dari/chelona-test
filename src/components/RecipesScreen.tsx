@@ -66,6 +66,13 @@ export function RecipesScreen({
   // Planner mode: 'auto' (Chelona consiglia) o 'custom' (Componi tu)
   const [plannerMode, setPlannerMode] = useState<'auto' | 'custom'>('auto');
 
+  // Ricerca piatti per modalità Componi Tu
+  const [isCustomDishSearchOpen, setIsCustomDishSearchOpen] = useState(false);
+  const [customDishSearchQuery, setCustomDishSearchQuery] = useState('');
+  const [customSearchCourseFilter, setCustomSearchCourseFilter] = useState<'all' | 'Antipasti' | 'Primi' | 'Secondi'>('all');
+  const [customSearchThemeFilter, setCustomSearchThemeFilter] = useState<'all' | 'pesce' | 'carne' | 'vegetariano'>('all');
+  const [swapThemeFilter, setSwapThemeFilter] = useState<'all' | 'pesce' | 'carne' | 'vegetariano'>('all');
+
   // Saved & Shared Menus state
   const [savedMenus, setSavedMenus] = useState<SavedMenu[]>(loadSavedMenus);
   const [isSavedMenusOpen, setIsSavedMenusOpen] = useState(false);
@@ -203,6 +210,10 @@ export function RecipesScreen({
       setShowShoppingReviewModal(false);
       return;
     }
+    if (isCustomDishSearchOpen) {
+      setIsCustomDishSearchOpen(false);
+      return;
+    }
     if (activeCourseSwapModal) {
       setActiveCourseSwapModal(null);
       return;
@@ -237,7 +248,8 @@ export function RecipesScreen({
     isScanningMenuQr,
     showImportCodeModal,
     showShareMenuModal,
-    showShoppingReviewModal, 
+    showShoppingReviewModal,
+    isCustomDishSearchOpen,
     activeCourseSwapModal, 
     selectedMeal, 
     isMenuPlannerOpen, 
@@ -424,6 +436,7 @@ export function RecipesScreen({
 
     setCurrentMenu(updatedMenu);
     setActiveCourseSwapModal(null);
+    setIsCustomDishSearchOpen(false);
     setMenuAddedToCart(false);
   };
 
@@ -431,6 +444,21 @@ export function RecipesScreen({
   const handleSelectSuggestedDish = (courseKey: 'antipasto' | 'primo' | 'secondo', dish: RecipeItem) => {
     const courseLabel = courseKey === 'antipasto' ? 'Antipasti' : courseKey === 'primo' ? 'Primi' : 'Secondi';
     handleSelectAlternativeDish(courseLabel, dish);
+  };
+
+  // Seleziona un piatto dalla ricerca globale Componi Tu
+  const handleSelectDishFromCustomSearch = (dish: RecipeItem, targetCourse?: 'Antipasti' | 'Primi' | 'Secondi') => {
+    let course: 'Antipasti' | 'Primi' | 'Secondi' = 'Primi';
+    if (targetCourse) {
+      course = targetCourse;
+    } else if (customSearchCourseFilter !== 'all') {
+      course = customSearchCourseFilter;
+    } else if (dish.category === 'Antipasti' || dish.category === 'Secondi') {
+      course = dish.category as 'Antipasti' | 'Secondi';
+    } else {
+      course = 'Primi';
+    }
+    handleSelectAlternativeDish(course, dish);
   };
 
   // Rimuovi piatto da una portata
@@ -1333,7 +1361,20 @@ export function RecipesScreen({
                       </button>
                     </div>
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap justify-end">
+                      <button
+                        onClick={() => {
+                          setCustomSearchCourseFilter('all');
+                          setCustomDishSearchQuery('');
+                          setIsCustomDishSearchOpen(true);
+                        }}
+                        className="px-3.5 py-1.5 rounded-xl bg-orange-500 hover:bg-orange-600 text-white text-xs font-black shadow-xs flex items-center gap-1.5 cursor-pointer transition-all active:scale-95"
+                        title="Cerca piatti nella raccolta da aggiungere al menu"
+                      >
+                        <Search className="w-3.5 h-3.5" />
+                        <span>Cerca Piatti</span>
+                      </button>
+
                       <button
                         onClick={() => {
                           setCurrentMenu({
@@ -1354,13 +1395,41 @@ export function RecipesScreen({
                       {(!currentMenu.antipasto || !currentMenu.primo || !currentMenu.secondo) && (
                         <button
                           onClick={handleAutoCompleteMenu}
-                          className="px-3.5 py-1.5 rounded-xl bg-orange-500 hover:bg-orange-600 text-white text-xs font-black shadow-xs flex items-center gap-1.5 cursor-pointer transition-all active:scale-95"
+                          className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white text-xs font-black shadow-xs flex items-center gap-1.5 cursor-pointer transition-all active:scale-95"
                         >
                           <Sparkles className="w-3.5 h-3.5" />
                           <span>Completa per Me</span>
                         </button>
                       )}
                     </div>
+                  </div>
+
+                  {/* Barra Rapida Cerca Piatti per Componi Tu */}
+                  <div
+                    onClick={() => {
+                      setCustomSearchCourseFilter('all');
+                      setCustomDishSearchQuery('');
+                      setIsCustomDishSearchOpen(true);
+                    }}
+                    className="p-3.5 sm:p-4 rounded-3xl bg-[var(--card-bg)] border border-[var(--border)] hover:border-orange-500/50 shadow-xs flex items-center justify-between gap-3 cursor-pointer transition-all group"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-9 h-9 rounded-2xl bg-orange-500/10 text-orange-500 flex items-center justify-center shrink-0 group-hover:bg-orange-500 group-hover:text-white transition-all shadow-xs">
+                        <Search className="w-4 h-4" />
+                      </div>
+                      <div className="text-left min-w-0">
+                        <p className="text-xs sm:text-sm font-black text-[var(--text-main)] group-hover:text-orange-500 transition-colors truncate">
+                          Cerca un piatto da aggiungere al menu...
+                        </p>
+                        <p className="text-[11px] text-[var(--text-muted)] font-medium truncate">
+                          Tocca per cercare tra Antipasti, Primi e Secondi per nome o ingrediente
+                        </p>
+                      </div>
+                    </div>
+                    <span className="px-3 py-1.5 rounded-xl bg-orange-500 text-white text-xs font-black shadow-xs shrink-0 flex items-center gap-1 group-hover:scale-105 transition-transform">
+                      <Search className="w-3 h-3" />
+                      <span>Cerca</span>
+                    </span>
                   </div>
 
                   {/* Box Intelligenza Chelona: Consigli di Continuazione */}
@@ -1564,28 +1633,44 @@ export function RecipesScreen({
                         onClick={() => {
                           setActiveCourseSwapModal(courseLabel);
                           setSwapSearchQuery('');
+                          setSwapThemeFilter('all');
                         }}
                         className="p-5 sm:p-6 rounded-3xl border-2 border-dashed border-[var(--border)] hover:border-orange-500/60 bg-[var(--card-bg)]/50 hover:bg-orange-500/5 flex items-center justify-between gap-4 cursor-pointer transition-all group"
                       >
-                        <div className="flex items-center gap-3.5">
+                        <div className="flex items-center gap-3.5 min-w-0">
                           <div className="w-14 h-14 rounded-2xl bg-[var(--surface-variant)] text-2xl flex items-center justify-center group-hover:scale-105 transition-transform shrink-0">
                             {emoji}
                           </div>
-                          <div>
+                          <div className="min-w-0">
                             <span className="text-[10px] font-black uppercase tracking-wider text-[var(--text-muted)]">
                               {title}
                             </span>
-                            <h4 className="text-sm sm:text-base font-black text-[var(--text-main)] group-hover:text-orange-500 transition-colors">
+                            <h4 className="text-sm sm:text-base font-black text-[var(--text-main)] group-hover:text-orange-500 transition-colors truncate">
                               + Seleziona {title}
                             </h4>
-                            <p className="text-[11px] text-[var(--text-muted)] font-medium">
-                              Tocca per scegliere dalla raccolta ricette
+                            <p className="text-[11px] text-[var(--text-muted)] font-medium truncate">
+                              Tocca per cercare o scegliere dalla raccolta
                             </p>
                           </div>
                         </div>
 
-                        <div className="px-3.5 py-1.5 rounded-xl bg-orange-500 text-white font-extrabold text-xs shadow-xs group-hover:scale-105 transition-transform shrink-0">
-                          Scegli
+                        <div className="flex items-center gap-2 shrink-0">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setCustomSearchCourseFilter(courseLabel);
+                              setCustomDishSearchQuery('');
+                              setIsCustomDishSearchOpen(true);
+                            }}
+                            className="px-3.5 py-1.5 rounded-xl bg-orange-500/10 hover:bg-orange-500 text-orange-600 dark:text-orange-400 hover:text-white font-extrabold text-xs transition-all flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95"
+                          >
+                            <Search className="w-3.5 h-3.5" />
+                            <span>Cerca</span>
+                          </button>
+                          <div className="px-3.5 py-1.5 rounded-xl bg-orange-500 text-white font-extrabold text-xs shadow-xs group-hover:scale-105 transition-transform">
+                            Scegli
+                          </div>
                         </div>
                       </motion.div>
                     );
@@ -1668,10 +1753,26 @@ export function RecipesScreen({
                           )}
 
                           <div className="flex items-center gap-2">
+                            {plannerMode === 'custom' && (
+                              <button
+                                onClick={() => {
+                                  setCustomSearchCourseFilter(courseLabel);
+                                  setCustomDishSearchQuery('');
+                                  setIsCustomDishSearchOpen(true);
+                                }}
+                                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-orange-500/10 hover:bg-orange-500 text-orange-600 dark:text-orange-400 hover:text-white text-xs font-bold transition-colors cursor-pointer"
+                                title={`Cerca un piatto per ${title}`}
+                              >
+                                <Search className="w-3.5 h-3.5" />
+                                <span>Cerca</span>
+                              </button>
+                            )}
+
                             <button
                               onClick={() => {
                                 setActiveCourseSwapModal(courseLabel);
                                 setSwapSearchQuery('');
+                                setSwapThemeFilter('all');
                               }}
                               className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-[var(--surface-variant)] hover:bg-orange-500/15 text-[var(--text-main)] hover:text-orange-500 text-xs font-bold transition-colors cursor-pointer"
                             >
@@ -1779,37 +1880,99 @@ export function RecipesScreen({
               </div>
 
               {/* Ricerca interna piatti alternativi */}
-              <div className="px-5 pt-3">
+              <div className="px-5 pt-3 space-y-2">
                 <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-muted)]" />
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-orange-500" />
                   <input
                     type="text"
-                    placeholder="Cerca piatto alternativo..."
+                    placeholder={`Cerca ${activeCourseSwapModal === 'Antipasti' ? 'antipasto' : activeCourseSwapModal === 'Primi' ? 'primo piatto' : 'secondo piatto'} per nome o ingrediente...`}
                     value={swapSearchQuery}
                     onChange={(e) => setSwapSearchQuery(e.target.value)}
-                    className="w-full bg-[var(--surface-variant)] border border-[var(--border)] rounded-xl py-2 pl-9 pr-3 text-xs text-[var(--text-main)] outline-none"
+                    className="w-full bg-[var(--surface-variant)] border border-[var(--border)] focus:border-orange-500 rounded-xl py-2 pl-9 pr-8 text-xs text-[var(--text-main)] outline-none transition-colors"
                   />
+                  {swapSearchQuery && (
+                    <button
+                      onClick={() => setSwapSearchQuery('')}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-[var(--text-muted)] hover:text-[var(--text-main)] cursor-pointer"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+
+                {/* Filtro Tema rapido */}
+                <div className="flex items-center gap-1.5 overflow-x-auto pb-1 custom-scrollbar text-xs">
+                  <span className="text-[10px] font-black uppercase text-[var(--text-muted)] mr-1 shrink-0">Filtra tema:</span>
+                  {[
+                    { key: 'all' as const, label: 'Tutti' },
+                    { key: 'pesce' as const, label: '🐟 Pesce' },
+                    { key: 'carne' as const, label: '🥩 Carne' },
+                    { key: 'vegetariano' as const, label: '🥦 Veg' }
+                  ].map(tab => (
+                    <button
+                      key={tab.key}
+                      onClick={() => setSwapThemeFilter(tab.key)}
+                      className={`px-2.5 py-1 rounded-lg font-bold text-[11px] transition-all shrink-0 cursor-pointer ${
+                        swapThemeFilter === tab.key
+                          ? 'bg-orange-500 text-white shadow-xs'
+                          : 'bg-[var(--surface-variant)] text-[var(--text-muted)] hover:text-[var(--text-main)]'
+                      }`}
+                    >
+                      {tab.label}
+                    </button>
+                  ))}
                 </div>
               </div>
 
               {/* Lista piatti alternativi */}
               <div className="p-5 overflow-y-auto custom-scrollbar space-y-2.5 flex-1">
                 {(() => {
-                  const alternatives = getAlternativeDishes(
-                    allMeals,
-                    activeCourseSwapModal,
-                    currentMenu.theme
-                  ).filter(dish => !swapSearchQuery || dish.title.toLowerCase().includes(swapSearchQuery.toLowerCase()));
+                  let dishes = allMeals.filter(r => r.category === activeCourseSwapModal);
 
-                  if (alternatives.length === 0) {
+                  if (swapThemeFilter !== 'all') {
+                    dishes = dishes.filter(r => classifyRecipeTheme(r) === swapThemeFilter);
+                  }
+
+                  if (swapSearchQuery.trim()) {
+                    const q = swapSearchQuery.toLowerCase().trim();
+                    dishes = dishes.filter(dish => 
+                      dish.title.toLowerCase().includes(q) ||
+                      (dish.ingredients && dish.ingredients.some(ing => ing.toLowerCase().includes(q)))
+                    );
+                  } else if (plannerMode === 'auto' && swapThemeFilter === 'all') {
+                    // In modalità auto senza query, privilegia il tema del menu
+                    dishes = getAlternativeDishes(allMeals, activeCourseSwapModal, currentMenu.theme);
+                  }
+
+                  // Ordina: metti piatti coordinati col menu corrente in cima
+                  dishes.sort((a, b) => {
+                    const aTheme = classifyRecipeTheme(a);
+                    const bTheme = classifyRecipeTheme(b);
+                    const aHarmonious = (aTheme === currentMenu.theme || aTheme === 'vegetariano') ? 1 : 0;
+                    const bHarmonious = (bTheme === currentMenu.theme || bTheme === 'vegetariano') ? 1 : 0;
+                    return bHarmonious - aHarmonious;
+                  });
+
+                  if (dishes.length === 0) {
                     return (
-                      <div className="py-12 text-center text-[var(--text-muted)] text-sm">
-                        Nessun piatto alternativo trovato.
+                      <div className="py-12 text-center text-[var(--text-muted)] text-sm space-y-2">
+                        <p>Nessun piatto trovato con questi criteri.</p>
+                        {(swapSearchQuery || swapThemeFilter !== 'all') && (
+                          <button
+                            onClick={() => {
+                              setSwapSearchQuery('');
+                              setSwapThemeFilter('all');
+                            }}
+                            className="text-xs text-orange-500 font-bold hover:underline cursor-pointer"
+                          >
+                            Azzera filtri
+                          </button>
+                        )}
                       </div>
                     );
                   }
 
-                  return alternatives.map(dish => {
+                  return dishes.map(dish => {
                     const dishTheme = classifyRecipeTheme(dish);
                     const isHarmonious = dishTheme === currentMenu.theme || dishTheme === 'vegetariano';
 
@@ -1853,6 +2016,300 @@ export function RecipesScreen({
                       </div>
                     );
                   });
+                })()}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ═══════════════════════════════════════════════════════════════════
+          DRAWER / MODAL: CERCA PIATTI PER COMPONI TU (RICERCA GLOBALE)
+          ═══════════════════════════════════════════════════════════════════ */}
+      <AnimatePresence>
+        {isCustomDishSearchOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[135] bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4"
+            onClick={() => setIsCustomDishSearchOpen(false)}
+          >
+            <motion.div
+              initial={{ y: '100%' }}
+              animate={{ y: 0 }}
+              exit={{ y: '100%' }}
+              transition={{ type: 'spring', damping: 25, stiffness: 250 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-2xl bg-[var(--card-bg)] border border-[var(--border)] rounded-t-[2.5rem] sm:rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
+            >
+              {/* Header Modale Ricerca */}
+              <div className="p-5 border-b border-[var(--border)] flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-orange-500/10 text-orange-500 flex items-center justify-center font-bold">
+                    <Search className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-base sm:text-lg font-black text-[var(--text-main)] flex items-center gap-2">
+                      <span>Cerca Piatti per il Menu</span>
+                    </h3>
+                    <p className="text-xs text-[var(--text-muted)] font-medium">
+                      Trova una ricetta e inseriscila nel tuo menu personalizzato
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setIsCustomDishSearchOpen(false)}
+                  className="p-2 rounded-full hover:bg-[var(--surface-variant)] text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Barra di Ricerca con Input e Reset */}
+              <div className="p-4 sm:p-5 pb-2 space-y-3 border-b border-[var(--border)]/60 bg-[var(--card-bg)]">
+                <div className="relative">
+                  <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-orange-500" />
+                  <input
+                    type="text"
+                    autoFocus
+                    placeholder="Cerca per nome ricetta o ingrediente (es. Carbonara, Salmone, Tagliata)..."
+                    value={customDishSearchQuery}
+                    onChange={(e) => setCustomDishSearchQuery(e.target.value)}
+                    className="w-full bg-[var(--surface-variant)] border border-[var(--border)] focus:border-orange-500 rounded-2xl py-3 pl-10 pr-10 text-xs sm:text-sm text-[var(--text-main)] placeholder:text-[var(--text-muted)] outline-none transition-all shadow-xs"
+                  />
+                  {customDishSearchQuery && (
+                    <button
+                      onClick={() => setCustomDishSearchQuery('')}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-full hover:bg-[var(--card-bg)] text-[var(--text-muted)] cursor-pointer"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+
+                {/* Filtri Portata */}
+                <div className="flex items-center gap-1.5 overflow-x-auto pb-1 custom-scrollbar text-xs">
+                  <span className="text-[10px] font-black uppercase text-[var(--text-muted)] mr-1 shrink-0">Portata:</span>
+                  {[
+                    { key: 'all' as const, label: 'Tutte' },
+                    { key: 'Antipasti' as const, label: '🥗 Antipasti' },
+                    { key: 'Primi' as const, label: '🍝 Primi' },
+                    { key: 'Secondi' as const, label: '🥩 Secondi' }
+                  ].map(tab => (
+                    <button
+                      key={tab.key}
+                      onClick={() => setCustomSearchCourseFilter(tab.key)}
+                      className={`px-3 py-1.5 rounded-xl font-extrabold text-xs transition-all shrink-0 cursor-pointer ${
+                        customSearchCourseFilter === tab.key
+                          ? 'bg-orange-500 text-white shadow-xs'
+                          : 'bg-[var(--surface-variant)] text-[var(--text-muted)] hover:text-[var(--text-main)]'
+                      }`}
+                    >
+                      {tab.label}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Filtri Tema (Carne / Pesce / Veg) */}
+                <div className="flex items-center gap-1.5 overflow-x-auto pb-1 custom-scrollbar text-xs">
+                  <span className="text-[10px] font-black uppercase text-[var(--text-muted)] mr-1 shrink-0">Tema:</span>
+                  {[
+                    { key: 'all' as const, label: 'Tutti i temi' },
+                    { key: 'pesce' as const, label: '🐟 Pesce' },
+                    { key: 'carne' as const, label: '🥩 Carne' },
+                    { key: 'vegetariano' as const, label: '🥦 Veg' }
+                  ].map(tab => (
+                    <button
+                      key={tab.key}
+                      onClick={() => setCustomSearchThemeFilter(tab.key)}
+                      className={`px-2.5 py-1 rounded-lg font-bold text-[11px] transition-all shrink-0 cursor-pointer ${
+                        customSearchThemeFilter === tab.key
+                          ? 'bg-[var(--text-main)] text-[var(--card-bg)] shadow-xs'
+                          : 'bg-[var(--surface-variant)] text-[var(--text-muted)] hover:text-[var(--text-main)]'
+                      }`}
+                    >
+                      {tab.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Risultati della Ricerca */}
+              <div className="p-4 sm:p-5 overflow-y-auto custom-scrollbar space-y-3 flex-1">
+                {(() => {
+                  let results = allMeals.filter(m => ['Antipasti', 'Primi', 'Secondi'].includes(m.category));
+
+                  if (customSearchCourseFilter !== 'all') {
+                    results = results.filter(m => m.category === customSearchCourseFilter);
+                  }
+
+                  if (customSearchThemeFilter !== 'all') {
+                    results = results.filter(m => classifyRecipeTheme(m) === customSearchThemeFilter);
+                  }
+
+                  if (customDishSearchQuery.trim()) {
+                    const q = customDishSearchQuery.toLowerCase().trim();
+                    results = results.filter(m => 
+                      m.title.toLowerCase().includes(q) ||
+                      (m.ingredients && m.ingredients.some(ing => ing.toLowerCase().includes(q)))
+                    );
+                  }
+
+                  // Ordina: se combacia col tema attuale, metti prima
+                  results.sort((a, b) => {
+                    const aTheme = classifyRecipeTheme(a);
+                    const bTheme = classifyRecipeTheme(b);
+                    const aHarmonious = (currentMenu && (aTheme === currentMenu.theme || aTheme === 'vegetariano')) ? 1 : 0;
+                    const bHarmonious = (currentMenu && (bTheme === currentMenu.theme || bTheme === 'vegetariano')) ? 1 : 0;
+                    return bHarmonious - aHarmonious;
+                  });
+
+                  if (results.length === 0) {
+                    return (
+                      <div className="py-16 text-center space-y-3">
+                        <div className="w-12 h-12 rounded-full bg-orange-500/10 text-orange-500 mx-auto flex items-center justify-center text-xl">
+                          🍽️
+                        </div>
+                        <h4 className="text-sm font-bold text-[var(--text-main)]">Nessun piatto trovato</h4>
+                        <p className="text-xs text-[var(--text-muted)] max-w-xs mx-auto">
+                          Prova a cercare con altri termini o azzera i filtri di portata e tema.
+                        </p>
+                        {(customDishSearchQuery || customSearchCourseFilter !== 'all' || customSearchThemeFilter !== 'all') && (
+                          <button
+                            onClick={() => {
+                              setCustomDishSearchQuery('');
+                              setCustomSearchCourseFilter('all');
+                              setCustomSearchThemeFilter('all');
+                            }}
+                            className="px-3.5 py-1.5 rounded-xl bg-orange-500 text-white font-bold text-xs cursor-pointer shadow-xs hover:bg-orange-600 transition-colors"
+                          >
+                            Azzera tutti i filtri
+                          </button>
+                        )}
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div className="grid grid-cols-1 gap-2.5">
+                      {results.map(dish => {
+                        const dishTheme = classifyRecipeTheme(dish);
+                        const isHarmonious = currentMenu && (dishTheme === currentMenu.theme || dishTheme === 'vegetariano');
+                        
+                        // Determina se il piatto è già presente in una portata
+                        const isInMenu = currentMenu && (
+                          currentMenu.antipasto?.id === dish.id ||
+                          currentMenu.primo?.id === dish.id ||
+                          currentMenu.secondo?.id === dish.id
+                        );
+
+                        // Determina quale portata target è naturale per questo piatto
+                        const defaultCourse: 'Antipasti' | 'Primi' | 'Secondi' = 
+                          customSearchCourseFilter !== 'all' 
+                            ? customSearchCourseFilter 
+                            : dish.category === 'Antipasti' ? 'Antipasti' 
+                            : dish.category === 'Secondi' ? 'Secondi' 
+                            : 'Primi';
+
+                        const currentSlotDish = currentMenu ? (
+                          defaultCourse === 'Antipasti' ? currentMenu.antipasto :
+                          defaultCourse === 'Primi' ? currentMenu.primo : currentMenu.secondo
+                        ) : null;
+
+                        const isReplacing = !!currentSlotDish && currentSlotDish.id !== dish.id;
+
+                        return (
+                          <div
+                            key={dish.id}
+                            className={`p-3 rounded-2xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+                              isInMenu 
+                                ? 'border-emerald-500/40 bg-emerald-500/5' 
+                                : 'border-[var(--border)] hover:border-orange-500/60 bg-[var(--card-bg)] shadow-xs'
+                            }`}
+                          >
+                            <div className="flex items-center gap-3 min-w-0">
+                              <img
+                                src={dish.image}
+                                alt={dish.title}
+                                className="w-14 h-14 rounded-xl object-cover shrink-0 bg-[var(--surface-variant)]"
+                              />
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-center gap-1.5 flex-wrap mb-1">
+                                  <span className="px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider bg-[var(--surface-variant)] text-[var(--text-main)]">
+                                    {dish.category === 'Antipasti' ? '🥗 Antipasto' : dish.category === 'Primi' ? '🍝 Primo' : '🥩 Secondo'}
+                                  </span>
+                                  <span className={`px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider ${
+                                    dishTheme === 'pesce'
+                                      ? 'bg-cyan-500/15 text-cyan-600'
+                                      : dishTheme === 'carne'
+                                        ? 'bg-rose-500/15 text-rose-600'
+                                        : 'bg-emerald-500/15 text-emerald-600'
+                                  }`}>
+                                    {dishTheme === 'pesce' ? '🐟 Pesce' : dishTheme === 'carne' ? '🥩 Carne' : '🥦 Veg'}
+                                  </span>
+                                  {isHarmonious && (
+                                    <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 flex items-center gap-0.5">
+                                      <Sparkles className="w-3 h-3" />
+                                      <span>Coordinato</span>
+                                    </span>
+                                  )}
+                                  {isInMenu && (
+                                    <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-0.5">
+                                      <CheckCircle2 className="w-3 h-3" />
+                                      <span>Nel Menu</span>
+                                    </span>
+                                  )}
+                                </div>
+                                <h4 className="font-black text-sm text-[var(--text-main)] truncate">
+                                  {dish.title}
+                                </h4>
+                                <p className="text-[11px] text-[var(--text-muted)] truncate">
+                                  {dish.ingredients ? `${dish.ingredients.length} ingredienti` : ''}
+                                </p>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
+                              <button
+                                onClick={() => setSelectedMeal(dish)}
+                                className="p-2 rounded-xl bg-[var(--surface-variant)] hover:bg-orange-500/15 text-[var(--text-muted)] hover:text-orange-500 transition-colors cursor-pointer"
+                                title="Visualizza Ricetta"
+                              >
+                                <Eye className="w-4 h-4" />
+                              </button>
+
+                              <button
+                                onClick={() => handleSelectDishFromCustomSearch(dish, defaultCourse)}
+                                className={`px-3 py-2 rounded-xl font-black text-xs flex items-center gap-1.5 transition-all shadow-xs cursor-pointer active:scale-95 ${
+                                  isInMenu
+                                    ? 'bg-emerald-600 text-white'
+                                    : 'bg-orange-500 hover:bg-orange-600 text-white'
+                                }`}
+                              >
+                                {isInMenu ? (
+                                  <>
+                                    <Check className="w-3.5 h-3.5 stroke-[3]" />
+                                    <span>Selezionato</span>
+                                  </>
+                                ) : isReplacing ? (
+                                  <>
+                                    <RefreshCw className="w-3.5 h-3.5" />
+                                    <span>Sostituisci in {defaultCourse === 'Antipasti' ? 'Antipasto' : defaultCourse === 'Primi' ? 'Primo' : 'Secondo'}</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <Plus className="w-3.5 h-3.5 stroke-[3]" />
+                                    <span>Aggiungi a {defaultCourse === 'Antipasti' ? 'Antipasto' : defaultCourse === 'Primi' ? 'Primo' : 'Secondo'}</span>
+                                  </>
+                                )}
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
                 })()}
               </div>
             </motion.div>
