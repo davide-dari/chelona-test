@@ -31,6 +31,7 @@ import { Share } from '@capacitor/share';
 import { Device } from '@capacitor/device';
 
 import { QrScanner } from './components/QrScanner';
+import { decodeMenuPayload, saveSavedMenu } from './services/menuPlannerService';
 
 // Lazy loaded components for code-splitting & download size optimization
 const DocumentScanner = React.lazy(() => import('./components/DocumentScanner').then(m => ({ default: m.DocumentScanner })));
@@ -595,7 +596,7 @@ export default function App() {
       if (editingDocumentModule) { setEditingDocumentModule(null); return; }
       if (editingGenericModule) { setEditingGenericModule(null); return; }
       if (editingFurnitureModule) { setEditingFurnitureModule(null); return; }
-      if (editingSupermarketModule) { setEditingSupermarketModule(null); return; }
+      if (editingSupermarketModule) { window.dispatchEvent(new CustomEvent('supermarket-back')); return; }
       if (editingVolantinoModule) { window.dispatchEvent(new CustomEvent('volantino-back')); return; }
       if (editingInstallmentsModule) { setEditingInstallmentsModule(null); return; }
       if (editingFitnessModule) { window.dispatchEvent(new CustomEvent('fitness-back')); return; }
@@ -1114,7 +1115,41 @@ export default function App() {
       if (rawData.startsWith('LZW:')) {
         rawData = lzw.decompress(rawData);
       }
-      let parsedData = JSON.parse(rawData);
+
+      // Gestione Menu Ricettario Condiviso (Supporta stringa Base64 CHELONA_MENU o JSON)
+      if (typeof rawData === 'string' && rawData.startsWith('CHELONA_MENU:v1:')) {
+        const decodedMenu = decodeMenuPayload(rawData);
+        if (decodedMenu) {
+          saveSavedMenu(decodedMenu);
+          showToast(`Menu "${decodedMenu.title}" importato con successo!`);
+          setIsRecipesOpen(true);
+          return;
+        }
+      }
+
+      let parsedData: any = {};
+      try {
+        parsedData = JSON.parse(rawData);
+      } catch (e) {
+        const decodedMenu = decodeMenuPayload(rawData);
+        if (decodedMenu) {
+          saveSavedMenu(decodedMenu);
+          showToast(`Menu "${decodedMenu.title}" importato con successo!`);
+          setIsRecipesOpen(true);
+          return;
+        }
+        throw e;
+      }
+
+      if (parsedData.type === 'chelona_menu' || parsedData.type === 'chelona_shared_menu') {
+        const decodedMenu = decodeMenuPayload(JSON.stringify(parsedData));
+        if (decodedMenu) {
+          saveSavedMenu(decodedMenu);
+          showToast(`Menu "${decodedMenu.title}" importato con successo!`);
+          setIsRecipesOpen(true);
+          return;
+        }
+      }
       
       // Normalize Shorthand format to Full format
       // t -> type, d -> data, a -> isAutodestruct, e -> qrExpiresAt, p -> profile, v -> version

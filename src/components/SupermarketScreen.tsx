@@ -5,7 +5,7 @@ import {
   ArrowLeft, Plus, Trash2, CheckCircle2, Refrigerator,
   Apple, Milk, Drumstick, Croissant, PackageCheck, GlassWater, SprayCan,
   ShowerHead, ShoppingBasket, Share2, Search, AlertTriangle, X, Scale,
-  Snowflake, Package, Store
+  Snowflake, Package, Store, Info
 } from 'lucide-react';
 import { generateUUID } from '../utils/uuid';
 import {
@@ -13,6 +13,7 @@ import {
   PRODUCT_CATEGORY_LABEL, normalizeProduct
 } from '../data/supermarketProducts';
 import { findOffersForName } from '../data/offerStats';
+import { IngredientModal } from './IngredientModal';
 
 
 
@@ -190,8 +191,26 @@ export const SupermarketScreen = ({ module, onSave, onClose, onShare }: Supermar
   const [dupeMsg, setDupeMsg] = useState<string | null>(null);
   const [catFilter, setCatFilter] = useState<SupermarketCategory | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [previewIngredient, setPreviewIngredient] = useState<{ name: string; amount?: number; unit?: string } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const qtyRef = useRef<HTMLInputElement>(null);
+
+  /* Gestione tasto back / gesture swipe di sistema da App.tsx */
+  useEffect(() => {
+    const onSupermarketBack = () => {
+      if (previewIngredient) {
+        setPreviewIngredient(null);
+        return;
+      }
+      if (showDeleteConfirm) {
+        setShowDeleteConfirm(false);
+        return;
+      }
+      onClose();
+    };
+    window.addEventListener('supermarket-back', onSupermarketBack);
+    return () => window.removeEventListener('supermarket-back', onSupermarketBack);
+  }, [previewIngredient, showDeleteConfirm, onClose]);
 
   /* Dati volantini: fallback sul bundle, poi aggiornati dal servizio live */
   
@@ -792,10 +811,29 @@ export const SupermarketScreen = ({ module, onSave, onClose, onShare }: Supermar
                                 <CheckCircle2 className="w-3.5 h-3.5" />
                               </button>
                               {/* Emoji */}
-                              <ProductThumb name={item.name} size={36} />
+                              <button
+                                type="button"
+                                onClick={() => setPreviewIngredient({ name: item.name })}
+                                className="cursor-pointer hover:scale-105 active:scale-95 transition-transform shrink-0"
+                                title="Visualizza informazioni alimento"
+                              >
+                                <ProductThumb name={item.name} size={36} />
+                              </button>
                               {/* Name + Qty */}
                               <div className="flex-1 min-w-0">
-                                <p className={`font-bold text-sm text-[var(--text-main)] truncate ${item.checked ? 'line-through' : ''}`}>{item.name}</p>
+                                <button
+                                  type="button"
+                                  onClick={() => setPreviewIngredient({ name: item.name })}
+                                  className="text-left group/name flex items-center gap-1.5 max-w-full cursor-pointer"
+                                  title="Visualizza scheda alimento Wikipedia"
+                                >
+                                  <p className={`font-bold text-sm text-[var(--text-main)] truncate group-hover/name:text-emerald-500 transition-colors ${item.checked ? 'line-through' : ''}`}>
+                                    {item.name}
+                                  </p>
+                                  <span className="p-0.5 rounded-full text-[var(--text-muted)] group-hover/name:text-emerald-500 opacity-60 group-hover/name:opacity-100 transition-all shrink-0">
+                                    <Info className="w-3.5 h-3.5" />
+                                  </span>
+                                </button>
                                 {item.quantity && <p className="text-[11px] text-[var(--text-muted)] font-medium">{item.quantity}</p>}
                                 {/* Dove costa meno — offre dai volantini */}
                                 {bestOffers.get(item.id) && (
@@ -872,6 +910,12 @@ export const SupermarketScreen = ({ module, onSave, onClose, onShare }: Supermar
           </div>
         </div>
       </div>
+
+      {/* Modale Wikipedia / Scheda Enciclopedica Alimento */}
+      <IngredientModal
+        ingredient={previewIngredient}
+        onClose={() => setPreviewIngredient(null)}
+      />
     </motion.div>
   );
 };

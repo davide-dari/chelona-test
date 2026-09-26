@@ -228,3 +228,263 @@ export function generateHarmoniousMenu(
     wineAdvice: adviceMeta.wine
   };
 }
+
+export interface SavedMenu {
+  id: string;
+  title: string;
+  mealType: MealType;
+  theme: 'carne' | 'pesce' | 'vegetariano';
+  antipasto: RecipeItem | null;
+  primo: RecipeItem | null;
+  secondo: RecipeItem | null;
+  chefAdvice?: string;
+  wineAdvice?: string;
+  createdAt: string;
+  authorName?: string;
+  isShared?: boolean;
+}
+
+export interface MenuContinuationAdvice {
+  detectedTheme: 'carne' | 'pesce' | 'vegetariano';
+  reasoning: string;
+  chefTip: string;
+  wineTip: string;
+  suggestedAntipasti: RecipeItem[];
+  suggestedPrimi: RecipeItem[];
+  suggestedSecondi: RecipeItem[];
+  hasThemeConflict: boolean;
+  conflictMessage?: string;
+}
+
+/** Calcola i consigli di continuazione del menu in base ai piatti selezionati dall'utente */
+export function getMenuContinuation(
+  recipes: RecipeItem[],
+  currentSelections: {
+    antipasto?: RecipeItem | null;
+    primo?: RecipeItem | null;
+    secondo?: RecipeItem | null;
+  },
+  mealType: MealType = 'cena'
+): MenuContinuationAdvice {
+  const { antipasto, primo, secondo } = currentSelections;
+  const selectedList = [antipasto, primo, secondo].filter(Boolean) as RecipeItem[];
+  const selectedIds = new Set(selectedList.map(r => r.id));
+
+  // Rileva temi dei piatti scelti
+  const themes = selectedList.map(r => classifyRecipeTheme(r));
+  const hasFish = themes.includes('pesce');
+  const hasMeat = themes.includes('carne');
+  const hasVeg = themes.includes('vegetariano');
+
+  let detectedTheme: 'carne' | 'pesce' | 'vegetariano' = 'pesce';
+  let hasThemeConflict = false;
+  let conflictMessage: string | undefined = undefined;
+
+  if (hasFish && hasMeat) {
+    hasThemeConflict = true;
+    conflictMessage = 'Hai abbinato portate a base di carne e pesce. Per un menu da vero chef gourmet ti consigliamo di coordinarle con un unico tema!';
+    // In caso di conflitto, dai priorità all'ultimo inserito o al primo piatto
+    if (primo) detectedTheme = classifyRecipeTheme(primo);
+    else if (secondo) detectedTheme = classifyRecipeTheme(secondo);
+    else detectedTheme = 'pesce';
+  } else if (hasFish) {
+    detectedTheme = 'pesce';
+  } else if (hasMeat) {
+    detectedTheme = 'carne';
+  } else if (hasVeg) {
+    detectedTheme = 'vegetariano';
+  } else {
+    // Nessun piatto ancora scelto
+    detectedTheme = 'pesce';
+  }
+
+  // Costruisci ragionamento e suggerimenti personalizzati
+  let reasoning = '';
+  let chefTip = '';
+  const wineTip = CHEF_ADVICES[detectedTheme][mealType].wine;
+
+  if (selectedList.length === 0) {
+    reasoning = 'Seleziona un piatto qualsiasi per iniziare: Chelona analizzerà profumi e consistenze per consigliarti la continuazione ideale del tuo pasto.';
+    chefTip = 'Scegli prima il piatto che hai più voglia di cucinare: che sia un primo saporito o un secondo sfizioso!';
+  } else if (selectedList.length === 1) {
+    const mainDish = selectedList[0];
+    const dishCourse = mainDish.category;
+    const themeName = detectedTheme === 'pesce' ? 'Pesce 🐟' : detectedTheme === 'carne' ? 'Carne 🥩' : 'Vegetariano 🥦';
+    reasoning = `Hai scelto "${mainDish.title}" come ${dishCourse} (${themeName}). Chelona ha selezionato le portate coordinate per completare il menu con sapori bilanciati.`;
+    chefTip = CHEF_ADVICES[detectedTheme][mealType].advice;
+  } else if (selectedList.length === 2) {
+    reasoning = `Ottima combinazione a tema ${detectedTheme}! Manca solo una portata per concludere il tuo menu in perfetta armonia.`;
+    chefTip = 'Un tocco finale: aggiungi l\'ultima portata coordinata o lascia che Chelona completi il menu.';
+  } else {
+    reasoning = `Il tuo menu a tema ${detectedTheme} è completo e bilanciato, pronto per essere cucinato o aggiunto alla spesa!`;
+    chefTip = CHEF_ADVICES[detectedTheme][mealType].advice;
+  }
+
+  // Seleziona i piatti consigliati per ogni portata, escludendo quelli già scelti
+  const suggestedAntipasti = getAlternativeDishes(recipes, 'Antipasti', detectedTheme)
+    .filter(r => !selectedIds.has(r.id))
+    .slice(0, 5);
+
+  const suggestedPrimi = getAlternativeDishes(recipes, 'Primi', detectedTheme)
+    .filter(r => !selectedIds.has(r.id))
+    .slice(0, 5);
+
+  const suggestedSecondi = getAlternativeDishes(recipes, 'Secondi', detectedTheme)
+    .filter(r => !selectedIds.has(r.id))
+    .slice(0, 5);
+
+  return {
+    detectedTheme,
+    reasoning,
+    chefTip,
+    wineTip,
+    suggestedAntipasti,
+    suggestedPrimi,
+    suggestedSecondi,
+    hasThemeConflict,
+    conflictMessage
+  };
+}
+
+export const SAVED_MENUS_STORAGE_KEY = 'chelona_saved_menus';
+
+/** Carica tutti i menu salvati / condivisi da localStorage */
+export function loadSavedMenus(): SavedMenu[] {
+  try {
+    const raw = localStorage.getItem(SAVED_MENUS_STORAGE_KEY);
+    if (!raw) return [];
+    return JSON.parse(raw);
+  } catch (e) {
+    console.error('Error loading saved menus:', e);
+    return [];
+  }
+}
+
+/** Salva un menu nell'elenco locale */
+export function saveSavedMenu(menu: SavedMenu): SavedMenu[] {
+  try {
+    const current = loadSavedMenus();
+    const filtered = current.filter(m => m.id !== menu.id);
+    const updated = [menu, ...filtered];
+    localStorage.setItem(SAVED_MENUS_STORAGE_KEY, JSON.stringify(updated));
+    window.dispatchEvent(new CustomEvent('chelona_saved_menus_updated', { detail: menu }));
+    return updated;
+  } catch (e) {
+    console.error('Error saving menu:', e);
+    return loadSavedMenus();
+  }
+}
+
+/** Elimina un menu salvato */
+export function deleteSavedMenu(id: string): SavedMenu[] {
+  try {
+    const current = loadSavedMenus();
+    const updated = current.filter(m => m.id !== id);
+    localStorage.setItem(SAVED_MENUS_STORAGE_KEY, JSON.stringify(updated));
+    window.dispatchEvent(new CustomEvent('chelona_saved_menus_updated'));
+    return updated;
+  } catch (e) {
+    console.error('Error deleting menu:', e);
+    return loadSavedMenus();
+  }
+}
+
+/** Codifica un menu in stringa compatta per QR code e condivisione */
+export function encodeMenuForSharing(menu: SavedMenu | HarmoniousMenu, authorName?: string): string {
+  const title = ('title' in menu && menu.title)
+    ? menu.title
+    : `Menu ${menu.theme === 'pesce' ? 'di Pesce 🐟' : menu.theme === 'carne' ? 'di Carne 🥩' : 'Vegetariano 🥦'}`;
+
+  const payload = {
+    type: 'chelona_menu',
+    v: 1,
+    id: menu.id,
+    title,
+    mealType: menu.mealType,
+    theme: menu.theme,
+    authorName: authorName || ('authorName' in menu && menu.authorName ? menu.authorName : 'Chef Chelona'),
+    createdAt: ('createdAt' in menu && menu.createdAt) ? menu.createdAt : new Date().toISOString(),
+    chefAdvice: menu.chefAdvice,
+    wineAdvice: menu.wineAdvice,
+    antipasto: menu.antipasto ? {
+      id: menu.antipasto.id,
+      title: menu.antipasto.title,
+      image: menu.antipasto.image,
+      ingredients: menu.antipasto.ingredients
+    } : null,
+    primo: menu.primo ? {
+      id: menu.primo.id,
+      title: menu.primo.title,
+      image: menu.primo.image,
+      ingredients: menu.primo.ingredients
+    } : null,
+    secondo: menu.secondo ? {
+      id: menu.secondo.id,
+      title: menu.secondo.title,
+      image: menu.secondo.image,
+      ingredients: menu.secondo.ingredients
+    } : null
+  };
+
+  try {
+    const jsonStr = JSON.stringify(payload);
+    // Base64 unicode safe
+    const b64 = btoa(encodeURIComponent(jsonStr).replace(/%([0-9A-F]{2})/g, (_, p1) => String.fromCharCode(parseInt(p1, 16))));
+    return `CHELONA_MENU:v1:${b64}`;
+  } catch {
+    return JSON.stringify(payload);
+  }
+}
+
+/** Decodifica un payload menu da QR o stringa condivisa */
+export function decodeMenuPayload(data: string): SavedMenu | null {
+  try {
+    let jsonStr = data.trim();
+    if (jsonStr.startsWith('CHELONA_MENU:v1:')) {
+      const b64 = jsonStr.replace('CHELONA_MENU:v1:', '');
+      jsonStr = decodeURIComponent(Array.prototype.map.call(atob(b64), (c: string) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join(''));
+    }
+    const parsed = JSON.parse(jsonStr);
+    if (parsed.type === 'chelona_menu' || parsed.antipasto || parsed.primo || parsed.secondo) {
+      return {
+        id: parsed.id || `menu_${Date.now()}`,
+        title: parsed.title || 'Menu Condiviso',
+        mealType: parsed.mealType || 'cena',
+        theme: parsed.theme || 'pesce',
+        antipasto: parsed.antipasto ? {
+          id: parsed.antipasto.id || 'ant_1',
+          title: parsed.antipasto.title,
+          category: 'Antipasti',
+          image: parsed.antipasto.image || '',
+          ingredients: parsed.antipasto.ingredients || [],
+          steps: []
+        } : null,
+        primo: parsed.primo ? {
+          id: parsed.primo.id || 'pri_1',
+          title: parsed.primo.title,
+          category: 'Primi',
+          image: parsed.primo.image || '',
+          ingredients: parsed.primo.ingredients || [],
+          steps: []
+        } : null,
+        secondo: parsed.secondo ? {
+          id: parsed.secondo.id || 'sec_1',
+          title: parsed.secondo.title,
+          category: 'Secondi',
+          image: parsed.secondo.image || '',
+          ingredients: parsed.secondo.ingredients || [],
+          steps: []
+        } : null,
+        chefAdvice: parsed.chefAdvice || '',
+        wineAdvice: parsed.wineAdvice || '',
+        createdAt: parsed.createdAt || new Date().toISOString(),
+        authorName: parsed.authorName || 'Amico di Chelona',
+        isShared: true
+      };
+    }
+  } catch (e) {
+    console.error('Error decoding menu payload:', e);
+  }
+  return null;
+}
+
