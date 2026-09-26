@@ -733,12 +733,12 @@ export default function App() {
 
   const handleCheckUpdate = React.useCallback(async (silent = true) => {
     try {
-      const info = await updateService.checkForUpdates();
+      const info = await updateService.checkForUpdates(!silent);
       if (info && info.available) {
         setAvailableUpdate(info);
         return true;
       } else if (!silent) {
-        showToast('L\'applicazione è aggiornata.', 'success');
+        showToast(`L'applicazione è aggiornata (v${APP_VERSION}).`, 'success');
       }
     } catch (e) {
       if (!silent) showToast('Errore durante il controllo aggiornamenti.', 'error');
@@ -2340,7 +2340,7 @@ export default function App() {
           onOpenTools={() => setIsPublicToolsOpen(true)}
           onOpenAddressBook={() => setIsAddressBookOpen(true)}
           onImportFile={handleImportFile}
-          onCheckUpdate={() => handleCheckUpdate(true)}
+          onCheckUpdate={() => handleCheckUpdate(false)}
         />
       </div>
 

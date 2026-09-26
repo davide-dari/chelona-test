@@ -7,6 +7,7 @@ import { updateService } from '../services/updateService';
 import { notificationService } from '../services/notificationService';
 import { Module, Folder } from '../types';
 import { QRCodeSVG } from 'qrcode.react';
+import { APP_VERSION } from '../constants/version';
 import packageJson from '../../package.json';
 import JSZip from 'jszip';
 import { lzw } from '../utils/lzw';
@@ -637,16 +638,14 @@ export function ProfileScreen({
                   <button
                     onClick={async () => {
                       try {
-                        import('../services/updateService').then(async (m) => {
-                          const info = await m.updateService.checkForUpdates();
-                          if (info && info.available) {
-                            window.dispatchEvent(new CustomEvent('chelona_update_available', { detail: info }));
-                          } else {
-                            showToast('L\'app è già aggiornata!', 'info');
-                          }
-                        });
+                        const info = await updateService.checkForUpdates(true);
+                        if (info && info.available) {
+                          window.dispatchEvent(new CustomEvent('chelona_update_available', { detail: info }));
+                        } else {
+                          showToast(`L'app è già aggiornata (v${APP_VERSION})!`, 'info');
+                        }
                       } catch (e) {
-                        showToast('Errore durante il controllo', 'error');
+                        showToast('Errore durante il controllo aggiornamenti', 'error');
                       }
                     }}
                     className="flex-1 py-3 bg-[var(--accent)] text-white rounded-xl font-bold hover:bg-[var(--accent-hover)] transition-all flex items-center justify-center gap-2 shadow-md shadow-amber-600/20 text-sm"

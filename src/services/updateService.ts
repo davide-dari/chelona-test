@@ -1,12 +1,12 @@
 import { Filesystem, Directory } from '@capacitor/filesystem';
 import { ApkInstaller } from '@bixbyte/capacitor-apk-installer';
 import { CapacitorHttp, Capacitor } from '@capacitor/core';
+import { App as CapacitorApp } from '@capacitor/app';
 import { APP_VERSION } from '../constants/version';
 import { notificationService } from './notificationService';
 
 const GITHUB_OWNER = 'davide-dari';
 const GITHUB_REPO = 'chelona-test';
-const GITHUB_TOKEN = atob('Z2hwX3hMTTJvUnlneHRqY05uRXRPWWFmMGN1VEc1aFRQM21LVkQ1');
 
 export interface UpdateInfo {
   available: boolean;
@@ -20,78 +20,37 @@ export interface UpdateInfo {
 class UpdateService {
   private currentVersion = APP_VERSION;
 
-  async checkForUpdates(): Promise<UpdateInfo | null> {
+  async getCurrentVersion(): Promise<string> {
+    if (Capacitor.isNativePlatform()) {
+      try {
+        const info = await CapacitorApp.getInfo();
+        if (info && info.version) {
+          this.currentVersion = info.version;
+          return info.version;
+        }
+      } catch (e) {
+        console.warn('[UpdateService] Failed to retrieve native version info:', e);
+      }
+    }
+    this.currentVersion = APP_VERSION;
+    return APP_VERSION;
+  }
+
+  async checkForUpdates(force = false): Promise<UpdateInfo | null> {
+    await this.getCurrentVersion();
     const snoozedVersion = localStorage.getItem('chelona_update_snoozed_version');
     const snoozedUntil = parseInt(localStorage.getItem('chelona_update_snoozed_until') || '0', 10);
 
-    console.log(`[UpdateService] Checking for updates... Current version: ${this.currentVersion}`);
+    if (force) {
+      localStorage.removeItem('chelona_update_snoozed_version');
+      localStorage.removeItem('chelona_update_snoozed_until');
+    }
+
+    console.log(`[UpdateService] Checking for updates... Current version: ${this.currentVersion} (force: ${force})`);
     try {
-      const url = `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/releases?per_page=100`;
-      let response: Response;
-
-      try {
-        response = await fetch(url, {
-          cache: 'no-store',
-          headers: {
-            'Accept': 'application/vnd.github.v3+json',
-            'User-Agent': 'Chelona-App-Updater',
-            'Authorization': `Bearer ${GITHUB_TOKEN}`,
-            'Cache-Control': 'no-cache'
-          }
-        });
-      } catch (err) {
-        console.warn('[UpdateService] Primary fetch failed, falling back to public request:', err);
-        response = await fetch(url, {
-          cache: 'no-store',
-          headers: {
-            'Accept': 'application/vnd.github.v3+json',
-            'User-Agent': 'Chelona-App-Updater',
-            'Cache-Control': 'no-cache'
-          }
-        });
-      }
-
-      if (!response.ok && (response.status === 401 || response.status === 403)) {
-        console.warn(`[UpdateService] Auth returned ${response.status} — retrying unauthenticated...`);
-        response = await fetch(url, {
-          cache: 'no-store',
-          headers: {
-            'Accept': 'application/vnd.github.v3+json',
-            'User-Agent': 'Chelona-App-Updater',
-            'Cache-Control': 'no-cache'
-          }
-        });
-      }
-
-      let releases: any[] = [];
-      if (response.ok) {
-        const data = await response.json();
-        if (Array.isArray(data)) releases = data;
-        else if (data && data.tag_name) releases = [data];
-      }
-
-      if (releases.length === 0) {
-        console.warn('[UpdateService] Main endpoint returned no releases, trying releases/latest unauthenticated...');
-        try {
-          const fallbackRes = await fetch(`https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/releases/latest`, {
-            cache: 'no-store',
-            headers: {
-              'Accept': 'application/vnd.github.v3+json',
-              'User-Agent': 'Chelona-App-Updater',
-              'Cache-Control': 'no-cache'
-            }
-          });
-          if (fallbackRes.ok) {
-            const latestData = await fallbackRes.json();
-            if (latestData && latestData.tag_name) releases = [latestData];
-          }
-        } catch (e) {
-          console.error('[UpdateService] releases/latest fallback failed:', e);
-        }
-      }
-
-      if (releases.length === 0) {
-        console.error('[UpdateService] Could not fetch releases from GitHub API.');
+      const releases = await this.fetchReleases();
+      if (!releases || releases.length === 0) {
+        console.warn('[UpdateService] Could not fetch releases from GitHub API.');
         return null;
       }
 
@@ -112,27 +71,31 @@ class UpdateService {
       }
 
       if (!validRelease || !validApkAsset) {
-        console.warn('[UpdateService] No valid release with completed APK found.');
+        console.warn('[UpdateService] No valid release with uploaded APK found.');
         return null;
       }
 
-      const latestVersion = validRelease.tag_name.replace('v', '');
-      console.log(`[UpdateService] Latest valid version on GitHub: ${latestVersion}`);
+      const latestVersion = validRelease.tag_name.replace(/^v/, '').trim();
+      console.log(`[UpdateService] Latest valid version on GitHub: ${latestVersion}, Current: ${this.currentVersion}`);
 
       const comparison = this.compareVersions(latestVersion, this.currentVersion);
-      console.log(`[UpdateService] Comparison: ${comparison} (1=update available)`);
+      console.log(`[UpdateService] Comparison: ${comparison} (1 = update available)`);
 
       if (comparison > 0) {
-        if (snoozedVersion === latestVersion && Date.now() < snoozedUntil) {
+        if (!force && snoozedVersion === latestVersion && Date.now() < snoozedUntil) {
           console.log(`[UpdateService] Update ${latestVersion} snoozed until ${new Date(snoozedUntil).toISOString()}`);
           return null;
         }
 
-        console.log(`[UpdateService] Update found! APK Asset URL: ${validApkAsset.url}`);
-        
+        console.log(`[UpdateService] Update found! APK download URL: ${validApkAsset.browser_download_url}`);
+
         const lastNotified = localStorage.getItem('chelona_last_notified_update');
         if (lastNotified !== latestVersion) {
-          notificationService.fire('Aggiornamento Disponibile', `La versione ${latestVersion} di Chelona è ora disponibile!`, { route: 'update' });
+          notificationService.fire(
+            'Aggiornamento Disponibile',
+            `La versione v${latestVersion} di Chelona è ora disponibile!`,
+            { route: 'update' }
+          );
           localStorage.setItem('chelona_last_notified_update', latestVersion);
         }
 
@@ -140,7 +103,7 @@ class UpdateService {
           available: true,
           currentVersion: this.currentVersion,
           latestVersion,
-          releaseNotes: validRelease.body || '',
+          releaseNotes: validRelease.body || 'Miglioramenti generali e nuove funzionalità.',
           downloadUrl: validApkAsset.browser_download_url,
           assetApiUrl: validApkAsset.url
         };
@@ -155,6 +118,66 @@ class UpdateService {
     return null;
   }
 
+  private async fetchReleases(): Promise<any[]> {
+    const listUrl = `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/releases?per_page=10`;
+    const latestUrl = `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/releases/latest`;
+
+    // 1. Native CapacitorHttp first (completely CORS-free and robust in mobile environments)
+    if (Capacitor.isNativePlatform()) {
+      try {
+        const res = await CapacitorHttp.get({
+          url: listUrl,
+          headers: { 'Accept': 'application/vnd.github.v3+json' }
+        });
+        if (res.status === 200 && Array.isArray(res.data) && res.data.length > 0) {
+          return res.data;
+        }
+      } catch (err) {
+        console.warn('[UpdateService] CapacitorHttp list fetch failed:', err);
+      }
+
+      try {
+        const latestRes = await CapacitorHttp.get({
+          url: latestUrl,
+          headers: { 'Accept': 'application/vnd.github.v3+json' }
+        });
+        if (latestRes.status === 200 && latestRes.data && latestRes.data.tag_name) {
+          return [latestRes.data];
+        }
+      } catch (err) {
+        console.warn('[UpdateService] CapacitorHttp latest fetch failed:', err);
+      }
+    }
+
+    // 2. Standard fetch fallback (without headers that trigger CORS preflight rejection)
+    try {
+      const res = await fetch(listUrl, {
+        headers: { 'Accept': 'application/vnd.github.v3+json' }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data) && data.length > 0) return data;
+        if (data && data.tag_name) return [data];
+      }
+    } catch (err) {
+      console.warn('[UpdateService] Standard fetch list failed:', err);
+    }
+
+    try {
+      const latestRes = await fetch(latestUrl, {
+        headers: { 'Accept': 'application/vnd.github.v3+json' }
+      });
+      if (latestRes.ok) {
+        const data = await latestRes.json();
+        if (data && data.tag_name) return [data];
+      }
+    } catch (err) {
+      console.warn('[UpdateService] Standard fetch latest failed:', err);
+    }
+
+    return [];
+  }
+
   snoozeUpdate(version: string, hours = 24) {
     const until = Date.now() + hours * 3600 * 1000;
     localStorage.setItem('chelona_update_snoozed_version', version);
@@ -163,7 +186,7 @@ class UpdateService {
   }
 
   async downloadAndInstall(updateInfo: UpdateInfo, onProgress?: (p: number) => void) {
-    if (!updateInfo.downloadUrl && !updateInfo.assetApiUrl) {
+    if (!updateInfo.downloadUrl) {
       throw new Error("L'URL di download non è valido.");
     }
 
@@ -183,36 +206,13 @@ class UpdateService {
     if (onProgress) onProgress(5);
 
     const fileName = `chelona_v${updateInfo.latestVersion}.apk`;
-    const assetApiUrl = updateInfo.assetApiUrl || updateInfo.downloadUrl;
+    const actualUrl = updateInfo.downloadUrl;
 
-    console.log(`[UpdateService] Resolving download URL for: ${assetApiUrl}`);
+    console.log(`[UpdateService] Downloading APK from: ${actualUrl}`);
     if (onProgress) onProgress(10);
 
     try {
       await Filesystem.deleteFile({ path: fileName, directory: Directory.Cache }).catch(() => {});
-
-      let actualUrl = updateInfo.downloadUrl;
-
-      // Resolve redirect for private GitHub repository asset URL
-      try {
-        const headRes = await CapacitorHttp.request({
-          url: assetApiUrl,
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${GITHUB_TOKEN}`,
-            'Accept': 'application/octet-stream'
-          }
-        });
-        if (headRes.url && headRes.url !== assetApiUrl && !headRes.url.includes('api.github.com')) {
-          actualUrl = headRes.url;
-        } else if (headRes.headers?.Location || headRes.headers?.location) {
-          actualUrl = headRes.headers.Location || headRes.headers.location;
-        }
-      } catch (e) {
-        console.warn('[UpdateService] Redirect resolution failed:', e);
-      }
-
-      console.log(`[UpdateService] Downloading actual APK from: ${actualUrl}`);
 
       let progressListener: any;
       if (onProgress) {
