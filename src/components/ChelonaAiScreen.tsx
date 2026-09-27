@@ -41,9 +41,7 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
       {
         id: 'msg_welcome_' + Date.now(),
         sender: 'assistant',
-        text: mode === 'embedded' 
-          ? `Ciao ${username || ''}! Chiedimi qualsiasi cosa.`
-          : `Ciao ${username || ''}! Come posso aiutarti oggi? Conosco le tue note, i veicoli, i documenti e le spese. Puoi anche dirmi *"Ricordati che..."* per memorizzare qualsiasi cosa.`,
+        text: `Ciao ${username || ''}! Come posso aiutarti oggi? Conosco le tue note, i veicoli, i documenti e le spese. Puoi chiedermi qualsiasi cosa o dirmi *"Ricordati che..."* per salvare promemoria.`,
         timestamp: Date.now(),
       }
     ];
@@ -72,7 +70,6 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const isEmbedded = mode === 'embedded';
-  const isEmpty = messages.length === 1 && messages[0].id.startsWith('msg_welcome');
 
   // Auto-scroll in basso nella chat
   useEffect(() => {
@@ -441,47 +438,8 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
         </header>
       )}
 
-      {/* BODY CHAT O WELCOME SCREEN EMBEDDED */}
-      {isEmbedded && isEmpty ? (
-        <div className="flex-1 flex flex-col items-center justify-center px-4 py-8 w-full max-w-3xl mx-auto overflow-y-auto">
-          <motion.div 
-            animate={{ scale: [1, 1.05, 1] }} 
-            transition={{ repeat: Infinity, duration: 4, ease: "easeInOut" }}
-            className="w-20 h-20 mb-6 rounded-3xl bg-amber-500/10 border-2 border-amber-500/20 p-2 shadow-xl shadow-amber-500/10 flex items-center justify-center overflow-hidden"
-          >
-            <img src="/chelona_logo.png" alt="Chelona" className="w-full h-full object-contain" />
-          </motion.div>
-          
-          <h1 className="text-3xl font-black text-[var(--text-main)] mb-2 text-center tracking-tight">
-            Ciao, {username || 'amico'}
-          </h1>
-          <p className="text-base text-[var(--text-muted)] mb-8 text-center font-medium">
-            Come posso aiutarti oggi?
-          </p>
-
-          <div className="grid grid-cols-2 gap-3 w-full max-w-lg mt-2">
-            {[
-              { icon: '📅', title: 'Scadenze', query: 'Mostrami le scadenze imminenti' },
-              { icon: '🚗', title: 'Veicoli', query: 'Riepilogo della mia auto' },
-              { icon: '📄', title: 'Documenti', query: 'I miei documenti personali' },
-              { icon: '💰', title: 'Finanze', query: 'Come vanno le mie spese?' },
-            ].map((card, i) => (
-              <button
-                key={i}
-                onClick={() => handleSend(card.query)}
-                className="p-4 rounded-3xl bg-[var(--card-bg)] border border-[var(--border)] hover:border-amber-500/50 hover:bg-[var(--surface-variant)] transition-all flex flex-col items-center text-center gap-2 shadow-sm active:scale-95"
-              >
-                <span className="text-3xl mb-1">{card.icon}</span>
-                <div>
-                  <div className="font-bold text-[13px] text-[var(--text-main)]">{card.title}</div>
-                  <div className="text-[10px] text-[var(--text-muted)] mt-0.5 leading-tight">{card.query}</div>
-                </div>
-              </button>
-            ))}
-          </div>
-        </div>
-      ) : (
-        <main className="flex-1 overflow-y-auto px-4 lg:px-8 py-5 space-y-5 max-w-3xl w-full mx-auto custom-scrollbar">
+      {/* CHAT MESSAGES BODY */}
+      <main className="flex-1 overflow-y-auto px-4 lg:px-8 py-5 space-y-5 max-w-3xl w-full mx-auto custom-scrollbar">
           {messages.map((msg) => {
             const isUser = msg.sender === 'user';
             return (
@@ -586,23 +544,20 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
 
           <div ref={chatEndRef} />
         </main>
-      )}
 
-      {/* QUICK SUGGESTIONS DISCRETE - Nascondi nel welcome screen embedded */}
-      {(!isEmbedded || !isEmpty) && (
-        <div className="px-4 lg:px-8 py-2 max-w-3xl w-full mx-auto overflow-x-auto no-scrollbar flex items-center gap-2 shrink-0">
-          {quickPrompts.map((p, i) => (
-            <button
-              key={i}
-              onClick={() => handleSend(p.query)}
-              disabled={isProcessing}
-              className="shrink-0 px-3 py-1 rounded-full bg-[var(--card-bg)] hover:bg-[var(--surface-variant)] border border-[var(--border)] text-xs font-medium text-[var(--text-muted)] hover:text-[var(--text-main)] transition-all shadow-xs active:scale-95 disabled:opacity-50"
-            >
-              {p.label}
-            </button>
-          ))}
-        </div>
-      )}
+      {/* QUICK SUGGESTIONS DISCRETE */}
+      <div className="px-4 lg:px-8 py-2 max-w-3xl w-full mx-auto overflow-x-auto no-scrollbar flex items-center gap-2 shrink-0">
+        {quickPrompts.map((p, i) => (
+          <button
+            key={i}
+            onClick={() => handleSend(p.query)}
+            disabled={isProcessing}
+            className="shrink-0 px-3 py-1 rounded-full bg-[var(--card-bg)] hover:bg-[var(--surface-variant)] border border-[var(--border)] text-xs font-medium text-[var(--text-muted)] hover:text-[var(--text-main)] transition-all shadow-xs active:scale-95 disabled:opacity-50"
+          >
+            {p.label}
+          </button>
+        ))}
+      </div>
 
       {/* INPUT FOOTER PULITO */}
       <footer className={`p-3 lg:px-8 lg:py-4 shrink-0 safe-area-inset-bottom ${!isEmbedded ? 'border-t border-[var(--border)] bg-[var(--card-bg)]/80 backdrop-blur-xl' : 'bg-transparent'}`}>
