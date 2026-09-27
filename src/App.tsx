@@ -3675,44 +3675,47 @@ export default function App() {
               </motion.div>
             ) : (
               <div className="h-full">
-                <div className="mb-6 lg:mb-10 w-full px-4 lg:px-8">
-                  <div className="relative group max-w-2xl mx-auto">
-                    <Search className="absolute left-6 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--text-muted)] group-focus-within:text-[var(--accent)] transition-colors" />
-                    <input 
-                      type="text" 
-                      placeholder={`Cerca ${selectedType ? (TEMPLATES[selectedType as keyof typeof TEMPLATES]?.title || 'nelle tue Sandbox') : 'nelle tue Sandbox'}...`}
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="w-full pl-14 pr-14 py-4.5 bg-[var(--surface-variant)] border-transparent rounded-[var(--radius-lg)] shadow-none outline-none focus:bg-[var(--bg)] focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)] transition-all text-base lg:text-lg font-medium text-[var(--text-main)] placeholder:text-[var(--text-muted)]"
-                    />
-                    <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1">
-                      {searchQuery && (
-                        <button 
-                          onClick={() => setSearchQuery('')}
-                          className="p-2 hover:bg-[var(--bg)] rounded-full text-[var(--text-muted)] transition-all"
-                        >
-                          <X className="w-5 h-5" />
-                        </button>
-                      )}
-                      <button 
-                        onClick={handleVoiceSearch}
-                        title="Ricerca Vocale"
-                        className={`relative p-3 rounded-full transition-all ${isListening ? 'text-[var(--accent)]' : 'text-[var(--text-muted)] hover:text-[var(--accent)] hover:bg-[var(--bg)]'}`}
-                      >
-                        {isListening && (
-                          <motion.div
-                            layoutId="voice-ripple"
-                            initial={{ scale: 0.8, opacity: 0.5 }}
-                            animate={{ scale: 1.5, opacity: 0 }}
-                            transition={{ repeat: Infinity, duration: 1.5 }}
-                            className="absolute inset-0 bg-[var(--accent)] rounded-full"
-                          />
+                {/* Search Bar - Shown when filtering or browsing categories */}
+                {(selectedType || selectedFolderId || activeNavTab === 'deadlines' || searchQuery.trim()) && (
+                  <div className="mb-6 lg:mb-10 w-full px-4 lg:px-8">
+                    <div className="relative group max-w-2xl mx-auto">
+                      <Search className="absolute left-6 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--text-muted)] group-focus-within:text-[var(--accent)] transition-colors" />
+                      <input 
+                        type="text" 
+                        placeholder={`Cerca ${selectedType ? (TEMPLATES[selectedType as keyof typeof TEMPLATES]?.title || 'nelle tue Sandbox') : 'nelle tue Sandbox'}...`}
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="w-full pl-14 pr-14 py-4.5 bg-[var(--surface-variant)] border-transparent rounded-[var(--radius-lg)] shadow-none outline-none focus:bg-[var(--bg)] focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)] transition-all text-base lg:text-lg font-medium text-[var(--text-main)] placeholder:text-[var(--text-muted)]"
+                      />
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                        {searchQuery && (
+                          <button 
+                            onClick={() => setSearchQuery('')}
+                            className="p-2 hover:bg-[var(--bg)] rounded-full text-[var(--text-muted)] transition-all"
+                          >
+                            <X className="w-5 h-5" />
+                          </button>
                         )}
-                        <Mic className={`w-5 h-5 lg:w-6 lg:h-6 relative z-10 ${isListening ? 'animate-pulse' : ''}`} />
-                      </button>
+                        <button 
+                          onClick={handleVoiceSearch}
+                          title="Ricerca Vocale"
+                          className={`relative p-3 rounded-full transition-all ${isListening ? 'text-[var(--accent)]' : 'text-[var(--text-muted)] hover:text-[var(--accent)] hover:bg-[var(--bg)]'}`}
+                        >
+                          {isListening && (
+                            <motion.div
+                              layoutId="voice-ripple"
+                              initial={{ scale: 0.8, opacity: 0.5 }}
+                              animate={{ scale: 1.5, opacity: 0 }}
+                              transition={{ repeat: Infinity, duration: 1.5 }}
+                              className="absolute inset-0 bg-[var(--accent)] rounded-full"
+                            />
+                          )}
+                          <Mic className={`w-5 h-5 lg:w-6 lg:h-6 relative z-10 ${isListening ? 'animate-pulse' : ''}`} />
+                        </button>
+                      </div>
                     </div>
                   </div>
-                </div>
+                )}
 
                 {isListening ? (
                   <div className="py-20 flex flex-col items-center justify-center text-center px-4 animate-fade-in">
@@ -3860,77 +3863,54 @@ export default function App() {
                         )}
                       </div>
                     ) : !selectedType && !selectedFolderId && !searchQuery.trim() ? (
-                      <div className="px-4 lg:px-8 pb-40">
-                        {/* 1. OGGI PER TE (Promemoria & Scadenze Rapide) */}
-                        <div className="mb-8">
-                          {urgentDeadlines.length > 0 ? (
-                            <div className="bg-gradient-to-r from-amber-500/15 via-rose-500/10 to-amber-500/5 border border-amber-500/30 rounded-[2.5rem] p-6 shadow-lg shadow-amber-500/5">
-                              <div className="flex items-center justify-between gap-4 mb-4">
-                                <div className="flex items-center gap-3">
-                                  <div className="w-10 h-10 rounded-2xl bg-amber-500 text-white flex items-center justify-center font-bold shadow-md shadow-amber-500/30">
-                                    <AlertCircle className="w-5 h-5" />
-                                  </div>
-                                  <div>
-                                    <h3 className="font-black text-base text-[var(--text-main)]">Oggi per Te</h3>
-                                    <p className="text-xs text-[var(--text-muted)] font-medium">
-                                      {urgentDeadlines.length} {urgentDeadlines.length === 1 ? 'scadenza urgente nei prossimi giorni' : 'scadenze urgenti nei prossimi giorni'}
-                                    </p>
-                                  </div>
+                      <div className="px-4 lg:px-8 pb-24 md:pb-12">
+                        {/* Promemoria Scadenze Imminenti (Discreto) */}
+                        {urgentDeadlines.length > 0 && (
+                          <div className="pt-1 pb-3">
+                            <div 
+                              onClick={() => setActiveNavTab('deadlines')}
+                              className="cursor-pointer bg-gradient-to-r from-amber-500/15 via-rose-500/10 to-amber-500/5 border border-amber-500/30 rounded-2xl px-4 py-2.5 flex items-center justify-between gap-3 shadow-xs hover:border-amber-500/50 transition-all active:scale-[0.99]"
+                            >
+                              <div className="flex items-center gap-2.5 min-w-0">
+                                <div className="w-7 h-7 rounded-xl bg-amber-500 text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-xs">
+                                  <AlertCircle className="w-4 h-4" />
                                 </div>
-                                <button
-                                  onClick={() => setActiveNavTab('deadlines')}
-                                  className="px-3.5 py-1.5 bg-amber-500 text-white text-xs font-black rounded-xl shadow-md active:scale-95 transition-all flex items-center gap-1 shrink-0"
-                                >
-                                  <span>Tutte</span>
-                                  <ArrowRight className="w-3.5 h-3.5" />
-                                </button>
+                                <div className="min-w-0">
+                                  <span className="text-xs font-black text-[var(--text-main)] block truncate">
+                                    {urgentDeadlines.length} {urgentDeadlines.length === 1 ? 'scadenza urgente' : 'scadenze urgenti'} nei prossimi giorni
+                                  </span>
+                                </div>
                               </div>
+                              <span className="text-[11px] font-black text-amber-500 flex items-center gap-1 shrink-0">
+                                Vedi <ArrowRight className="w-3 h-3" />
+                              </span>
+                            </div>
+                          </div>
+                        )}
 
-                              <div className="space-y-2.5">
-                                {urgentDeadlines.slice(0, 3).map(item => (
-                                  <div
-                                    key={item.id}
-                                    onClick={item.openAction}
-                                    className="bg-[var(--card-bg)]/90 backdrop-blur-sm border border-[var(--border)] p-3.5 rounded-2xl flex items-center justify-between gap-3 cursor-pointer hover:border-amber-500/50 transition-all active:scale-[0.99]"
-                                  >
-                                    <div className="flex items-center gap-3 min-w-0">
-                                      <div className={`w-8 h-8 rounded-xl bg-[var(--surface-variant)] flex items-center justify-center shrink-0 ${item.color}`}>
-                                        <item.icon className="w-4 h-4" />
-                                      </div>
-                                      <div className="min-w-0">
-                                        <p className="font-bold text-xs text-[var(--text-main)] truncate">{item.title}</p>
-                                        <p className="text-[11px] text-[var(--text-muted)] truncate">{item.subtitle}</p>
-                                      </div>
-                                    </div>
-                                    <span className={`px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider shrink-0 ${
-                                      item.daysLeft < 0 ? 'bg-rose-500/10 text-rose-500' : item.daysLeft === 0 ? 'bg-amber-500 text-white font-bold' : 'bg-orange-500/10 text-orange-500'
-                                    }`}>
-                                      {item.daysLeft < 0 ? `Scaduta` : item.daysLeft === 0 ? 'Oggi!' : `Tra ${item.daysLeft} gg`}
-                                    </span>
-                                  </div>
-                                ))}
+                        {/* CHELONA AI EMBEDDED - IL CUORE DELL'INTERFACCIA */}
+                        <div className="mb-6 -mx-4 lg:-mx-8">
+                          <div className="h-[520px] lg:h-[580px]">
+                            <React.Suspense fallback={
+                              <div className="h-full flex items-center justify-center p-12">
+                                <div className="w-8 h-8 border-4 border-amber-500 border-t-transparent rounded-full animate-spin"></div>
                               </div>
-                            </div>
-                          ) : (
-                            <div className="bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent border border-emerald-500/20 rounded-[2.5rem] p-5 flex items-center justify-between gap-4 shadow-sm">
-                              <div className="flex items-center gap-3.5">
-                                <div className="w-11 h-11 rounded-2xl bg-emerald-500/15 text-emerald-500 flex items-center justify-center font-bold shadow-inner shrink-0">
-                                  <CheckCircle2 className="w-6 h-6" />
-                                </div>
-                                <div>
-                                  <h3 className="font-black text-sm text-[var(--text-main)]">Tutto in Regola per Oggi</h3>
-                                  <p className="text-xs text-[var(--text-muted)] font-medium">Nessuna scadenza urgente nei prossimi 7 giorni.</p>
-                                </div>
-                              </div>
-                              <button
-                                onClick={() => setActiveNavTab('deadlines')}
-                                className="px-3.5 py-2 bg-[var(--surface-variant)] hover:bg-[var(--border)] text-[var(--text-main)] text-xs font-bold rounded-xl transition-all flex items-center gap-1.5 shrink-0"
-                              >
-                                <span>Scadenze</span>
-                                <ArrowRight className="w-3.5 h-3.5 text-[var(--accent)]" />
-                              </button>
-                            </div>
-                          )}
+                            }>
+                              <ChelonaAiScreen
+                                modules={modules}
+                                username={username}
+                                mode="embedded"
+                                onClose={() => {}}
+                                onOpenModule={(m) => {
+                                  openEditModalWithSecurity(m);
+                                }}
+                                onOpenCategory={(cat) => {
+                                  handleSelectCategoryWithSecurity(cat as any);
+                                }}
+                                showToast={showToast}
+                              />
+                            </React.Suspense>
+                          </div>
                         </div>
 
                         {/* Widgets Section (Shortcuts) */}
@@ -3979,185 +3959,149 @@ export default function App() {
                           </div>
                         )}
 
-                        {/* 5 MACRO-HUBS UNIFICATI */}
-                        <div className="mb-4">
-                          <h3 className="text-lg font-black text-[var(--text-main)] mb-4 flex items-center gap-2">
-                            <span>Aree Principali</span>
-                          </h3>
-                        </div>
+                        {/* SEZIONI E STRUMENTI DELL'APP ALL'OCCORRENZA */}
+                        <div className="mt-2 mb-8">
+                          <div className="flex items-center justify-between mb-3">
+                            <h3 className="text-xs font-black uppercase tracking-wider text-[var(--text-muted)] flex items-center gap-1.5">
+                              <LayoutDashboard className="w-3.5 h-3.5 text-amber-500" />
+                              Sezioni App
+                            </h3>
+                            <span className="text-[11px] text-[var(--text-muted)] font-medium">Tocca per aprire</span>
+                          </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pb-12">
-                          {/* 1. Auto & Mobilità */}
-                          <button
-                            onClick={() => {
-                              const existingAuto = modules.find(m => m.type === 'auto') as import('./types').AutoModule;
-                              if (existingAuto) {
-                                openEditModalWithSecurity(existingAuto);
-                              } else {
-                                handleSelectCategoryWithSecurity('auto');
-                              }
-                            }}
-                            className="bg-[var(--card-bg)] p-6 lg:p-7 rounded-[2.5rem] border border-[var(--border)] hover:border-rose-500/50 shadow-sm hover:shadow-lg transition-all text-left flex items-start gap-4 group active:scale-[0.99] relative overflow-hidden"
-                          >
-                            <div className="w-14 h-14 rounded-3xl bg-rose-500/10 text-rose-500 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform shadow-inner">
-                              <Car className="w-7 h-7" />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center justify-between gap-2 mb-1">
-                                <h4 className="font-black text-base lg:text-lg text-[var(--text-main)]">Auto & Mobilità</h4>
-                                <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-rose-500/10 text-rose-500 border border-rose-500/20">
-                                  {modules.filter(m => m.type === 'auto').length > 0 ? `${modules.filter(m => m.type === 'auto').length} Veicol${modules.filter(m => m.type === 'auto').length > 1 ? 'i' : 'o'}` : 'Configura'}
-                                </span>
+                          <div className="flex gap-2.5 overflow-x-auto pb-2 no-scrollbar">
+                            {/* Auto */}
+                            <button
+                              onClick={() => {
+                                const existingAuto = modules.find(m => m.type === 'auto') as import('./types').AutoModule;
+                                if (existingAuto) {
+                                  openEditModalWithSecurity(existingAuto);
+                                } else {
+                                  handleSelectCategoryWithSecurity('auto');
+                                }
+                              }}
+                              className="shrink-0 px-4 py-2.5 rounded-2xl bg-[var(--card-bg)] hover:bg-[var(--surface-variant)] border border-[var(--border)] text-left flex items-center gap-2.5 shadow-xs transition-all active:scale-95 group"
+                            >
+                              <div className="w-9 h-9 rounded-xl bg-rose-500/10 text-rose-500 flex items-center justify-center group-hover:scale-110 transition-transform">
+                                <Car className="w-4 h-4" />
                               </div>
-                              <p className="text-xs text-[var(--text-muted)] line-clamp-2 leading-relaxed">
-                                Assicurazione, bollo, revisione, chilometri e manutenzioni
-                              </p>
-                            </div>
-                          </button>
+                              <div>
+                                <div className="text-xs font-bold text-[var(--text-main)]">Auto</div>
+                                  <div className="text-[10px] text-[var(--text-muted)]">
+                                    {modules.filter(m => m.type === 'auto').length > 0 ? `${modules.filter(m => m.type === 'auto').length} veicol${modules.filter(m => m.type === 'auto').length > 1 ? 'i' : 'o'}` : 'Configura'}
+                                  </div>
+                              </div>
+                            </button>
 
-                          {/* 2. Documenti & Scadenze */}
-                          <button
-                            onClick={() => handleSelectCategoryWithSecurity('document')}
-                            className="bg-[var(--card-bg)] p-6 lg:p-7 rounded-[2.5rem] border border-[var(--border)] hover:border-blue-500/50 shadow-sm hover:shadow-lg transition-all text-left flex items-start gap-4 group active:scale-[0.99] relative overflow-hidden"
-                          >
-                            <div className="w-14 h-14 rounded-3xl bg-blue-500/10 text-blue-500 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform shadow-inner">
-                              <FileText className="w-7 h-7" />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center justify-between gap-2 mb-1">
-                                <h4 className="font-black text-base lg:text-lg text-[var(--text-main)]">Documenti</h4>
-                                <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-blue-500/10 text-blue-500 border border-blue-500/20">
-                                  {modules.filter(m => m.type === 'document').length} Salvati
-                                </span>
+                            {/* Documenti */}
+                            <button
+                              onClick={() => handleSelectCategoryWithSecurity('document')}
+                              className="shrink-0 px-4 py-2.5 rounded-2xl bg-[var(--card-bg)] hover:bg-[var(--surface-variant)] border border-[var(--border)] text-left flex items-center gap-2.5 shadow-xs transition-all active:scale-95 group"
+                            >
+                              <div className="w-9 h-9 rounded-xl bg-blue-500/10 text-blue-500 flex items-center justify-center group-hover:scale-110 transition-transform">
+                                <FileText className="w-4 h-4" />
                               </div>
-                              <p className="text-xs text-[var(--text-muted)] line-clamp-2 leading-relaxed">
-                                Carte d'identità, patenti, ricevute fiscali, contratti e scadenze
-                              </p>
-                            </div>
-                          </button>
+                              <div>
+                                <div className="text-xs font-bold text-[var(--text-main)]">Documenti</div>
+                                <div className="text-[10px] text-[var(--text-muted)]">{modules.filter(m => m.type === 'document').length} salvati</div>
+                              </div>
+                            </button>
 
-                          {/* 3. Spese & Conti */}
-                          <button
-                            onClick={() => handleSelectCategoryWithSecurity('split')}
-                            className="bg-[var(--card-bg)] p-6 lg:p-7 rounded-[2.5rem] border border-[var(--border)] hover:border-purple-500/50 shadow-sm hover:shadow-lg transition-all text-left flex items-start gap-4 group active:scale-[0.99] relative overflow-hidden"
-                          >
-                            <div className="w-14 h-14 rounded-3xl bg-purple-500/10 text-purple-500 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform shadow-inner">
-                              <Wallet className="w-7 h-7" />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center justify-between gap-2 mb-1">
-                                <h4 className="font-black text-base lg:text-lg text-[var(--text-main)]">Spese & Conti</h4>
-                                <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-purple-500/10 text-purple-500 border border-purple-500/20">
-                                  Finanze
-                                </span>
+                            {/* Spese */}
+                            <button
+                              onClick={() => handleSelectCategoryWithSecurity('split')}
+                              className="shrink-0 px-4 py-2.5 rounded-2xl bg-[var(--card-bg)] hover:bg-[var(--surface-variant)] border border-[var(--border)] text-left flex items-center gap-2.5 shadow-xs transition-all active:scale-95 group"
+                            >
+                              <div className="w-9 h-9 rounded-xl bg-purple-500/10 text-purple-500 flex items-center justify-center group-hover:scale-110 transition-transform">
+                                <Wallet className="w-4 h-4" />
                               </div>
-                              <p className="text-xs text-[var(--text-muted)] line-clamp-2 leading-relaxed">
-                                Spese quotidiane, conti condivisi in gruppo, rate e mutui
-                              </p>
-                            </div>
-                          </button>
+                              <div>
+                                <div className="text-xs font-bold text-[var(--text-main)]">Spese</div>
+                                <div className="text-[10px] text-[var(--text-muted)]">Finanze</div>
+                              </div>
+                            </button>
 
-                          {/* 4. Casa, Spesa & Offerte */}
-                          <button
-                            onClick={() => setSelectedType('home')}
-                            className="bg-[var(--card-bg)] p-6 lg:p-7 rounded-[2.5rem] border border-[var(--border)] hover:border-teal-500/50 shadow-sm hover:shadow-lg transition-all text-left flex items-start gap-4 group active:scale-[0.99] relative overflow-hidden"
-                          >
-                            <div className="w-14 h-14 rounded-3xl bg-teal-500/10 text-teal-500 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform shadow-inner">
-                              <Home className="w-7 h-7" />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center justify-between gap-2 mb-1">
-                                <h4 className="font-black text-base lg:text-lg text-[var(--text-main)]">Casa, Offerte & Spesa</h4>
-                                <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-teal-500/10 text-teal-500 border border-teal-500/20">
-                                  Offerte & Casa
-                                </span>
+                            {/* Casa & Offerte */}
+                            <button
+                              onClick={() => setSelectedType('home')}
+                              className="shrink-0 px-4 py-2.5 rounded-2xl bg-[var(--card-bg)] hover:bg-[var(--surface-variant)] border border-[var(--border)] text-left flex items-center gap-2.5 shadow-xs transition-all active:scale-95 group"
+                            >
+                              <div className="w-9 h-9 rounded-xl bg-teal-500/10 text-teal-500 flex items-center justify-center group-hover:scale-110 transition-transform">
+                                <Home className="w-4 h-4" />
                               </div>
-                              <p className="text-xs text-[var(--text-muted)] line-clamp-2 leading-relaxed">
-                                Volantini sconti supermercati, lista della spesa, ricettario e arredo
-                              </p>
-                            </div>
-                          </button>
+                              <div>
+                                <div className="text-xs font-bold text-[var(--text-main)]">Casa</div>
+                                <div className="text-[10px] text-[var(--text-muted)]">Offerte</div>
+                              </div>
+                            </button>
 
-                          {/* 5. Salute, Fitness & Dieta */}
-                          <button
-                            onClick={() => {
-                              const existingFitness = modules.find(m => m.type === 'fitness');
-                              if (existingFitness) {
-                                setEditingFitnessModule(existingFitness as import('./types').FitnessModule);
-                              } else {
-                                const newFitness: import('./types').FitnessModule = {
-                                  id: generateUUID(),
-                                  type: 'fitness',
-                                  title: 'Fitness & Dieta',
-                                  x: 0, y: 0, w: 3, h: 2,
-                                  folderId: selectedFolderId || undefined
-                                };
-                                setModules(prev => {
-                                  const updated = [newFitness, ...prev];
-                                  saveAppState(updated, folders).catch(console.error);
-                                  return updated;
-                                });
-                                setEditingFitnessModule(newFitness);
-                              }
-                            }}
-                            className="bg-[var(--card-bg)] p-6 lg:p-7 rounded-[2.5rem] border border-[var(--border)] hover:border-emerald-500/50 shadow-sm hover:shadow-lg transition-all text-left flex items-start gap-4 group active:scale-[0.99] relative overflow-hidden"
-                          >
-                            <div className="w-14 h-14 rounded-3xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform shadow-inner">
-                              <Activity className="w-7 h-7" />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center justify-between gap-2 mb-1">
-                                <h4 className="font-black text-base lg:text-lg text-[var(--text-main)]">Salute, Fitness & Dieta</h4>
-                                <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
-                                  Trainer
-                                </span>
+                            {/* Fitness & Dieta */}
+                            <button
+                              onClick={() => {
+                                const existingFitness = modules.find(m => m.type === 'fitness');
+                                if (existingFitness) {
+                                  setEditingFitnessModule(existingFitness as import('./types').FitnessModule);
+                                } else {
+                                  const newFitness: import('./types').FitnessModule = {
+                                    id: generateUUID(),
+                                    type: 'fitness',
+                                    title: 'Fitness & Dieta',
+                                    x: 0, y: 0, w: 3, h: 2,
+                                    folderId: selectedFolderId || undefined
+                                  };
+                                  setModules(prev => {
+                                    const updated = [newFitness, ...prev];
+                                    saveAppState(updated, folders).catch(console.error);
+                                    return updated;
+                                  });
+                                  setEditingFitnessModule(newFitness);
+                                }
+                              }}
+                              className="shrink-0 px-4 py-2.5 rounded-2xl bg-[var(--card-bg)] hover:bg-[var(--surface-variant)] border border-[var(--border)] text-left flex items-center gap-2.5 shadow-xs transition-all active:scale-95 group"
+                            >
+                              <div className="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center group-hover:scale-110 transition-transform">
+                                <Activity className="w-4 h-4" />
                               </div>
-                              <p className="text-xs text-[var(--text-muted)] line-clamp-2 leading-relaxed">
-                                Schede allenamento, timer recupero e pasti con grammature esatte
-                              </p>
-                            </div>
-                          </button>
+                              <div>
+                                <div className="text-xs font-bold text-[var(--text-main)]">Fitness</div>
+                                <div className="text-[10px] text-[var(--text-muted)]">Trainer</div>
+                              </div>
+                            </button>
 
-                          {/* Viaggi (se presente o per esplorare) */}
-                          <button
-                            onClick={() => {
-                              const existingTravel = modules.find(m => m.type === 'travel') as import('./types').TravelModule;
-                              if (existingTravel) {
-                                setEditingTravelModule(existingTravel);
-                              } else {
-                                const newTravel: import('./types').TravelModule = {
-                                  id: generateUUID(),
-                                  type: 'travel',
-                                  title: 'Viaggi',
-                                  destinations: [],
-                                  x: 0, y: 0, w: 3, h: 3,
-                                  folderId: selectedFolderId || undefined
-                                };
-                                setModules(prev => {
-                                  const updated = [newTravel, ...prev];
-                                  saveAppState(updated, folders).catch(console.error);
-                                  return updated;
-                                });
-                                setEditingTravelModule(newTravel);
-                              }
-                            }}
-                            className="bg-[var(--card-bg)] p-6 lg:p-7 rounded-[2.5rem] border border-[var(--border)] hover:border-indigo-500/50 shadow-sm hover:shadow-lg transition-all text-left flex items-start gap-4 group active:scale-[0.99] relative overflow-hidden"
-                          >
-                            <div className="w-14 h-14 rounded-3xl bg-indigo-500/10 text-indigo-500 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform shadow-inner">
-                              <Globe className="w-7 h-7" />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center justify-between gap-2 mb-1">
-                                <h4 className="font-black text-base lg:text-lg text-[var(--text-main)]">Viaggi & Mete</h4>
-                                <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-indigo-500/10 text-indigo-500 border border-indigo-500/20">
-                                  Itinerari
-                                </span>
+                            {/* Viaggi */}
+                            <button
+                              onClick={() => {
+                                const existingTravel = modules.find(m => m.type === 'travel') as import('./types').TravelModule;
+                                if (existingTravel) {
+                                  setEditingTravelModule(existingTravel);
+                                } else {
+                                  const newTravel: import('./types').TravelModule = {
+                                    id: generateUUID(),
+                                    type: 'travel',
+                                    title: 'Viaggi',
+                                    destinations: [],
+                                    x: 0, y: 0, w: 3, h: 3,
+                                    folderId: selectedFolderId || undefined
+                                  };
+                                  setModules(prev => {
+                                    const updated = [newTravel, ...prev];
+                                    saveAppState(updated, folders).catch(console.error);
+                                    return updated;
+                                  });
+                                  setEditingTravelModule(newTravel);
+                                }
+                              }}
+                              className="shrink-0 px-4 py-2.5 rounded-2xl bg-[var(--card-bg)] hover:bg-[var(--surface-variant)] border border-[var(--border)] text-left flex items-center gap-2.5 shadow-xs transition-all active:scale-95 group"
+                            >
+                              <div className="w-9 h-9 rounded-xl bg-indigo-500/10 text-indigo-500 flex items-center justify-center group-hover:scale-110 transition-transform">
+                                <Globe className="w-4 h-4" />
                               </div>
-                              <p className="text-xs text-[var(--text-muted)] line-clamp-2 leading-relaxed">
-                                Pianifica mete, tappe del viaggio e scadenze valigie
-                              </p>
-                            </div>
-                          </button>
+                              <div>
+                                <div className="text-xs font-bold text-[var(--text-main)]">Viaggi</div>
+                                <div className="text-[10px] text-[var(--text-muted)]">Itinerari</div>
+                              </div>
+                            </button>
+                          </div>
                         </div>
                       </div>
                     ) : selectedType === 'home' ? (

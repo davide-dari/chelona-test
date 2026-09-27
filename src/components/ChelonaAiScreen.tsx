@@ -20,6 +20,7 @@ interface ChelonaAiScreenProps {
   onOpenModule: (module: Module) => void;
   onOpenCategory: (category: string) => void;
   showToast: (msg: string, type?: 'success' | 'error' | 'info') => void;
+  mode?: 'embedded' | 'fullscreen';
 }
 
 type NeuralCategory = 'all' | 'vehicles' | 'documents' | 'finances' | 'notes' | 'fitness' | 'memories';
@@ -31,15 +32,18 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
   onOpenModule,
   onOpenCategory,
   showToast,
+  mode = 'fullscreen',
 }) => {
   const [messages, setMessages] = useState<AiMessage[]>(() => {
     const history = getChatHistory();
     if (history.length > 0) return history;
     return [
       {
-        id: 'msg_welcome',
+        id: 'msg_welcome_' + Date.now(),
         sender: 'assistant',
-        text: `Ciao ${username || ''}! Come posso aiutarti oggi? Conosco le tue note, i veicoli, i documenti e le spese. Puoi anche dirmi *"Ricordati che..."* per memorizzare qualsiasi cosa.`,
+        text: mode === 'embedded' 
+          ? `Ciao ${username || ''}! Chiedimi qualsiasi cosa.`
+          : `Ciao ${username || ''}! Come posso aiutarti oggi? Conosco le tue note, i veicoli, i documenti e le spese. Puoi anche dirmi *"Ricordati che..."* per memorizzare qualsiasi cosa.`,
         timestamp: Date.now(),
       }
     ];
@@ -66,6 +70,9 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
 
   const chatEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const isEmbedded = mode === 'embedded';
+  const isEmpty = messages.length === 1 && messages[0].id.startsWith('msg_welcome');
 
   // Auto-scroll in basso nella chat
   useEffect(() => {
@@ -359,7 +366,7 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
   const neuralNodes = [
     { id: 'vehicles', label: 'Veicoli', count: knowledge.vehicles.length, icon: Car, color: '#f59e0b', angle: 30 },
     { id: 'documents', label: 'Documenti', count: knowledge.documents.length, icon: FileText, color: '#3b82f6', angle: 90 },
-    { id: 'finances', label: 'Finanze & Rate', count: knowledge.installments.modules.length + knowledge.expenses.count, icon: CreditCard, color: '#10b981', angle: 150 },
+    { id: 'finances', label: 'Finanze', count: knowledge.installments.modules.length + knowledge.expenses.count, icon: CreditCard, color: '#10b981', angle: 150 },
     { id: 'notes', label: 'Appunti', count: knowledge.notes.length, icon: StickyNote, color: '#8b5cf6', angle: 210 },
     { id: 'fitness', label: 'Fitness', count: knowledge.fitness ? 1 : 0, icon: Activity, color: '#ec4899', angle: 270 },
     { id: 'memories', label: 'Memorie', count: memories.length, icon: Brain, color: '#f97316', angle: 330 },
@@ -374,225 +381,298 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
   ];
 
   return (
-    <div className="fixed inset-0 z-[120] bg-[var(--bg)] flex flex-col h-[100dvh] overflow-hidden font-sans transition-colors duration-300">
-      {/* HEADER PULITO CON LOGO CHELONA */}
-      <header className="h-16 lg:h-20 border-b border-[var(--border)] bg-[var(--header-bg)] backdrop-blur-2xl px-4 lg:px-8 flex items-center justify-between shrink-0 z-20 safe-area-header shadow-sm">
-        <div className="flex items-center gap-3">
-          <button
-            onClick={onClose}
-            className="p-2 hover:bg-[var(--surface-variant)] rounded-2xl text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors active:scale-95"
-            title="Torna indietro"
-          >
-            <ArrowLeft className="w-5 h-5 lg:w-6 lg:h-6" />
-          </button>
-          
-          {/* LOGO CHELONA ORIGINALE */}
-          <div className="w-10 h-10 lg:w-11 lg:h-11 rounded-2xl bg-amber-500/10 border border-amber-500/20 p-1 flex items-center justify-center shrink-0 shadow-sm overflow-hidden">
-            <img src="/chelona_logo.png" alt="Chelona AI" className="w-full h-full object-contain" />
-          </div>
-
-          <div>
-            <h2 className="text-base lg:text-lg font-black text-[var(--text-main)] tracking-tight">Chelona AI</h2>
-            <p className="text-xs text-[var(--text-muted)] font-medium">Il tuo assistente personale</p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          {/* TASTO MODALITÀ VOCALE INTERATTIVA */}
-          <button
-            onClick={toggleVoiceMode}
-            className="px-3 py-1.5 lg:px-4 lg:py-2 rounded-2xl bg-gradient-to-r from-amber-500 to-amber-600 text-white text-xs font-bold transition-all flex items-center gap-2 shadow-md shadow-amber-500/20 active:scale-95 hover:opacity-95"
-            title="Avvia conversazione a voce"
-          >
-            <Radio className="w-4 h-4 animate-pulse" />
-            <span className="hidden sm:inline">Voce</span>
-          </button>
-
-          {/* DIAGRAMMA MEMORIA LOCALE */}
-          <button
-            onClick={() => setShowMemoryDrawer(true)}
-            className="px-3 py-1.5 lg:px-3.5 lg:py-2 rounded-2xl bg-[var(--surface-variant)] hover:bg-[var(--border)] text-[var(--text-main)] text-xs font-bold transition-all flex items-center gap-1.5 border border-[var(--border)] active:scale-95 shadow-sm"
-            title="Visualizza memoria"
-          >
-            <Brain className="w-4 h-4 text-amber-500" />
-            <span className="hidden md:inline">Memoria</span>
-            <span className="w-4 h-4 rounded-full bg-amber-500 text-white text-[10px] flex items-center justify-center font-bold">
-              {memories.length}
-            </span>
-          </button>
-
-          {/* CANCELLA CHAT */}
-          <button
-            onClick={handleClearChat}
-            className="p-2 lg:p-2.5 rounded-2xl bg-[var(--surface-variant)] hover:bg-rose-500/10 text-[var(--text-muted)] hover:text-rose-500 transition-colors border border-[var(--border)] active:scale-95"
-            title="Pulisci chat"
-          >
-            <Trash2 className="w-4 h-4" />
-          </button>
-        </div>
-      </header>
-
-      {/* CHAT MESSAGES BODY - MINIMALE, SENZA CLUTTER */}
-      <main className="flex-1 overflow-y-auto px-4 lg:px-8 py-5 space-y-5 max-w-3xl w-full mx-auto custom-scrollbar">
-        {messages.map((msg) => {
-          const isUser = msg.sender === 'user';
-          return (
-            <motion.div
-              key={msg.id}
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              className={`flex flex-col ${isUser ? 'items-end' : 'items-start'}`}
+    <div className={
+      isEmbedded 
+        ? "flex flex-col h-full w-full bg-[var(--bg)] font-sans relative transition-colors duration-300"
+        : "fixed inset-0 z-[120] bg-[var(--bg)] flex flex-col h-[100dvh] overflow-hidden font-sans transition-colors duration-300"
+    }>
+      {/* HEADER PULITO CON LOGO CHELONA - SOLO IN FULLSCREEN */}
+      {!isEmbedded && (
+        <header className="h-16 lg:h-20 border-b border-[var(--border)] bg-[var(--header-bg)] backdrop-blur-2xl px-4 lg:px-8 flex items-center justify-between shrink-0 z-20 safe-area-header shadow-sm">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={onClose}
+              className="p-2 hover:bg-[var(--surface-variant)] rounded-2xl text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors active:scale-95"
+              title="Torna indietro"
             >
-              <div className={`flex items-start gap-2.5 max-w-[94%] sm:max-w-[85%] ${isUser ? 'flex-row-reverse' : 'flex-row'}`}>
-                {!isUser ? (
-                  <div className="w-8 h-8 rounded-xl bg-amber-500/10 border border-amber-500/20 p-0.5 flex items-center justify-center shrink-0 mt-1 shadow-sm overflow-hidden">
-                    <img src="/chelona_logo.png" alt="Chelona" className="w-full h-full object-contain" />
-                  </div>
-                ) : null}
-
-                <div
-                  className={`rounded-2xl px-4 py-3 text-sm leading-relaxed transition-all ${
-                    isUser
-                      ? 'bg-[var(--accent)] text-white rounded-tr-none shadow-sm'
-                      : 'bg-[var(--card-bg)] text-[var(--text-main)] border border-[var(--border)] rounded-tl-none shadow-sm'
-                  }`}
-                >
-                  {/* Testo naturale umano */}
-                  <div className="whitespace-pre-line text-inherit text-[13.5px]">
-                    {msg.text}
-                  </div>
-
-                  {/* Azioni rapide discrete */}
-                  {msg.actions && msg.actions.length > 0 && (
-                    <div className="mt-3 pt-2.5 border-t border-[var(--border)]/40 flex flex-wrap gap-1.5">
-                      {msg.actions.map((act, i) => (
-                        <button
-                          key={i}
-                          onClick={() => {
-                            if (act.type === 'module' && act.module) {
-                              onOpenModule(act.module);
-                              onClose();
-                            } else if (act.type === 'category' && act.category) {
-                              onOpenCategory(act.category);
-                              onClose();
-                            }
-                          }}
-                          className="px-3 py-1 rounded-xl bg-[var(--surface-variant)] hover:bg-[var(--accent)] hover:text-white border border-[var(--border)] text-xs font-semibold text-[var(--text-main)] transition-all flex items-center gap-1.5 active:scale-95 shadow-xs"
-                        >
-                          <ExternalLink className="w-3 h-3" />
-                          <span>{act.label}</span>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* Footer sottile per messaggi di Chelona */}
-                  {!isUser && (
-                    <div className="mt-2 pt-1 flex items-center justify-end gap-2 text-[11px] text-[var(--text-muted)]">
-                      <button
-                        onClick={() => handleSpeak(msg.id, msg.text)}
-                        className="hover:text-amber-500 transition-colors p-1"
-                        title="Ascolta"
-                      >
-                        {speakingMessageId === msg.id ? (
-                          <VolumeX className="w-3.5 h-3.5 text-rose-500 animate-pulse" />
-                        ) : (
-                          <Volume2 className="w-3.5 h-3.5" />
-                        )}
-                      </button>
-                      <button
-                        onClick={() => handleCopy(msg.id, msg.text)}
-                        className="hover:text-amber-500 transition-colors p-1"
-                        title="Copia"
-                      >
-                        {copiedId === msg.id ? (
-                          <Check className="w-3.5 h-3.5 text-emerald-500" />
-                        ) : (
-                          <Copy className="w-3.5 h-3.5" />
-                        )}
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </motion.div>
-          );
-        })}
-
-        {isProcessing && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="flex items-center gap-2 text-xs text-[var(--text-muted)] pl-10"
-          >
-            <div className="flex gap-1">
-              {[0, 1, 2].map(i => (
-                <motion.div
-                  key={i}
-                  animate={{ scale: [1, 1.4, 1], opacity: [0.3, 1, 0.3] }}
-                  transition={{ repeat: Infinity, duration: 0.9, delay: i * 0.15 }}
-                  className="w-1.5 h-1.5 rounded-full bg-amber-500"
-                />
-              ))}
+              <ArrowLeft className="w-5 h-5 lg:w-6 lg:h-6" />
+            </button>
+            
+            <div className="w-10 h-10 lg:w-11 lg:h-11 rounded-2xl bg-amber-500/10 border border-amber-500/20 p-1 flex items-center justify-center shrink-0 shadow-sm overflow-hidden">
+              <img src="/chelona_logo.png" alt="Chelona AI" className="w-full h-full object-contain" />
             </div>
-            <span>Chelona sta scrivendo...</span>
-          </motion.div>
-        )}
 
-        <div ref={chatEndRef} />
-      </main>
+            <div>
+              <h2 className="text-base lg:text-lg font-black text-[var(--text-main)] tracking-tight">Chelona AI</h2>
+              <p className="text-xs text-[var(--text-muted)] font-medium">Il tuo assistente personale</p>
+            </div>
+          </div>
 
-      {/* QUICK SUGGESTIONS DISCRETE */}
-      <div className="px-4 lg:px-8 py-2 max-w-3xl w-full mx-auto overflow-x-auto no-scrollbar flex items-center gap-2">
-        {quickPrompts.map((p, i) => (
-          <button
-            key={i}
-            onClick={() => handleSend(p.query)}
-            disabled={isProcessing}
-            className="shrink-0 px-3 py-1 rounded-full bg-[var(--card-bg)] hover:bg-[var(--surface-variant)] border border-[var(--border)] text-xs font-medium text-[var(--text-muted)] hover:text-[var(--text-main)] transition-all shadow-xs active:scale-95 disabled:opacity-50"
+          <div className="flex items-center gap-2">
+            <button
+              onClick={toggleVoiceMode}
+              className="px-3 py-1.5 lg:px-4 lg:py-2 rounded-2xl bg-gradient-to-r from-amber-500 to-amber-600 text-white text-xs font-bold transition-all flex items-center gap-2 shadow-md shadow-amber-500/20 active:scale-95 hover:opacity-95"
+              title="Avvia conversazione a voce"
+            >
+              <Radio className="w-4 h-4 animate-pulse" />
+              <span className="hidden sm:inline">Voce</span>
+            </button>
+
+            <button
+              onClick={() => setShowMemoryDrawer(true)}
+              className="px-3 py-1.5 lg:px-3.5 lg:py-2 rounded-2xl bg-[var(--surface-variant)] hover:bg-[var(--border)] text-[var(--text-main)] text-xs font-bold transition-all flex items-center gap-1.5 border border-[var(--border)] active:scale-95 shadow-sm"
+              title="Visualizza memoria"
+            >
+              <Brain className="w-4 h-4 text-amber-500" />
+              <span className="hidden md:inline">Memoria</span>
+              <span className="w-4 h-4 rounded-full bg-amber-500 text-white text-[10px] flex items-center justify-center font-bold">
+                {memories.length}
+              </span>
+            </button>
+
+            <button
+              onClick={handleClearChat}
+              className="p-2 lg:p-2.5 rounded-2xl bg-[var(--surface-variant)] hover:bg-rose-500/10 text-[var(--text-muted)] hover:text-rose-500 transition-colors border border-[var(--border)] active:scale-95"
+              title="Pulisci chat"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          </div>
+        </header>
+      )}
+
+      {/* BODY CHAT O WELCOME SCREEN EMBEDDED */}
+      {isEmbedded && isEmpty ? (
+        <div className="flex-1 flex flex-col items-center justify-center px-4 py-8 w-full max-w-3xl mx-auto overflow-y-auto">
+          <motion.div 
+            animate={{ scale: [1, 1.05, 1] }} 
+            transition={{ repeat: Infinity, duration: 4, ease: "easeInOut" }}
+            className="w-20 h-20 mb-6 rounded-3xl bg-amber-500/10 border-2 border-amber-500/20 p-2 shadow-xl shadow-amber-500/10 flex items-center justify-center overflow-hidden"
           >
-            {p.label}
-          </button>
-        ))}
-      </div>
+            <img src="/chelona_logo.png" alt="Chelona" className="w-full h-full object-contain" />
+          </motion.div>
+          
+          <h1 className="text-3xl font-black text-[var(--text-main)] mb-2 text-center tracking-tight">
+            Ciao, {username || 'amico'}
+          </h1>
+          <p className="text-base text-[var(--text-muted)] mb-8 text-center font-medium">
+            Come posso aiutarti oggi?
+          </p>
+
+          <div className="grid grid-cols-2 gap-3 w-full max-w-lg mt-2">
+            {[
+              { icon: '📅', title: 'Scadenze', query: 'Mostrami le scadenze imminenti' },
+              { icon: '🚗', title: 'Veicoli', query: 'Riepilogo della mia auto' },
+              { icon: '📄', title: 'Documenti', query: 'I miei documenti personali' },
+              { icon: '💰', title: 'Finanze', query: 'Come vanno le mie spese?' },
+            ].map((card, i) => (
+              <button
+                key={i}
+                onClick={() => handleSend(card.query)}
+                className="p-4 rounded-3xl bg-[var(--card-bg)] border border-[var(--border)] hover:border-amber-500/50 hover:bg-[var(--surface-variant)] transition-all flex flex-col items-center text-center gap-2 shadow-sm active:scale-95"
+              >
+                <span className="text-3xl mb-1">{card.icon}</span>
+                <div>
+                  <div className="font-bold text-[13px] text-[var(--text-main)]">{card.title}</div>
+                  <div className="text-[10px] text-[var(--text-muted)] mt-0.5 leading-tight">{card.query}</div>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : (
+        <main className="flex-1 overflow-y-auto px-4 lg:px-8 py-5 space-y-5 max-w-3xl w-full mx-auto custom-scrollbar">
+          {messages.map((msg) => {
+            const isUser = msg.sender === 'user';
+            return (
+              <motion.div
+                key={msg.id}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                className={`flex flex-col ${isUser ? 'items-end' : 'items-start'}`}
+              >
+                <div className={`flex items-start gap-2.5 max-w-[94%] sm:max-w-[85%] ${isUser ? 'flex-row-reverse' : 'flex-row'}`}>
+                  {!isUser ? (
+                    <div className="w-8 h-8 rounded-xl bg-amber-500/10 border border-amber-500/20 p-0.5 flex items-center justify-center shrink-0 mt-1 shadow-sm overflow-hidden">
+                      <img src="/chelona_logo.png" alt="Chelona" className="w-full h-full object-contain" />
+                    </div>
+                  ) : null}
+
+                  <div
+                    className={`rounded-2xl px-4 py-3 text-sm leading-relaxed transition-all ${
+                      isUser
+                        ? 'bg-[var(--accent)] text-white rounded-tr-none shadow-sm'
+                        : 'bg-[var(--card-bg)] text-[var(--text-main)] border border-[var(--border)] rounded-tl-none shadow-sm'
+                    }`}
+                  >
+                    <div className="whitespace-pre-line text-inherit text-[13.5px]">
+                      {msg.text}
+                    </div>
+
+                    {msg.actions && msg.actions.length > 0 && (
+                      <div className="mt-3 pt-2.5 border-t border-[var(--border)]/40 flex flex-wrap gap-1.5">
+                        {msg.actions.map((act, i) => (
+                          <button
+                            key={i}
+                            onClick={() => {
+                              if (act.type === 'module' && act.module) {
+                                onOpenModule(act.module);
+                                if (!isEmbedded) onClose();
+                              } else if (act.type === 'category' && act.category) {
+                                onOpenCategory(act.category);
+                                if (!isEmbedded) onClose();
+                              }
+                            }}
+                            className="px-3 py-1 rounded-xl bg-[var(--surface-variant)] hover:bg-[var(--accent)] hover:text-white border border-[var(--border)] text-xs font-semibold text-[var(--text-main)] transition-all flex items-center gap-1.5 active:scale-95 shadow-xs"
+                          >
+                            <ExternalLink className="w-3 h-3" />
+                            <span>{act.label}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+
+                    {!isUser && (
+                      <div className="mt-2 pt-1 flex items-center justify-end gap-2 text-[11px] text-[var(--text-muted)]">
+                        <button
+                          onClick={() => handleSpeak(msg.id, msg.text)}
+                          className="hover:text-amber-500 transition-colors p-1"
+                          title="Ascolta"
+                        >
+                          {speakingMessageId === msg.id ? (
+                            <VolumeX className="w-3.5 h-3.5 text-rose-500 animate-pulse" />
+                          ) : (
+                            <Volume2 className="w-3.5 h-3.5" />
+                          )}
+                        </button>
+                        <button
+                          onClick={() => handleCopy(msg.id, msg.text)}
+                          className="hover:text-amber-500 transition-colors p-1"
+                          title="Copia"
+                        >
+                          {copiedId === msg.id ? (
+                            <Check className="w-3.5 h-3.5 text-emerald-500" />
+                          ) : (
+                            <Copy className="w-3.5 h-3.5" />
+                          )}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </motion.div>
+            );
+          })}
+
+          {isProcessing && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="flex items-center gap-2 text-xs text-[var(--text-muted)] pl-10"
+            >
+              <div className="flex gap-1">
+                {[0, 1, 2].map(i => (
+                  <motion.div
+                    key={i}
+                    animate={{ scale: [1, 1.4, 1], opacity: [0.3, 1, 0.3] }}
+                    transition={{ repeat: Infinity, duration: 0.9, delay: i * 0.15 }}
+                    className="w-1.5 h-1.5 rounded-full bg-amber-500"
+                  />
+                ))}
+              </div>
+              <span>Chelona sta scrivendo...</span>
+            </motion.div>
+          )}
+
+          <div ref={chatEndRef} />
+        </main>
+      )}
+
+      {/* QUICK SUGGESTIONS DISCRETE - Nascondi nel welcome screen embedded */}
+      {(!isEmbedded || !isEmpty) && (
+        <div className="px-4 lg:px-8 py-2 max-w-3xl w-full mx-auto overflow-x-auto no-scrollbar flex items-center gap-2 shrink-0">
+          {quickPrompts.map((p, i) => (
+            <button
+              key={i}
+              onClick={() => handleSend(p.query)}
+              disabled={isProcessing}
+              className="shrink-0 px-3 py-1 rounded-full bg-[var(--card-bg)] hover:bg-[var(--surface-variant)] border border-[var(--border)] text-xs font-medium text-[var(--text-muted)] hover:text-[var(--text-main)] transition-all shadow-xs active:scale-95 disabled:opacity-50"
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* INPUT FOOTER PULITO */}
-      <footer className="p-3 lg:px-8 lg:py-4 border-t border-[var(--border)] bg-[var(--card-bg)]/80 backdrop-blur-xl shrink-0 safe-area-inset-bottom">
-        <div className="max-w-3xl mx-auto flex items-end gap-2.5">
-          <button
-            type="button"
-            onClick={() => startVoiceRecognition(false)}
-            className={`p-3 rounded-2xl border transition-all shrink-0 active:scale-95 shadow-xs ${
-              isListening
-                ? 'bg-rose-500 text-white border-rose-500 animate-pulse'
-                : 'bg-[var(--surface-variant)] hover:bg-[var(--border)] border-[var(--border)] text-amber-500'
-            }`}
-            title="Dettatura vocale"
-          >
-            <Mic className="w-5 h-5" />
-          </button>
+      <footer className={`p-3 lg:px-8 lg:py-4 shrink-0 safe-area-inset-bottom ${!isEmbedded ? 'border-t border-[var(--border)] bg-[var(--card-bg)]/80 backdrop-blur-xl' : 'bg-transparent'}`}>
+        <div className="max-w-3xl mx-auto flex flex-col gap-2.5">
+          {isEmbedded && (
+            <div className="flex items-center justify-end gap-2 px-1">
+              <button
+                onClick={toggleVoiceMode}
+                className="px-3 py-1.5 rounded-2xl bg-gradient-to-r from-amber-500 to-amber-600 text-white text-xs font-bold transition-all flex items-center gap-1.5 shadow-md shadow-amber-500/20 active:scale-95 hover:opacity-95"
+              >
+                <Radio className="w-3.5 h-3.5 animate-pulse" />
+                <span>Voce</span>
+              </button>
 
-          <div className="flex-1 bg-[var(--surface-variant)] rounded-2xl border border-[var(--border)] focus-within:border-amber-500 focus-within:ring-2 focus-within:ring-amber-500/20 transition-all p-1.5 flex items-center">
-            <textarea
-              ref={textareaRef}
-              rows={1}
-              value={inputText}
-              onChange={(e) => setInputText(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="Scrivi a Chelona o insegna qualcosa..."
-              className="w-full bg-transparent border-0 focus:outline-none focus:ring-0 text-sm text-[var(--text-main)] placeholder-[var(--text-muted)] resize-none py-1.5 px-2 max-h-28"
-            />
+              <button
+                onClick={() => setShowMemoryDrawer(true)}
+                className="px-3 py-1.5 rounded-2xl bg-[var(--surface-variant)] hover:bg-[var(--border)] text-[var(--text-main)] text-xs font-bold transition-all flex items-center gap-1.5 border border-[var(--border)] active:scale-95 shadow-sm"
+              >
+                <Brain className="w-3.5 h-3.5 text-amber-500" />
+                <span>Memoria</span>
+                <span className="w-4 h-4 rounded-full bg-amber-500 text-white text-[10px] flex items-center justify-center font-bold">
+                  {memories.length}
+                </span>
+              </button>
+
+              <button
+                onClick={handleClearChat}
+                className="p-1.5 rounded-2xl bg-[var(--surface-variant)] hover:bg-rose-500/10 text-[var(--text-muted)] hover:text-rose-500 transition-colors border border-[var(--border)] active:scale-95"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+
+          <div className="flex items-end gap-2.5">
+            <button
+              type="button"
+              onClick={() => startVoiceRecognition(false)}
+              className={`p-3 rounded-2xl border transition-all shrink-0 active:scale-95 shadow-xs ${
+                isListening
+                  ? 'bg-rose-500 text-white border-rose-500 animate-pulse'
+                  : 'bg-[var(--surface-variant)] hover:bg-[var(--border)] border-[var(--border)] text-amber-500'
+              }`}
+              title="Dettatura vocale"
+            >
+              <Mic className="w-5 h-5" />
+            </button>
+
+            <div className="flex-1 bg-[var(--surface-variant)] rounded-2xl border border-[var(--border)] focus-within:border-amber-500 focus-within:ring-2 focus-within:ring-amber-500/20 transition-all p-1.5 flex items-center">
+              <textarea
+                ref={textareaRef}
+                rows={1}
+                value={inputText}
+                onChange={(e) => setInputText(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="Scrivi a Chelona o insegna qualcosa..."
+                className="w-full bg-transparent border-0 focus:outline-none focus:ring-0 text-sm text-[var(--text-main)] placeholder-[var(--text-muted)] resize-none py-1.5 px-2 max-h-28"
+              />
+            </div>
+
+            <button
+              type="button"
+              onClick={() => handleSend()}
+              disabled={!inputText.trim() || isProcessing}
+              className="p-3 rounded-2xl bg-amber-500 hover:bg-amber-600 disabled:opacity-40 text-white transition-all shrink-0 active:scale-95 shadow-md shadow-amber-500/20"
+              title="Invia messaggio"
+            >
+              <Send className="w-5 h-5" />
+            </button>
           </div>
-
-          <button
-            type="button"
-            onClick={() => handleSend()}
-            disabled={!inputText.trim() || isProcessing}
-            className="p-3 rounded-2xl bg-amber-500 hover:bg-amber-600 disabled:opacity-40 text-white transition-all shrink-0 active:scale-95 shadow-md shadow-amber-500/20"
-            title="Invia messaggio"
-          >
-            <Send className="w-5 h-5" />
-          </button>
         </div>
       </footer>
 
@@ -690,7 +770,7 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
         )}
       </AnimatePresence>
 
-      {/* CASSETTO MEMORIA CON DIAGRAMMA NEURALE */}
+      {/* CASSETTO MEMORIA CON DIAGRAMMA NEURALE MIGLIORATO */}
       <AnimatePresence>
         {showMemoryDrawer && (
           <div className="fixed inset-0 z-[150] flex justify-end">
@@ -710,7 +790,7 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
               className="relative w-full max-w-lg bg-[var(--bg)] h-full border-l border-[var(--border)] shadow-2xl flex flex-col z-10 safe-area-inset"
             >
               {/* Header Drawer */}
-              <div className="h-16 lg:h-20 border-b border-[var(--border)] px-6 flex items-center justify-between shrink-0">
+              <div className="h-16 lg:h-20 border-b border-[var(--border)] px-6 flex items-center justify-between shrink-0 bg-[var(--header-bg)]">
                 <div className="flex items-center gap-3">
                   <div className="w-9 h-9 rounded-2xl bg-amber-500/10 border border-amber-500/20 p-1 flex items-center justify-center overflow-hidden">
                     <img src="/chelona_logo.png" alt="Chelona" className="w-full h-full object-contain" />
@@ -730,63 +810,97 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
 
               <div className="flex-1 overflow-y-auto p-5 space-y-6 custom-scrollbar">
                 
-                {/* 🌌 DIAGRAMMA NEURALE INTERATTIVO (KNOWLEDGE GRAPH) */}
-                <div className="relative rounded-3xl bg-[var(--card-bg)] border border-[var(--border)] p-4 shadow-sm overflow-hidden">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-[11px] font-black uppercase tracking-wider text-amber-500 flex items-center gap-1.5">
+                {/* 🌌 DIAGRAMMA NEURALE INTERATTIVO MIGLIORATO */}
+                <div className="relative rounded-3xl bg-gradient-to-b from-slate-900 to-slate-800 border border-slate-700/50 p-4 shadow-xl overflow-hidden">
+                  {/* Pattern punti griglia */}
+                  <div className="absolute inset-0 opacity-40" style={{ backgroundImage: 'radial-gradient(circle at 1px 1px, rgba(255,255,255,0.1) 1px, transparent 0)', backgroundSize: '16px 16px' }}></div>
+                  
+                  <div className="relative z-10 flex items-center justify-between mb-2">
+                    <span className="text-[11px] font-black uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
                       <Sparkles className="w-3.5 h-3.5" />
                       Mappa Sinaptica
                     </span>
-                    <span className="text-[11px] text-[var(--text-muted)] font-medium">Tocca un nodo</span>
+                    <span className="text-[11px] text-slate-400 font-medium">Tocca un nodo</span>
                   </div>
 
-                  {/* SVG Grafico Neurale */}
-                  <div className="relative w-full h-56 flex items-center justify-center my-2">
-                    <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 320 220">
-                      {/* Linee di connessione (sinapsi) con impulsi */}
+                  {/* SVG Grafico Neurale (h-72 = 288px) */}
+                  <div className="relative w-full h-72 flex items-center justify-center my-2 max-w-[320px] mx-auto">
+                    <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 320 288">
+                      <defs>
+                        {neuralNodes.map((node) => (
+                          <linearGradient id={`grad-${node.id}`} key={node.id} x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" stopColor="#475569" />
+                            <stop offset="100%" stopColor={node.color} />
+                          </linearGradient>
+                        ))}
+                      </defs>
                       {neuralNodes.map((node, i) => {
                         const rad = (node.angle * Math.PI) / 180;
-                        const x = 160 + Math.cos(rad) * 95;
-                        const y = 110 + Math.sin(rad) * 75;
+                        const cx = 160; const cy = 144;
+                        const x = cx + Math.cos(rad) * 115;
+                        const y = cy + Math.sin(rad) * 105;
                         const isSelected = activeNeuralCategory === node.id;
                         return (
                           <g key={i}>
                             <line
-                              x1="160"
-                              y1="110"
+                              x1={cx}
+                              y1={cy}
                               x2={x}
                               y2={y}
-                              stroke={isSelected ? node.color : 'var(--border)'}
-                              strokeWidth={isSelected ? '2.5' : '1.5'}
+                              stroke={`url(#grad-${node.id})`}
+                              strokeWidth={isSelected ? '3' : '1.5'}
                               strokeDasharray={isSelected ? 'none' : '3 3'}
                               className="transition-all duration-300"
                             />
-                            {isSelected && (
-                              <circle cx={(160 + x) / 2} cy={(110 + y) / 2} r="3" fill={node.color} className="animate-ping" />
-                            )}
+                            {/* Animated Particles on Synapse Lines */}
+                            <circle r="2" fill={node.color} filter="blur(1px)">
+                              <animate 
+                                attributeName="cx" 
+                                values={`${cx};${x}`} 
+                                dur={`${1.5 + i * 0.2}s`} 
+                                repeatCount="indefinite" 
+                              />
+                              <animate 
+                                attributeName="cy" 
+                                values={`${cy};${y}`} 
+                                dur={`${1.5 + i * 0.2}s`} 
+                                repeatCount="indefinite" 
+                              />
+                              <animate
+                                attributeName="opacity"
+                                values="0;1;0"
+                                dur={`${1.5 + i * 0.2}s`}
+                                repeatCount="indefinite"
+                              />
+                            </circle>
                           </g>
                         );
                       })}
                     </svg>
 
-                    {/* Nodo Centrale: Chelona Core */}
+                    {/* Nodo Centrale: Chelona Core (Ingrandito w-20 h-20) */}
                     <button
                       onClick={() => setActiveNeuralCategory('all')}
-                      className={`relative z-10 w-16 h-16 rounded-full p-2 flex items-center justify-center transition-all active:scale-95 shadow-lg border-2 ${
+                      className={`absolute z-10 w-20 h-20 rounded-full p-2 flex items-center justify-center transition-all active:scale-95 shadow-xl border-2 ${
                         activeNeuralCategory === 'all'
-                          ? 'border-amber-500 bg-amber-500/20 shadow-amber-500/30'
-                          : 'border-[var(--border)] bg-[var(--surface-variant)]'
+                          ? 'border-amber-400 bg-amber-500/20 shadow-amber-500/40'
+                          : 'border-slate-600 bg-slate-800'
                       }`}
+                      style={{ left: '50%', top: '50%', transform: 'translate(-50%, -50%)' }}
                       title="Visualizza tutto"
                     >
-                      <img src="/chelona_logo.png" alt="Chelona Core" className="w-9 h-9 object-contain" />
+                      {activeNeuralCategory === 'all' && (
+                        <div className="absolute inset-0 rounded-full border-2 border-amber-400 animate-ping opacity-30"></div>
+                      )}
+                      <img src="/chelona_logo.png" alt="Chelona Core" className="w-12 h-12 object-contain drop-shadow-md" />
                     </button>
 
                     {/* Nodi Satellitari Orbitanti */}
                     {neuralNodes.map((node) => {
                       const rad = (node.angle * Math.PI) / 180;
-                      const x = 160 + Math.cos(rad) * 95;
-                      const y = 110 + Math.sin(rad) * 75;
+                      const cx = 160; const cy = 144;
+                      const x = cx + Math.cos(rad) * 115;
+                      const y = cy + Math.sin(rad) * 105;
                       const isSelected = activeNeuralCategory === node.id;
                       const Icon = node.icon;
 
@@ -795,29 +909,33 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
                           key={node.id}
                           onClick={() => setActiveNeuralCategory(isSelected ? 'all' : (node.id as NeuralCategory))}
                           style={{
-                            position: 'absolute',
-                            left: `${x}px`,
-                            top: `${y}px`,
+                            left: `${(x / 320) * 100}%`,
+                            top: `${(y / 288) * 100}%`,
                             transform: 'translate(-50%, -50%)',
+                            boxShadow: isSelected ? `0 0 20px ${node.color}80` : undefined
                           }}
-                          className={`z-20 w-11 h-11 rounded-2xl flex flex-col items-center justify-center transition-all active:scale-90 border shadow-md ${
+                          className={`absolute z-20 w-11 h-11 rounded-2xl flex flex-col items-center justify-center transition-all active:scale-90 border ${
                             isSelected
-                              ? 'scale-110 shadow-lg'
-                              : 'bg-[var(--surface-variant)] border-[var(--border)] hover:scale-105'
+                              ? 'scale-110 border-white/20'
+                              : 'bg-slate-800 border-slate-700 hover:scale-105 shadow-md'
                           }`}
                           title={node.label}
                         >
                           <div
-                            className="w-full h-full rounded-2xl flex items-center justify-center text-white"
+                            className="w-full h-full rounded-2xl flex items-center justify-center text-white relative"
                             style={{ backgroundColor: isSelected ? node.color : 'transparent', color: isSelected ? '#fff' : node.color }}
                           >
                             <Icon className="w-5 h-5" />
+                            {/* Badge count */}
+                            <span className="absolute -top-2 -right-2 w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold text-white shadow-sm border border-slate-800" style={{ backgroundColor: node.color }}>
+                              {node.count}
+                            </span>
                           </div>
                           <span
-                            className="absolute -bottom-4 text-[9px] font-bold text-[var(--text-muted)] whitespace-nowrap"
-                            style={{ color: isSelected ? node.color : undefined }}
+                            className="absolute -bottom-4 text-[9px] font-bold whitespace-nowrap drop-shadow-md"
+                            style={{ color: isSelected ? node.color : '#94a3b8' }}
                           >
-                            {node.label} ({node.count})
+                            {node.label}
                           </span>
                         </button>
                       );
