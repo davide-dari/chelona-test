@@ -21,6 +21,7 @@ import {
   getVoiceFriendlyName
 } from '../utils/naturalSpeech';
 import { getSavedParking, getNavigationUrl } from '../services/parkingService';
+import { wakeWordService } from '../services/wakeWordService';
 
 interface ChelonaAiScreenProps {
   modules: Module[];
@@ -32,6 +33,7 @@ interface ChelonaAiScreenProps {
   mode?: 'embedded' | 'fullscreen';
   onAddModule?: (module: Module) => void;
   onOpenParking?: () => void;
+  initialVoiceMode?: boolean;
 }
 
 type NeuralCategory = 'all' | 'vehicles' | 'documents' | 'finances' | 'notes' | 'fitness' | 'memories';
@@ -46,6 +48,7 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
   mode = 'fullscreen',
   onAddModule,
   onOpenParking,
+  initialVoiceMode = false,
 }) => {
   const [messages, setMessages] = useState<AiMessage[]>(() => {
     const history = getChatHistory();
@@ -435,6 +438,41 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
       setVoiceStatus('idle');
     }
   };
+
+  const [isWakeWordEnabled, setIsWakeWordEnabled] = useState<boolean>(() => wakeWordService.getEnabled());
+  const initialVoiceTriggeredRef = useRef(false);
+
+  useEffect(() => {
+    return wakeWordService.subscribe((state) => {
+      setIsWakeWordEnabled(state.isEnabled);
+    });
+  }, []);
+
+  const handleToggleWakeWord = async () => {
+    const next = !isWakeWordEnabled;
+    const ok = await wakeWordService.setEnabled(next);
+    if (ok) {
+      setIsWakeWordEnabled(next);
+      showToast(
+        next
+          ? 'Comando vocale attivo! Di\' "Ciao Chelona" per parlare.'
+          : 'Comando vocale disattivato.',
+        next ? 'success' : 'info'
+      );
+    } else {
+      showToast('Permesso microfono necessario per attivare il comando vocale.', 'error');
+    }
+  };
+
+  useEffect(() => {
+    if (initialVoiceMode && !initialVoiceTriggeredRef.current && !isVoiceModeOpen) {
+      initialVoiceTriggeredRef.current = true;
+      const t = setTimeout(() => {
+        toggleVoiceMode();
+      }, 300);
+      return () => clearTimeout(t);
+    }
+  }, [initialVoiceMode, isVoiceModeOpen]);
 
   const handleSpeak = (msgId: string, text: string) => {
     if (!('speechSynthesis' in window)) {
@@ -985,6 +1023,35 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
                       </button>
                     ))}
                   </div>
+                </div>
+
+                {/* Sezione Comando Vocale "Ciao Chelona!" */}
+                <div className="bg-[var(--surface-variant)]/70 border border-[var(--border)] rounded-2xl p-3.5 space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="w-8 h-8 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center shrink-0">
+                        <Mic className="w-4 h-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <h5 className="text-xs font-bold text-[var(--text-main)] truncate">Comando Vocale "Ciao Chelona!"</h5>
+                        <p className="text-[10px] text-[var(--text-muted)] truncate">Attivazione vocale a mani libere</p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleToggleWakeWord}
+                      className={`px-3 py-1.5 rounded-xl font-bold text-xs transition-all active:scale-95 shrink-0 ${
+                        isWakeWordEnabled
+                          ? 'bg-amber-500 text-white shadow-md shadow-amber-500/20'
+                          : 'bg-[var(--surface)] text-[var(--text-muted)] border border-[var(--border)] hover:text-[var(--text-main)]'
+                      }`}
+                    >
+                      {isWakeWordEnabled ? 'Attivo' : 'Attiva'}
+                    </button>
+                  </div>
+                  <p className="text-[10.5px] text-[var(--text-muted)] leading-relaxed">
+                    Pronuncia <strong className="text-amber-500 font-semibold">"Ciao Chelona!"</strong>, <strong className="text-amber-500 font-semibold">"Ehi Chelona!"</strong> o <strong className="text-amber-500 font-semibold">"Chelona"</strong> con l'app aperta per avviare subito la conversazione vocale. 100% on-device.
+                  </p>
                 </div>
 
                 {/* Tasto Fine */}

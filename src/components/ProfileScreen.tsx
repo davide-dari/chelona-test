@@ -1,10 +1,11 @@
 import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, User, Lock, Fingerprint, LogOut, Camera, Check, AlertCircle, Share2, Download, Copy, ShieldCheck, QrCode, SunDim, RefreshCw, LayoutDashboard, Plus, Sun, Moon, FileArchive, Bell } from 'lucide-react';
+import { X, User, Lock, Fingerprint, LogOut, Camera, Check, AlertCircle, Share2, Download, Copy, ShieldCheck, QrCode, SunDim, RefreshCw, LayoutDashboard, Plus, Sun, Moon, FileArchive, Bell, Mic } from 'lucide-react';
 import { storage } from '../services/storage';
 import { encryption } from '../services/encryption';
 import { updateService } from '../services/updateService';
 import { notificationService } from '../services/notificationService';
+import { wakeWordService } from '../services/wakeWordService';
 import { Module, Folder } from '../types';
 import { QRCodeSVG } from 'qrcode.react';
 import { APP_VERSION } from '../constants/version';
@@ -74,6 +75,28 @@ export function ProfileScreen({
   const [showBackupQR, setShowBackupQR] = useState(false);
   const [backupJSON, setBackupJSON] = useState<string | null>(null);
   const [isAntiGlare, setIsAntiGlare] = useState(false);
+
+  const [isWakeWordEnabled, setIsWakeWordEnabled] = useState(() => wakeWordService.getEnabled());
+
+  React.useEffect(() => {
+    return wakeWordService.subscribe(st => setIsWakeWordEnabled(st.isEnabled));
+  }, []);
+
+  const handleToggleWakeWord = async () => {
+    const next = !isWakeWordEnabled;
+    const ok = await wakeWordService.setEnabled(next);
+    if (ok) {
+      setIsWakeWordEnabled(next);
+      showToast(
+        next
+          ? "Comando vocale attivo! Di' 'Ciao Chelona' per parlare."
+          : "Comando vocale disattivato.",
+        next ? 'success' : 'info'
+      );
+    } else {
+      showToast('Permesso microfono necessario per attivare il comando vocale.', 'error');
+    }
+  };
 
   const restoreZipInputRef = useRef<HTMLInputElement>(null);
 
@@ -567,6 +590,29 @@ export function ProfileScreen({
                     )}
                   </div>
                 )}
+              </div>
+
+              {/* Comando Vocale "Ciao Chelona!" */}
+              <div className="bg-[var(--card-bg)] rounded-[var(--radius-lg)] p-5 border border-[var(--border)] shadow-sm flex items-center justify-between gap-4">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-10 h-10 bg-amber-500/10 rounded-2xl flex items-center justify-center text-amber-500 shadow-inner shrink-0">
+                    <Mic className="w-5 h-5" />
+                  </div>
+                  <div className="min-w-0">
+                    <h3 className="text-base font-bold text-[var(--text-main)] leading-tight truncate">Comando Vocale "Ciao Chelona!"</h3>
+                    <p className="text-[10px] text-[var(--text-muted)] font-medium mt-0.5">Attivazione a mani libere (100% on-device)</p>
+                  </div>
+                </div>
+                <button
+                  onClick={handleToggleWakeWord}
+                  className={`px-4 py-2 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all shrink-0 ${
+                    isWakeWordEnabled
+                      ? 'bg-amber-500 text-white shadow-md shadow-amber-500/20 active:scale-95'
+                      : 'bg-[var(--surface-variant)] hover:bg-[var(--border)] text-[var(--text-main)] border border-[var(--border)] active:scale-95'
+                  }`}
+                >
+                  {isWakeWordEnabled ? 'Attivo' : 'Attiva'}
+                </button>
               </div>
 
               {/* Notifiche & Promemoria */}

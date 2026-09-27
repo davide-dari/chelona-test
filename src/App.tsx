@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { Sun, Moon, Wrench, Plus, LayoutDashboard, Settings, User, LogOut, Search, Mic, Bell, CreditCard, Fingerprint, ShieldCheck, Lock, Menu, X, StickyNote, FileText, Grid2X2, Car, QrCode, Folder as FolderIcon, Check, Edit2, Trash2, BookOpen, ArrowLeft, ArrowRight, Camera, FileDown, Hourglass, Users, Download, Receipt, MapPin, SquareParking, Image as ImageIcon, Lightbulb, Globe, ChevronLeft, Bus, Home, Armchair, Activity, ShoppingBasket, BadgePercent, Sparkles, CalendarClock, Calendar, AlertCircle, CheckCircle2, Battery, Wallet, Flame, ArrowUpRight } from 'lucide-react';
 
 import { Module, ModuleType, Folder, DocumentModule } from './types';
@@ -18,6 +18,7 @@ import { ConfirmDialog } from './components/ConfirmDialog';
 import { notificationService } from './services/notificationService';
 import { biometricService } from './services/biometricService';
 import { chelonaMemory } from './services/chelonaMemory';
+import { wakeWordService } from './services/wakeWordService';
 import { APP_VERSION } from './constants/version';
 
 import { motion, AnimatePresence } from 'motion/react';
@@ -316,6 +317,8 @@ export default function App() {
   const [flyerInitialOffer, setFlyerInitialOffer] = useState<{ fid: string; pg: number } | null>(null);
   const [activeNavTab, setActiveNavTab] = useState<'home' | 'deadlines' | 'ai' | 'tools' | 'profile'>('home');
   const [isAiOpen, setIsAiOpen] = useState(false);
+  const [aiInitialVoiceMode, setAiInitialVoiceMode] = useState(false);
+  const [isWakeWordEnabled, setIsWakeWordEnabled] = useState(() => wakeWordService.getEnabled());
   const [deadlinesFilter, setDeadlinesFilter] = useState<'all' | 'auto' | 'document' | 'installment'>('all');
 
   useEffect(() => {
@@ -2358,6 +2361,69 @@ export default function App() {
     }
   };
 
+  const handleWakeWordTrigger = useCallback(() => {
+    if (isAiOpen) return;
+    if (typeof navigator !== 'undefined' && navigator.vibrate) {
+      try { navigator.vibrate([60, 40, 80]); } catch {}
+    }
+    showToast("🎤 'Ciao Chelona!' rilevato", 'info');
+    setAiInitialVoiceMode(true);
+    setIsAiOpen(true);
+    setActiveNavTab('ai');
+    setIsToolsOpen(false);
+    setIsProfileOpen(false);
+    setSelectedType(null);
+  }, [isAiOpen, showToast]);
+
+  const handleToggleWakeWord = async () => {
+    const next = !isWakeWordEnabled;
+    const ok = await wakeWordService.setEnabled(next);
+    if (ok) {
+      setIsWakeWordEnabled(next);
+      showToast(
+        next
+          ? "Comando vocale attivo! Di' 'Ciao Chelona' per parlare."
+          : "Comando vocale disattivato.",
+        next ? 'success' : 'info'
+      );
+    } else {
+      showToast('Permesso microfono necessario per attivare il comando vocale.', 'error');
+    }
+  };
+
+  useEffect(() => {
+    const unsubscribe = wakeWordService.subscribe((state) => {
+      setIsWakeWordEnabled(state.isEnabled);
+    });
+    wakeWordService.start(handleWakeWordTrigger);
+    return () => {
+      unsubscribe();
+      wakeWordService.stop();
+    };
+  }, [handleWakeWordTrigger]);
+
+  useEffect(() => {
+    if (isAiOpen || isListening) {
+      wakeWordService.pause();
+    } else if (isWakeWordEnabled) {
+      wakeWordService.resume();
+    }
+  }, [isAiOpen, isListening, isWakeWordEnabled]);
+
+  useEffect(() => {
+    const onVisibilityChange = () => {
+      if (document.hidden) {
+        wakeWordService.pause();
+      } else if (isWakeWordEnabled && !isAiOpen && !isListening) {
+        wakeWordService.resume();
+      }
+    };
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+    };
+  }, [isWakeWordEnabled, isAiOpen, isListening]);
+
   // Layout state removed (DnD disabled)
 
   const SidebarContent = () => (
@@ -2697,6 +2763,23 @@ export default function App() {
                 {/* Right side: Avatar (Lock and Theme moved to Profile) */}
                 <div className="flex items-center gap-2 sm:gap-4">
                   <button 
+                    onClick={handleToggleWakeWord}
+                    className={`relative p-2 sm:p-2.5 rounded-full transition-all flex items-center justify-center shadow-sm ${
+                      isWakeWordEnabled
+                        ? 'bg-amber-500/15 text-amber-500 border border-amber-500/40 shadow-amber-500/10'
+                        : 'bg-[var(--surface-variant)] hover:bg-[var(--border)] text-[var(--text-muted)] hover:text-amber-500'
+                    }`}
+                    title={isWakeWordEnabled ? "Comando vocale 'Ciao Chelona' attivo (tocca per disattivare)" : "Attiva comando vocale 'Ciao Chelona'"}
+                  >
+                    {isWakeWordEnabled && (
+                      <span className="absolute -top-0.5 -right-0.5 flex h-2.5 w-2.5">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-500"></span>
+                      </span>
+                    )}
+                    <Mic className="w-5 h-5 sm:w-6 sm:h-6" />
+                  </button>
+                  <button 
                     onClick={() => { setIsAiOpen(true); setActiveNavTab('ai'); setIsToolsOpen(false); setIsProfileOpen(false); setSelectedType(null); }}
                     className="p-2 sm:p-2.5 bg-gradient-to-tr from-amber-500/10 via-rose-500/10 to-indigo-500/10 hover:from-amber-500/20 hover:to-indigo-500/20 rounded-full text-amber-500 border border-amber-500/30 transition-all flex items-center justify-center shadow-sm"
                     title="Chelona AI"
@@ -2779,21 +2862,26 @@ export default function App() {
                 <ChelonaAiScreen
                   modules={modules}
                   username={username}
+                  initialVoiceMode={aiInitialVoiceMode}
                   onClose={() => {
                     setIsAiOpen(false);
+                    setAiInitialVoiceMode(false);
                     if (activeNavTab === 'ai') setActiveNavTab('home');
                   }}
                   onOpenModule={(m) => {
                     setIsAiOpen(false);
+                    setAiInitialVoiceMode(false);
                     openEditModalWithSecurity(m);
                   }}
                   onOpenCategory={(cat) => {
                     setIsAiOpen(false);
+                    setAiInitialVoiceMode(false);
                     handleSelectCategoryWithSecurity(cat as any);
                   }}
                   showToast={showToast}
                   onOpenParking={() => {
                     setIsAiOpen(false);
+                    setAiInitialVoiceMode(false);
                     setIsParkingOpen(true);
                   }}
                   onAddModule={(newMod) => {
@@ -2843,6 +2931,30 @@ export default function App() {
                         {bioError}
                       </div>
                     )}
+                  </div>
+
+                  <div className="bg-[var(--card-bg)] rounded-3xl p-6 border border-[var(--border)] shadow-sm">
+                    <div className="flex items-center justify-between gap-4">
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 bg-amber-500/10 rounded-2xl flex items-center justify-center text-amber-500">
+                          <Mic className="w-6 h-6" />
+                        </div>
+                        <div>
+                          <h3 className="font-bold text-[var(--text-main)]">Comando Vocale "Ciao Chelona!"</h3>
+                          <p className="text-sm text-[var(--text-muted)]">Attiva il dialogo pronunciando "Ciao Chelona!" o "Ehi Chelona". 100% on-device.</p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={handleToggleWakeWord}
+                        className={`px-6 py-2.5 rounded-xl font-bold transition-all shrink-0 ${
+                          isWakeWordEnabled
+                            ? 'bg-amber-500 text-white shadow-lg shadow-amber-500/20'
+                            : 'bg-[var(--surface-variant)] text-[var(--text-muted)] hover:text-[var(--text-main)] border border-[var(--border)]'
+                        }`}
+                      >
+                        {isWakeWordEnabled ? 'Abilitato' : 'Abilita'}
+                      </button>
+                    </div>
                   </div>
                 </div>
               </motion.div>
