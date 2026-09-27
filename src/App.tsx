@@ -56,6 +56,7 @@ const VolantinoScreen = React.lazy(() => import('./components/VolantinoScreen').
 const ShareScreen = React.lazy(() => import('./components/ShareScreen').then(m => ({ default: m.ShareScreen })));
 const ChelonaAiScreen = React.lazy(() => import('./components/ChelonaAiScreen').then(m => ({ default: m.ChelonaAiScreen })));
 const ParkingScreen = React.lazy(() => import('./components/ParkingScreen').then(m => ({ default: m.ParkingScreen })));
+const AddressAndParkingScreen = React.lazy(() => import('./components/AddressAndParkingScreen').then(m => ({ default: m.AddressAndParkingScreen })));
 // UI Libraries removed as per request (CSS Grid migration)
 
 // ResponsiveGridLayout removed (DnD disabled)
@@ -393,7 +394,8 @@ export default function App() {
         query = nonLinkLines.slice(1).join(', ');
       }
 
-      setIsAddressBookOpen(true);
+      setAddressParkingTab('addresses');
+      setIsAddressAndParkingOpen(true);
       setTimeout(() => {
         window.dispatchEvent(new CustomEvent('open-address-book-add', {
           detail: { title, query }
@@ -463,6 +465,23 @@ export default function App() {
   const [folderToDelete, setFolderToDelete] = useState<string | null>(null);
   const [isAddressBookOpen, setIsAddressBookOpen] = useState(false);
   const [isParkingOpen, setIsParkingOpen] = useState(false);
+  const [isAddressAndParkingOpen, setIsAddressAndParkingOpen] = useState(false);
+  const [addressParkingTab, setAddressParkingTab] = useState<'addresses' | 'parking'>('addresses');
+  const [hasActiveParking, setHasActiveParking] = useState<boolean>(() => {
+    try {
+      return !!localStorage.getItem('chelona_saved_parking');
+    } catch {
+      return false;
+    }
+  });
+
+  useEffect(() => {
+    const handleParkingUpdated = (e: any) => {
+      setHasActiveParking(!!e.detail);
+    };
+    window.addEventListener('chelona-parking-updated', handleParkingUpdated);
+    return () => window.removeEventListener('chelona-parking-updated', handleParkingUpdated);
+  }, []);
   const [isRecipesOpen, setIsRecipesOpen] = useState(false);
   const [initialRecipesSearch, setInitialRecipesSearch] = useState('');
   const [initialRecipeToOpen, setInitialRecipeToOpen] = useState<any>(null);
@@ -697,6 +716,7 @@ export default function App() {
       if (isToolsOpen) { setIsToolsOpen(false); return; }
       if (isArchiveOpen) { setIsArchiveOpen(false); return; }
       if (isRecipesOpen) { window.dispatchEvent(new CustomEvent('recipes-back')); return; }
+      if (isAddressAndParkingOpen) { setIsAddressAndParkingOpen(false); return; }
       if (isParkingOpen) { setIsParkingOpen(false); return; }
       if (isAddressBookOpen) { setIsAddressBookOpen(false); return; }
       if (isSidebarOpen) { setIsSidebarOpen(false); return; }
@@ -718,7 +738,7 @@ export default function App() {
     editingAutoModule, editingSplitModule, editingSingleExpenseModule,
     editingTravelModule, editingStudyModule, editingFitnessModule, editingDocumentModule,
     editingGenericModule, editingFurnitureModule, editingInstallmentsModule, editingSupermarketModule, editingVolantinoModule, editingModuleId, isAdding, isProfileOpen,
-    activeToolId, isToolsOpen, isArchiveOpen, isAddressBookOpen, isParkingOpen, isRecipesOpen,
+    activeToolId, isToolsOpen, isArchiveOpen, isAddressAndParkingOpen, isAddressBookOpen, isParkingOpen, isRecipesOpen,
     isSidebarOpen, selectedFolderId, selectedType, spesaSubMenu
   ]);
 
@@ -2513,7 +2533,10 @@ export default function App() {
           }} 
           onStartScan={() => setIsScanning(true)}
           onOpenTools={() => setIsPublicToolsOpen(true)}
-          onOpenAddressBook={() => setIsAddressBookOpen(true)}
+          onOpenAddressBook={() => {
+            setAddressParkingTab('addresses');
+            setIsAddressAndParkingOpen(true);
+          }}
           onImportFile={handleImportFile}
           onCheckUpdate={() => handleCheckUpdate(false)}
         />
@@ -2777,18 +2800,21 @@ export default function App() {
                     <Wrench className="w-5 h-5 sm:w-6 sm:h-6" />
                   </button>
                   <button 
-                    onClick={() => setIsAddressBookOpen(true)}
-                    className="p-2 sm:p-2.5 bg-[var(--surface-variant)] hover:bg-[var(--border)] rounded-full text-[var(--accent)] transition-all flex items-center justify-center shadow-sm"
-                    title="Rubrica GPS"
+                    onClick={() => {
+                      setAddressParkingTab(hasActiveParking ? 'parking' : 'addresses');
+                      setIsAddressAndParkingOpen(true);
+                    }}
+                    className="relative p-2 sm:p-2.5 bg-[var(--surface-variant)] hover:bg-[var(--border)] rounded-full text-indigo-500 hover:text-indigo-600 transition-all flex items-center justify-center shadow-sm"
+                    title="Indirizzi & Parcheggio"
                   >
-                    <MapPin className="w-5 h-5 sm:w-6 sm:h-6" />
-                  </button>
-                  <button 
-                    onClick={() => setIsParkingOpen(true)}
-                    className="p-2 sm:p-2.5 bg-[var(--surface-variant)] hover:bg-[var(--border)] rounded-full text-indigo-500 hover:text-indigo-600 transition-all flex items-center justify-center shadow-sm"
-                    title="Salva Parcheggio Auto"
-                  >
-                    <SquareParking className="w-5 h-5 sm:w-6 sm:h-6" />
+                    <div className="relative flex items-center justify-center">
+                      <MapPin className="w-5 h-5 sm:w-6 sm:h-6" />
+                      {hasActiveParking && (
+                        <span className="absolute -top-1.5 -right-1.5 w-3.5 h-3.5 bg-indigo-500 text-[9px] font-black text-white rounded-full flex items-center justify-center ring-2 ring-[var(--surface)] shadow-sm">
+                          P
+                        </span>
+                      )}
+                    </div>
                   </button>
                   <button 
                     onClick={() => { setIsProfileOpen(true); setIsAiOpen(false); }} 
@@ -2865,7 +2891,8 @@ export default function App() {
                   onOpenParking={() => {
                     setIsAiOpen(false);
                     setAiInitialVoiceMode(false);
-                    setIsParkingOpen(true);
+                    setAddressParkingTab('parking');
+                    setIsAddressAndParkingOpen(true);
                   }}
                   onAddModule={(newMod) => {
                     setModules(prev => {
@@ -4881,13 +4908,24 @@ export default function App() {
              />
            </motion.div>
          )}
+          {isAddressAndParkingOpen && (
+            <React.Suspense fallback={<div className="flex items-center justify-center p-20"><div className="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div></div>}>
+              <AddressAndParkingScreen 
+                initialTab={addressParkingTab} 
+                onClose={() => setIsAddressAndParkingOpen(false)} 
+                showToast={showToast} 
+              />
+            </React.Suspense>
+          )}
           {isAddressBookOpen && (
-             <AddressBookScreen onClose={() => setIsAddressBookOpen(false)} />
+            <React.Suspense fallback={<div className="flex items-center justify-center p-20"><div className="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div></div>}>
+              <AddressAndParkingScreen initialTab="addresses" onClose={() => setIsAddressBookOpen(false)} showToast={showToast} />
+            </React.Suspense>
           )}
           {isParkingOpen && (
-             <React.Suspense fallback={<div className="flex items-center justify-center p-20"><div className="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div></div>}>
-               <ParkingScreen onClose={() => setIsParkingOpen(false)} showToast={showToast} />
-             </React.Suspense>
+            <React.Suspense fallback={<div className="flex items-center justify-center p-20"><div className="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div></div>}>
+              <AddressAndParkingScreen initialTab="parking" onClose={() => setIsParkingOpen(false)} showToast={showToast} />
+            </React.Suspense>
           )}
       </AnimatePresence>
 
