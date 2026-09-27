@@ -4545,9 +4545,9 @@ export default function App() {
           )}
 
           {/* Mobile Bottom Navigation Bar - Visible across sections including Chelona AI */}
-          {/* Mobile Bottom Navigation (M3 Style - 4 tasti) */}
+          {/* Mobile Bottom Navigation (M3 Style - 5 tasti con Chelona AI) */}
           {!isAdding && !isScanning && !editingModuleId && !isArchiveOpen && (
-            <nav className="md:hidden fixed bottom-0 left-0 right-0 h-20 bg-[var(--bg)] border-t border-[var(--border)] z-[130] px-3 flex items-center justify-around safe-area-inset-bottom shadow-[0_-4px_12px_rgba(0,0,0,0.03)]">
+            <nav className="md:hidden fixed bottom-0 left-0 right-0 h-20 bg-[var(--bg)] border-t border-[var(--border)] z-[130] px-2 flex items-center justify-around safe-area-inset-bottom shadow-[0_-4px_12px_rgba(0,0,0,0.03)]">
               {[
                 { 
                   id: 'home', 
@@ -4578,6 +4578,19 @@ export default function App() {
                   } 
                 },
                 { 
+                  id: 'ai', 
+                  icon: Sparkles, 
+                  label: 'Chelona AI', 
+                  action: () => { 
+                    setActiveNavTab('ai'); 
+                    setIsAiOpen(true);
+                    setAiInitialVoiceMode(false);
+                    setIsToolsOpen(false); 
+                    setIsProfileOpen(false); 
+                    setSelectedType(null); 
+                  } 
+                },
+                { 
                   id: 'tools', 
                   icon: Wrench, 
                   label: 'Strumenti', 
@@ -4604,28 +4617,46 @@ export default function App() {
                   } 
                 }
               ].map(item => {
+                const isAiItem = item.id === 'ai';
                 const isActive = item.id === 'home' 
                   ? (activeNavTab === 'home' && !isToolsOpen && !isProfileOpen && !isAiOpen && !selectedType) 
                   : item.id === 'deadlines'
                   ? (activeNavTab === 'deadlines' && !isToolsOpen && !isProfileOpen && !isAiOpen)
+                  : isAiItem
+                  ? (isAiOpen || activeNavTab === 'ai')
                   : item.id === 'tools' 
                   ? (isToolsOpen && !isAiOpen)
                   : (isProfileOpen && !isAiOpen);
+
+                const pillClasses = isActive
+                  ? isAiItem
+                    ? 'bg-gradient-to-r from-amber-500/20 via-rose-500/20 to-indigo-500/20 text-amber-500 dark:text-amber-400 border border-amber-500/30 shadow-sm'
+                    : 'bg-[var(--accent-container)] text-[var(--accent-on-container)]'
+                  : isAiItem
+                  ? 'text-amber-500/80 group-hover:text-amber-500 group-hover:bg-amber-500/10'
+                  : 'text-[var(--text-muted)] group-hover:bg-[var(--surface-variant)]';
+
+                const textClasses = isActive
+                  ? isAiItem
+                    ? 'text-amber-600 dark:text-amber-400 font-black'
+                    : 'text-[var(--text-main)] font-black'
+                  : 'text-[var(--text-muted)] font-bold';
+
                 return (
                   <button 
                     key={item.id}
                     onClick={item.action}
                     className="flex flex-col items-center gap-1 group flex-1 pb-1 relative"
                   >
-                    <div className={`px-4 py-1.5 rounded-full transition-all duration-300 relative ${isActive ? 'bg-[var(--accent-container)] text-[var(--accent-on-container)]' : 'text-[var(--text-muted)] group-hover:bg-[var(--surface-variant)]'}`}>
-                      <item.icon size={22} strokeWidth={isActive ? 2.5 : 2} />
+                    <div className={`px-3 sm:px-4 py-1.5 rounded-full transition-all duration-300 relative ${pillClasses}`}>
+                      <item.icon size={21} strokeWidth={isActive ? 2.5 : 2} />
                       {Boolean(item.badge && item.badge > 0) && (
                         <span className="absolute -top-1 -right-1 w-4 h-4 bg-rose-500 text-white rounded-full text-[9px] font-black flex items-center justify-center shadow-sm">
                           {item.badge}
                         </span>
                       )}
                     </div>
-                    <span className={`text-[10px] tracking-tight transition-colors ${isActive ? 'text-[var(--text-main)] font-black' : 'text-[var(--text-muted)] font-bold'}`}>
+                    <span className={`text-[10px] tracking-tight transition-colors whitespace-nowrap ${textClasses}`}>
                       {item.label}
                     </span>
                   </button>
