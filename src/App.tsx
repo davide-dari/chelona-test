@@ -3815,10 +3815,7 @@ export default function App() {
                   </div>
                 </div>
 
-                {false ? (
-                  null
-                ) : (
-                  <>
+                <>
                     {searchQuery.trim() && filteredTools.length > 0 && (
                       <div className="mb-10 animate-fade-in px-4 lg:px-8">
                         <h3 className="text-xl font-bold text-[var(--text-main)] mb-5 flex items-center gap-2">
@@ -4426,7 +4423,6 @@ export default function App() {
                       </>
                     )}
                   </>
-                )}
               </div>
             )}
           </div>
