@@ -562,7 +562,7 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
     <div className={
       isEmbedded 
         ? "flex flex-col h-full w-full bg-[var(--bg)] font-sans relative transition-colors duration-300"
-        : "fixed inset-0 z-[120] bg-[var(--bg)] flex flex-col h-[100dvh] overflow-hidden font-sans transition-colors duration-300"
+        : "fixed inset-x-0 top-0 bottom-20 md:bottom-0 z-[120] bg-[var(--bg)] flex flex-col overflow-hidden font-sans transition-colors duration-300"
     }>
       {/* HEADER PULITO CON LOGO CHELONA - SOLO IN FULLSCREEN */}
       {!isEmbedded && (

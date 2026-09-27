@@ -2763,23 +2763,6 @@ export default function App() {
                 {/* Right side: Avatar (Lock and Theme moved to Profile) */}
                 <div className="flex items-center gap-2 sm:gap-4">
                   <button 
-                    onClick={handleToggleWakeWord}
-                    className={`relative p-2 sm:p-2.5 rounded-full transition-all flex items-center justify-center shadow-sm ${
-                      isWakeWordEnabled
-                        ? 'bg-amber-500/15 text-amber-500 border border-amber-500/40 shadow-amber-500/10'
-                        : 'bg-[var(--surface-variant)] hover:bg-[var(--border)] text-[var(--text-muted)] hover:text-amber-500'
-                    }`}
-                    title={isWakeWordEnabled ? "Comando vocale 'Ciao Chelona' attivo (tocca per disattivare)" : "Attiva comando vocale 'Ciao Chelona'"}
-                  >
-                    {isWakeWordEnabled && (
-                      <span className="absolute -top-0.5 -right-0.5 flex h-2.5 w-2.5">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
-                        <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-500"></span>
-                      </span>
-                    )}
-                    <Mic className="w-5 h-5 sm:w-6 sm:h-6" />
-                  </button>
-                  <button 
                     onClick={() => { setIsAiOpen(true); setActiveNavTab('ai'); setIsToolsOpen(false); setIsProfileOpen(false); setSelectedType(null); }}
                     className="p-2 sm:p-2.5 bg-gradient-to-tr from-amber-500/10 via-rose-500/10 to-indigo-500/10 hover:from-amber-500/20 hover:to-indigo-500/20 rounded-full text-amber-500 border border-amber-500/30 transition-all flex items-center justify-center shadow-sm"
                     title="Chelona AI"
@@ -3819,70 +3802,21 @@ export default function App() {
                       onChange={(e) => setSearchQuery(e.target.value)}
                       className="w-full pl-14 pr-14 py-4.5 bg-[var(--surface-variant)] border-transparent rounded-[var(--radius-lg)] shadow-none outline-none focus:bg-[var(--bg)] focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)] transition-all text-base lg:text-lg font-medium text-[var(--text-main)] placeholder:text-[var(--text-muted)]"
                     />
-                    <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1">
-                      {searchQuery && (
+                    {searchQuery && (
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center">
                         <button 
                           onClick={() => setSearchQuery('')}
                           className="p-2 hover:bg-[var(--bg)] rounded-full text-[var(--text-muted)] transition-all"
                         >
                           <X className="w-5 h-5" />
                         </button>
-                      )}
-                      <button 
-                        onClick={handleVoiceSearch}
-                        title="Ricerca Vocale"
-                        className={`relative p-3 rounded-full transition-all ${isListening ? 'text-[var(--accent)]' : 'text-[var(--text-muted)] hover:text-[var(--accent)] hover:bg-[var(--bg)]'}`}
-                      >
-                        {isListening && (
-                          <motion.div
-                            layoutId="voice-ripple"
-                            initial={{ scale: 0.8, opacity: 0.5 }}
-                            animate={{ scale: 1.5, opacity: 0 }}
-                            transition={{ repeat: Infinity, duration: 1.5 }}
-                            className="absolute inset-0 bg-[var(--accent)] rounded-full"
-                          />
-                        )}
-                        <Mic className={`w-5 h-5 lg:w-6 lg:h-6 relative z-10 ${isListening ? 'animate-pulse' : ''}`} />
-                      </button>
-                    </div>
+                      </div>
+                    )}
                   </div>
                 </div>
 
-                {isListening ? (
-                  <div className="py-20 flex flex-col items-center justify-center text-center px-4 animate-fade-in">
-                    <div className="relative w-28 h-28 flex items-center justify-center mb-6">
-                      <motion.div
-                        animate={{
-                          scale: [1, 1.4, 1],
-                          opacity: [0.3, 0, 0.3]
-                        }}
-                        transition={{
-                          repeat: Infinity,
-                          duration: 2,
-                          ease: "easeInOut"
-                        }}
-                        className="absolute inset-0 bg-[var(--accent)]/20 rounded-full"
-                      />
-                      <motion.div
-                        animate={{
-                          scale: [1, 1.2, 1],
-                          opacity: [0.5, 0.1, 0.5]
-                        }}
-                        transition={{
-                          repeat: Infinity,
-                          duration: 1.5,
-                          ease: "easeInOut",
-                          delay: 0.3
-                        }}
-                        className="absolute w-20 h-20 bg-[var(--accent)]/30 rounded-full"
-                      />
-                      <div className="w-16 h-16 bg-[var(--accent)] text-white rounded-full flex items-center justify-center shadow-lg shadow-[var(--accent)]/30 z-10">
-                        <Mic className="w-8 h-8 animate-bounce text-white" />
-                      </div>
-                    </div>
-                    <h3 className="text-2xl font-black text-[var(--text-main)] mb-2 uppercase tracking-wide animate-pulse">Ascolto in corso...</h3>
-                    <p className="text-sm text-[var(--text-muted)] max-w-xs font-semibold">Parla ora per effettuare la ricerca vocale</p>
-                  </div>
+                {false ? (
+                  null
                 ) : (
                   <>
                     {searchQuery.trim() && filteredTools.length > 0 && (
@@ -4600,10 +4534,10 @@ export default function App() {
             </>
           )}
 
-          {/* Mobile Bottom Navigation Bar - Hidden during full-screen edit/modals */}
-          {/* Mobile Bottom Navigation (M3 Style) */}
-          {!isAdding && !isScanning && !editingModuleId && !isArchiveOpen && !isAiOpen && (
-            <nav className="md:hidden fixed bottom-0 left-0 right-0 h-20 bg-[var(--bg)] border-t border-[var(--border)] z-50 px-3 flex items-center justify-around safe-area-inset-bottom shadow-[0_-4px_12px_rgba(0,0,0,0.03)]">
+          {/* Mobile Bottom Navigation Bar - Visible across sections including Chelona AI */}
+          {/* Mobile Bottom Navigation (M3 Style - 4 tasti) */}
+          {!isAdding && !isScanning && !editingModuleId && !isArchiveOpen && (
+            <nav className="md:hidden fixed bottom-0 left-0 right-0 h-20 bg-[var(--bg)] border-t border-[var(--border)] z-[130] px-3 flex items-center justify-around safe-area-inset-bottom shadow-[0_-4px_12px_rgba(0,0,0,0.03)]">
               {[
                 { 
                   id: 'home', 
@@ -4613,6 +4547,7 @@ export default function App() {
                     setActiveNavTab('home'); 
                     setIsToolsOpen(false); 
                     setIsAiOpen(false);
+                    setAiInitialVoiceMode(false);
                     setSelectedType(null); 
                     setIsProfileOpen(false); 
                     setIsSensitiveUnlocked(false);
@@ -4627,20 +4562,9 @@ export default function App() {
                     setActiveNavTab('deadlines'); 
                     setIsToolsOpen(false); 
                     setIsAiOpen(false);
+                    setAiInitialVoiceMode(false);
                     setSelectedType(null); 
                     setIsProfileOpen(false); 
-                  } 
-                },
-                { 
-                  id: 'ai', 
-                  icon: Sparkles, 
-                  label: 'Chelona AI', 
-                  action: () => { 
-                    setActiveNavTab('ai'); 
-                    setIsAiOpen(true);
-                    setIsToolsOpen(false); 
-                    setIsProfileOpen(false); 
-                    setSelectedType(null); 
                   } 
                 },
                 { 
@@ -4651,6 +4575,7 @@ export default function App() {
                     setActiveNavTab('tools'); 
                     setIsToolsOpen(true); 
                     setIsAiOpen(false);
+                    setAiInitialVoiceMode(false);
                     setIsProfileOpen(false); 
                     setSelectedType(null); 
                   } 
@@ -4663,6 +4588,7 @@ export default function App() {
                     setActiveNavTab('profile'); 
                     setIsProfileOpen(true); 
                     setIsAiOpen(false);
+                    setAiInitialVoiceMode(false);
                     setIsToolsOpen(false); 
                     setSelectedType(null); 
                   } 
@@ -4672,8 +4598,6 @@ export default function App() {
                   ? (activeNavTab === 'home' && !isToolsOpen && !isProfileOpen && !isAiOpen && !selectedType) 
                   : item.id === 'deadlines'
                   ? (activeNavTab === 'deadlines' && !isToolsOpen && !isProfileOpen && !isAiOpen)
-                  : item.id === 'ai'
-                  ? isAiOpen
                   : item.id === 'tools' 
                   ? (isToolsOpen && !isAiOpen)
                   : (isProfileOpen && !isAiOpen);

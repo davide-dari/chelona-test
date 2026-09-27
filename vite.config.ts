@@ -12,6 +12,10 @@ export default defineConfig({
       '@': path.resolve(__dirname, '.'),
     },
   },
+  esbuild: {
+    drop: ['debugger'],
+    legalComments: 'none',
+  },
   build: {
     target: 'chrome80',
     cssCodeSplit: true,
