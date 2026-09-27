@@ -87,10 +87,13 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
   const [previewingVoiceUri, setPreviewingVoiceUri] = useState<string | null>(null);
 
   const cancelSpeechRef = useRef(false);
+  const speechSessionIdRef = useRef(0);
   const webSpeechRecRef = useRef<any>(null);
 
   // Modalità interazione vocale a tutto schermo (Voice Mode)
   const [isVoiceModeOpen, setIsVoiceModeOpen] = useState(false);
+  const isVoiceModeOpenRef = useRef(false);
+  isVoiceModeOpenRef.current = isVoiceModeOpen;
   const [voiceStatus, setVoiceStatus] = useState<'idle' | 'listening' | 'thinking' | 'speaking'>('idle');
   const [lastUserSpeech, setLastUserSpeech] = useState<string>('');
   const [lastAiSpeech, setLastAiSpeech] = useState<string>('');
@@ -141,19 +144,31 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
     updateVoices();
     if ('speechSynthesis' in window) {
       window.speechSynthesis.onvoiceschanged = updateVoices;
+      try {
+        window.speechSynthesis.addEventListener('voiceschanged', updateVoices);
+      } catch {}
     }
+    const t1 = setTimeout(updateVoices, 200);
+    const t2 = setTimeout(updateVoices, 800);
 
     return () => {
       cancelSpeechRef.current = true;
+      speechSessionIdRef.current++;
+      clearTimeout(t1);
+      clearTimeout(t2);
       if ('speechSynthesis' in window) {
-        window.speechSynthesis.cancel();
-        window.speechSynthesis.onvoiceschanged = null;
+        try {
+          window.speechSynthesis.cancel();
+          window.speechSynthesis.onvoiceschanged = null;
+          window.speechSynthesis.removeEventListener('voiceschanged', updateVoices);
+        } catch {}
       }
     };
   }, []);
 
   const stopSpeaking = () => {
     cancelSpeechRef.current = true;
+    speechSessionIdRef.current++;
     if ('speechSynthesis' in window) {
       try {
         window.speechSynthesis.cancel();
@@ -184,19 +199,24 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
       }
     } catch {}
     cancelSpeechRef.current = false;
+    const currentSessionId = ++speechSessionIdRef.current;
 
     // Normalizza il testo rendendolo fluido e naturale in italiano parlato
     const naturalText = prepareNaturalSpeech(text);
     if (!naturalText) {
       setVoiceStatus('idle');
-      if (onEndCallback) onEndCallback();
+      if (onEndCallback && !cancelSpeechRef.current && speechSessionIdRef.current === currentSessionId) {
+        onEndCallback();
+      }
       return;
     }
 
     const sentences = splitIntoSentences(naturalText);
     if (sentences.length === 0) {
       setVoiceStatus('idle');
-      if (onEndCallback) onEndCallback();
+      if (onEndCallback && !cancelSpeechRef.current && speechSessionIdRef.current === currentSessionId) {
+        onEndCallback();
+      }
       return;
     }
 
@@ -205,10 +225,10 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
     const currentVoice = overrideVoice || selectedVoice;
 
     const speakNext = () => {
-      if (cancelSpeechRef.current || idx >= sentences.length) {
+      if (cancelSpeechRef.current || speechSessionIdRef.current !== currentSessionId || idx >= sentences.length) {
         setVoiceStatus('idle');
         (window as any).__activeUtterance = null;
-        if (onEndCallback && !cancelSpeechRef.current) {
+        if (onEndCallback && !cancelSpeechRef.current && speechSessionIdRef.current === currentSessionId) {
           onEndCallback();
         }
         return;
@@ -240,23 +260,38 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
       utterance.volume = 1.0;
 
       utterance.onend = () => {
-        if (cancelSpeechRef.current) {
+        if (cancelSpeechRef.current || speechSessionIdRef.current !== currentSessionId) {
           setVoiceStatus('idle');
           (window as any).__activeUtterance = null;
           return;
         }
         // Piccola pausa naturale tra frasi
-        setTimeout(speakNext, 70);
+        setTimeout(() => {
+          if (!cancelSpeechRef.current && speechSessionIdRef.current === currentSessionId) {
+            speakNext();
+          }
+        }, 70);
       };
 
-      utterance.onerror = (e) => {
+      utterance.onerror = (e: any) => {
+        if (e?.error === 'canceled' || e?.error === 'interrupted' || cancelSpeechRef.current || speechSessionIdRef.current !== currentSessionId) {
+          setVoiceStatus('idle');
+          (window as any).__activeUtterance = null;
+          return;
+        }
         console.warn('Speech sentence warning:', e);
         if (!cancelSpeechRef.current && idx < sentences.length) {
-          setTimeout(speakNext, 50);
+          setTimeout(() => {
+            if (!cancelSpeechRef.current && speechSessionIdRef.current === currentSessionId) {
+              speakNext();
+            }
+          }, 50);
         } else {
           setVoiceStatus('idle');
           (window as any).__activeUtterance = null;
-          if (onEndCallback && !cancelSpeechRef.current) onEndCallback();
+          if (onEndCallback && !cancelSpeechRef.current && speechSessionIdRef.current === currentSessionId) {
+            onEndCallback();
+          }
         }
       };
 
@@ -342,9 +377,11 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
           setLastAiSpeech(response.text);
           speakText(response.text, () => {
             // Quando ha finito di parlare, riattiva automaticamente l'ascolto per dialogo continuo!
-            if (isVoiceModeOpen) {
+            if (isVoiceModeOpenRef.current) {
               setTimeout(() => {
-                startVoiceRecognition(true);
+                if (isVoiceModeOpenRef.current) {
+                  startVoiceRecognition(true);
+                }
               }, 400);
             }
           });
@@ -372,7 +409,15 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
       const mustSpeak = isVoiceSession || shouldSpeak;
       if (mustSpeak) {
         if (isVoiceSession) {
-          speakText(errMsg);
+          speakText(errMsg, () => {
+            if (isVoiceModeOpenRef.current) {
+              setTimeout(() => {
+                if (isVoiceModeOpenRef.current) {
+                  startVoiceRecognition(true);
+                }
+              }, 400);
+            }
+          });
         } else {
           setSpeakingMessageId(errId);
           speakText(errMsg, () => setSpeakingMessageId(null));
@@ -530,7 +575,7 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
       initialVoiceTriggeredRef.current = true;
       const t = setTimeout(() => {
         toggleVoiceMode();
-      }, 300);
+      }, 120);
       return () => clearTimeout(t);
     }
   }, [initialVoiceMode, isVoiceModeOpen]);
@@ -1138,13 +1183,33 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
                   />
 
                   <motion.div
+                    role="button"
+                    tabIndex={0}
+                    aria-label={
+                      voiceStatus === 'listening'
+                        ? 'Pausa ascolto'
+                        : voiceStatus === 'speaking'
+                        ? 'Interrompi e parla'
+                        : 'Inizia ad ascoltare'
+                    }
+                    onClick={() => {
+                      if (voiceStatus === 'speaking') {
+                        stopSpeaking();
+                        setTimeout(() => startVoiceRecognition(true), 150);
+                      } else if (voiceStatus === 'listening') {
+                        stopSpeaking();
+                      } else {
+                        startVoiceRecognition(true);
+                      }
+                    }}
+                    whileTap={{ scale: 0.93 }}
                     animate={{
                       scale: voiceStatus === 'listening' ? [1, 1.2, 1] : voiceStatus === 'speaking' ? [1, 1.15, 1] : 1,
                     }}
                     transition={{ repeat: Infinity, duration: 1.5, ease: "easeInOut" }}
-                    className="relative w-32 h-32 rounded-full bg-gradient-to-tr from-amber-500 to-amber-600 p-2 shadow-2xl shadow-amber-500/40 flex items-center justify-center border-4 border-white/20 overflow-hidden"
+                    className="relative w-32 h-32 rounded-full bg-gradient-to-tr from-amber-500 to-amber-600 p-2 shadow-2xl shadow-amber-500/40 flex items-center justify-center border-4 border-white/20 overflow-hidden cursor-pointer select-none active:scale-95 transition-transform"
                   >
-                    <img src="/chelona_logo.png" alt="Chelona Voice" className="w-16 h-16 object-contain filter drop-shadow-md" />
+                    <img src="/chelona_logo.png" alt="Chelona Voice" className="w-16 h-16 object-contain filter drop-shadow-md pointer-events-none" />
                   </motion.div>
                 </div>
 
@@ -1200,7 +1265,7 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
                     stopSpeaking();
                     setTimeout(() => startVoiceRecognition(true), 150);
                   } else if (voiceStatus === 'listening') {
-                    setVoiceStatus('idle');
+                    stopSpeaking();
                   } else {
                     startVoiceRecognition(true);
                   }

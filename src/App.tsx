@@ -3972,7 +3972,7 @@ export default function App() {
                               </div>
 
                               <h2 className="text-2xl sm:text-3xl font-black text-[var(--text-main)] tracking-tight leading-tight">
-                                Ciao <span className="bg-gradient-to-r from-amber-500 via-rose-500 to-indigo-500 bg-clip-text text-transparent">{username || 'Utente'}</span>,
+                                Ciao <span className="bg-gradient-to-r from-amber-500 via-rose-500 to-indigo-500 bg-clip-text text-transparent">{(username?.trim()) || 'Utente'}</span>,
                                 <br />
                                 come posso aiutarti oggi?
                               </h2>
@@ -3983,11 +3983,14 @@ export default function App() {
                             </div>
 
                             {/* Voice Activation & Quick Chat Buttons */}
-                            <div className="flex flex-wrap items-center gap-3 shrink-0">
+                            <div className="flex flex-wrap sm:flex-nowrap items-stretch sm:items-center gap-3 shrink-0 w-full sm:w-auto">
                               <motion.button
-                                whileHover={{ scale: 1.03 }}
+                                whileHover={{ scale: 1.02 }}
                                 whileTap={{ scale: 0.95 }}
                                 onClick={() => {
+                                  if ('speechSynthesis' in window) {
+                                    try { window.speechSynthesis.resume(); } catch {}
+                                  }
                                   setAiInitialVoiceMode(true);
                                   setIsAiOpen(true);
                                   setActiveNavTab('ai');
@@ -3995,16 +3998,24 @@ export default function App() {
                                   setIsProfileOpen(false);
                                   setSelectedType(null);
                                 }}
-                                className="relative group/voice flex items-center gap-3.5 px-5 py-3.5 rounded-2xl bg-gradient-to-r from-amber-500 via-rose-500 to-indigo-600 text-white font-black text-sm shadow-lg shadow-amber-500/25 hover:shadow-amber-500/40 transition-all duration-300 active:scale-95"
+                                className="relative group/voice flex-1 sm:flex-initial flex items-center justify-center sm:justify-start gap-3.5 px-5 py-3.5 rounded-2xl bg-gradient-to-r from-amber-500 via-rose-500 to-indigo-600 text-white font-black text-sm shadow-lg shadow-amber-500/25 hover:shadow-amber-500/40 transition-all duration-300 active:scale-95 cursor-pointer"
                                 title="Attiva modalità vocale con Chelona AI"
+                                aria-label="Attiva modalità vocale con Chelona AI"
                               >
-                                <span className="relative flex items-center justify-center w-10 h-10 rounded-xl bg-white/20 backdrop-blur-md shadow-inner">
+                                <span className="relative flex items-center justify-center w-10 h-10 rounded-xl bg-white/20 backdrop-blur-md shadow-inner shrink-0">
                                   <Mic className="w-5 h-5 text-white" />
                                   <span className="absolute -inset-1 rounded-xl bg-white/30 animate-ping opacity-40 pointer-events-none" />
                                 </span>
                                 <div className="text-left pr-1">
                                   <span className="block text-[10px] font-black uppercase tracking-wider text-white/80">Comando Vocale</span>
-                                  <span className="text-sm font-black tracking-tight">Parla con Chelona</span>
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="text-sm font-black tracking-tight">Parla con Chelona</span>
+                                    <span className="flex items-end gap-0.5 h-3 ml-0.5 opacity-90">
+                                      <span className="w-0.5 h-1.5 bg-white rounded-full animate-pulse" />
+                                      <span className="w-0.5 h-3 bg-white rounded-full animate-pulse delay-75" />
+                                      <span className="w-0.5 h-2 bg-white rounded-full animate-pulse delay-150" />
+                                    </span>
+                                  </div>
                                 </div>
                               </motion.button>
 
@@ -4017,8 +4028,9 @@ export default function App() {
                                   setIsProfileOpen(false);
                                   setSelectedType(null);
                                 }}
-                                className="px-4 py-3 rounded-2xl bg-[var(--surface-variant)] hover:bg-[var(--border)] text-[var(--text-main)] font-bold text-xs border border-[var(--border)] transition-all flex items-center gap-2 active:scale-95"
+                                className="px-4 py-3 rounded-2xl bg-[var(--surface-variant)] hover:bg-[var(--border)] text-[var(--text-main)] font-bold text-xs border border-[var(--border)] transition-all flex items-center justify-center gap-2 active:scale-95 shrink-0 cursor-pointer"
                                 title="Apri chat testuale con Chelona AI"
+                                aria-label="Apri chat testuale con Chelona AI"
                               >
                                 <Sparkles className="w-4 h-4 text-amber-500" />
                                 <span>Scrivi</span>

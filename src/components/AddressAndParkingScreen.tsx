@@ -344,12 +344,13 @@ export const AddressAndParkingScreen: React.FC<AddressAndParkingScreenProps> = (
         });
       }
 
+      const wasMeterEnabled = isMeterEnabled;
       setParking(saved);
       setIsEditingNotes(false);
       setIsMeterEnabled(false);
       if (showToast) {
         showToast(
-          isMeterEnabled 
+          wasMeterEnabled 
             ? `🅿️ Parcheggio attivato! Parchimetro impostato per ${formatMinutesHuman(meterDurationMinutes)}.`
             : '📍 Posizione auto salvata con successo!', 
           'success'
@@ -1141,8 +1142,11 @@ export const AddressAndParkingScreen: React.FC<AddressAndParkingScreenProps> = (
                       {/* Switch Attiva/Disattiva */}
                       <button
                         type="button"
+                        role="switch"
+                        aria-checked={isMeterEnabled}
+                        aria-label="Parchimetro o disco orario"
                         onClick={() => setIsMeterEnabled(!isMeterEnabled)}
-                        className={`w-12 h-6 rounded-full transition-colors relative p-0.5 border ${
+                        className={`w-12 h-6 rounded-full transition-colors relative p-0.5 border cursor-pointer ${
                           isMeterEnabled ? 'bg-indigo-500 border-indigo-600' : 'bg-[var(--border)] border-[var(--border)]'
                         }`}
                       >
