@@ -1,6 +1,6 @@
 import { 
   Layers, RotateCw, FileDown, Minimize, 
-  ImageIcon, Percent, Scan, Shirt
+  ImageIcon, Percent, Scan, Shirt, Sparkles
 } from 'lucide-react';
 
 export const TOOLS_PDF = [
@@ -12,6 +12,7 @@ export const TOOLS_PDF = [
 ];
 
 export const TOOLS_UTILITY = [
+  { id: 'chelona-ai', title: 'Chelona AI (Gemma 4 Nano)', desc: 'Assistente neurale offline con memoria continua locale.', icon: Sparkles, color: 'text-amber-500', bg: 'bg-amber-500/10', category: 'utility' },
   { id: 'vinted', title: 'Aiuto Vinted', desc: 'Misure su foto, titoli e descrizioni top.', icon: Shirt, color: 'text-teal-500', bg: 'bg-teal-500/10', category: 'utility' },
   { id: 'scanner', title: 'Scanner', desc: 'Scansiona e crea PDF.', icon: Scan, color: 'text-[var(--success)]', bg: 'bg-[var(--success)]/10', category: 'utility' },
   { id: 'percent', title: 'Percentuale', desc: 'Sconti e variazioni.', icon: Percent, color: 'text-indigo-500', bg: 'bg-indigo-500/10', category: 'utility' },

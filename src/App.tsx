@@ -53,6 +53,7 @@ const FitnessScreen = React.lazy(() => import('./components/FitnessScreen').then
 const SupermarketScreen = React.lazy(() => import('./components/SupermarketScreen').then(m => ({ default: m.SupermarketScreen })));
 const VolantinoScreen = React.lazy(() => import('./components/VolantinoScreen').then(m => ({ default: m.default })));
 const ShareScreen = React.lazy(() => import('./components/ShareScreen').then(m => ({ default: m.ShareScreen })));
+const ChelonaAiScreen = React.lazy(() => import('./components/ChelonaAiScreen').then(m => ({ default: m.ChelonaAiScreen })));
 // UI Libraries removed as per request (CSS Grid migration)
 
 // ResponsiveGridLayout removed (DnD disabled)
@@ -312,7 +313,8 @@ export default function App() {
   const [editingSupermarketModule, setEditingSupermarketModule] = useState<import('./types').SupermarketModule | null>(null);
   const [editingVolantinoModule, setEditingVolantinoModule] = useState<import('./types').VolantinoModule | null>(null);
   const [flyerInitialOffer, setFlyerInitialOffer] = useState<{ fid: string; pg: number } | null>(null);
-  const [activeNavTab, setActiveNavTab] = useState<'home' | 'deadlines' | 'tools' | 'profile'>('home');
+  const [activeNavTab, setActiveNavTab] = useState<'home' | 'deadlines' | 'ai' | 'tools' | 'profile'>('home');
+  const [isAiOpen, setIsAiOpen] = useState(false);
   const [deadlinesFilter, setDeadlinesFilter] = useState<'all' | 'auto' | 'document' | 'installment'>('all');
 
   useEffect(() => {
@@ -684,6 +686,7 @@ export default function App() {
         return;
       }
       if (isProfileOpen) { setIsProfileOpen(false); return; }
+      if (isAiOpen) { setIsAiOpen(false); if (activeNavTab === 'ai') setActiveNavTab('home'); return; }
 
       if (activeToolId) { setActiveToolId(null); return; }
       if (isToolsOpen) { setIsToolsOpen(false); return; }
@@ -2657,12 +2660,13 @@ export default function App() {
               <header className="h-16 lg:h-20 bg-[var(--bg)] px-6 lg:px-12 flex items-center justify-between shrink-0 z-10 safe-area-header transition-all">
                 {/* Left side: Contextual Title */}
                 <div className="flex items-center gap-4">
-                  {(activeNavTab !== 'home' || isToolsOpen || isProfileOpen || selectedType || selectedFolderId) && (
+                  {(activeNavTab !== 'home' || isToolsOpen || isProfileOpen || isAiOpen || selectedType || selectedFolderId) && (
                     <button 
                       onClick={() => { 
                         setActiveNavTab('home'); 
                         setIsToolsOpen(false); 
                         setIsProfileOpen(false); 
+                        setIsAiOpen(false);
                         setSelectedType(null); 
                         setSelectedFolderId(null); 
                         setActiveToolId(null); 
@@ -2676,7 +2680,8 @@ export default function App() {
                     </button>
                   )}
                   <h1 className="text-xl lg:text-2xl font-bold text-[var(--text-main)] tracking-tight">
-                    {activeNavTab === 'deadlines' ? 'Scadenze & Promemoria' :
+                    {isAiOpen ? 'Chelona AI' :
+                     activeNavTab === 'deadlines' ? 'Scadenze & Promemoria' :
                      isToolsOpen ? 'Strumenti' : 
                      isProfileOpen ? 'Profilo' :
                      selectedFolderId ? (folders.find(f => f.id === selectedFolderId)?.name || 'Cartella') : 
@@ -2689,7 +2694,14 @@ export default function App() {
                 {/* Right side: Avatar (Lock and Theme moved to Profile) */}
                 <div className="flex items-center gap-2 sm:gap-4">
                   <button 
-                    onClick={() => { setIsToolsOpen(true); setIsProfileOpen(false); setSelectedType(null); }}
+                    onClick={() => { setIsAiOpen(true); setActiveNavTab('ai'); setIsToolsOpen(false); setIsProfileOpen(false); setSelectedType(null); }}
+                    className="p-2 sm:p-2.5 bg-gradient-to-tr from-amber-500/10 via-rose-500/10 to-indigo-500/10 hover:from-amber-500/20 hover:to-indigo-500/20 rounded-full text-amber-500 border border-amber-500/30 transition-all flex items-center justify-center shadow-sm"
+                    title="Chelona AI (Gemma 4 Nano)"
+                  >
+                    <Sparkles className="w-5 h-5 sm:w-6 sm:h-6" />
+                  </button>
+                  <button 
+                    onClick={() => { setIsToolsOpen(true); setIsProfileOpen(false); setIsAiOpen(false); setSelectedType(null); }}
                     className="p-2 sm:p-2.5 bg-[var(--surface-variant)] hover:bg-[var(--border)] rounded-full text-[var(--accent)] transition-all flex items-center justify-center shadow-sm hidden md:flex"
                     title="Strumenti"
                   >
@@ -2703,7 +2715,7 @@ export default function App() {
                     <MapPin className="w-5 h-5 sm:w-6 sm:h-6" />
                   </button>
                   <button 
-                    onClick={() => setIsProfileOpen(true)} 
+                    onClick={() => { setIsProfileOpen(true); setIsAiOpen(false); }} 
                     className="w-10 h-10 lg:w-11 lg:h-11 rounded-full overflow-hidden border border-[var(--border)] focus:outline-none hover:opacity-80 transition-all bg-[var(--surface-variant)] shadow-sm"
                   >
                     <img src={avatar || `https://ui-avatars.com/api/?name=${username}&background=E3E3E3&color=5E5E5E`} alt="Profile" className="w-full h-full object-cover" />
@@ -2746,7 +2758,32 @@ export default function App() {
                 initialToolId={activeToolId} 
                 onSaveToSandbox={handleSaveToSandbox} 
                 onReset={() => setActiveToolId(null)} 
+                onOpenAi={() => {
+                  setIsToolsOpen(false);
+                  setIsAiOpen(true);
+                  setActiveNavTab('ai');
+                }}
               />
+            ) : isAiOpen ? (
+              <React.Suspense fallback={<div className="flex items-center justify-center p-20"><div className="w-8 h-8 border-4 border-amber-500 border-t-transparent rounded-full animate-spin"></div></div>}>
+                <ChelonaAiScreen
+                  modules={modules}
+                  username={username}
+                  onClose={() => {
+                    setIsAiOpen(false);
+                    if (activeNavTab === 'ai') setActiveNavTab('home');
+                  }}
+                  onOpenModule={(m) => {
+                    setIsAiOpen(false);
+                    openEditModalWithSecurity(m);
+                  }}
+                  onOpenCategory={(cat) => {
+                    setIsAiOpen(false);
+                    handleSelectCategoryWithSecurity(cat as any);
+                  }}
+                  showToast={showToast}
+                />
+              </React.Suspense>
             ) : isSettingsOpen ? (
               <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="max-w-2xl">
                 <div className="flex items-center gap-4 mb-8">
@@ -3675,31 +3712,6 @@ export default function App() {
                       </button>
                     </div>
                   </div>
-
-                  {!isSensitiveUnlocked && (
-                    <div className="mt-4 max-w-2xl mx-auto">
-                      <motion.button
-                        whileHover={{ scale: 1.01 }}
-                        whileTap={{ scale: 0.98 }}
-                        onClick={() => unlockAndProceed(() => showToast('Dati sensibili sbloccati!', 'success'))}
-                        className="w-full p-4 rounded-3xl bg-gradient-to-r from-amber-500/10 via-amber-500/20 to-amber-500/10 border border-amber-500/30 flex items-center justify-between gap-4 text-amber-500 shadow-lg shadow-amber-500/5 group cursor-pointer active:scale-95 transition-all"
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-2xl bg-amber-500 text-white flex items-center justify-center font-bold shrink-0 shadow-md shadow-amber-500/30 group-hover:scale-110 transition-transform">
-                            <Lock className="w-5 h-5" />
-                          </div>
-                          <div className="text-left">
-                            <p className="font-black text-sm text-[var(--text-main)]">Dati Sensibili Riservati</p>
-                            <p className="text-xs text-[var(--text-muted)] font-medium">Tocca per sbloccare documenti, auto e note con impronta o password</p>
-                          </div>
-                        </div>
-                        <div className="px-4 py-2 bg-amber-500 text-white rounded-xl text-xs font-black uppercase tracking-wider shadow-md active:scale-95 transition-all flex items-center gap-1.5 shrink-0">
-                          <Fingerprint className="w-4 h-4" />
-                          <span>Sblocca</span>
-                        </div>
-                      </motion.button>
-                    </div>
-                  )}
                 </div>
 
                 {isListening ? (
@@ -4456,7 +4468,7 @@ export default function App() {
 
           {/* Mobile Bottom Navigation Bar - Hidden during full-screen edit/modals */}
           {/* Mobile Bottom Navigation (M3 Style) */}
-          {!isAdding && !isScanning && !editingModuleId && !isArchiveOpen && (
+          {!isAdding && !isScanning && !editingModuleId && !isArchiveOpen && !isAiOpen && (
             <nav className="md:hidden fixed bottom-0 left-0 right-0 h-20 bg-[var(--bg)] border-t border-[var(--border)] z-50 px-3 flex items-center justify-around safe-area-inset-bottom shadow-[0_-4px_12px_rgba(0,0,0,0.03)]">
               {[
                 { 
@@ -4466,6 +4478,7 @@ export default function App() {
                   action: () => { 
                     setActiveNavTab('home'); 
                     setIsToolsOpen(false); 
+                    setIsAiOpen(false);
                     setSelectedType(null); 
                     setIsProfileOpen(false); 
                     setIsSensitiveUnlocked(false);
@@ -4479,8 +4492,21 @@ export default function App() {
                   action: () => { 
                     setActiveNavTab('deadlines'); 
                     setIsToolsOpen(false); 
+                    setIsAiOpen(false);
                     setSelectedType(null); 
                     setIsProfileOpen(false); 
+                  } 
+                },
+                { 
+                  id: 'ai', 
+                  icon: Sparkles, 
+                  label: 'Chelona AI', 
+                  action: () => { 
+                    setActiveNavTab('ai'); 
+                    setIsAiOpen(true);
+                    setIsToolsOpen(false); 
+                    setIsProfileOpen(false); 
+                    setSelectedType(null); 
                   } 
                 },
                 { 
@@ -4490,6 +4516,7 @@ export default function App() {
                   action: () => { 
                     setActiveNavTab('tools'); 
                     setIsToolsOpen(true); 
+                    setIsAiOpen(false);
                     setIsProfileOpen(false); 
                     setSelectedType(null); 
                   } 
@@ -4501,18 +4528,21 @@ export default function App() {
                   action: () => { 
                     setActiveNavTab('profile'); 
                     setIsProfileOpen(true); 
+                    setIsAiOpen(false);
                     setIsToolsOpen(false); 
                     setSelectedType(null); 
                   } 
                 }
               ].map(item => {
                 const isActive = item.id === 'home' 
-                  ? (activeNavTab === 'home' && !isToolsOpen && !isProfileOpen && !selectedType) 
+                  ? (activeNavTab === 'home' && !isToolsOpen && !isProfileOpen && !isAiOpen && !selectedType) 
                   : item.id === 'deadlines'
-                  ? (activeNavTab === 'deadlines' && !isToolsOpen && !isProfileOpen)
+                  ? (activeNavTab === 'deadlines' && !isToolsOpen && !isProfileOpen && !isAiOpen)
+                  : item.id === 'ai'
+                  ? isAiOpen
                   : item.id === 'tools' 
-                  ? isToolsOpen 
-                  : isProfileOpen;
+                  ? (isToolsOpen && !isAiOpen)
+                  : (isProfileOpen && !isAiOpen);
                 return (
                   <button 
                     key={item.id}

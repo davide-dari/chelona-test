@@ -23,12 +23,13 @@ export { TOOLS_PDF, TOOLS_UTILITY, TOOLS };
 
 type ToolCategory = 'all' | 'pdf' | 'utility';
 
-export const ToolsScreen = ({ showToast, onSaveToSandbox, initialToolId, onReset, modules = [] }: { 
+export const ToolsScreen = ({ showToast, onSaveToSandbox, initialToolId, onReset, modules = [], onOpenAi }: { 
   showToast: (m: string, t?: 'success'|'error'|'info') => void, 
   onSaveToSandbox?: (title: string, base64: string, folderName?: string) => void, 
   initialToolId?: string | null, 
   onReset?: () => void,
-  modules?: Module[]
+  modules?: Module[],
+  onOpenAi?: () => void
 }) => {
   const [activeTool, setActiveTool] = useState<string | null>(initialToolId || null);
   const [category, setCategory] = useState<ToolCategory>('all');
@@ -43,6 +44,10 @@ export const ToolsScreen = ({ showToast, onSaveToSandbox, initialToolId, onReset
 
   React.useEffect(() => {
     if (initialToolId) {
+      if (initialToolId === 'chelona-ai') {
+        if (onOpenAi) onOpenAi();
+        return;
+      }
       setActiveTool(initialToolId);
     }
   }, [initialToolId]);
@@ -364,7 +369,13 @@ export const ToolsScreen = ({ showToast, onSaveToSandbox, initialToolId, onReset
                   {filteredTools.map(t => (
                     <button
                       key={t.id}
-                      onClick={() => setActiveTool(t.id)}
+                      onClick={() => {
+                        if (t.id === 'chelona-ai') {
+                          if (onOpenAi) onOpenAi();
+                          return;
+                        }
+                        setActiveTool(t.id);
+                      }}
                       className="bg-[var(--card-bg)] border border-[var(--border)] p-4 rounded-2xl hover:border-amber-500 shadow-sm hover:shadow-md transition-all group flex items-center gap-4 text-left"
                     >
                       <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${t.bg} ${t.color} group-hover:scale-110 transition-transform`}>
