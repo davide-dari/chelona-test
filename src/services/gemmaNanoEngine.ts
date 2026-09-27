@@ -524,7 +524,7 @@ export async function queryGemmaNano(
     });
 
     return {
-      text: `🧠 **Ho memorizzato questa informazione!**\n\n> *"${saved.fact}"*\n\nL'ho salvata nella mia memoria locale del dispositivo (**Gemma 4 Nano Memory**). D'ora in poi ne terrò conto durante le nostre conversazioni!`,
+      text: `Perfetto, ho preso nota: *"${saved.fact}"*. Me lo ricorderò!`,
       learnedFact: saved.fact,
     };
   }
@@ -543,27 +543,34 @@ export async function queryGemmaNano(
     lower.includes('mie informazioni') ||
     lower.includes('chi sono')
   ) {
-    let out = `🧠 **Ecco cosa ho imparato e indicizzato finora da Chelona:**\n\n`;
+    let out = `Ecco cosa so su di te:\n\n`;
 
     if (customMemories.length > 0) {
-      out += `### 📌 Informazioni personali memorizzate:\n`;
+      out += `**Cose che mi hai insegnato:**\n`;
       customMemories.forEach(m => {
-        out += `- **${m.key}**: "${m.fact}"\n`;
+        out += `• ${m.fact}\n`;
       });
       out += `\n`;
     }
 
-    out += `### 📂 Dati rilevati nei tuoi moduli:\n`;
-    out += `- 🚗 **Veicoli**: ${k.vehicles.length} registrati ${k.vehicles.map(v => `(${v.name} - ${v.plate})`).join(', ')}\n`;
-    out += `- 📄 **Documenti**: ${k.documents.length} archiviati\n`;
-    out += `- 📝 **Note e Appunti**: ${k.notes.length} note salvate\n`;
-    out += `- 💰 **Rate & Finanziamenti**: ${k.installments.modules.length} attivi (Totale €${k.installments.totalPending})\n`;
-    out += `- 🛒 **Spesa**: ${k.supermarket?.itemsToBuy.length || 0} articoli da acquistare\n`;
+    out += `**Dai tuoi moduli in Chelona:**\n`;
+    if (k.vehicles.length > 0) {
+      out += `• ${k.vehicles.length === 1 ? 'Auto' : 'Veicoli'}: ${k.vehicles.map(v => `${v.name} (${v.plate})`).join(', ')}\n`;
+    }
+    if (k.documents.length > 0) {
+      out += `• ${k.documents.length} documenti registrati\n`;
+    }
+    if (k.notes.length > 0) {
+      out += `• ${k.notes.length} note salvate\n`;
+    }
+    if (k.installments.modules.length > 0) {
+      out += `• ${k.installments.modules.length} finanziamenti attivi (€${k.installments.totalPending} residui)\n`;
+    }
     if (k.fitness) {
-      out += `- 🏋️ **Fitness**: Obiettivo "${k.fitness.goal || 'N/D'}", peso ${k.fitness.weight || 'N/D'}kg, target ${k.fitness.calories || 'N/D'} kcal\n`;
+      out += `• Obiettivo fitness: ${k.fitness.goal || 'forma fisica'}\n`;
     }
 
-    out += `\nPuoi insegnarmi nuove cose dicendomi: *"Ricordati che..."* oppure *"Il mio [dato] è [valore]"*!`;
+    out += `\nSe vuoi farmi ricordare altro, basta scrivermi *"Ricordati che..."*!`;
     return { text: out };
   }
 
@@ -577,33 +584,30 @@ export async function queryGemmaNano(
   ) {
     if (k.urgentDeadlines.length === 0) {
       return {
-        text: `🎉 **Ottime notizie ${username}!**\n\nNon hai scadenze imminenti o arretrate nei prossimi 60 giorni su veicoli, documenti o rate. Tutto è in perfetto ordine!`,
+        text: `Nessuna scadenza in vista nei prossimi due mesi, sei completamente tranquillo!`,
       };
     }
 
-    let out = `📅 **Ecco il quadro delle tue scadenze imminenti:**\n\n`;
+    let out = `Ecco le scadenze a cui prestare attenzione:\n\n`;
     const actions: AiAction[] = [];
 
     k.urgentDeadlines.forEach((d) => {
-      let statusIcon = '⏳';
-      let statusText = `tra **${d.days} giorni** (${formatDate(d.date)})`;
-
+      let status = '';
       if (d.days < 0) {
-        statusIcon = '🚨';
-        statusText = `**SCADUTO da ${Math.abs(d.days)} giorni!** (${formatDate(d.date)})`;
+        status = `⚠️ Scaduto da ${Math.abs(d.days)} giorni!`;
       } else if (d.days === 0) {
-        statusIcon = '⚠️';
-        statusText = `**SCADE OGGI!**`;
+        status = `⚠️ Scade oggi!`;
       } else if (d.days <= 7) {
-        statusIcon = '⚠️';
-        statusText = `tra soli **${d.days} giorni** (${formatDate(d.date)})`;
+        status = `tra ${d.days} giorni (${formatDate(d.date)})`;
+      } else {
+        status = `il ${formatDate(d.date)} (tra ${d.days} gg)`;
       }
 
-      out += `${statusIcon} **${d.label}**\n   └ ${statusText}\n\n`;
+      out += `• **${d.label}**: ${status}\n`;
 
       if (d.module) {
         actions.push({
-          label: `Vedi ${d.label.slice(0, 20)}...`,
+          label: d.label.length > 22 ? d.label.slice(0, 20) + '...' : d.label,
           type: 'module',
           moduleId: d.moduleId,
           module: d.module,
@@ -611,11 +615,9 @@ export async function queryGemmaNano(
       }
     });
 
-    out += `*Ti consiglio di rinnovare tempestivamente i pagamenti e i documenti contrassegnati da allerta.*`;
-
     return {
       text: out,
-      actions: actions.slice(0, 3),
+      actions: actions.slice(0, 2),
     };
   }
 
@@ -878,14 +880,14 @@ export async function queryGemmaNano(
     lower.startsWith('hey')
   ) {
     return {
-      text: `👋 Ciao **${username || 'amico'}**! Sono **Chelona AI**, alimentata dal motore locale **Gemma 4 Nano**.\n\nEseguo al 100% sul tuo telefono, garantendoti **totale privacy** (nessun dato esce da questo dispositivo).\n\nCosa vorresti fare oggi?\n- 📅 Controllare le scadenze imminenti\n- 🚗 Verificare la situazione della tua auto\n- 💰 Rivedere rate e spese\n- 🧠 Insegnarmi qualcosa di nuovo su di te (*es. "Ricordati che..."*)`,
+      text: `Ciao ${username || ''}! Come posso aiutarti oggi? Chiedimi pure delle scadenze, della tua auto, dei documenti o delle spese.`,
     };
   }
 
   // INTENTO: COSA PUOI FARE
   if (lower.includes('cosa puoi fare') || lower.includes('aiuto') || lower.includes('funzioni')) {
     return {
-      text: `🤖 **Ecco tutto ciò che posso fare per te con Gemma 4 Nano:**\n\n1. **🧠 Imparare continuamente**: memorizzo qualsiasi informazione mi scrivi (es. *"Ricordati che il mio pin è 1234"* o *"La mia taglia è L"*).\n2. **📅 Gestione Scadenze**: ti avviso su bolli, assicurazioni, revisioni, patenti e rate.\n3. **🚗 Monitoraggio Veicoli**: ti ricordo chilometri, tagliandi, targhe e interventi di manutenzione.\n4. **📄 Controllo Documenti**: cerco numeri di serie, scadenze ed enti emittenti dei tuoi documenti.\n5. **💰 Controllo Spese**: riepilogo rate rimanenti e spese sostenute nel mese.\n6. **🏋️ Fitness & Dieta**: tengo a mente i tuoi macro, calorie e split di allenamento.\n7. **🔒 100% Offline & Locale**: zero API, zero cloud, i tuoi dati non toccano mai internet.`,
+      text: `Posso aiutarti a tenere tutto sotto controllo:\n\n• **Scadenze e promemoria**: ti avviso su bolli, assicurazioni, revisioni e rate\n• **Veicoli**: ti ricordo chilometri, scadenze e dettagli dell'auto\n• **Documenti**: trovo subito numeri e date di scadenza\n• **Spese e finanze**: riepilogo rate e uscite del mese\n• **Memoria personale**: puoi dirmi *"Ricordati che..."* per memorizzare qualsiasi cosa!`,
     };
   }
 
@@ -896,20 +898,18 @@ export async function queryGemmaNano(
   const relevantNotes = k.notes.filter(n => words.some(w => n.title.toLowerCase().includes(w) || n.snippet.toLowerCase().includes(w)));
 
   if (relevantMemories.length > 0 || relevantNotes.length > 0) {
-    let out = `💡 Ho trovato questi elementi collegati nella tua memoria locale:\n\n`;
+    let out = `Ho trovato questi appunti collegati:\n\n`;
     if (relevantMemories.length > 0) {
-      out += `### 🧠 Dalla memoria appresa:\n`;
-      relevantMemories.forEach(m => out += `- **${m.key}**: "${m.fact}"\n`);
+      relevantMemories.forEach(m => out += `• ${m.fact}\n`);
       out += `\n`;
     }
     if (relevantNotes.length > 0) {
-      out += `### 📝 Dalle tue note:\n`;
-      relevantNotes.forEach(n => out += `- **${n.title}**: ${n.snippet}\n`);
+      relevantNotes.forEach(n => out += `• **${n.title}**: ${n.snippet}\n`);
     }
     return { text: out };
   }
 
   return {
-    text: `🤔 Ho analizzato la tua richiesta tramite il motore neurale locale **Gemma 4 Nano**.\n\nNon ho trovato informazioni registrate in merito nei tuoi moduli o nella memoria locale. Se vuoi che impari questo dettaglio per il futuro, dimmi semplicemente:\n\n> *"Ricordati che [dettaglio da memorizzare]"*\n\nOppure puoi chiedermi delle tue **scadenze**, dei tuoi **veicoli**, dei **documenti**, delle **spese** o del piano **fitness**!`,
+    text: `Non ho trovato informazioni su questo tra i tuoi moduli o nelle note. Se vuoi che me ne ricordi per il futuro, dimmi pure *"Ricordati che..."*!`,
   };
 }

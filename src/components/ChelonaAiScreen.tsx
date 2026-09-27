@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
-  Sparkles, Send, Mic, Volume2, VolumeX, Trash2, ArrowLeft, 
-  Brain, ExternalLink, Check, Copy, AlertCircle, RefreshCw, X, Plus
+  Send, Mic, MicOff, Volume2, VolumeX, Trash2, ArrowLeft, 
+  Brain, ExternalLink, Check, Copy, Plus, X,
+  Radio, Car, FileText, CreditCard, StickyNote, Activity, Sparkles
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Module } from '../types';
@@ -21,6 +22,8 @@ interface ChelonaAiScreenProps {
   showToast: (msg: string, type?: 'success' | 'error' | 'info') => void;
 }
 
+type NeuralCategory = 'all' | 'vehicles' | 'documents' | 'finances' | 'notes' | 'fitness' | 'memories';
+
 export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
   modules,
   username,
@@ -36,7 +39,7 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
       {
         id: 'msg_welcome',
         sender: 'assistant',
-        text: `👋 Ciao **${username || 'amico'}**! Sono **Chelona AI**, il tuo assistente personale locale basato su **Gemma 4 Nano**.\n\nEseguo **direttamente sul tuo smartphone** senza utilizzare API o server esterni: tutti i tuoi dati rimangono crittografati e privati al 100%.\n\nHo già indicizzato i tuoi veicoli, documenti, note e spese. Puoi chiedermi qualsiasi cosa o insegnarmi nuove informazioni dicendo ad esempio:\n> *"Ricordati che il mio pin è 1234"*`,
+        text: `Ciao ${username || ''}! Come posso aiutarti oggi? Conosco le tue note, i veicoli, i documenti e le spese. Puoi anche dirmi *"Ricordati che..."* per memorizzare qualsiasi cosa.`,
         timestamp: Date.now(),
       }
     ];
@@ -47,8 +50,15 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
   const [isListening, setIsListening] = useState(false);
   const [speakingMessageId, setSpeakingMessageId] = useState<string | null>(null);
   const [showMemoryDrawer, setShowMemoryDrawer] = useState(false);
+  const [activeNeuralCategory, setActiveNeuralCategory] = useState<NeuralCategory>('all');
   const [memories, setMemories] = useState<AiMemory[]>(() => getLearnedMemories());
   const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  // Modalità interazione vocale a tutto schermo (Voice Mode)
+  const [isVoiceModeOpen, setIsVoiceModeOpen] = useState(false);
+  const [voiceStatus, setVoiceStatus] = useState<'idle' | 'listening' | 'thinking' | 'speaking'>('idle');
+  const [lastUserSpeech, setLastUserSpeech] = useState<string>('');
+  const [lastAiSpeech, setLastAiSpeech] = useState<string>('');
 
   // Form per nuova memoria manuale
   const [newKey, setNewKey] = useState('');
@@ -57,7 +67,7 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
   const chatEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // Auto-scroll in basso
+  // Auto-scroll in basso nella chat
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isProcessing]);
@@ -76,7 +86,36 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
     };
   }, []);
 
-  const handleSend = async (customQuery?: string) => {
+  const speakText = (text: string, onEndCallback?: () => void) => {
+    if (!('speechSynthesis' in window)) return;
+    window.speechSynthesis.cancel();
+
+    // Rimuove markdown dal parlato
+    const cleanText = text
+      .replace(/[*_#`~>]/g, '')
+      .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+      .replace(/•/g, '')
+      .replace(/\n+/g, ' ');
+
+    const utterance = new SpeechSynthesisUtterance(cleanText);
+    utterance.lang = 'it-IT';
+    utterance.rate = 1.05;
+
+    utterance.onend = () => {
+      setVoiceStatus('idle');
+      if (onEndCallback) onEndCallback();
+    };
+
+    utterance.onerror = () => {
+      setVoiceStatus('idle');
+      if (onEndCallback) onEndCallback();
+    };
+
+    setVoiceStatus('speaking');
+    window.speechSynthesis.speak(utterance);
+  };
+
+  const handleSend = async (customQuery?: string, isVoiceSession = false) => {
     const queryToSend = (customQuery || inputText).trim();
     if (!queryToSend || isProcessing) return;
 
@@ -91,6 +130,11 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
     setInputText('');
     setIsProcessing(true);
 
+    if (isVoiceSession) {
+      setLastUserSpeech(queryToSend);
+      setVoiceStatus('thinking');
+    }
+
     try {
       const response = await queryGemmaNano(queryToSend, modules, username);
       const assistantMsg: AiMessage = {
@@ -103,21 +147,37 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
       };
 
       setMessages(prev => [...prev, assistantMsg]);
-      // Ricarica memorie se ne è stata appresa una nuova
+      
       if (response.learnedFact) {
         setMemories(getLearnedMemories());
       }
+
+      if (isVoiceSession) {
+        setLastAiSpeech(response.text);
+        speakText(response.text, () => {
+          // Quando ha finito di parlare, riattiva automaticamente l'ascolto per dialogo continuo!
+          if (isVoiceModeOpen) {
+            setTimeout(() => {
+              startVoiceRecognition(true);
+            }, 400);
+          }
+        });
+      }
     } catch (e) {
-      console.error('Gemma Nano query error', e);
+      console.error('AI query error', e);
+      const errMsg = `Scusami, si è verificato un piccolo errore. Riprova tra un attimo.`;
       setMessages(prev => [
         ...prev,
         {
           id: 'msg_err_' + Date.now(),
           sender: 'assistant',
-          text: `⚠️ Si è verificato un errore durante l'elaborazione locale: riprova tra un istante.`,
+          text: errMsg,
           timestamp: Date.now(),
         }
       ]);
+      if (isVoiceSession) {
+        speakText(errMsg);
+      }
     } finally {
       setIsProcessing(false);
     }
@@ -130,7 +190,13 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
     }
   };
 
-  const handleSpeechInput = async () => {
+  const startVoiceRecognition = async (isVoiceSession = false) => {
+    if (isVoiceSession) {
+      setVoiceStatus('listening');
+    } else {
+      setIsListening(true);
+    }
+
     // 1. Prova Capacitor Speech Recognition nativo
     try {
       const isAvailable = await SpeechRecognition.available();
@@ -139,32 +205,37 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
         if (perm.speechRecognition !== 'granted') {
           await SpeechRecognition.requestPermissions();
         }
-        setIsListening(true);
+        
         SpeechRecognition.start({
           language: 'it-IT',
           maxResults: 1,
-          prompt: 'Chiedi a Chelona AI...',
+          prompt: 'Parla con Chelona...',
           partialResults: false,
-          popup: true,
+          popup: !isVoiceSession,
         }).then((result) => {
           if (result.matches && result.matches.length > 0) {
-            handleSend(result.matches[0]);
+            handleSend(result.matches[0], isVoiceSession);
+          } else if (isVoiceSession) {
+            setVoiceStatus('idle');
           }
         }).catch(err => {
           console.warn('Speech error', err);
+          if (isVoiceSession) setVoiceStatus('idle');
         }).finally(() => {
           setIsListening(false);
         });
         return;
       }
     } catch (e) {
-      // Ignora e prova Web Speech API
+      // Prova fallback Web Speech API
     }
 
     // 2. Web Speech API Fallback
     const SpeechRec = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SpeechRec) {
-      showToast('Il riconoscimento vocale non è disponibile su questo dispositivo.', 'error');
+      showToast('Riconoscimento vocale non supportato su questo dispositivo.', 'error');
+      if (isVoiceSession) setVoiceStatus('idle');
+      setIsListening(false);
       return;
     }
 
@@ -174,18 +245,19 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
       rec.continuous = false;
       rec.interimResults = false;
 
-      setIsListening(true);
-
       rec.onresult = (evt: any) => {
         const text = evt.results[0][0].transcript;
         if (text) {
-          handleSend(text);
+          handleSend(text, isVoiceSession);
+        } else if (isVoiceSession) {
+          setVoiceStatus('idle');
         }
         setIsListening(false);
       };
 
       rec.onerror = () => {
         setIsListening(false);
+        if (isVoiceSession) setVoiceStatus('idle');
       };
 
       rec.onend = () => {
@@ -195,7 +267,27 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
       rec.start();
     } catch {
       setIsListening(false);
+      if (isVoiceSession) setVoiceStatus('idle');
       showToast('Errore durante l\'ascolto vocale.', 'error');
+    }
+  };
+
+  const toggleVoiceMode = () => {
+    if (!isVoiceModeOpen) {
+      setIsVoiceModeOpen(true);
+      setLastUserSpeech('');
+      setLastAiSpeech('Ciao! Di cosa vogliamo parlare?');
+      speakText('Ciao! Di cosa vogliamo parlare?', () => {
+        setTimeout(() => {
+          startVoiceRecognition(true);
+        }, 300);
+      });
+    } else {
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+      }
+      setIsVoiceModeOpen(false);
+      setVoiceStatus('idle');
     }
   };
 
@@ -211,44 +303,30 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
       return;
     }
 
-    window.speechSynthesis.cancel();
-    // Pulisci il testo da markdown e simboli prima di parlarlo
-    const cleanText = text
-      .replace(/[*_#`~>]/g, '')
-      .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
-      .replace(/\n+/g, ' ');
-
-    const utterance = new SpeechSynthesisUtterance(cleanText);
-    utterance.lang = 'it-IT';
-    utterance.rate = 1.05;
-
-    utterance.onend = () => setSpeakingMessageId(null);
-    utterance.onerror = () => setSpeakingMessageId(null);
-
     setSpeakingMessageId(msgId);
-    window.speechSynthesis.speak(utterance);
+    speakText(text, () => setSpeakingMessageId(null));
   };
 
   const handleCopy = (id: string, text: string) => {
     navigator.clipboard.writeText(text);
     setCopiedId(id);
     setTimeout(() => setCopiedId(null), 2000);
-    showToast('Testo copiato!');
+    showToast('Copiato!');
   };
 
   const handleClearChat = () => {
-    if (confirm('Sei sicuro di voler cancellare la cronologia della chat?')) {
+    if (confirm('Vuoi cancellare la conversazione?')) {
       const resetMsg: AiMessage[] = [
         {
           id: 'msg_welcome_' + Date.now(),
           sender: 'assistant',
-          text: `👋 Cronologia azzerata. Sono pronto ad aiutarti con i tuoi dati locali su Chelona!`,
+          text: `Chat cancellata. Sono qui se hai bisogno!`,
           timestamp: Date.now(),
         }
       ];
       setMessages(resetMsg);
       saveChatHistory(resetMsg);
-      showToast('Chat cancellata.');
+      showToast('Conversazione cancellata.');
     }
   };
 
@@ -266,71 +344,87 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
     setMemories(getLearnedMemories());
     setNewKey('');
     setNewFact('');
-    showToast('Nuova memoria memorizzata!', 'success');
+    showToast('Memoria salvata!', 'success');
   };
 
   const handleDeleteMemory = (id: string) => {
     deleteLearnedMemory(id);
     setMemories(getLearnedMemories());
-    showToast('Memoria eliminata.');
+    showToast('Memoria rimossa.');
   };
 
   const knowledge = buildKnowledgeBase(modules, username);
 
+  // Nodi del Diagramma Neurale
+  const neuralNodes = [
+    { id: 'vehicles', label: 'Veicoli', count: knowledge.vehicles.length, icon: Car, color: '#f59e0b', angle: 30 },
+    { id: 'documents', label: 'Documenti', count: knowledge.documents.length, icon: FileText, color: '#3b82f6', angle: 90 },
+    { id: 'finances', label: 'Finanze & Rate', count: knowledge.installments.modules.length + knowledge.expenses.count, icon: CreditCard, color: '#10b981', angle: 150 },
+    { id: 'notes', label: 'Appunti', count: knowledge.notes.length, icon: StickyNote, color: '#8b5cf6', angle: 210 },
+    { id: 'fitness', label: 'Fitness', count: knowledge.fitness ? 1 : 0, icon: Activity, color: '#ec4899', angle: 270 },
+    { id: 'memories', label: 'Memorie', count: memories.length, icon: Brain, color: '#f97316', angle: 330 },
+  ];
+
   const quickPrompts = [
-    { label: '📅 Scadenze imminenti', query: 'Quali scadenze imminenti ho nei prossimi 60 giorni?' },
-    { label: '🚗 Situazione auto', query: 'Fammi un riepilogo delle mie auto, scadenze e km' },
-    { label: '📄 I miei documenti', query: 'Quali documenti personali ho salvato?' },
+    { label: '📅 Scadenze', query: 'Quali scadenze imminenti ho nei prossimi 60 giorni?' },
+    { label: '🚗 La mia auto', query: 'Fammi un riepilogo della mia auto, scadenze e km' },
+    { label: '📄 Documenti', query: 'Quali documenti personali ho salvato?' },
     { label: '💰 Spese e rate', query: 'Come sono messe le mie spese e rate questo mese?' },
-    { label: '🧠 Cosa sai su di me?', query: 'Cosa sai su di me e cosa hai imparato finora?' },
-    { label: '🏋️ Piano fitness', query: 'Riepilogo del mio piano fitness e calorie' },
+    { label: '🧠 Cosa sai di me?', query: 'Cosa sai su di me e cosa hai imparato finora?' },
   ];
 
   return (
     <div className="fixed inset-0 z-[120] bg-[var(--bg)] flex flex-col h-[100dvh] overflow-hidden font-sans transition-colors duration-300">
-      {/* HEADER */}
-      <header className="h-20 border-b border-[var(--border)] bg-[var(--header-bg)] backdrop-blur-2xl px-4 lg:px-8 flex items-center justify-between shrink-0 z-20 safe-area-header shadow-sm">
+      {/* HEADER PULITO CON LOGO CHELONA */}
+      <header className="h-16 lg:h-20 border-b border-[var(--border)] bg-[var(--header-bg)] backdrop-blur-2xl px-4 lg:px-8 flex items-center justify-between shrink-0 z-20 safe-area-header shadow-sm">
         <div className="flex items-center gap-3">
           <button
             onClick={onClose}
-            className="p-2.5 hover:bg-[var(--surface-variant)] rounded-2xl text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors active:scale-95"
+            className="p-2 hover:bg-[var(--surface-variant)] rounded-2xl text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors active:scale-95"
             title="Torna indietro"
           >
-            <ArrowLeft className="w-6 h-6" />
+            <ArrowLeft className="w-5 h-5 lg:w-6 lg:h-6" />
           </button>
-          <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-amber-500 via-rose-500 to-indigo-500 text-white flex items-center justify-center font-bold shrink-0 shadow-lg shadow-amber-500/20">
-            <Sparkles className="w-6 h-6 animate-pulse" />
+          
+          {/* LOGO CHELONA ORIGINALE */}
+          <div className="w-10 h-10 lg:w-11 lg:h-11 rounded-2xl bg-amber-500/10 border border-amber-500/20 p-1 flex items-center justify-center shrink-0 shadow-sm overflow-hidden">
+            <img src="/chelona_logo.png" alt="Chelona AI" className="w-full h-full object-contain" />
           </div>
+
           <div>
-            <div className="flex items-center gap-2">
-              <h2 className="text-lg lg:text-xl font-black text-[var(--text-main)] tracking-tight">Chelona AI</h2>
-              <span className="text-[10px] font-black uppercase tracking-wider bg-gradient-to-r from-amber-500/10 to-indigo-500/10 text-[var(--accent)] px-2.5 py-0.5 rounded-full border border-[var(--accent)]/30">
-                Gemma 4 Nano
-              </span>
-            </div>
-            <p className="text-xs text-[var(--text-muted)] font-medium flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block animate-ping" />
-              100% On-Device • Zero API • Privacy Assoluta
-            </p>
+            <h2 className="text-base lg:text-lg font-black text-[var(--text-main)] tracking-tight">Chelona AI</h2>
+            <p className="text-xs text-[var(--text-muted)] font-medium">Il tuo assistente personale</p>
           </div>
         </div>
 
         <div className="flex items-center gap-2">
+          {/* TASTO MODALITÀ VOCALE INTERATTIVA */}
+          <button
+            onClick={toggleVoiceMode}
+            className="px-3 py-1.5 lg:px-4 lg:py-2 rounded-2xl bg-gradient-to-r from-amber-500 to-amber-600 text-white text-xs font-bold transition-all flex items-center gap-2 shadow-md shadow-amber-500/20 active:scale-95 hover:opacity-95"
+            title="Avvia conversazione a voce"
+          >
+            <Radio className="w-4 h-4 animate-pulse" />
+            <span className="hidden sm:inline">Voce</span>
+          </button>
+
+          {/* DIAGRAMMA MEMORIA LOCALE */}
           <button
             onClick={() => setShowMemoryDrawer(true)}
-            className="px-3.5 py-2 rounded-2xl bg-[var(--surface-variant)] hover:bg-[var(--border)] text-[var(--text-main)] text-xs font-bold transition-all flex items-center gap-2 border border-[var(--border)] active:scale-95 shadow-sm"
-            title="Visualizza memoria locale"
+            className="px-3 py-1.5 lg:px-3.5 lg:py-2 rounded-2xl bg-[var(--surface-variant)] hover:bg-[var(--border)] text-[var(--text-main)] text-xs font-bold transition-all flex items-center gap-1.5 border border-[var(--border)] active:scale-95 shadow-sm"
+            title="Visualizza memoria"
           >
-            <Brain className="w-4 h-4 text-[var(--accent)]" />
-            <span className="hidden sm:inline">Memoria</span>
-            <span className="w-5 h-5 rounded-full bg-[var(--accent)] text-white text-[10px] flex items-center justify-center font-bold">
+            <Brain className="w-4 h-4 text-amber-500" />
+            <span className="hidden md:inline">Memoria</span>
+            <span className="w-4 h-4 rounded-full bg-amber-500 text-white text-[10px] flex items-center justify-center font-bold">
               {memories.length}
             </span>
           </button>
 
+          {/* CANCELLA CHAT */}
           <button
             onClick={handleClearChat}
-            className="p-2.5 rounded-2xl bg-[var(--surface-variant)] hover:bg-rose-500/10 text-[var(--text-muted)] hover:text-rose-500 transition-colors border border-[var(--border)] active:scale-95"
+            className="p-2 lg:p-2.5 rounded-2xl bg-[var(--surface-variant)] hover:bg-rose-500/10 text-[var(--text-muted)] hover:text-rose-500 transition-colors border border-[var(--border)] active:scale-95"
             title="Pulisci chat"
           >
             <Trash2 className="w-4 h-4" />
@@ -338,51 +432,39 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
         </div>
       </header>
 
-      {/* CHAT MESSAGES BODY */}
-      <main className="flex-1 overflow-y-auto px-4 lg:px-8 py-6 space-y-6 max-w-4xl w-full mx-auto custom-scrollbar">
+      {/* CHAT MESSAGES BODY - MINIMALE, SENZA CLUTTER */}
+      <main className="flex-1 overflow-y-auto px-4 lg:px-8 py-5 space-y-5 max-w-3xl w-full mx-auto custom-scrollbar">
         {messages.map((msg) => {
           const isUser = msg.sender === 'user';
           return (
             <motion.div
               key={msg.id}
-              initial={{ opacity: 0, y: 10 }}
+              initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               className={`flex flex-col ${isUser ? 'items-end' : 'items-start'}`}
             >
-              <div className={`flex items-start gap-3 max-w-[92%] sm:max-w-[85%] ${isUser ? 'flex-row-reverse' : 'flex-row'}`}>
+              <div className={`flex items-start gap-2.5 max-w-[94%] sm:max-w-[85%] ${isUser ? 'flex-row-reverse' : 'flex-row'}`}>
                 {!isUser ? (
-                  <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-amber-500 via-rose-500 to-indigo-500 text-white flex items-center justify-center font-bold shrink-0 shadow-md shadow-amber-500/20 mt-1">
-                    <Sparkles className="w-4 h-4" />
+                  <div className="w-8 h-8 rounded-xl bg-amber-500/10 border border-amber-500/20 p-0.5 flex items-center justify-center shrink-0 mt-1 shadow-sm overflow-hidden">
+                    <img src="/chelona_logo.png" alt="Chelona" className="w-full h-full object-contain" />
                   </div>
-                ) : (
-                  <div className="w-9 h-9 rounded-2xl bg-[var(--accent)] text-white flex items-center justify-center font-bold shrink-0 shadow-md shadow-[var(--accent)]/20 mt-1">
-                    {username ? username.charAt(0).toUpperCase() : 'U'}
-                  </div>
-                )}
+                ) : null}
 
                 <div
-                  className={`rounded-3xl p-5 shadow-sm text-sm leading-relaxed transition-all ${
+                  className={`rounded-2xl px-4 py-3 text-sm leading-relaxed transition-all ${
                     isUser
-                      ? 'bg-[var(--accent)] text-white rounded-tr-none'
-                      : 'bg-[var(--card-bg)] text-[var(--text-main)] border border-[var(--border)] rounded-tl-none shadow-md'
+                      ? 'bg-[var(--accent)] text-white rounded-tr-none shadow-sm'
+                      : 'bg-[var(--card-bg)] text-[var(--text-main)] border border-[var(--border)] rounded-tl-none shadow-sm'
                   }`}
                 >
-                  {/* Se ha appreso un fatto, mostra badge */}
-                  {msg.learnedFact && (
-                    <div className="mb-3 p-2.5 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-500 flex items-center gap-2 text-xs font-bold">
-                      <Brain className="w-4 h-4 shrink-0" />
-                      <span>Nuova conoscenza memorizzata in locale</span>
-                    </div>
-                  )}
-
-                  {/* Testo formattato */}
-                  <div className="whitespace-pre-line prose prose-sm max-w-none text-inherit">
+                  {/* Testo naturale umano */}
+                  <div className="whitespace-pre-line text-inherit text-[13.5px]">
                     {msg.text}
                   </div>
 
-                  {/* Azioni interattive rapide */}
+                  {/* Azioni rapide discrete */}
                   {msg.actions && msg.actions.length > 0 && (
-                    <div className="mt-4 pt-3 border-t border-[var(--border)]/50 flex flex-wrap gap-2">
+                    <div className="mt-3 pt-2.5 border-t border-[var(--border)]/40 flex flex-wrap gap-1.5">
                       {msg.actions.map((act, i) => (
                         <button
                           key={i}
@@ -395,43 +477,40 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
                               onClose();
                             }
                           }}
-                          className="px-3.5 py-1.5 rounded-xl bg-[var(--surface-variant)] hover:bg-[var(--accent)] hover:text-white border border-[var(--border)] text-xs font-bold text-[var(--text-main)] transition-all flex items-center gap-1.5 active:scale-95 shadow-sm"
+                          className="px-3 py-1 rounded-xl bg-[var(--surface-variant)] hover:bg-[var(--accent)] hover:text-white border border-[var(--border)] text-xs font-semibold text-[var(--text-main)] transition-all flex items-center gap-1.5 active:scale-95 shadow-xs"
                         >
-                          <ExternalLink className="w-3.5 h-3.5" />
+                          <ExternalLink className="w-3 h-3" />
                           <span>{act.label}</span>
                         </button>
                       ))}
                     </div>
                   )}
 
-                  {/* Footer bubble per Assistant */}
+                  {/* Footer sottile per messaggi di Chelona */}
                   {!isUser && (
-                    <div className="mt-3 pt-2 flex items-center justify-between text-[11px] text-[var(--text-muted)] border-t border-[var(--border)]/30">
-                      <span>Gemma 4 Nano</span>
-                      <div className="flex items-center gap-3">
-                        <button
-                          onClick={() => handleSpeak(msg.id, msg.text)}
-                          className="hover:text-[var(--accent)] transition-colors p-1"
-                          title="Ascolta risposta"
-                        >
-                          {speakingMessageId === msg.id ? (
-                            <VolumeX className="w-3.5 h-3.5 text-rose-500 animate-pulse" />
-                          ) : (
-                            <Volume2 className="w-3.5 h-3.5" />
-                          )}
-                        </button>
-                        <button
-                          onClick={() => handleCopy(msg.id, msg.text)}
-                          className="hover:text-[var(--accent)] transition-colors p-1"
-                          title="Copia testo"
-                        >
-                          {copiedId === msg.id ? (
-                            <Check className="w-3.5 h-3.5 text-emerald-500" />
-                          ) : (
-                            <Copy className="w-3.5 h-3.5" />
-                          )}
-                        </button>
-                      </div>
+                    <div className="mt-2 pt-1 flex items-center justify-end gap-2 text-[11px] text-[var(--text-muted)]">
+                      <button
+                        onClick={() => handleSpeak(msg.id, msg.text)}
+                        className="hover:text-amber-500 transition-colors p-1"
+                        title="Ascolta"
+                      >
+                        {speakingMessageId === msg.id ? (
+                          <VolumeX className="w-3.5 h-3.5 text-rose-500 animate-pulse" />
+                        ) : (
+                          <Volume2 className="w-3.5 h-3.5" />
+                        )}
+                      </button>
+                      <button
+                        onClick={() => handleCopy(msg.id, msg.text)}
+                        className="hover:text-amber-500 transition-colors p-1"
+                        title="Copia"
+                      >
+                        {copiedId === msg.id ? (
+                          <Check className="w-3.5 h-3.5 text-emerald-500" />
+                        ) : (
+                          <Copy className="w-3.5 h-3.5" />
+                        )}
+                      </button>
                     </div>
                   )}
                 </div>
@@ -442,71 +521,66 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
 
         {isProcessing && (
           <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="flex items-start gap-3"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="flex items-center gap-2 text-xs text-[var(--text-muted)] pl-10"
           >
-            <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-amber-500 via-rose-500 to-indigo-500 text-white flex items-center justify-center font-bold shrink-0 shadow-md shadow-amber-500/20">
-              <Sparkles className="w-4 h-4 animate-spin" />
+            <div className="flex gap-1">
+              {[0, 1, 2].map(i => (
+                <motion.div
+                  key={i}
+                  animate={{ scale: [1, 1.4, 1], opacity: [0.3, 1, 0.3] }}
+                  transition={{ repeat: Infinity, duration: 0.9, delay: i * 0.15 }}
+                  className="w-1.5 h-1.5 rounded-full bg-amber-500"
+                />
+              ))}
             </div>
-            <div className="bg-[var(--card-bg)] border border-[var(--border)] rounded-3xl rounded-tl-none p-4 shadow-sm flex items-center gap-3">
-              <div className="flex gap-1.5">
-                {[0, 1, 2].map(i => (
-                  <motion.div
-                    key={i}
-                    animate={{ scale: [1, 1.4, 1], opacity: [0.4, 1, 0.4] }}
-                    transition={{ repeat: Infinity, duration: 1, delay: i * 0.2 }}
-                    className="w-2 h-2 rounded-full bg-[var(--accent)]"
-                  />
-                ))}
-              </div>
-              <span className="text-xs text-[var(--text-muted)] font-medium">Gemma 4 Nano sta elaborando in locale...</span>
-            </div>
+            <span>Chelona sta scrivendo...</span>
           </motion.div>
         )}
 
         <div ref={chatEndRef} />
       </main>
 
-      {/* QUICK SUGGESTIONS CAROUSEL */}
-      <div className="px-4 lg:px-8 py-2 max-w-4xl w-full mx-auto overflow-x-auto no-scrollbar flex items-center gap-2">
+      {/* QUICK SUGGESTIONS DISCRETE */}
+      <div className="px-4 lg:px-8 py-2 max-w-3xl w-full mx-auto overflow-x-auto no-scrollbar flex items-center gap-2">
         {quickPrompts.map((p, i) => (
           <button
             key={i}
             onClick={() => handleSend(p.query)}
             disabled={isProcessing}
-            className="shrink-0 px-3.5 py-1.5 rounded-full bg-[var(--card-bg)] hover:bg-[var(--surface-variant)] border border-[var(--border)] text-xs font-bold text-[var(--text-main)] transition-all shadow-sm active:scale-95 disabled:opacity-50"
+            className="shrink-0 px-3 py-1 rounded-full bg-[var(--card-bg)] hover:bg-[var(--surface-variant)] border border-[var(--border)] text-xs font-medium text-[var(--text-muted)] hover:text-[var(--text-main)] transition-all shadow-xs active:scale-95 disabled:opacity-50"
           >
             {p.label}
           </button>
         ))}
       </div>
 
-      {/* INPUT FOOTER */}
-      <footer className="p-4 lg:px-8 lg:py-5 border-t border-[var(--border)] bg-[var(--card-bg)]/80 backdrop-blur-xl shrink-0 safe-area-inset-bottom">
-        <div className="max-w-4xl mx-auto flex items-end gap-3">
+      {/* INPUT FOOTER PULITO */}
+      <footer className="p-3 lg:px-8 lg:py-4 border-t border-[var(--border)] bg-[var(--card-bg)]/80 backdrop-blur-xl shrink-0 safe-area-inset-bottom">
+        <div className="max-w-3xl mx-auto flex items-end gap-2.5">
           <button
             type="button"
-            onClick={handleSpeechInput}
-            className={`p-3.5 rounded-2xl border transition-all shrink-0 active:scale-95 shadow-sm ${
+            onClick={() => startVoiceRecognition(false)}
+            className={`p-3 rounded-2xl border transition-all shrink-0 active:scale-95 shadow-xs ${
               isListening
                 ? 'bg-rose-500 text-white border-rose-500 animate-pulse'
-                : 'bg-[var(--surface-variant)] hover:bg-[var(--border)] border-[var(--border)] text-[var(--accent)]'
+                : 'bg-[var(--surface-variant)] hover:bg-[var(--border)] border-[var(--border)] text-amber-500'
             }`}
             title="Dettatura vocale"
           >
             <Mic className="w-5 h-5" />
           </button>
 
-          <div className="flex-1 bg-[var(--surface-variant)] rounded-2xl border border-[var(--border)] focus-within:border-[var(--accent)] focus-within:ring-2 focus-within:ring-[var(--accent)]/20 transition-all p-2 flex items-center">
+          <div className="flex-1 bg-[var(--surface-variant)] rounded-2xl border border-[var(--border)] focus-within:border-amber-500 focus-within:ring-2 focus-within:ring-amber-500/20 transition-all p-1.5 flex items-center">
             <textarea
               ref={textareaRef}
               rows={1}
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Chiedi a Gemma 4 Nano o insegna qualcosa..."
-              className="w-full bg-transparent border-0 focus:outline-none focus:ring-0 text-sm text-[var(--text-main)] placeholder-[var(--text-muted)] resize-none py-1.5 px-2 max-h-32"
+              placeholder="Scrivi a Chelona o insegna qualcosa..."
+              className="w-full bg-transparent border-0 focus:outline-none focus:ring-0 text-sm text-[var(--text-main)] placeholder-[var(--text-muted)] resize-none py-1.5 px-2 max-h-28"
             />
           </div>
 
@@ -514,7 +588,7 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
             type="button"
             onClick={() => handleSend()}
             disabled={!inputText.trim() || isProcessing}
-            className="p-3.5 rounded-2xl bg-[var(--accent)] hover:opacity-90 disabled:opacity-40 text-white transition-all shrink-0 active:scale-95 shadow-md shadow-[var(--accent)]/20"
+            className="p-3 rounded-2xl bg-amber-500 hover:bg-amber-600 disabled:opacity-40 text-white transition-all shrink-0 active:scale-95 shadow-md shadow-amber-500/20"
             title="Invia messaggio"
           >
             <Send className="w-5 h-5" />
@@ -522,7 +596,101 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
         </div>
       </footer>
 
-      {/* DRAWER MEMORIA LOCALE */}
+      {/* OVERLAY INTERAZIONE VOCALE A TUTTO SCHERMO (VOICE MODE) */}
+      <AnimatePresence>
+        {isVoiceModeOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[160] bg-[var(--bg)]/95 backdrop-blur-2xl flex flex-col justify-between p-6 lg:p-12 safe-area-inset"
+          >
+            {/* Header Voce */}
+            <div className="flex items-center justify-between w-full max-w-xl mx-auto">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-amber-500/10 border border-amber-500/30 p-1 flex items-center justify-center overflow-hidden">
+                  <img src="/chelona_logo.png" alt="Chelona" className="w-full h-full object-contain" />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-[var(--text-main)]">Conversazione Vocale</h3>
+                  <p className="text-xs text-[var(--text-muted)]">Parla con Chelona a mani libere</p>
+                </div>
+              </div>
+
+              <button
+                onClick={toggleVoiceMode}
+                className="p-2.5 rounded-full bg-[var(--surface-variant)] text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors border border-[var(--border)] active:scale-95"
+                title="Chiudi modalità voce"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            {/* Centro: Animated Voice Orb / Soundwave */}
+            <div className="flex flex-col items-center justify-center my-auto space-y-8 w-full max-w-md mx-auto text-center">
+              <div className="relative w-44 h-44 flex items-center justify-center">
+                {/* Onde concentriche animate */}
+                <motion.div
+                  animate={{
+                    scale: voiceStatus === 'listening' ? [1, 1.35, 1] : voiceStatus === 'speaking' ? [1, 1.25, 1] : [1, 1.05, 1],
+                    opacity: voiceStatus === 'idle' ? 0.2 : [0.3, 0.7, 0.3],
+                  }}
+                  transition={{ repeat: Infinity, duration: voiceStatus === 'speaking' ? 1.2 : 2, ease: "easeInOut" }}
+                  className="absolute inset-0 rounded-full bg-gradient-to-tr from-amber-500/30 via-rose-500/30 to-indigo-500/30 blur-xl"
+                />
+
+                <motion.div
+                  animate={{
+                    scale: voiceStatus === 'listening' ? [1, 1.2, 1] : voiceStatus === 'speaking' ? [1, 1.15, 1] : 1,
+                  }}
+                  transition={{ repeat: Infinity, duration: 1.5, ease: "easeInOut" }}
+                  className="relative w-32 h-32 rounded-full bg-gradient-to-tr from-amber-500 to-amber-600 p-2 shadow-2xl shadow-amber-500/40 flex items-center justify-center border-4 border-white/20 overflow-hidden"
+                >
+                  <img src="/chelona_logo.png" alt="Chelona Voice" className="w-16 h-16 object-contain filter drop-shadow-md" />
+                </motion.div>
+              </div>
+
+              {/* Stato vocale testuale */}
+              <div className="space-y-2">
+                <span className="text-xs font-black uppercase tracking-widest text-amber-500">
+                  {voiceStatus === 'listening' && '🎙️ Ti ascolto... Parla ora'}
+                  {voiceStatus === 'thinking' && '✨ Sto pensando...'}
+                  {voiceStatus === 'speaking' && '🔊 Chelona sta rispondendo...'}
+                  {voiceStatus === 'idle' && 'Tocca il microfono per parlare'}
+                </span>
+
+                {/* Trascrizione in tempo reale */}
+                <p className="text-sm text-[var(--text-main)] font-medium max-w-sm mx-auto line-clamp-3 leading-relaxed">
+                  {lastAiSpeech || lastUserSpeech || 'Di\' qualcosa come: "Quando mi scade l\'assicurazione?"'}
+                </p>
+              </div>
+            </div>
+
+            {/* Controlli inferiori della modalità vocale */}
+            <div className="flex items-center justify-center gap-6 w-full max-w-sm mx-auto">
+              <button
+                onClick={() => {
+                  if (voiceStatus === 'listening') {
+                    setVoiceStatus('idle');
+                  } else {
+                    startVoiceRecognition(true);
+                  }
+                }}
+                className={`p-5 rounded-full transition-all shadow-xl active:scale-90 ${
+                  voiceStatus === 'listening'
+                    ? 'bg-rose-500 text-white shadow-rose-500/30 animate-pulse'
+                    : 'bg-amber-500 text-white shadow-amber-500/30 hover:scale-105'
+                }`}
+                title={voiceStatus === 'listening' ? 'Pausa ascolto' : 'Inizia ad ascoltare'}
+              >
+                {voiceStatus === 'listening' ? <MicOff className="w-7 h-7" /> : <Mic className="w-7 h-7" />}
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* CASSETTO MEMORIA CON DIAGRAMMA NEURALE */}
       <AnimatePresence>
         {showMemoryDrawer && (
           <div className="fixed inset-0 z-[150] flex justify-end">
@@ -539,16 +707,17 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
               animate={{ x: 0 }}
               exit={{ x: '100%' }}
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="relative w-full max-w-md bg-[var(--bg)] h-full border-l border-[var(--border)] shadow-2xl flex flex-col z-10 safe-area-inset"
+              className="relative w-full max-w-lg bg-[var(--bg)] h-full border-l border-[var(--border)] shadow-2xl flex flex-col z-10 safe-area-inset"
             >
-              <div className="h-20 border-b border-[var(--border)] px-6 flex items-center justify-between shrink-0">
+              {/* Header Drawer */}
+              <div className="h-16 lg:h-20 border-b border-[var(--border)] px-6 flex items-center justify-between shrink-0">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-2xl bg-amber-500/10 text-amber-500 flex items-center justify-center font-bold">
-                    <Brain className="w-5 h-5" />
+                  <div className="w-9 h-9 rounded-2xl bg-amber-500/10 border border-amber-500/20 p-1 flex items-center justify-center overflow-hidden">
+                    <img src="/chelona_logo.png" alt="Chelona" className="w-full h-full object-contain" />
                   </div>
                   <div>
-                    <h3 className="text-lg font-bold text-[var(--text-main)]">Memoria Locale</h3>
-                    <p className="text-xs text-[var(--text-muted)] font-medium">Gemma 4 Nano Learning Engine</p>
+                    <h3 className="text-base font-bold text-[var(--text-main)]">Rete Neurale Chelona</h3>
+                    <p className="text-xs text-[var(--text-muted)]">Sinapsi e conoscenze apprese</p>
                   </div>
                 </div>
                 <button
@@ -559,71 +728,142 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
                 </button>
               </div>
 
-              <div className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar">
-                {/* Moduli sincronizzati in tempo reale */}
-                <div className="p-4 rounded-3xl bg-[var(--card-bg)] border border-[var(--border)] space-y-3">
-                  <h4 className="text-xs font-black uppercase tracking-wider text-[var(--accent)]">
-                    Dati Appresi dai Moduli
-                  </h4>
-                  <div className="grid grid-cols-2 gap-2 text-xs">
-                    <div className="p-2.5 rounded-2xl bg-[var(--surface-variant)]">
-                      <p className="text-[var(--text-muted)]">Veicoli</p>
-                      <p className="font-bold text-base text-[var(--text-main)]">{knowledge.vehicles.length}</p>
-                    </div>
-                    <div className="p-2.5 rounded-2xl bg-[var(--surface-variant)]">
-                      <p className="text-[var(--text-muted)]">Documenti</p>
-                      <p className="font-bold text-base text-[var(--text-main)]">{knowledge.documents.length}</p>
-                    </div>
-                    <div className="p-2.5 rounded-2xl bg-[var(--surface-variant)]">
-                      <p className="text-[var(--text-muted)]">Note</p>
-                      <p className="font-bold text-base text-[var(--text-main)]">{knowledge.notes.length}</p>
-                    </div>
-                    <div className="p-2.5 rounded-2xl bg-[var(--surface-variant)]">
-                      <p className="text-[var(--text-muted)]">Scadenze a 60gg</p>
-                      <p className="font-bold text-base text-[var(--text-main)]">{knowledge.urgentDeadlines.length}</p>
-                    </div>
+              <div className="flex-1 overflow-y-auto p-5 space-y-6 custom-scrollbar">
+                
+                {/* 🌌 DIAGRAMMA NEURALE INTERATTIVO (KNOWLEDGE GRAPH) */}
+                <div className="relative rounded-3xl bg-[var(--card-bg)] border border-[var(--border)] p-4 shadow-sm overflow-hidden">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[11px] font-black uppercase tracking-wider text-amber-500 flex items-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5" />
+                      Mappa Sinaptica
+                    </span>
+                    <span className="text-[11px] text-[var(--text-muted)] font-medium">Tocca un nodo</span>
+                  </div>
+
+                  {/* SVG Grafico Neurale */}
+                  <div className="relative w-full h-56 flex items-center justify-center my-2">
+                    <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 320 220">
+                      {/* Linee di connessione (sinapsi) con impulsi */}
+                      {neuralNodes.map((node, i) => {
+                        const rad = (node.angle * Math.PI) / 180;
+                        const x = 160 + Math.cos(rad) * 95;
+                        const y = 110 + Math.sin(rad) * 75;
+                        const isSelected = activeNeuralCategory === node.id;
+                        return (
+                          <g key={i}>
+                            <line
+                              x1="160"
+                              y1="110"
+                              x2={x}
+                              y2={y}
+                              stroke={isSelected ? node.color : 'var(--border)'}
+                              strokeWidth={isSelected ? '2.5' : '1.5'}
+                              strokeDasharray={isSelected ? 'none' : '3 3'}
+                              className="transition-all duration-300"
+                            />
+                            {isSelected && (
+                              <circle cx={(160 + x) / 2} cy={(110 + y) / 2} r="3" fill={node.color} className="animate-ping" />
+                            )}
+                          </g>
+                        );
+                      })}
+                    </svg>
+
+                    {/* Nodo Centrale: Chelona Core */}
+                    <button
+                      onClick={() => setActiveNeuralCategory('all')}
+                      className={`relative z-10 w-16 h-16 rounded-full p-2 flex items-center justify-center transition-all active:scale-95 shadow-lg border-2 ${
+                        activeNeuralCategory === 'all'
+                          ? 'border-amber-500 bg-amber-500/20 shadow-amber-500/30'
+                          : 'border-[var(--border)] bg-[var(--surface-variant)]'
+                      }`}
+                      title="Visualizza tutto"
+                    >
+                      <img src="/chelona_logo.png" alt="Chelona Core" className="w-9 h-9 object-contain" />
+                    </button>
+
+                    {/* Nodi Satellitari Orbitanti */}
+                    {neuralNodes.map((node) => {
+                      const rad = (node.angle * Math.PI) / 180;
+                      const x = 160 + Math.cos(rad) * 95;
+                      const y = 110 + Math.sin(rad) * 75;
+                      const isSelected = activeNeuralCategory === node.id;
+                      const Icon = node.icon;
+
+                      return (
+                        <button
+                          key={node.id}
+                          onClick={() => setActiveNeuralCategory(isSelected ? 'all' : (node.id as NeuralCategory))}
+                          style={{
+                            position: 'absolute',
+                            left: `${x}px`,
+                            top: `${y}px`,
+                            transform: 'translate(-50%, -50%)',
+                          }}
+                          className={`z-20 w-11 h-11 rounded-2xl flex flex-col items-center justify-center transition-all active:scale-90 border shadow-md ${
+                            isSelected
+                              ? 'scale-110 shadow-lg'
+                              : 'bg-[var(--surface-variant)] border-[var(--border)] hover:scale-105'
+                          }`}
+                          title={node.label}
+                        >
+                          <div
+                            className="w-full h-full rounded-2xl flex items-center justify-center text-white"
+                            style={{ backgroundColor: isSelected ? node.color : 'transparent', color: isSelected ? '#fff' : node.color }}
+                          >
+                            <Icon className="w-5 h-5" />
+                          </div>
+                          <span
+                            className="absolute -bottom-4 text-[9px] font-bold text-[var(--text-muted)] whitespace-nowrap"
+                            style={{ color: isSelected ? node.color : undefined }}
+                          >
+                            {node.label} ({node.count})
+                          </span>
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
 
-                {/* Form nuova memoria */}
-                <form onSubmit={handleAddManualMemory} className="p-4 rounded-3xl bg-[var(--card-bg)] border border-[var(--border)] space-y-3">
-                  <h4 className="text-xs font-black uppercase tracking-wider text-[var(--text-main)] flex items-center gap-1.5">
-                    <Plus className="w-3.5 h-3.5 text-[var(--accent)]" />
-                    Insegna una nuova informazione
+                {/* Form pulito per insegnare qualcosa */}
+                <form onSubmit={handleAddManualMemory} className="p-4 rounded-3xl bg-[var(--card-bg)] border border-[var(--border)] space-y-2.5">
+                  <h4 className="text-xs font-bold text-[var(--text-main)] flex items-center gap-1.5">
+                    <Plus className="w-3.5 h-3.5 text-amber-500" />
+                    Insegna a Chelona
                   </h4>
                   <input
                     type="text"
                     value={newKey}
                     onChange={e => setNewKey(e.target.value)}
-                    placeholder="Argomento (es. Allergia, Codice cancello, Taglia...)"
-                    className="w-full px-3 py-2 rounded-xl bg-[var(--surface-variant)] border border-[var(--border)] text-xs text-[var(--text-main)] placeholder-[var(--text-muted)] focus:outline-none focus:border-[var(--accent)]"
+                    placeholder="Argomento (es. Codice portone, Taglia scarpe...)"
+                    className="w-full px-3 py-2 rounded-xl bg-[var(--surface-variant)] border border-[var(--border)] text-xs text-[var(--text-main)] placeholder-[var(--text-muted)] focus:outline-none focus:border-amber-500"
                   />
                   <textarea
                     rows={2}
                     value={newFact}
                     onChange={e => setNewFact(e.target.value)}
-                    placeholder="Informazione da memorizzare..."
-                    className="w-full px-3 py-2 rounded-xl bg-[var(--surface-variant)] border border-[var(--border)] text-xs text-[var(--text-main)] placeholder-[var(--text-muted)] focus:outline-none focus:border-[var(--accent)] resize-none"
+                    placeholder="Dettaglio da ricordare..."
+                    className="w-full px-3 py-2 rounded-xl bg-[var(--surface-variant)] border border-[var(--border)] text-xs text-[var(--text-main)] placeholder-[var(--text-muted)] focus:outline-none focus:border-amber-500 resize-none"
                   />
                   <button
                     type="submit"
                     disabled={!newKey.trim() || !newFact.trim()}
-                    className="w-full py-2 bg-[var(--accent)] hover:opacity-90 disabled:opacity-40 text-white rounded-xl text-xs font-bold transition-all active:scale-95 shadow-sm"
+                    className="w-full py-2 bg-amber-500 hover:bg-amber-600 disabled:opacity-40 text-white rounded-xl text-xs font-bold transition-all active:scale-95 shadow-sm"
                   >
                     Salva nella Memoria
                   </button>
                 </form>
 
-                {/* Lista memorie personali */}
+                {/* Lista Memorie Personali */}
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <h4 className="text-xs font-black uppercase tracking-wider text-[var(--text-main)]">
-                      Memorie Apprese ({memories.length})
+                    <h4 className="text-xs font-bold text-[var(--text-main)]">
+                      Appunti Personali Ricordati ({memories.length})
                     </h4>
                     {memories.length > 0 && (
                       <button
                         onClick={() => {
-                          if (confirm('Vuoi cancellare tutte le memorie personalizzate?')) {
+                          if (confirm('Vuoi azzerare tutte le memorie apprese?')) {
                             clearAllLearnedMemories();
                             setMemories([]);
                             showToast('Memorie cancellate.');
@@ -637,31 +877,27 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
                   </div>
 
                   {memories.length === 0 ? (
-                    <div className="p-8 text-center border-2 border-dashed border-[var(--border)] rounded-3xl">
-                      <Brain className="w-8 h-8 text-[var(--text-muted)] mx-auto mb-2 opacity-50" />
-                      <p className="text-xs text-[var(--text-muted)] font-medium">Nessuna memoria personalizzata registrata.</p>
-                      <p className="text-[11px] text-[var(--text-muted)] mt-1">Scrivi all'AI in chat *"Ricordati che..."* per memorizzare dati al volo!</p>
+                    <div className="p-6 text-center border border-dashed border-[var(--border)] rounded-2xl">
+                      <p className="text-xs text-[var(--text-muted)]">Nessuna memoria personalizzata registrata.</p>
+                      <p className="text-[11px] text-[var(--text-muted)] mt-1">Puoi dirmi in chat *"Ricordati che..."* per memorizzare dati!</p>
                     </div>
                   ) : (
-                    <div className="space-y-2.5">
+                    <div className="space-y-2">
                       {memories.map(m => (
                         <div
                           key={m.id}
-                          className="p-3.5 rounded-2xl bg-[var(--card-bg)] border border-[var(--border)] flex items-start justify-between gap-3 shadow-sm hover:border-[var(--accent)]/50 transition-colors"
+                          className="p-3 rounded-2xl bg-[var(--card-bg)] border border-[var(--border)] flex items-start justify-between gap-3 shadow-xs"
                         >
                           <div>
-                            <span className="text-[10px] font-black uppercase tracking-wider text-[var(--accent)] px-2 py-0.5 rounded-md bg-[var(--accent-bg)] border border-[var(--accent)]/20 inline-block mb-1">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-amber-500 px-2 py-0.5 rounded-md bg-amber-500/10 inline-block mb-1">
                               {m.key}
                             </span>
-                            <p className="text-xs text-[var(--text-main)] font-medium leading-relaxed">{m.fact}</p>
-                            <span className="text-[10px] text-[var(--text-muted)] mt-1 block">
-                              {new Date(m.createdAt).toLocaleDateString('it-IT')}
-                            </span>
+                            <p className="text-xs text-[var(--text-main)] leading-relaxed">{m.fact}</p>
                           </div>
                           <button
                             onClick={() => handleDeleteMemory(m.id)}
-                            className="p-1.5 text-[var(--text-muted)] hover:text-rose-500 hover:bg-rose-500/10 rounded-lg transition-colors shrink-0"
-                            title="Elimina memoria"
+                            className="p-1 text-[var(--text-muted)] hover:text-rose-500 transition-colors shrink-0"
+                            title="Elimina"
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>

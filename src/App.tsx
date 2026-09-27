@@ -2696,7 +2696,7 @@ export default function App() {
                   <button 
                     onClick={() => { setIsAiOpen(true); setActiveNavTab('ai'); setIsToolsOpen(false); setIsProfileOpen(false); setSelectedType(null); }}
                     className="p-2 sm:p-2.5 bg-gradient-to-tr from-amber-500/10 via-rose-500/10 to-indigo-500/10 hover:from-amber-500/20 hover:to-indigo-500/20 rounded-full text-amber-500 border border-amber-500/30 transition-all flex items-center justify-center shadow-sm"
-                    title="Chelona AI (Gemma 4 Nano)"
+                    title="Chelona AI"
                   >
                     <Sparkles className="w-5 h-5 sm:w-6 sm:h-6" />
                   </button>
