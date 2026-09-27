@@ -2397,6 +2397,11 @@ export default function App() {
 
   const handleToggleWakeWord = async () => {
     const next = !isWakeWordEnabled;
+    if (next) {
+      wakeWordService.start(handleWakeWordTrigger);
+    } else {
+      wakeWordService.stop();
+    }
     const ok = await wakeWordService.setEnabled(next);
     if (ok) {
       setIsWakeWordEnabled(next);
@@ -2415,26 +2420,27 @@ export default function App() {
     const unsubscribe = wakeWordService.subscribe((state) => {
       setIsWakeWordEnabled(state.isEnabled);
     });
-    wakeWordService.start(handleWakeWordTrigger);
     return () => {
       unsubscribe();
       wakeWordService.stop();
     };
-  }, [handleWakeWordTrigger]);
+  }, []);
 
   useEffect(() => {
+    if (!isWakeWordEnabled) return;
     if (isAiOpen || isListening) {
       wakeWordService.pause();
-    } else if (isWakeWordEnabled) {
+    } else {
       wakeWordService.resume();
     }
   }, [isAiOpen, isListening, isWakeWordEnabled]);
 
   useEffect(() => {
+    if (!isWakeWordEnabled) return;
     const onVisibilityChange = () => {
       if (document.hidden) {
         wakeWordService.pause();
-      } else if (isWakeWordEnabled && !isAiOpen && !isListening) {
+      } else if (!isAiOpen && !isListening) {
         wakeWordService.resume();
       }
     };
@@ -3978,48 +3984,15 @@ export default function App() {
                               </h2>
 
                               <p className="text-xs sm:text-sm text-[var(--text-muted)] font-medium leading-relaxed">
-                                Parla con me dei tuoi veicoli, scadenze, documenti, note o spese. Rispondo con voce naturale.
+                                Chiedimi qualsiasi cosa sui tuoi veicoli, scadenze, documenti, note o spese.
                               </p>
                             </div>
 
-                            {/* Voice Activation & Quick Chat Buttons */}
-                            <div className="flex flex-wrap sm:flex-nowrap items-stretch sm:items-center gap-3 shrink-0 w-full sm:w-auto">
+                            {/* Ask Chelona AI Button (Chat) - No Mic on Homepage */}
+                            <div className="flex items-center shrink-0">
                               <motion.button
                                 whileHover={{ scale: 1.02 }}
                                 whileTap={{ scale: 0.95 }}
-                                onClick={() => {
-                                  if ('speechSynthesis' in window) {
-                                    try { window.speechSynthesis.resume(); } catch {}
-                                  }
-                                  setAiInitialVoiceMode(true);
-                                  setIsAiOpen(true);
-                                  setActiveNavTab('ai');
-                                  setIsToolsOpen(false);
-                                  setIsProfileOpen(false);
-                                  setSelectedType(null);
-                                }}
-                                className="relative group/voice flex-1 sm:flex-initial flex items-center justify-center sm:justify-start gap-3.5 px-5 py-3.5 rounded-2xl bg-gradient-to-r from-amber-500 via-rose-500 to-indigo-600 text-white font-black text-sm shadow-lg shadow-amber-500/25 hover:shadow-amber-500/40 transition-all duration-300 active:scale-95 cursor-pointer"
-                                title="Attiva modalità vocale con Chelona AI"
-                                aria-label="Attiva modalità vocale con Chelona AI"
-                              >
-                                <span className="relative flex items-center justify-center w-10 h-10 rounded-xl bg-white/20 backdrop-blur-md shadow-inner shrink-0">
-                                  <Mic className="w-5 h-5 text-white" />
-                                  <span className="absolute -inset-1 rounded-xl bg-white/30 animate-ping opacity-40 pointer-events-none" />
-                                </span>
-                                <div className="text-left pr-1">
-                                  <span className="block text-[10px] font-black uppercase tracking-wider text-white/80">Comando Vocale</span>
-                                  <div className="flex items-center gap-1.5">
-                                    <span className="text-sm font-black tracking-tight">Parla con Chelona</span>
-                                    <span className="flex items-end gap-0.5 h-3 ml-0.5 opacity-90">
-                                      <span className="w-0.5 h-1.5 bg-white rounded-full animate-pulse" />
-                                      <span className="w-0.5 h-3 bg-white rounded-full animate-pulse delay-75" />
-                                      <span className="w-0.5 h-2 bg-white rounded-full animate-pulse delay-150" />
-                                    </span>
-                                  </div>
-                                </div>
-                              </motion.button>
-
-                              <button
                                 onClick={() => {
                                   setAiInitialVoiceMode(false);
                                   setIsAiOpen(true);
@@ -4028,13 +4001,13 @@ export default function App() {
                                   setIsProfileOpen(false);
                                   setSelectedType(null);
                                 }}
-                                className="px-4 py-3 rounded-2xl bg-[var(--surface-variant)] hover:bg-[var(--border)] text-[var(--text-main)] font-bold text-xs border border-[var(--border)] transition-all flex items-center justify-center gap-2 active:scale-95 shrink-0 cursor-pointer"
-                                title="Apri chat testuale con Chelona AI"
-                                aria-label="Apri chat testuale con Chelona AI"
+                                className="px-5 py-3.5 rounded-2xl bg-gradient-to-r from-amber-500 via-rose-500 to-indigo-600 hover:opacity-95 text-white font-bold text-sm shadow-md shadow-amber-500/20 transition-all flex items-center justify-center gap-2 active:scale-95 shrink-0 cursor-pointer"
+                                title="Apri chat con Chelona AI"
+                                aria-label="Apri chat con Chelona AI"
                               >
-                                <Sparkles className="w-4 h-4 text-amber-500" />
-                                <span>Scrivi</span>
-                              </button>
+                                <Sparkles className="w-4 h-4 text-white" />
+                                <span>Chiedi a Chelona</span>
+                              </motion.button>
                             </div>
                           </div>
                         </motion.div>

@@ -34,15 +34,11 @@ class WakeWordService {
   private engineType: 'web' | 'native' | null = null;
 
   constructor() {
-    this.isEnabled = this.loadStoredEnabled();
+    this.isEnabled = false;
   }
 
   private loadStoredEnabled(): boolean {
-    try {
-      return localStorage.getItem(STORAGE_KEY_ENABLED) === 'true';
-    } catch {
-      return false;
-    }
+    return false;
   }
 
   public isSupported(): boolean {
@@ -343,9 +339,26 @@ class WakeWordService {
     }
   }
 
+  private consecutiveErrors = 0;
+
   private async startNativeEngine() {
     try {
       this.engineType = 'native';
+
+      // Verifica disponibilità e permessi prima di chiamare il plugin nativo
+      const avail = await SpeechRecognition.available().catch(() => ({ available: false }));
+      if (!avail?.available) {
+        this.isListening = false;
+        this.notify();
+        return;
+      }
+
+      const perm = await SpeechRecognition.checkPermissions().catch(() => ({ speechRecognition: 'prompt' }));
+      if (perm.speechRecognition !== 'granted') {
+        this.isListening = false;
+        this.notify();
+        return;
+      }
 
       // Rimuovi eventuali listener precedenti
       if (this.nativeListenerHandle) {
@@ -374,7 +387,8 @@ class WakeWordService {
         partialResults: true,
         popup: false,
       }).then(() => {
-        // Sessione completata
+        // Sessione completata regolarmente
+        this.consecutiveErrors = 0;
         this.isListening = false;
         this.notify();
         this.scheduleRestart();
@@ -382,14 +396,24 @@ class WakeWordService {
         console.warn('[WakeWord] Native speech ended/error:', err);
         this.isListening = false;
         this.notify();
-        this.scheduleRestart(800);
+        this.consecutiveErrors++;
+        if (this.consecutiveErrors < 3) {
+          this.scheduleRestart(2000);
+        } else {
+          this.isEnabled = false;
+        }
       });
 
     } catch (err) {
       console.warn('[WakeWord] Errore start native speech:', err);
       this.isListening = false;
       this.notify();
-      this.scheduleRestart(1500);
+      this.consecutiveErrors++;
+      if (this.consecutiveErrors < 3) {
+        this.scheduleRestart(2500);
+      } else {
+        this.isEnabled = false;
+      }
     }
   }
 
