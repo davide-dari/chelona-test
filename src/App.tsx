@@ -2725,7 +2725,7 @@ export default function App() {
 
 
 
-              <div className="flex-1 flex flex-col min-h-0 overflow-y-auto w-full custom-scrollbar">
+              <div className="flex-1 overflow-y-auto w-full custom-scrollbar">
                 {isProfileOpen ? (
               <React.Suspense fallback={<div className="flex items-center justify-center p-20"><div className="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div></div>}>
                 <ProfileScreen
@@ -3675,47 +3675,44 @@ export default function App() {
               </motion.div>
             ) : (
               <div className="h-full">
-                {/* Search Bar - Shown when filtering or browsing categories */}
-                {(selectedType || selectedFolderId || activeNavTab === 'deadlines' || searchQuery.trim()) && (
-                  <div className="mb-6 lg:mb-10 w-full px-4 lg:px-8">
-                    <div className="relative group max-w-2xl mx-auto">
-                      <Search className="absolute left-6 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--text-muted)] group-focus-within:text-[var(--accent)] transition-colors" />
-                      <input 
-                        type="text" 
-                        placeholder={`Cerca ${selectedType ? (TEMPLATES[selectedType as keyof typeof TEMPLATES]?.title || 'nelle tue Sandbox') : 'nelle tue Sandbox'}...`}
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-full pl-14 pr-14 py-4.5 bg-[var(--surface-variant)] border-transparent rounded-[var(--radius-lg)] shadow-none outline-none focus:bg-[var(--bg)] focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)] transition-all text-base lg:text-lg font-medium text-[var(--text-main)] placeholder:text-[var(--text-muted)]"
-                      />
-                      <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1">
-                        {searchQuery && (
-                          <button 
-                            onClick={() => setSearchQuery('')}
-                            className="p-2 hover:bg-[var(--bg)] rounded-full text-[var(--text-muted)] transition-all"
-                          >
-                            <X className="w-5 h-5" />
-                          </button>
-                        )}
+                <div className="mb-6 lg:mb-10 w-full px-4 lg:px-8">
+                  <div className="relative group max-w-2xl mx-auto">
+                    <Search className="absolute left-6 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--text-muted)] group-focus-within:text-[var(--accent)] transition-colors" />
+                    <input 
+                      type="text" 
+                      placeholder={`Cerca ${selectedType ? (TEMPLATES[selectedType as keyof typeof TEMPLATES]?.title || 'nelle tue Sandbox') : 'nelle tue Sandbox'}...`}
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="w-full pl-14 pr-14 py-4.5 bg-[var(--surface-variant)] border-transparent rounded-[var(--radius-lg)] shadow-none outline-none focus:bg-[var(--bg)] focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)] transition-all text-base lg:text-lg font-medium text-[var(--text-main)] placeholder:text-[var(--text-muted)]"
+                    />
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                      {searchQuery && (
                         <button 
-                          onClick={handleVoiceSearch}
-                          title="Ricerca Vocale"
-                          className={`relative p-3 rounded-full transition-all ${isListening ? 'text-[var(--accent)]' : 'text-[var(--text-muted)] hover:text-[var(--accent)] hover:bg-[var(--bg)]'}`}
+                          onClick={() => setSearchQuery('')}
+                          className="p-2 hover:bg-[var(--bg)] rounded-full text-[var(--text-muted)] transition-all"
                         >
-                          {isListening && (
-                            <motion.div
-                              layoutId="voice-ripple"
-                              initial={{ scale: 0.8, opacity: 0.5 }}
-                              animate={{ scale: 1.5, opacity: 0 }}
-                              transition={{ repeat: Infinity, duration: 1.5 }}
-                              className="absolute inset-0 bg-[var(--accent)] rounded-full"
-                            />
-                          )}
-                          <Mic className={`w-5 h-5 lg:w-6 lg:h-6 relative z-10 ${isListening ? 'animate-pulse' : ''}`} />
+                          <X className="w-5 h-5" />
                         </button>
-                      </div>
+                      )}
+                      <button 
+                        onClick={handleVoiceSearch}
+                        title="Ricerca Vocale"
+                        className={`relative p-3 rounded-full transition-all ${isListening ? 'text-[var(--accent)]' : 'text-[var(--text-muted)] hover:text-[var(--accent)] hover:bg-[var(--bg)]'}`}
+                      >
+                        {isListening && (
+                          <motion.div
+                            layoutId="voice-ripple"
+                            initial={{ scale: 0.8, opacity: 0.5 }}
+                            animate={{ scale: 1.5, opacity: 0 }}
+                            transition={{ repeat: Infinity, duration: 1.5 }}
+                            className="absolute inset-0 bg-[var(--accent)] rounded-full"
+                          />
+                        )}
+                        <Mic className={`w-5 h-5 lg:w-6 lg:h-6 relative z-10 ${isListening ? 'animate-pulse' : ''}`} />
+                      </button>
                     </div>
                   </div>
-                )}
+                </div>
 
                 {isListening ? (
                   <div className="py-20 flex flex-col items-center justify-center text-center px-4 animate-fade-in">
@@ -3863,56 +3860,225 @@ export default function App() {
                         )}
                       </div>
                     ) : !selectedType && !selectedFolderId && !searchQuery.trim() ? (
-                      <div className="flex-1 flex flex-col h-[calc(100dvh-4rem-5rem)] md:h-[calc(100dvh-5rem)] w-full overflow-hidden">
-                        {/* Barre sezioni rapide all'occorrenza & scadenze imminenti */}
-                        <div className="shrink-0 px-4 py-2 border-b border-[var(--border)]/50 bg-[var(--bg)]/90 backdrop-blur-md flex items-center gap-2 overflow-x-auto no-scrollbar z-10">
-                          {urgentDeadlines.length > 0 && (
-                            <button
-                              onClick={() => setActiveNavTab('deadlines')}
-                              className="shrink-0 px-3 py-1.5 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-500 text-xs font-black flex items-center gap-1.5 active:scale-95 transition-all shadow-xs"
-                            >
-                              <AlertCircle className="w-3.5 h-3.5 animate-pulse" />
-                              <span>{urgentDeadlines.length} {urgentDeadlines.length === 1 ? 'scadenza' : 'scadenze'}</span>
-                            </button>
-                          )}
+                      <div className="px-4 lg:px-8 pb-40">
+                        {/* 1. OGGI PER TE (Promemoria & Scadenze Rapide) */}
+                        <div className="mb-8">
+                          {urgentDeadlines.length > 0 ? (
+                            <div className="bg-gradient-to-r from-amber-500/15 via-rose-500/10 to-amber-500/5 border border-amber-500/30 rounded-[2.5rem] p-6 shadow-lg shadow-amber-500/5">
+                              <div className="flex items-center justify-between gap-4 mb-4">
+                                <div className="flex items-center gap-3">
+                                  <div className="w-10 h-10 rounded-2xl bg-amber-500 text-white flex items-center justify-center font-bold shadow-md shadow-amber-500/30">
+                                    <AlertCircle className="w-5 h-5" />
+                                  </div>
+                                  <div>
+                                    <h3 className="font-black text-base text-[var(--text-main)]">Oggi per Te</h3>
+                                    <p className="text-xs text-[var(--text-muted)] font-medium">
+                                      {urgentDeadlines.length} {urgentDeadlines.length === 1 ? 'scadenza urgente nei prossimi giorni' : 'scadenze urgenti nei prossimi giorni'}
+                                    </p>
+                                  </div>
+                                </div>
+                                <button
+                                  onClick={() => setActiveNavTab('deadlines')}
+                                  className="px-3.5 py-1.5 bg-amber-500 text-white text-xs font-black rounded-xl shadow-md active:scale-95 transition-all flex items-center gap-1 shrink-0"
+                                >
+                                  <span>Tutte</span>
+                                  <ArrowRight className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
 
-                          {/* Sezioni all'occorrenza */}
+                              <div className="space-y-2.5">
+                                {urgentDeadlines.slice(0, 3).map(item => (
+                                  <div
+                                    key={item.id}
+                                    onClick={item.openAction}
+                                    className="bg-[var(--card-bg)]/90 backdrop-blur-sm border border-[var(--border)] p-3.5 rounded-2xl flex items-center justify-between gap-3 cursor-pointer hover:border-amber-500/50 transition-all active:scale-[0.99]"
+                                  >
+                                    <div className="flex items-center gap-3 min-w-0">
+                                      <div className={`w-8 h-8 rounded-xl bg-[var(--surface-variant)] flex items-center justify-center shrink-0 ${item.color}`}>
+                                        <item.icon className="w-4 h-4" />
+                                      </div>
+                                      <div className="min-w-0">
+                                        <p className="font-bold text-xs text-[var(--text-main)] truncate">{item.title}</p>
+                                        <p className="text-[11px] text-[var(--text-muted)] truncate">{item.subtitle}</p>
+                                      </div>
+                                    </div>
+                                    <span className={`px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider shrink-0 ${
+                                      item.daysLeft < 0 ? 'bg-rose-500/10 text-rose-500' : item.daysLeft === 0 ? 'bg-amber-500 text-white font-bold' : 'bg-orange-500/10 text-orange-500'
+                                    }`}>
+                                      {item.daysLeft < 0 ? `Scaduta` : item.daysLeft === 0 ? 'Oggi!' : `Tra ${item.daysLeft} gg`}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent border border-emerald-500/20 rounded-[2.5rem] p-5 flex items-center justify-between gap-4 shadow-sm">
+                              <div className="flex items-center gap-3.5">
+                                <div className="w-11 h-11 rounded-2xl bg-emerald-500/15 text-emerald-500 flex items-center justify-center font-bold shadow-inner shrink-0">
+                                  <CheckCircle2 className="w-6 h-6" />
+                                </div>
+                                <div>
+                                  <h3 className="font-black text-sm text-[var(--text-main)]">Tutto in Regola per Oggi</h3>
+                                  <p className="text-xs text-[var(--text-muted)] font-medium">Nessuna scadenza urgente nei prossimi 7 giorni.</p>
+                                </div>
+                              </div>
+                              <button
+                                onClick={() => setActiveNavTab('deadlines')}
+                                className="px-3.5 py-2 bg-[var(--surface-variant)] hover:bg-[var(--border)] text-[var(--text-main)] text-xs font-bold rounded-xl transition-all flex items-center gap-1.5 shrink-0"
+                              >
+                                <span>Scadenze</span>
+                                <ArrowRight className="w-3.5 h-3.5 text-[var(--accent)]" />
+                              </button>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Widgets Section (Shortcuts) */}
+                        {(pinnedToolIds.length > 0 || pinnedCategoryIds.length > 0) && (
+                          <div className="mb-10">
+                            <h3 className="text-lg font-bold text-[var(--text-main)] mb-5 flex items-center gap-2">
+                              <LayoutDashboard className="w-5 h-5 text-indigo-500" />
+                              Accesso Rapido
+                            </h3>
+                            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+                              {/* Categories Pinned */}
+                              {pinnedCategoryIds.map(catId => {
+                                const t = TEMPLATES[catId as ModuleType];
+                                if (!t) return null;
+                                return (
+                                  <button
+                                    key={`pinned-cat-${catId}`}
+                                    onClick={() => handleSelectCategoryWithSecurity(catId as ModuleType)}
+                                    className="bg-[var(--card-bg)] p-5 rounded-3xl border border-[var(--border)] shadow-sm hover:border-[var(--accent)] transition-all flex items-center gap-4 group"
+                                  >
+                                    <div className={`w-12 h-12 bg-[var(--bg)] rounded-2xl flex items-center justify-center ${t.color} group-hover:scale-110 transition-transform shadow-inner`}>
+                                      <t.icon className="w-6 h-6" />
+                                    </div>
+                                    <span className="font-bold text-xs text-[var(--text-main)]">{t.title}</span>
+                                  </button>
+                                );
+                              })}
+                              {/* Tools Pinned */}
+                              {pinnedToolIds.map(toolId => {
+                                const t = (Object.values(TOOLS_UTILITY).flat() as any[]).find(t => t.id === toolId);
+                                if (!t) return null;
+                                return (
+                                  <button
+                                    key={`pinned-tool-${toolId}`}
+                                    onClick={() => { setIsToolsOpen(true); setActiveToolId(toolId); }}
+                                    className="bg-[var(--card-bg)] p-5 rounded-3xl border border-[var(--border)] shadow-sm hover:border-[var(--accent)] transition-all flex items-center gap-4 group"
+                                  >
+                                    <div className={`w-12 h-12 bg-[var(--bg)] rounded-2xl flex items-center justify-center ${t.color} group-hover:scale-110 transition-transform shadow-inner text-[var(--accent)]`}>
+                                      <t.icon className="w-6 h-6" />
+                                    </div>
+                                    <span className="font-bold text-xs text-[var(--text-main)]">{t.title}</span>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* 5 MACRO-HUBS UNIFICATI */}
+                        <div className="mb-4">
+                          <h3 className="text-lg font-black text-[var(--text-main)] mb-4 flex items-center gap-2">
+                            <span>Aree Principali</span>
+                          </h3>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pb-12">
+                          {/* 1. Auto & Mobilità */}
                           <button
                             onClick={() => {
                               const existingAuto = modules.find(m => m.type === 'auto') as import('./types').AutoModule;
-                              if (existingAuto) openEditModalWithSecurity(existingAuto);
-                              else handleSelectCategoryWithSecurity('auto');
+                              if (existingAuto) {
+                                openEditModalWithSecurity(existingAuto);
+                              } else {
+                                handleSelectCategoryWithSecurity('auto');
+                              }
                             }}
-                            className="shrink-0 px-3 py-1.5 rounded-full bg-[var(--surface-variant)] hover:bg-[var(--card-bg)] border border-[var(--border)] text-xs font-bold text-[var(--text-main)] flex items-center gap-1.5 active:scale-95 transition-all"
+                            className="bg-[var(--card-bg)] p-6 lg:p-7 rounded-[2.5rem] border border-[var(--border)] hover:border-rose-500/50 shadow-sm hover:shadow-lg transition-all text-left flex items-start gap-4 group active:scale-[0.99] relative overflow-hidden"
                           >
-                            <Car className="w-3.5 h-3.5 text-rose-500" />
-                            <span>Auto</span>
+                            <div className="w-14 h-14 rounded-3xl bg-rose-500/10 text-rose-500 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform shadow-inner">
+                              <Car className="w-7 h-7" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center justify-between gap-2 mb-1">
+                                <h4 className="font-black text-base lg:text-lg text-[var(--text-main)]">Auto & Mobilità</h4>
+                                <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-rose-500/10 text-rose-500 border border-rose-500/20">
+                                  {modules.filter(m => m.type === 'auto').length > 0 ? `${modules.filter(m => m.type === 'auto').length} Veicol${modules.filter(m => m.type === 'auto').length > 1 ? 'i' : 'o'}` : 'Configura'}
+                                </span>
+                              </div>
+                              <p className="text-xs text-[var(--text-muted)] line-clamp-2 leading-relaxed">
+                                Assicurazione, bollo, revisione, chilometri e manutenzioni
+                              </p>
+                            </div>
                           </button>
 
+                          {/* 2. Documenti & Scadenze */}
                           <button
                             onClick={() => handleSelectCategoryWithSecurity('document')}
-                            className="shrink-0 px-3 py-1.5 rounded-full bg-[var(--surface-variant)] hover:bg-[var(--card-bg)] border border-[var(--border)] text-xs font-bold text-[var(--text-main)] flex items-center gap-1.5 active:scale-95 transition-all"
+                            className="bg-[var(--card-bg)] p-6 lg:p-7 rounded-[2.5rem] border border-[var(--border)] hover:border-blue-500/50 shadow-sm hover:shadow-lg transition-all text-left flex items-start gap-4 group active:scale-[0.99] relative overflow-hidden"
                           >
-                            <FileText className="w-3.5 h-3.5 text-blue-500" />
-                            <span>Documenti</span>
+                            <div className="w-14 h-14 rounded-3xl bg-blue-500/10 text-blue-500 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform shadow-inner">
+                              <FileText className="w-7 h-7" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center justify-between gap-2 mb-1">
+                                <h4 className="font-black text-base lg:text-lg text-[var(--text-main)]">Documenti</h4>
+                                <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-blue-500/10 text-blue-500 border border-blue-500/20">
+                                  {modules.filter(m => m.type === 'document').length} Salvati
+                                </span>
+                              </div>
+                              <p className="text-xs text-[var(--text-muted)] line-clamp-2 leading-relaxed">
+                                Carte d'identità, patenti, ricevute fiscali, contratti e scadenze
+                              </p>
+                            </div>
                           </button>
 
+                          {/* 3. Spese & Conti */}
                           <button
                             onClick={() => handleSelectCategoryWithSecurity('split')}
-                            className="shrink-0 px-3 py-1.5 rounded-full bg-[var(--surface-variant)] hover:bg-[var(--card-bg)] border border-[var(--border)] text-xs font-bold text-[var(--text-main)] flex items-center gap-1.5 active:scale-95 transition-all"
+                            className="bg-[var(--card-bg)] p-6 lg:p-7 rounded-[2.5rem] border border-[var(--border)] hover:border-purple-500/50 shadow-sm hover:shadow-lg transition-all text-left flex items-start gap-4 group active:scale-[0.99] relative overflow-hidden"
                           >
-                            <Wallet className="w-3.5 h-3.5 text-purple-500" />
-                            <span>Spese</span>
+                            <div className="w-14 h-14 rounded-3xl bg-purple-500/10 text-purple-500 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform shadow-inner">
+                              <Wallet className="w-7 h-7" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center justify-between gap-2 mb-1">
+                                <h4 className="font-black text-base lg:text-lg text-[var(--text-main)]">Spese & Conti</h4>
+                                <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-purple-500/10 text-purple-500 border border-purple-500/20">
+                                  Finanze
+                                </span>
+                              </div>
+                              <p className="text-xs text-[var(--text-muted)] line-clamp-2 leading-relaxed">
+                                Spese quotidiane, conti condivisi in gruppo, rate e mutui
+                              </p>
+                            </div>
                           </button>
 
+                          {/* 4. Casa, Spesa & Offerte */}
                           <button
                             onClick={() => setSelectedType('home')}
-                            className="shrink-0 px-3 py-1.5 rounded-full bg-[var(--surface-variant)] hover:bg-[var(--card-bg)] border border-[var(--border)] text-xs font-bold text-[var(--text-main)] flex items-center gap-1.5 active:scale-95 transition-all"
+                            className="bg-[var(--card-bg)] p-6 lg:p-7 rounded-[2.5rem] border border-[var(--border)] hover:border-teal-500/50 shadow-sm hover:shadow-lg transition-all text-left flex items-start gap-4 group active:scale-[0.99] relative overflow-hidden"
                           >
-                            <Home className="w-3.5 h-3.5 text-teal-500" />
-                            <span>Casa</span>
+                            <div className="w-14 h-14 rounded-3xl bg-teal-500/10 text-teal-500 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform shadow-inner">
+                              <Home className="w-7 h-7" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center justify-between gap-2 mb-1">
+                                <h4 className="font-black text-base lg:text-lg text-[var(--text-main)]">Casa, Offerte & Spesa</h4>
+                                <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-teal-500/10 text-teal-500 border border-teal-500/20">
+                                  Offerte & Casa
+                                </span>
+                              </div>
+                              <p className="text-xs text-[var(--text-muted)] line-clamp-2 leading-relaxed">
+                                Volantini sconti supermercati, lista della spesa, ricettario e arredo
+                              </p>
+                            </div>
                           </button>
 
+                          {/* 5. Salute, Fitness & Dieta */}
                           <button
                             onClick={() => {
                               const existingFitness = modules.find(m => m.type === 'fitness');
@@ -3934,12 +4100,25 @@ export default function App() {
                                 setEditingFitnessModule(newFitness);
                               }
                             }}
-                            className="shrink-0 px-3 py-1.5 rounded-full bg-[var(--surface-variant)] hover:bg-[var(--card-bg)] border border-[var(--border)] text-xs font-bold text-[var(--text-main)] flex items-center gap-1.5 active:scale-95 transition-all"
+                            className="bg-[var(--card-bg)] p-6 lg:p-7 rounded-[2.5rem] border border-[var(--border)] hover:border-emerald-500/50 shadow-sm hover:shadow-lg transition-all text-left flex items-start gap-4 group active:scale-[0.99] relative overflow-hidden"
                           >
-                            <Activity className="w-3.5 h-3.5 text-emerald-500" />
-                            <span>Fitness</span>
+                            <div className="w-14 h-14 rounded-3xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform shadow-inner">
+                              <Activity className="w-7 h-7" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center justify-between gap-2 mb-1">
+                                <h4 className="font-black text-base lg:text-lg text-[var(--text-main)]">Salute, Fitness & Dieta</h4>
+                                <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
+                                  Trainer
+                                </span>
+                              </div>
+                              <p className="text-xs text-[var(--text-muted)] line-clamp-2 leading-relaxed">
+                                Schede allenamento, timer recupero e pasti con grammature esatte
+                              </p>
+                            </div>
                           </button>
 
+                          {/* Viaggi (se presente o per esplorare) */}
                           <button
                             onClick={() => {
                               const existingTravel = modules.find(m => m.type === 'travel') as import('./types').TravelModule;
@@ -3962,34 +4141,23 @@ export default function App() {
                                 setEditingTravelModule(newTravel);
                               }
                             }}
-                            className="shrink-0 px-3 py-1.5 rounded-full bg-[var(--surface-variant)] hover:bg-[var(--card-bg)] border border-[var(--border)] text-xs font-bold text-[var(--text-main)] flex items-center gap-1.5 active:scale-95 transition-all"
+                            className="bg-[var(--card-bg)] p-6 lg:p-7 rounded-[2.5rem] border border-[var(--border)] hover:border-indigo-500/50 shadow-sm hover:shadow-lg transition-all text-left flex items-start gap-4 group active:scale-[0.99] relative overflow-hidden"
                           >
-                            <Globe className="w-3.5 h-3.5 text-indigo-500" />
-                            <span>Viaggi</span>
-                          </button>
-                        </div>
-
-                        {/* CHELONA AI LIVE CHAT - A TUTTO SCHERMO NELLA HOMEPAGE */}
-                        <div className="flex-1 min-h-0 w-full overflow-hidden flex flex-col">
-                          <React.Suspense fallback={
-                            <div className="flex-1 flex items-center justify-center p-12">
-                              <div className="w-8 h-8 border-4 border-amber-500 border-t-transparent rounded-full animate-spin"></div>
+                            <div className="w-14 h-14 rounded-3xl bg-indigo-500/10 text-indigo-500 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform shadow-inner">
+                              <Globe className="w-7 h-7" />
                             </div>
-                          }>
-                            <ChelonaAiScreen
-                              modules={modules}
-                              username={username}
-                              mode="embedded"
-                              onClose={() => {}}
-                              onOpenModule={(m) => {
-                                openEditModalWithSecurity(m);
-                              }}
-                              onOpenCategory={(cat) => {
-                                handleSelectCategoryWithSecurity(cat as any);
-                              }}
-                              showToast={showToast}
-                            />
-                          </React.Suspense>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center justify-between gap-2 mb-1">
+                                <h4 className="font-black text-base lg:text-lg text-[var(--text-main)]">Viaggi & Mete</h4>
+                                <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-indigo-500/10 text-indigo-500 border border-indigo-500/20">
+                                  Itinerari
+                                </span>
+                              </div>
+                              <p className="text-xs text-[var(--text-muted)] line-clamp-2 leading-relaxed">
+                                Pianifica mete, tappe del viaggio e scadenze valigie
+                              </p>
+                            </div>
+                          </button>
                         </div>
                       </div>
                     ) : selectedType === 'home' ? (
