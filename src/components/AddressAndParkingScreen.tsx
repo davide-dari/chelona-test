@@ -68,12 +68,19 @@ export const AddressAndParkingScreen: React.FC<AddressAndParkingScreenProps> = (
   const [selectedAddressFromBook, setSelectedAddressFromBook] = useState<Address | null>(null);
   const [vehicleNameInput, setVehicleNameInput] = useState('');
   
-  // Parchimetro Setup (Stile EasyPark / parchimetro vero)
-  const [isMeterEnabled, setIsMeterEnabled] = useState(true);
+  // Parchimetro Setup (Stile EasyPark / parchimetro vero) - disattivato di default
+  const [isMeterEnabled, setIsMeterEnabled] = useState(false);
   const [meterDurationMinutes, setMeterDurationMinutes] = useState<number>(60); // 1 ora di default
   const [hourlyRate, setHourlyRate] = useState<number>(1.50); // 1.50 €/h tipico
   const [customRateInput, setCustomRateInput] = useState('1.50');
   const [manualEndTimeInput, setManualEndTimeInput] = useState<string>(''); // formato HH:mm
+
+  // Assicura che il parchimetro sia disattivato di default quando si entra nella sezione parcheggio senza un parcheggio attivo
+  useEffect(() => {
+    if (activeTab === 'parking' && !parking) {
+      setIsMeterEnabled(false);
+    }
+  }, [activeTab, parking]);
 
   // Modal / Selettore per scegliere indirizzo da rubrica come parcheggio
   const [isAddressPickerOpen, setIsAddressPickerOpen] = useState(false);
@@ -339,6 +346,7 @@ export const AddressAndParkingScreen: React.FC<AddressAndParkingScreenProps> = (
 
       setParking(saved);
       setIsEditingNotes(false);
+      setIsMeterEnabled(false);
       if (showToast) {
         showToast(
           isMeterEnabled 
@@ -414,6 +422,7 @@ export const AddressAndParkingScreen: React.FC<AddressAndParkingScreenProps> = (
       setNotesText('');
       setManualAddressInput('');
       setSelectedAddressFromBook(null);
+      setIsMeterEnabled(false);
       if (showToast) showToast("Sosta terminata. Posizione rimossa.", 'info');
     }
   };
@@ -592,7 +601,10 @@ export const AddressAndParkingScreen: React.FC<AddressAndParkingScreenProps> = (
           </button>
 
           <button
-            onClick={() => setActiveTab('parking')}
+            onClick={() => {
+              setActiveTab('parking');
+              if (!parking) setIsMeterEnabled(false);
+            }}
             className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs sm:text-sm font-bold transition-all relative z-10 ${
               activeTab === 'parking'
                 ? 'bg-[var(--surface)] text-indigo-500 shadow-sm'

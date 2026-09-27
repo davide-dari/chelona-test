@@ -3953,77 +3953,79 @@ export default function App() {
                       </div>
                     ) : !selectedType && !selectedFolderId && !searchQuery.trim() ? (
                       <div className="px-4 lg:px-8 pb-40">
-                        {/* 1. OGGI PER TE (Promemoria & Scadenze Rapide) */}
-                        <div className="mb-8">
-                          {urgentDeadlines.length > 0 ? (
-                            <div className="bg-gradient-to-r from-amber-500/15 via-rose-500/10 to-amber-500/5 border border-amber-500/30 rounded-[2.5rem] p-6 shadow-lg shadow-amber-500/5">
-                              <div className="flex items-center justify-between gap-4 mb-4">
-                                <div className="flex items-center gap-3">
-                                  <div className="w-10 h-10 rounded-2xl bg-amber-500 text-white flex items-center justify-center font-bold shadow-md shadow-amber-500/30">
-                                    <AlertCircle className="w-5 h-5" />
-                                  </div>
-                                  <div>
-                                    <h3 className="font-black text-base text-[var(--text-main)]">Oggi per Te</h3>
-                                    <p className="text-xs text-[var(--text-muted)] font-medium">
-                                      {urgentDeadlines.length} {urgentDeadlines.length === 1 ? 'scadenza urgente nei prossimi giorni' : 'scadenze urgenti nei prossimi giorni'}
-                                    </p>
-                                  </div>
-                                </div>
-                                <button
-                                  onClick={() => setActiveNavTab('deadlines')}
-                                  className="px-3.5 py-1.5 bg-amber-500 text-white text-xs font-black rounded-xl shadow-md active:scale-95 transition-all flex items-center gap-1 shrink-0"
-                                >
-                                  <span>Tutte</span>
-                                  <ArrowRight className="w-3.5 h-3.5" />
-                                </button>
+                        {/* Hero Greeting & Chelona AI Voice Assistant Card */}
+                        <motion.div
+                          initial={{ opacity: 0, y: 15 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ duration: 0.35, ease: 'easeOut' }}
+                          className="relative overflow-hidden mb-8 rounded-[2.5rem] p-6 sm:p-7 border border-[var(--border)] bg-gradient-to-br from-[var(--card-bg)] via-[var(--card-bg)] to-[var(--surface-variant)] shadow-xl shadow-amber-500/5 group"
+                        >
+                          {/* Ambient decorative lighting */}
+                          <div className="absolute -top-16 -right-16 w-56 h-56 bg-gradient-to-br from-amber-400/20 via-rose-400/15 to-indigo-500/15 rounded-full blur-3xl pointer-events-none" />
+                          <div className="absolute -bottom-16 -left-16 w-44 h-44 bg-gradient-to-tr from-teal-400/10 via-indigo-500/10 to-transparent rounded-full blur-2xl pointer-events-none" />
+
+                          <div className="relative z-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-5">
+                            <div className="space-y-2 max-w-lg">
+                              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-gradient-to-r from-amber-500/10 via-rose-500/10 to-indigo-500/10 border border-amber-500/25 text-[11px] font-bold text-amber-600 dark:text-amber-400 shadow-sm backdrop-blur-sm">
+                                <Sparkles className="w-3.5 h-3.5 text-amber-500 animate-pulse" />
+                                <span>Assistente Chelona AI</span>
                               </div>
 
-                              <div className="space-y-2.5">
-                                {urgentDeadlines.slice(0, 3).map(item => (
-                                  <div
-                                    key={item.id}
-                                    onClick={item.openAction}
-                                    className="bg-[var(--card-bg)]/90 backdrop-blur-sm border border-[var(--border)] p-3.5 rounded-2xl flex items-center justify-between gap-3 cursor-pointer hover:border-amber-500/50 transition-all active:scale-[0.99]"
-                                  >
-                                    <div className="flex items-center gap-3 min-w-0">
-                                      <div className={`w-8 h-8 rounded-xl bg-[var(--surface-variant)] flex items-center justify-center shrink-0 ${item.color}`}>
-                                        <item.icon className="w-4 h-4" />
-                                      </div>
-                                      <div className="min-w-0">
-                                        <p className="font-bold text-xs text-[var(--text-main)] truncate">{item.title}</p>
-                                        <p className="text-[11px] text-[var(--text-muted)] truncate">{item.subtitle}</p>
-                                      </div>
-                                    </div>
-                                    <span className={`px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider shrink-0 ${
-                                      item.daysLeft < 0 ? 'bg-rose-500/10 text-rose-500' : item.daysLeft === 0 ? 'bg-amber-500 text-white font-bold' : 'bg-orange-500/10 text-orange-500'
-                                    }`}>
-                                      {item.daysLeft < 0 ? `Scaduta` : item.daysLeft === 0 ? 'Oggi!' : `Tra ${item.daysLeft} gg`}
-                                    </span>
-                                  </div>
-                                ))}
-                              </div>
+                              <h2 className="text-2xl sm:text-3xl font-black text-[var(--text-main)] tracking-tight leading-tight">
+                                Ciao <span className="bg-gradient-to-r from-amber-500 via-rose-500 to-indigo-500 bg-clip-text text-transparent">{username || 'Utente'}</span>,
+                                <br />
+                                come posso aiutarti oggi?
+                              </h2>
+
+                              <p className="text-xs sm:text-sm text-[var(--text-muted)] font-medium leading-relaxed">
+                                Parla con me dei tuoi veicoli, scadenze, documenti, note o spese. Rispondo con voce naturale.
+                              </p>
                             </div>
-                          ) : (
-                            <div className="bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent border border-emerald-500/20 rounded-[2.5rem] p-5 flex items-center justify-between gap-4 shadow-sm">
-                              <div className="flex items-center gap-3.5">
-                                <div className="w-11 h-11 rounded-2xl bg-emerald-500/15 text-emerald-500 flex items-center justify-center font-bold shadow-inner shrink-0">
-                                  <CheckCircle2 className="w-6 h-6" />
-                                </div>
-                                <div>
-                                  <h3 className="font-black text-sm text-[var(--text-main)]">Tutto in Regola per Oggi</h3>
-                                  <p className="text-xs text-[var(--text-muted)] font-medium">Nessuna scadenza urgente nei prossimi 7 giorni.</p>
-                                </div>
-                              </div>
-                              <button
-                                onClick={() => setActiveNavTab('deadlines')}
-                                className="px-3.5 py-2 bg-[var(--surface-variant)] hover:bg-[var(--border)] text-[var(--text-main)] text-xs font-bold rounded-xl transition-all flex items-center gap-1.5 shrink-0"
+
+                            {/* Voice Activation & Quick Chat Buttons */}
+                            <div className="flex flex-wrap items-center gap-3 shrink-0">
+                              <motion.button
+                                whileHover={{ scale: 1.03 }}
+                                whileTap={{ scale: 0.95 }}
+                                onClick={() => {
+                                  setAiInitialVoiceMode(true);
+                                  setIsAiOpen(true);
+                                  setActiveNavTab('ai');
+                                  setIsToolsOpen(false);
+                                  setIsProfileOpen(false);
+                                  setSelectedType(null);
+                                }}
+                                className="relative group/voice flex items-center gap-3.5 px-5 py-3.5 rounded-2xl bg-gradient-to-r from-amber-500 via-rose-500 to-indigo-600 text-white font-black text-sm shadow-lg shadow-amber-500/25 hover:shadow-amber-500/40 transition-all duration-300 active:scale-95"
+                                title="Attiva modalità vocale con Chelona AI"
                               >
-                                <span>Scadenze</span>
-                                <ArrowRight className="w-3.5 h-3.5 text-[var(--accent)]" />
+                                <span className="relative flex items-center justify-center w-10 h-10 rounded-xl bg-white/20 backdrop-blur-md shadow-inner">
+                                  <Mic className="w-5 h-5 text-white" />
+                                  <span className="absolute -inset-1 rounded-xl bg-white/30 animate-ping opacity-40 pointer-events-none" />
+                                </span>
+                                <div className="text-left pr-1">
+                                  <span className="block text-[10px] font-black uppercase tracking-wider text-white/80">Comando Vocale</span>
+                                  <span className="text-sm font-black tracking-tight">Parla con Chelona</span>
+                                </div>
+                              </motion.button>
+
+                              <button
+                                onClick={() => {
+                                  setAiInitialVoiceMode(false);
+                                  setIsAiOpen(true);
+                                  setActiveNavTab('ai');
+                                  setIsToolsOpen(false);
+                                  setIsProfileOpen(false);
+                                  setSelectedType(null);
+                                }}
+                                className="px-4 py-3 rounded-2xl bg-[var(--surface-variant)] hover:bg-[var(--border)] text-[var(--text-main)] font-bold text-xs border border-[var(--border)] transition-all flex items-center gap-2 active:scale-95"
+                                title="Apri chat testuale con Chelona AI"
+                              >
+                                <Sparkles className="w-4 h-4 text-amber-500" />
+                                <span>Scrivi</span>
                               </button>
                             </div>
-                          )}
-                        </div>
+                          </div>
+                        </motion.div>
 
                         {/* Widgets Section (Shortcuts) */}
                         {(pinnedToolIds.length > 0 || pinnedCategoryIds.length > 0) && (

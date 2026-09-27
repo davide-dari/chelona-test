@@ -87,6 +87,7 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
   const [previewingVoiceUri, setPreviewingVoiceUri] = useState<string | null>(null);
 
   const cancelSpeechRef = useRef(false);
+  const webSpeechRecRef = useRef<any>(null);
 
   // Modalità interazione vocale a tutto schermo (Voice Mode)
   const [isVoiceModeOpen, setIsVoiceModeOpen] = useState(false);
@@ -154,16 +155,34 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
   const stopSpeaking = () => {
     cancelSpeechRef.current = true;
     if ('speechSynthesis' in window) {
-      window.speechSynthesis.cancel();
+      try {
+        window.speechSynthesis.cancel();
+      } catch {}
     }
+    try {
+      SpeechRecognition.stop().catch(() => {});
+    } catch {}
+    if (webSpeechRecRef.current) {
+      try {
+        webSpeechRecRef.current.abort();
+      } catch {}
+      webSpeechRecRef.current = null;
+    }
+    (window as any).__activeUtterance = null;
     setVoiceStatus('idle');
+    setIsListening(false);
     setSpeakingMessageId(null);
     setPreviewingVoiceUri(null);
   };
 
   const speakText = (text: string, onEndCallback?: () => void, overrideVoice?: SpeechSynthesisVoice) => {
     if (!('speechSynthesis' in window)) return;
-    window.speechSynthesis.cancel();
+    try {
+      window.speechSynthesis.cancel();
+      if (window.speechSynthesis.paused) {
+        window.speechSynthesis.resume();
+      }
+    } catch {}
     cancelSpeechRef.current = false;
 
     // Normalizza il testo rendendolo fluido e naturale in italiano parlato
@@ -188,6 +207,7 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
     const speakNext = () => {
       if (cancelSpeechRef.current || idx >= sentences.length) {
         setVoiceStatus('idle');
+        (window as any).__activeUtterance = null;
         if (onEndCallback && !cancelSpeechRef.current) {
           onEndCallback();
         }
@@ -196,20 +216,33 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
 
       const sentence = sentences[idx++];
       const utterance = new SpeechSynthesisUtterance(sentence);
+      (window as any).__activeUtterance = utterance;
 
-      if (currentVoice) {
-        utterance.voice = currentVoice;
-        utterance.lang = currentVoice.lang || 'it-IT';
+      let voiceToUse = currentVoice || selectedVoice;
+      if (!voiceToUse && 'speechSynthesis' in window) {
+        const pool = window.speechSynthesis.getVoices();
+        const best = getBestItalianVoice(pool);
+        if (best) {
+          voiceToUse = best;
+          setSelectedVoice(best);
+        }
+      }
+
+      if (voiceToUse) {
+        utterance.voice = voiceToUse;
+        utterance.lang = voiceToUse.lang || 'it-IT';
       } else {
         utterance.lang = 'it-IT';
       }
 
       utterance.rate = speechRate;
       utterance.pitch = speechPitch;
+      utterance.volume = 1.0;
 
       utterance.onend = () => {
         if (cancelSpeechRef.current) {
           setVoiceStatus('idle');
+          (window as any).__activeUtterance = null;
           return;
         }
         // Piccola pausa naturale tra frasi
@@ -222,10 +255,14 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
           setTimeout(speakNext, 50);
         } else {
           setVoiceStatus('idle');
+          (window as any).__activeUtterance = null;
           if (onEndCallback && !cancelSpeechRef.current) onEndCallback();
         }
       };
 
+      if (window.speechSynthesis.paused) {
+        try { window.speechSynthesis.resume(); } catch {}
+      }
       window.speechSynthesis.speak(utterance);
     };
 
@@ -258,7 +295,7 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
     );
   };
 
-  const handleSend = async (customQuery?: string, isVoiceSession = false) => {
+  const handleSend = async (customQuery?: string, isVoiceSession = false, shouldSpeak = false) => {
     const queryToSend = (customQuery || inputText).trim();
     if (!queryToSend || isProcessing) return;
 
@@ -299,31 +336,47 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
         onAddModule(response.createdModule);
       }
 
-      if (isVoiceSession) {
-        setLastAiSpeech(response.text);
-        speakText(response.text, () => {
-          // Quando ha finito di parlare, riattiva automaticamente l'ascolto per dialogo continuo!
-          if (isVoiceModeOpen) {
-            setTimeout(() => {
-              startVoiceRecognition(true);
-            }, 400);
-          }
-        });
+      const mustSpeak = isVoiceSession || shouldSpeak;
+      if (mustSpeak) {
+        if (isVoiceSession) {
+          setLastAiSpeech(response.text);
+          speakText(response.text, () => {
+            // Quando ha finito di parlare, riattiva automaticamente l'ascolto per dialogo continuo!
+            if (isVoiceModeOpen) {
+              setTimeout(() => {
+                startVoiceRecognition(true);
+              }, 400);
+            }
+          });
+        } else {
+          // Input vocale da microfono in chat standard: parla la risposta ad alta voce
+          setSpeakingMessageId(assistantMsg.id);
+          speakText(response.text, () => {
+            setSpeakingMessageId(null);
+          });
+        }
       }
     } catch (e) {
       console.error('AI query error', e);
       const errMsg = `Scusami, si è verificato un piccolo errore. Riprova tra un attimo.`;
+      const errId = 'msg_err_' + Date.now();
       setMessages(prev => [
         ...prev,
         {
-          id: 'msg_err_' + Date.now(),
+          id: errId,
           sender: 'assistant',
           text: errMsg,
           timestamp: Date.now(),
         }
       ]);
-      if (isVoiceSession) {
-        speakText(errMsg);
+      const mustSpeak = isVoiceSession || shouldSpeak;
+      if (mustSpeak) {
+        if (isVoiceSession) {
+          speakText(errMsg);
+        } else {
+          setSpeakingMessageId(errId);
+          speakText(errMsg, () => setSpeakingMessageId(null));
+        }
       }
     } finally {
       setIsProcessing(false);
@@ -361,7 +414,7 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
           popup: !isVoiceSession,
         }).then((result) => {
           if (result.matches && result.matches.length > 0) {
-            handleSend(result.matches[0], isVoiceSession);
+            handleSend(result.matches[0], isVoiceSession, true);
           } else if (isVoiceSession) {
             setVoiceStatus('idle');
           }
@@ -388,6 +441,7 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
 
     try {
       const rec = new SpeechRec();
+      webSpeechRecRef.current = rec;
       rec.lang = 'it-IT';
       rec.continuous = false;
       rec.interimResults = false;
@@ -395,7 +449,7 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
       rec.onresult = (evt: any) => {
         const text = evt.results[0][0].transcript;
         if (text) {
-          handleSend(text, isVoiceSession);
+          handleSend(text, isVoiceSession, true);
         } else if (isVoiceSession) {
           setVoiceStatus('idle');
         }
@@ -404,15 +458,18 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
 
       rec.onerror = () => {
         setIsListening(false);
+        webSpeechRecRef.current = null;
         if (isVoiceSession) setVoiceStatus('idle');
       };
 
       rec.onend = () => {
         setIsListening(false);
+        webSpeechRecRef.current = null;
       };
 
       rec.start();
     } catch {
+      webSpeechRecRef.current = null;
       setIsListening(false);
       if (isVoiceSession) setVoiceStatus('idle');
       showToast('Errore durante l\'ascolto vocale.', 'error');
@@ -465,6 +522,10 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
   };
 
   useEffect(() => {
+    if (!initialVoiceMode) {
+      initialVoiceTriggeredRef.current = false;
+      return;
+    }
     if (initialVoiceMode && !initialVoiceTriggeredRef.current && !isVoiceModeOpen) {
       initialVoiceTriggeredRef.current = true;
       const t = setTimeout(() => {
