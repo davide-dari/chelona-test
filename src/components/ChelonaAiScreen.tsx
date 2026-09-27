@@ -20,6 +20,7 @@ import {
   getBestItalianVoice,
   getVoiceFriendlyName
 } from '../utils/naturalSpeech';
+import { getSavedParking, getNavigationUrl } from '../services/parkingService';
 
 interface ChelonaAiScreenProps {
   modules: Module[];
@@ -29,6 +30,8 @@ interface ChelonaAiScreenProps {
   onOpenCategory: (category: string) => void;
   showToast: (msg: string, type?: 'success' | 'error' | 'info') => void;
   mode?: 'embedded' | 'fullscreen';
+  onAddModule?: (module: Module) => void;
+  onOpenParking?: () => void;
 }
 
 type NeuralCategory = 'all' | 'vehicles' | 'documents' | 'finances' | 'notes' | 'fitness' | 'memories';
@@ -41,6 +44,8 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
   onOpenCategory,
   showToast,
   mode = 'fullscreen',
+  onAddModule,
+  onOpenParking,
 }) => {
   const [messages, setMessages] = useState<AiMessage[]>(() => {
     const history = getChatHistory();
@@ -287,6 +292,10 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
         setMemories(getLearnedMemories());
       }
 
+      if (response.createdModule && onAddModule) {
+        onAddModule(response.createdModule);
+      }
+
       if (isVoiceSession) {
         setLastAiSpeech(response.text);
         speakText(response.text, () => {
@@ -502,6 +511,8 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
   ];
 
   const quickPrompts = [
+    { label: '📍 Salva Parcheggio', query: 'Salva il parcheggio qui' },
+    { label: '🚗 Dov\'è l\'auto?', query: 'Dove ho parcheggiato la mia auto?' },
     { label: '📅 Scadenze', query: 'Quali scadenze imminenti ho nei prossimi 60 giorni?' },
     { label: '🚗 La mia auto', query: 'Fammi un riepilogo della mia auto, scadenze e km' },
     { label: '📄 Documenti', query: 'Quali documenti personali ho salvato?' },
@@ -605,7 +616,19 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
                           <button
                             key={i}
                             onClick={() => {
-                              if (act.type === 'module' && act.module) {
+                              if (act.type === 'parking' && onOpenParking) {
+                                onOpenParking();
+                                if (!isEmbedded) onClose();
+                              } else if (act.type === 'navigate_parking') {
+                                if (act.url) {
+                                  window.open(act.url, '_blank');
+                                } else {
+                                  const p = getSavedParking();
+                                  if (p) window.open(getNavigationUrl(p.latitude, p.longitude), '_blank');
+                                }
+                              } else if (act.type === 'save_parking') {
+                                handleSend('Salva il parcheggio qui');
+                              } else if (act.type === 'module' && act.module) {
                                 onOpenModule(act.module);
                                 if (!isEmbedded) onClose();
                               } else if (act.type === 'category' && act.category) {

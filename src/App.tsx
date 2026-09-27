@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Sun, Moon, Wrench, Plus, LayoutDashboard, Settings, User, LogOut, Search, Mic, Bell, CreditCard, Fingerprint, ShieldCheck, Lock, Menu, X, StickyNote, FileText, Grid2X2, Car, QrCode, Folder as FolderIcon, Check, Edit2, Trash2, BookOpen, ArrowLeft, ArrowRight, Camera, FileDown, Hourglass, Users, Download, Receipt, MapPin, Image as ImageIcon, Lightbulb, Globe, ChevronLeft, Bus, Home, Armchair, Activity, ShoppingBasket, BadgePercent, Sparkles, CalendarClock, Calendar, AlertCircle, CheckCircle2, Battery, Wallet, Flame, ArrowUpRight } from 'lucide-react';
+import { Sun, Moon, Wrench, Plus, LayoutDashboard, Settings, User, LogOut, Search, Mic, Bell, CreditCard, Fingerprint, ShieldCheck, Lock, Menu, X, StickyNote, FileText, Grid2X2, Car, QrCode, Folder as FolderIcon, Check, Edit2, Trash2, BookOpen, ArrowLeft, ArrowRight, Camera, FileDown, Hourglass, Users, Download, Receipt, MapPin, SquareParking, Image as ImageIcon, Lightbulb, Globe, ChevronLeft, Bus, Home, Armchair, Activity, ShoppingBasket, BadgePercent, Sparkles, CalendarClock, Calendar, AlertCircle, CheckCircle2, Battery, Wallet, Flame, ArrowUpRight } from 'lucide-react';
 
 import { Module, ModuleType, Folder, DocumentModule } from './types';
 import { isModuleSensitive } from './utils/security';
@@ -54,6 +54,7 @@ const SupermarketScreen = React.lazy(() => import('./components/SupermarketScree
 const VolantinoScreen = React.lazy(() => import('./components/VolantinoScreen').then(m => ({ default: m.default })));
 const ShareScreen = React.lazy(() => import('./components/ShareScreen').then(m => ({ default: m.ShareScreen })));
 const ChelonaAiScreen = React.lazy(() => import('./components/ChelonaAiScreen').then(m => ({ default: m.ChelonaAiScreen })));
+const ParkingScreen = React.lazy(() => import('./components/ParkingScreen').then(m => ({ default: m.ParkingScreen })));
 // UI Libraries removed as per request (CSS Grid migration)
 
 // ResponsiveGridLayout removed (DnD disabled)
@@ -458,6 +459,7 @@ export default function App() {
   const [moduleToDelete, setModuleToDelete] = useState<Module | null>(null);
   const [folderToDelete, setFolderToDelete] = useState<string | null>(null);
   const [isAddressBookOpen, setIsAddressBookOpen] = useState(false);
+  const [isParkingOpen, setIsParkingOpen] = useState(false);
   const [isRecipesOpen, setIsRecipesOpen] = useState(false);
   const [initialRecipesSearch, setInitialRecipesSearch] = useState('');
   const [initialRecipeToOpen, setInitialRecipeToOpen] = useState<any>(null);
@@ -692,6 +694,7 @@ export default function App() {
       if (isToolsOpen) { setIsToolsOpen(false); return; }
       if (isArchiveOpen) { setIsArchiveOpen(false); return; }
       if (isRecipesOpen) { window.dispatchEvent(new CustomEvent('recipes-back')); return; }
+      if (isParkingOpen) { setIsParkingOpen(false); return; }
       if (isAddressBookOpen) { setIsAddressBookOpen(false); return; }
       if (isSidebarOpen) { setIsSidebarOpen(false); return; }
       if (selectedFolderId) { setSelectedFolderId(null); return; }
@@ -712,7 +715,7 @@ export default function App() {
     editingAutoModule, editingSplitModule, editingSingleExpenseModule,
     editingTravelModule, editingStudyModule, editingFitnessModule, editingDocumentModule,
     editingGenericModule, editingFurnitureModule, editingInstallmentsModule, editingSupermarketModule, editingVolantinoModule, editingModuleId, isAdding, isProfileOpen,
-    activeToolId, isToolsOpen, isArchiveOpen, isAddressBookOpen, isRecipesOpen,
+    activeToolId, isToolsOpen, isArchiveOpen, isAddressBookOpen, isParkingOpen, isRecipesOpen,
     isSidebarOpen, selectedFolderId, selectedType, spesaSubMenu
   ]);
 
@@ -2715,6 +2718,13 @@ export default function App() {
                     <MapPin className="w-5 h-5 sm:w-6 sm:h-6" />
                   </button>
                   <button 
+                    onClick={() => setIsParkingOpen(true)}
+                    className="p-2 sm:p-2.5 bg-[var(--surface-variant)] hover:bg-[var(--border)] rounded-full text-indigo-500 hover:text-indigo-600 transition-all flex items-center justify-center shadow-sm"
+                    title="Salva Parcheggio Auto"
+                  >
+                    <SquareParking className="w-5 h-5 sm:w-6 sm:h-6" />
+                  </button>
+                  <button 
                     onClick={() => { setIsProfileOpen(true); setIsAiOpen(false); }} 
                     className="w-10 h-10 lg:w-11 lg:h-11 rounded-full overflow-hidden border border-[var(--border)] focus:outline-none hover:opacity-80 transition-all bg-[var(--surface-variant)] shadow-sm"
                   >
@@ -2782,6 +2792,18 @@ export default function App() {
                     handleSelectCategoryWithSecurity(cat as any);
                   }}
                   showToast={showToast}
+                  onOpenParking={() => {
+                    setIsAiOpen(false);
+                    setIsParkingOpen(true);
+                  }}
+                  onAddModule={(newMod) => {
+                    setModules(prev => {
+                      const updated = [newMod, ...prev];
+                      saveAppState(updated, folders).catch(console.error);
+                      return updated;
+                    });
+                    showToast(`Aggiunto a Chelona: ${newMod.title}`, 'success');
+                  }}
                 />
               </React.Suspense>
             ) : isSettingsOpen ? (
@@ -4829,6 +4851,11 @@ export default function App() {
          )}
           {isAddressBookOpen && (
              <AddressBookScreen onClose={() => setIsAddressBookOpen(false)} />
+          )}
+          {isParkingOpen && (
+             <React.Suspense fallback={<div className="flex items-center justify-center p-20"><div className="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div></div>}>
+               <ParkingScreen onClose={() => setIsParkingOpen(false)} showToast={showToast} />
+             </React.Suspense>
           )}
       </AnimatePresence>
 

@@ -7,6 +7,9 @@
  */
 
 import { Module, AutoModule, DocumentModule, SingleExpenseModule, InstallmentsModule, SplitModule, GenericModule, FitnessModule, SupermarketModule } from '../types';
+import { 
+  getSavedParking, autoSaveParking, formatElapsedParkingTime, getNavigationUrl 
+} from './parkingService';
 
 export interface AiMemory {
   id: string;
@@ -19,10 +22,11 @@ export interface AiMemory {
 
 export interface AiAction {
   label: string;
-  type: 'module' | 'category' | 'deadlines';
+  type: 'module' | 'category' | 'deadlines' | 'parking' | 'navigate_parking' | 'save_parking';
   moduleId?: string;
   category?: string;
   module?: Module;
+  url?: string;
 }
 
 export interface AiMessage {
@@ -498,6 +502,16 @@ export function buildKnowledgeBase(modules: Module[], _username: string): Chelon
   return k;
 }
 
+function detectExpenseCategory(desc: string): string {
+  const d = desc.toLowerCase();
+  if (d.includes('benzina') || d.includes('carburante') || d.includes('diesel') || d.includes('gasolio') || d.includes('parcheggio') || d.includes('pedaggio')) return 'Auto & Trasporti';
+  if (d.includes('cena') || d.includes('pranzo') || d.includes('ristorante') || d.includes('pizza') || d.includes('bar') || d.includes('caffè') || d.includes('spesa') || d.includes('supermercato')) return 'Alimentari';
+  if (d.includes('farmacia') || d.includes('medico') || d.includes('visita') || d.includes('dentista') || d.includes('medicine')) return 'Salute';
+  if (d.includes('bolletta') || d.includes('luce') || d.includes('gas') || d.includes('internet') || d.includes('affitto')) return 'Casa';
+  if (d.includes('palestra') || d.includes('cinema') || d.includes('concerto') || d.includes('vacanza')) return 'Svago';
+  return 'Varie';
+}
+
 /**
  * Motore di elaborazione e risposta locale Gemma 4 Nano.
  * 100% On-Device, senza chiamate API o server esterni.
@@ -506,14 +520,136 @@ export async function queryGemmaNano(
   userQuery: string,
   modules: Module[],
   username: string
-): Promise<{ text: string; actions?: AiAction[]; learnedFact?: string }> {
+): Promise<{ text: string; actions?: AiAction[]; learnedFact?: string; createdModule?: Module }> {
   // Simula un breve tempo di elaborazione neurale realistico on-device (200-400ms)
   await new Promise(res => setTimeout(res, 250));
 
   const query = userQuery.trim();
   const lower = query.toLowerCase();
 
-  // 1. Verifica se l'utente vuole insegnare qualcosa all'AI
+  // 1a. GESTIONE PARCHEGGIO (UI & AI)
+  if (
+    lower.includes('parchegg') ||
+    ((lower.includes('auto') || lower.includes('macchina') || lower.includes('veicol')) &&
+     (lower.includes('dove') || lower.includes('dov\'è') || lower.includes('trova') || lower.includes('ritrova') || lower.includes('salva') || lower.includes('lasciat') || lower.includes('messa')))
+  ) {
+    // Intento: Salva il parcheggio attuale
+    if (
+      lower.includes('salva') ||
+      lower.includes('ho parcheggiato') ||
+      lower.includes('memorizza') ||
+      lower.includes('qui') ||
+      lower.includes('lasciata qui') ||
+      lower.includes('messa qui')
+    ) {
+      try {
+        const saved = await autoSaveParking();
+        return {
+          text: `Ho salvato la posizione della tua auto in **${saved.address}**! Coordinate GPS registrate sulla mappa di Chelona.`,
+          actions: [
+            { label: 'Vedi Mappa Auto', type: 'parking' },
+            { label: 'Naviga all\'Auto', type: 'navigate_parking', url: getNavigationUrl(saved.latitude, saved.longitude) },
+          ],
+        };
+      } catch {
+        return {
+          text: `Non sono riuscito ad accedere al GPS in automatico. Apri la schermata Parcheggio per salvarlo con un tocco!`,
+          actions: [{ label: 'Apri Parcheggio', type: 'parking' }],
+        };
+      }
+    }
+
+    // Intento: Dov'è l'auto / Dove ho parcheggiato
+    if (
+      lower.includes('dove') ||
+      lower.includes('dov\'è') ||
+      lower.includes('trova') ||
+      lower.includes('ritrova') ||
+      lower.includes('posizione')
+    ) {
+      const p = getSavedParking();
+      if (p) {
+        const timeStr = formatElapsedParkingTime(p.timestamp);
+        return {
+          text: `La tua auto è parcheggiata in **${p.address}** (${timeStr}).${p.notes ? `\n\nNote: *${p.notes}*` : ''}`,
+          actions: [
+            { label: 'Vedi sulla Mappa', type: 'parking' },
+            { label: 'Naviga a Piedi', type: 'navigate_parking', url: getNavigationUrl(p.latitude, p.longitude) },
+          ],
+        };
+      } else {
+        return {
+          text: `Non hai ancora registrato nessun parcheggio. Vuoi che memorizzi la tua posizione attuale adesso?`,
+          actions: [
+            { label: 'Salva Parcheggio Ora', type: 'save_parking' },
+            { label: 'Apri Parcheggio', type: 'parking' },
+          ],
+        };
+      }
+    }
+  }
+
+  // 1b. AGGIUNGI NOTA A CHELONA TRAMITE AI
+  const noteMatch = query.match(/^(?:aggiungi|crea|segna|scrivi|salva)\s+(?:una\s+)?nota(?:\s*[:\-]\s*|\s+con\s+testo\s*[:\-]?\s*|\s+intitolata\s*[:\-]?\s*|\s+)(.+)$/i) || query.match(/^nota:\s*(.+)$/i);
+  if (noteMatch) {
+    const fullContent = noteMatch[1].trim();
+    let title = 'Appunto da Chelona AI';
+    let content = fullContent;
+
+    if (fullContent.includes(':')) {
+      const parts = fullContent.split(':');
+      title = parts[0].trim();
+      content = parts.slice(1).join(':').trim();
+    } else if (fullContent.length > 30) {
+      title = fullContent.slice(0, 25) + '...';
+    } else {
+      title = fullContent;
+    }
+
+    const newNote: GenericModule = {
+      id: 'mod_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
+      type: 'generic',
+      title,
+      content,
+      date: new Date().toLocaleDateString('it-IT'),
+      x: 0, y: 0, w: 2, h: 2,
+    };
+
+    return {
+      text: `Ho creato e aggiunto la nota **"${newNote.title}"** alla tua bacheca di Chelona!\n\n*${content}*`,
+      createdModule: newNote,
+      actions: [{ label: 'Apri Nota', type: 'module', module: newNote, moduleId: newNote.id }],
+    };
+  }
+
+  // 1c. AGGIUNGI SPESA A CHELONA TRAMITE AI
+  const expMatch = query.match(/(?:aggiungi|segna|registra|ho\s+speso|spesa\s+di)\s+(?:una\s+spesa\s+(?:di\s+)?)?(\d+(?:[.,]\d+)?)\s*(?:€|euro)?(?:\s+(?:per|al|a|in|su)\s+(.+))?/i);
+  if (expMatch) {
+    const amountStr = expMatch[1].replace(',', '.');
+    const amount = parseFloat(amountStr);
+    const rawDesc = (expMatch[2] || 'Spesa registrata da AI').trim();
+    const desc = rawDesc.charAt(0).toUpperCase() + rawDesc.slice(1);
+
+    const newExp: SingleExpenseModule = {
+      id: 'mod_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
+      type: 'single-expense',
+      title: desc,
+      description: desc,
+      amount: isNaN(amount) ? 0 : amount,
+      currency: 'EUR',
+      date: new Date().toISOString().split('T')[0],
+      category: detectExpenseCategory(desc),
+      x: 0, y: 0, w: 2, h: 2,
+    };
+
+    return {
+      text: `Ho registrato la spesa di **€ ${newExp.amount.toFixed(2)}** per *${newExp.title}* nelle tue finanze di Chelona!`,
+      createdModule: newExp,
+      actions: [{ label: 'Vedi Spesa', type: 'module', module: newExp, moduleId: newExp.id }],
+    };
+  }
+
+  // 1d. Verifica se l'utente vuole insegnare qualcosa all'AI
   const learningIntent = extractLearningIntent(query);
   if (learningIntent) {
     const saved = saveLearnedMemory({
