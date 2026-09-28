@@ -1003,51 +1003,17 @@ export async function queryGemmaNano(
     };
   }
 
-  // INTENTO: SPESA / SUPERMERCATO
-  if (
-    lower.includes('spesa') ||
-    lower.includes('comprare') ||
-    lower.includes('supermercat') ||
-    lower.includes('lista spesa')
-  ) {
-    if (!k.supermarket || k.supermarket.itemsToBuy.length === 0) {
-      return {
-        text: `🛒 La tua **Lista della Spesa** è attualmente vuota o tutti gli ingredienti sono già stati spuntati!`,
-        actions: [{ label: 'Apri Lista Spesa', type: 'category', category: 'home' }],
-      };
-    }
-
-    const items = k.supermarket.itemsToBuy.map(i => `- [ ] ${i}`).join('\n');
-    return {
-      text: `🛒 **Articoli ancora da comprare nella Lista Spesa (${k.supermarket.itemsToBuy.length}):**\n\n${items}`,
-      actions: [{ label: 'Vai alla Spesa', type: 'category', category: 'home' }],
-    };
-  }
-
   // INTENTO: VOLANTINI E SCONTI
   if (
     lower.includes('volantin') ||
     lower.includes('offert') ||
     lower.includes('scont') ||
     lower.includes('promo') ||
-    lower.includes('supermercat') ||
-    lower.includes('catene') ||
     lower.includes('convenien') ||
     lower.includes('risparmio') ||
     lower.includes('coupon') ||
-    lower.includes('conad') ||
-    lower.includes('coop') ||
-    lower.includes('lidl') ||
-    lower.includes('esselunga') ||
-    lower.includes('carrefour') ||
-    lower.includes('aldi') ||
-    lower.includes('eurospin') ||
-    lower.includes('penny') ||
-    lower.includes('md') ||
-    lower.includes('bennet') ||
-    lower.includes('unieuro') ||
-    lower.includes('mediaworld') ||
-    lower.includes('prezzi')
+    lower.includes('prezzi') ||
+    ((lower.includes('supermercat') || lower.includes('catene') || lower.includes('conad') || lower.includes('coop') || lower.includes('lidl') || lower.includes('esselunga') || lower.includes('carrefour') || lower.includes('aldi') || lower.includes('eurospin') || lower.includes('penny') || lower.includes('md') || lower.includes('bennet') || lower.includes('unieuro') || lower.includes('mediaworld')) && (lower.includes('offert') || lower.includes('scont') || lower.includes('promo') || lower.includes('volantin')))
   ) {
     let totalOffers = 0;
     k.volantini.forEach(v => totalOffers += v.offersCount);
@@ -1071,6 +1037,27 @@ export async function queryGemmaNano(
     actions.push({ label: 'Apri Volantini & Offerte', type: 'category', category: 'home' });
 
     return { text, actions };
+  }
+
+  // INTENTO: SPESA / SUPERMERCATO
+  if (
+    lower.includes('spesa') ||
+    lower.includes('comprare') ||
+    lower.includes('supermercat') ||
+    lower.includes('lista spesa')
+  ) {
+    if (!k.supermarket || k.supermarket.itemsToBuy.length === 0) {
+      return {
+        text: `🛒 La tua **Lista della Spesa** è attualmente vuota o tutti gli ingredienti sono già stati spuntati!`,
+        actions: [{ label: 'Apri Lista Spesa', type: 'category', category: 'home' }],
+      };
+    }
+
+    const items = k.supermarket.itemsToBuy.map(i => `- [ ] ${i}`).join('\n');
+    return {
+      text: `🛒 **Articoli ancora da comprare nella Lista Spesa (${k.supermarket.itemsToBuy.length}):**\n\n${items}`,
+      actions: [{ label: 'Vai alla Spesa', type: 'category', category: 'home' }],
+    };
   }
 
   // INTENTO: SALUTI / CHIACCHIERATA GENERALE
