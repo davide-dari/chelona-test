@@ -57,7 +57,7 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
       {
         id: 'msg_welcome_' + Date.now(),
         sender: 'assistant',
-        text: `Ciao ${username || ''}! Come posso aiutarti oggi? Conosco le tue note, i veicoli, i documenti e le spese. Puoi chiedermi qualsiasi cosa o dirmi *"Ricordati che..."* per salvare promemoria.`,
+        text: `Ciao ${username || ''}! Come posso aiutarti oggi? Conosco le tue note, i veicoli, i documenti, le spese e i volantini con le offerte. Puoi chiedermi qualsiasi cosa o dirmi *"Ricordati che..."* per salvare promemoria.`,
         timestamp: Date.now(),
       }
     ];
@@ -662,6 +662,7 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
     { label: '📄 Documenti', query: 'Quali documenti personali ho salvato?' },
     { label: '💰 Spese e rate', query: 'Come sono messe le mie spese e rate questo mese?' },
     { label: '🧠 Cosa sai di me?', query: 'Cosa sai su di me e cosa hai imparato finora?' },
+    { label: '🛒 Offerte & Volantini', query: 'Mostrami le offerte e i volantini disponibili' },
   ];
 
   return (

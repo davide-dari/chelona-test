@@ -5,8 +5,8 @@
  * Operates purely locally on the user's smartphone / browser.
  * Learns continuously from all notes, vehicles, documents, expenses, and user inputs.
  */
-
-import { Module, AutoModule, DocumentModule, SingleExpenseModule, InstallmentsModule, SplitModule, GenericModule, FitnessModule, SupermarketModule } from '../types';
+import { Module, AutoModule, DocumentModule, SingleExpenseModule, InstallmentsModule, SplitModule, GenericModule, FitnessModule, SupermarketModule, VolantinoModule } from '../types';
+import { VOLANTINI_DB } from '../data/volantiniDb';
 import { 
   getSavedParking, autoSaveParking, formatElapsedParkingTime, getNavigationUrl 
 } from './parkingService';
@@ -289,6 +289,12 @@ export interface ChelonaKnowledge {
     moduleId?: string;
     module?: Module;
   }[];
+  volantini: {
+    module: VolantinoModule;
+    offersCount: number;
+    flyersCount: number;
+    stores: string[];
+  }[];
 }
 
 /**
@@ -303,6 +309,7 @@ export function buildKnowledgeBase(modules: Module[], _username: string): Chelon
     splits: [],
     notes: [],
     urgentDeadlines: [],
+    volantini: [],
   };
 
   const now = new Date();
@@ -493,6 +500,17 @@ export function buildKnowledgeBase(modules: Module[], _username: string): Chelon
         itemsCount: sm.items?.length || 0,
         itemsToBuy: unchecked,
       };
+    }
+
+    // VOLANTINI
+    if (m.type === 'volantino') {
+      const vol = m as VolantinoModule;
+      k.volantini.push({
+        module: vol,
+        offersCount: vol.offers?.length || 0,
+        flyersCount: vol.flyers?.length || 0,
+        stores: Array.from(new Set(vol.offers?.map(o => o.storeId).filter(Boolean))),
+      });
     }
   }
 
@@ -1006,6 +1024,55 @@ export async function queryGemmaNano(
     };
   }
 
+  // INTENTO: VOLANTINI E SCONTI
+  if (
+    lower.includes('volantin') ||
+    lower.includes('offert') ||
+    lower.includes('scont') ||
+    lower.includes('promo') ||
+    lower.includes('supermercat') ||
+    lower.includes('catene') ||
+    lower.includes('convenien') ||
+    lower.includes('risparmio') ||
+    lower.includes('coupon') ||
+    lower.includes('conad') ||
+    lower.includes('coop') ||
+    lower.includes('lidl') ||
+    lower.includes('esselunga') ||
+    lower.includes('carrefour') ||
+    lower.includes('aldi') ||
+    lower.includes('eurospin') ||
+    lower.includes('penny') ||
+    lower.includes('md') ||
+    lower.includes('bennet') ||
+    lower.includes('unieuro') ||
+    lower.includes('mediaworld') ||
+    lower.includes('prezzi')
+  ) {
+    let totalOffers = 0;
+    k.volantini.forEach(v => totalOffers += v.offersCount);
+    
+    let text = "";
+    const actions: AiAction[] = [];
+    
+    if (totalOffers > 0) {
+      text = `Hai ${totalOffers} offerte salvate nei tuoi Volantini! 🛒\n\n`;
+      k.volantini.forEach(v => {
+        if (v.offersCount > 0) {
+          const promoItems = v.module.offers.slice(0, 3).map(o => `${o.productName} (€${o.price})`).join(', ');
+          text += `Tra queste, trovi prodotti come: ${promoItems}.\n`;
+        }
+      });
+      text += `\nInoltre, ho accesso a oltre ${VOLANTINI_DB.chains.length} catene di supermercati con tutti i loro volantini aggiornati (tra cui Conad, Coop, Lidl...).`;
+    } else {
+      text = `Ho accesso a oltre ${VOLANTINI_DB.chains.length} catene di supermercati con i loro volantini (tra cui Conad, Coop, Lidl, Esselunga e molti altri)! 🛒\n\nNon hai ancora offerte salvate, ma puoi esplorare tutte le promozioni attive e salvare quelle che ti interessano aprendo la sezione Volantini & Offerte.`;
+    }
+    
+    actions.push({ label: 'Apri Volantini & Offerte', type: 'category', category: 'home' });
+
+    return { text, actions };
+  }
+
   // INTENTO: SALUTI / CHIACCHIERATA GENERALE
   if (
     lower === 'ciao' ||
@@ -1016,14 +1083,14 @@ export async function queryGemmaNano(
     lower.startsWith('hey')
   ) {
     return {
-      text: `Ciao ${username || ''}! Come posso aiutarti oggi? Chiedimi pure delle scadenze, della tua auto, dei documenti o delle spese.`,
+      text: `Ciao ${username || ''}! Come posso aiutarti oggi? Chiedimi pure delle scadenze, della tua auto, dei documenti, delle spese o dei volantini con le offerte.`,
     };
   }
 
   // INTENTO: COSA PUOI FARE
   if (lower.includes('cosa puoi fare') || lower.includes('aiuto') || lower.includes('funzioni')) {
     return {
-      text: `Posso aiutarti a tenere tutto sotto controllo:\n\n• **Scadenze e promemoria**: ti avviso su bolli, assicurazioni, revisioni e rate\n• **Veicoli**: ti ricordo chilometri, scadenze e dettagli dell'auto\n• **Documenti**: trovo subito numeri e date di scadenza\n• **Spese e finanze**: riepilogo rate e uscite del mese\n• **Memoria personale**: puoi dirmi *"Ricordati che..."* per memorizzare qualsiasi cosa!`,
+      text: `Posso aiutarti a tenere tutto sotto controllo:\n\n• **Scadenze e promemoria**: ti avviso su bolli, assicurazioni, revisioni e rate\n• **Veicoli**: ti ricordo chilometri, scadenze e dettagli dell'auto\n• **Documenti**: trovo subito numeri e date di scadenza\n• **Spese e finanze**: riepilogo rate e uscite del mese\n• **Volantini e Offerte**: trova promozioni e sconti nei supermercati\n• **Memoria personale**: puoi dirmi *"Ricordati che..."* per memorizzare qualsiasi cosa!`,
     };
   }
 
