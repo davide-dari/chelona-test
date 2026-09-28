@@ -34,6 +34,7 @@ interface ChelonaAiScreenProps {
   onAddModule?: (module: Module) => void;
   onOpenParking?: () => void;
   initialVoiceMode?: boolean;
+  initialDictationMode?: boolean;
   onNavigate?: (action: AiAction) => void;
 }
 
@@ -50,6 +51,7 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
   onAddModule,
   onOpenParking,
   initialVoiceMode = false,
+  initialDictationMode = false,
   onNavigate,
 }) => {
   const [messages, setMessages] = useState<AiMessage[]>(() => {
@@ -593,6 +595,22 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
       return () => clearTimeout(t);
     }
   }, [initialVoiceMode, isVoiceModeOpen]);
+
+  const initialDictationTriggeredRef = useRef(false);
+
+  useEffect(() => {
+    if (!initialDictationMode) {
+      initialDictationTriggeredRef.current = false;
+      return;
+    }
+    if (initialDictationMode && !initialDictationTriggeredRef.current) {
+      initialDictationTriggeredRef.current = true;
+      const t = setTimeout(() => {
+        startVoiceRecognition(false);
+      }, 150);
+      return () => clearTimeout(t);
+    }
+  }, [initialDictationMode]);
 
   const handleSpeak = (msgId: string, text: string) => {
     if (!('speechSynthesis' in window)) {

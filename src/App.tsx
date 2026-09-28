@@ -322,6 +322,7 @@ export default function App() {
   const [activeNavTab, setActiveNavTab] = useState<'home' | 'deadlines' | 'ai' | 'tools' | 'profile'>('home');
   const [isAiOpen, setIsAiOpen] = useState(false);
   const [aiInitialVoiceMode, setAiInitialVoiceMode] = useState(false);
+  const [aiInitialDictationMode, setAiInitialDictationMode] = useState(false);
   const [isWakeWordEnabled, setIsWakeWordEnabled] = useState(() => wakeWordService.getEnabled());
   const [deadlinesFilter, setDeadlinesFilter] = useState<'all' | 'auto' | 'document' | 'installment'>('all');
 
@@ -3093,9 +3094,11 @@ export default function App() {
                   modules={modules}
                   username={username}
                   initialVoiceMode={aiInitialVoiceMode}
+                  initialDictationMode={aiInitialDictationMode}
                   onClose={() => {
                     setIsAiOpen(false);
                     setAiInitialVoiceMode(false);
+                    setAiInitialDictationMode(false);
                     if (activeNavTab === 'ai') setActiveNavTab('home');
                   }}
                   onOpenModule={(m) => {
@@ -4209,13 +4212,14 @@ export default function App() {
                                 whileTap={{ scale: 0.95 }}
                                 onClick={() => {
                                   setAiInitialVoiceMode(false);
+                                  setAiInitialDictationMode(false);
                                   setIsAiOpen(true);
                                   setActiveNavTab('ai');
                                   setIsToolsOpen(false);
                                   setIsProfileOpen(false);
                                   setSelectedType(null);
                                 }}
-                                className="px-5 py-3.5 rounded-2xl bg-gradient-to-r from-amber-500 via-rose-500 to-indigo-600 hover:opacity-95 text-white font-bold text-sm shadow-md shadow-amber-500/20 transition-all flex items-center justify-center gap-2 active:scale-95 shrink-0 cursor-pointer"
+                                className="px-5 py-3 rounded-2xl bg-gradient-to-r from-amber-500 via-rose-500 to-indigo-600 hover:opacity-95 text-white font-bold text-sm shadow-md shadow-amber-500/20 transition-all flex items-center justify-center gap-2 active:scale-95 shrink-0 cursor-pointer"
                                 title="Apri chat con Chelona AI"
                                 aria-label="Apri chat con Chelona AI"
                               >
@@ -4226,16 +4230,17 @@ export default function App() {
                               <button
                                 type="button"
                                 onClick={() => {
-                                  setAiInitialVoiceMode(true);
+                                  setAiInitialVoiceMode(false);
+                                  setAiInitialDictationMode(true);
                                   setIsAiOpen(true);
                                   setActiveNavTab('ai');
                                   setIsToolsOpen(false);
                                   setIsProfileOpen(false);
                                   setSelectedType(null);
                                 }}
-                                className="p-3.5 rounded-2xl border border-[var(--border)] bg-[var(--surface-variant)] hover:bg-[var(--border)] text-amber-500 transition-all shrink-0 active:scale-95 shadow-xs flex items-center justify-center cursor-pointer"
-                                title="Parla con Chelona AI"
-                                aria-label="Parla con Chelona AI tramite microfono"
+                                className="p-3 rounded-2xl border transition-all shrink-0 active:scale-95 shadow-xs bg-[var(--surface-variant)] hover:bg-[var(--border)] border-[var(--border)] text-amber-500 flex items-center justify-center cursor-pointer"
+                                title="Dettatura vocale"
+                                aria-label="Dettatura vocale con Chelona AI"
                               >
                                 <Mic className="w-5 h-5" />
                               </button>
