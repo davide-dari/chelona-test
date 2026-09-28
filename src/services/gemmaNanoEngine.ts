@@ -31,6 +31,7 @@ export interface AiAction {
   url?: string;
   chainSlug?: string;
   storeName?: string;
+  autoSave?: boolean;
 }
 
 export interface AiMessage {
@@ -667,31 +668,21 @@ export async function queryGemmaNano(
       }
     }
 
-    // Intento: Salva il parcheggio attuale
+    // Intento: Salva / Segna il parcheggio attuale
     if (
+      lower.includes('segna') ||
       lower.includes('salva') ||
-      lower.includes('ho parcheggiato') ||
       lower.includes('memorizza') ||
-      lower.includes('qui') ||
+      lower.includes('registra') ||
       lower.includes('lasciata qui') ||
-      lower.includes('messa qui')
+      lower.includes('messa qui') ||
+      (lower.includes('ho parcheggiato') && !lower.includes('dove') && !lower.includes('dov\'è'))
     ) {
-      try {
-        const saved = await autoSaveParking();
-        return {
-          text: `Ho salvato la posizione della tua auto in **${saved.address}**! Coordinate GPS registrate sulla mappa di Chelona.`,
-          autoAction: { label: 'Vedi Mappa Auto', type: 'parking' },
-          actions: [
-            { label: 'Vedi Mappa Auto', type: 'parking' },
-            { label: 'Naviga all\'Auto', type: 'navigate_parking', url: getNavigationUrl(saved.latitude, saved.longitude) },
-          ],
-        };
-      } catch {
-        return {
-          text: `Non sono riuscito ad accedere al GPS in automatico. Apri la schermata Parcheggio per salvarlo con un tocco!`,
-          actions: [{ label: 'Apri Parcheggio', type: 'parking' }],
-        };
-      }
+      return {
+        text: `Ti porto subito alla schermata del parcheggio mentre rilevo la tua posizione GPS! 🚗📍`,
+        autoAction: { label: 'Salva Parcheggio', type: 'parking', autoSave: true },
+        actions: [],
+      };
     }
   }
 

@@ -29,12 +29,14 @@ export interface AddressAndParkingScreenProps {
   onClose: () => void;
   initialTab?: 'addresses' | 'parking';
   showToast?: (msg: string, type?: 'success' | 'error' | 'info') => void;
+  initialAutoSave?: boolean;
 }
 
 export const AddressAndParkingScreen: React.FC<AddressAndParkingScreenProps> = ({ 
   onClose, 
   initialTab = 'addresses',
-  showToast 
+  showToast,
+  initialAutoSave = false
 }) => {
   const [activeTab, setActiveTab] = useState<'addresses' | 'parking'>(initialTab);
 
@@ -87,6 +89,83 @@ export const AddressAndParkingScreen: React.FC<AddressAndParkingScreenProps> = (
   // Modal modifica manuale orario parcheggio attivo
   const [isExtendingManualModalOpen, setIsExtendingManualModalOpen] = useState(false);
   const [extendTimeInput, setExtendTimeInput] = useState('');
+
+  // ----------------------------------------------------
+  // RILEVAMENTO GPS AUTOMATICO CON ANIMAZIONE RADAR
+  // ----------------------------------------------------
+  const [isAcquiringGpsParking, setIsAcquiringGpsParking] = useState(false);
+  const [gpsAcquisitionStep, setGpsAcquisitionStep] = useState<'locating' | 'geocoding' | 'saving' | 'success' | 'error'>('locating');
+  const [acquiredAddress, setAcquiredAddress] = useState<string>('');
+  const [gpsErrorMsg, setGpsErrorMsg] = useState<string | null>(null);
+
+  const triggerGpsAutoSave = async () => {
+    setIsAcquiringGpsParking(true);
+    setGpsAcquisitionStep('locating');
+    setGpsErrorMsg(null);
+    setAcquiredAddress('');
+
+    try {
+      // Step 1: Coordinate GPS
+      setGpsAcquisitionStep('locating');
+      const pos = await getCurrentGpsPosition();
+
+      // Step 2: Risoluzione Indirizzo
+      setGpsAcquisitionStep('geocoding');
+      const geo = await reverseGeocodeCoordinates(pos.latitude, pos.longitude);
+
+      // Step 3: Salvataggio Parcheggio
+      setGpsAcquisitionStep('saving');
+      let expiresAt: number | undefined = undefined;
+      let duration: number | undefined = undefined;
+      let cost: number | undefined = undefined;
+
+      if (isMeterEnabled && meterDurationMinutes > 0) {
+        duration = meterDurationMinutes;
+        expiresAt = Date.now() + meterDurationMinutes * 60 * 1000;
+        if (hourlyRate > 0) {
+          cost = estimatedMeterCost;
+        }
+      }
+
+      const saved = await autoSaveParking(
+        notesText,
+        vehicleNameInput,
+        expiresAt,
+        duration,
+        isMeterEnabled ? hourlyRate : 0,
+        cost
+      );
+
+      setAcquiredAddress(saved.address);
+      setGpsAcquisitionStep('success');
+
+      if (typeof navigator !== 'undefined' && navigator.vibrate) {
+        try { navigator.vibrate([40, 60, 100]); } catch {}
+      }
+
+      if (showToast) {
+        showToast(`Auto parcheggiata in ${saved.address}! 🚗`, 'success');
+      }
+
+      setTimeout(() => {
+        setParking(saved);
+        setIsAcquiringGpsParking(false);
+      }, 1200);
+
+    } catch (err: any) {
+      console.error('Error auto-saving parking GPS', err);
+      setGpsAcquisitionStep('error');
+      setGpsErrorMsg(err?.message || 'Impossibile rilevare la posizione GPS. Assicurati che i permessi di geolocalizzazione siano concessi.');
+    }
+  };
+
+  // Se aperto con initialAutoSave (es. da comando Chelona AI), attiva subito il rilevamento
+  useEffect(() => {
+    if (initialAutoSave) {
+      setActiveTab('parking');
+      triggerGpsAutoSave();
+    }
+  }, [initialAutoSave]);
 
   // Aggiornamento tempo ogni secondo per il parchimetro live
   useEffect(() => {
@@ -307,6 +386,11 @@ export const AddressAndParkingScreen: React.FC<AddressAndParkingScreenProps> = (
 
   // Salva il nuovo parcheggio
   const handleConfirmAndSaveParking = async () => {
+    if (locationMode === 'gps') {
+      triggerGpsAutoSave();
+      return;
+    }
+
     setIsLoadingGps(true);
     try {
       let expiresAt: number | undefined = undefined;
@@ -321,28 +405,16 @@ export const AddressAndParkingScreen: React.FC<AddressAndParkingScreenProps> = (
         }
       }
 
-      let saved: SavedParking;
-      if (locationMode === 'gps') {
-        saved = await autoSaveParking(
-          notesText, 
-          vehicleNameInput, 
-          expiresAt, 
-          duration, 
-          isMeterEnabled ? hourlyRate : 0, 
-          cost
-        );
-      } else {
-        const addrToUse = manualAddressInput.trim() || 'Parcheggio Manuale';
-        saved = await manualSaveParking({
-          address: addrToUse,
-          notes: notesText,
-          vehicleName: vehicleNameInput,
-          expiresAt,
-          meterDurationMinutes: duration,
-          hourlyRate: isMeterEnabled ? hourlyRate : 0,
-          estimatedCost: cost,
-        });
-      }
+      const addrToUse = manualAddressInput.trim() || 'Parcheggio Manuale';
+      const saved = await manualSaveParking({
+        address: addrToUse,
+        notes: notesText,
+        vehicleName: vehicleNameInput,
+        expiresAt,
+        meterDurationMinutes: duration,
+        hourlyRate: isMeterEnabled ? hourlyRate : 0,
+        estimatedCost: cost,
+      });
 
       const wasMeterEnabled = isMeterEnabled;
       setParking(saved);
@@ -759,7 +831,164 @@ export const AddressAndParkingScreen: React.FC<AddressAndParkingScreenProps> = (
           /* SCHERMATA: PARCHEGGIO & PARCHIMETRO                          */
           /* ============================================================ */
           <div className="space-y-6">
-            {parking ? (
+            {isAcquiringGpsParking ? (
+              /* ANIMAZIONE CARICAMENTO GPS RILEVAMENTO POSIZIONE */
+              <motion.div
+                initial={{ opacity: 0, scale: 0.96 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.96 }}
+                className="p-8 sm:p-10 rounded-3xl bg-gradient-to-b from-[var(--surface)] to-[var(--surface-variant)] border border-indigo-500/30 shadow-2xl relative overflow-hidden text-center space-y-6 my-2"
+              >
+                {/* Glow di sfondo radiale */}
+                <div className="absolute inset-0 bg-radial from-indigo-500/10 via-transparent to-transparent pointer-events-none" />
+
+                {/* Radar rings container */}
+                <div className="relative w-44 h-44 mx-auto flex items-center justify-center my-3">
+                  {/* Pulsing ripple ring 1 */}
+                  <motion.div
+                    animate={{
+                      scale: [1, 2.3],
+                      opacity: [0.55, 0],
+                    }}
+                    transition={{
+                      repeat: Infinity,
+                      duration: 2.4,
+                      ease: 'easeOut',
+                    }}
+                    className="absolute w-28 h-28 rounded-full border-2 border-indigo-500/60 bg-indigo-500/10"
+                  />
+
+                  {/* Pulsing ripple ring 2 */}
+                  <motion.div
+                    animate={{
+                      scale: [1, 2.3],
+                      opacity: [0.55, 0],
+                    }}
+                    transition={{
+                      repeat: Infinity,
+                      duration: 2.4,
+                      delay: 0.8,
+                      ease: 'easeOut',
+                    }}
+                    className="absolute w-28 h-28 rounded-full border-2 border-indigo-400/50 bg-indigo-500/10"
+                  />
+
+                  {/* Pulsing ripple ring 3 */}
+                  <motion.div
+                    animate={{
+                      scale: [1, 2.3],
+                      opacity: [0.55, 0],
+                    }}
+                    transition={{
+                      repeat: Infinity,
+                      duration: 2.4,
+                      delay: 1.6,
+                      ease: 'easeOut',
+                    }}
+                    className="absolute w-28 h-28 rounded-full border-2 border-cyan-400/40 bg-cyan-500/5"
+                  />
+
+                  {/* Rotating radar sweep ray */}
+                  <motion.div
+                    animate={{ rotate: 360 }}
+                    transition={{ repeat: Infinity, duration: 3, ease: 'linear' }}
+                    className="absolute w-36 h-36 rounded-full pointer-events-none"
+                    style={{
+                      background: 'conic-gradient(from 0deg, transparent 0deg, transparent 270deg, rgba(99, 102, 241, 0.35) 360deg)',
+                    }}
+                  />
+
+                  {/* Central glowing car & GPS marker */}
+                  <div className="relative z-10 w-24 h-24 rounded-3xl bg-gradient-to-tr from-indigo-600 to-indigo-500 text-white flex items-center justify-center shadow-xl shadow-indigo-500/40 border-2 border-white/20">
+                    {gpsAcquisitionStep === 'success' ? (
+                      <motion.div
+                        initial={{ scale: 0 }}
+                        animate={{ scale: 1 }}
+                        transition={{ type: 'spring', stiffness: 400, damping: 20 }}
+                      >
+                        <CheckCircle2 className="w-12 h-12 text-emerald-300" />
+                      </motion.div>
+                    ) : gpsAcquisitionStep === 'error' ? (
+                      <AlertCircle className="w-12 h-12 text-rose-300" />
+                    ) : (
+                      <motion.div
+                        animate={{ y: [-2, 2, -2] }}
+                        transition={{ repeat: Infinity, duration: 2, ease: 'easeInOut' }}
+                        className="flex flex-col items-center"
+                      >
+                        <Car className="w-10 h-10 drop-shadow" />
+                        <MapPin className="w-5 h-5 -mt-1 text-amber-300 animate-bounce" />
+                      </motion.div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Dynamic Titles and Status */}
+                <div className="space-y-2 max-w-md mx-auto">
+                  <h3 className="text-xl font-black text-[var(--text-main)] tracking-tight">
+                    {gpsAcquisitionStep === 'success' ? (
+                      <span className="text-emerald-500">Parcheggio Registrato! 🎉</span>
+                    ) : gpsAcquisitionStep === 'error' ? (
+                      <span className="text-rose-500">Geolocalizzazione non riuscita</span>
+                    ) : (
+                      <span>Rilevamento Posizione GPS...</span>
+                    )}
+                  </h3>
+
+                  <p className="text-sm text-[var(--text-muted)] font-medium leading-relaxed">
+                    {gpsAcquisitionStep === 'locating' && 'Connessione ai satelliti GPS e acquisizione coordinate in corso...'}
+                    {gpsAcquisitionStep === 'geocoding' && 'Rilevamento indirizzo, via e città...'}
+                    {gpsAcquisitionStep === 'saving' && 'Salvataggio della posizione nella memoria di Chelona...'}
+                    {gpsAcquisitionStep === 'success' && `Posizione registrata: ${acquiredAddress || 'Coordinate salvate'}`}
+                    {gpsAcquisitionStep === 'error' && (gpsErrorMsg || 'Assicurati che i permessi di localizzazione siano attivi.')}
+                  </p>
+                </div>
+
+                {/* Progress step indicators */}
+                {gpsAcquisitionStep !== 'error' && gpsAcquisitionStep !== 'success' && (
+                  <div className="flex items-center justify-center gap-2 pt-1">
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-500/10 text-indigo-500 text-xs font-bold border border-indigo-500/20">
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                      <span>Fase: {gpsAcquisitionStep === 'locating' ? 'Coordinate GPS' : 'Indirizzo Civico'}</span>
+                    </span>
+                  </div>
+                )}
+
+                {/* Error Action Buttons */}
+                {gpsAcquisitionStep === 'error' && (
+                  <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
+                    <button
+                      onClick={triggerGpsAutoSave}
+                      className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-indigo-500 text-white font-bold text-sm flex items-center justify-center gap-2 shadow-md shadow-indigo-500/20 active:scale-95"
+                    >
+                      <RefreshCw className="w-4 h-4" />
+                      <span>Riprova GPS</span>
+                    </button>
+                    <button
+                      onClick={() => {
+                        setIsAcquiringGpsParking(false);
+                        setLocationMode('manual');
+                      }}
+                      className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-[var(--surface-variant)] text-[var(--text-main)] border border-[var(--border)] font-bold text-sm flex items-center justify-center gap-2 active:scale-95"
+                    >
+                      <span>Inserisci a Mano</span>
+                    </button>
+                  </div>
+                )}
+
+                {/* Cancel button if taking too long */}
+                {gpsAcquisitionStep !== 'error' && gpsAcquisitionStep !== 'success' && (
+                  <div className="pt-2">
+                    <button
+                      onClick={() => setIsAcquiringGpsParking(false)}
+                      className="text-xs font-semibold text-[var(--text-muted)] hover:text-[var(--text-main)] underline underline-offset-2 transition-colors"
+                    >
+                      Annulla rilevamento automatico
+                    </button>
+                  </div>
+                )}
+              </motion.div>
+            ) : parking ? (
               /* PARCHEGGIO ATTIVO */
               <div className="space-y-5 animate-fade-in">
                 {/* 1. SEZIONE PARCHIMETRO DIGITALE LIVE (Se impostato) */}

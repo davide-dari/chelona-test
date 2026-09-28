@@ -470,6 +470,7 @@ export default function App() {
   const [isParkingOpen, setIsParkingOpen] = useState(false);
   const [isAddressAndParkingOpen, setIsAddressAndParkingOpen] = useState(false);
   const [addressParkingTab, setAddressParkingTab] = useState<'addresses' | 'parking'>('addresses');
+  const [addressParkingAutoSave, setAddressParkingAutoSave] = useState(false);
   const [hasActiveParking, setHasActiveParking] = useState<boolean>(() => {
     try {
       return !!localStorage.getItem('chelona_saved_parking');
@@ -1658,9 +1659,10 @@ export default function App() {
       return;
     }
 
-    if (act.type === 'parking') {
+    if (act.type === 'parking' || act.type === 'save_parking') {
       setActiveNavTab('home');
       setAddressParkingTab('parking');
+      setAddressParkingAutoSave(Boolean(act.autoSave || act.type === 'save_parking'));
       setIsAddressAndParkingOpen(true);
       return;
     }
@@ -1779,6 +1781,7 @@ export default function App() {
       if (cat === 'parking') {
         setActiveNavTab('home');
         setAddressParkingTab('parking');
+        setAddressParkingAutoSave(Boolean(act.autoSave));
         setIsAddressAndParkingOpen(true);
         return;
       }
@@ -5141,7 +5144,11 @@ export default function App() {
             <React.Suspense fallback={<div className="flex items-center justify-center p-20"><div className="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div></div>}>
               <AddressAndParkingScreen 
                 initialTab={addressParkingTab} 
-                onClose={() => setIsAddressAndParkingOpen(false)} 
+                initialAutoSave={addressParkingAutoSave}
+                onClose={() => {
+                  setIsAddressAndParkingOpen(false);
+                  setAddressParkingAutoSave(false);
+                }} 
                 showToast={showToast} 
               />
             </React.Suspense>
