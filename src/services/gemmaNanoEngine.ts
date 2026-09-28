@@ -3,28 +3,37 @@
  * 
  * 100% On-Device • Zero External APIs • Zero Cloud Calls
  * Operates purely locally on the user's smartphone / browser.
- * Learns continuously from all notes, vehicles, documents, expenses, and user inputs.
+ * Learns continuously from all notes, vehicles, documents, expenses, recipes,
+ * fitness routines, travel plans, furniture, parking, address book, tools and user inputs.
  */
-import { Module, AutoModule, DocumentModule, SingleExpenseModule, InstallmentsModule, SplitModule, GenericModule, FitnessModule, SupermarketModule, VolantinoModule } from '../types';
+import { 
+  Module, AutoModule, DocumentModule, SingleExpenseModule, 
+  InstallmentsModule, SplitModule, GenericModule, FitnessModule, 
+  SupermarketModule, VolantinoModule, TravelModule, FurnitureModule, 
+  GalleryModule, SupermarketItem, SplitExpense, SupermarketCategory
+} from '../types';
 import { VOLANTINI_DB, type VolantinoChain } from '../data/volantiniDb';
 import { getLiveVolantiniDb, getFlyerExpiryInfo } from './volantiniSync';
-import { OFFER_GROUPS, findOffersForName, type OfferGroup, type OfferEntry } from '../data/offerStats';
+import { OFFER_GROUPS, findOffersForName, type OfferEntry } from '../data/offerStats';
 import { 
-  getSavedParking, autoSaveParking, formatElapsedParkingTime, getNavigationUrl 
+  getSavedParking, formatElapsedParkingTime, getNavigationUrl 
 } from './parkingService';
+import { storage } from './storage';
+import { TOOLS } from '../constants/tools';
+import { wakeWordService } from './wakeWordService';
 
 export interface AiMemory {
   id: string;
   key: string;
   fact: string;
-  category: 'personal' | 'vehicle' | 'finance' | 'document' | 'note' | 'fitness' | 'preference' | 'custom';
+  category: 'personal' | 'vehicle' | 'finance' | 'document' | 'note' | 'fitness' | 'recipes' | 'travel' | 'furniture' | 'preference' | 'custom';
   createdAt: string;
   source: 'learned_from_chat' | 'module_sync';
 }
 
 export interface AiAction {
   label: string;
-  type: 'module' | 'category' | 'deadlines' | 'parking' | 'navigate_parking' | 'save_parking' | 'volantino';
+  type: 'module' | 'category' | 'deadlines' | 'parking' | 'navigate_parking' | 'save_parking' | 'volantino' | 'tool' | 'recipes' | 'address' | 'gallery';
   moduleId?: string;
   category?: string;
   module?: Module;
@@ -32,6 +41,9 @@ export interface AiAction {
   chainSlug?: string;
   storeName?: string;
   autoSave?: boolean;
+  toolId?: string;
+  search?: string;
+  recipeCategory?: string;
 }
 
 export interface AiMessage {
@@ -65,7 +77,6 @@ export function getLearnedMemories(): AiMemory[] {
  */
 export function saveLearnedMemory(memory: Omit<AiMemory, 'id' | 'createdAt'>): AiMemory {
   const memories = getLearnedMemories();
-  // Evita duplicati identici
   const existingIdx = memories.findIndex(m => m.key.toLowerCase() === memory.key.toLowerCase());
   
   const newMemory: AiMemory = {
@@ -120,7 +131,7 @@ export function getChatHistory(): AiMessage[] {
     const raw = localStorage.getItem(CHAT_HISTORY_KEY);
     if (!raw) return [];
     return JSON.parse(raw);
-  } catch (e) {
+  } catch {
     return [];
   }
 }
@@ -130,7 +141,6 @@ export function getChatHistory(): AiMessage[] {
  */
 export function saveChatHistory(history: AiMessage[]): void {
   try {
-    // Conserva gli ultimi 50 messaggi per risparmiare spazio locale
     const trimmed = history.slice(-50);
     localStorage.setItem(CHAT_HISTORY_KEY, JSON.stringify(trimmed));
   } catch (e) {
@@ -140,13 +150,10 @@ export function saveChatHistory(history: AiMessage[]): void {
 
 /**
  * Rileva se il messaggio dell'utente contiene un'intenzione di apprendimento esplicito
- * es: "Ricordati che...", "Memorizza:", "Il mio pin è...", "Sono allergico a...", ecc.
  */
 export function extractLearningIntent(text: string): { key: string; fact: string; category: AiMemory['category'] } | null {
   const clean = text.trim();
-  const lower = clean.toLowerCase();
 
-  // Pattern di memoria esplicita
   const patterns: { regex: RegExp; keyExtractor?: (match: RegExpMatchArray) => string; category: AiMemory['category'] }[] = [
     {
       regex: /^(?:ricordati\s+che|ricorda\s+che|memorizza\s+che|tieni\s+a\s+mente\s+che|salva\s+che)\s+(.+)$/i,
@@ -218,7 +225,180 @@ function formatDate(dateStr?: string): string {
 }
 
 /**
- * Struttura di conoscenza estratta dai moduli attivi
+ * Calcolo matematico dei debiti e crediti nello split ("chi deve a chi")
+ */
+export function calculateSplitSettlements(participants: { id: string; name: string }[], expenses: SplitExpense[]) {
+  const paidMap: Record<string, number> = {};
+  const owedMap: Record<string, number> = {};
+
+  participants.forEach(p => {
+    paidMap[p.id] = 0;
+    owedMap[p.id] = 0;
+  });
+
+  for (const exp of expenses) {
+    const amount = Number(exp.amount) || 0;
+    if (paidMap[exp.paidById] !== undefined) {
+      paidMap[exp.paidById] += amount;
+    }
+
+    if (exp.participants && exp.participants.length > 0) {
+      if (exp.splitType === 'exact') {
+        exp.participants.forEach(p => {
+          if (owedMap[p.participantId] !== undefined) owedMap[p.participantId] += (p.value || 0);
+        });
+      } else if (exp.splitType === 'percentage') {
+        exp.participants.forEach(p => {
+          if (owedMap[p.participantId] !== undefined) owedMap[p.participantId] += (amount * (p.value || 0)) / 100;
+        });
+      } else {
+        const share = amount / exp.participants.length;
+        exp.participants.forEach(p => {
+          if (owedMap[p.participantId] !== undefined) owedMap[p.participantId] += share;
+        });
+      }
+    } else if (participants.length > 0) {
+      const share = amount / participants.length;
+      participants.forEach(p => {
+        owedMap[p.id] += share;
+      });
+    }
+  }
+
+  const balances = participants.map(p => {
+    const paid = Math.round((paidMap[p.id] || 0) * 100) / 100;
+    const share = Math.round((owedMap[p.id] || 0) * 100) / 100;
+    const net = Math.round((paid - share) * 100) / 100;
+    return { id: p.id, name: p.name, paid, share, net };
+  });
+
+  const debtors = balances.filter(b => b.net < -0.01).map(b => ({ name: b.name, amount: -b.net }));
+  const creditors = balances.filter(b => b.net > 0.01).map(b => ({ name: b.name, amount: b.net }));
+
+  const settlements: { from: string; to: string; amount: number }[] = [];
+  let d = 0, c = 0;
+  while (d < debtors.length && c < creditors.length) {
+    const deb = debtors[d];
+    const cred = creditors[c];
+    const settle = Math.min(deb.amount, cred.amount);
+    if (settle >= 0.01) {
+      settlements.push({
+        from: deb.name,
+        to: cred.name,
+        amount: Math.round(settle * 100) / 100,
+      });
+    }
+    deb.amount -= settle;
+    cred.amount -= settle;
+    if (deb.amount < 0.01) d++;
+    if (cred.amount < 0.01) c++;
+  }
+
+  return { balances, settlements };
+}
+
+/**
+ * Classifica automatica delle categorie per la lista spesa
+ */
+export function detectSupermarketCategory(name: string): SupermarketCategory {
+  const n = name.toLowerCase();
+  if (/mela|mele|banana|banane|arancia|arance|limon|frutt|verdur|pomodor|insalat|carot|zucch|cipoll|patat|aglio|basilic|spinac|pesc[ae]|fragol/i.test(n)) return 'frutta-verdura';
+  if (/latt|formaggi|yogurt|burr|mozzarell|parmigian|grana|uov|uova|ricott|panna|stracchin|gorgonzol|mascarpon/i.test(n)) return 'latticini-uova';
+  if (/carn|pesc|poll|manz|maial|tonn|salmon|merluzz|prosciutt|salame|affettat|bresaol|tacchin|salsicci|wurstel|orata|spigol/i.test(n)) return 'carne-pesce';
+  if (/pan[ei]|focacci|cornett|biscott|croissant|fett[ae]\s+biscottat|tort[ae]|brioche|dolc/i.test(n)) return 'pane-pasticceria';
+  if (/past|ris|farin|oli|aceto|sal[ei]|zuccher|caff|passat|pelat|legum|ceci|fagiol|lenticchi|tonno|crackers|cereali|miele|marmellat|cioccolat/i.test(n)) return 'dispensa';
+  if (/acqu|vin|birr|succ|coc[ae]|aranciat|tè|the|bevand|spumant|champagne/i.test(n)) return 'bevande';
+  if (/detersiv|sgrassator|candeggin|spugn|scottex|carta\s+igienic|lavatric|lavastovigli|sacchett|panni|alcool|ammoniac/i.test(n)) return 'pulizia';
+  if (/shampoo|bagnoschium|dentifrici|sapon|deodorant|balsam|crema|rasoi|schiuma\s+da\s+barba|fazzolett/i.test(n)) return 'igiene';
+  return 'altro';
+}
+
+function loadRecipesKnowledge(): ChelonaKnowledge['recipes'] {
+  let customList: { id: string; title: string; category: string; ingredients: string[] }[] = [];
+  let favoritesList: string[] = [];
+  let fridgeIngredients: string[] = [];
+  let freezerIngredients: string[] = [];
+  let pantryIngredients: string[] = [];
+
+  try {
+    const rawCustom = localStorage.getItem('chelona_custom_recipes');
+    if (rawCustom) customList = JSON.parse(rawCustom);
+  } catch {}
+
+  try {
+    const rawFavs = localStorage.getItem('chelona_gz_favorites');
+    if (rawFavs) {
+      const parsed = JSON.parse(rawFavs);
+      favoritesList = parsed.map((f: any) => typeof f === 'string' ? f : f.title || f.titolo || '');
+    }
+  } catch {}
+
+  try {
+    const rawFridge = localStorage.getItem('chelona_fridge_ingredients');
+    if (rawFridge) fridgeIngredients = JSON.parse(rawFridge);
+  } catch {}
+
+  try {
+    const rawFreezer = localStorage.getItem('chelona_freezer_ingredients');
+    if (rawFreezer) freezerIngredients = JSON.parse(rawFreezer);
+  } catch {}
+
+  try {
+    const rawPantry = localStorage.getItem('chelona_pantry_ingredients');
+    if (rawPantry) pantryIngredients = JSON.parse(rawPantry);
+  } catch {}
+
+  const allIngredients = Array.from(new Set([...fridgeIngredients, ...pantryIngredients, ...freezerIngredients]));
+
+  return {
+    customCount: customList.length,
+    customList,
+    favoritesCount: favoritesList.length,
+    favoritesList,
+    fridgeIngredients,
+    freezerIngredients,
+    pantryIngredients,
+    allIngredients,
+  };
+}
+
+function loadAddressesKnowledge(): ChelonaKnowledge['addresses'] {
+  try {
+    const loaded = storage.loadAddressBook();
+    if (Array.isArray(loaded) && loaded.length > 0) {
+      return {
+        count: loaded.length,
+        list: loaded.map(a => ({ id: a.id || '', title: a.title || 'Indirizzo', query: a.query || '' })),
+      };
+    }
+  } catch {}
+  return { count: 0, list: [] };
+}
+
+function loadParkingKnowledge(): ChelonaKnowledge['parking'] {
+  const p = getSavedParking();
+  if (!p) {
+    return { hasParking: false };
+  }
+  const elapsed = formatElapsedParkingTime(p.timestamp);
+  let meterRem: number | undefined = undefined;
+  if (p.expiresAt) {
+    meterRem = Math.round((p.expiresAt - Date.now()) / (1000 * 60));
+  }
+  return {
+    hasParking: true,
+    address: p.address,
+    notes: p.notes,
+    elapsedTime: elapsed,
+    latitude: p.latitude,
+    longitude: p.longitude,
+    meterExpiresAt: p.expiresAt,
+    meterRemainingMinutes: meterRem,
+  };
+}
+
+/**
+ * Struttura di conoscenza unificata estratta da tutti i 17 moduli e utility di Chelona
  */
 export interface ChelonaKnowledge {
   vehicles: {
@@ -234,6 +414,9 @@ export interface ChelonaKnowledge {
     revision: { date: string; days: number };
     serviceKm?: string;
     tiresKm?: string;
+    registrationYear?: string;
+    battery12vExpiryDate?: string;
+    hybridBatteryExpiryDate?: string;
   }[];
   documents: {
     module: DocumentModule;
@@ -241,16 +424,22 @@ export interface ChelonaKnowledge {
     docType: string;
     number?: string;
     expiryDate?: string;
+    issueDate?: string;
+    issuedBy?: string;
     days: number;
     isExpired: boolean;
+    hasAttachment: boolean;
   }[];
   expenses: {
     totalThisMonth: number;
+    allTimeTotal: number;
     count: number;
+    byCategory: Record<string, number>;
     recent: { title: string; amount: number; date: string; category: string }[];
   };
   installments: {
     totalPending: number;
+    paidTotal: number;
     modules: {
       module: InstallmentsModule;
       title: string;
@@ -259,13 +448,20 @@ export interface ChelonaKnowledge {
       daysRemaining: number;
       paidCount: number;
       totalCount: number;
+      paidAmount: number;
+      remainingAmount: number;
+      nextPayment?: { amount: number; dueDate: string; days: number };
     }[];
   };
   splits: {
     module: SplitModule;
     title: string;
+    totalAmount: number;
+    currency: string;
     expensesCount: number;
     participants: string[];
+    balances: { id: string; name: string; paid: number; share: number; net: number }[];
+    settlements: { from: string; to: string; amount: number }[];
   }[];
   notes: {
     module: GenericModule;
@@ -280,11 +476,19 @@ export interface ChelonaKnowledge {
     height?: number;
     calories?: number;
     workoutDays?: number;
+    level?: string;
+    equipment?: string;
+    workoutRoutines: { dayLabel: string; focus: string; exercises: string[] }[];
+    partnerName?: string;
+    partnerGoal?: string;
+    partnerCalories?: number;
   };
   supermarket?: {
     module: SupermarketModule;
     itemsCount: number;
     itemsToBuy: string[];
+    checkedItems: string[];
+    categoriesSummary: Record<string, number>;
   };
   urgentDeadlines: {
     label: string;
@@ -300,21 +504,81 @@ export interface ChelonaKnowledge {
     flyersCount: number;
     stores: string[];
   }[];
+  recipes: {
+    customCount: number;
+    customList: { id: string; title: string; category: string; ingredients: string[] }[];
+    favoritesCount: number;
+    favoritesList: string[];
+    fridgeIngredients: string[];
+    freezerIngredients: string[];
+    pantryIngredients: string[];
+    allIngredients: string[];
+  };
+  travel: {
+    module?: TravelModule;
+    destinationsCount: number;
+    nations: string[];
+    destinations: { name: string; city?: string; nation?: string; notes?: string; type: string }[];
+  };
+  furniture: {
+    module?: FurnitureModule;
+    roomsCount: number;
+    itemsCount: number;
+    totalCost: number;
+    rooms: { name: string; itemsCount: number; dimensions?: string; items: { title: string; price?: string; dimensions?: string; category?: string }[] }[];
+  };
+  parking: {
+    hasParking: boolean;
+    address?: string;
+    notes?: string;
+    elapsedTime?: string;
+    latitude?: number;
+    longitude?: number;
+    meterExpiresAt?: number;
+    meterRemainingMinutes?: number;
+  };
+  addresses: {
+    count: number;
+    list: { id: string; title: string; query: string }[];
+  };
+  tools: {
+    availableList: { id: string; title: string; desc: string }[];
+    galleryCount: number;
+  };
+  profile: {
+    username: string;
+    isBioEnabled: boolean;
+    isWakeWordEnabled: boolean;
+  };
 }
 
 /**
- * Estrae e indicizza tutti i moduli dell'app per la comprensione neurale locale di Gemma 4 Nano
+ * Estrae e indicizza tutti i moduli e dati dell'app per la comprensione neurale locale di Gemma 4 Nano
  */
-export function buildKnowledgeBase(modules: Module[], _username: string): ChelonaKnowledge {
+export function buildKnowledgeBase(modules: Module[], username: string): ChelonaKnowledge {
   const k: ChelonaKnowledge = {
     vehicles: [],
     documents: [],
-    expenses: { totalThisMonth: 0, count: 0, recent: [] },
-    installments: { totalPending: 0, modules: [] },
+    expenses: { totalThisMonth: 0, allTimeTotal: 0, count: 0, byCategory: {}, recent: [] },
+    installments: { totalPending: 0, paidTotal: 0, modules: [] },
     splits: [],
     notes: [],
     urgentDeadlines: [],
     volantini: [],
+    recipes: loadRecipesKnowledge(),
+    travel: { destinationsCount: 0, nations: [], destinations: [] },
+    furniture: { roomsCount: 0, itemsCount: 0, totalCost: 0, rooms: [] },
+    parking: loadParkingKnowledge(),
+    addresses: loadAddressesKnowledge(),
+    tools: {
+      availableList: TOOLS.map(t => ({ id: t.id, title: t.title, desc: t.desc })),
+      galleryCount: 0,
+    },
+    profile: {
+      username: username || 'Utente Chelona',
+      isBioEnabled: false,
+      isWakeWordEnabled: wakeWordService.getEnabled(),
+    },
   };
 
   const now = new Date();
@@ -324,7 +588,7 @@ export function buildKnowledgeBase(modules: Module[], _username: string): Chelon
   for (const m of modules) {
     if (!m) continue;
 
-    // AUTO
+    // 1. AUTO
     if (m.type === 'auto') {
       const auto = m as AutoModule;
       const insDays = auto.lastInsurance ? getDaysRemaining(auto.lastInsurance) : 9999;
@@ -344,6 +608,9 @@ export function buildKnowledgeBase(modules: Module[], _username: string): Chelon
         revision: { date: auto.lastRevision || '', days: revDays },
         serviceKm: auto.lastServiceKm,
         tiresKm: auto.tiresKm,
+        registrationYear: auto.registrationYear,
+        battery12vExpiryDate: auto.battery12vExpiryDate,
+        hybridBatteryExpiryDate: auto.hybridBatteryExpiryDate,
       });
 
       if (auto.lastInsurance && insDays <= 60) {
@@ -378,7 +645,7 @@ export function buildKnowledgeBase(modules: Module[], _username: string): Chelon
       }
     }
 
-    // DOCUMENTI
+    // 2. DOCUMENTI
     if (m.type === 'document') {
       const doc = m as DocumentModule;
       const days = doc.expiryDate ? getDaysRemaining(doc.expiryDate) : 9999;
@@ -390,8 +657,11 @@ export function buildKnowledgeBase(modules: Module[], _username: string): Chelon
         docType: doc.documentType || 'generico',
         number: doc.number,
         expiryDate: doc.expiryDate,
+        issueDate: doc.issueDate,
+        issuedBy: doc.issuedBy,
         days,
         isExpired: isExp,
+        hasAttachment: Boolean(doc.pdfAttachment),
       });
 
       if (doc.expiryDate && days <= 60) {
@@ -406,48 +676,64 @@ export function buildKnowledgeBase(modules: Module[], _username: string): Chelon
       }
     }
 
-    // SPESE SINGOLE
+    // 3. SPESE SINGOLE
     if (m.type === 'single-expense') {
       const exp = m as SingleExpenseModule;
+      const amount = Number(exp.amount) || 0;
+      k.expenses.allTimeTotal += amount;
+      const cat = exp.category || 'Varie';
+      k.expenses.byCategory[cat] = (k.expenses.byCategory[cat] || 0) + amount;
+
       const expDate = exp.date ? new Date(exp.date) : null;
       if (expDate && !isNaN(expDate.getTime())) {
         if (expDate.getMonth() === currentMonth && expDate.getFullYear() === currentYear) {
-          k.expenses.totalThisMonth += Number(exp.amount) || 0;
+          k.expenses.totalThisMonth += amount;
         }
       }
       k.expenses.count++;
-      if (k.expenses.recent.length < 5) {
+      if (k.expenses.recent.length < 6) {
         k.expenses.recent.push({
           title: exp.title || exp.description || 'Spesa',
-          amount: Number(exp.amount) || 0,
+          amount,
           date: exp.date || '',
-          category: exp.category || 'Varie',
+          category: cat,
         });
+      }
+
+      if (exp.expiryDate) {
+        const expDays = getDaysRemaining(exp.expiryDate);
+        if (expDays <= 45) {
+          k.urgentDeadlines.push({
+            label: `Spesa in scadenza: ${exp.title} (€${amount})`,
+            date: exp.expiryDate,
+            days: expDays,
+            type: 'expense',
+            moduleId: exp.id,
+            module: exp,
+          });
+        }
       }
     }
 
-    // RATE / INSTALLMENTS
+    // 4. RATE / INSTALLMENTS
     if (m.type === 'installments') {
       const inst = m as InstallmentsModule;
       const days = inst.finalDueDate ? getDaysRemaining(inst.finalDueDate) : 9999;
-      const paid = inst.payments?.filter(p => p.isPaid).length || 0;
+      const paidList = inst.payments?.filter(p => p.isPaid) || [];
+      const paid = paidList.length;
       const total = inst.payments?.length || 0;
+      const paidAmount = paidList.reduce((acc, p) => acc + (Number(p.amount) || 0), 0);
+      const remainingAmount = Math.max(0, (inst.targetAmount || 0) - paidAmount);
 
-      k.installments.modules.push({
-        module: inst,
-        title: inst.title || 'Rateizzazione',
-        target: inst.targetAmount || 0,
-        finalDate: inst.finalDueDate || '',
-        daysRemaining: days,
-        paidCount: paid,
-        totalCount: total,
-      });
-      k.installments.totalPending += inst.targetAmount || 0;
-
-      // Prossima rata non pagata
       const nextUnpaid = inst.payments?.find(p => !p.isPaid);
+      let nextPayment: { amount: number; dueDate: string; days: number } | undefined = undefined;
       if (nextUnpaid && nextUnpaid.dueDate) {
         const nextDays = getDaysRemaining(nextUnpaid.dueDate);
+        nextPayment = {
+          amount: Number(nextUnpaid.amount) || 0,
+          dueDate: nextUnpaid.dueDate,
+          days: nextDays,
+        };
         if (nextDays <= 45) {
           k.urgentDeadlines.push({
             label: `Rata ${inst.title} (€${nextUnpaid.amount})`,
@@ -459,33 +745,63 @@ export function buildKnowledgeBase(modules: Module[], _username: string): Chelon
           });
         }
       }
+
+      k.installments.modules.push({
+        module: inst,
+        title: inst.title || 'Rateizzazione',
+        target: inst.targetAmount || 0,
+        finalDate: inst.finalDueDate || '',
+        daysRemaining: days,
+        paidCount: paid,
+        totalCount: total,
+        paidAmount,
+        remainingAmount,
+        nextPayment,
+      });
+      k.installments.totalPending += remainingAmount;
+      k.installments.paidTotal += paidAmount;
     }
 
-    // SPLIT
+    // 5. SPLIT
     if (m.type === 'split') {
       const sp = m as SplitModule;
+      const participants = sp.participants || [];
+      const expenses = sp.expenses || [];
+      const totalAmount = expenses.reduce((acc, e) => acc + (Number(e.amount) || 0), 0);
+      const { balances, settlements } = calculateSplitSettlements(participants, expenses);
+
       k.splits.push({
         module: sp,
         title: sp.title || 'Spese Gruppo',
-        expensesCount: sp.expenses?.length || 0,
-        participants: sp.participants?.map(p => p.name) || [],
+        totalAmount,
+        currency: sp.currency || 'EUR',
+        expensesCount: expenses.length,
+        participants: participants.map(p => p.name),
+        balances,
+        settlements,
       });
     }
 
-    // NOTE
+    // 6. NOTE
     if (m.type === 'generic') {
       const note = m as GenericModule;
       k.notes.push({
         module: note,
         title: note.title || 'Nota',
-        snippet: (note.content || '').slice(0, 150),
+        snippet: (note.content || '').slice(0, 200),
         date: note.date,
       });
     }
 
-    // FITNESS
+    // 7. FITNESS
     if (m.type === 'fitness') {
       const fit = m as FitnessModule;
+      const routines = (fit.workoutPlan || []).map(day => ({
+        dayLabel: day.dayLabel || 'Giorno',
+        focus: day.focus || 'Allenamento',
+        exercises: (day.exercises || []).map((e: any) => e.name || e.exerciseName || 'Esercizio'),
+      }));
+
       k.fitness = {
         module: fit,
         goal: fit.fitnessProfile?.goal,
@@ -493,21 +809,42 @@ export function buildKnowledgeBase(modules: Module[], _username: string): Chelon
         height: fit.fitnessProfile?.height,
         calories: fit.targetCalories,
         workoutDays: fit.fitnessProfile?.daysPerWeek,
+        level: fit.fitnessProfile?.level,
+        equipment: fit.fitnessProfile?.equipment,
+        workoutRoutines: routines,
+        partnerName: fit.partnerName,
+        partnerGoal: fit.partnerFitnessProfile?.goal,
+        partnerCalories: fit.partnerTargetCalories,
       };
     }
 
-    // SUPERMARKET
+    // 8. SUPERMARKET
     if (m.type === 'supermarket') {
       const sm = m as SupermarketModule;
-      const unchecked = (sm.items || []).filter(i => !i.checked).map(i => i.name);
+      const unchecked: string[] = [];
+      const checked: string[] = [];
+      const catSum: Record<string, number> = {};
+
+      (sm.items || []).forEach(i => {
+        if (i.checked) {
+          checked.push(i.name);
+        } else {
+          unchecked.push(i.name);
+          const c = i.category || 'altro';
+          catSum[c] = (catSum[c] || 0) + 1;
+        }
+      });
+
       k.supermarket = {
         module: sm,
         itemsCount: sm.items?.length || 0,
         itemsToBuy: unchecked,
+        checkedItems: checked,
+        categoriesSummary: catSum,
       };
     }
 
-    // VOLANTINI
+    // 9. VOLANTINI
     if (m.type === 'volantino') {
       const vol = m as VolantinoModule;
       k.volantini.push({
@@ -516,6 +853,68 @@ export function buildKnowledgeBase(modules: Module[], _username: string): Chelon
         flyersCount: vol.flyers?.length || 0,
         stores: Array.from(new Set(vol.offers?.map(o => o.storeId).filter(Boolean))),
       });
+    }
+
+    // 10. TRAVEL
+    if (m.type === 'travel') {
+      const tr = m as TravelModule;
+      const dests = (tr.destinations || []).map(d => ({
+        name: d.name,
+        city: d.city,
+        nation: d.nation,
+        notes: d.notes,
+        type: d.type,
+      }));
+      const nations = Array.from(new Set(dests.map(d => d.nation).filter(Boolean) as string[]));
+
+      k.travel = {
+        module: tr,
+        destinationsCount: dests.length,
+        nations,
+        destinations: dests,
+      };
+    }
+
+    // 11. CASA & ARREDO
+    if (m.type === 'furniture') {
+      const furn = m as FurnitureModule;
+      let totalCost = 0;
+      let itemsCount = 0;
+      const rooms = (furn.rooms || []).map(r => {
+        const rItems = (r.items || []).map(i => {
+          itemsCount++;
+          const p = parseFloat((i.price || '0').replace(/[^0-9.,]/g, '').replace(',', '.'));
+          if (!isNaN(p)) totalCost += p;
+          const dim = i.width && i.depth ? `${i.width}x${i.depth}${i.height ? `x${i.height}` : ''} cm` : undefined;
+          return {
+            title: i.title,
+            price: i.price,
+            dimensions: dim,
+            category: i.category,
+          };
+        });
+        const rDim = r.width && r.length ? `${r.width}x${r.length}${r.height ? `x${r.height}` : ''} cm` : undefined;
+        return {
+          name: r.name,
+          itemsCount: rItems.length,
+          dimensions: rDim,
+          items: rItems,
+        };
+      });
+
+      k.furniture = {
+        module: furn,
+        roomsCount: rooms.length,
+        itemsCount,
+        totalCost,
+        rooms,
+      };
+    }
+
+    // 12. GALLERIA
+    if (m.type === 'gallery') {
+      const gal = m as GalleryModule;
+      k.tools.galleryCount += gal.images?.length || (gal.image ? 1 : 0);
     }
   }
 
@@ -527,15 +926,15 @@ export function buildKnowledgeBase(modules: Module[], _username: string): Chelon
 
 function detectExpenseCategory(desc: string): string {
   const d = desc.toLowerCase();
-  if (d.includes('benzina') || d.includes('carburante') || d.includes('diesel') || d.includes('gasolio') || d.includes('parcheggio') || d.includes('pedaggio')) return 'Auto & Trasporti';
-  if (d.includes('cena') || d.includes('pranzo') || d.includes('ristorante') || d.includes('pizza') || d.includes('bar') || d.includes('caffè') || d.includes('spesa') || d.includes('supermercato')) return 'Alimentari';
-  if (d.includes('farmacia') || d.includes('medico') || d.includes('visita') || d.includes('dentista') || d.includes('medicine')) return 'Salute';
-  if (d.includes('bolletta') || d.includes('luce') || d.includes('gas') || d.includes('internet') || d.includes('affitto')) return 'Casa';
-  if (d.includes('palestra') || d.includes('cinema') || d.includes('concerto') || d.includes('vacanza')) return 'Svago';
+  if (d.includes('benzina') || d.includes('carburante') || d.includes('diesel') || d.includes('gasolio') || d.includes('parcheggio') || d.includes('pedaggio') || d.includes('treno') || d.includes('autobus')) return 'Auto & Trasporti';
+  if (d.includes('cena') || d.includes('pranzo') || d.includes('ristorante') || d.includes('pizza') || d.includes('bar') || d.includes('caffè') || d.includes('spesa') || d.includes('supermercato') || d.includes('pane')) return 'Alimentari';
+  if (d.includes('farmacia') || d.includes('medico') || d.includes('visita') || d.includes('dentista') || d.includes('medicine') || d.includes('analisi')) return 'Salute';
+  if (d.includes('bolletta') || d.includes('luce') || d.includes('gas') || d.includes('internet') || d.includes('affitto') || d.includes('condominio')) return 'Casa';
+  if (d.includes('palestra') || d.includes('cinema') || d.includes('concerto') || d.includes('vacanza') || d.includes('hotel') || d.includes('volo') || d.includes('viaggio')) return 'Svago';
+  if (d.includes('vestiti') || d.includes('scarpe') || d.includes('amazon') || d.includes('shopping')) return 'Shopping';
   return 'Varie';
 }
 
-// Mappatura catene supermercati e discount con sinonimi e alias comuni
 const SUPERMARKET_CHAINS_INFO: { name: string; slug: string; aliases: string[] }[] = [
   { name: 'Lidl', slug: 'lidl', aliases: ['lidl'] },
   { name: 'Conad', slug: 'conad', aliases: ['conad'] },
@@ -578,15 +977,6 @@ const SUPERMARKET_CHAINS_INFO: { name: string; slug: string; aliases: string[] }
   { name: 'Bricofer', slug: 'bricofer', aliases: ['bricofer'] },
   { name: 'Brico Io', slug: 'brico-io', aliases: ['brico io'] },
   { name: 'Mondo Convenienza', slug: 'mondo-convenienza', aliases: ['mondo convenienza'] },
-  { name: 'Pewex', slug: 'pewex', aliases: ['pewex'] },
-  { name: 'Pim', slug: 'pim', aliases: ['pim'] },
-  { name: 'Dem', slug: 'dem', aliases: ['dem'] },
-  { name: 'Il Castoro', slug: 'il-castoro', aliases: ['il castoro', 'castoro'] },
-  { name: 'Ipertriscount', slug: 'ipertriscount', aliases: ['ipertriscount'] },
-  { name: 'Ipercarni', slug: 'ipercarni', aliases: ['ipercarni'] },
-  { name: 'CTS', slug: 'cts', aliases: ['cts'] },
-  { name: 'Top', slug: 'top', aliases: ['supermercati top'] },
-  { name: 'Effepiù', slug: 'effepiu', aliases: ['effepiu', 'effepiù'] },
 ];
 
 function detectRequestedChain(query: string, chains: VolantinoChain[]): { chain: VolantinoChain; displayName: string } | null {
@@ -612,82 +1002,72 @@ function detectRequestedChain(query: string, chains: VolantinoChain[]): { chain:
 }
 
 /**
- * Motore di elaborazione e risposta locale Gemma 4 Nano.
- * 100% On-Device, senza chiamate API o server esterni.
+ * Motore neurale locale Gemma 4 Nano per Chelona.
+ * 100% On-Device, zero cloud o API esterne.
+ * Copre tutte le 17 sezioni, moduli e strumenti applicativi.
  */
 export async function queryGemmaNano(
   userQuery: string,
   modules: Module[],
   username: string
 ): Promise<{ text: string; actions?: AiAction[]; learnedFact?: string; createdModule?: Module; autoAction?: AiAction }> {
-  // Simula un breve tempo di elaborazione neurale realistico on-device (200-400ms)
-  await new Promise(res => setTimeout(res, 250));
+  await new Promise(res => setTimeout(res, 220));
 
   const query = userQuery.trim();
   const lower = query.toLowerCase();
 
-  // 1a. GESTIONE PARCHEGGIO (UI & AI)
-  if (
-    lower.includes('parchegg') ||
-    ((lower.includes('auto') || lower.includes('macchina') || lower.includes('veicol')) &&
-     (lower.includes('dove') || lower.includes('dov\'è') || lower.includes('trova') || lower.includes('ritrova') || lower.includes('salva') || lower.includes('lasciat') || lower.includes('messa')))
-  ) {
-    // Intento: Apri schermata parcheggio
-    if (lower.includes('apri') || lower.includes('vai') || lower.includes('schermata') || lower.includes('mappa')) {
-      return {
-        text: `Ti porto subito alla schermata del Parcheggio! 🚗`,
-        autoAction: { label: 'Apri Parcheggio', type: 'parking' },
-        actions: [],
-      };
-    }
+  // =========================================================================
+  // 1. COMANDI DI CREAZIONE RAPIDA (Note, Spese, Lista Spesa, Memorie)
+  // =========================================================================
 
-    // Intento: Dov'è l'auto / Dove ho parcheggiato / Trova auto
-    if (
-      lower.includes('dove') ||
-      lower.includes('dov\'è') ||
-      lower.includes('trova') ||
-      lower.includes('ritrova') ||
-      lower.includes('posizione')
-    ) {
-      const p = getSavedParking();
-      if (p) {
-        const timeStr = formatElapsedParkingTime(p.timestamp);
-        return {
-          text: `La tua auto è parcheggiata in **${p.address}** (${timeStr}).${p.notes ? `\n\nNote: *${p.notes}*` : ''}\n\nTi porto subito alla mappa del parcheggio! 🚗`,
-          autoAction: { label: 'Apri Parcheggio', type: 'parking' },
-          actions: [],
+  // 1a. AGGIUNGI ARTICOLI ALLA LISTA DELLA SPESA TRAMITE VOCE/CHAT
+  const smAddMatch = query.match(/^(?:aggiungi|metti|segna|inserisci)\s+(.+?)\s+(?:alla|nella|in)\s+(?:lista\s+(?:della\s+)?spesa|spesa)/i)
+    || query.match(/^(?:aggiungi|metti|segna|inserisci)\s+(?:alla|nella|in)\s+(?:lista\s+(?:della\s+)?spesa|spesa)[:\s]+(.+)$/i)
+    || query.match(/^spesa:\s*(.+)$/i);
+
+  if (smAddMatch) {
+    const rawItemsStr = smAddMatch[1].trim();
+    const rawItems = rawItemsStr.split(/,| e | and |\+/i).map(s => s.trim()).filter(s => s.length > 0);
+
+    if (rawItems.length > 0) {
+      const newItems: SupermarketItem[] = rawItems.map(name => ({
+        id: 'item_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
+        name: name.charAt(0).toUpperCase() + name.slice(1),
+        category: detectSupermarketCategory(name),
+        checked: false,
+      }));
+
+      const existingSm = modules.find(m => m.type === 'supermarket') as SupermarketModule | undefined;
+      let targetModule: SupermarketModule;
+
+      if (existingSm) {
+        targetModule = {
+          ...existingSm,
+          items: [...(existingSm.items || []), ...newItems],
         };
       } else {
-        return {
-          text: `Non hai ancora registrato nessun parcheggio. Vuoi che memorizzi la tua posizione attuale adesso?`,
-          actions: [
-            { label: 'Salva Parcheggio Ora', type: 'save_parking' },
-            { label: 'Apri Parcheggio', type: 'parking' },
-          ],
+        targetModule = {
+          id: 'mod_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
+          type: 'supermarket',
+          title: 'Lista della Spesa',
+          items: newItems,
+          x: 0, y: 0, w: 3, h: 3,
         };
       }
-    }
 
-    // Intento: Salva / Segna il parcheggio attuale
-    if (
-      lower.includes('segna') ||
-      lower.includes('salva') ||
-      lower.includes('memorizza') ||
-      lower.includes('registra') ||
-      lower.includes('lasciata qui') ||
-      lower.includes('messa qui') ||
-      (lower.includes('ho parcheggiato') && !lower.includes('dove') && !lower.includes('dov\'è'))
-    ) {
       return {
-        text: `Ti porto subito alla schermata del parcheggio mentre rilevo la tua posizione GPS! 🚗📍`,
-        autoAction: { label: 'Salva Parcheggio', type: 'parking', autoSave: true },
-        actions: [],
+        text: `Ho aggiunto alla tua **Lista della Spesa** 🛒:\n${newItems.map(i => `• **${i.name}** *(${i.category})*`).join('\n')}`,
+        createdModule: targetModule,
+        autoAction: { label: 'Apri Lista Spesa', type: 'category', category: 'supermarket' },
+        actions: [{ label: 'Apri Lista Spesa', type: 'category', category: 'supermarket' }],
       };
     }
   }
 
-  // 1b. AGGIUNGI NOTA A CHELONA TRAMITE AI
-  const noteMatch = query.match(/^(?:aggiungi|crea|segna|scrivi|salva)\s+(?:una\s+)?nota(?:\s*[:\-]\s*|\s+con\s+testo\s*[:\-]?\s*|\s+intitolata\s*[:\-]?\s*|\s+)(.+)$/i) || query.match(/^nota:\s*(.+)$/i);
+  // 1b. AGGIUNGI NOTA
+  const noteMatch = query.match(/^(?:aggiungi|crea|segna|scrivi|salva)\s+(?:una\s+)?nota(?:\s*[:\-]\s*|\s+con\s+testo\s*[:\-]?\s*|\s+intitolata\s*[:\-]?\s*|\s+)(.+)$/i) 
+    || query.match(/^nota:\s*(.+)$/i);
+
   if (noteMatch) {
     const fullContent = noteMatch[1].trim();
     let title = 'Appunto da Chelona AI';
@@ -713,13 +1093,13 @@ export async function queryGemmaNano(
     };
 
     return {
-      text: `Ho creato e aggiunto la nota **"${newNote.title}"** alla tua bacheca di Chelona!\n\n*${content}*`,
+      text: `Ho creato e salvato la nota **"${newNote.title}"** nella tua bacheca 📝\n\n*${content}*`,
       createdModule: newNote,
       actions: [{ label: 'Apri Nota', type: 'module', module: newNote, moduleId: newNote.id }],
     };
   }
 
-  // 1c. AGGIUNGI SPESA A CHELONA TRAMITE AI
+  // 1c. AGGIUNGI SPESA SINGOLA
   const expMatch = query.match(/(?:aggiungi|segna|registra|ho\s+speso|spesa\s+di)\s+(?:una\s+spesa\s+(?:di\s+)?)?(\d+(?:[.,]\d+)?)\s*(?:€|euro)?(?:\s+(?:per|al|a|in|su)\s+(.+))?/i);
   if (expMatch) {
     const amountStr = expMatch[1].replace(',', '.');
@@ -740,13 +1120,13 @@ export async function queryGemmaNano(
     };
 
     return {
-      text: `Ho registrato la spesa di **€ ${newExp.amount.toFixed(2)}** per *${newExp.title}* nelle tue finanze di Chelona!`,
+      text: `Ho registrato la spesa di **€ ${newExp.amount.toFixed(2)}** per *${newExp.title}* nella categoria **${newExp.category}** 💳`,
       createdModule: newExp,
       actions: [{ label: 'Vedi Spesa', type: 'module', module: newExp, moduleId: newExp.id }],
     };
   }
 
-  // 1d. Verifica se l'utente vuole insegnare qualcosa all'AI
+  // 1d. APPRENDIMENTO MEMORIA ESPLICITA ("Ricordati che...")
   const learningIntent = extractLearningIntent(query);
   if (learningIntent) {
     const saved = saveLearnedMemory({
@@ -757,143 +1137,66 @@ export async function queryGemmaNano(
     });
 
     return {
-      text: `Perfetto, ho preso nota: *"${saved.fact}"*. Me lo ricorderò!`,
+      text: `Perfetto, ho memorizzato questo appunto personale: *"${saved.fact}"*. Lo ricorderò sempre! 🧠`,
       learnedFact: saved.fact,
     };
   }
 
-  // 2. Costruisci la Knowledge Base aggiornata da tutti i moduli
+  // =========================================================================
+  // 2. KNOWLEDGE BASE COMPLETA DEI 17 MODULI & STATO LOCALE
+  // =========================================================================
   const k = buildKnowledgeBase(modules, username);
   const customMemories = getLearnedMemories();
 
-  // 3. Riconoscimento Intenti & Generazione Risposta
+  // =========================================================================
+  // 3. INTENT RECOGNITION DEI 17 DOMINI
+  // =========================================================================
 
-  // INTENTO: MEMORIA / COSA SAI SU DI ME
+  // --- SEZIONE 1: VEICOLI & AUTO ---
+  const isParkingIntent = (
+    lower.includes('parchegg') ||
+    lower.includes('dove ho parcheggiato') ||
+    lower.includes('dov\'è la') ||
+    lower.includes('dov\'e la') ||
+    lower.includes('dov\'è l\'auto') ||
+    lower.includes('dov\'e l\'auto') ||
+    lower.includes('trova auto') ||
+    lower.includes('ritrova auto') ||
+    lower.includes('parchimetro') ||
+    lower.includes('sosta') ||
+    lower.includes('radar')
+  );
+
   if (
-    lower.includes('cosa sai') ||
-    lower.includes('cosa hai imparato') ||
-    lower.includes('memoria') ||
-    lower.includes('mie informazioni') ||
-    lower.includes('chi sono')
-  ) {
-    let out = `Ecco cosa so su di te:\n\n`;
-
-    if (customMemories.length > 0) {
-      out += `**Cose che mi hai insegnato:**\n`;
-      customMemories.forEach(m => {
-        out += `• ${m.fact}\n`;
-      });
-      out += `\n`;
-    }
-
-    out += `**Dai tuoi moduli in Chelona:**\n`;
-    if (k.vehicles.length > 0) {
-      out += `• ${k.vehicles.length === 1 ? 'Auto' : 'Veicoli'}: ${k.vehicles.map(v => `${v.name} (${v.plate})`).join(', ')}\n`;
-    }
-    if (k.documents.length > 0) {
-      out += `• ${k.documents.length} documenti registrati\n`;
-    }
-    if (k.notes.length > 0) {
-      out += `• ${k.notes.length} note salvate\n`;
-    }
-    if (k.installments.modules.length > 0) {
-      out += `• ${k.installments.modules.length} finanziamenti attivi (€${k.installments.totalPending} residui)\n`;
-    }
-    if (k.fitness) {
-      out += `• Obiettivo fitness: ${k.fitness.goal || 'forma fisica'}\n`;
-    }
-
-    out += `\nSe vuoi farmi ricordare altro, basta scrivermi *"Ricordati che..."*!`;
-    return { text: out };
-  }
-
-  // INTENTO: SCADENZE / DEADLINES
-  if (
-    lower.includes('scadenz') ||
-    lower.includes('promemoria') ||
-    lower.includes('scade') ||
-    lower.includes('urgente') ||
-    lower.includes('giorni mancanti')
-  ) {
-    // Intento: apri direttamente la schermata scadenze
-    if (
-      lower.includes('apri') ||
-      lower.includes('vai') ||
-      lower.includes('mostra') ||
-      lower.includes('vedi') ||
-      lower.trim() === 'scadenze' ||
-      lower.trim() === 'le scadenze' ||
-      lower.trim() === 'promemoria'
-    ) {
-      return {
-        text: k.urgentDeadlines.length === 0
-          ? `Nessuna scadenza imminente nei prossimi due mesi! Ti porto comunque alla schermata delle scadenze 📅`
-          : `Ti porto subito alla schermata delle scadenze e promemoria! 📅`,
-        autoAction: { label: 'Scadenze', type: 'deadlines' },
-        actions: [],
-      };
-    }
-
-    if (k.urgentDeadlines.length === 0) {
-      return {
-        text: `Nessuna scadenza in vista nei prossimi due mesi, sei completamente tranquillo!`,
-      };
-    }
-
-    let out = `Ecco le scadenze a cui prestare attenzione:\n\n`;
-    const actions: AiAction[] = [];
-
-    k.urgentDeadlines.forEach((d) => {
-      let status = '';
-      if (d.days < 0) {
-        status = `⚠️ Scaduto da ${Math.abs(d.days)} giorni!`;
-      } else if (d.days === 0) {
-        status = `⚠️ Scade oggi!`;
-      } else if (d.days <= 7) {
-        status = `tra ${d.days} giorni (${formatDate(d.date)})`;
-      } else {
-        status = `il ${formatDate(d.date)} (tra ${d.days} gg)`;
-      }
-
-      out += `• **${d.label}**: ${status}\n`;
-
-      if (d.module) {
-        actions.push({
-          label: d.label.length > 22 ? d.label.slice(0, 20) + '...' : d.label,
-          type: 'module',
-          moduleId: d.moduleId,
-          module: d.module,
-        });
-      }
-    });
-
-    return {
-      text: out,
-      actions: actions.slice(0, 2),
-    };
-  }
-
-  // INTENTO: AUTO / VEICOLI
-  if (
-    lower.includes('auto') ||
-    lower.includes('macchina') ||
-    lower.includes('veicol') ||
-    lower.includes('targa') ||
-    lower.includes('bollo') ||
-    lower.includes('assicurazion') ||
-    lower.includes('revision') ||
-    lower.includes('tagliando') ||
-    lower.includes('chilometri') ||
-    lower.includes('km')
+    !isParkingIntent &&
+    (
+      lower.includes('auto') ||
+      lower.includes('macchina') ||
+      lower.includes('veicol') ||
+      lower.includes('targa') ||
+      lower.includes('targhe') ||
+      lower.includes('bollo') ||
+      lower.includes('assicurazion') ||
+      lower.includes('revision') ||
+      lower.includes('tagliando') ||
+      lower.includes('tagliandi') ||
+      lower.includes('gomme') ||
+      lower.includes('pneumatic') ||
+      lower.includes('chilometr') ||
+      /\bkm\b/.test(lower) ||
+      lower.includes('batteria auto') ||
+      lower.includes('storico interventi') ||
+      lower.includes('manutenzion')
+    )
   ) {
     if (k.vehicles.length === 0) {
       return {
-        text: `🚗 Non hai ancora registrato nessun veicolo in Chelona.\n\nPuoi aggiungerne uno toccando **"+"** e selezionando la categoria **Veicolo**!`,
+        text: `🚗 Non hai ancora registrato nessun veicolo in Chelona.\n\nPuoi memorizzare bollo, revisione, assicurazione, tagliando e chilometri toccando **"+"** → **Veicolo**!`,
         actions: [{ label: 'Aggiungi Veicolo', type: 'category', category: 'auto' }],
       };
     }
 
-    // Intento: apri direttamente la scheda auto
+    // Navigazione diretta alla scheda auto
     if (
       lower.includes('apri') ||
       lower.includes('scheda') ||
@@ -905,32 +1208,79 @@ export async function queryGemmaNano(
     ) {
       const v = k.vehicles[0];
       return {
-        text: `Ti apro subito la scheda della tua auto **${v.name}**! 🚗`,
+        text: `Ti apro subito la scheda di **${v.name}**! 🚗`,
         autoAction: { label: `Scheda ${v.name}`, type: 'module', moduleId: v.module.id, module: v.module },
         actions: [],
       };
     }
 
-    // Se chiede la targa
-    if (lower.includes('targa')) {
-      const resp = k.vehicles.map(v => `🔹 **${v.name}**: targa **${v.plate}**`).join('\n');
+    // Domanda mirata: Targa
+    if (lower.includes('targa') || lower.includes('targhe')) {
+      const resp = k.vehicles.map(v => `🔹 **${v.name}**: targa \`${v.plate}\``).join('\n');
       return {
         text: `🚗 **Targhe dei tuoi veicoli:**\n\n${resp}`,
         actions: k.vehicles.map(v => ({ label: `Scheda ${v.name}`, type: 'module', moduleId: v.module.id, module: v.module })),
       };
     }
 
-    // Se chiede i km
-    if (lower.includes('km') || lower.includes('chilometri')) {
-      const resp = k.vehicles.map(v => `🔹 **${v.name}** (${v.plate}): **${v.km} km** attuali`).join('\n');
+    // Domanda mirata: Chilometri
+    if (lower.includes('km') || lower.includes('chilometr')) {
+      const resp = k.vehicles.map(v => `🔹 **${v.name}** (${v.plate}): **${v.km} km** registrati`).join('\n');
       return {
-        text: `📊 **Chilometraggio registrato:**\n\n${resp}`,
+        text: `📊 **Chilometraggio veicoli:**\n\n${resp}`,
         actions: k.vehicles.map(v => ({ label: `Aggiorna Km ${v.name}`, type: 'module', moduleId: v.module.id, module: v.module })),
       };
     }
 
-    // Panoramica auto
-    let out = `🚗 **Riepilogo Veicoli Registrati:**\n\n`;
+    // Domanda mirata: Bollo
+    if (lower.includes('bollo')) {
+      const resp = k.vehicles.map(v => {
+        const status = v.tax.days < 0 ? `⚠️ **SCADUTO il ${formatDate(v.tax.date)}**` : `scade il **${formatDate(v.tax.date)}** (tra ${v.tax.days} giorni)`;
+        return `🔹 **${v.name}** (${v.plate}): ${status}`;
+      }).join('\n');
+      return {
+        text: `🏷️ **Stato Bollo Auto:**\n\n${resp}`,
+        actions: k.vehicles.map(v => ({ label: `Scheda ${v.name}`, type: 'module', moduleId: v.module.id, module: v.module })),
+      };
+    }
+
+    // Domanda mirata: Assicurazione
+    if (lower.includes('assicurazion')) {
+      const resp = k.vehicles.map(v => {
+        const status = v.insurance.days < 0 ? `⚠️ **SCADUTA il ${formatDate(v.insurance.date)}**` : `scade il **${formatDate(v.insurance.date)}** (tra ${v.insurance.days} giorni)`;
+        return `🔹 **${v.name}** (${v.plate}): ${status}`;
+      }).join('\n');
+      return {
+        text: `🛡️ **Stato Assicurazione:**\n\n${resp}`,
+        actions: k.vehicles.map(v => ({ label: `Scheda ${v.name}`, type: 'module', moduleId: v.module.id, module: v.module })),
+      };
+    }
+
+    // Domanda mirata: Revisione
+    if (lower.includes('revision')) {
+      const resp = k.vehicles.map(v => {
+        const status = v.revision.days < 0 ? `⚠️ **SCADUTA il ${formatDate(v.revision.date)}**` : `scade il **${formatDate(v.revision.date)}** (tra ${v.revision.days} giorni)`;
+        return `🔹 **${v.name}** (${v.plate}): ${status}`;
+      }).join('\n');
+      return {
+        text: `🔧 **Stato Revisione Ministeriale:**\n\n${resp}`,
+        actions: k.vehicles.map(v => ({ label: `Scheda ${v.name}`, type: 'module', moduleId: v.module.id, module: v.module })),
+      };
+    }
+
+    // Domanda mirata: Tagliando e Gomme
+    if (lower.includes('tagliando') || lower.includes('gomme') || lower.includes('pneumatic') || lower.includes('manutenzion')) {
+      const resp = k.vehicles.map(v => {
+        return `🔹 **${v.name}** (${v.plate}):\n  - Ultimo tagliando: **${v.serviceKm || 'N/D'} km** (attuali: ${v.km} km)\n  - Gomme installate a: **${v.tiresKm || 'N/D'} km**`;
+      }).join('\n\n');
+      return {
+        text: `🛠️ **Storico Manutenzione & Pneumatici:**\n\n${resp}`,
+        actions: k.vehicles.map(v => ({ label: `Scheda ${v.name}`, type: 'module', moduleId: v.module.id, module: v.module })),
+      };
+    }
+
+    // Panoramica veicoli completa
+    let out = `🚗 **Riepilogo Veicoli Registrati (${k.vehicles.length}):**\n\n`;
     const actions: AiAction[] = [];
 
     k.vehicles.forEach(v => {
@@ -939,10 +1289,13 @@ export async function queryGemmaNano(
       out += `- 🛣️ Chilometri: **${v.km} km**\n`;
       out += `- 🛡️ Assicurazione: ${v.insurance.date ? `${formatDate(v.insurance.date)} (${v.insurance.days > 0 ? `tra ${v.insurance.days} gg` : 'SCADUTA'})` : 'Non inserita'}\n`;
       out += `- 🏷️ Bollo: ${v.tax.date ? `${formatDate(v.tax.date)} (${v.tax.days > 0 ? `tra ${v.tax.days} gg` : 'SCADUTO'})` : 'Non inserito'}\n`;
-      out += `- 🔧 Revisione: ${v.revision.date ? `${formatDate(v.revision.date)} (${v.revision.days > 0 ? `tra ${v.revision.days} gg` : 'SCADUTA'})` : 'Non inserita'}\n\n`;
+      out += `- 🔧 Revisione: ${v.revision.date ? `${formatDate(v.revision.date)} (${v.revision.days > 0 ? `tra ${v.revision.days} gg` : 'SCADUTA'})` : 'Non inserita'}\n`;
+      if (v.serviceKm) out += `- 🛢️ Tagliando: a quota ${v.serviceKm} km\n`;
+      if (v.tiresKm) out += `- 🛞 Pneumatici: montati a quota ${v.tiresKm} km\n`;
+      out += `\n`;
 
       actions.push({
-        label: `Apri Scheda ${v.name}`,
+        label: `Scheda ${v.name}`,
         type: 'module',
         moduleId: v.module.id,
         module: v.module,
@@ -952,24 +1305,37 @@ export async function queryGemmaNano(
     return { text: out, actions };
   }
 
-  // INTENTO: DOCUMENTI
+  // --- SEZIONE 2: DOCUMENTI ---
+  const isDocToolIntent = (
+    lower.includes('scanner') ||
+    lower.includes('scansion') ||
+    lower.includes('vinted') ||
+    lower.includes('percentual') ||
+    lower.includes('filtri') ||
+    lower.includes('unisci pdf') ||
+    lower.includes('ruota pdf') ||
+    lower.includes('comprimi pdf')
+  );
+
   if (
-    lower.includes('document') ||
-    lower.includes('patente') ||
-    lower.includes('carta d\'identità') ||
-    lower.includes('carta identita') ||
-    lower.includes('passaporto') ||
-    lower.includes('tessera sanitaria') ||
-    lower.includes('codice fiscale')
+    !isDocToolIntent &&
+    (
+      lower.includes('document') ||
+      lower.includes('patente') ||
+      lower.includes('carta d\'identità') ||
+      lower.includes('carta identita') ||
+      lower.includes('passaporto') ||
+      lower.includes('tessera sanitaria') ||
+      lower.includes('codice fiscale')
+    )
   ) {
     if (k.documents.length === 0) {
       return {
-        text: `📄 Non hai ancora archiviato documenti in Chelona.\n\nPuoi fotografare o caricare i tuoi documenti d'identità in modo sicuro toccando **"+"** → **Documento**!`,
+        text: `📄 Non hai ancora salvato documenti in Chelona.\n\nPuoi digitalizzare patenti, carte d'identità, passaporti e tessere sanitarie protette da crittografia toccando **"+"** → **Documento**!`,
         actions: [{ label: 'Nuovo Documento', type: 'category', category: 'document' }],
       };
     }
 
-    // Intento: apri direttamente documento o categoria
     if (
       lower.includes('apri') ||
       lower.includes('vai') ||
@@ -982,11 +1348,10 @@ export async function queryGemmaNano(
         const titleLower = d.title.toLowerCase();
         const typeLower = (d.docType || '').toLowerCase();
         if (lower.includes('patente') && (typeLower.includes('patente') || titleLower.includes('patente'))) return true;
-        if ((lower.includes('carta d\'identità') || lower.includes('carta identita') || lower.includes('identità') || lower.includes('identita')) && (typeLower.includes('identit') || titleLower.includes('identit'))) return true;
+        if ((lower.includes('identità') || lower.includes('identita')) && (typeLower.includes('identit') || titleLower.includes('identit'))) return true;
         if (lower.includes('passaporto') && (typeLower.includes('passaporto') || titleLower.includes('passaporto'))) return true;
-        if ((lower.includes('tessera') || lower.includes('sanitaria') || lower.includes('codice fiscale')) && (typeLower.includes('sanitaria') || titleLower.includes('sanitaria') || titleLower.includes('fiscale'))) return true;
-        const cleanQuery = lower.replace(/^(?:apri|mostra|fammi vedere|vedi|vai a|vai ai|vai al|il|la|lo|i|gli|le)\s+/gi, '').trim();
-        return lower.includes(titleLower) || (cleanQuery.length >= 3 && titleLower.includes(cleanQuery));
+        if ((lower.includes('tessera') || lower.includes('sanitaria') || lower.includes('fiscale')) && (typeLower.includes('sanitaria') || titleLower.includes('sanitaria') || titleLower.includes('fiscale'))) return true;
+        return lower.includes(titleLower);
       });
 
       if (matchedDoc) {
@@ -998,25 +1363,25 @@ export async function queryGemmaNano(
       }
 
       return {
-        text: `Ti mostro subito i tuoi documenti personali! 📄`,
+        text: `Ti mostro subito l'archivio dei tuoi documenti personali! 📄`,
         autoAction: { label: 'Documenti', type: 'category', category: 'document' },
         actions: [],
       };
     }
 
-    let out = `📄 **Documenti Personali Rilevati (${k.documents.length}):**\n\n`;
+    let out = `📄 **Documenti Personali Archiviati (${k.documents.length}):**\n\n`;
     const actions: AiAction[] = [];
 
     k.documents.forEach(d => {
       const expStr = d.expiryDate
         ? d.isExpired
           ? `❌ **SCADUTO il ${formatDate(d.expiryDate)}**`
-          : `✅ Scade il **${formatDate(d.expiryDate)}** (${d.days} giorni rimasti)`
-        : 'Senza data scadenza';
+          : `✅ Scade il **${formatDate(d.expiryDate)}** (${d.days} gg rimanenti)`
+        : 'Senza data di scadenza';
 
-      out += `- **${d.title}** (${d.docType})\n`;
+      out += `- **${d.title}** (${d.docType.toUpperCase()})\n`;
       if (d.number) out += `  └ Numero: \`${d.number}\`\n`;
-      out += `  └ Stato: ${expStr}\n\n`;
+      out += `  └ Scadenza: ${expStr}\n\n`;
 
       actions.push({
         label: `Vedi ${d.title}`,
@@ -1029,7 +1394,176 @@ export async function queryGemmaNano(
     return { text: out, actions: actions.slice(0, 3) };
   }
 
-  // INTENTO: VOLANTINI E SCONTI
+  // --- SEZIONE 3: SPESE CONDIVISE & SPLIT ("CHI DEVE A CHI") ---
+  if (
+    lower.includes('split') ||
+    lower.includes('spese condivise') ||
+    lower.includes('spesa condivisa') ||
+    lower.includes('gruppo spese') ||
+    lower.includes('gruppi spese') ||
+    lower.includes('dividi spese') ||
+    lower.includes('conti condivisi') ||
+    lower.includes('chi deve a chi') ||
+    lower.includes('debiti') ||
+    lower.includes('crediti') ||
+    lower.includes('pareggio conti') ||
+    lower.includes('salda conti') ||
+    lower.includes('devo soldi') ||
+    lower.includes('mi devono') ||
+    lower.includes('chi deve pagare')
+  ) {
+    if (k.splits.length === 0) {
+      return {
+        text: `👥 Non hai gruppi di **Spese Condivise (Split)** attivi.\n\nPuoi creare un gruppo con amici o coinquilini per dividere automaticamente uscite e calcolare "chi deve dare a chi" toccando **"+"** → **Spese & Conti**!`,
+        actions: [{ label: 'Nuovo Gruppo Split', type: 'category', category: 'split' }],
+      };
+    }
+
+    if (lower.includes('apri') || lower.includes('vai') || lower.trim() === 'split') {
+      const sp = k.splits[0];
+      return {
+        text: `Ti apro subito il gruppo spese condivise **${sp.title}**! 👥`,
+        autoAction: { label: `Apri ${sp.title}`, type: 'module', moduleId: sp.module.id, module: sp.module },
+        actions: [],
+      };
+    }
+
+    let out = `👥 **Spese Condivise & Bilancio ("Chi deve a chi"):**\n\n`;
+    const actions: AiAction[] = [];
+
+    k.splits.forEach(sp => {
+      out += `### 📌 Gruppo **${sp.title}**\n`;
+      out += `- Totale speso nel gruppo: **${sp.totalAmount.toFixed(2)} ${sp.currency}** (${sp.expensesCount} spese registrate)\n`;
+      out += `- Partecipanti: ${sp.participants.join(', ')}\n\n`;
+
+      if (sp.settlements.length > 0) {
+        out += `**Saldo e trasferimenti necessari:**\n`;
+        sp.settlements.forEach(s => {
+          out += `• 💸 **${s.from}** deve dare **€ ${s.amount.toFixed(2)}** a **${s.to}**\n`;
+        });
+      } else {
+        out += `✨ *Tutti i partecipanti sono in pareggio esatto, nessun debito pendente!*\n`;
+      }
+      out += `\n`;
+
+      actions.push({
+        label: `Gestisci ${sp.title}`,
+        type: 'module',
+        moduleId: sp.module.id,
+        module: sp.module,
+      });
+    });
+
+    return { text: out, actions };
+  }
+
+  // --- SEZIONE 4: SPESA SINGOLA & USCITE ---
+  if (
+    lower.includes('spesa singola') ||
+    lower.includes('spese singole') ||
+    lower.includes('scontrin') ||
+    lower.includes('quanto ho speso') ||
+    lower.includes('uscite mensili') ||
+    lower.includes('totale spese') ||
+    lower.includes('categoria di spesa') ||
+    lower.includes('spese per categoria') ||
+    (lower.includes('uscite') && !lower.includes('autostrada'))
+  ) {
+    if (k.expenses.count === 0) {
+      return {
+        text: `💳 Non hai ancora registrato spese singole.\n\nPuoi segnare scontrini e uscite quotidiane dicendomi ad esempio *"Aggiungi spesa di 15 euro per pranzo"* o toccando **"+"** → **Spesa Singola**!`,
+        actions: [{ label: 'Nuova Spesa', type: 'category', category: 'single-expense' }],
+      };
+    }
+
+    if (lower.includes('apri') || lower.includes('vai') || lower.trim() === 'spese singole') {
+      return {
+        text: `Ti porto subito alla gestione delle spese singole! 💳`,
+        autoAction: { label: 'Spese Singole', type: 'category', category: 'single-expense' },
+        actions: [],
+      };
+    }
+
+    let out = `💳 **Riepilogo Spese Singole & Uscite:**\n\n`;
+    out += `- 📅 Spese registrate questo mese: **€ ${k.expenses.totalThisMonth.toFixed(2)}**\n`;
+    out += `- 📊 Totale storico complessivo: **€ ${k.expenses.allTimeTotal.toFixed(2)}** (${k.expenses.count} transazioni)\n\n`;
+
+    const catKeys = Object.keys(k.expenses.byCategory);
+    if (catKeys.length > 0) {
+      out += `**Suddivisione per categoria:**\n`;
+      catKeys.forEach(c => {
+        out += `• **${c}**: € ${k.expenses.byCategory[c].toFixed(2)}\n`;
+      });
+      out += `\n`;
+    }
+
+    if (k.expenses.recent.length > 0) {
+      out += `**Ultime spese registrate:**\n`;
+      k.expenses.recent.forEach(e => {
+        out += `• ${e.title}: **€ ${e.amount.toFixed(2)}** (${formatDate(e.date)} - ${e.category})\n`;
+      });
+    }
+
+    return {
+      text: out,
+      actions: [{ label: 'Apri Spese Singole', type: 'category', category: 'single-expense' }],
+    };
+  }
+
+  // --- SEZIONE 5: RATE & FINANZIAMENTI ---
+  if (
+    /\brate\b|\brata\b|\brateizzaz/i.test(lower) ||
+    lower.includes('finanziament') ||
+    lower.includes('piano rateale') ||
+    lower.includes('rate attive') ||
+    lower.includes('prossima rata') ||
+    lower.includes('scadenza rata') ||
+    lower.includes('totale residuo rate') ||
+    lower.includes('quanto mi manca da pagare')
+  ) {
+    if (k.installments.modules.length === 0) {
+      return {
+        text: `🗓️ Non hai rateizzazioni o finanziamenti attivi.\n\nPuoi pianificare qualsiasi acquisto a rate, tenendo traccia dell'importo mensile e delle scadenze toccando **"+"** → **Finanziamento**!`,
+        actions: [{ label: 'Aggiungi Finanziamento', type: 'category', category: 'installments' }],
+      };
+    }
+
+    if (lower.includes('apri') || lower.includes('vai') || lower.trim() === 'rate') {
+      const inst = k.installments.modules[0];
+      return {
+        text: `Ti apro subito il piano rateale **${inst.title}**! 🗓️`,
+        autoAction: { label: `Piano ${inst.title}`, type: 'module', moduleId: inst.module.id, module: inst.module },
+        actions: [],
+      };
+    }
+
+    let out = `🗓️ **Stato Rate & Finanziamenti Attivi:**\n\n`;
+    out += `💰 **Debito totale residuo da estinguere**: **€ ${k.installments.totalPending.toFixed(2)}**\n`;
+    out += `✅ Già rimborsati: **€ ${k.installments.paidTotal.toFixed(2)}**\n\n`;
+
+    const actions: AiAction[] = [];
+
+    k.installments.modules.forEach(inst => {
+      out += `### **${inst.title}**\n`;
+      out += `- Avanzamento: **${inst.paidCount} su ${inst.totalCount} rate pagate**\n`;
+      out += `- Importo totale: **€ ${inst.target.toFixed(2)}** (Residuo: € ${inst.remainingAmount.toFixed(2)})\n`;
+      if (inst.nextPayment) {
+        out += `- ⏳ Prossima rata: **€ ${inst.nextPayment.amount.toFixed(2)}** il ${formatDate(inst.nextPayment.dueDate)} (${inst.nextPayment.days > 0 ? `tra ${inst.nextPayment.days} giorni` : 'SCADUTA'})\n`;
+      }
+      out += `\n`;
+
+      actions.push({
+        label: `Gestisci ${inst.title}`,
+        type: 'module',
+        moduleId: inst.module.id,
+        module: inst.module,
+      });
+    });
+
+    return { text: out, actions };
+  }
+
+  // --- SEZIONE 6: VOLANTINI & SCONTI ---
   const liveDb = getLiveVolantiniDb();
   const matchedChain = detectRequestedChain(query, liveDb.chains);
 
@@ -1043,19 +1577,15 @@ export async function queryGemmaNano(
     lower.includes('coupon') ||
     lower.includes('prezz') ||
     lower.includes('costa meno') ||
-    lower.includes('costano meno') ||
     lower.includes('chi ha') ||
     lower.includes('dove trovo') ||
-    ((lower.includes('supermercat') || lower.includes('catene') || lower.includes('negoz')) && 
-     (lower.includes('offert') || lower.includes('scont') || lower.includes('promo') || lower.includes('volantin') || lower.includes('miglior'))) ||
-    (matchedChain !== null && (lower.includes('volantin') || lower.includes('scont') || lower.includes('offert') || lower.includes('promo') || lower.includes('apri') || lower.includes('mostra') || lower.includes('sfoglia') || lower.includes('vedi')))
+    ((lower.includes('supermercat') || lower.includes('catene')) && (lower.includes('offert') || lower.includes('scont') || lower.includes('promo'))) ||
+    (matchedChain !== null && (lower.includes('volantin') || lower.includes('scont') || lower.includes('offert') || lower.includes('apri') || lower.includes('mostra') || lower.includes('sfoglia')))
   );
 
   if (isVolantiniIntent) {
     const actions: AiAction[] = [];
 
-    // CASO 1: L'utente richiede espressamente una catena o negozio specifico
-    // es: "volantino conad", "apri il volantino lidl", "sconti coop", "esselunga", "eurospin", ecc.
     if (matchedChain) {
       const { chain, displayName } = matchedChain;
       const wantsDirectOpen = (
@@ -1085,32 +1615,6 @@ export async function queryGemmaNano(
       const activeFlyers = chain.flyers.filter(f => !f.to || new Date(f.to) >= new Date());
       const flyer = (activeFlyers.length ? activeFlyers : chain.flyers)[0];
 
-      // Cerca se ci sono offerte estratte da volantino per questa catena
-      const chainDeals: { group: string; product: string; price: number; quantity: number; unit: string }[] = [];
-      const chainNameLower = chain.name.toLowerCase();
-      const chainSlugLower = chain.slug.toLowerCase();
-
-      for (const grp of OFFER_GROUPS) {
-        for (const off of grp.o) {
-          const offStore = off.s.toLowerCase();
-          if (
-            offStore === chainNameLower || 
-            offStore.includes(chainNameLower) || 
-            chainNameLower.includes(offStore) ||
-            offStore === chainSlugLower ||
-            chainSlugLower.includes(offStore)
-          ) {
-            chainDeals.push({
-              group: grp.g,
-              product: off.n,
-              price: off.p,
-              quantity: off.q,
-              unit: off.u,
-            });
-          }
-        }
-      }
-
       let text = `Ecco il volantino per **${displayName}** 🛒\n\n`;
       if (flyer) {
         const expiry = getFlyerExpiryInfo(flyer);
@@ -1118,18 +1622,10 @@ export async function queryGemmaNano(
         if (flyer.subtitle) text += `*${flyer.subtitle}*\n`;
         text += `⏳ **Validità**: ${expiry.label}\n\n`;
       } else {
-        text += `Non ci sono volantini al momento per ${displayName}, ma il catalogo si aggiorna continuamente.\n\n`;
+        text += `Catalogo e offerte sempre aggiornati in tempo reale.\n\n`;
       }
 
-      if (chainDeals.length > 0) {
-        text += `✨ **Offerte in evidenza dai volantini:**\n`;
-        chainDeals.slice(0, 4).forEach(d => {
-          text += `• **${d.product}**: € ${d.price.toFixed(2)} (${d.quantity} ${d.unit})\n`;
-        });
-        text += `\n`;
-      }
-
-      text += `Tocca il pulsante in basso per sfogliare il volantino direttamente a schermo intero!`;
+      text += `Tocca in basso per sfogliare il volantino a schermo intero!`;
 
       actions.push({
         label: `Apri Volantino ${displayName}`,
@@ -1140,29 +1636,16 @@ export async function queryGemmaNano(
 
       actions.push({
         label: 'Tutti i Volantini',
-        type: 'category',
-        category: 'home',
+        type: 'volantino',
       });
 
       return { text, actions };
     }
 
-    // Se l'utente vuole aprire la sezione generale dei volantini
-    if (
-      lower.includes('apri') ||
-      lower.includes('vai') ||
-      lower.includes('sfoglia') ||
-      lower.includes('tutti i volantini') ||
-      lower.trim() === 'volantini' ||
-      lower.trim() === 'i volantini' ||
-      lower.trim() === 'il volantino'
-    ) {
+    if (lower.includes('apri') || lower.includes('vai') || lower.trim() === 'volantini') {
       return {
-        text: `Ti porto subito alla sezione con tutti i volantini e le offerte dei supermercati! 🛒`,
-        autoAction: {
-          label: 'Tutti i Volantini',
-          type: 'volantino',
-        },
+        text: `Ti porto subito alla sezione con tutti i volantini e le promozioni dei supermercati! 🛒`,
+        autoAction: { label: 'Tutti i Volantini', type: 'volantino' },
         actions: [],
       };
     }
@@ -1170,21 +1653,16 @@ export async function queryGemmaNano(
     if (lower.includes('confronta') || lower.includes('comparat') || lower.includes('statistiche prezz')) {
       return {
         text: `Ti apro subito il confronto prezzi nazionale per trovare i prodotti più convenienti! 📊`,
-        autoAction: {
-          label: 'Confronta Prezzi',
-          type: 'volantino',
-          chainSlug: 'stats',
-        },
+        autoAction: { label: 'Confronta Prezzi', type: 'volantino', chainSlug: 'stats' },
         actions: [],
       };
     }
 
-    // CASO 2: L'utente cerca offerte per un prodotto specifico
-    // es: "chi ha la pasta in offerta?", "sconti caffè", "olio in offerta", "latte", "parmigiano", "birra", ecc.
+    // Ricerca prodotti in offerta
     const cleanTokens = query.toLowerCase()
       .replace(/[?!,.:;()"]/g, ' ')
       .split(/\s+/)
-      .filter(t => t.length >= 3 && !['chi', 'ha', 'la', 'il', 'lo', 'le', 'gli', 'dei', 'del', 'delle', 'dello', 'cosa', 'dove', 'trovo', 'costa', 'meno', 'miglior', 'migliori', 'sconti', 'sconto', 'offerte', 'offerta', 'volantino', 'volantini', 'promo', 'prezzo', 'prezzi', 'supermercato', 'supermercati', 'tutti', 'esamina'].includes(t));
+      .filter(t => t.length >= 3 && !['chi', 'ha', 'la', 'il', 'lo', 'le', 'gli', 'dei', 'del', 'delle', 'cosa', 'dove', 'trovo', 'costa', 'meno', 'sconti', 'offerte', 'volantino'].includes(t));
 
     let matchedOffers: OfferEntry[] = [];
     let searchedKeyword = '';
@@ -1198,150 +1676,51 @@ export async function queryGemmaNano(
       }
     }
 
-    if (matchedOffers.length === 0 && cleanTokens.length > 0) {
-      for (const tok of cleanTokens) {
-        const matchingGroup = OFFER_GROUPS.find(g => 
-          g.g.toLowerCase().includes(tok) || 
-          g.id.toLowerCase().includes(tok) ||
-          g.o.some(o => o.n.toLowerCase().includes(tok) || o.b.toLowerCase().includes(tok))
-        );
-        if (matchingGroup) {
-          matchedOffers = [...matchingGroup.o].sort((a, b) => (a.p / a.q) - (b.p / b.q));
-          searchedKeyword = tok;
-          break;
-        }
-      }
-    }
-
     if (matchedOffers.length > 0) {
       const best = matchedOffers[0];
       const others = matchedOffers.slice(1, 4);
 
-      let text = `Ho esaminato tutti i volantini e il confronto prezzi per **"${searchedKeyword.toUpperCase()}"** 🔍\n\n`;
+      let text = `Ho esaminato i volantini e il confronto prezzi per **"${searchedKeyword.toUpperCase()}"** 🔍\n\n`;
       text += `🥇 **Miglior Prezzo**: da **${best.s}** a **€ ${best.p.toFixed(2)}**\n`;
       text += `   *${best.n}* (${best.b}) — ${best.q} ${best.u} (€ ${(best.p / best.q).toFixed(2)}/${best.u})\n\n`;
 
       if (others.length > 0) {
-        text += `Altre alternative a confronto:\n`;
+        text += `Alternative rilevate:\n`;
         others.forEach(o => {
           text += `• **${o.s}**: € ${o.p.toFixed(2)} (*${o.n}*, ${o.q} ${o.u})\n`;
         });
         text += `\n`;
       }
 
-      text += `Puoi aprire subito il volantino di **${best.s}** o confrontare tutti i prezzi!`;
-
-      actions.push({
-        label: `Apri Volantino ${best.s}`,
-        type: 'volantino',
-        storeName: best.s,
-      });
-
-      actions.push({
-        label: 'Confronta Tutti i Prezzi',
-        type: 'volantino',
-        chainSlug: 'stats',
-      });
+      actions.push({ label: `Apri Volantino ${best.s}`, type: 'volantino', storeName: best.s });
+      actions.push({ label: 'Confronta Tutti i Prezzi', type: 'volantino', chainSlug: 'stats' });
 
       return { text, actions };
     }
 
-    // CASO 3: Esame generale di tutti i volantini e delle migliori offerte
-    // es: "esamina tutti i volantini e dimmi le migliori offerte", "i sconti", "quali sono le migliori offerte?"
-    let totalFlyers = 0;
-    liveDb.chains.forEach(c => totalFlyers += c.flyers.length);
+    // Panoramica offerte
+    let text = `Ho esaminato i volantini attivi di **oltre ${liveDb.chains.length} catene** e il confronto prezzi nazionale 🛒\n\n`;
+    text += `Puoi chiedermi volantini specifici (es. *"Apri volantino Lidl"*, *"Sconti Conad"*, *"Offerte Coop"*) oppure cercare prodotti (es. *"Chi ha il caffè in offerta?"*).\n\nTocca in basso per sfogliare o confrontare!`;
 
-    const pastaGroup = OFFER_GROUPS.find(g => g.id === 'pasta-integrale') || OFFER_GROUPS.find(g => g.id === 'penne');
-    const pastaBest = pastaGroup?.o.sort((a, b) => (a.p / a.q) - (b.p / b.q))[0];
-
-    const passataGroup = OFFER_GROUPS.find(g => g.id === 'passata');
-    const passataBest = passataGroup?.o.sort((a, b) => (a.p / a.q) - (b.p / b.q))[0];
-
-    const latteGroup = OFFER_GROUPS.find(g => g.id === 'latte');
-    const latteBest = latteGroup?.o.sort((a, b) => (a.p / a.q) - (b.p / b.q))[0];
-
-    const parmGroup = OFFER_GROUPS.find(g => g.id === 'parmigiano');
-    const parmBest = parmGroup?.o.sort((a, b) => (a.p / a.q) - (b.p / b.q))[0];
-
-    const yogurtGroup = OFFER_GROUPS.find(g => g.id === 'yogurt');
-    const yogurtBest = yogurtGroup?.o.sort((a, b) => (a.p / a.q) - (b.p / b.q))[0];
-
-    let text = `Ho esaminato i volantini attivi di **oltre ${liveDb.chains.length} catene** (${totalFlyers} volantini) e il confronto prezzi nazionale. 🛒\n\n`;
-    text += `Ecco le **migliori offerte e sconti del momento** rilevate nei volantini:\n\n`;
-
-    if (pastaBest) {
-      text += `🍝 **Pasta & Primi Piatti**\n`;
-      text += `• **${pastaBest.s}**: *${pastaBest.n}* a soli **€ ${pastaBest.p.toFixed(2)}** (${pastaBest.q} ${pastaBest.u}) — *Prezzo più basso*\n\n`;
-    }
-
-    if (passataBest) {
-      text += `🍅 **Dispensa & Condimenti**\n`;
-      text += `• **${passataBest.s}**: *${passataBest.n}* a **€ ${passataBest.p.toFixed(2)}** (${passataBest.q} ${passataBest.u})\n\n`;
-    }
-
-    if (latteBest || parmBest || yogurtBest) {
-      text += `🥛 **Latticini & Freschi**\n`;
-      if (latteBest) text += `• **${latteBest.s}**: *${latteBest.n}* a **€ ${latteBest.p.toFixed(2)}** (${latteBest.q} ${latteBest.u})\n`;
-      if (parmBest) text += `• **${parmBest.s}**: *${parmBest.n}* a **€ ${parmBest.p.toFixed(2)}** (${parmBest.q} ${parmBest.u})\n`;
-      if (yogurtBest) text += `• **${yogurtBest.s}**: *${yogurtBest.n}* a **€ ${yogurtBest.p.toFixed(2)}**\n`;
-      text += `\n`;
-    }
-
-    let totalSavedOffers = 0;
-    k.volantini.forEach(v => totalSavedOffers += v.offersCount);
-    if (totalSavedOffers > 0) {
-      text += `📌 **Nei tuoi volantini salvati**: hai ${totalSavedOffers} offerte personali archiviate.\n\n`;
-    }
-
-    text += `💡 *Chiedimi pure un volantino specifico (es. **"Apri volantino Lidl"**, **"Sconti Conad"**, **"Volantino Esselunga"**) oppure un prodotto (es. **"Chi ha il caffè in offerta?"**)!*`;
-
-    actions.push({
-      label: 'Confronta Tutti i Prezzi',
-      type: 'volantino',
-      chainSlug: 'stats',
-    });
-
-    actions.push({
-      label: 'Volantino Lidl',
-      type: 'volantino',
-      chainSlug: 'lidl',
-      storeName: 'Lidl',
-    });
-
-    actions.push({
-      label: 'Volantino Conad',
-      type: 'volantino',
-      chainSlug: 'conad',
-      storeName: 'Conad',
-    });
-
-    actions.push({
-      label: `Tutti i Volantini (${liveDb.chains.length})`,
-      type: 'category',
-      category: 'home',
-    });
+    actions.push({ label: 'Confronta Tutti i Prezzi', type: 'volantino', chainSlug: 'stats' });
+    actions.push({ label: 'Tutti i Volantini', type: 'volantino' });
 
     return { text, actions };
   }
 
-  // INTENTO: SPESA / SUPERMERCATO (Lista della Spesa)
+  // --- SEZIONE 7: LISTA DELLA SPESA & SUPERMERCATO ---
   if (
     lower.includes('lista spesa') ||
     lower.includes('lista della spesa') ||
-    lower.includes('comprare') ||
+    lower.includes('cosa comprare') ||
     lower.includes('cosa manca') ||
+    lower.includes('articoli da comprare') ||
+    lower.includes('spunte spesa') ||
     (lower.includes('supermercat') && !lower.includes('volantin') && !lower.includes('offert') && !lower.includes('scont'))
   ) {
-    if (
-      lower.includes('apri') ||
-      lower.includes('vai') ||
-      lower.includes('mostra') ||
-      lower.trim() === 'lista spesa' ||
-      lower.trim() === 'la spesa' ||
-      lower.trim() === 'spesa'
-    ) {
+    if (lower.includes('apri') || lower.includes('vai') || lower.trim() === 'lista spesa' || lower.trim() === 'spesa') {
       return {
-        text: `Ti porto subito alla tua Lista della Spesa! 🛒`,
+        text: `Ti apro subito la tua Lista della Spesa! 🛒`,
         autoAction: { label: 'Lista Spesa', type: 'category', category: 'supermarket' },
         actions: [],
       };
@@ -1349,71 +1728,255 @@ export async function queryGemmaNano(
 
     if (!k.supermarket || k.supermarket.itemsToBuy.length === 0) {
       return {
-        text: `🛒 La tua **Lista della Spesa** è attualmente vuota o tutti gli ingredienti sono già stati spuntati!`,
+        text: `🛒 La tua **Lista della Spesa** è attualmente vuota o hai già spuntato tutti gli articoli!\n\nPuoi dirmi ad esempio *"Aggiungi latte, caffè e uova alla spesa"* per inserire prodotti all'istante.`,
         actions: [{ label: 'Apri Lista Spesa', type: 'category', category: 'supermarket' }],
       };
     }
 
-    const items = k.supermarket.itemsToBuy.map(i => `- [ ] ${i}`).join('\n');
+    const items = k.supermarket.itemsToBuy.map(i => `• [ ] ${i}`).join('\n');
     return {
-      text: `🛒 **Articoli ancora da comprare nella Lista Spesa (${k.supermarket.itemsToBuy.length}):**\n\n${items}`,
+      text: `🛒 **Articoli ancora da acquistare (${k.supermarket.itemsToBuy.length}):**\n\n${items}\n\n*Puoi dirmi "Aggiungi pane alla spesa" per aggiungere altro!*`,
+      autoAction: { label: 'Lista Spesa', type: 'category', category: 'supermarket' },
       actions: [{ label: 'Vai alla Spesa', type: 'category', category: 'supermarket' }],
     };
   }
 
-  // INTENTO: SPESE / FINANZE / RATE / SPLIT
+  // --- SEZIONE 8: RICETTE & CUCINA ---
   if (
-    lower.includes('finanze') ||
-    lower.includes('soldi') ||
-    lower.includes('budget') ||
-    lower.includes('quanto ho speso') ||
-    lower.includes('uscite') ||
-    lower.includes('entrate') ||
-    lower.includes('finanziament') ||
-    /\brate\b|\brata\b|\brateizzaz/i.test(lower) ||
-    /\bconti\b|\bconto\b/i.test(lower) ||
-    (lower.includes('spes') && !lower.includes('lista') && !lower.includes('comprare') && !lower.includes('scont') && !lower.includes('volantin') && !lower.includes('offert') && !lower.includes('promo'))
+    lower.includes('ricett') ||
+    lower.includes('cucina') ||
+    lower.includes('cucinare') ||
+    lower.includes('cosa cucino') ||
+    lower.includes('cosa mangiare') ||
+    lower.includes('dispensa') ||
+    lower.includes('frigo') ||
+    lower.includes('freezer') ||
+    lower.includes('ricettario') ||
+    (lower.includes('piatt') && (lower.includes('primo') || lower.includes('secondo') || lower.includes('preparare')))
   ) {
-    let out = `💰 **Quadro Finanziario & Spese:**\n\n`;
-    const actions: AiAction[] = [];
-
-    // Spese del mese
-    out += `### 💳 Spese Singole\n`;
-    out += `- Totale registrato questo mese: **€${k.expenses.totalThisMonth.toFixed(2)}**\n`;
-    out += `- Spese archiviate totali: **${k.expenses.count}**\n`;
-    if (k.expenses.recent.length > 0) {
-      out += `- Ultime spese: ${k.expenses.recent.map(e => `${e.title} (€${e.amount})`).join(', ')}\n`;
+    if (lower.includes('apri') || lower.includes('vai') || lower.trim() === 'ricette' || lower.trim() === 'ricettario') {
+      return {
+        text: `Ti porto subito al tuo Ricettario Personale! 🍲`,
+        autoAction: { label: 'Ricettario', type: 'recipes' },
+        actions: [],
+      };
     }
-    out += `\n`;
 
-    // Rate
-    if (k.installments.modules.length > 0) {
-      out += `### 🗓️ Rateizzazioni Attive\n`;
-      k.installments.modules.forEach(inst => {
-        out += `- **${inst.title}**: Totale **€${inst.target}** (Pagate ${inst.paidCount}/${inst.totalCount} rate)\n`;
-        actions.push({
-          label: `Gestisci ${inst.title}`,
-          type: 'module',
-          moduleId: inst.module.id,
-          module: inst.module,
-        });
+    // Ricerca ricetta specifica
+    const searchMatch = query.match(/(?:cerca|trova|come fare|ricetta\s+di|ricetta\s+del|ricetta)\s+([a-zA-Zàèéìòù\s]{3,30})/i);
+    if (searchMatch && !lower.includes('cosa cucino') && !lower.includes('cosa ho')) {
+      const q = searchMatch[1].trim();
+      return {
+        text: `Cerco la ricetta per **"${q}"** nel tuo ricettario e nel database gastronomico! 🍲`,
+        autoAction: { label: `Cerca ${q}`, type: 'recipes', search: q },
+        actions: [{ label: `Cerca ${q}`, type: 'recipes', search: q }],
+      };
+    }
+
+    // Ingredienti in frigo / dispensa
+    if (lower.includes('frigo') || lower.includes('dispensa') || lower.includes('cosa ho') || lower.includes('ingredienti')) {
+      const fridge = k.recipes.fridgeIngredients;
+      const pantry = k.recipes.pantryIngredients;
+      let out = `🧑‍🍳 **Ingredienti disponibili registrati:**\n\n`;
+
+      if (fridge.length > 0) out += `❄️ **Nel Frigo**: ${fridge.join(', ')}\n`;
+      if (pantry.length > 0) out += `🏺 **In Dispensa**: ${pantry.join(', ')}\n`;
+
+      if (fridge.length === 0 && pantry.length === 0) {
+        out += `Non hai ancora segnato ingredienti in frigo o dispensa. Puoi farlo dalla sezione Ricette!\n`;
+      } else {
+        out += `\n💡 Con questi ingredienti puoi cucinare un primo veloce o personalizzare il menù settimanale!`;
+      }
+
+      return {
+        text: out,
+        actions: [{ label: 'Apri Ricette & Frigo', type: 'recipes' }],
+      };
+    }
+
+    // Panoramica ricettario
+    let out = `🍲 **Ricettario & Pianificatore Menù:**\n\n`;
+    out += `- 📖 Ricette salvate e create: **${k.recipes.customCount}**\n`;
+    out += `- ⭐ Piatti preferiti: **${k.recipes.favoritesCount}**\n`;
+    out += `- 🥗 Ingredienti censiti (frigo/dispensa): **${k.recipes.allIngredients.length}**\n\n`;
+
+    if (k.recipes.customList.length > 0) {
+      out += `**Alcune delle tue ricette:**\n`;
+      k.recipes.customList.slice(0, 3).forEach(r => {
+        out += `• **${r.title}** (${r.category})\n`;
       });
       out += `\n`;
     }
 
-    // Split
-    if (k.splits.length > 0) {
-      out += `### 👥 Spese Condivise (Split)\n`;
-      k.splits.forEach(s => {
-        out += `- **${s.title}**: ${s.expensesCount} spese con ${s.participants.join(', ')}\n`;
-      });
-      out += `\n`;
-    }
+    out += `Puoi chiedermi ad esempio *"Cosa ho nel frigo?"* o *"Cerca ricetta carbonara"*!`;
 
-    return { text: out, actions };
+    return {
+      text: out,
+      actions: [{ label: 'Apri Ricettario', type: 'recipes' }],
+    };
   }
 
-  // INTENTO: NOTE & APPUNTI
+  // --- SEZIONE 9: FITNESS & ALLENAMENTO ---
+  if (
+    lower.includes('fitness') ||
+    lower.includes('allenament') ||
+    lower.includes('scheda allenamento') ||
+    lower.includes('schede') ||
+    lower.includes('palestra') ||
+    lower.includes('eserciz') ||
+    lower.includes('serie') ||
+    lower.includes('ripetizion') ||
+    lower.includes('workout') ||
+    lower.includes('dieta fitness') ||
+    lower.includes('diario sportivo') ||
+    lower.includes('calorie') ||
+    lower.includes('fabbisogno calorico') ||
+    lower.includes('partner fitness')
+  ) {
+    if (!k.fitness) {
+      return {
+        text: `🏋️ Non hai ancora configurato la sezione **Fitness & Dieta**.\n\nPuoi generare schede di allenamento mirate, piani nutrizionali e monitorare i tuoi workout toccando **"+"** → **Fitness & Dieta**!`,
+        actions: [{ label: 'Configura Fitness', type: 'category', category: 'fitness' }],
+      };
+    }
+
+    if (lower.includes('apri') || lower.includes('vai') || lower.trim() === 'fitness') {
+      return {
+        text: `Ti apro subito la tua scheda Fitness & Dieta! 🏋️`,
+        autoAction: { label: 'Scheda Fitness', type: 'module', moduleId: k.fitness.module.id, module: k.fitness.module },
+        actions: [],
+      };
+    }
+
+    let out = `💪 **Il tuo Profilo Fitness & Nutrizione:**\n\n`;
+    out += `- 🎯 Obiettivo: **${k.fitness.goal?.toUpperCase() || 'Forma fisica'}**\n`;
+    if (k.fitness.weight) out += `- ⚖️ Peso attuale: **${k.fitness.weight} kg** (Altezza: ${k.fitness.height} cm)\n`;
+    if (k.fitness.calories) out += `- 🔥 Fabbisogno calorico target: **${k.fitness.calories} kcal/giorno**\n`;
+    if (k.fitness.workoutDays) out += `- 🗓️ Frequenza settimanale: **${k.fitness.workoutDays} giorni**\n`;
+
+    if (k.fitness.workoutRoutines.length > 0) {
+      out += `\n**Scheda di allenamento:**\n`;
+      k.fitness.workoutRoutines.slice(0, 3).forEach(r => {
+        out += `• **${r.dayLabel}** (*${r.focus}*): ${r.exercises.slice(0, 3).join(', ')}${r.exercises.length > 3 ? '...' : ''}\n`;
+      });
+    }
+
+    if (k.fitness.partnerName) {
+      out += `\n👥 Scheda partner attiva per **${k.fitness.partnerName}** (${k.fitness.partnerGoal || 'allenamento'}).`;
+    }
+
+    return {
+      text: out,
+      actions: [{ label: 'Apri Scheda Completa', type: 'module', moduleId: k.fitness.module.id, module: k.fitness.module }],
+    };
+  }
+
+  // --- SEZIONE 10: VIAGGI & ITINERARI ---
+  if (
+    lower.includes('viaggi') ||
+    lower.includes('viaggio') ||
+    lower.includes('itinerari') ||
+    lower.includes('itinerario') ||
+    lower.includes('mete') ||
+    lower.includes('destinazion') ||
+    lower.includes('mete di viaggio') ||
+    lower.includes('tappe') ||
+    lower.includes('valigia') ||
+    lower.includes('checklist valigia') ||
+    lower.includes('vacanz') ||
+    lower.includes('posti da vedere')
+  ) {
+    if (lower.includes('apri') || lower.includes('vai') || lower.trim() === 'viaggi') {
+      return {
+        text: `Ti apro subito la schermata Viaggi & Itinerari col Globo 3D! ✈️`,
+        autoAction: { label: 'Viaggi', type: 'category', category: 'travel' },
+        actions: [],
+      };
+    }
+
+    if (lower.includes('valigia') || lower.includes('checklist')) {
+      return {
+        text: `🧳 **Checklist Rapida per la Valigia:**\n\n- 📄 Documenti: Carta d'identità/passaporto, patente, prenotazioni, biglietti\n- 🔌 Elettronica: Caricatore smartphone, power bank, adattatore prese\n- 💊 Salute: Medicinali essenziali, cerotti, antidolorifico personale\n- 👕 Abbigliamento: Capi a strati, scarpe comode, giacca antivento/pioggia\n- 🧴 Igiene: Spazzolino, dentifricio, travel size liquidi`,
+        actions: [{ label: 'Apri Viaggi', type: 'category', category: 'travel' }],
+      };
+    }
+
+    if (k.travel.destinationsCount === 0) {
+      return {
+        text: `✈️ Non hai ancora aggiunto tappe o destinazioni di viaggio in Chelona.\n\nPuoi salvare tappe geografiche, mappe sul Globo 3D e itinerari toccando **"+"** → **Viaggi**!`,
+        actions: [{ label: 'Aggiungi Viaggio', type: 'category', category: 'travel' }],
+      };
+    }
+
+    let out = `✈️ **I tuoi Viaggi & Itinerari:**\n\n`;
+    out += `- 🌍 Destinazioni salvate: **${k.travel.destinationsCount}** in **${k.travel.nations.length} nazioni** (${k.travel.nations.join(', ') || 'Varie'})\n\n`;
+    out += `**Tappe principali:**\n`;
+    k.travel.destinations.slice(0, 5).forEach(d => {
+      out += `• **${d.name}** ${d.city ? `(${d.city}, ${d.nation || ''})` : ''} — *${d.type === 'itinerary' ? 'Tappa itinerario' : 'Luogo da visitare'}*\n`;
+    });
+
+    return {
+      text: out,
+      actions: [{ label: 'Apri Globo Viaggi', type: 'category', category: 'travel' }],
+    };
+  }
+
+  // --- SEZIONE 11: CASA & ARREDO ---
+  if (
+    lower.includes('casa') ||
+    lower.includes('arredo') ||
+    lower.includes('arredament') ||
+    lower.includes('mobili') ||
+    lower.includes('mobile') ||
+    lower.includes('stanze') ||
+    lower.includes('stanza') ||
+    lower.includes('misure mobili') ||
+    lower.includes('preventivo mobili') ||
+    lower.includes('costi preventivi') ||
+    lower.includes('salone') ||
+    lower.includes('cucina arredo') ||
+    lower.includes('camera da letto')
+  ) {
+    if (lower.includes('apri') || lower.includes('vai') || lower.trim() === 'casa' || lower.trim() === 'arredo') {
+      return {
+        text: `Ti apro subito la gestione Casa & Arredo con le tue stanze! 🏠`,
+        autoAction: { label: 'Casa & Arredo', type: 'category', category: 'furniture' },
+        actions: [],
+      };
+    }
+
+    if (k.furniture.roomsCount === 0) {
+      return {
+        text: `🏠 Non hai ancora configurato stanze o arredi in Chelona.\n\nPuoi organizzare misure delle stanze, arredi salvati, link di acquisto e costi preventivi toccando **"+"** → **Casa**!`,
+        actions: [{ label: 'Aggiungi Casa & Arredo', type: 'category', category: 'furniture' }],
+      };
+    }
+
+    let out = `🏠 **Riepilogo Casa & Arredamento:**\n\n`;
+    out += `- 🚪 Stanze configurate: **${k.furniture.roomsCount}**\n`;
+    out += `- 🪑 Mobili inseriti: **${k.furniture.itemsCount}**\n`;
+    if (k.furniture.totalCost > 0) out += `- 💰 Totale preventivo arredi: **€ ${k.furniture.totalCost.toFixed(2)}**\n`;
+    out += `\n`;
+
+    k.furniture.rooms.forEach(r => {
+      out += `### **${r.name}** ${r.dimensions ? `(${r.dimensions})` : ''}\n`;
+      if (r.items.length === 0) {
+        out += `*Nessun mobile aggiunto a questa stanza.*\n`;
+      } else {
+        r.items.forEach(i => {
+          out += `• **${i.title}**: ${i.dimensions ? `${i.dimensions} ` : ''}${i.price ? `(€ ${i.price})` : ''}\n`;
+        });
+      }
+      out += `\n`;
+    });
+
+    return {
+      text: out,
+      actions: [{ label: 'Apri Casa & Arredo', type: 'category', category: 'furniture' }],
+    };
+  }
+
+  // --- SEZIONE 12: NOTE & APPUNTI ---
   if (
     lower.includes('nota') ||
     lower.includes('note') ||
@@ -1423,19 +1986,11 @@ export async function queryGemmaNano(
   ) {
     if (k.notes.length === 0) {
       return {
-        text: `📝 Non hai ancora creato note in Chelona. Puoi salvare note veloci, password protette e appunti con il tasto **"+"**!`,
+        text: `📝 Non hai ancora creato note in Chelona. Puoi salvare note veloci dicendomi *"Aggiungi nota: [testo]"* oppure toccando **"+"**!`,
       };
     }
 
-    // Intento: apri note
-    if (
-      lower.includes('apri') ||
-      lower.includes('vai') ||
-      lower.includes('mostra') ||
-      lower.trim() === 'note' ||
-      lower.trim() === 'le mie note' ||
-      lower.trim() === 'appunti'
-    ) {
+    if (lower.includes('apri') || lower.includes('vai') || lower.trim() === 'note' || lower.trim() === 'appunti') {
       return {
         text: `Ti mostro subito le tue note e i tuoi appunti! 📝`,
         autoAction: { label: 'Note', type: 'category', category: 'generic' },
@@ -1443,26 +1998,32 @@ export async function queryGemmaNano(
       };
     }
 
-    // Ricerca semantica semplice tra le note
-    const searchTerms = lower.split(/\s+/).filter(w => w.length > 3 && !['nota', 'note', 'appunti', 'cosa', 'scritto', 'nella'].includes(w));
+    const stopWords = new Set([
+      'nota', 'note', 'appunti', 'appunto', 'cosa', 'scritto', 'scrivi', 'nella', 'nelle', 'nello', 'negli',
+      'sul', 'sulla', 'sullo', 'sulle', 'sugli', 'del', 'dello', 'della', 'dei', 'degli', 'delle',
+      'questo', 'questa', 'questi', 'queste', 'trova', 'cerca', 'quali', 'quale', 'mostra', 'vedi',
+      'tutti', 'tutte', 'ultime', 'ultima', 'mio', 'mia', 'miei', 'mie', 'tuo', 'tua'
+    ]);
+    const cleanLower = lower.replace(/[?!,.:;()"]/g, ' ');
+    const searchTerms = cleanLower
+      .split(/\s+/)
+      .map(w => w.trim())
+      .filter(w => w.length > 2 && !stopWords.has(w));
+
     let matchingNotes = k.notes;
     if (searchTerms.length > 0) {
-      matchingNotes = k.notes.filter(n => 
+      const filtered = k.notes.filter(n => 
         searchTerms.some(term => n.title.toLowerCase().includes(term) || n.snippet.toLowerCase().includes(term))
       );
-    }
-
-    if (matchingNotes.length === 0) {
-      return {
-        text: `🔍 Ho cercato tra le tue note ma non ho trovato corrispondenze esatte per *"keywords"*. Ecco le tue note salvate:\n\n` +
-          k.notes.map(n => `- **${n.title}**: ${n.snippet}`).join('\n\n'),
-      };
+      if (filtered.length > 0) {
+        matchingNotes = filtered;
+      }
     }
 
     let out = `📝 **Note e Appunti trovati (${matchingNotes.length}):**\n\n`;
     const actions: AiAction[] = [];
 
-    matchingNotes.forEach(n => {
+    matchingNotes.slice(0, 4).forEach(n => {
       out += `### **${n.title}**\n`;
       out += `> ${n.snippet || '*(Nessun testo aggiunto)*'}\n\n`;
       actions.push({
@@ -1473,117 +2034,488 @@ export async function queryGemmaNano(
       });
     });
 
-    return { text: out, actions: actions.slice(0, 3) };
+    return { text: out, actions };
   }
 
-  // INTENTO: FITNESS & DIETA
+  // --- SEZIONE 13: PARCHEGGIO & POSIZIONE GPS ---
   if (
-    lower.includes('fitness') ||
-    lower.includes('allenament') ||
-    lower.includes('dieta') ||
-    lower.includes('palestra') ||
-    lower.includes('pesi') ||
-    lower.includes('calorie') ||
-    lower.includes('workout')
+    lower.includes('parchegg') ||
+    lower.includes('dov\'è la macchina') ||
+    lower.includes('dove ho parcheggiato') ||
+    lower.includes('trova auto') ||
+    lower.includes('ritrova auto') ||
+    lower.includes('parchimetro') ||
+    lower.includes('scadenza sosta') ||
+    lower.includes('tempo sosta') ||
+    lower.includes('radar')
   ) {
-    if (!k.fitness) {
+    if (lower.includes('apri') || lower.includes('vai') || lower.includes('mappa') || lower.trim() === 'parcheggio') {
       return {
-        text: `🏋️ Non hai ancora configurato la sezione **Fitness & Dieta**.\n\nPuoi generare una scheda di allenamento personalizzata e un piano nutrizionale su misura aprendo il modulo Fitness!`,
-        actions: [{ label: 'Apri Fitness & Dieta', type: 'category', category: 'fitness' }],
-      };
-    }
-
-    if (lower.includes('apri') || lower.includes('vai') || lower.includes('mostra') || lower.trim() === 'fitness' || lower.trim() === 'dieta') {
-      return {
-        text: `Ti apro subito la tua scheda Fitness & Dieta! 🏋️`,
-        autoAction: { label: 'Scheda Fitness', type: 'module', moduleId: k.fitness.module.id, module: k.fitness.module },
+        text: `Ti porto subito alla schermata del Parcheggio e Radar GPS! 🚗`,
+        autoAction: { label: 'Apri Parcheggio', type: 'parking' },
         actions: [],
       };
     }
 
-    let out = `💪 **Il tuo Profilo Fitness & Nutrizione:**\n\n`;
-    out += `- 🎯 Obiettivo: **${k.fitness.goal?.toUpperCase() || 'Mantenimento'}**\n`;
-    if (k.fitness.weight) out += `- ⚖️ Peso attuale: **${k.fitness.weight} kg** (Altezza: ${k.fitness.height} cm)\n`;
-    if (k.fitness.calories) out += `- 🔥 Fabbisogno calorico target: **${k.fitness.calories} kcal/giorno**\n`;
-    if (k.fitness.workoutDays) out += `- 🗓️ Frequenza allenamenti: **${k.fitness.workoutDays} giorni a settimana**\n`;
+    if (lower.includes('segna') || lower.includes('salva') || lower.includes('memorizza') || lower.includes('qui')) {
+      return {
+        text: `Ti porto alla schermata del parcheggio e salvo subito la tua posizione GPS attuale! 🚗📍`,
+        autoAction: { label: 'Salva Parcheggio', type: 'parking', autoSave: true },
+        actions: [],
+      };
+    }
+
+    if (k.parking.hasParking) {
+      let text = `La tua auto è parcheggiata in **${k.parking.address}** (${k.parking.elapsedTime}).\n`;
+      if (k.parking.notes) text += `Note: *"${k.parking.notes}"*\n`;
+      if (k.parking.meterRemainingMinutes !== undefined) {
+        text += k.parking.meterRemainingMinutes > 0
+          ? `⏱️ Parchimetro attivo: restano **${k.parking.meterRemainingMinutes} minuti**!\n`
+          : `⚠️ **Parchimetro scaduto da ${Math.abs(k.parking.meterRemainingMinutes)} minuti!**\n`;
+      }
+      text += `\nTi apro la mappa radar per ritrovarla! 🚗`;
+
+      return {
+        text,
+        autoAction: { label: 'Apri Parcheggio', type: 'parking' },
+        actions: [
+          { label: 'Naviga all\'Auto (Maps)', type: 'navigate_parking' },
+          { label: 'Apri Radar Parcheggio', type: 'parking' },
+        ],
+      };
+    } else {
+      return {
+        text: `Non hai ancora registrato nessun parcheggio attivo. Vuoi che memorizzi la tua posizione GPS attuale adesso? 📍`,
+        actions: [
+          { label: 'Salva Posizione Ora', type: 'save_parking', autoSave: true },
+          { label: 'Apri Parcheggio', type: 'parking' },
+        ],
+      };
+    }
+  }
+
+  // --- SEZIONE 14: RUBRICA & INDIRIZZI ---
+  if (
+    lower.includes('rubrica') ||
+    lower.includes('indirizz') ||
+    lower.includes('contatt') ||
+    lower.includes('recapit') ||
+    lower.includes('dove abita')
+  ) {
+    if (lower.includes('apri') || lower.includes('vai') || lower.trim() === 'rubrica' || lower.trim() === 'indirizzi') {
+      return {
+        text: `Ti apro subito la Rubrica Indirizzi di Chelona! 📇`,
+        autoAction: { label: 'Apri Rubrica', type: 'address' },
+        actions: [],
+      };
+    }
+
+    if (k.addresses.count === 0) {
+      return {
+        text: `📇 Non hai ancora memorizzato indirizzi o contatti nella Rubrica di Chelona.\n\nPuoi salvare recapiti di amici, sedi di lavoro e luoghi frequenti per aprirli in navigazione con un tocco!`,
+        actions: [{ label: 'Apri Rubrica', type: 'address' }],
+      };
+    }
+
+    // Ricerca indirizzo specifico
+    const searchMatch = query.match(/(?:di|per|a|cerca)\s+([a-zA-Zàèéìòù\s]{3,20})/i);
+    let matchedAddresses = k.addresses.list;
+    if (searchMatch) {
+      const q = searchMatch[1].trim().toLowerCase();
+      const filtered = k.addresses.list.filter(a => a.title.toLowerCase().includes(q) || a.query.toLowerCase().includes(q));
+      if (filtered.length > 0) matchedAddresses = filtered;
+    }
+
+    let out = `📇 **Indirizzi salvati in Rubrica (${matchedAddresses.length}):**\n\n`;
+    matchedAddresses.slice(0, 5).forEach(a => {
+      out += `• **${a.title}**: ${a.query}\n`;
+    });
 
     return {
       text: out,
-      actions: [{ label: 'Apri Scheda Completa', type: 'module', moduleId: k.fitness.module.id, module: k.fitness.module }],
+      actions: [{ label: 'Apri Rubrica Completa', type: 'address' }],
     };
   }
 
-  // INTENTO: STRUMENTI / UTILITY
+  // --- SEZIONE 15: SCADENZE AGGREGATO ---
+  if (
+    lower.includes('scadenz') ||
+    lower.includes('promemoria') ||
+    lower.includes('scade') ||
+    lower.includes('urgente') ||
+    lower.includes('giorni mancanti')
+  ) {
+    if (
+      lower.includes('apri') ||
+      lower.includes('vai') ||
+      lower.includes('mostra') ||
+      lower.trim() === 'scadenze' ||
+      lower.trim() === 'le scadenze'
+    ) {
+      return {
+        text: `Ti porto subito alla schermata unificata delle scadenze e promemoria! 📅`,
+        autoAction: { label: 'Scadenze', type: 'deadlines' },
+        actions: [],
+      };
+    }
+
+    if (k.urgentDeadlines.length === 0) {
+      return {
+        text: `Tutto sotto controllo! Non hai nessuna scadenza nei prossimi 60 giorni tra auto, documenti, rate e spese. 📅✨`,
+        actions: [{ label: 'Apri Scadenze', type: 'deadlines' }],
+      };
+    }
+
+    let out = `📅 **Scadenze imminenti e da monitorare (${k.urgentDeadlines.length}):**\n\n`;
+    const actions: AiAction[] = [];
+
+    k.urgentDeadlines.forEach((d) => {
+      let status = '';
+      if (d.days < 0) {
+        status = `⚠️ **SCADUTO da ${Math.abs(d.days)} giorni!**`;
+      } else if (d.days === 0) {
+        status = `⚠️ **SCADE OGGI!**`;
+      } else if (d.days <= 7) {
+        status = `tra **${d.days} giorni** (${formatDate(d.date)})`;
+      } else {
+        status = `il **${formatDate(d.date)}** (tra ${d.days} gg)`;
+      }
+
+      out += `• **${d.label}**: ${status}\n`;
+
+      if (d.module) {
+        actions.push({
+          label: d.label.length > 20 ? d.label.slice(0, 18) + '...' : d.label,
+          type: 'module',
+          moduleId: d.moduleId,
+          module: d.module,
+        });
+      }
+    });
+
+    return {
+      text: out,
+      actions: actions.slice(0, 3),
+    };
+  }
+
+  // --- SEZIONE 16: STRUMENTI & UTILITY ---
   if (
     lower.includes('strument') ||
     lower.includes('utility') ||
-    lower.includes('calcolatric') ||
-    lower.includes('convertitor')
+    lower.includes('scanner') ||
+    lower.includes('scansiona') ||
+    lower.includes('vinted') ||
+    lower.includes('percentuale') ||
+    lower.includes('filtri immagine') ||
+    lower.includes('filtri foto') ||
+    lower.includes('galleria') ||
+    lower.includes('album foto') ||
+    lower.includes('unisci pdf') ||
+    lower.includes('ruota pdf') ||
+    lower.includes('comprimi pdf')
   ) {
-    if (lower.includes('apri') || lower.includes('vai') || lower.includes('mostra') || lower.trim() === 'strumenti') {
+    if (lower.includes('scanner') || lower.includes('scansiona')) {
       return {
-        text: `Ti porto subito alla sezione Strumenti & Utility! 🧰`,
-        autoAction: { label: 'Strumenti', type: 'category', category: 'tools' },
-        actions: [],
+        text: `Ti apro subito lo **Scanner Documenti** con fotocamera integrata e raddrizzamento automatico! 📄📸`,
+        autoAction: { label: 'Apri Scanner', type: 'tool', toolId: 'scanner' },
+        actions: [{ label: 'Apri Scanner', type: 'tool', toolId: 'scanner' }],
       };
     }
+
+    if (lower.includes('vinted')) {
+      return {
+        text: `Ti apro l'**Aiuto Vinted** per misurare vestiti su foto e generare titoli e descrizioni vincenti! 👕✨`,
+        autoAction: { label: 'Aiuto Vinted', type: 'tool', toolId: 'vinted' },
+        actions: [{ label: 'Aiuto Vinted', type: 'tool', toolId: 'vinted' }],
+      };
+    }
+
+    if (lower.includes('percentuale')) {
+      return {
+        text: `Ti apro il **Calcolo Percentuale** per sconti, variazioni e scorporo! 🔢`,
+        autoAction: { label: 'Calcolo Percentuale', type: 'tool', toolId: 'percent' },
+        actions: [{ label: 'Calcolo Percentuale', type: 'tool', toolId: 'percent' }],
+      };
+    }
+
+    if (lower.includes('filtri')) {
+      return {
+        text: `Ti apro lo strumento **Filtri Immagine** stile Instagram per foto e documenti! 🎨📸`,
+        autoAction: { label: 'Filtri Immagine', type: 'tool', toolId: 'image-filter' },
+        actions: [{ label: 'Filtri Immagine', type: 'tool', toolId: 'image-filter' }],
+      };
+    }
+
+    if (lower.includes('galleria') || lower.includes('album')) {
+      return {
+        text: `Ti apro la **Galleria Fotografica** di Chelona con le tue immagini salvate! 🖼️`,
+        autoAction: { label: 'Apri Galleria', type: 'gallery' },
+        actions: [{ label: 'Apri Galleria', type: 'gallery' }],
+      };
+    }
+
+    if (lower.includes('unisci pdf')) {
+      return {
+        text: `Ti apro lo strumento **Unisci PDF** per combinare più documenti in uno! 📑`,
+        autoAction: { label: 'Unisci PDF', type: 'tool', toolId: 'merge' },
+        actions: [{ label: 'Unisci PDF', type: 'tool', toolId: 'merge' }],
+      };
+    }
+
+    return {
+      text: `Ti porto subito al pannello **Strumenti & Utility** di Chelona! 🧰\n\nTroverai: Scanner Documenti, Aiuto Vinted, Calcolo Percentuale, Filtri Immagine, Galleria e Utility PDF.`,
+      autoAction: { label: 'Strumenti', type: 'category', category: 'tools' },
+      actions: [
+        { label: 'Scanner', type: 'tool', toolId: 'scanner' },
+        { label: 'Aiuto Vinted', type: 'tool', toolId: 'vinted' },
+        { label: 'Percentuale', type: 'tool', toolId: 'percent' },
+        { label: 'Tutti gli Strumenti', type: 'category', category: 'tools' },
+      ],
+    };
   }
 
-  // INTENTO: PROFILO / ACCOUNT
+  // --- SEZIONE 17: PROFILO & IMPOSTAZIONI ---
   if (
     lower.includes('profilo') ||
+    lower.includes('impostazioni') ||
     lower.includes('account') ||
-    lower.includes('impostazioni')
+    lower.includes('backup') ||
+    lower.includes('biometria') ||
+    lower.includes('impronta') ||
+    lower.includes('face id') ||
+    lower.includes('faceid') ||
+    lower.includes('crittografia') ||
+    lower.includes('vault') ||
+    lower.includes('wake word') ||
+    lower.includes('ciao chelona') ||
+    lower.includes('tema chiaro') ||
+    lower.includes('tema scuro')
   ) {
-    if (lower.includes('apri') || lower.includes('vai') || lower.includes('mostra') || lower.trim() === 'profilo' || lower.trim() === 'il mio profilo') {
+    if (lower.includes('apri') || lower.includes('vai') || lower.trim() === 'profilo' || lower.trim() === 'impostazioni') {
       return {
-        text: `Ti apro subito la schermata del tuo Profilo! 👤`,
-        autoAction: { label: 'Profilo', type: 'category', category: 'profile' },
+        text: `Ti apro subito la schermata del tuo **Profilo & Impostazioni**! 👤⚙️`,
+        autoAction: { label: 'Profilo & Impostazioni', type: 'category', category: 'profile' },
         actions: [],
       };
     }
+
+    let text = `🔒 **Profilo, Sicurezza & Impostazioni:**\n\n`;
+    text += `- 👤 Utente: **${k.profile.username}**\n`;
+    text += `- 🔐 Crittografia: **Vault AES-256 locale** protetto da password/impronta digitale\n`;
+    text += `- 📦 Backup: Supporto per esportazione **ZIP completa** e condivisione **QR Code crittografato**\n`;
+    text += `- 🎙️ Comando vocale: sveglia *"Ciao Chelona"* ${k.profile.isWakeWordEnabled ? '✅ **Attiva**' : '⚪ Disattivata'}\n`;
+    text += `- 🎨 Aspetto: Tema chiaro e scuro commutabile dal profilo\n\n`;
+    text += `Puoi gestire biometria, backup, password e scorciatoie rapide direttamente nel tuo profilo.`;
+
+    return {
+      text,
+      autoAction: { label: 'Apri Profilo', type: 'category', category: 'profile' },
+      actions: [{ label: 'Apri Profilo & Impostazioni', type: 'category', category: 'profile' }],
+    };
   }
 
-  // INTENTO: SALUTI / CHIACCHIERATA GENERALE
+  // --- SEZIONE 18: PANORAMICA CAPABILITIES ("COSA PUOI FARE?", "CHI SEI?", "AIUTO") ---
+  if (
+    lower.includes('cosa puoi fare') ||
+    lower.includes('chi sei') ||
+    lower.includes('aiuto') ||
+    lower.includes('funzioni') ||
+    lower.includes('cosa sai fare') ||
+    lower.includes('tutte le sezioni')
+  ) {
+    let out = `🌟 **Sono Chelona AI**, il tuo assistente personale 100% on-device e privato. Conosco e posso gestire ogni sezione di Chelona:\n\n`;
+    out += `1. 🚗 **Veicoli & Auto**: Bollo, assicurazione, revisione, tagliando, gomme, km e targhe\n`;
+    out += `2. 📄 **Documenti**: Patente, carta d'identità, passaporto, tessera sanitaria e scadenze\n`;
+    out += `3. 👥 **Spese Condivise (Split)**: Gruppi uscite, bilancio e calcolo "chi deve a chi"\n`;
+    out += `4. 💳 **Spesa Singola & Uscite**: Scontrini, totali del mese e categorizzazione automatica\n`;
+    out += `5. 🗓️ **Rate & Finanziamenti**: Piani rateali, importo residuo e data prossima rata\n`;
+    out += `6. 🛒 **Volantini & Sconti**: Tutte le catene (Lidl, Conad, Coop, Esselunga...) e confronto prezzi\n`;
+    out += `7. 📝 **Lista della Spesa**: Articoli da comprare e aggiunta rapida ("Aggiungi pane alla spesa")\n`;
+    out += `8. 🍲 **Ricette & Cucina**: Ricettario, ingredienti in frigo/dispensa e consigli piatti\n`;
+    out += `9. 🏋️ **Fitness & Allenamento**: Schede palestra, esercizi, serie/ripetizioni e calorie giornaliere\n`;
+    out += `10. ✈️ **Viaggi & Itinerari**: Mete sul Globo 3D, tappe itinerario e checklist valigia\n`;
+    out += `11. 🏠 **Casa & Arredo**: Misure stanze, mobili e calcolo preventivi arredo\n`;
+    out += `12. ✍️ **Note & Appunti**: Creazione istantanea note e ricerca testuale libera\n`;
+    out += `13. 📍 **Parcheggio & GPS**: Ricorda dove hai parcheggiato, parchimetro e navigazione radar\n`;
+    out += `14. 📇 **Rubrica & Indirizzi**: Contatti, indirizzi memorizzati e recapiti rapidi\n`;
+    out += `15. 📅 **Scadenze Aggregate**: Vista unificata di tutti i promemoria e avvisi urgenti\n`;
+    out += `16. 🧰 **Strumenti & Utility**: Scanner Documenti, Aiuto Vinted, Calcolo %, Filtri Immagine, Galleria, PDF\n`;
+    out += `17. 🔒 **Profilo & Sicurezza**: Backup ZIP/QR, FaceID/impronta, vault AES-256 e comando "Ciao Chelona"\n\n`;
+    out += `💡 *Chiedimi pure qualsiasi cosa a voce o per iscritto, o usa "Ricordati che..." per farmi imparare informazioni personali!*`;
+
+    return {
+      text: out,
+      actions: [
+        { label: 'Scadenze', type: 'deadlines' },
+        { label: 'Dov\'è l\'auto?', type: 'parking' },
+        { label: 'Volantini', type: 'volantino' },
+        { label: 'Tutti gli Strumenti', type: 'category', category: 'tools' },
+      ],
+    };
+  }
+
+  // --- SEZIONE 19: MEMORIA / COSA SAI SU DI ME ---
+  if (
+    lower.includes('cosa sai') ||
+    lower.includes('cosa hai imparato') ||
+    lower.includes('memoria') ||
+    lower.includes('mie informazioni') ||
+    lower.includes('chi sono')
+  ) {
+    let out = `Ecco cosa so su di te:\n\n`;
+
+    if (customMemories.length > 0) {
+      out += `**Cose che mi hai insegnato espressamente:**\n`;
+      customMemories.forEach(m => {
+        out += `• ${m.fact}\n`;
+      });
+      out += `\n`;
+    }
+
+    out += `**Dati sincronizzati dai moduli di Chelona:**\n`;
+    if (k.vehicles.length > 0) {
+      out += `• ${k.vehicles.length === 1 ? 'Auto' : 'Veicoli'}: ${k.vehicles.map(v => `${v.name} (${v.plate})`).join(', ')}\n`;
+    }
+    if (k.documents.length > 0) {
+      out += `• ${k.documents.length} documenti registrati\n`;
+    }
+    if (k.notes.length > 0) {
+      out += `• ${k.notes.length} note salvate\n`;
+    }
+    if (k.installments.modules.length > 0) {
+      out += `• ${k.installments.modules.length} finanziamenti attivi (€ ${k.installments.totalPending.toFixed(2)} residui)\n`;
+    }
+    if (k.splits.length > 0) {
+      out += `• ${k.splits.length} gruppi spese condivise\n`;
+    }
+    if (k.supermarket) {
+      out += `• ${k.supermarket.itemsToBuy.length} articoli da comprare nella lista spesa\n`;
+    }
+    if (k.recipes.allIngredients.length > 0) {
+      out += `• ${k.recipes.allIngredients.length} ingredienti censiti in dispensa/frigo\n`;
+    }
+    if (k.travel.destinationsCount > 0) {
+      out += `• ${k.travel.destinationsCount} tappe di viaggio in ${k.travel.nations.length} nazioni\n`;
+    }
+    if (k.furniture.roomsCount > 0) {
+      out += `• ${k.furniture.roomsCount} stanze con ${k.furniture.itemsCount} mobili\n`;
+    }
+    if (k.addresses.count > 0) {
+      out += `• ${k.addresses.count} indirizzi in rubrica\n`;
+    }
+    if (k.parking.hasParking) {
+      out += `• Posizione auto parcheggiata salvata\n`;
+    }
+
+    out += `\nSe vuoi insegnarmi altro, dimmi pure *"Ricordati che..."*!`;
+    return { text: out };
+  }
+
+  // --- SEZIONE 20: SALUTI GENERALI ---
   if (
     lower === 'ciao' ||
     lower.startsWith('ciao ') ||
     lower.startsWith('buongiorno') ||
     lower.startsWith('buonasera') ||
     lower.startsWith('ehi') ||
-    lower.startsWith('hey')
+    lower.startsWith('hey') ||
+    lower.startsWith('salve')
   ) {
     return {
-      text: `Ciao ${username || ''}! Come posso aiutarti oggi? Chiedimi pure delle scadenze, della tua auto, dei documenti, delle spese o dei volantini con le offerte.`,
+      text: `Ciao ${username || ''}! Sono Chelona AI, pronto ad aiutarti. Chiedimi pure della tua auto, delle scadenze imminenti, dei documenti, della spesa, delle ricette, dei viaggi o delle offerte dei volantini! 🐢`,
+      actions: [
+        { label: 'Scadenze', type: 'deadlines' },
+        { label: 'Dov\'è l\'auto?', type: 'parking' },
+        { label: 'Offerte Volantini', type: 'volantino' },
+      ],
     };
   }
 
-  // INTENTO: COSA PUOI FARE
-  if (lower.includes('cosa puoi fare') || lower.includes('aiuto') || lower.includes('funzioni')) {
-    return {
-      text: `Posso aiutarti a tenere tutto sotto controllo:\n\n• **Scadenze e promemoria**: ti avviso su bolli, assicurazioni, revisioni e rate\n• **Veicoli**: ti ricordo chilometri, scadenze e dettagli dell'auto\n• **Documenti**: trovo subito numeri e date di scadenza\n• **Spese e finanze**: riepilogo rate e uscite del mese\n• **Volantini e Offerte**: trova promozioni e sconti nei supermercati\n• **Memoria personale**: puoi dirmi *"Ricordati che..."* per memorizzare qualsiasi cosa!`,
-    };
-  }
-
-  // FALLBACK INTELLIGENTE & RAG LOCALE
-  // Cerca se c'è qualche memoria personalizzata o nota che contiene parole chiave della richiesta
-  const words = lower.split(/\s+/).filter(w => w.length > 3);
+  // =========================================================================
+  // 4. RICERCA SEMANTICA & RAG LOCALE TRANS-MODULO
+  // =========================================================================
+  const words = lower.split(/\s+/).filter(w => w.length > 3 && !['delle', 'della', 'degli', 'nella', 'dello', 'questo', 'questa', 'quali', 'quale'].includes(w));
+  
   const relevantMemories = customMemories.filter(m => words.some(w => m.fact.toLowerCase().includes(w)));
   const relevantNotes = k.notes.filter(n => words.some(w => n.title.toLowerCase().includes(w) || n.snippet.toLowerCase().includes(w)));
+  const relevantVehicles = k.vehicles.filter(v => words.some(w => v.name.toLowerCase().includes(w) || v.plate.toLowerCase().includes(w)));
+  const relevantDocs = k.documents.filter(d => words.some(w => d.title.toLowerCase().includes(w) || (d.number && d.number.toLowerCase().includes(w))));
+  const relevantDests = k.travel.destinations.filter(d => words.some(w => d.name.toLowerCase().includes(w) || (d.city && d.city.toLowerCase().includes(w))));
+  const relevantAddresses = k.addresses.list.filter(a => words.some(w => a.title.toLowerCase().includes(w) || a.query.toLowerCase().includes(w)));
 
-  if (relevantMemories.length > 0 || relevantNotes.length > 0) {
-    let out = `Ho trovato questi appunti collegati:\n\n`;
+  if (
+    relevantMemories.length > 0 || 
+    relevantNotes.length > 0 || 
+    relevantVehicles.length > 0 || 
+    relevantDocs.length > 0 || 
+    relevantDests.length > 0 ||
+    relevantAddresses.length > 0
+  ) {
+    let out = `Ho cercato tra tutti i tuoi moduli e ho trovato queste informazioni correlate:\n\n`;
+    const actions: AiAction[] = [];
+
     if (relevantMemories.length > 0) {
+      out += `**Memorie apprese:**\n`;
       relevantMemories.forEach(m => out += `• ${m.fact}\n`);
       out += `\n`;
     }
-    if (relevantNotes.length > 0) {
-      relevantNotes.forEach(n => out += `• **${n.title}**: ${n.snippet}\n`);
+
+    if (relevantVehicles.length > 0) {
+      out += `**Veicoli:**\n`;
+      relevantVehicles.forEach(v => {
+        out += `• ${v.name} (Targa: ${v.plate}, ${v.km} km)\n`;
+        actions.push({ label: `Scheda ${v.name}`, type: 'module', moduleId: v.module.id, module: v.module });
+      });
+      out += `\n`;
     }
-    return { text: out };
+
+    if (relevantDocs.length > 0) {
+      out += `**Documenti:**\n`;
+      relevantDocs.forEach(d => {
+        out += `• ${d.title} (Scadenza: ${formatDate(d.expiryDate)})\n`;
+        actions.push({ label: `Vedi ${d.title}`, type: 'module', moduleId: d.module.id, module: d.module });
+      });
+      out += `\n`;
+    }
+
+    if (relevantNotes.length > 0) {
+      out += `**Note e appunti:**\n`;
+      relevantNotes.forEach(n => {
+        out += `• **${n.title}**: ${n.snippet}\n`;
+        actions.push({ label: `Apri ${n.title}`, type: 'module', moduleId: n.module.id, module: n.module });
+      });
+      out += `\n`;
+    }
+
+    if (relevantDests.length > 0) {
+      out += `**Viaggi:**\n`;
+      relevantDests.forEach(d => {
+        out += `• ${d.name} (${d.city || ''} ${d.nation || ''})\n`;
+      });
+      actions.push({ label: 'Apri Viaggi', type: 'category', category: 'travel' });
+      out += `\n`;
+    }
+
+    if (relevantAddresses.length > 0) {
+      out += `**Rubrica:**\n`;
+      relevantAddresses.forEach(a => {
+        out += `• ${a.title}: ${a.query}\n`;
+      });
+      actions.push({ label: 'Apri Rubrica', type: 'address' });
+      out += `\n`;
+    }
+
+    return { text: out, actions: actions.slice(0, 3) };
   }
 
+  // Fallback con suggerimenti pratici
   return {
-    text: `Non ho trovato informazioni su questo tra i tuoi moduli o nelle note. Se vuoi che me ne ricordi per il futuro, dimmi pure *"Ricordati che..."*!`,
+    text: `Non ho trovato riferimenti precisi a questo nei tuoi moduli o appunti.\n\nPuoi chiedermi di:\n• **"Quali scadenze imminenti ho?"**\n• **"Dove ho parcheggiato l'auto?"**\n• **"Aggiungi latte alla lista della spesa"**\n• **"Chi deve a chi nelle spese condivise?"**\n• **"Mostrami le offerte dei volantini"**\n• **"Ricordati che..."** per salvare una memoria personale!`,
+    actions: [
+      { label: 'Cosa puoi fare?', type: 'category', category: 'tools' },
+      { label: 'Scadenze', type: 'deadlines' },
+      { label: 'Dov\'è l\'auto?', type: 'parking' },
+    ],
   };
 }

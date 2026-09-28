@@ -1668,6 +1668,36 @@ export default function App() {
       return;
     }
 
+    if (act.type === 'address' || act.category === 'address' || act.category === 'address-book') {
+      setActiveNavTab('home');
+      setAddressParkingTab('addresses');
+      setIsAddressAndParkingOpen(true);
+      return;
+    }
+
+    if (act.type === 'recipes' || act.category === 'recipes') {
+      if (act.search) setInitialRecipesSearch(act.search);
+      else setInitialRecipesSearch('');
+      if (act.recipeCategory) setInitialRecipesCategory(act.recipeCategory);
+      else setInitialRecipesCategory(null);
+      setIsRecipesOpen(true);
+      return;
+    }
+
+    if (act.type === 'gallery' || act.category === 'gallery') {
+      setShowGalleryViewer(true);
+      return;
+    }
+
+    if (act.type === 'tool' || act.toolId) {
+      setActiveNavTab('tools');
+      setIsToolsOpen(true);
+      if (act.toolId) {
+        setActiveToolId(act.toolId);
+      }
+      return;
+    }
+
     if (act.type === 'deadlines') {
       setActiveNavTab('deadlines');
       return;
@@ -1774,6 +1804,11 @@ export default function App() {
         return;
       }
 
+      if (cat === 'settings') {
+        setIsSettingsOpen(true);
+        return;
+      }
+
       if (cat === 'deadlines') {
         setActiveNavTab('deadlines');
         return;
@@ -1785,6 +1820,79 @@ export default function App() {
         setAddressParkingAutoSave(Boolean(act.autoSave));
         setIsAddressAndParkingOpen(true);
         return;
+      }
+
+      if (cat === 'address' || cat === 'address-book') {
+        setActiveNavTab('home');
+        setAddressParkingTab('addresses');
+        setIsAddressAndParkingOpen(true);
+        return;
+      }
+
+      if (cat === 'recipes') {
+        setInitialRecipesSearch('');
+        setInitialRecipesCategory(null);
+        setIsRecipesOpen(true);
+        return;
+      }
+
+      if (cat === 'gallery') {
+        setShowGalleryViewer(true);
+        return;
+      }
+
+      if (cat === 'travel') {
+        setActiveNavTab('home');
+        const trMod = modules.find(m => m.type === 'travel') as import('./types').TravelModule | undefined;
+        if (trMod) {
+          openEditModalWithSecurity(trMod);
+          return;
+        }
+      }
+
+      if (cat === 'furniture' || cat === 'home') {
+        setActiveNavTab('home');
+        const fMod = modules.find(m => m.type === 'furniture') as import('./types').FurnitureModule | undefined;
+        if (fMod) {
+          openEditModalWithSecurity(fMod);
+          return;
+        }
+      }
+
+      if (cat === 'split') {
+        setActiveNavTab('home');
+        const spMod = modules.find(m => m.type === 'split') as import('./types').SplitModule | undefined;
+        if (spMod && !act.label?.toLowerCase().includes('aggiungi') && !act.label?.toLowerCase().includes('nuov')) {
+          openEditModalWithSecurity(spMod);
+          return;
+        }
+      }
+
+      if (cat === 'installments') {
+        setActiveNavTab('home');
+        const instMod = modules.find(m => m.type === 'installments') as import('./types').InstallmentsModule | undefined;
+        if (instMod && !act.label?.toLowerCase().includes('aggiungi') && !act.label?.toLowerCase().includes('nuov')) {
+          openEditModalWithSecurity(instMod);
+          return;
+        }
+      }
+
+      if (cat === 'single-expense') {
+        setActiveNavTab('home');
+        const seMod = modules.find(m => m.type === 'single-expense') as import('./types').SingleExpenseModule | undefined;
+        if (seMod && !act.label?.toLowerCase().includes('aggiungi') && !act.label?.toLowerCase().includes('nuov')) {
+          openEditModalWithSecurity(seMod);
+          return;
+        }
+      }
+
+      if (cat === 'document') {
+        setActiveNavTab('home');
+        const docMod = modules.find(m => m.type === 'document') as import('./types').DocumentModule | undefined;
+        if (docMod && !act.label?.toLowerCase().includes('aggiungi') && !act.label?.toLowerCase().includes('nuov')) {
+          openEditModalWithSecurity(docMod);
+          return;
+        }
       }
 
       if (cat === 'auto') {
@@ -3114,7 +3222,8 @@ export default function App() {
                   onNavigate={handleAiNavigate}
                   onAddModule={(newMod) => {
                     setModules(prev => {
-                      const updated = [newMod, ...prev];
+                      const exists = prev.some(m => m.id === newMod.id);
+                      const updated = exists ? prev.map(m => m.id === newMod.id ? newMod : m) : [newMod, ...prev];
                       saveAppState(updated, folders).catch(console.error);
                       return updated;
                     });

@@ -40,6 +40,17 @@ interface ChelonaAiScreenProps {
 
 type NeuralCategory = 'all' | 'vehicles' | 'documents' | 'finances' | 'notes' | 'fitness' | 'memories';
 
+function formatDate(dateStr?: string): string {
+  if (!dateStr) return 'N/D';
+  try {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return dateStr;
+    return d.toLocaleDateString('it-IT', { day: '2-digit', month: 'short', year: 'numeric' });
+  } catch {
+    return dateStr;
+  }
+}
+
 export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
   modules,
   username,
@@ -61,7 +72,7 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
       {
         id: 'msg_welcome_' + Date.now(),
         sender: 'assistant',
-        text: `Ciao ${username || ''}! Come posso aiutarti oggi? Conosco le tue note, i veicoli, i documenti, le spese e i volantini con le offerte. Puoi chiedermi qualsiasi cosa o dirmi *"Ricordati che..."* per salvare promemoria.`,
+        text: `Ciao ${username || ''}! Come posso aiutarti oggi? Conosco tutte le sezioni di Chelona: veicoli, documenti, spese condivise, uscite, rate, volantini, lista spesa, ricette, fitness, viaggi, arredo casa, note, parcheggio, rubrica, scadenze, scanner e strumenti. Chiedimi qualsiasi cosa o dimmi *"Ricordati che..."*!`,
         timestamp: Date.now(),
       }
     ];
@@ -687,14 +698,24 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
   ];
 
   const quickPrompts = [
-    { label: '📍 Salva Parcheggio', query: 'Salva il parcheggio qui' },
-    { label: '🚗 Dov\'è l\'auto?', query: 'Dove ho parcheggiato la mia auto?' },
-    { label: '📅 Scadenze', query: 'Quali scadenze imminenti ho nei prossimi 60 giorni?' },
     { label: '🚗 La mia auto', query: 'Fammi un riepilogo della mia auto, scadenze e km' },
+    { label: '📅 Scadenze', query: 'Quali scadenze imminenti ho nei prossimi 60 giorni?' },
+    { label: '📍 Dov\'è l\'auto?', query: 'Dove ho parcheggiato la mia auto?' },
     { label: '📄 Documenti', query: 'Quali documenti personali ho salvato?' },
-    { label: '💰 Spese e rate', query: 'Come sono messe le mie spese e rate questo mese?' },
-    { label: '🧠 Cosa sai di me?', query: 'Cosa sai su di me e cosa hai imparato finora?' },
+    { label: '👥 Spese Split', query: 'Chi deve a chi nei gruppi di spese condivise?' },
+    { label: '💳 Spese del mese', query: 'Quanto ho speso questo mese e quali sono le ultime uscite?' },
+    { label: '🗓️ Rate attive', query: 'Quando scade la prossima rata e quanto manca da pagare?' },
     { label: '🛒 Offerte & Volantini', query: 'Mostrami le offerte e i volantini disponibili' },
+    { label: '📝 Lista Spesa', query: 'Cosa devo comprare nella lista della spesa?' },
+    { label: '🍲 Ricette & Cucina', query: 'Cosa posso cucinare oggi con gli ingredienti che ho?' },
+    { label: '🏋️ Fitness & Dieta', query: 'Qual è la mia scheda di allenamento e calorie target?' },
+    { label: '✈️ Viaggi & Itinerari', query: 'Quali mete di viaggio e tappe ho programmato?' },
+    { label: '🏠 Casa & Arredo', query: 'Riepilogo delle stanze, arredi e preventivi' },
+    { label: '📇 Rubrica Indirizzi', query: 'Quali indirizzi e recapiti ho memorizzato?' },
+    { label: '🧰 Strumenti & Scanner', query: 'Quali strumenti e scanner sono disponibili?' },
+    { label: '🔒 Profilo & Sicurezza', query: 'Stato profilo, backup crittografato e comando Ciao Chelona' },
+    { label: '🧠 Cosa sai di me?', query: 'Cosa sai su di me e cosa hai imparato finora?' },
+    { label: '❓ Cosa puoi fare?', query: 'Mostrami tutte le sezioni e le cose che puoi fare' },
   ];
 
   return (
@@ -1513,87 +1534,201 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
                   </div>
                 </div>
 
-                {/* Form pulito per insegnare qualcosa */}
-                <form onSubmit={handleAddManualMemory} className="p-4 rounded-3xl bg-[var(--card-bg)] border border-[var(--border)] space-y-2.5">
-                  <h4 className="text-xs font-bold text-[var(--text-main)] flex items-center gap-1.5">
-                    <Plus className="w-3.5 h-3.5 text-amber-500" />
-                    Insegna a Chelona
-                  </h4>
-                  <input
-                    type="text"
-                    value={newKey}
-                    onChange={e => setNewKey(e.target.value)}
-                    placeholder="Argomento (es. Codice portone, Taglia scarpe...)"
-                    className="w-full px-3 py-2 rounded-xl bg-[var(--surface-variant)] border border-[var(--border)] text-xs text-[var(--text-main)] placeholder-[var(--text-muted)] focus:outline-none focus:border-amber-500"
-                  />
-                  <textarea
-                    rows={2}
-                    value={newFact}
-                    onChange={e => setNewFact(e.target.value)}
-                    placeholder="Dettaglio da ricordare..."
-                    className="w-full px-3 py-2 rounded-xl bg-[var(--surface-variant)] border border-[var(--border)] text-xs text-[var(--text-main)] placeholder-[var(--text-muted)] focus:outline-none focus:border-amber-500 resize-none"
-                  />
-                  <button
-                    type="submit"
-                    disabled={!newKey.trim() || !newFact.trim()}
-                    className="w-full py-2 bg-amber-500 hover:bg-amber-600 disabled:opacity-40 text-white rounded-xl text-xs font-bold transition-all active:scale-95 shadow-sm"
-                  >
-                    Salva nella Memoria
-                  </button>
-                </form>
-
-                {/* Lista Memorie Personali */}
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <h4 className="text-xs font-bold text-[var(--text-main)]">
-                      Appunti Personali Ricordati ({memories.length})
-                    </h4>
-                    {memories.length > 0 && (
-                      <button
-                        onClick={() => {
-                          if (confirm('Vuoi azzerare tutte le memorie apprese?')) {
-                            clearAllLearnedMemories();
-                            setMemories([]);
-                            showToast('Memorie cancellate.');
-                          }
-                        }}
-                        className="text-[11px] font-bold text-rose-500 hover:underline"
-                      >
-                        Azzera tutto
-                      </button>
+                {/* Dettagli Dinamici Categoria Neurale Selezionata */}
+                {activeNeuralCategory === 'vehicles' && (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-xs font-bold text-[var(--text-main)] flex items-center gap-1.5">
+                        <Car className="w-3.5 h-3.5 text-amber-500" />
+                        Veicoli Rilevati ({knowledge.vehicles.length})
+                      </h4>
+                      <button onClick={() => setActiveNeuralCategory('all')} className="text-[11px] text-amber-500 hover:underline">Tutti i nodi</button>
+                    </div>
+                    {knowledge.vehicles.length === 0 ? (
+                      <p className="text-xs text-[var(--text-muted)] p-4 border border-dashed border-[var(--border)] rounded-2xl text-center">Nessun veicolo registrato.</p>
+                    ) : (
+                      knowledge.vehicles.map(v => (
+                        <div key={v.module.id} className="p-3 rounded-2xl bg-[var(--card-bg)] border border-[var(--border)] space-y-1 text-xs">
+                          <div className="font-bold text-[var(--text-main)]">{v.name} ({v.plate})</div>
+                          <div className="text-[var(--text-muted)]">Km: {v.km} • Carburante: {v.fuel.toUpperCase()}</div>
+                          <div className="text-[11px] text-amber-500">Assicurazione: {v.insurance.date ? formatDate(v.insurance.date) : 'N/D'} • Bollo: {v.tax.date ? formatDate(v.tax.date) : 'N/D'}</div>
+                        </div>
+                      ))
                     )}
                   </div>
+                )}
 
-                  {memories.length === 0 ? (
-                    <div className="p-6 text-center border border-dashed border-[var(--border)] rounded-2xl">
-                      <p className="text-xs text-[var(--text-muted)]">Nessuna memoria personalizzata registrata.</p>
-                      <p className="text-[11px] text-[var(--text-muted)] mt-1">Puoi dirmi in chat *"Ricordati che..."* per memorizzare dati!</p>
+                {activeNeuralCategory === 'documents' && (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-xs font-bold text-[var(--text-main)] flex items-center gap-1.5">
+                        <FileText className="w-3.5 h-3.5 text-blue-500" />
+                        Documenti Archiviati ({knowledge.documents.length})
+                      </h4>
+                      <button onClick={() => setActiveNeuralCategory('all')} className="text-[11px] text-blue-500 hover:underline">Tutti i nodi</button>
                     </div>
-                  ) : (
-                    <div className="space-y-2">
-                      {memories.map(m => (
-                        <div
-                          key={m.id}
-                          className="p-3 rounded-2xl bg-[var(--card-bg)] border border-[var(--border)] flex items-start justify-between gap-3 shadow-xs"
-                        >
-                          <div>
-                            <span className="text-[10px] font-bold uppercase tracking-wider text-amber-500 px-2 py-0.5 rounded-md bg-amber-500/10 inline-block mb-1">
-                              {m.key}
-                            </span>
-                            <p className="text-xs text-[var(--text-main)] leading-relaxed">{m.fact}</p>
+                    {knowledge.documents.length === 0 ? (
+                      <p className="text-xs text-[var(--text-muted)] p-4 border border-dashed border-[var(--border)] rounded-2xl text-center">Nessun documento registrato.</p>
+                    ) : (
+                      knowledge.documents.map(d => (
+                        <div key={d.module.id} className="p-3 rounded-2xl bg-[var(--card-bg)] border border-[var(--border)] space-y-1 text-xs">
+                          <div className="font-bold text-[var(--text-main)]">{d.title} ({d.docType})</div>
+                          {d.number && <div className="text-[var(--text-muted)]">N. {d.number}</div>}
+                          <div className={`text-[11px] ${d.isExpired ? 'text-rose-500 font-bold' : 'text-emerald-500'}`}>
+                            {d.expiryDate ? `Scadenza: ${formatDate(d.expiryDate)} (${d.days} gg)` : 'Senza scadenza'}
                           </div>
-                          <button
-                            onClick={() => handleDeleteMemory(m.id)}
-                            className="p-1 text-[var(--text-muted)] hover:text-rose-500 transition-colors shrink-0"
-                            title="Elimina"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
                         </div>
-                      ))}
+                      ))
+                    )}
+                  </div>
+                )}
+
+                {activeNeuralCategory === 'finances' && (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-xs font-bold text-[var(--text-main)] flex items-center gap-1.5">
+                        <CreditCard className="w-3.5 h-3.5 text-emerald-500" />
+                        Quadro Finanziario
+                      </h4>
+                      <button onClick={() => setActiveNeuralCategory('all')} className="text-[11px] text-emerald-500 hover:underline">Tutti i nodi</button>
                     </div>
-                  )}
-                </div>
+                    <div className="p-3 rounded-2xl bg-[var(--card-bg)] border border-[var(--border)] space-y-2 text-xs">
+                      <div>Spese questo mese: <span className="font-black text-[var(--text-main)]">€ {knowledge.expenses.totalThisMonth.toFixed(2)}</span></div>
+                      <div>Rate attive residue: <span className="font-black text-[var(--text-main)]">€ {knowledge.installments.totalPending.toFixed(2)}</span> ({knowledge.installments.modules.length} piani)</div>
+                      <div>Gruppi split: <span className="font-black text-[var(--text-main)]">{knowledge.splits.length}</span></div>
+                    </div>
+                  </div>
+                )}
+
+                {activeNeuralCategory === 'notes' && (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-xs font-bold text-[var(--text-main)] flex items-center gap-1.5">
+                        <StickyNote className="w-3.5 h-3.5 text-purple-500" />
+                        Note & Appunti ({knowledge.notes.length})
+                      </h4>
+                      <button onClick={() => setActiveNeuralCategory('all')} className="text-[11px] text-purple-500 hover:underline">Tutti i nodi</button>
+                    </div>
+                    {knowledge.notes.length === 0 ? (
+                      <p className="text-xs text-[var(--text-muted)] p-4 border border-dashed border-[var(--border)] rounded-2xl text-center">Nessuna nota registrata.</p>
+                    ) : (
+                      knowledge.notes.map(n => (
+                        <div key={n.module.id} className="p-3 rounded-2xl bg-[var(--card-bg)] border border-[var(--border)] space-y-1 text-xs">
+                          <div className="font-bold text-[var(--text-main)]">{n.title}</div>
+                          <div className="text-[var(--text-muted)] line-clamp-2">{n.snippet}</div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                )}
+
+                {activeNeuralCategory === 'fitness' && (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-xs font-bold text-[var(--text-main)] flex items-center gap-1.5">
+                        <Activity className="w-3.5 h-3.5 text-pink-500" />
+                        Fitness & Nutrizione
+                      </h4>
+                      <button onClick={() => setActiveNeuralCategory('all')} className="text-[11px] text-pink-500 hover:underline">Tutti i nodi</button>
+                    </div>
+                    {knowledge.fitness ? (
+                      <div className="p-3 rounded-2xl bg-[var(--card-bg)] border border-[var(--border)] space-y-2 text-xs">
+                        <div>Obiettivo: <span className="font-black text-[var(--text-main)]">{knowledge.fitness.goal?.toUpperCase() || 'Forma fisica'}</span></div>
+                        {knowledge.fitness.calories && <div>Calorie target: <span className="font-black text-[var(--text-main)]">{knowledge.fitness.calories} kcal/giorno</span></div>}
+                        {knowledge.fitness.weight && <div>Peso: <span className="font-black text-[var(--text-main)]">{knowledge.fitness.weight} kg</span></div>}
+                        <div>Frequenza: <span className="font-black text-[var(--text-main)]">{knowledge.fitness.workoutDays || 3} gg/settimana</span></div>
+                      </div>
+                    ) : (
+                      <p className="text-xs text-[var(--text-muted)] p-4 border border-dashed border-[var(--border)] rounded-2xl text-center">Fitness non ancora configurato.</p>
+                    )}
+                  </div>
+                )}
+
+                {/* Form pulito per insegnare qualcosa (solo per all o memories) */}
+                {(activeNeuralCategory === 'all' || activeNeuralCategory === 'memories') && (
+                  <>
+                    <form onSubmit={handleAddManualMemory} className="p-4 rounded-3xl bg-[var(--card-bg)] border border-[var(--border)] space-y-2.5">
+                      <h4 className="text-xs font-bold text-[var(--text-main)] flex items-center gap-1.5">
+                        <Plus className="w-3.5 h-3.5 text-amber-500" />
+                        Insegna a Chelona
+                      </h4>
+                      <input
+                        type="text"
+                        value={newKey}
+                        onChange={e => setNewKey(e.target.value)}
+                        placeholder="Argomento (es. Codice portone, Taglia scarpe...)"
+                        className="w-full px-3 py-2 rounded-xl bg-[var(--surface-variant)] border border-[var(--border)] text-xs text-[var(--text-main)] placeholder-[var(--text-muted)] focus:outline-none focus:border-amber-500"
+                      />
+                      <textarea
+                        rows={2}
+                        value={newFact}
+                        onChange={e => setNewFact(e.target.value)}
+                        placeholder="Dettaglio da ricordare..."
+                        className="w-full px-3 py-2 rounded-xl bg-[var(--surface-variant)] border border-[var(--border)] text-xs text-[var(--text-main)] placeholder-[var(--text-muted)] focus:outline-none focus:border-amber-500 resize-none"
+                      />
+                      <button
+                        type="submit"
+                        disabled={!newKey.trim() || !newFact.trim()}
+                        className="w-full py-2 bg-amber-500 hover:bg-amber-600 disabled:opacity-40 text-white rounded-xl text-xs font-bold transition-all active:scale-95 shadow-sm"
+                      >
+                        Salva nella Memoria
+                      </button>
+                    </form>
+
+                    {/* Lista Memorie Personali */}
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <h4 className="text-xs font-bold text-[var(--text-main)]">
+                          Appunti Personali Ricordati ({memories.length})
+                        </h4>
+                        {memories.length > 0 && (
+                          <button
+                            onClick={() => {
+                              if (confirm('Vuoi azzerare tutte le memorie apprese?')) {
+                                clearAllLearnedMemories();
+                                setMemories([]);
+                                showToast('Memorie cancellate.');
+                              }
+                            }}
+                            className="text-[11px] font-bold text-rose-500 hover:underline"
+                          >
+                            Azzera tutto
+                          </button>
+                        )}
+                      </div>
+
+                      {memories.length === 0 ? (
+                        <div className="p-6 text-center border border-dashed border-[var(--border)] rounded-2xl">
+                          <p className="text-xs text-[var(--text-muted)]">Nessuna memoria personalizzata registrata.</p>
+                          <p className="text-[11px] text-[var(--text-muted)] mt-1">Puoi dirmi in chat *"Ricordati che..."* per memorizzare dati!</p>
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          {memories.map(m => (
+                            <div
+                              key={m.id}
+                              className="p-3 rounded-2xl bg-[var(--card-bg)] border border-[var(--border)] flex items-start justify-between gap-3 shadow-xs"
+                            >
+                              <div>
+                                <span className="text-[10px] font-bold uppercase tracking-wider text-amber-500 px-2 py-0.5 rounded-md bg-amber-500/10 inline-block mb-1">
+                                  {m.key}
+                                </span>
+                                <p className="text-xs text-[var(--text-main)] leading-relaxed">{m.fact}</p>
+                              </div>
+                              <button
+                                onClick={() => handleDeleteMemory(m.id)}
+                                className="p-1 text-[var(--text-muted)] hover:text-rose-500 transition-colors shrink-0"
+                                title="Elimina"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </>
+                )}
               </div>
             </motion.div>
           </div>
