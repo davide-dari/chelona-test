@@ -6,7 +6,9 @@
  * Learns continuously from all notes, vehicles, documents, expenses, and user inputs.
  */
 import { Module, AutoModule, DocumentModule, SingleExpenseModule, InstallmentsModule, SplitModule, GenericModule, FitnessModule, SupermarketModule, VolantinoModule } from '../types';
-import { VOLANTINI_DB } from '../data/volantiniDb';
+import { VOLANTINI_DB, type VolantinoChain } from '../data/volantiniDb';
+import { getLiveVolantiniDb, getFlyerExpiryInfo } from './volantiniSync';
+import { OFFER_GROUPS, findOffersForName, type OfferGroup, type OfferEntry } from '../data/offerStats';
 import { 
   getSavedParking, autoSaveParking, formatElapsedParkingTime, getNavigationUrl 
 } from './parkingService';
@@ -22,11 +24,13 @@ export interface AiMemory {
 
 export interface AiAction {
   label: string;
-  type: 'module' | 'category' | 'deadlines' | 'parking' | 'navigate_parking' | 'save_parking';
+  type: 'module' | 'category' | 'deadlines' | 'parking' | 'navigate_parking' | 'save_parking' | 'volantino';
   moduleId?: string;
   category?: string;
   module?: Module;
   url?: string;
+  chainSlug?: string;
+  storeName?: string;
 }
 
 export interface AiMessage {
@@ -530,6 +534,82 @@ function detectExpenseCategory(desc: string): string {
   return 'Varie';
 }
 
+// Mappatura catene supermercati e discount con sinonimi e alias comuni
+const SUPERMARKET_CHAINS_INFO: { name: string; slug: string; aliases: string[] }[] = [
+  { name: 'Lidl', slug: 'lidl', aliases: ['lidl'] },
+  { name: 'Conad', slug: 'conad', aliases: ['conad'] },
+  { name: 'Coop', slug: 'coop', aliases: ['coop', 'ipercoop'] },
+  { name: 'Esselunga', slug: 'esselunga', aliases: ['esselunga', 'fidaty', 'fìdaty'] },
+  { name: 'Eurospin', slug: 'eurospin', aliases: ['eurospin'] },
+  { name: 'Carrefour', slug: 'carrefour', aliases: ['carrefour'] },
+  { name: 'MD', slug: 'md-discount', aliases: ['md', 'md discount'] },
+  { name: 'Aldi', slug: 'aldi', aliases: ['aldi'] },
+  { name: 'Penny', slug: 'penny-market', aliases: ['penny', 'penny market'] },
+  { name: 'Pam', slug: 'pam', aliases: ['pam', 'panorama'] },
+  { name: 'Todis', slug: 'todis', aliases: ['todis'] },
+  { name: 'Decò', slug: 'deco', aliases: ['deco', 'decò'] },
+  { name: 'Crai', slug: 'crai', aliases: ['crai'] },
+  { name: 'Bennet', slug: 'bennet', aliases: ['bennet'] },
+  { name: 'Despar', slug: 'despar', aliases: ['despar', 'interspar', 'eurospar'] },
+  { name: 'Famila', slug: 'famila', aliases: ['famila'] },
+  { name: 'Il Gigante', slug: 'il-gigante', aliases: ['il gigante', 'gigante'] },
+  { name: 'Iperal', slug: 'iperal', aliases: ['iperal'] },
+  { name: 'Tigros', slug: 'tigros', aliases: ['tigros'] },
+  { name: 'Basko', slug: 'basko', aliases: ['basko'] },
+  { name: 'Migross', slug: 'migross', aliases: ['migross'] },
+  { name: 'Alì', slug: 'ali-supermercati', aliases: ['ali', 'alì'] },
+  { name: 'Unes', slug: 'unes', aliases: ['unes', 'u!'] },
+  { name: 'In\'s', slug: 'ins', aliases: ['in\'s', 'ins'] },
+  { name: 'Dpiù', slug: 'dpiu', aliases: ['dpiù', 'dpiu', 'd più'] },
+  { name: 'NaturaSì', slug: 'naturasi', aliases: ['naturasi', 'natura sì'] },
+  { name: 'Iper la grande i', slug: 'iper-la-grande-i', aliases: ['iper la grande i', 'iper'] },
+  { name: 'Acqua & Sapone', slug: 'acqua-e-sapone', aliases: ['acqua e sapone', 'acqua & sapone'] },
+  { name: 'Tigotà', slug: 'tigota', aliases: ['tigota', 'tigotà'] },
+  { name: 'Risparmio Casa', slug: 'risparmiocasa', aliases: ['risparmio casa', 'risparmiocasa'] },
+  { name: 'Unieuro', slug: 'unieuro', aliases: ['unieuro'] },
+  { name: 'MediaWorld', slug: 'mediaworld', aliases: ['mediaworld', 'media world'] },
+  { name: 'Euronics', slug: 'euronics', aliases: ['euronics'] },
+  { name: 'Expert', slug: 'expert', aliases: ['expert'] },
+  { name: 'Comet', slug: 'comet', aliases: ['comet'] },
+  { name: 'Trony', slug: 'trony', aliases: ['trony'] },
+  { name: 'Leroy Merlin', slug: 'leroy-merlin', aliases: ['leroy merlin'] },
+  { name: 'Tecnomat', slug: 'tecnomat', aliases: ['tecnomat'] },
+  { name: 'Bricofer', slug: 'bricofer', aliases: ['bricofer'] },
+  { name: 'Brico Io', slug: 'brico-io', aliases: ['brico io'] },
+  { name: 'Mondo Convenienza', slug: 'mondo-convenienza', aliases: ['mondo convenienza'] },
+  { name: 'Pewex', slug: 'pewex', aliases: ['pewex'] },
+  { name: 'Pim', slug: 'pim', aliases: ['pim'] },
+  { name: 'Dem', slug: 'dem', aliases: ['dem'] },
+  { name: 'Il Castoro', slug: 'il-castoro', aliases: ['il castoro', 'castoro'] },
+  { name: 'Ipertriscount', slug: 'ipertriscount', aliases: ['ipertriscount'] },
+  { name: 'Ipercarni', slug: 'ipercarni', aliases: ['ipercarni'] },
+  { name: 'CTS', slug: 'cts', aliases: ['cts'] },
+  { name: 'Top', slug: 'top', aliases: ['supermercati top'] },
+  { name: 'Effepiù', slug: 'effepiu', aliases: ['effepiu', 'effepiù'] },
+];
+
+function detectRequestedChain(query: string, chains: VolantinoChain[]): { chain: VolantinoChain; displayName: string } | null {
+  const clean = query.toLowerCase().replace(/['’]/g, ' ');
+  for (const info of SUPERMARKET_CHAINS_INFO) {
+    for (const alias of info.aliases) {
+      const reg = new RegExp(`(?:\\b|_)${alias.replace('+', '\\+')}(?:\\b|_)`, 'i');
+      if (reg.test(clean)) {
+        const found = chains.find(c => c.slug === info.slug);
+        if (found) {
+          return { chain: found, displayName: info.name };
+        }
+      }
+    }
+  }
+  for (const c of chains) {
+    const cName = c.name.toLowerCase();
+    if (cName.length > 2 && clean.includes(cName)) {
+      return { chain: c, displayName: c.name };
+    }
+  }
+  return null;
+}
+
 /**
  * Motore di elaborazione e risposta locale Gemma 4 Nano.
  * 100% On-Device, senza chiamate API o server esterni.
@@ -878,15 +958,279 @@ export async function queryGemmaNano(
     return { text: out, actions: actions.slice(0, 3) };
   }
 
+  // INTENTO: VOLANTINI E SCONTI
+  const liveDb = getLiveVolantiniDb();
+  const matchedChain = detectRequestedChain(query, liveDb.chains);
+
+  const isVolantiniIntent = (
+    lower.includes('volantin') ||
+    lower.includes('offert') ||
+    lower.includes('scont') ||
+    lower.includes('promo') ||
+    lower.includes('convenien') ||
+    lower.includes('risparmio') ||
+    lower.includes('coupon') ||
+    lower.includes('prezz') ||
+    lower.includes('costa meno') ||
+    lower.includes('costano meno') ||
+    lower.includes('chi ha') ||
+    lower.includes('dove trovo') ||
+    ((lower.includes('supermercat') || lower.includes('catene') || lower.includes('negoz')) && 
+     (lower.includes('offert') || lower.includes('scont') || lower.includes('promo') || lower.includes('volantin') || lower.includes('miglior'))) ||
+    (matchedChain !== null && (lower.includes('volantin') || lower.includes('scont') || lower.includes('offert') || lower.includes('promo') || lower.includes('apri') || lower.includes('mostra') || lower.includes('sfoglia') || lower.includes('vedi')))
+  );
+
+  if (isVolantiniIntent) {
+    const actions: AiAction[] = [];
+
+    // CASO 1: L'utente richiede espressamente una catena o negozio specifico
+    // es: "volantino conad", "apri il volantino lidl", "sconti coop", "esselunga", "eurospin", ecc.
+    if (matchedChain) {
+      const { chain, displayName } = matchedChain;
+      const activeFlyers = chain.flyers.filter(f => !f.to || new Date(f.to) >= new Date());
+      const flyer = (activeFlyers.length ? activeFlyers : chain.flyers)[0];
+
+      // Cerca se ci sono offerte estratte da volantino per questa catena
+      const chainDeals: { group: string; product: string; price: number; quantity: number; unit: string }[] = [];
+      const chainNameLower = chain.name.toLowerCase();
+      const chainSlugLower = chain.slug.toLowerCase();
+
+      for (const grp of OFFER_GROUPS) {
+        for (const off of grp.o) {
+          const offStore = off.s.toLowerCase();
+          if (
+            offStore === chainNameLower || 
+            offStore.includes(chainNameLower) || 
+            chainNameLower.includes(offStore) ||
+            offStore === chainSlugLower ||
+            chainSlugLower.includes(offStore)
+          ) {
+            chainDeals.push({
+              group: grp.g,
+              product: off.n,
+              price: off.p,
+              quantity: off.q,
+              unit: off.u,
+            });
+          }
+        }
+      }
+
+      let text = `Ecco il volantino per **${displayName}** 🛒\n\n`;
+      if (flyer) {
+        const expiry = getFlyerExpiryInfo(flyer);
+        text += `📖 **${flyer.title}**\n`;
+        if (flyer.subtitle) text += `*${flyer.subtitle}*\n`;
+        text += `⏳ **Validità**: ${expiry.label}\n\n`;
+      } else {
+        text += `Non ci sono volantini al momento per ${displayName}, ma il catalogo si aggiorna continuamente.\n\n`;
+      }
+
+      if (chainDeals.length > 0) {
+        text += `✨ **Offerte in evidenza dai volantini:**\n`;
+        chainDeals.slice(0, 4).forEach(d => {
+          text += `• **${d.product}**: € ${d.price.toFixed(2)} (${d.quantity} ${d.unit})\n`;
+        });
+        text += `\n`;
+      }
+
+      text += `Tocca il pulsante in basso per sfogliare il volantino direttamente a schermo intero!`;
+
+      actions.push({
+        label: `Apri Volantino ${displayName}`,
+        type: 'volantino',
+        chainSlug: chain.slug,
+        storeName: displayName,
+      });
+
+      actions.push({
+        label: 'Tutti i Volantini',
+        type: 'category',
+        category: 'home',
+      });
+
+      return { text, actions };
+    }
+
+    // CASO 2: L'utente cerca offerte per un prodotto specifico
+    // es: "chi ha la pasta in offerta?", "sconti caffè", "olio in offerta", "latte", "parmigiano", "birra", ecc.
+    const cleanTokens = query.toLowerCase()
+      .replace(/[?!,.:;()"]/g, ' ')
+      .split(/\s+/)
+      .filter(t => t.length >= 3 && !['chi', 'ha', 'la', 'il', 'lo', 'le', 'gli', 'dei', 'del', 'delle', 'dello', 'cosa', 'dove', 'trovo', 'costa', 'meno', 'miglior', 'migliori', 'sconti', 'sconto', 'offerte', 'offerta', 'volantino', 'volantini', 'promo', 'prezzo', 'prezzi', 'supermercato', 'supermercati', 'tutti', 'esamina'].includes(t));
+
+    let matchedOffers: OfferEntry[] = [];
+    let searchedKeyword = '';
+
+    for (const tok of cleanTokens) {
+      const found = findOffersForName(tok);
+      if (found.length > 0) {
+        matchedOffers = found;
+        searchedKeyword = tok;
+        break;
+      }
+    }
+
+    if (matchedOffers.length === 0 && cleanTokens.length > 0) {
+      for (const tok of cleanTokens) {
+        const matchingGroup = OFFER_GROUPS.find(g => 
+          g.g.toLowerCase().includes(tok) || 
+          g.id.toLowerCase().includes(tok) ||
+          g.o.some(o => o.n.toLowerCase().includes(tok) || o.b.toLowerCase().includes(tok))
+        );
+        if (matchingGroup) {
+          matchedOffers = [...matchingGroup.o].sort((a, b) => (a.p / a.q) - (b.p / b.q));
+          searchedKeyword = tok;
+          break;
+        }
+      }
+    }
+
+    if (matchedOffers.length > 0) {
+      const best = matchedOffers[0];
+      const others = matchedOffers.slice(1, 4);
+
+      let text = `Ho esaminato tutti i volantini e il confronto prezzi per **"${searchedKeyword.toUpperCase()}"** 🔍\n\n`;
+      text += `🥇 **Miglior Prezzo**: da **${best.s}** a **€ ${best.p.toFixed(2)}**\n`;
+      text += `   *${best.n}* (${best.b}) — ${best.q} ${best.u} (€ ${(best.p / best.q).toFixed(2)}/${best.u})\n\n`;
+
+      if (others.length > 0) {
+        text += `Altre alternative a confronto:\n`;
+        others.forEach(o => {
+          text += `• **${o.s}**: € ${o.p.toFixed(2)} (*${o.n}*, ${o.q} ${o.u})\n`;
+        });
+        text += `\n`;
+      }
+
+      text += `Puoi aprire subito il volantino di **${best.s}** o confrontare tutti i prezzi!`;
+
+      actions.push({
+        label: `Apri Volantino ${best.s}`,
+        type: 'volantino',
+        storeName: best.s,
+      });
+
+      actions.push({
+        label: 'Confronta Tutti i Prezzi',
+        type: 'volantino',
+        chainSlug: 'stats',
+      });
+
+      return { text, actions };
+    }
+
+    // CASO 3: Esame generale di tutti i volantini e delle migliori offerte
+    // es: "esamina tutti i volantini e dimmi le migliori offerte", "i sconti", "quali sono le migliori offerte?"
+    let totalFlyers = 0;
+    liveDb.chains.forEach(c => totalFlyers += c.flyers.length);
+
+    const pastaGroup = OFFER_GROUPS.find(g => g.id === 'pasta-integrale') || OFFER_GROUPS.find(g => g.id === 'penne');
+    const pastaBest = pastaGroup?.o.sort((a, b) => (a.p / a.q) - (b.p / b.q))[0];
+
+    const passataGroup = OFFER_GROUPS.find(g => g.id === 'passata');
+    const passataBest = passataGroup?.o.sort((a, b) => (a.p / a.q) - (b.p / b.q))[0];
+
+    const latteGroup = OFFER_GROUPS.find(g => g.id === 'latte');
+    const latteBest = latteGroup?.o.sort((a, b) => (a.p / a.q) - (b.p / b.q))[0];
+
+    const parmGroup = OFFER_GROUPS.find(g => g.id === 'parmigiano');
+    const parmBest = parmGroup?.o.sort((a, b) => (a.p / a.q) - (b.p / b.q))[0];
+
+    const yogurtGroup = OFFER_GROUPS.find(g => g.id === 'yogurt');
+    const yogurtBest = yogurtGroup?.o.sort((a, b) => (a.p / a.q) - (b.p / b.q))[0];
+
+    let text = `Ho esaminato i volantini attivi di **oltre ${liveDb.chains.length} catene** (${totalFlyers} volantini) e il confronto prezzi nazionale. 🛒\n\n`;
+    text += `Ecco le **migliori offerte e sconti del momento** rilevate nei volantini:\n\n`;
+
+    if (pastaBest) {
+      text += `🍝 **Pasta & Primi Piatti**\n`;
+      text += `• **${pastaBest.s}**: *${pastaBest.n}* a soli **€ ${pastaBest.p.toFixed(2)}** (${pastaBest.q} ${pastaBest.u}) — *Prezzo più basso*\n\n`;
+    }
+
+    if (passataBest) {
+      text += `🍅 **Dispensa & Condimenti**\n`;
+      text += `• **${passataBest.s}**: *${passataBest.n}* a **€ ${passataBest.p.toFixed(2)}** (${passataBest.q} ${passataBest.u})\n\n`;
+    }
+
+    if (latteBest || parmBest || yogurtBest) {
+      text += `🥛 **Latticini & Freschi**\n`;
+      if (latteBest) text += `• **${latteBest.s}**: *${latteBest.n}* a **€ ${latteBest.p.toFixed(2)}** (${latteBest.q} ${latteBest.u})\n`;
+      if (parmBest) text += `• **${parmBest.s}**: *${parmBest.n}* a **€ ${parmBest.p.toFixed(2)}** (${parmBest.q} ${parmBest.u})\n`;
+      if (yogurtBest) text += `• **${yogurtBest.s}**: *${yogurtBest.n}* a **€ ${yogurtBest.p.toFixed(2)}**\n`;
+      text += `\n`;
+    }
+
+    let totalSavedOffers = 0;
+    k.volantini.forEach(v => totalSavedOffers += v.offersCount);
+    if (totalSavedOffers > 0) {
+      text += `📌 **Nei tuoi volantini salvati**: hai ${totalSavedOffers} offerte personali archiviate.\n\n`;
+    }
+
+    text += `💡 *Chiedimi pure un volantino specifico (es. **"Apri volantino Lidl"**, **"Sconti Conad"**, **"Volantino Esselunga"**) oppure un prodotto (es. **"Chi ha il caffè in offerta?"**)!*`;
+
+    actions.push({
+      label: 'Confronta Tutti i Prezzi',
+      type: 'volantino',
+      chainSlug: 'stats',
+    });
+
+    actions.push({
+      label: 'Volantino Lidl',
+      type: 'volantino',
+      chainSlug: 'lidl',
+      storeName: 'Lidl',
+    });
+
+    actions.push({
+      label: 'Volantino Conad',
+      type: 'volantino',
+      chainSlug: 'conad',
+      storeName: 'Conad',
+    });
+
+    actions.push({
+      label: `Tutti i Volantini (${liveDb.chains.length})`,
+      type: 'category',
+      category: 'home',
+    });
+
+    return { text, actions };
+  }
+
+  // INTENTO: SPESA / SUPERMERCATO (Lista della Spesa)
+  if (
+    lower.includes('lista spesa') ||
+    lower.includes('lista della spesa') ||
+    lower.includes('comprare') ||
+    lower.includes('cosa manca') ||
+    (lower.includes('supermercat') && !lower.includes('volantin') && !lower.includes('offert') && !lower.includes('scont'))
+  ) {
+    if (!k.supermarket || k.supermarket.itemsToBuy.length === 0) {
+      return {
+        text: `🛒 La tua **Lista della Spesa** è attualmente vuota o tutti gli ingredienti sono già stati spuntati!`,
+        actions: [{ label: 'Apri Lista Spesa', type: 'category', category: 'home' }],
+      };
+    }
+
+    const items = k.supermarket.itemsToBuy.map(i => `- [ ] ${i}`).join('\n');
+    return {
+      text: `🛒 **Articoli ancora da comprare nella Lista Spesa (${k.supermarket.itemsToBuy.length}):**\n\n${items}`,
+      actions: [{ label: 'Vai alla Spesa', type: 'category', category: 'home' }],
+    };
+  }
+
   // INTENTO: SPESE / FINANZE / RATE / SPLIT
   if (
-    lower.includes('spes') ||
-    lower.includes('cont') ||
-    lower.includes('rat') ||
+    lower.includes('finanze') ||
     lower.includes('soldi') ||
     lower.includes('budget') ||
     lower.includes('quanto ho speso') ||
-    lower.includes('finanziament')
+    lower.includes('uscite') ||
+    lower.includes('entrate') ||
+    lower.includes('finanziament') ||
+    /\brate\b|\brata\b|\brateizzaz/i.test(lower) ||
+    /\bconti\b|\bconto\b/i.test(lower) ||
+    (lower.includes('spes') && !lower.includes('lista') && !lower.includes('comprare') && !lower.includes('scont') && !lower.includes('volantin') && !lower.includes('offert') && !lower.includes('promo'))
   ) {
     let out = `💰 **Quadro Finanziario & Spese:**\n\n`;
     const actions: AiAction[] = [];
@@ -1000,63 +1344,6 @@ export async function queryGemmaNano(
     return {
       text: out,
       actions: [{ label: 'Apri Scheda Completa', type: 'module', moduleId: k.fitness.module.id, module: k.fitness.module }],
-    };
-  }
-
-  // INTENTO: VOLANTINI E SCONTI
-  if (
-    lower.includes('volantin') ||
-    lower.includes('offert') ||
-    lower.includes('scont') ||
-    lower.includes('promo') ||
-    lower.includes('convenien') ||
-    lower.includes('risparmio') ||
-    lower.includes('coupon') ||
-    lower.includes('prezzi') ||
-    ((lower.includes('supermercat') || lower.includes('catene') || lower.includes('conad') || lower.includes('coop') || lower.includes('lidl') || lower.includes('esselunga') || lower.includes('carrefour') || lower.includes('aldi') || lower.includes('eurospin') || lower.includes('penny') || lower.includes('md') || lower.includes('bennet') || lower.includes('unieuro') || lower.includes('mediaworld')) && (lower.includes('offert') || lower.includes('scont') || lower.includes('promo') || lower.includes('volantin')))
-  ) {
-    let totalOffers = 0;
-    k.volantini.forEach(v => totalOffers += v.offersCount);
-    
-    let text = "";
-    const actions: AiAction[] = [];
-    
-    if (totalOffers > 0) {
-      text = `Hai ${totalOffers} offerte salvate nei tuoi Volantini! 🛒\n\n`;
-      k.volantini.forEach(v => {
-        if (v.offersCount > 0) {
-          const promoItems = v.module.offers.slice(0, 3).map(o => `${o.productName} (€${o.price})`).join(', ');
-          text += `Tra queste, trovi prodotti come: ${promoItems}.\n`;
-        }
-      });
-      text += `\nInoltre, ho accesso a oltre ${VOLANTINI_DB.chains.length} catene di supermercati con tutti i loro volantini aggiornati (tra cui Conad, Coop, Lidl...).`;
-    } else {
-      text = `Ho accesso a oltre ${VOLANTINI_DB.chains.length} catene di supermercati con i loro volantini (tra cui Conad, Coop, Lidl, Esselunga e molti altri)! 🛒\n\nNon hai ancora offerte salvate, ma puoi esplorare tutte le promozioni attive e salvare quelle che ti interessano aprendo la sezione Volantini & Offerte.`;
-    }
-    
-    actions.push({ label: 'Apri Volantini & Offerte', type: 'category', category: 'home' });
-
-    return { text, actions };
-  }
-
-  // INTENTO: SPESA / SUPERMERCATO
-  if (
-    lower.includes('spesa') ||
-    lower.includes('comprare') ||
-    lower.includes('supermercat') ||
-    lower.includes('lista spesa')
-  ) {
-    if (!k.supermarket || k.supermarket.itemsToBuy.length === 0) {
-      return {
-        text: `🛒 La tua **Lista della Spesa** è attualmente vuota o tutti gli ingredienti sono già stati spuntati!`,
-        actions: [{ label: 'Apri Lista Spesa', type: 'category', category: 'home' }],
-      };
-    }
-
-    const items = k.supermarket.itemsToBuy.map(i => `- [ ] ${i}`).join('\n');
-    return {
-      text: `🛒 **Articoli ancora da comprare nella Lista Spesa (${k.supermarket.itemsToBuy.length}):**\n\n${items}`,
-      actions: [{ label: 'Vai alla Spesa', type: 'category', category: 'home' }],
     };
   }
 

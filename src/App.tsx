@@ -316,6 +316,7 @@ export default function App() {
   const [editingSupermarketModule, setEditingSupermarketModule] = useState<import('./types').SupermarketModule | null>(null);
   const [editingVolantinoModule, setEditingVolantinoModule] = useState<import('./types').VolantinoModule | null>(null);
   const [flyerInitialOffer, setFlyerInitialOffer] = useState<{ fid: string; pg: number } | null>(null);
+  const [volantinoInitialChain, setVolantinoInitialChain] = useState<string | null>(null);
   const [activeNavTab, setActiveNavTab] = useState<'home' | 'deadlines' | 'ai' | 'tools' | 'profile'>('home');
   const [isAiOpen, setIsAiOpen] = useState(false);
   const [aiInitialVoiceMode, setAiInitialVoiceMode] = useState(false);
@@ -543,6 +544,45 @@ export default function App() {
     };
     window.addEventListener('open-flyer-offer', handleOpenFlyerOffer);
     return () => window.removeEventListener('open-flyer-offer', handleOpenFlyerOffer);
+  }, [modules, folders, selectedFolderId]);
+
+  // Listen for open-volantino event from AI or other modules
+  useEffect(() => {
+    const handleOpenVolantino = (e: Event) => {
+      const d = (e as CustomEvent).detail;
+      const chain = d?.chain || d?.store || d?.slug || null;
+      setVolantinoInitialChain(chain);
+      setIsAiOpen(false);
+      setAiInitialVoiceMode(false);
+      setIsToolsOpen(false);
+      setIsProfileOpen(false);
+
+      const existingVolantino = modules.find(m => m.type === 'volantino') as import('./types').VolantinoModule | undefined;
+      if (existingVolantino) {
+        setEditingVolantinoModule(existingVolantino);
+      } else {
+        const newVolantino: import('./types').VolantinoModule = {
+          id: generateUUID(),
+          type: 'volantino',
+          title: 'Volantini',
+          offers: [],
+          flyers: [],
+          x: (modules.length * 2) % 12,
+          y: Infinity,
+          w: 3,
+          h: 3,
+          folderId: selectedFolderId || undefined
+        };
+        setModules(prev => {
+          const updated = [newVolantino, ...prev];
+          saveAppState(updated, folders).catch(console.error);
+          return updated;
+        });
+        setEditingVolantinoModule(newVolantino);
+      }
+    };
+    window.addEventListener('open-volantino', handleOpenVolantino);
+    return () => window.removeEventListener('open-volantino', handleOpenVolantino);
   }, [modules, folders, selectedFolderId]);
   const [autoFormStep, setAutoFormStep] = useState<number>(() => {
     try {
@@ -2990,7 +3030,12 @@ export default function App() {
               <VolantinoScreen
                 module={editingVolantinoModule}
                 initialOffer={flyerInitialOffer ?? undefined}
-                onClose={() => { setEditingVolantinoModule(null); setFlyerInitialOffer(null); }}
+                initialChain={volantinoInitialChain ?? undefined}
+                onClose={() => { 
+                  setEditingVolantinoModule(null); 
+                  setFlyerInitialOffer(null); 
+                  setVolantinoInitialChain(null);
+                }}
               />
             ) : editingSupermarketModule ? (
               <SupermarketScreen

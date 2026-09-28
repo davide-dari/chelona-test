@@ -19,6 +19,7 @@ interface VolantinoScreenProps {
   module: VolantinoModule;
   onClose: () => void;
   initialOffer?: { fid: string; pg: number };
+  initialChain?: string;
 }
 
 type ViewMode = 'centro' | 'chain' | 'stats' | 'calameo';
@@ -1132,7 +1133,7 @@ function StatsView(props: {
 /* ═══════════════════════════════════════════════════════════════════
    MAIN SCREEN COMPONENT
    ═══════════════════════════════════════════════════════════════════ */
-export default function VolantinoScreen({ module, onClose, initialOffer }: VolantinoScreenProps) {
+export default function VolantinoScreen({ module, onClose, initialOffer, initialChain }: VolantinoScreenProps) {
   const [view, setView] = useState<ViewMode>('centro');
   const [centroChain, setCentroChain] = useState<VolantinoChain | null>(null);
   const [calameoFlyer, setCalameoFlyer] = useState<VolantinoFlyer | null>(null);
@@ -1144,6 +1145,54 @@ export default function VolantinoScreen({ module, onClose, initialOffer }: Volan
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncFeedback, setSyncFeedback] = useState<string | null>(null);
   const [dismissExpiryAlert, setDismissExpiryAlert] = useState(false);
+
+  // Gestione apertura diretta catena / volantino / confronto prezzi da AI o collegamenti esterni
+  const openDirectTarget = useCallback((target?: string) => {
+    if (!target) return;
+    const cleanTarget = target.trim().toLowerCase();
+    if (cleanTarget === 'stats' || cleanTarget === 'confronta' || cleanTarget === 'prezzi') {
+      setView('stats');
+      return;
+    }
+    const targetSlug = STORE_SLUG_MAP[target] || 
+      STORE_SLUG_MAP[Object.keys(STORE_SLUG_MAP).find(k => k.toLowerCase() === cleanTarget) || ''] || 
+      cleanTarget;
+
+    const chain = db.chains.find(c => 
+      c.slug === targetSlug || 
+      c.slug.toLowerCase() === targetSlug || 
+      c.name.toLowerCase() === cleanTarget ||
+      c.name.toLowerCase().includes(cleanTarget) ||
+      cleanTarget.includes(c.name.toLowerCase())
+    );
+
+    if (chain) {
+      setCentroChain(chain);
+      const active = chain.flyers.filter(f => !f.to || new Date(f.to) >= new Date());
+      const list = active.length ? active : chain.flyers;
+      if (list.length > 0) {
+        setCalameoFlyer(list[0]);
+        setView('calameo');
+      } else {
+        setView('chain');
+      }
+    }
+  }, [db]);
+
+  useEffect(() => {
+    if (initialChain) {
+      openDirectTarget(initialChain);
+    }
+  }, [initialChain, openDirectTarget]);
+
+  useEffect(() => {
+    const handleOpenEvent = (e: any) => {
+      const target = e.detail?.chain || e.detail?.store || e.detail?.slug;
+      if (target) openDirectTarget(target);
+    };
+    window.addEventListener('open-volantino', handleOpenEvent);
+    return () => window.removeEventListener('open-volantino', handleOpenEvent);
+  }, [openDirectTarget]);
 
   // Reset alert di scadenza quando cambia volantino
   useEffect(() => {

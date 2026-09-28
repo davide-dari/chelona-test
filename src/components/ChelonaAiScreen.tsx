@@ -773,6 +773,15 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
                                 }
                               } else if (act.type === 'save_parking') {
                                 handleSend('Salva il parcheggio qui');
+                              } else if (act.type === 'volantino') {
+                                window.dispatchEvent(new CustomEvent('open-volantino', { 
+                                  detail: { 
+                                    chain: act.chainSlug || act.storeName,
+                                    slug: act.chainSlug,
+                                    store: act.storeName 
+                                  } 
+                                }));
+                                if (!isEmbedded) onClose();
                               } else if (act.type === 'module' && act.module) {
                                 onOpenModule(act.module);
                                 if (!isEmbedded) onClose();
