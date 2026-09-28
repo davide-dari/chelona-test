@@ -20,6 +20,8 @@ import { biometricService } from './services/biometricService';
 import { chelonaMemory } from './services/chelonaMemory';
 import { wakeWordService } from './services/wakeWordService';
 import { APP_VERSION } from './constants/version';
+import type { AiAction } from './services/gemmaNanoEngine';
+import { getSavedParking, getNavigationUrl } from './services/parkingService';
 
 import { motion, AnimatePresence } from 'motion/react';
 import JSZip from 'jszip';
@@ -556,6 +558,7 @@ export default function App() {
       setAiInitialVoiceMode(false);
       setIsToolsOpen(false);
       setIsProfileOpen(false);
+      setActiveNavTab('home');
 
       const existingVolantino = modules.find(m => m.type === 'volantino') as import('./types').VolantinoModule | undefined;
       if (existingVolantino) {
@@ -1633,6 +1636,175 @@ export default function App() {
     setAutoFormStep(0);
     setIsAdding(true);
   };
+
+  const handleAiNavigate = useCallback((act: AiAction) => {
+    // Chiudi sempre Chelona AI e azzera i flag vocali
+    setIsAiOpen(false);
+    setAiInitialVoiceMode(false);
+
+    // Chiudi eventuali altri tab/overlay per evitare conflitti visivi
+    setIsToolsOpen(false);
+    setIsProfileOpen(false);
+    setIsSettingsOpen(false);
+    setIsAddressAndParkingOpen(false);
+
+    if (act.type === 'navigate_parking') {
+      if (act.url) {
+        window.open(act.url, '_blank');
+      } else {
+        const p = getSavedParking();
+        if (p) window.open(getNavigationUrl(p.latitude, p.longitude), '_blank');
+      }
+      return;
+    }
+
+    if (act.type === 'parking') {
+      setActiveNavTab('home');
+      setAddressParkingTab('parking');
+      setIsAddressAndParkingOpen(true);
+      return;
+    }
+
+    if (act.type === 'deadlines') {
+      setActiveNavTab('deadlines');
+      return;
+    }
+
+    if (act.type === 'volantino') {
+      setActiveNavTab('home');
+      const chain = act.chainSlug || act.storeName || null;
+      let existingVol = modules.find(m => m.type === 'volantino') as import('./types').VolantinoModule | undefined;
+      if (!existingVol) {
+        existingVol = {
+          id: generateUUID(),
+          type: 'volantino',
+          title: 'Volantini',
+          offers: [],
+          flyers: [],
+          x: 0,
+          y: Infinity,
+          w: 3,
+          h: 3,
+          folderId: selectedFolderId || undefined
+        };
+        setModules(prev => {
+          const updated = [existingVol!, ...prev];
+          saveAppState(updated, folders).catch(console.error);
+          return updated;
+        });
+      }
+      setVolantinoInitialChain(chain);
+      setEditingVolantinoModule(existingVol);
+      return;
+    }
+
+    if (act.type === 'module' && act.module) {
+      setActiveNavTab('home');
+      openEditModalWithSecurity(act.module);
+      return;
+    }
+
+    if (act.type === 'category') {
+      const cat = act.category;
+
+      if (cat === 'volantino' || (act.label && act.label.toLowerCase().includes('volantin'))) {
+        setActiveNavTab('home');
+        let existingVol = modules.find(m => m.type === 'volantino') as import('./types').VolantinoModule | undefined;
+        if (!existingVol) {
+          existingVol = {
+            id: generateUUID(),
+            type: 'volantino',
+            title: 'Volantini',
+            offers: [],
+            flyers: [],
+            x: 0,
+            y: Infinity,
+            w: 3,
+            h: 3,
+            folderId: selectedFolderId || undefined
+          };
+          setModules(prev => {
+            const updated = [existingVol!, ...prev];
+            saveAppState(updated, folders).catch(console.error);
+            return updated;
+          });
+        }
+        setVolantinoInitialChain(null);
+        setEditingVolantinoModule(existingVol);
+        return;
+      }
+
+      if (cat === 'supermarket' || (act.label && act.label.toLowerCase().includes('spesa'))) {
+        setActiveNavTab('home');
+        let sm = modules.find(m => m.type === 'supermarket') as import('./types').SupermarketModule | undefined;
+        if (!sm) {
+          sm = {
+            id: generateUUID(),
+            type: 'supermarket',
+            title: 'Lista della Spesa',
+            items: [],
+            x: 0,
+            y: Infinity,
+            w: 3,
+            h: 3,
+            folderId: selectedFolderId || undefined
+          };
+          setModules(prev => {
+            const updated = [sm!, ...prev];
+            saveAppState(updated, folders).catch(console.error);
+            return updated;
+          });
+        }
+        setEditingSupermarketModule(sm);
+        return;
+      }
+
+      if (cat === 'tools') {
+        setActiveNavTab('tools');
+        setIsToolsOpen(true);
+        return;
+      }
+
+      if (cat === 'profile') {
+        setActiveNavTab('profile');
+        setIsProfileOpen(true);
+        return;
+      }
+
+      if (cat === 'deadlines') {
+        setActiveNavTab('deadlines');
+        return;
+      }
+
+      if (cat === 'parking') {
+        setActiveNavTab('home');
+        setAddressParkingTab('parking');
+        setIsAddressAndParkingOpen(true);
+        return;
+      }
+
+      if (cat === 'auto') {
+        setActiveNavTab('home');
+        const autoMod = modules.find(m => m.type === 'auto') as import('./types').AutoModule | undefined;
+        if (autoMod && !act.label?.toLowerCase().includes('aggiungi')) {
+          openEditModalWithSecurity(autoMod);
+          return;
+        }
+      }
+
+      if (cat === 'fitness') {
+        setActiveNavTab('home');
+        const fitMod = modules.find(m => m.type === 'fitness') as import('./types').FitnessModule | undefined;
+        if (fitMod) {
+          openEditModalWithSecurity(fitMod);
+          return;
+        }
+      }
+
+      setActiveNavTab('home');
+      handleSelectCategoryWithSecurity(cat as any);
+    }
+  }, [modules, folders, selectedFolderId, openEditModalWithSecurity, handleSelectCategoryWithSecurity]);
 
   const handleSaveAutoEdit = async (updated: import('./types').AutoModule) => {
     if (!encryptionKey) return;
@@ -2924,22 +3096,16 @@ export default function App() {
                     if (activeNavTab === 'ai') setActiveNavTab('home');
                   }}
                   onOpenModule={(m) => {
-                    setIsAiOpen(false);
-                    setAiInitialVoiceMode(false);
-                    openEditModalWithSecurity(m);
+                    handleAiNavigate({ label: m.title || 'Modulo', type: 'module', module: m, moduleId: m.id });
                   }}
                   onOpenCategory={(cat) => {
-                    setIsAiOpen(false);
-                    setAiInitialVoiceMode(false);
-                    handleSelectCategoryWithSecurity(cat as any);
+                    handleAiNavigate({ label: cat, type: 'category', category: cat });
                   }}
                   showToast={showToast}
                   onOpenParking={() => {
-                    setIsAiOpen(false);
-                    setAiInitialVoiceMode(false);
-                    setAddressParkingTab('parking');
-                    setIsAddressAndParkingOpen(true);
+                    handleAiNavigate({ label: 'Parcheggio', type: 'parking' });
                   }}
+                  onNavigate={handleAiNavigate}
                   onAddModule={(newMod) => {
                     setModules(prev => {
                       const updated = [newMod, ...prev];

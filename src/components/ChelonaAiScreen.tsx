@@ -8,7 +8,7 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { Module } from '../types';
 import { 
-  AiMessage, AiMemory, getChatHistory, saveChatHistory, 
+  AiMessage, AiMemory, AiAction, getChatHistory, saveChatHistory, 
   getLearnedMemories, deleteLearnedMemory, clearAllLearnedMemories, 
   saveLearnedMemory, queryGemmaNano, buildKnowledgeBase 
 } from '../services/gemmaNanoEngine';
@@ -34,6 +34,7 @@ interface ChelonaAiScreenProps {
   onAddModule?: (module: Module) => void;
   onOpenParking?: () => void;
   initialVoiceMode?: boolean;
+  onNavigate?: (action: AiAction) => void;
 }
 
 type NeuralCategory = 'all' | 'vehicles' | 'documents' | 'finances' | 'notes' | 'fitness' | 'memories';
@@ -49,6 +50,7 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
   onAddModule,
   onOpenParking,
   initialVoiceMode = false,
+  onNavigate,
 }) => {
   const [messages, setMessages] = useState<AiMessage[]>(() => {
     const history = getChatHistory();
@@ -372,6 +374,18 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
       }
 
       const mustSpeak = isVoiceSession || shouldSpeak;
+
+      if (response.autoAction && onNavigate) {
+        const autoAct = response.autoAction;
+        const delay = mustSpeak ? 1000 : 350;
+        setTimeout(() => {
+          if (isVoiceModeOpenRef.current) {
+            stopSpeaking();
+            setIsVoiceModeOpen(false);
+          }
+          onNavigate(autoAct);
+        }, delay);
+      }
       if (mustSpeak) {
         if (isVoiceSession) {
           setLastAiSpeech(response.text);
@@ -761,18 +775,26 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
                           <button
                             key={i}
                             onClick={() => {
-                              if (act.type === 'parking' && onOpenParking) {
-                                onOpenParking();
-                                if (!isEmbedded) onClose();
-                              } else if (act.type === 'navigate_parking') {
+                              if (act.type === 'save_parking') {
+                                handleSend('Salva il parcheggio qui');
+                                return;
+                              }
+                              if (act.type === 'navigate_parking') {
                                 if (act.url) {
                                   window.open(act.url, '_blank');
                                 } else {
                                   const p = getSavedParking();
                                   if (p) window.open(getNavigationUrl(p.latitude, p.longitude), '_blank');
                                 }
-                              } else if (act.type === 'save_parking') {
-                                handleSend('Salva il parcheggio qui');
+                                return;
+                              }
+                              if (onNavigate) {
+                                onNavigate(act);
+                                return;
+                              }
+                              if (act.type === 'parking' && onOpenParking) {
+                                onOpenParking();
+                                if (!isEmbedded) onClose();
                               } else if (act.type === 'volantino') {
                                 window.dispatchEvent(new CustomEvent('open-volantino', { 
                                   detail: { 

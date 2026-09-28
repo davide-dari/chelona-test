@@ -618,7 +618,7 @@ export async function queryGemmaNano(
   userQuery: string,
   modules: Module[],
   username: string
-): Promise<{ text: string; actions?: AiAction[]; learnedFact?: string; createdModule?: Module }> {
+): Promise<{ text: string; actions?: AiAction[]; learnedFact?: string; createdModule?: Module; autoAction?: AiAction }> {
   // Simula un breve tempo di elaborazione neurale realistico on-device (200-400ms)
   await new Promise(res => setTimeout(res, 250));
 
@@ -631,6 +631,42 @@ export async function queryGemmaNano(
     ((lower.includes('auto') || lower.includes('macchina') || lower.includes('veicol')) &&
      (lower.includes('dove') || lower.includes('dov\'è') || lower.includes('trova') || lower.includes('ritrova') || lower.includes('salva') || lower.includes('lasciat') || lower.includes('messa')))
   ) {
+    // Intento: Apri schermata parcheggio
+    if (lower.includes('apri') || lower.includes('vai') || lower.includes('schermata') || lower.includes('mappa')) {
+      return {
+        text: `Ti porto subito alla schermata del Parcheggio! 🚗`,
+        autoAction: { label: 'Apri Parcheggio', type: 'parking' },
+        actions: [],
+      };
+    }
+
+    // Intento: Dov'è l'auto / Dove ho parcheggiato / Trova auto
+    if (
+      lower.includes('dove') ||
+      lower.includes('dov\'è') ||
+      lower.includes('trova') ||
+      lower.includes('ritrova') ||
+      lower.includes('posizione')
+    ) {
+      const p = getSavedParking();
+      if (p) {
+        const timeStr = formatElapsedParkingTime(p.timestamp);
+        return {
+          text: `La tua auto è parcheggiata in **${p.address}** (${timeStr}).${p.notes ? `\n\nNote: *${p.notes}*` : ''}\n\nTi porto subito alla mappa del parcheggio! 🚗`,
+          autoAction: { label: 'Apri Parcheggio', type: 'parking' },
+          actions: [],
+        };
+      } else {
+        return {
+          text: `Non hai ancora registrato nessun parcheggio. Vuoi che memorizzi la tua posizione attuale adesso?`,
+          actions: [
+            { label: 'Salva Parcheggio Ora', type: 'save_parking' },
+            { label: 'Apri Parcheggio', type: 'parking' },
+          ],
+        };
+      }
+    }
+
     // Intento: Salva il parcheggio attuale
     if (
       lower.includes('salva') ||
@@ -644,6 +680,7 @@ export async function queryGemmaNano(
         const saved = await autoSaveParking();
         return {
           text: `Ho salvato la posizione della tua auto in **${saved.address}**! Coordinate GPS registrate sulla mappa di Chelona.`,
+          autoAction: { label: 'Vedi Mappa Auto', type: 'parking' },
           actions: [
             { label: 'Vedi Mappa Auto', type: 'parking' },
             { label: 'Naviga all\'Auto', type: 'navigate_parking', url: getNavigationUrl(saved.latitude, saved.longitude) },
@@ -653,35 +690,6 @@ export async function queryGemmaNano(
         return {
           text: `Non sono riuscito ad accedere al GPS in automatico. Apri la schermata Parcheggio per salvarlo con un tocco!`,
           actions: [{ label: 'Apri Parcheggio', type: 'parking' }],
-        };
-      }
-    }
-
-    // Intento: Dov'è l'auto / Dove ho parcheggiato
-    if (
-      lower.includes('dove') ||
-      lower.includes('dov\'è') ||
-      lower.includes('trova') ||
-      lower.includes('ritrova') ||
-      lower.includes('posizione')
-    ) {
-      const p = getSavedParking();
-      if (p) {
-        const timeStr = formatElapsedParkingTime(p.timestamp);
-        return {
-          text: `La tua auto è parcheggiata in **${p.address}** (${timeStr}).${p.notes ? `\n\nNote: *${p.notes}*` : ''}`,
-          actions: [
-            { label: 'Vedi sulla Mappa', type: 'parking' },
-            { label: 'Naviga a Piedi', type: 'navigate_parking', url: getNavigationUrl(p.latitude, p.longitude) },
-          ],
-        };
-      } else {
-        return {
-          text: `Non hai ancora registrato nessun parcheggio. Vuoi che memorizzi la tua posizione attuale adesso?`,
-          actions: [
-            { label: 'Salva Parcheggio Ora', type: 'save_parking' },
-            { label: 'Apri Parcheggio', type: 'parking' },
-          ],
         };
       }
     }
@@ -816,6 +824,25 @@ export async function queryGemmaNano(
     lower.includes('urgente') ||
     lower.includes('giorni mancanti')
   ) {
+    // Intento: apri direttamente la schermata scadenze
+    if (
+      lower.includes('apri') ||
+      lower.includes('vai') ||
+      lower.includes('mostra') ||
+      lower.includes('vedi') ||
+      lower.trim() === 'scadenze' ||
+      lower.trim() === 'le scadenze' ||
+      lower.trim() === 'promemoria'
+    ) {
+      return {
+        text: k.urgentDeadlines.length === 0
+          ? `Nessuna scadenza imminente nei prossimi due mesi! Ti porto comunque alla schermata delle scadenze 📅`
+          : `Ti porto subito alla schermata delle scadenze e promemoria! 📅`,
+        autoAction: { label: 'Scadenze', type: 'deadlines' },
+        actions: [],
+      };
+    }
+
     if (k.urgentDeadlines.length === 0) {
       return {
         text: `Nessuna scadenza in vista nei prossimi due mesi, sei completamente tranquillo!`,
@@ -872,6 +899,24 @@ export async function queryGemmaNano(
       return {
         text: `🚗 Non hai ancora registrato nessun veicolo in Chelona.\n\nPuoi aggiungerne uno toccando **"+"** e selezionando la categoria **Veicolo**!`,
         actions: [{ label: 'Aggiungi Veicolo', type: 'category', category: 'auto' }],
+      };
+    }
+
+    // Intento: apri direttamente la scheda auto
+    if (
+      lower.includes('apri') ||
+      lower.includes('scheda') ||
+      lower.includes('vai') ||
+      lower.includes('mostra') ||
+      lower.trim() === 'auto' ||
+      lower.trim() === 'la mia auto' ||
+      lower.trim() === 'macchina'
+    ) {
+      const v = k.vehicles[0];
+      return {
+        text: `Ti apro subito la scheda della tua auto **${v.name}**! 🚗`,
+        autoAction: { label: `Scheda ${v.name}`, type: 'module', moduleId: v.module.id, module: v.module },
+        actions: [],
       };
     }
 
@@ -933,6 +978,41 @@ export async function queryGemmaNano(
       };
     }
 
+    // Intento: apri direttamente documento o categoria
+    if (
+      lower.includes('apri') ||
+      lower.includes('vai') ||
+      lower.includes('mostra') ||
+      lower.includes('vedi') ||
+      lower.trim() === 'documenti' ||
+      lower.trim() === 'i documenti'
+    ) {
+      const matchedDoc = k.documents.find(d => {
+        const titleLower = d.title.toLowerCase();
+        const typeLower = (d.docType || '').toLowerCase();
+        if (lower.includes('patente') && (typeLower.includes('patente') || titleLower.includes('patente'))) return true;
+        if ((lower.includes('carta d\'identità') || lower.includes('carta identita') || lower.includes('identità') || lower.includes('identita')) && (typeLower.includes('identit') || titleLower.includes('identit'))) return true;
+        if (lower.includes('passaporto') && (typeLower.includes('passaporto') || titleLower.includes('passaporto'))) return true;
+        if ((lower.includes('tessera') || lower.includes('sanitaria') || lower.includes('codice fiscale')) && (typeLower.includes('sanitaria') || titleLower.includes('sanitaria') || titleLower.includes('fiscale'))) return true;
+        const cleanQuery = lower.replace(/^(?:apri|mostra|fammi vedere|vedi|vai a|vai ai|vai al|il|la|lo|i|gli|le)\s+/gi, '').trim();
+        return lower.includes(titleLower) || (cleanQuery.length >= 3 && titleLower.includes(cleanQuery));
+      });
+
+      if (matchedDoc) {
+        return {
+          text: `Ti apro subito il documento **${matchedDoc.title}**! 📄`,
+          autoAction: { label: `Vedi ${matchedDoc.title}`, type: 'module', moduleId: matchedDoc.module.id, module: matchedDoc.module },
+          actions: [],
+        };
+      }
+
+      return {
+        text: `Ti mostro subito i tuoi documenti personali! 📄`,
+        autoAction: { label: 'Documenti', type: 'category', category: 'document' },
+        actions: [],
+      };
+    }
+
     let out = `📄 **Documenti Personali Rilevati (${k.documents.length}):**\n\n`;
     const actions: AiAction[] = [];
 
@@ -987,6 +1067,30 @@ export async function queryGemmaNano(
     // es: "volantino conad", "apri il volantino lidl", "sconti coop", "esselunga", "eurospin", ecc.
     if (matchedChain) {
       const { chain, displayName } = matchedChain;
+      const wantsDirectOpen = (
+        lower.includes('apri') ||
+        lower.includes('sfoglia') ||
+        lower.includes('mostra') ||
+        lower.includes('vedi') ||
+        lower.includes('vai') ||
+        lower.includes('volantin') ||
+        lower.trim() === displayName.toLowerCase() ||
+        lower.trim() === chain.slug.toLowerCase()
+      );
+
+      if (wantsDirectOpen) {
+        return {
+          text: `Ti apro subito il volantino di **${displayName}**! 🛒`,
+          autoAction: {
+            label: `Apri Volantino ${displayName}`,
+            type: 'volantino',
+            chainSlug: chain.slug,
+            storeName: displayName,
+          },
+          actions: [],
+        };
+      }
+
       const activeFlyers = chain.flyers.filter(f => !f.to || new Date(f.to) >= new Date());
       const flyer = (activeFlyers.length ? activeFlyers : chain.flyers)[0];
 
@@ -1050,6 +1154,38 @@ export async function queryGemmaNano(
       });
 
       return { text, actions };
+    }
+
+    // Se l'utente vuole aprire la sezione generale dei volantini
+    if (
+      lower.includes('apri') ||
+      lower.includes('vai') ||
+      lower.includes('sfoglia') ||
+      lower.includes('tutti i volantini') ||
+      lower.trim() === 'volantini' ||
+      lower.trim() === 'i volantini' ||
+      lower.trim() === 'il volantino'
+    ) {
+      return {
+        text: `Ti porto subito alla sezione con tutti i volantini e le offerte dei supermercati! 🛒`,
+        autoAction: {
+          label: 'Tutti i Volantini',
+          type: 'volantino',
+        },
+        actions: [],
+      };
+    }
+
+    if (lower.includes('confronta') || lower.includes('comparat') || lower.includes('statistiche prezz')) {
+      return {
+        text: `Ti apro subito il confronto prezzi nazionale per trovare i prodotti più convenienti! 📊`,
+        autoAction: {
+          label: 'Confronta Prezzi',
+          type: 'volantino',
+          chainSlug: 'stats',
+        },
+        actions: [],
+      };
     }
 
     // CASO 2: L'utente cerca offerte per un prodotto specifico
@@ -1205,17 +1341,32 @@ export async function queryGemmaNano(
     lower.includes('cosa manca') ||
     (lower.includes('supermercat') && !lower.includes('volantin') && !lower.includes('offert') && !lower.includes('scont'))
   ) {
+    if (
+      lower.includes('apri') ||
+      lower.includes('vai') ||
+      lower.includes('mostra') ||
+      lower.trim() === 'lista spesa' ||
+      lower.trim() === 'la spesa' ||
+      lower.trim() === 'spesa'
+    ) {
+      return {
+        text: `Ti porto subito alla tua Lista della Spesa! 🛒`,
+        autoAction: { label: 'Lista Spesa', type: 'category', category: 'supermarket' },
+        actions: [],
+      };
+    }
+
     if (!k.supermarket || k.supermarket.itemsToBuy.length === 0) {
       return {
         text: `🛒 La tua **Lista della Spesa** è attualmente vuota o tutti gli ingredienti sono già stati spuntati!`,
-        actions: [{ label: 'Apri Lista Spesa', type: 'category', category: 'home' }],
+        actions: [{ label: 'Apri Lista Spesa', type: 'category', category: 'supermarket' }],
       };
     }
 
     const items = k.supermarket.itemsToBuy.map(i => `- [ ] ${i}`).join('\n');
     return {
       text: `🛒 **Articoli ancora da comprare nella Lista Spesa (${k.supermarket.itemsToBuy.length}):**\n\n${items}`,
-      actions: [{ label: 'Vai alla Spesa', type: 'category', category: 'home' }],
+      actions: [{ label: 'Vai alla Spesa', type: 'category', category: 'supermarket' }],
     };
   }
 
@@ -1285,6 +1436,22 @@ export async function queryGemmaNano(
       };
     }
 
+    // Intento: apri note
+    if (
+      lower.includes('apri') ||
+      lower.includes('vai') ||
+      lower.includes('mostra') ||
+      lower.trim() === 'note' ||
+      lower.trim() === 'le mie note' ||
+      lower.trim() === 'appunti'
+    ) {
+      return {
+        text: `Ti mostro subito le tue note e i tuoi appunti! 📝`,
+        autoAction: { label: 'Note', type: 'category', category: 'generic' },
+        actions: [],
+      };
+    }
+
     // Ricerca semantica semplice tra le note
     const searchTerms = lower.split(/\s+/).filter(w => w.length > 3 && !['nota', 'note', 'appunti', 'cosa', 'scritto', 'nella'].includes(w));
     let matchingNotes = k.notes;
@@ -1335,6 +1502,14 @@ export async function queryGemmaNano(
       };
     }
 
+    if (lower.includes('apri') || lower.includes('vai') || lower.includes('mostra') || lower.trim() === 'fitness' || lower.trim() === 'dieta') {
+      return {
+        text: `Ti apro subito la tua scheda Fitness & Dieta! 🏋️`,
+        autoAction: { label: 'Scheda Fitness', type: 'module', moduleId: k.fitness.module.id, module: k.fitness.module },
+        actions: [],
+      };
+    }
+
     let out = `💪 **Il tuo Profilo Fitness & Nutrizione:**\n\n`;
     out += `- 🎯 Obiettivo: **${k.fitness.goal?.toUpperCase() || 'Mantenimento'}**\n`;
     if (k.fitness.weight) out += `- ⚖️ Peso attuale: **${k.fitness.weight} kg** (Altezza: ${k.fitness.height} cm)\n`;
@@ -1345,6 +1520,37 @@ export async function queryGemmaNano(
       text: out,
       actions: [{ label: 'Apri Scheda Completa', type: 'module', moduleId: k.fitness.module.id, module: k.fitness.module }],
     };
+  }
+
+  // INTENTO: STRUMENTI / UTILITY
+  if (
+    lower.includes('strument') ||
+    lower.includes('utility') ||
+    lower.includes('calcolatric') ||
+    lower.includes('convertitor')
+  ) {
+    if (lower.includes('apri') || lower.includes('vai') || lower.includes('mostra') || lower.trim() === 'strumenti') {
+      return {
+        text: `Ti porto subito alla sezione Strumenti & Utility! 🧰`,
+        autoAction: { label: 'Strumenti', type: 'category', category: 'tools' },
+        actions: [],
+      };
+    }
+  }
+
+  // INTENTO: PROFILO / ACCOUNT
+  if (
+    lower.includes('profilo') ||
+    lower.includes('account') ||
+    lower.includes('impostazioni')
+  ) {
+    if (lower.includes('apri') || lower.includes('vai') || lower.includes('mostra') || lower.trim() === 'profilo' || lower.trim() === 'il mio profilo') {
+      return {
+        text: `Ti apro subito la schermata del tuo Profilo! 👤`,
+        autoAction: { label: 'Profilo', type: 'category', category: 'profile' },
+        actions: [],
+      };
+    }
   }
 
   // INTENTO: SALUTI / CHIACCHIERATA GENERALE
