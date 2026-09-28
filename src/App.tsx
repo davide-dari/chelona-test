@@ -4223,9 +4223,8 @@ export default function App() {
                                 <span>Chiedi a Chelona</span>
                               </motion.button>
 
-                              <motion.button
-                                whileHover={{ scale: 1.05 }}
-                                whileTap={{ scale: 0.92 }}
+                              <button
+                                type="button"
                                 onClick={() => {
                                   setAiInitialVoiceMode(true);
                                   setIsAiOpen(true);
@@ -4234,12 +4233,12 @@ export default function App() {
                                   setIsProfileOpen(false);
                                   setSelectedType(null);
                                 }}
-                                className="p-3.5 rounded-2xl bg-gradient-to-r from-indigo-600 via-purple-600 to-rose-500 hover:opacity-95 text-white font-bold shadow-md shadow-indigo-500/20 transition-all flex items-center justify-center active:scale-95 shrink-0 cursor-pointer"
+                                className="p-3.5 rounded-2xl border border-[var(--border)] bg-[var(--surface-variant)] hover:bg-[var(--border)] text-amber-500 transition-all shrink-0 active:scale-95 shadow-xs flex items-center justify-center cursor-pointer"
                                 title="Parla con Chelona AI"
                                 aria-label="Parla con Chelona AI tramite microfono"
                               >
-                                <Mic className="w-5 h-5 text-white" />
-                              </motion.button>
+                                <Mic className="w-5 h-5" />
+                              </button>
                             </div>
                           </div>
                         </motion.div>
