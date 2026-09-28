@@ -1767,7 +1767,7 @@ export default function App() {
         return;
       }
 
-      if (cat === 'supermarket' || (act.label && act.label.toLowerCase().includes('spesa'))) {
+      if (cat === 'supermarket' || (act.label && act.label.toLowerCase().includes('spesa') && !act.label.toLowerCase().includes('condivis') && !act.label.toLowerCase().includes('singol'))) {
         setActiveNavTab('home');
         let sm = modules.find(m => m.type === 'supermarket') as import('./types').SupermarketModule | undefined;
         if (!sm) {
@@ -1795,6 +1795,7 @@ export default function App() {
       if (cat === 'tools') {
         setActiveNavTab('tools');
         setIsToolsOpen(true);
+        if (act.toolId) setActiveToolId(act.toolId);
         return;
       }
 
@@ -1830,8 +1831,8 @@ export default function App() {
       }
 
       if (cat === 'recipes') {
-        setInitialRecipesSearch('');
-        setInitialRecipesCategory(null);
+        setInitialRecipesSearch(act.search || '');
+        setInitialRecipesCategory(act.recipeCategory || null);
         setIsRecipesOpen(true);
         return;
       }
@@ -1841,13 +1842,30 @@ export default function App() {
         return;
       }
 
+      const isAddAction = Boolean(act.label && (act.label.toLowerCase().includes('aggiungi') || act.label.toLowerCase().includes('nuov') || act.label.toLowerCase().includes('crea') || act.label.toLowerCase().includes('configura')));
+
       if (cat === 'travel') {
         setActiveNavTab('home');
         const trMod = modules.find(m => m.type === 'travel') as import('./types').TravelModule | undefined;
         if (trMod) {
           openEditModalWithSecurity(trMod);
-          return;
+        } else {
+          const newTravel: import('./types').TravelModule = {
+            id: generateUUID(),
+            type: 'travel',
+            title: 'Viaggi',
+            destinations: [],
+            x: 0, y: 0, w: 3, h: 3,
+            folderId: selectedFolderId || undefined
+          };
+          setModules(prev => {
+            const updated = [newTravel, ...prev];
+            saveAppState(updated, folders).catch(console.error);
+            return updated;
+          });
+          setEditingTravelModule(newTravel);
         }
+        return;
       }
 
       if (cat === 'furniture' || cat === 'home') {
@@ -1855,53 +1873,31 @@ export default function App() {
         const fMod = modules.find(m => m.type === 'furniture') as import('./types').FurnitureModule | undefined;
         if (fMod) {
           openEditModalWithSecurity(fMod);
-          return;
+        } else {
+          const newFurniture: import('./types').FurnitureModule = {
+            id: generateUUID(),
+            type: 'furniture',
+            title: 'Arredamento',
+            rooms: [
+              { id: generateUUID(), name: 'Cucina', items: [] },
+              { id: generateUUID(), name: 'Salone', items: [] },
+              { id: generateUUID(), name: 'Camera da letto', items: [] },
+              { id: generateUUID(), name: 'Bagno', items: [] }
+            ],
+            x: (modules.length * 2) % 12,
+            y: Infinity,
+            w: 3,
+            h: 3,
+            folderId: selectedFolderId || undefined
+          };
+          setModules(prev => {
+            const updated = [newFurniture, ...prev];
+            saveAppState(updated, folders).catch(console.error);
+            return updated;
+          });
+          setEditingFurnitureModule(newFurniture);
         }
-      }
-
-      if (cat === 'split') {
-        setActiveNavTab('home');
-        const spMod = modules.find(m => m.type === 'split') as import('./types').SplitModule | undefined;
-        if (spMod && !act.label?.toLowerCase().includes('aggiungi') && !act.label?.toLowerCase().includes('nuov')) {
-          openEditModalWithSecurity(spMod);
-          return;
-        }
-      }
-
-      if (cat === 'installments') {
-        setActiveNavTab('home');
-        const instMod = modules.find(m => m.type === 'installments') as import('./types').InstallmentsModule | undefined;
-        if (instMod && !act.label?.toLowerCase().includes('aggiungi') && !act.label?.toLowerCase().includes('nuov')) {
-          openEditModalWithSecurity(instMod);
-          return;
-        }
-      }
-
-      if (cat === 'single-expense') {
-        setActiveNavTab('home');
-        const seMod = modules.find(m => m.type === 'single-expense') as import('./types').SingleExpenseModule | undefined;
-        if (seMod && !act.label?.toLowerCase().includes('aggiungi') && !act.label?.toLowerCase().includes('nuov')) {
-          openEditModalWithSecurity(seMod);
-          return;
-        }
-      }
-
-      if (cat === 'document') {
-        setActiveNavTab('home');
-        const docMod = modules.find(m => m.type === 'document') as import('./types').DocumentModule | undefined;
-        if (docMod && !act.label?.toLowerCase().includes('aggiungi') && !act.label?.toLowerCase().includes('nuov')) {
-          openEditModalWithSecurity(docMod);
-          return;
-        }
-      }
-
-      if (cat === 'auto') {
-        setActiveNavTab('home');
-        const autoMod = modules.find(m => m.type === 'auto') as import('./types').AutoModule | undefined;
-        if (autoMod && !act.label?.toLowerCase().includes('aggiungi')) {
-          openEditModalWithSecurity(autoMod);
-          return;
-        }
+        return;
       }
 
       if (cat === 'fitness') {
@@ -1909,8 +1905,96 @@ export default function App() {
         const fitMod = modules.find(m => m.type === 'fitness') as import('./types').FitnessModule | undefined;
         if (fitMod) {
           openEditModalWithSecurity(fitMod);
-          return;
+        } else {
+          const newFitness: import('./types').FitnessModule = {
+            id: generateUUID(),
+            type: 'fitness',
+            title: 'Fitness & Dieta',
+            x: 0, y: 0, w: 3, h: 2,
+            folderId: selectedFolderId || undefined
+          };
+          setModules(prev => {
+            const updated = [newFitness, ...prev];
+            saveAppState(updated, folders).catch(console.error);
+            return updated;
+          });
+          setEditingFitnessModule(newFitness);
         }
+        return;
+      }
+
+      if (cat === 'auto') {
+        setActiveNavTab('home');
+        if (isAddAction || !modules.some(m => m.type === 'auto')) {
+          setFormData({ template: 'auto' });
+          setAutoFormStep(0);
+          setIsAdding(true);
+        } else {
+          const autoMod = modules.find(m => m.type === 'auto') as import('./types').AutoModule | undefined;
+          if (autoMod) openEditModalWithSecurity(autoMod);
+        }
+        return;
+      }
+
+      if (cat === 'document') {
+        setActiveNavTab('home');
+        if (isAddAction || !modules.some(m => m.type === 'document')) {
+          setFormData({ template: 'document' });
+          setIsAdding(true);
+        } else {
+          handleSelectCategoryWithSecurity('document');
+        }
+        return;
+      }
+
+      if (cat === 'single-expense') {
+        setActiveNavTab('home');
+        if (isAddAction) {
+          setSpesaSubMenu(false);
+          setFormData({ template: 'single-expense' });
+          setIsAdding(true);
+        } else {
+          handleSelectCategoryWithSecurity('single-expense');
+        }
+        return;
+      }
+
+      if (cat === 'split') {
+        setActiveNavTab('home');
+        if (isAddAction || !modules.some(m => m.type === 'split')) {
+          setSpesaSubMenu(false);
+          setFormData({ template: 'split' });
+          setIsAdding(true);
+        } else {
+          const spMod = modules.find(m => m.type === 'split') as import('./types').SplitModule | undefined;
+          if (spMod) openEditModalWithSecurity(spMod);
+          else handleSelectCategoryWithSecurity('split');
+        }
+        return;
+      }
+
+      if (cat === 'installments') {
+        setActiveNavTab('home');
+        if (isAddAction || !modules.some(m => m.type === 'installments')) {
+          setFormData({ template: 'installments' });
+          setIsAdding(true);
+        } else {
+          const instMod = modules.find(m => m.type === 'installments') as import('./types').InstallmentsModule | undefined;
+          if (instMod) openEditModalWithSecurity(instMod);
+          else handleSelectCategoryWithSecurity('installments');
+        }
+        return;
+      }
+
+      if (cat === 'generic' || cat === 'notes') {
+        setActiveNavTab('home');
+        if (isAddAction) {
+          setFormData({ template: 'generic' });
+          setIsAdding(true);
+        } else {
+          handleSelectCategoryWithSecurity('generic');
+        }
+        return;
       }
 
       setActiveNavTab('home');

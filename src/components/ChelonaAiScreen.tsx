@@ -3,7 +3,7 @@ import {
   Send, Mic, MicOff, Volume2, VolumeX, Trash2, ArrowLeft, 
   Brain, ExternalLink, Check, Copy, Plus, X,
   Radio, Car, FileText, CreditCard, StickyNote, Activity, Sparkles,
-  Settings2, Sliders, Play
+  Settings2, Sliders, Play, Utensils, Plane, Home, Navigation, BookUser, Wrench
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Module } from '../types';
@@ -38,7 +38,7 @@ interface ChelonaAiScreenProps {
   onNavigate?: (action: AiAction) => void;
 }
 
-type NeuralCategory = 'all' | 'vehicles' | 'documents' | 'finances' | 'notes' | 'fitness' | 'memories';
+type NeuralCategory = 'all' | 'vehicles' | 'documents' | 'finances' | 'notes' | 'fitness' | 'recipes' | 'travel' | 'furniture' | 'parking' | 'addresses' | 'memories';
 
 function formatDate(dateStr?: string): string {
   if (!dateStr) return 'N/D';
@@ -711,8 +711,10 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
     { label: '🏋️ Fitness & Dieta', query: 'Qual è la mia scheda di allenamento e calorie target?' },
     { label: '✈️ Viaggi & Itinerari', query: 'Quali mete di viaggio e tappe ho programmato?' },
     { label: '🏠 Casa & Arredo', query: 'Riepilogo delle stanze, arredi e preventivi' },
+    { label: '✍️ Note & Appunti', query: 'Quali note e appunti ho salvato?' },
     { label: '📇 Rubrica Indirizzi', query: 'Quali indirizzi e recapiti ho memorizzato?' },
-    { label: '🧰 Strumenti & Scanner', query: 'Quali strumenti e scanner sono disponibili?' },
+    { label: '📑 Scanner & PDF', query: 'Apri lo scanner e gli strumenti PDF' },
+    { label: '🧰 Strumenti & Utility', query: 'Quali strumenti e utility sono disponibili?' },
     { label: '🔒 Profilo & Sicurezza', query: 'Stato profilo, backup crittografato e comando Ciao Chelona' },
     { label: '🧠 Cosa sai di me?', query: 'Cosa sai su di me e cosa hai imparato finora?' },
     { label: '❓ Cosa puoi fare?', query: 'Mostrami tutte le sezioni e le cose che puoi fare' },
@@ -1534,6 +1536,45 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
                   </div>
                 </div>
 
+                {/* Selettore rapido categorie (Pill bar orizzontale scrollabile) */}
+                <div className="flex items-center gap-1.5 overflow-x-auto pb-2 scrollbar-none my-2">
+                  {[
+                    { id: 'all', label: 'Tutto', count: null },
+                    { id: 'vehicles', label: 'Veicoli', count: knowledge.vehicles.length },
+                    { id: 'documents', label: 'Documenti', count: knowledge.documents.length },
+                    { id: 'finances', label: 'Finanze', count: knowledge.installments.modules.length + knowledge.expenses.count },
+                    { id: 'recipes', label: 'Ricette', count: knowledge.recipes.customCount },
+                    { id: 'fitness', label: 'Fitness', count: knowledge.fitness ? 1 : 0 },
+                    { id: 'travel', label: 'Viaggi', count: knowledge.travel.destinationsCount },
+                    { id: 'furniture', label: 'Casa', count: knowledge.furniture.roomsCount },
+                    { id: 'notes', label: 'Appunti', count: knowledge.notes.length },
+                    { id: 'parking', label: 'Parcheggio', count: knowledge.parking.hasParking ? 1 : 0 },
+                    { id: 'addresses', label: 'Rubrica', count: knowledge.addresses.count },
+                    { id: 'memories', label: 'Memorie', count: memories.length },
+                  ].map(tab => {
+                    const isSel = activeNeuralCategory === tab.id;
+                    return (
+                      <button
+                        key={tab.id}
+                        type="button"
+                        onClick={() => setActiveNeuralCategory(tab.id as NeuralCategory)}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all flex items-center gap-1.5 ${
+                          isSel
+                            ? 'bg-amber-500 text-white shadow-sm'
+                            : 'bg-[var(--surface-variant)] text-[var(--text-muted)] hover:text-[var(--text-main)]'
+                        }`}
+                      >
+                        {tab.label}
+                        {tab.count !== null && tab.count > 0 && (
+                          <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${isSel ? 'bg-white/20 text-white' : 'bg-[var(--border)] text-[var(--text-main)]'}`}>
+                            {tab.count}
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+
                 {/* Dettagli Dinamici Categoria Neurale Selezionata */}
                 {activeNeuralCategory === 'vehicles' && (
                   <div className="space-y-3">
@@ -1640,6 +1681,120 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
                       </div>
                     ) : (
                       <p className="text-xs text-[var(--text-muted)] p-4 border border-dashed border-[var(--border)] rounded-2xl text-center">Fitness non ancora configurato.</p>
+                    )}
+                  </div>
+                )}
+
+                {activeNeuralCategory === 'recipes' && (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-xs font-bold text-[var(--text-main)] flex items-center gap-1.5">
+                        <Utensils className="w-3.5 h-3.5 text-orange-500" />
+                        Ricettario & Cucina
+                      </h4>
+                      <button onClick={() => setActiveNeuralCategory('all')} className="text-[11px] text-orange-500 hover:underline">Tutti i nodi</button>
+                    </div>
+                    <div className="p-3 rounded-2xl bg-[var(--card-bg)] border border-[var(--border)] space-y-2 text-xs">
+                      <div>Ricette personali salvate: <span className="font-black text-[var(--text-main)]">{knowledge.recipes.customCount}</span></div>
+                      <div>Piatti preferiti: <span className="font-black text-[var(--text-main)]">{knowledge.recipes.favoritesCount}</span></div>
+                      {knowledge.recipes.fridgeIngredients.length > 0 && (
+                        <div>Nel frigo: <span className="text-[var(--text-muted)]">{knowledge.recipes.fridgeIngredients.join(', ')}</span></div>
+                      )}
+                      {knowledge.recipes.pantryIngredients.length > 0 && (
+                        <div>In dispensa: <span className="text-[var(--text-muted)]">{knowledge.recipes.pantryIngredients.join(', ')}</span></div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {activeNeuralCategory === 'travel' && (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-xs font-bold text-[var(--text-main)] flex items-center gap-1.5">
+                        <Plane className="w-3.5 h-3.5 text-sky-500" />
+                        Viaggi & Itinerari ({knowledge.travel.destinationsCount})
+                      </h4>
+                      <button onClick={() => setActiveNeuralCategory('all')} className="text-[11px] text-sky-500 hover:underline">Tutti i nodi</button>
+                    </div>
+                    {knowledge.travel.destinationsCount === 0 ? (
+                      <p className="text-xs text-[var(--text-muted)] p-4 border border-dashed border-[var(--border)] rounded-2xl text-center">Nessuna destinazione di viaggio salvata.</p>
+                    ) : (
+                      knowledge.travel.destinations.map((d, i) => (
+                        <div key={i} className="p-3 rounded-2xl bg-[var(--card-bg)] border border-[var(--border)] space-y-1 text-xs">
+                          <div className="font-bold text-[var(--text-main)]">{d.name}</div>
+                          <div className="text-[var(--text-muted)]">{d.city || ''} {d.nation ? `(${d.nation})` : ''} • {d.type === 'itinerary' ? 'Tappa itinerario' : 'Luogo d\'interesse'}</div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                )}
+
+                {activeNeuralCategory === 'furniture' && (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-xs font-bold text-[var(--text-main)] flex items-center gap-1.5">
+                        <Home className="w-3.5 h-3.5 text-teal-500" />
+                        Casa & Arredamento ({knowledge.furniture.roomsCount} stanze)
+                      </h4>
+                      <button onClick={() => setActiveNeuralCategory('all')} className="text-[11px] text-teal-500 hover:underline">Tutti i nodi</button>
+                    </div>
+                    {knowledge.furniture.roomsCount === 0 ? (
+                      <p className="text-xs text-[var(--text-muted)] p-4 border border-dashed border-[var(--border)] rounded-2xl text-center">Nessuna stanza configurata.</p>
+                    ) : (
+                      knowledge.furniture.rooms.map((r, i) => (
+                        <div key={i} className="p-3 rounded-2xl bg-[var(--card-bg)] border border-[var(--border)] space-y-1 text-xs">
+                          <div className="font-bold text-[var(--text-main)]">{r.name} {r.dimensions ? `(${r.dimensions})` : ''}</div>
+                          <div className="text-[var(--text-muted)]">{r.items.length} mobili inseriti</div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                )}
+
+                {activeNeuralCategory === 'parking' && (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-xs font-bold text-[var(--text-main)] flex items-center gap-1.5">
+                        <Navigation className="w-3.5 h-3.5 text-emerald-500" />
+                        Parcheggio & Posizione GPS
+                      </h4>
+                      <button onClick={() => setActiveNeuralCategory('all')} className="text-[11px] text-emerald-500 hover:underline">Tutti i nodi</button>
+                    </div>
+                    {knowledge.parking.hasParking ? (
+                      <div className="p-3 rounded-2xl bg-[var(--card-bg)] border border-[var(--border)] space-y-1 text-xs">
+                        <div className="font-bold text-[var(--text-main)]">{knowledge.parking.address || 'Posizione salvata'}</div>
+                        <div className="text-[var(--text-muted)]">Parcheggiata: {knowledge.parking.elapsedTime}</div>
+                        {knowledge.parking.notes && <div className="text-[11px] text-amber-500">Note: {knowledge.parking.notes}</div>}
+                        {knowledge.parking.meterRemainingMinutes !== undefined && (
+                          <div className={`text-[11px] font-bold ${knowledge.parking.meterRemainingMinutes > 0 ? 'text-blue-500' : 'text-rose-500'}`}>
+                            {knowledge.parking.meterRemainingMinutes > 0 ? `Parchimetro: ${knowledge.parking.meterRemainingMinutes} min rimanenti` : 'Parchimetro scaduto!'}
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <p className="text-xs text-[var(--text-muted)] p-4 border border-dashed border-[var(--border)] rounded-2xl text-center">Nessun parcheggio registrato.</p>
+                    )}
+                  </div>
+                )}
+
+                {activeNeuralCategory === 'addresses' && (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-xs font-bold text-[var(--text-main)] flex items-center gap-1.5">
+                        <BookUser className="w-3.5 h-3.5 text-indigo-500" />
+                        Rubrica Indirizzi ({knowledge.addresses.count})
+                      </h4>
+                      <button onClick={() => setActiveNeuralCategory('all')} className="text-[11px] text-indigo-500 hover:underline">Tutti i nodi</button>
+                    </div>
+                    {knowledge.addresses.count === 0 ? (
+                      <p className="text-xs text-[var(--text-muted)] p-4 border border-dashed border-[var(--border)] rounded-2xl text-center">Nessun indirizzo salvato.</p>
+                    ) : (
+                      knowledge.addresses.list.map((a, i) => (
+                        <div key={i} className="p-3 rounded-2xl bg-[var(--card-bg)] border border-[var(--border)] space-y-1 text-xs">
+                          <div className="font-bold text-[var(--text-main)]">{a.title}</div>
+                          <div className="text-[var(--text-muted)] truncate">{a.query}</div>
+                        </div>
+                      ))
                     )}
                   </div>
                 )}

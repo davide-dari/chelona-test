@@ -95,6 +95,7 @@ export async function cancelParkingNotifications(): Promise<void> {
  */
 export function getSavedParking(): SavedParking | null {
   try {
+    if (typeof window === 'undefined' || typeof localStorage === 'undefined' || !localStorage?.getItem) return null;
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return null;
     return JSON.parse(raw);

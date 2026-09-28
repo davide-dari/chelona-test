@@ -63,6 +63,7 @@ const CHAT_HISTORY_KEY = 'chelona_ai_chat_history';
  */
 export function getLearnedMemories(): AiMemory[] {
   try {
+    if (typeof window === 'undefined' || typeof localStorage === 'undefined' || !localStorage?.getItem) return [];
     const raw = localStorage.getItem(MEMORIES_STORAGE_KEY);
     if (!raw) return [];
     return JSON.parse(raw);
@@ -92,7 +93,9 @@ export function saveLearnedMemory(memory: Omit<AiMemory, 'id' | 'createdAt'>): A
   }
 
   try {
-    localStorage.setItem(MEMORIES_STORAGE_KEY, JSON.stringify(memories));
+    if (typeof window !== 'undefined' && typeof localStorage !== 'undefined' && localStorage?.setItem) {
+      localStorage.setItem(MEMORIES_STORAGE_KEY, JSON.stringify(memories));
+    }
   } catch (e) {
     console.error('Failed to save AI memory', e);
   }
@@ -106,7 +109,9 @@ export function saveLearnedMemory(memory: Omit<AiMemory, 'id' | 'createdAt'>): A
 export function deleteLearnedMemory(id: string): void {
   const memories = getLearnedMemories().filter(m => m.id !== id);
   try {
-    localStorage.setItem(MEMORIES_STORAGE_KEY, JSON.stringify(memories));
+    if (typeof window !== 'undefined' && typeof localStorage !== 'undefined' && localStorage?.setItem) {
+      localStorage.setItem(MEMORIES_STORAGE_KEY, JSON.stringify(memories));
+    }
   } catch (e) {
     console.error('Failed to delete memory', e);
   }
@@ -117,7 +122,9 @@ export function deleteLearnedMemory(id: string): void {
  */
 export function clearAllLearnedMemories(): void {
   try {
-    localStorage.removeItem(MEMORIES_STORAGE_KEY);
+    if (typeof window !== 'undefined' && typeof localStorage !== 'undefined' && localStorage?.removeItem) {
+      localStorage.removeItem(MEMORIES_STORAGE_KEY);
+    }
   } catch (e) {
     console.error('Failed to clear memories', e);
   }
@@ -128,6 +135,7 @@ export function clearAllLearnedMemories(): void {
  */
 export function getChatHistory(): AiMessage[] {
   try {
+    if (typeof window === 'undefined' || typeof localStorage === 'undefined' || !localStorage?.getItem) return [];
     const raw = localStorage.getItem(CHAT_HISTORY_KEY);
     if (!raw) return [];
     return JSON.parse(raw);
@@ -227,7 +235,23 @@ function formatDate(dateStr?: string): string {
 /**
  * Calcolo matematico dei debiti e crediti nello split ("chi deve a chi")
  */
-export function calculateSplitSettlements(participants: { id: string; name: string }[], expenses: SplitExpense[]) {
+export function calculateSplitSettlements(
+  rawParticipants: (string | { id?: string; name?: string })[], 
+  expenses: any[]
+) {
+  // Normalize participants to { id: string, name: string }
+  const participants = (rawParticipants || []).map((p, idx) => {
+    if (typeof p === 'string') {
+      return { id: p, name: p };
+    }
+    const name = p.name || p.id || `Persona ${idx + 1}`;
+    const id = p.id || name;
+    return { id, name };
+  });
+
+  const participantIds = new Set(participants.map(p => p.id));
+  const nameToId = new Map(participants.map(p => [p.name.toLowerCase(), p.id]));
+
   const paidMap: Record<string, number> = {};
   const owedMap: Record<string, number> = {};
 
@@ -236,24 +260,64 @@ export function calculateSplitSettlements(participants: { id: string; name: stri
     owedMap[p.id] = 0;
   });
 
-  for (const exp of expenses) {
+  for (const exp of (expenses || [])) {
     const amount = Number(exp.amount) || 0;
-    if (paidMap[exp.paidById] !== undefined) {
-      paidMap[exp.paidById] += amount;
+    if (amount <= 0) continue;
+
+    // Resolve payer ID
+    let payerId = exp.paidById || exp.paidBy;
+    if (payerId && !participantIds.has(payerId)) {
+      const foundId = nameToId.get(String(payerId).toLowerCase());
+      if (foundId) payerId = foundId;
+    }
+    if (payerId && paidMap[payerId] !== undefined) {
+      paidMap[payerId] += amount;
     }
 
-    if (exp.participants && exp.participants.length > 0) {
+    // Resolve expense participants
+    const expParts: { participantId: string; value?: number }[] = [];
+    if (Array.isArray(exp.participants) && exp.participants.length > 0) {
+      for (const ep of exp.participants) {
+        let pId = ep.participantId || ep.id || ep.name;
+        if (pId && !participantIds.has(pId)) {
+          const foundId = nameToId.get(String(pId).toLowerCase());
+          if (foundId) pId = foundId;
+        }
+        if (pId && participantIds.has(pId)) {
+          expParts.push({ participantId: pId, value: ep.value });
+        }
+      }
+    } else if (exp.splitValues && typeof exp.splitValues === 'object') {
+      for (const [key, val] of Object.entries(exp.splitValues)) {
+        let pId = key;
+        if (!participantIds.has(pId)) {
+          const foundId = nameToId.get(key.toLowerCase());
+          if (foundId) pId = foundId;
+        }
+        if (participantIds.has(pId)) {
+          expParts.push({ participantId: pId, value: Number(val) });
+        }
+      }
+    }
+
+    if (expParts.length > 0) {
       if (exp.splitType === 'exact') {
-        exp.participants.forEach(p => {
+        expParts.forEach(p => {
           if (owedMap[p.participantId] !== undefined) owedMap[p.participantId] += (p.value || 0);
         });
       } else if (exp.splitType === 'percentage') {
-        exp.participants.forEach(p => {
+        expParts.forEach(p => {
           if (owedMap[p.participantId] !== undefined) owedMap[p.participantId] += (amount * (p.value || 0)) / 100;
         });
+      } else if (exp.splitType === 'shares') {
+        const totalShares = expParts.reduce((acc, p) => acc + (p.value || 1), 0) || 1;
+        expParts.forEach(p => {
+          const share = (amount * (p.value || 1)) / totalShares;
+          if (owedMap[p.participantId] !== undefined) owedMap[p.participantId] += share;
+        });
       } else {
-        const share = amount / exp.participants.length;
-        exp.participants.forEach(p => {
+        const share = amount / expParts.length;
+        expParts.forEach(p => {
           if (owedMap[p.participantId] !== undefined) owedMap[p.participantId] += share;
         });
       }
@@ -320,33 +384,35 @@ function loadRecipesKnowledge(): ChelonaKnowledge['recipes'] {
   let freezerIngredients: string[] = [];
   let pantryIngredients: string[] = [];
 
-  try {
-    const rawCustom = localStorage.getItem('chelona_custom_recipes');
-    if (rawCustom) customList = JSON.parse(rawCustom);
-  } catch {}
+  if (typeof window !== 'undefined' && typeof localStorage !== 'undefined' && localStorage?.getItem) {
+    try {
+      const rawCustom = localStorage.getItem('chelona_custom_recipes');
+      if (rawCustom) customList = JSON.parse(rawCustom);
+    } catch {}
 
-  try {
-    const rawFavs = localStorage.getItem('chelona_gz_favorites');
-    if (rawFavs) {
-      const parsed = JSON.parse(rawFavs);
-      favoritesList = parsed.map((f: any) => typeof f === 'string' ? f : f.title || f.titolo || '');
-    }
-  } catch {}
+    try {
+      const rawFavs = localStorage.getItem('chelona_gz_favorites');
+      if (rawFavs) {
+        const parsed = JSON.parse(rawFavs);
+        favoritesList = parsed.map((f: any) => typeof f === 'string' ? f : f.title || f.titolo || '');
+      }
+    } catch {}
 
-  try {
-    const rawFridge = localStorage.getItem('chelona_fridge_ingredients');
-    if (rawFridge) fridgeIngredients = JSON.parse(rawFridge);
-  } catch {}
+    try {
+      const rawFridge = localStorage.getItem('chelona_fridge_ingredients');
+      if (rawFridge) fridgeIngredients = JSON.parse(rawFridge);
+    } catch {}
 
-  try {
-    const rawFreezer = localStorage.getItem('chelona_freezer_ingredients');
-    if (rawFreezer) freezerIngredients = JSON.parse(rawFreezer);
-  } catch {}
+    try {
+      const rawFreezer = localStorage.getItem('chelona_freezer_ingredients');
+      if (rawFreezer) freezerIngredients = JSON.parse(rawFreezer);
+    } catch {}
 
-  try {
-    const rawPantry = localStorage.getItem('chelona_pantry_ingredients');
-    if (rawPantry) pantryIngredients = JSON.parse(rawPantry);
-  } catch {}
+    try {
+      const rawPantry = localStorage.getItem('chelona_pantry_ingredients');
+      if (rawPantry) pantryIngredients = JSON.parse(rawPantry);
+    } catch {}
+  }
 
   const allIngredients = Array.from(new Set([...fridgeIngredients, ...pantryIngredients, ...freezerIngredients]));
 
@@ -370,6 +436,16 @@ function loadAddressesKnowledge(): ChelonaKnowledge['addresses'] {
         count: loaded.length,
         list: loaded.map(a => ({ id: a.id || '', title: a.title || 'Indirizzo', query: a.query || '' })),
       };
+    }
+    const legacy = localStorage.getItem('chelona_address_book');
+    if (legacy) {
+      const parsed = JSON.parse(legacy);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return {
+          count: parsed.length,
+          list: parsed.map(a => ({ id: a.id || '', title: a.title || 'Indirizzo', query: a.query || '' })),
+        };
+      }
     }
   } catch {}
   return { count: 0, list: [] };
@@ -417,6 +493,9 @@ export interface ChelonaKnowledge {
     registrationYear?: string;
     battery12vExpiryDate?: string;
     hybridBatteryExpiryDate?: string;
+    lastGplCylinder?: string;
+    lastMethaneCylinder?: string;
+    attachedDocs: string[];
   }[];
   documents: {
     module: DocumentModule;
@@ -479,6 +558,7 @@ export interface ChelonaKnowledge {
     level?: string;
     equipment?: string;
     workoutRoutines: { dayLabel: string; focus: string; exercises: string[] }[];
+    weeklyMeals?: { dayLabel: string; meals: string[] }[];
     partnerName?: string;
     partnerGoal?: string;
     partnerCalories?: number;
@@ -494,7 +574,7 @@ export interface ChelonaKnowledge {
     label: string;
     date: string;
     days: number;
-    type: 'auto' | 'document' | 'installment' | 'expense';
+    type: 'auto' | 'document' | 'installment' | 'expense' | 'parking';
     moduleId?: string;
     module?: Module;
   }[];
@@ -595,6 +675,15 @@ export function buildKnowledgeBase(modules: Module[], username: string): Chelona
       const taxDays = auto.lastTax ? getDaysRemaining(auto.lastTax) : 9999;
       const revDays = auto.lastRevision ? getDaysRemaining(auto.lastRevision) : 9999;
 
+      const attachedDocs: string[] = [];
+      if (auto.insuranceDoc) attachedDocs.push('Assicurazione');
+      if (auto.taxDoc) attachedDocs.push('Bollo');
+      if (auto.revisionDoc) attachedDocs.push('Revisione');
+      if (auto.serviceDoc) attachedDocs.push('Tagliando');
+      if (auto.tireDoc) attachedDocs.push('Pneumatici');
+      if (auto.battery12vDoc) attachedDocs.push('Batteria 12V');
+      if (auto.hybridBatteryDoc) attachedDocs.push('Batteria Ibrida');
+
       k.vehicles.push({
         module: auto,
         name: `${auto.brand || ''} ${auto.model || ''}`.trim() || auto.title || 'Veicolo',
@@ -611,6 +700,9 @@ export function buildKnowledgeBase(modules: Module[], username: string): Chelona
         registrationYear: auto.registrationYear,
         battery12vExpiryDate: auto.battery12vExpiryDate,
         hybridBatteryExpiryDate: auto.hybridBatteryExpiryDate,
+        lastGplCylinder: auto.lastGplCylinder,
+        lastMethaneCylinder: auto.lastMethaneCylinder,
+        attachedDocs,
       });
 
       if (auto.lastInsurance && insDays <= 60) {
@@ -642,6 +734,58 @@ export function buildKnowledgeBase(modules: Module[], username: string): Chelona
           moduleId: auto.id,
           module: auto,
         });
+      }
+      if (auto.lastGplCylinder) {
+        const gplDays = getDaysRemaining(auto.lastGplCylinder);
+        if (gplDays <= 60) {
+          k.urgentDeadlines.push({
+            label: `Revisione Bombole GPL ${auto.brand} ${auto.model} (${auto.plate})`,
+            date: auto.lastGplCylinder,
+            days: gplDays,
+            type: 'auto',
+            moduleId: auto.id,
+            module: auto,
+          });
+        }
+      }
+      if (auto.lastMethaneCylinder) {
+        const metDays = getDaysRemaining(auto.lastMethaneCylinder);
+        if (metDays <= 60) {
+          k.urgentDeadlines.push({
+            label: `Revisione Bombole Metano ${auto.brand} ${auto.model} (${auto.plate})`,
+            date: auto.lastMethaneCylinder,
+            days: metDays,
+            type: 'auto',
+            moduleId: auto.id,
+            module: auto,
+          });
+        }
+      }
+      if (auto.battery12vExpiryDate) {
+        const batDays = getDaysRemaining(auto.battery12vExpiryDate);
+        if (batDays <= 60) {
+          k.urgentDeadlines.push({
+            label: `Controllo Batteria 12V ${auto.brand} ${auto.model} (${auto.plate})`,
+            date: auto.battery12vExpiryDate,
+            days: batDays,
+            type: 'auto',
+            moduleId: auto.id,
+            module: auto,
+          });
+        }
+      }
+      if (auto.hybridBatteryExpiryDate) {
+        const hybDays = getDaysRemaining(auto.hybridBatteryExpiryDate);
+        if (hybDays <= 60) {
+          k.urgentDeadlines.push({
+            label: `Garanzia/Controllo Batteria Ibrida ${auto.brand} ${auto.model} (${auto.plate})`,
+            date: auto.hybridBatteryExpiryDate,
+            days: hybDays,
+            type: 'auto',
+            moduleId: auto.id,
+            module: auto,
+          });
+        }
       }
     }
 
@@ -776,7 +920,7 @@ export function buildKnowledgeBase(modules: Module[], username: string): Chelona
         totalAmount,
         currency: sp.currency || 'EUR',
         expensesCount: expenses.length,
-        participants: participants.map(p => p.name),
+        participants: participants.map(p => typeof p === 'string' ? p : p?.name || 'Partecipante'),
         balances,
         settlements,
       });
@@ -799,7 +943,16 @@ export function buildKnowledgeBase(modules: Module[], username: string): Chelona
       const routines = (fit.workoutPlan || []).map(day => ({
         dayLabel: day.dayLabel || 'Giorno',
         focus: day.focus || 'Allenamento',
-        exercises: (day.exercises || []).map((e: any) => e.name || e.exerciseName || 'Esercizio'),
+        exercises: (day.exercises || []).map((e: any) => {
+          const name = e.name || e.exerciseName || 'Esercizio';
+          const setsReps = e.sets && e.reps ? ` (${e.sets}x${e.reps})` : '';
+          return `${name}${setsReps}`;
+        }),
+      }));
+
+      const weeklyMeals = (fit.mealPlanWeekly || (fit.mealPlan ? [fit.mealPlan] : [])).map((day: any, idx: number) => ({
+        dayLabel: day.dayLabel || `Giorno ${idx + 1}`,
+        meals: (day.meals || []).map((m: any) => `${m.mealType || 'Pasto'}: ${m.name || 'Piatto'}${m.calories ? ` (${m.calories} kcal)` : ''}`),
       }));
 
       k.fitness = {
@@ -812,6 +965,7 @@ export function buildKnowledgeBase(modules: Module[], username: string): Chelona
         level: fit.fitnessProfile?.level,
         equipment: fit.fitnessProfile?.equipment,
         workoutRoutines: routines,
+        weeklyMeals,
         partnerName: fit.partnerName,
         partnerGoal: fit.partnerFitnessProfile?.goal,
         partnerCalories: fit.partnerTargetCalories,
@@ -875,6 +1029,33 @@ export function buildKnowledgeBase(modules: Module[], username: string): Chelona
       };
     }
 
+    // RECIPES (se presente come modulo)
+    if ((m as any).type === 'recipes') {
+      const rec = m as any;
+      if (Array.isArray(rec.recipes)) {
+        rec.recipes.forEach((r: any) => {
+          k.recipes.customList.push({
+            id: r.id || '',
+            title: r.title || '',
+            category: r.category || 'Varie',
+            ingredients: r.ingredients || []
+          });
+          if (r.isFavorite) k.recipes.favoritesList.push(r.title);
+        });
+        k.recipes.customCount = k.recipes.customList.length;
+        k.recipes.favoritesCount = k.recipes.favoritesList.length;
+      }
+      if (Array.isArray(rec.fridgeItems)) {
+        const items = rec.fridgeItems.map((fi: any) => typeof fi === 'string' ? fi : fi.name || '').filter(Boolean);
+        k.recipes.fridgeIngredients = Array.from(new Set([...k.recipes.fridgeIngredients, ...items]));
+      }
+      if (Array.isArray(rec.pantryItems)) {
+        const items = rec.pantryItems.map((pi: any) => typeof pi === 'string' ? pi : pi.name || '').filter(Boolean);
+        k.recipes.pantryIngredients = Array.from(new Set([...k.recipes.pantryIngredients, ...items]));
+      }
+      k.recipes.allIngredients = Array.from(new Set([...k.recipes.fridgeIngredients, ...k.recipes.pantryIngredients, ...k.recipes.freezerIngredients]));
+    }
+
     // 11. CASA & ARREDO
     if (m.type === 'furniture') {
       const furn = m as FurnitureModule;
@@ -916,6 +1097,18 @@ export function buildKnowledgeBase(modules: Module[], username: string): Chelona
       const gal = m as GalleryModule;
       k.tools.galleryCount += gal.images?.length || (gal.image ? 1 : 0);
     }
+  }
+
+  // Aggiungi eventuale parchimetro attivo/scaduto a scadenze urgenti
+  if (k.parking.hasParking && k.parking.meterRemainingMinutes !== undefined && k.parking.meterRemainingMinutes <= 60) {
+    k.urgentDeadlines.push({
+      label: k.parking.meterRemainingMinutes > 0
+        ? `Parchimetro attivo (${k.parking.meterRemainingMinutes} min rimanenti)`
+        : `Parchimetro scaduto da ${Math.abs(k.parking.meterRemainingMinutes)} min!`,
+      date: new Date(k.parking.meterExpiresAt || Date.now()).toISOString(),
+      days: k.parking.meterRemainingMinutes > 0 ? 0 : -1,
+      type: 'parking',
+    });
   }
 
   // Ordina scadenze per urgenza
@@ -1184,9 +1377,14 @@ export async function queryGemmaNano(
       lower.includes('pneumatic') ||
       lower.includes('chilometr') ||
       /\bkm\b/.test(lower) ||
-      lower.includes('batteria auto') ||
+      lower.includes('batteria') ||
       lower.includes('storico interventi') ||
-      lower.includes('manutenzion')
+      lower.includes('intervent') ||
+      lower.includes('manutenzion') ||
+      lower.includes('gpl') ||
+      lower.includes('metano') ||
+      lower.includes('bombol') ||
+      lower.includes('documenti auto')
     )
   ) {
     if (k.vehicles.length === 0) {
@@ -1211,6 +1409,52 @@ export async function queryGemmaNano(
         text: `Ti apro subito la scheda di **${v.name}**! 🚗`,
         autoAction: { label: `Scheda ${v.name}`, type: 'module', moduleId: v.module.id, module: v.module },
         actions: [],
+      };
+    }
+
+    // Domanda mirata: Bombole GPL / Metano
+    if (lower.includes('gpl') || lower.includes('metano') || lower.includes('bombol')) {
+      const resp = k.vehicles.map(v => {
+        let msg = `🔹 **${v.name}** (${v.plate}):\n`;
+        if (v.lastGplCylinder) {
+          const d = getDaysRemaining(v.lastGplCylinder);
+          msg += `  - Bombole GPL: ${d < 0 ? `⚠️ **SCADUTE il ${formatDate(v.lastGplCylinder)}**` : `scadenza il **${formatDate(v.lastGplCylinder)}** (tra ${d} gg)`}\n`;
+        }
+        if (v.lastMethaneCylinder) {
+          const d = getDaysRemaining(v.lastMethaneCylinder);
+          msg += `  - Bombole Metano: ${d < 0 ? `⚠️ **SCADUTE il ${formatDate(v.lastMethaneCylinder)}**` : `scadenza il **${formatDate(v.lastMethaneCylinder)}** (tra ${d} gg)`}\n`;
+        }
+        if (!v.lastGplCylinder && !v.lastMethaneCylinder) {
+          msg += `  - Nessuna data bombole registrata (alimentazione: ${v.fuel.toUpperCase()}).\n`;
+        }
+        return msg;
+      }).join('\n');
+      return {
+        text: `⛽ **Stato Bombole GPL / Metano:**\n\n${resp}`,
+        actions: k.vehicles.map(v => ({ label: `Scheda ${v.name}`, type: 'module', moduleId: v.module.id, module: v.module })),
+      };
+    }
+
+    // Domanda mirata: Batterie (12V e Ibrida)
+    if (lower.includes('batteria')) {
+      const resp = k.vehicles.map(v => {
+        let msg = `🔹 **${v.name}** (${v.plate}):\n`;
+        if (v.battery12vExpiryDate) {
+          const d = getDaysRemaining(v.battery12vExpiryDate);
+          msg += `  - Batteria 12V: ${d < 0 ? `⚠️ **SCADUTA il ${formatDate(v.battery12vExpiryDate)}**` : `scadenza controllo il **${formatDate(v.battery12vExpiryDate)}** (tra ${d} gg)`}\n`;
+        }
+        if (v.hybridBatteryExpiryDate) {
+          const d = getDaysRemaining(v.hybridBatteryExpiryDate);
+          msg += `  - Batteria Ibrida: ${d < 0 ? `⚠️ **Controllo/Garanzia scaduta il ${formatDate(v.hybridBatteryExpiryDate)}**` : `garanzia fino al **${formatDate(v.hybridBatteryExpiryDate)}** (tra ${d} gg)`}\n`;
+        }
+        if (!v.battery12vExpiryDate && !v.hybridBatteryExpiryDate) {
+          msg += `  - Nessuna scadenza batteria registrata.\n`;
+        }
+        return msg;
+      }).join('\n');
+      return {
+        text: `🔋 **Stato Batterie Veicolo:**\n\n${resp}`,
+        actions: k.vehicles.map(v => ({ label: `Scheda ${v.name}`, type: 'module', moduleId: v.module.id, module: v.module })),
       };
     }
 
@@ -1268,13 +1512,14 @@ export async function queryGemmaNano(
       };
     }
 
-    // Domanda mirata: Tagliando e Gomme
-    if (lower.includes('tagliando') || lower.includes('gomme') || lower.includes('pneumatic') || lower.includes('manutenzion')) {
+    // Domanda mirata: Tagliando, Gomme, Interventi e Documenti allegati
+    if (lower.includes('tagliando') || lower.includes('gomme') || lower.includes('pneumatic') || lower.includes('intervent') || lower.includes('allegat') || lower.includes('manutenzion')) {
       const resp = k.vehicles.map(v => {
-        return `🔹 **${v.name}** (${v.plate}):\n  - Ultimo tagliando: **${v.serviceKm || 'N/D'} km** (attuali: ${v.km} km)\n  - Gomme installate a: **${v.tiresKm || 'N/D'} km**`;
+        const docs = v.attachedDocs && v.attachedDocs.length > 0 ? v.attachedDocs.join(', ') : 'Nessun documento/fattura allegata';
+        return `🔹 **${v.name}** (${v.plate}):\n  - Ultimo tagliando: **${v.serviceKm || 'N/D'} km** (attuali: ${v.km} km)\n  - Gomme installate a: **${v.tiresKm || 'N/D'} km**\n  - Documenti/fatture digitalizzate: **${docs}**`;
       }).join('\n\n');
       return {
-        text: `🛠️ **Storico Manutenzione & Pneumatici:**\n\n${resp}`,
+        text: `🛠️ **Storico Manutenzione & Interventi:**\n\n${resp}`,
         actions: k.vehicles.map(v => ({ label: `Scheda ${v.name}`, type: 'module', moduleId: v.module.id, module: v.module })),
       };
     }
@@ -1326,13 +1571,33 @@ export async function queryGemmaNano(
       lower.includes('carta identita') ||
       lower.includes('passaporto') ||
       lower.includes('tessera sanitaria') ||
-      lower.includes('codice fiscale')
+      lower.includes('codice fiscale') ||
+      lower.includes('archivia')
     )
   ) {
     if (k.documents.length === 0) {
       return {
         text: `📄 Non hai ancora salvato documenti in Chelona.\n\nPuoi digitalizzare patenti, carte d'identità, passaporti e tessere sanitarie protette da crittografia toccando **"+"** → **Documento**!`,
         actions: [{ label: 'Nuovo Documento', type: 'category', category: 'document' }],
+      };
+    }
+
+    // Richiesta mirata: Documenti scaduti
+    if (lower.includes('scadut')) {
+      const expiredDocs = k.documents.filter(d => d.isExpired);
+      if (expiredDocs.length === 0) {
+        return {
+          text: `✅ Nessun documento risulta attualmente scaduto! Tutti i tuoi documenti personali sono in corso di validità.`,
+          actions: [{ label: 'Tutti i Documenti', type: 'category', category: 'document' }],
+        };
+      }
+      let out = `⚠️ **Documenti Scaduti Rilevati (${expiredDocs.length}):**\n\n`;
+      expiredDocs.forEach(d => {
+        out += `• ❌ **${d.title}**: scaduto il **${formatDate(d.expiryDate)}** (${Math.abs(d.days)} giorni fa)\n`;
+      });
+      return {
+        text: out,
+        actions: expiredDocs.map(d => ({ label: `Vedi ${d.title}`, type: 'module', moduleId: d.module.id, module: d.module })),
       };
     }
 
@@ -1404,13 +1669,23 @@ export async function queryGemmaNano(
     lower.includes('dividi spese') ||
     lower.includes('conti condivisi') ||
     lower.includes('chi deve a chi') ||
+    lower.includes('quanto deve') ||
+    lower.includes('cosa deve') ||
+    lower.includes('chi deve') ||
+    lower.includes('deve dare') ||
+    lower.includes('deve ricevere') ||
+    lower.includes('devo dare') ||
+    lower.includes('devo ricevere') ||
+    lower.includes('debito') ||
     lower.includes('debiti') ||
+    lower.includes('credito') ||
     lower.includes('crediti') ||
     lower.includes('pareggio conti') ||
     lower.includes('salda conti') ||
     lower.includes('devo soldi') ||
     lower.includes('mi devono') ||
-    lower.includes('chi deve pagare')
+    lower.includes('chi deve pagare') ||
+    (k.splits.some(sp => sp.participants.some(p => lower.includes(p.toLowerCase()))) && (lower.includes('deve') || lower.includes('debito') || lower.includes('credito') || lower.includes('dare') || lower.includes('soldi')))
   ) {
     if (k.splits.length === 0) {
       return {
@@ -1425,6 +1700,53 @@ export async function queryGemmaNano(
         text: `Ti apro subito il gruppo spese condivise **${sp.title}**! 👥`,
         autoAction: { label: `Apri ${sp.title}`, type: 'module', moduleId: sp.module.id, module: sp.module },
         actions: [],
+      };
+    }
+
+    // Ricerca mirata debiti/crediti di una persona specifica o dell'utente
+    let searchedPerson: string | null = null;
+    for (const sp of k.splits) {
+      for (const p of sp.participants) {
+        const name = typeof p === 'string' ? p : (p as any)?.name;
+        if (name && lower.includes(name.toLowerCase())) {
+          searchedPerson = name;
+          break;
+        }
+      }
+      if (searchedPerson) break;
+    }
+
+    if (!searchedPerson && (lower.includes('devo io') || lower.includes('quanto devo') || lower.includes('i miei debiti') || lower.includes('miei crediti'))) {
+      if (username) searchedPerson = username;
+    }
+
+    if (searchedPerson) {
+      let out = `👥 **Riepilogo Debiti & Crediti per ${searchedPerson}:**\n\n`;
+      let hasMovements = false;
+      const targetLower = searchedPerson.toLowerCase();
+      k.splits.forEach(sp => {
+        const owes = sp.settlements.filter(s => s.from && s.from.toLowerCase() === targetLower);
+        const owed = sp.settlements.filter(s => s.to && s.to.toLowerCase() === targetLower);
+        if (owes.length > 0 || owed.length > 0) {
+          hasMovements = true;
+          out += `📌 Nel gruppo **${sp.title}**:\n`;
+          owes.forEach(s => {
+            out += `• 💸 Deve dare **€ ${s.amount.toFixed(2)}** a **${s.to}**\n`;
+          });
+          owed.forEach(s => {
+            out += `• 💰 Deve ricevere **€ ${s.amount.toFixed(2)}** da **${s.from}**\n`;
+          });
+          out += `\n`;
+        }
+      });
+
+      if (!hasMovements) {
+        out += `✨ **${searchedPerson}** è perfettamente in pareggio nei gruppi spese condivise, nessun debito o credito registrato!\n`;
+      }
+
+      return {
+        text: out,
+        actions: k.splits.map(sp => ({ label: `Gruppo ${sp.title}`, type: 'module', moduleId: sp.module.id, module: sp.module })),
       };
     }
 
@@ -1484,11 +1806,37 @@ export async function queryGemmaNano(
       };
     }
 
+    // Domanda mirata: Spesa per specifica categoria
+    const catKeys = Object.keys(k.expenses.byCategory);
+    const matchedCat = catKeys.find(c => lower.includes(c.toLowerCase()));
+    if (matchedCat) {
+      const totalCat = k.expenses.byCategory[matchedCat] || 0;
+      const matchingRecent = k.expenses.recent.filter(e => e.category.toLowerCase() === matchedCat.toLowerCase());
+      let catText = `💳 Per la categoria **${matchedCat}** hai registrato una spesa complessiva di **€ ${totalCat.toFixed(2)}**.\n\n`;
+      if (matchingRecent.length > 0) {
+        catText += `Ultime spese in questa categoria:\n`;
+        matchingRecent.forEach(e => {
+          catText += `• ${e.title}: **€ ${e.amount.toFixed(2)}** (${formatDate(e.date)})\n`;
+        });
+      }
+      return {
+        text: catText,
+        actions: [{ label: 'Tutte le Spese Singole', type: 'category', category: 'single-expense' }],
+      };
+    }
+
+    // Domanda mirata: Spese questo mese
+    if (lower.includes('questo mese') || lower.includes('mese corrente') || lower.includes('quest\'mese')) {
+      return {
+        text: `💳 Questo mese hai speso complessivamente **€ ${k.expenses.totalThisMonth.toFixed(2)}**.\nTotale storico registrato: **€ ${k.expenses.allTimeTotal.toFixed(2)}** (${k.expenses.count} transazioni).`,
+        actions: [{ label: 'Apri Spese Singole', type: 'category', category: 'single-expense' }],
+      };
+    }
+
     let out = `💳 **Riepilogo Spese Singole & Uscite:**\n\n`;
     out += `- 📅 Spese registrate questo mese: **€ ${k.expenses.totalThisMonth.toFixed(2)}**\n`;
     out += `- 📊 Totale storico complessivo: **€ ${k.expenses.allTimeTotal.toFixed(2)}** (${k.expenses.count} transazioni)\n\n`;
 
-    const catKeys = Object.keys(k.expenses.byCategory);
     if (catKeys.length > 0) {
       out += `**Suddivisione per categoria:**\n`;
       catKeys.forEach(c => {
@@ -1534,6 +1882,24 @@ export async function queryGemmaNano(
         text: `Ti apro subito il piano rateale **${inst.title}**! 🗓️`,
         autoAction: { label: `Piano ${inst.title}`, type: 'module', moduleId: inst.module.id, module: inst.module },
         actions: [],
+      };
+    }
+
+    // Domanda mirata: Quanto pago al mese / Rata mensile
+    if (lower.includes('al mese') || lower.includes('mensil') || lower.includes('ogni mese') || lower.includes('quanto pago')) {
+      const monthlyTotal = k.installments.modules.reduce((sum, inst) => sum + (inst.nextPayment?.amount || 0), 0);
+      let out = `🗓️ Il totale delle tue rate imminenti è di **€ ${monthlyTotal.toFixed(2)} / mese**:\n\n`;
+      k.installments.modules.forEach(inst => {
+        if (inst.nextPayment) {
+          out += `• **${inst.title}**: **€ ${inst.nextPayment.amount.toFixed(2)}** (prossima scadenza: ${formatDate(inst.nextPayment.dueDate)})\n`;
+        } else {
+          out += `• **${inst.title}**: tutte le rate previste risultano saldate!\n`;
+        }
+      });
+      out += `\nDebito residuo complessivo: **€ ${k.installments.totalPending.toFixed(2)}**.`;
+      return {
+        text: out,
+        actions: k.installments.modules.map(inst => ({ label: `Piano ${inst.title}`, type: 'module', moduleId: inst.module.id, module: inst.module })),
       };
     }
 
@@ -1716,6 +2082,8 @@ export async function queryGemmaNano(
     lower.includes('cosa manca') ||
     lower.includes('articoli da comprare') ||
     lower.includes('spunte spesa') ||
+    lower.includes('già comprat') ||
+    lower.includes('gia comprat') ||
     (lower.includes('supermercat') && !lower.includes('volantin') && !lower.includes('offert') && !lower.includes('scont'))
   ) {
     if (lower.includes('apri') || lower.includes('vai') || lower.trim() === 'lista spesa' || lower.trim() === 'spesa') {
@@ -1723,6 +2091,22 @@ export async function queryGemmaNano(
         text: `Ti apro subito la tua Lista della Spesa! 🛒`,
         autoAction: { label: 'Lista Spesa', type: 'category', category: 'supermarket' },
         actions: [],
+      };
+    }
+
+    // Domanda mirata: Articoli già acquistati / spuntati
+    if (lower.includes('già comprat') || lower.includes('gia comprat') || lower.includes('comprato') || lower.includes('preso') || lower.includes('spuntat') || lower.includes('carrello')) {
+      if (!k.supermarket || k.supermarket.checkedItems.length === 0) {
+        return {
+          text: `🛒 Non hai ancora spuntato nessun articolo come acquistato nella tua lista della spesa.`,
+          actions: [{ label: 'Apri Lista Spesa', type: 'category', category: 'supermarket' }],
+        };
+      }
+      const checked = k.supermarket.checkedItems.map(i => `• [x] ~~${i}~~`).join('\n');
+      return {
+        text: `🛒 **Articoli già acquistati / spuntati (${k.supermarket.checkedItems.length}):**\n\n${checked}\n\n*Ci sono ancora ${k.supermarket.itemsToBuy.length} articoli da acquistare.*`,
+        autoAction: { label: 'Lista Spesa', type: 'category', category: 'supermarket' },
+        actions: [{ label: 'Vai alla Spesa', type: 'category', category: 'supermarket' }],
       };
     }
 
@@ -1747,7 +2131,7 @@ export async function queryGemmaNano(
     lower.includes('cucina') ||
     lower.includes('cucinare') ||
     lower.includes('cosa cucino') ||
-    lower.includes('cosa mangiare') ||
+    lower.includes('cosa preparo') ||
     lower.includes('dispensa') ||
     lower.includes('frigo') ||
     lower.includes('freezer') ||
@@ -1827,11 +2211,13 @@ export async function queryGemmaNano(
     lower.includes('serie') ||
     lower.includes('ripetizion') ||
     lower.includes('workout') ||
-    lower.includes('dieta fitness') ||
+    lower.includes('dieta') ||
     lower.includes('diario sportivo') ||
     lower.includes('calorie') ||
     lower.includes('fabbisogno calorico') ||
-    lower.includes('partner fitness')
+    lower.includes('piano alimentare') ||
+    lower.includes('partner fitness') ||
+    ((lower.includes('mangiare') || lower.includes('pasto') || lower.includes('pasti')) && !lower.includes('cucin') && !lower.includes('ricett') && !lower.includes('frigo') && !lower.includes('dispensa'))
   ) {
     if (!k.fitness) {
       return {
@@ -1846,6 +2232,80 @@ export async function queryGemmaNano(
         autoAction: { label: 'Scheda Fitness', type: 'module', moduleId: k.fitness.module.id, module: k.fitness.module },
         actions: [],
       };
+    }
+
+    // Domanda mirata: Cosa mangiare / Piano alimentare / Pasti
+    if (
+      lower.includes('mangiare') ||
+      lower.includes('pasto') ||
+      lower.includes('pasti') ||
+      lower.includes('dieta') ||
+      lower.includes('nutrizion') ||
+      lower.includes('piano alimentare') ||
+      lower.includes('menù fitness') ||
+      lower.includes('menu fitness')
+    ) {
+      if (k.fitness.weeklyMeals && k.fitness.weeklyMeals.length > 0) {
+        // Verifica se è stato richiesto un giorno specifico
+        const daysOfWeek = ['lunedì', 'martedì', 'mercoledì', 'giovedì', 'venerdì', 'sabato', 'domenica', 'lunedi', 'martedi', 'mercoledi', 'giovedi', 'venerdi'];
+        const matchedDay = daysOfWeek.find(d => lower.includes(d));
+        if (matchedDay) {
+          const normDay = matchedDay.replace('i', 'ì').replace('ìì', 'ì');
+          const specificDay = k.fitness.weeklyMeals.find(d => d.dayLabel.toLowerCase().includes(matchedDay) || d.dayLabel.toLowerCase().includes(normDay));
+          if (specificDay) {
+            let out = `🥗 **Pasti previsti per ${specificDay.dayLabel}:**\n\n`;
+            specificDay.meals.forEach((m: string) => { out += `• ${m}\n`; });
+            if (k.fitness.calories) out += `\nTarget calorico giornaliero: **${k.fitness.calories} kcal**.\n`;
+            return {
+              text: out,
+              actions: [{ label: 'Apri Scheda Fitness', type: 'module', moduleId: k.fitness.module.id, module: k.fitness.module }],
+            };
+          }
+        }
+
+        let mealOut = `🥗 **Il tuo Piano Nutrizionale & Pasti Programmato:**\n\n`;
+        k.fitness.weeklyMeals.forEach(day => {
+          mealOut += `### 📅 **${day.dayLabel}**\n`;
+          if (day.meals.length === 0) {
+            mealOut += `  *(Nessun pasto configurato per questo giorno)*\n`;
+          } else {
+            day.meals.forEach((m: string) => {
+              mealOut += `  • ${m}\n`;
+            });
+          }
+          mealOut += `\n`;
+        });
+        if (k.fitness.calories) {
+          mealOut += `🔥 Fabbisogno calorico target: **${k.fitness.calories} kcal/giorno**.\n`;
+        }
+        return {
+          text: mealOut,
+          actions: [{ label: 'Apri Scheda Fitness', type: 'module', moduleId: k.fitness.module.id, module: k.fitness.module }],
+        };
+      } else {
+        return {
+          text: `🥗 Nel tuo modulo Fitness non è ancora stato compilato un piano alimentare dettagliato giorno per giorno.\n\nTarget calorico: **${k.fitness.calories || 2000} kcal/giorno**.\nTocca in basso per configurare o generare la dieta con l'AI!`,
+          actions: [{ label: 'Apri Scheda Fitness', type: 'module', moduleId: k.fitness.module.id, module: k.fitness.module }],
+        };
+      }
+    }
+
+    // Domanda mirata: Esercizi / Routine / Scheda allenamento
+    if (lower.includes('eserciz') || lower.includes('scheda allenamento') || lower.includes('workout') || lower.includes('serie') || lower.includes('ripetizion') || lower.includes('routine')) {
+      if (k.fitness.workoutRoutines.length > 0) {
+        let routOut = `🏋️ **La tua Scheda di Allenamento (${k.fitness.workoutRoutines.length} sessioni):**\n\n`;
+        k.fitness.workoutRoutines.forEach(r => {
+          routOut += `### 💥 **${r.dayLabel}** (*${r.focus}*)\n`;
+          r.exercises.forEach(e => {
+            routOut += `  • ${e}\n`;
+          });
+          routOut += `\n`;
+        });
+        return {
+          text: routOut,
+          actions: [{ label: 'Apri Scheda Fitness', type: 'module', moduleId: k.fitness.module.id, module: k.fitness.module }],
+        };
+      }
     }
 
     let out = `💪 **Il tuo Profilo Fitness & Nutrizione:**\n\n`;
@@ -2213,13 +2673,60 @@ export async function queryGemmaNano(
     lower.includes('album foto') ||
     lower.includes('unisci pdf') ||
     lower.includes('ruota pdf') ||
-    lower.includes('comprimi pdf')
+    lower.includes('ruota') ||
+    lower.includes('comprimi pdf') ||
+    lower.includes('comprimi') ||
+    lower.includes('jpg in pdf') ||
+    lower.includes('word in pdf') ||
+    lower.includes('docx in pdf') ||
+    lower.includes('converti word') ||
+    lower.includes('immagini in pdf')
   ) {
     if (lower.includes('scanner') || lower.includes('scansiona')) {
       return {
         text: `Ti apro subito lo **Scanner Documenti** con fotocamera integrata e raddrizzamento automatico! 📄📸`,
         autoAction: { label: 'Apri Scanner', type: 'tool', toolId: 'scanner' },
         actions: [{ label: 'Apri Scanner', type: 'tool', toolId: 'scanner' }],
+      };
+    }
+
+    if (lower.includes('comprimi') || lower.includes('riduci')) {
+      return {
+        text: `Ti apro lo strumento **Comprimi PDF** per ridurre il peso in MB dei tuoi documenti ottimizzandoli! 📉📄`,
+        autoAction: { label: 'Comprimi PDF', type: 'tool', toolId: 'compress' },
+        actions: [{ label: 'Comprimi PDF', type: 'tool', toolId: 'compress' }],
+      };
+    }
+
+    if (lower.includes('ruota') || lower.includes('gira')) {
+      return {
+        text: `Ti apro lo strumento **Ruota PDF** per correggere l'orientamento delle pagine! 🔄📄`,
+        autoAction: { label: 'Ruota PDF', type: 'tool', toolId: 'rotate' },
+        actions: [{ label: 'Ruota PDF', type: 'tool', toolId: 'rotate' }],
+      };
+    }
+
+    if (lower.includes('jpg in pdf') || lower.includes('immagini in pdf') || lower.includes('foto in pdf') || lower.includes('img2pdf')) {
+      return {
+        text: `Ti apro lo strumento **JPG in PDF** per convertire le tue immagini in un unico documento PDF! 🖼️📄`,
+        autoAction: { label: 'JPG in PDF', type: 'tool', toolId: 'img2pdf' },
+        actions: [{ label: 'JPG in PDF', type: 'tool', toolId: 'img2pdf' }],
+      };
+    }
+
+    if (lower.includes('word in pdf') || lower.includes('docx in pdf') || lower.includes('converti word') || lower.includes('docx2pdf')) {
+      return {
+        text: `Ti apro lo strumento **Word in PDF** per convertire i tuoi file .docx in PDF direttamente sul tuo dispositivo! 📑`,
+        autoAction: { label: 'Word in PDF', type: 'tool', toolId: 'docx2pdf' },
+        actions: [{ label: 'Word in PDF', type: 'tool', toolId: 'docx2pdf' }],
+      };
+    }
+
+    if (lower.includes('unisci pdf') || lower.includes('combina pdf') || lower.includes('fondi pdf')) {
+      return {
+        text: `Ti apro lo strumento **Unisci PDF** per combinare più documenti in uno unico! 📑`,
+        autoAction: { label: 'Unisci PDF', type: 'tool', toolId: 'merge' },
+        actions: [{ label: 'Unisci PDF', type: 'tool', toolId: 'merge' }],
       };
     }
 
@@ -2231,9 +2738,9 @@ export async function queryGemmaNano(
       };
     }
 
-    if (lower.includes('percentuale')) {
+    if (lower.includes('percentuale') || lower.includes('sconto') || lower.includes('scorporo')) {
       return {
-        text: `Ti apro il **Calcolo Percentuale** per sconti, variazioni e scorporo! 🔢`,
+        text: `Ti apro il **Calcolo Percentuale** per sconti, variazioni e scorporo IVA! 🔢`,
         autoAction: { label: 'Calcolo Percentuale', type: 'tool', toolId: 'percent' },
         actions: [{ label: 'Calcolo Percentuale', type: 'tool', toolId: 'percent' }],
       };
@@ -2255,21 +2762,13 @@ export async function queryGemmaNano(
       };
     }
 
-    if (lower.includes('unisci pdf')) {
-      return {
-        text: `Ti apro lo strumento **Unisci PDF** per combinare più documenti in uno! 📑`,
-        autoAction: { label: 'Unisci PDF', type: 'tool', toolId: 'merge' },
-        actions: [{ label: 'Unisci PDF', type: 'tool', toolId: 'merge' }],
-      };
-    }
-
     return {
-      text: `Ti porto subito al pannello **Strumenti & Utility** di Chelona! 🧰\n\nTroverai: Scanner Documenti, Aiuto Vinted, Calcolo Percentuale, Filtri Immagine, Galleria e Utility PDF.`,
+      text: `Ti porto subito al pannello **Strumenti & Utility** di Chelona! 🧰\n\nTroverai: Scanner Documenti, Comprimi/Ruota/Unisci PDF, Convertitore JPG/Word in PDF, Aiuto Vinted, Calcolo Percentuale e Filtri Immagine.`,
       autoAction: { label: 'Strumenti', type: 'category', category: 'tools' },
       actions: [
         { label: 'Scanner', type: 'tool', toolId: 'scanner' },
-        { label: 'Aiuto Vinted', type: 'tool', toolId: 'vinted' },
-        { label: 'Percentuale', type: 'tool', toolId: 'percent' },
+        { label: 'Comprimi PDF', type: 'tool', toolId: 'compress' },
+        { label: 'Unisci PDF', type: 'tool', toolId: 'merge' },
         { label: 'Tutti gli Strumenti', type: 'category', category: 'tools' },
       ],
     };
@@ -2281,6 +2780,8 @@ export async function queryGemmaNano(
     lower.includes('impostazioni') ||
     lower.includes('account') ||
     lower.includes('backup') ||
+    lower.includes('esporta') ||
+    lower.includes('qr') ||
     lower.includes('biometria') ||
     lower.includes('impronta') ||
     lower.includes('face id') ||
@@ -2290,13 +2791,50 @@ export async function queryGemmaNano(
     lower.includes('wake word') ||
     lower.includes('ciao chelona') ||
     lower.includes('tema chiaro') ||
-    lower.includes('tema scuro')
+    lower.includes('tema scuro') ||
+    lower.includes('tema')
   ) {
     if (lower.includes('apri') || lower.includes('vai') || lower.trim() === 'profilo' || lower.trim() === 'impostazioni') {
       return {
         text: `Ti apro subito la schermata del tuo **Profilo & Impostazioni**! 👤⚙️`,
         autoAction: { label: 'Profilo & Impostazioni', type: 'category', category: 'profile' },
         actions: [],
+      };
+    }
+
+    // Risposta mirata: Backup & Esportazione
+    if (lower.includes('backup') || lower.includes('esporta') || lower.includes('esportazione') || lower.includes('qr')) {
+      return {
+        text: `📦 **Backup & Sicurezza Dati di Chelona:**\n\nPuoi esportare l'intero database in un file **ZIP crittografato** protetto dalla tua Master Password, oppure sincronizzare istantaneamente le tue informazioni su un altro dispositivo tramite **QR Code protetto da cifratura AES-256**.\n\nTutti i tuoi dati rimangono esclusivamente sul tuo dispositivo senza passare da alcun server esterno.`,
+        autoAction: { label: 'Gestisci Backup', type: 'category', category: 'profile' },
+        actions: [{ label: 'Apri Profilo', type: 'category', category: 'profile' }],
+      };
+    }
+
+    // Risposta mirata: Biometria & Crittografia
+    if (lower.includes('biometr') || lower.includes('impront') || lower.includes('face') || lower.includes('crittograf') || lower.includes('vault')) {
+      return {
+        text: `🔐 **Sicurezza & Crittografia:**\n\nChelona protegge tutti i tuoi dati e documenti con un **Vault crittografico AES-256-GCM** locale.\nPuoi sbloccare l'app e i tuoi dati sensibili utilizzando l'impronta digitale o Face ID del tuo smartphone, senza digitare ogni volta la master password.`,
+        autoAction: { label: 'Sicurezza Profilo', type: 'category', category: 'profile' },
+        actions: [{ label: 'Apri Profilo', type: 'category', category: 'profile' }],
+      };
+    }
+
+    // Risposta mirata: Wake word vocale
+    if (lower.includes('wake word') || lower.includes('ciao chelona') || lower.includes('vocale') || lower.includes('voce')) {
+      return {
+        text: `🎙️ **Comando Vocale "Ciao Chelona":**\n\nStato attuale: ${k.profile.isWakeWordEnabled ? '✅ **Attivo**' : '⚪ **Disattivato**'}.\nQuando è attivo, puoi dire *"Ciao Chelona"* in qualsiasi momento per risvegliarmi a mani libere e chiedermi qualsiasi cosa. Puoi attivarlo o disattivarlo dal tuo profilo!`,
+        autoAction: { label: 'Impostazioni Voce', type: 'category', category: 'profile' },
+        actions: [{ label: 'Apri Profilo', type: 'category', category: 'profile' }],
+      };
+    }
+
+    // Risposta mirata: Tema
+    if (lower.includes('tema') || lower.includes('scuro') || lower.includes('chiaro')) {
+      return {
+        text: `🎨 **Tema & Aspetto:**\n\nChelona supporta il tema Scuro (Dark OLED) per risparmiare batteria e il tema Chiaro. Puoi cambiare tema con un tocco direttamente nella schermata Profilo!`,
+        autoAction: { label: 'Cambia Tema', type: 'category', category: 'profile' },
+        actions: [{ label: 'Apri Profilo', type: 'category', category: 'profile' }],
       };
     }
 
