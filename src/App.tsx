@@ -4202,8 +4202,8 @@ export default function App() {
                               </p>
                             </div>
 
-                            {/* Ask Chelona AI Button (Chat) - No Mic on Homepage */}
-                            <div className="flex items-center shrink-0">
+                            {/* Ask Chelona AI Button (Chat) & Direct Mic Button */}
+                            <div className="flex items-center gap-2.5 shrink-0">
                               <motion.button
                                 whileHover={{ scale: 1.02 }}
                                 whileTap={{ scale: 0.95 }}
@@ -4221,6 +4221,24 @@ export default function App() {
                               >
                                 <Sparkles className="w-4 h-4 text-white" />
                                 <span>Chiedi a Chelona</span>
+                              </motion.button>
+
+                              <motion.button
+                                whileHover={{ scale: 1.05 }}
+                                whileTap={{ scale: 0.92 }}
+                                onClick={() => {
+                                  setAiInitialVoiceMode(true);
+                                  setIsAiOpen(true);
+                                  setActiveNavTab('ai');
+                                  setIsToolsOpen(false);
+                                  setIsProfileOpen(false);
+                                  setSelectedType(null);
+                                }}
+                                className="p-3.5 rounded-2xl bg-gradient-to-r from-indigo-600 via-purple-600 to-rose-500 hover:opacity-95 text-white font-bold shadow-md shadow-indigo-500/20 transition-all flex items-center justify-center active:scale-95 shrink-0 cursor-pointer"
+                                title="Parla con Chelona AI"
+                                aria-label="Parla con Chelona AI tramite microfono"
+                              >
+                                <Mic className="w-5 h-5 text-white" />
                               </motion.button>
                             </div>
                           </div>

@@ -7,7 +7,7 @@ import {
   Sliders, Layers, Folder as FolderIcon, Trash2, CheckCircle2, 
   AlertTriangle, Sparkles, Key, FileText, CheckCheck,
   Car, Users, Receipt, Globe, BookOpen, Activity, Home,
-  Percent, Scan, Shirt, ImageIcon, HardDrive
+  Percent, Scan, Shirt, ImageIcon, HardDrive, Edit2
 } from 'lucide-react';
 import { storage } from '../services/storage';
 import { encryption } from '../services/encryption';
@@ -130,6 +130,7 @@ export function ProfileScreen({
 
   // Username edit
   const [editName, setEditName] = useState(username);
+  const [isEditingName, setIsEditingName] = useState(false);
   const [isNameSaving, setIsNameSaving] = useState(false);
   const [selectedGradientIndex, setSelectedGradientIndex] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -457,6 +458,7 @@ export function ProfileScreen({
       nextAvatar = generateGradientAvatarSvg(trimmed, grad.from, grad.to);
     }
     onUpdateProfile(trimmed, nextAvatar);
+    setIsEditingName(false);
     setTimeout(() => {
       setIsNameSaving(false);
       showToast('Nome profilo salvato!', 'success');
@@ -632,13 +634,6 @@ export function ProfileScreen({
               <X className="w-4 h-4 text-[var(--text-muted)]" />
               <span className="hidden sm:inline">Chiudi</span>
             </button>
-            <div className="h-4 w-px bg-[var(--border)]" />
-            <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              <span className="text-xs font-black uppercase tracking-wider text-[var(--text-muted)]">
-                Vault Privato Offline
-              </span>
-            </div>
           </div>
 
           <div className="flex items-center gap-2">
@@ -722,9 +717,70 @@ export function ProfileScreen({
             <div className="flex-1 text-center sm:text-left space-y-3">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <div>
-                  <h1 className="text-2xl sm:text-3xl font-black text-[var(--text-main)] tracking-tight">
-                    {username}
-                  </h1>
+                  {isEditingName ? (
+                    <form 
+                      onSubmit={(e) => { 
+                        e.preventDefault(); 
+                        handleSaveName(); 
+                      }} 
+                      className="flex items-center gap-2 justify-center sm:justify-start flex-wrap my-1"
+                    >
+                      <input
+                        type="text"
+                        autoFocus
+                        value={editName}
+                        maxLength={30}
+                        onChange={(e) => setEditName(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Escape') {
+                            setEditName(username);
+                            setIsEditingName(false);
+                          }
+                        }}
+                        placeholder="Inserisci nome..."
+                        className="px-3 py-1.5 bg-[var(--bg)] border-2 border-[var(--accent)] rounded-xl outline-none text-xl sm:text-2xl font-black text-[var(--text-main)] shadow-inner w-48 sm:w-60"
+                      />
+                      <button
+                        type="submit"
+                        disabled={isNameSaving || !editName.trim()}
+                        className="p-2 rounded-xl bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white font-bold transition-all disabled:opacity-50 cursor-pointer shadow-sm active:scale-95 flex items-center gap-1 text-xs"
+                        title="Salva nome"
+                      >
+                        {isNameSaving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                        <span className="hidden sm:inline">Salva</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditName(username);
+                          setIsEditingName(false);
+                        }}
+                        className="p-2 rounded-xl bg-[var(--surface-variant)] hover:bg-[var(--border)] text-[var(--text-muted)] font-bold transition-all cursor-pointer active:scale-95 text-xs flex items-center gap-1"
+                        title="Annulla"
+                      >
+                        <X className="w-4 h-4" />
+                        <span className="hidden sm:inline">Annulla</span>
+                      </button>
+                    </form>
+                  ) : (
+                    <div className="flex items-center gap-2.5 justify-center sm:justify-start">
+                      <h1 className="text-2xl sm:text-3xl font-black text-[var(--text-main)] tracking-tight">
+                        {username}
+                      </h1>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditName(username);
+                          setIsEditingName(true);
+                        }}
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-[var(--surface-variant)] hover:bg-[var(--border)] text-[var(--text-muted)] hover:text-[var(--accent)] text-xs font-bold transition-all active:scale-95 cursor-pointer border border-[var(--border)]"
+                        title="Modifica nome utente"
+                      >
+                        <Edit2 className="w-3.5 h-3.5 text-[var(--accent)]" />
+                        <span>Modifica</span>
+                      </button>
+                    </div>
+                  )}
                   <p className="text-xs text-[var(--text-muted)] font-medium mt-0.5">
                     Account Principale Chelona • Crittografia Hardware Locale
                   </p>
@@ -861,85 +917,6 @@ export function ProfileScreen({
               transition={{ duration: 0.2 }}
               className="space-y-6"
             >
-              {/* Username Edit Card */}
-              <div className="bg-[var(--card-bg)] rounded-[var(--radius-lg)] p-5 sm:p-6 border border-[var(--border)] shadow-sm space-y-4">
-                <div className="flex items-center gap-3 pb-3 border-b border-[var(--border)]">
-                  <div className="w-10 h-10 rounded-2xl bg-[var(--accent-bg)] flex items-center justify-center text-[var(--accent)]">
-                    <User className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h3 className="text-base font-bold text-[var(--text-main)]">Nome Profilo</h3>
-                    <p className="text-xs text-[var(--text-muted)]">Modifica il nome visualizzato nell'applicazione</p>
-                  </div>
-                </div>
-
-                <div className="space-y-3">
-                  <form onSubmit={(e) => { e.preventDefault(); handleSaveName(); }} className="flex flex-col sm:flex-row gap-3">
-                    <div className="relative flex-1">
-                      <input
-                        type="text"
-                        value={editName}
-                        maxLength={30}
-                        onChange={(e) => setEditName(e.target.value)}
-                        placeholder="Inserisci il tuo nome..."
-                        className="w-full px-4 py-3.5 bg-[var(--bg)] border border-[var(--border)] rounded-xl outline-none focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/20 transition-all text-sm font-semibold text-[var(--text-main)]"
-                      />
-                      <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[10px] text-[var(--text-muted)] font-mono">
-                        {editName.length}/30
-                      </span>
-                    </div>
-
-                    <button
-                      type="submit"
-                      disabled={isNameSaving || editName.trim() === username}
-                      className="px-6 py-3.5 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white rounded-xl font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-md shadow-[var(--accent)]/20 flex items-center justify-center gap-2 text-sm shrink-0 active:scale-95 cursor-pointer"
-                    >
-                      {isNameSaving ? (
-                        <RefreshCw className="w-4 h-4 animate-spin" />
-                      ) : (
-                        <Check className="w-4 h-4" />
-                      )}
-                      <span>Salva Nome</span>
-                    </button>
-                  </form>
-                </div>
-              </div>
-
-              {/* Avatar Initial Color Presets (Interactive vector avatar styling) */}
-              <div className="bg-[var(--card-bg)] rounded-[var(--radius-lg)] p-5 sm:p-6 border border-[var(--border)] shadow-sm space-y-4">
-                <div className="flex items-center gap-3 pb-3 border-b border-[var(--border)]">
-                  <div className="w-10 h-10 rounded-2xl bg-rose-500/10 flex items-center justify-center text-rose-500">
-                    <Sparkles className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h3 className="text-base font-bold text-[var(--text-main)]">Stile Iniziali Avatar</h3>
-                    <p className="text-xs text-[var(--text-muted)]">Personalizza il gradiente offline per la barra superiore e il profilo</p>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-                  {AVATAR_GRADIENTS.map((grad, idx) => (
-                    <button
-                      key={grad.id}
-                      type="button"
-                      onClick={() => handleSelectGradient(grad, idx)}
-                      className={`p-3 rounded-2xl border flex flex-col items-center gap-2 transition-all cursor-pointer ${
-                        selectedGradientIndex === idx && !isCustomPhoto
-                          ? 'border-[var(--accent)] bg-[var(--surface-variant)] shadow-sm ring-2 ring-[var(--accent)]/20' 
-                          : 'border-[var(--border)] hover:border-[var(--text-muted)] bg-[var(--bg)]'
-                      }`}
-                    >
-                      <div className={`w-12 h-12 rounded-full ${grad.class} flex items-center justify-center text-white font-black text-lg shadow-sm`}>
-                        {(editName || username || 'U').charAt(0).toUpperCase()}
-                      </div>
-                      <span className="text-[11px] font-bold text-[var(--text-muted)] truncate w-full text-center">
-                        {grad.label}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
               {/* Theme Customization Card (Material 3 Segmented Selector) */}
               <div className="bg-[var(--card-bg)] rounded-[var(--radius-lg)] p-5 sm:p-6 border border-[var(--border)] shadow-sm space-y-4">
                 <div className="flex items-center gap-3 pb-3 border-b border-[var(--border)]">
