@@ -5,7 +5,7 @@ import {
   ArrowLeft, Plus, Trash2, CheckCircle2, Refrigerator,
   Apple, Milk, Drumstick, Croissant, PackageCheck, GlassWater, SprayCan,
   ShowerHead, ShoppingBasket, Share2, Search, AlertTriangle, X, Scale,
-  Snowflake, Package, Store, Info
+  Snowflake, Package, Store, Info, Smartphone
 } from 'lucide-react';
 import { generateUUID } from '../utils/uuid';
 import {
@@ -513,6 +513,17 @@ export const SupermarketScreen = ({ module, onSave, onClose, onShare }: Supermar
               )}
             </button>
           </div>
+          <button
+            type="button"
+            onClick={async () => {
+              const { createSectionShortcut } = await import('../services/shortcutService');
+              createSectionShortcut('supermarket');
+            }}
+            title="Aggiungi alla Home Android"
+            className="p-2.5 rounded-2xl bg-[var(--surface-variant)] text-[var(--text-muted)] hover:text-indigo-500 transition-colors cursor-pointer"
+          >
+            <Smartphone className="w-5 h-5" />
+          </button>
           <button
             onClick={() => onShare(data)}
             title="Condividi lista"

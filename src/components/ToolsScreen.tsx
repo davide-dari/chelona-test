@@ -8,6 +8,7 @@ import {
 import { DocumentScanner } from './DocumentScanner';
 import { ImageFilterTool } from './ImageFilterTool';
 import { VintedHelperTool } from './VintedHelperTool';
+import { HomeScreenShortcutsModal } from './HomeScreenShortcutsModal';
 import { PDFDocument, rgb, degrees } from 'pdf-lib';
 import { Module } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
@@ -32,6 +33,7 @@ export const ToolsScreen = ({ showToast, onSaveToSandbox, initialToolId, onReset
   onOpenAi?: () => void
 }) => {
   const [activeTool, setActiveTool] = useState<string | null>(initialToolId || null);
+  const [isShortcutsModalOpen, setIsShortcutsModalOpen] = useState(false);
   const [category, setCategory] = useState<ToolCategory>('all');
   const [files, setFiles] = useState<File[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -46,6 +48,10 @@ export const ToolsScreen = ({ showToast, onSaveToSandbox, initialToolId, onReset
     if (initialToolId) {
       if (initialToolId === 'chelona-ai') {
         if (onOpenAi) onOpenAi();
+        return;
+      }
+      if (initialToolId === 'shortcuts') {
+        setIsShortcutsModalOpen(true);
         return;
       }
       setActiveTool(initialToolId);
@@ -374,6 +380,10 @@ export const ToolsScreen = ({ showToast, onSaveToSandbox, initialToolId, onReset
                           if (onOpenAi) onOpenAi();
                           return;
                         }
+                        if (t.id === 'shortcuts') {
+                          setIsShortcutsModalOpen(true);
+                          return;
+                        }
                         setActiveTool(t.id);
                       }}
                       className="bg-[var(--card-bg)] border border-[var(--border)] p-4 rounded-2xl hover:border-amber-500 shadow-sm hover:shadow-md transition-all group flex items-center gap-4 text-left"
@@ -582,6 +592,12 @@ export const ToolsScreen = ({ showToast, onSaveToSandbox, initialToolId, onReset
           </motion.div>
         </div>
       )}
+      {/* Modal Collegamenti Schermata Home Android */}
+      <HomeScreenShortcutsModal
+        isOpen={isShortcutsModalOpen}
+        onClose={() => setIsShortcutsModalOpen(false)}
+        showToast={showToast}
+      />
     </div>
   );
 };

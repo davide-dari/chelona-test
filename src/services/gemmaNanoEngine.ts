@@ -33,7 +33,7 @@ export interface AiMemory {
 
 export interface AiAction {
   label: string;
-  type: 'module' | 'category' | 'deadlines' | 'parking' | 'navigate_parking' | 'save_parking' | 'volantino' | 'tool' | 'recipes' | 'address' | 'gallery';
+  type: 'module' | 'category' | 'deadlines' | 'parking' | 'navigate_parking' | 'save_parking' | 'volantino' | 'tool' | 'recipes' | 'address' | 'gallery' | 'shortcut' | 'shortcuts_hub';
   moduleId?: string;
   category?: string;
   module?: Module;
@@ -44,6 +44,7 @@ export interface AiAction {
   toolId?: string;
   search?: string;
   recipeCategory?: string;
+  shortcutId?: string;
 }
 
 export interface AiMessage {
@@ -1344,6 +1345,95 @@ export async function queryGemmaNano(
   // =========================================================================
   // 3. INTENT RECOGNITION DEI 17 DOMINI
   // =========================================================================
+
+  // --- INTENT SPECIFICO: COLLEGAMENTI SCHERMATA HOME ANDROID ---
+  const isShortcutIntent = (
+    (lower.includes('collegament') || lower.includes('scorciato') || lower.includes('home') || lower.includes('schermata')) &&
+    (lower.includes('crea') || lower.includes('metti') || lower.includes('aggiungi') || lower.includes('app a parte') || lower.includes('come app') || lower.includes('icona') || lower.includes('esci') || lower.includes('collega'))
+  ) || lower.includes('fai uscire') || lower.includes('collegamento home') || lower.includes('scorciatoia home');
+
+  if (isShortcutIntent) {
+    let targetId = 'auto';
+    let targetName = 'Auto';
+
+    if (lower.includes('parchegg') || lower.includes('parchimetr') || lower.includes('radar')) {
+      targetId = 'parking';
+      targetName = 'Parcheggio';
+    } else if (lower.includes('volantin') || lower.includes('offert') || lower.includes('scont')) {
+      targetId = 'volantino';
+      targetName = 'Volantini';
+    } else if (lower.includes('spesa') || lower.includes('supermercat')) {
+      targetId = 'supermarket';
+      targetName = 'Spesa';
+    } else if (lower.includes('ricett') || lower.includes('cucin') || lower.includes('piatt')) {
+      targetId = 'recipes';
+      targetName = 'Ricette';
+    } else if (lower.includes('rat') || lower.includes('finanz')) {
+      targetId = 'installments';
+      targetName = 'Rate';
+    } else if (lower.includes('spese') || lower.includes('scontrin') || lower.includes('uscit')) {
+      targetId = 'single-expense';
+      targetName = 'Spese';
+    } else if (lower.includes('split') || lower.includes('condivis')) {
+      targetId = 'split';
+      targetName = 'Spese Divise';
+    } else if (lower.includes('fitness') || lower.includes('palestr') || lower.includes('allenament') || lower.includes('scheda')) {
+      targetId = 'fitness';
+      targetName = 'Fitness';
+    } else if (lower.includes('viagg') || lower.includes('itinerar') || lower.includes('vacanz')) {
+      targetId = 'travel';
+      targetName = 'Viaggi';
+    } else if (lower.includes('arred') || lower.includes('mobil') || lower.includes('casa')) {
+      targetId = 'furniture';
+      targetName = 'Arredo';
+    } else if (lower.includes('not') || lower.includes('appunt')) {
+      targetId = 'notes';
+      targetName = 'Note';
+    } else if (lower.includes('rubric') || lower.includes('indirizz') || lower.includes('contatt')) {
+      targetId = 'addresses';
+      targetName = 'Rubrica';
+    } else if (lower.includes('scadenz') || lower.includes('promemori')) {
+      targetId = 'deadlines';
+      targetName = 'Scadenze';
+    } else if (lower.includes('scanner') || lower.includes('scansion')) {
+      targetId = 'scanner';
+      targetName = 'Scanner';
+    } else if (lower.includes('document') || lower.includes('patente') || lower.includes('carta')) {
+      targetId = 'document';
+      targetName = 'Documenti';
+    } else if (lower.includes('ai') || lower.includes('chelona ai') || lower.includes('vocale')) {
+      targetId = 'ai';
+      targetName = 'Chelona AI';
+    }
+
+    const hasSpecificTarget = (
+      lower.includes('auto') || lower.includes('macchina') || lower.includes('parchegg') || 
+      lower.includes('volantin') || lower.includes('spesa') || lower.includes('ricett') || 
+      lower.includes('rat') || lower.includes('fitness') || lower.includes('viagg') || 
+      lower.includes('arred') || lower.includes('not') || lower.includes('rubric') || 
+      lower.includes('scadenz') || lower.includes('scanner') || lower.includes('document')
+    );
+
+    if (hasSpecificTarget) {
+      return {
+        text: `Puoi trasformare **${targetName}** in un collegamento indipendente sulla tua schermata Home Android! Toccando l'icona sul tuo telefono, si aprirà direttamente come se fosse un'app a parte.`,
+        actions: [
+          { label: `Aggiungi ${targetName} a Home`, type: 'shortcut', shortcutId: targetId },
+          { label: 'Tutti i Collegamenti', type: 'shortcuts_hub' }
+        ]
+      };
+    }
+
+    return {
+      text: `Puoi creare un collegamento sulla schermata Home Android per **qualsiasi sezione** di Chelona (Auto, Parcheggio, Spesa, Volantini, Ricette, Documenti, ecc.) e usarla come se fosse un'applicazione separata!`,
+      actions: [
+        { label: 'Apri Gestore Collegamenti', type: 'shortcuts_hub' },
+        { label: 'Aggiungi Auto a Home', type: 'shortcut', shortcutId: 'auto' },
+        { label: 'Aggiungi Spesa a Home', type: 'shortcut', shortcutId: 'supermarket' },
+        { label: 'Aggiungi Parcheggio', type: 'shortcut', shortcutId: 'parking' }
+      ]
+    };
+  }
 
   // --- SEZIONE 1: VEICOLI & AUTO ---
   const isParkingIntent = (

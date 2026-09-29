@@ -1,7 +1,8 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { 
   Store, Search, X, ChevronLeft, BarChart3, ExternalLink, CalendarDays, 
-  Star, Sparkles, MapPin, Clock, AlertTriangle, RefreshCw, CheckCircle2 
+  Star, Sparkles, MapPin, Clock, AlertTriangle, RefreshCw, CheckCircle2,
+  Smartphone
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { StoreLogo } from './StoreLogo';
@@ -452,13 +453,28 @@ function CentroView(props: {
           Esci
         </button>
 
-        <button
-          onClick={() => onStats(false)}
-          className="shrink-0 inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs font-bold bg-amber-500/10 border border-amber-500/25 text-amber-600 hover:bg-amber-500/20 transition-colors"
-        >
-          <BarChart3 className="w-3.5 h-3.5" />
-          Confronta prezzi
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={async () => {
+              const { createSectionShortcut } = await import('../services/shortcutService');
+              createSectionShortcut('volantino');
+            }}
+            className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-full text-xs font-bold bg-[var(--surface-variant)] border border-[var(--border)] text-[var(--text-muted)] hover:text-indigo-500 transition-colors cursor-pointer"
+            title="Aggiungi volantini alla Home Android"
+          >
+            <Smartphone className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Aggiungi a Home</span>
+          </button>
+
+          <button
+            onClick={() => onStats(false)}
+            className="shrink-0 inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs font-bold bg-amber-500/10 border border-amber-500/25 text-amber-600 hover:bg-amber-500/20 transition-colors"
+          >
+            <BarChart3 className="w-3.5 h-3.5" />
+            Confronta prezzi
+          </button>
+        </div>
       </div>
 
       {/* ── BARRA CAP E FILTRO SUPERMERCATI VICINI (Dati da Maps) ── */}

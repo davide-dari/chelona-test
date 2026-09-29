@@ -67,9 +67,26 @@ public class MainActivity extends BridgeActivity {
                             }
                         });
                     }
+
+                    @android.webkit.JavascriptInterface
+                    public boolean isPinShortcutSupported() {
+                        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                            android.content.pm.ShortcutManager shortcutManager = getSystemService(android.content.pm.ShortcutManager.class);
+                            return shortcutManager != null && shortcutManager.isRequestPinShortcutSupported();
+                        }
+                        return false;
+                    }
+
+                    @android.webkit.JavascriptInterface
+                    public boolean createPinnedShortcut(final String route, final String shortLabel, final String longLabel, final String iconBase64, final String colorHex) {
+                        return MainActivity.this.createPinnedShortcutNative(route, shortLabel, longLabel, iconBase64, colorHex);
+                    }
                 }, "ChelonaNative");
             }
         });
+
+        // Configura scorciatoie dinamiche native per Android launcher
+        setupDynamicShortcuts();
 
         // Avvia il controllo periodico degli aggiornamenti in background (ogni 4 ore)
         try {
@@ -141,11 +158,12 @@ public class MainActivity extends BridgeActivity {
             final String version = intent.hasExtra("version") ? intent.getStringExtra("version") : "";
             final String moduleId = intent.hasExtra("moduleId") ? intent.getStringExtra("moduleId") : "";
             final String routeAction = intent.hasExtra("action") ? intent.getStringExtra("action") : "";
+            final boolean fromShortcut = intent.getBooleanExtra("fromShortcut", false);
 
             this.getBridge().getWebView().post(new Runnable() {
                 @Override
                 public void run() {
-                    String js = "window.pendingNotificationRoute = { route: '" + route + "', version: '" + version + "', moduleId: '" + moduleId + "', action: '" + routeAction + "' }; " +
+                    String js = "window.pendingNotificationRoute = { route: '" + route + "', version: '" + version + "', moduleId: '" + moduleId + "', action: '" + routeAction + "', fromShortcut: " + fromShortcut + " }; " +
                                 "window.dispatchEvent(new CustomEvent('notificationRouteReceived', { detail: window.pendingNotificationRoute }));";
                     MainActivity.this.getBridge().getWebView().evaluateJavascript(js, null);
                 }
@@ -163,10 +181,11 @@ public class MainActivity extends BridgeActivity {
                         final String route = extra.optString("route");
                         final String moduleId = extra.optString("moduleId", "");
                         final String routeAction = extra.optString("action", "");
+                        final boolean fromShortcut = extra.optBoolean("fromShortcut", false);
                         this.getBridge().getWebView().post(new Runnable() {
                             @Override
                             public void run() {
-                                String js = "window.pendingNotificationRoute = { route: '" + route + "', moduleId: '" + moduleId + "', action: '" + routeAction + "' }; " +
+                                String js = "window.pendingNotificationRoute = { route: '" + route + "', moduleId: '" + moduleId + "', action: '" + routeAction + "', fromShortcut: " + fromShortcut + " }; " +
                                             "window.dispatchEvent(new CustomEvent('notificationRouteReceived', { detail: window.pendingNotificationRoute }));";
                                 MainActivity.this.getBridge().getWebView().evaluateJavascript(js, null);
                             }
@@ -193,6 +212,182 @@ public class MainActivity extends BridgeActivity {
                         }
                     });
                 }
+            }
+        }
+    }
+
+    /**
+     * Crea un collegamento permanente (Pinned Shortcut) sulla Home di Android
+     */
+    public boolean createPinnedShortcutNative(String route, String shortLabel, String longLabel, String iconBase64, String colorHex) {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+            try {
+                android.content.pm.ShortcutManager shortcutManager = getSystemService(android.content.pm.ShortcutManager.class);
+                if (shortcutManager == null || !shortcutManager.isRequestPinShortcutSupported()) {
+                    return false;
+                }
+
+                android.content.Context context = getApplicationContext();
+
+                Intent shortcutIntent = new Intent(context, MainActivity.class);
+                shortcutIntent.setAction(Intent.ACTION_VIEW);
+                shortcutIntent.putExtra("route", route != null ? route : "home");
+                shortcutIntent.putExtra("fromShortcut", true);
+                shortcutIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+
+                android.graphics.drawable.Icon icon = null;
+                if (iconBase64 != null && !iconBase64.trim().isEmpty()) {
+                    try {
+                        String cleanBase64 = iconBase64.trim();
+                        if (cleanBase64.contains(",")) {
+                            cleanBase64 = cleanBase64.substring(cleanBase64.indexOf(",") + 1);
+                        }
+                        byte[] decodedBytes = android.util.Base64.decode(cleanBase64, android.util.Base64.DEFAULT);
+                        android.graphics.Bitmap bitmap = android.graphics.BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.length);
+                        if (bitmap != null) {
+                            icon = android.graphics.drawable.Icon.createWithAdaptiveBitmap(bitmap);
+                        }
+                    } catch (Exception e) {
+                        android.util.Log.e("ChelonaNative", "Error decoding shortcut icon base64", e);
+                    }
+                }
+
+                if (icon == null) {
+                    android.graphics.Bitmap fallbackBitmap = createFallbackShortcutBitmap(shortLabel, colorHex);
+                    if (fallbackBitmap != null) {
+                        icon = android.graphics.drawable.Icon.createWithAdaptiveBitmap(fallbackBitmap);
+                    } else {
+                        icon = android.graphics.drawable.Icon.createWithResource(context, R.mipmap.ic_launcher);
+                    }
+                }
+
+                String cleanRoute = (route != null ? route : "default").replaceAll("[^a-zA-Z0-9_-]", "_");
+                String shortcutId = "chelona_section_" + cleanRoute;
+
+                android.content.pm.ShortcutInfo pinShortcutInfo = new android.content.pm.ShortcutInfo.Builder(context, shortcutId)
+                        .setShortLabel(shortLabel != null && !shortLabel.trim().isEmpty() ? shortLabel : "Chelona")
+                        .setLongLabel(longLabel != null && !longLabel.trim().isEmpty() ? longLabel : (shortLabel != null ? shortLabel : "Chelona"))
+                        .setIcon(icon)
+                        .setIntent(shortcutIntent)
+                        .build();
+
+                return shortcutManager.requestPinShortcut(pinShortcutInfo, null);
+            } catch (Exception e) {
+                android.util.Log.e("ChelonaNative", "Failed to create pinned shortcut", e);
+                return false;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Disegna una bitmap di fallback con il colore della sezione per l'icona Android
+     */
+    private android.graphics.Bitmap createFallbackShortcutBitmap(String label, String colorHex) {
+        try {
+            int size = 512;
+            android.graphics.Bitmap bitmap = android.graphics.Bitmap.createBitmap(size, size, android.graphics.Bitmap.Config.ARGB_8888);
+            android.graphics.Canvas canvas = new android.graphics.Canvas(bitmap);
+            android.graphics.Paint paint = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
+
+            int color = android.graphics.Color.parseColor(colorHex != null && colorHex.startsWith("#") ? colorHex : "#4F46E5");
+            paint.setColor(color);
+            canvas.drawRect(0, 0, size, size, paint);
+
+            paint.setColor(android.graphics.Color.WHITE);
+            paint.setTextSize(220);
+            paint.setTextAlign(android.graphics.Paint.Align.CENTER);
+            paint.setTypeface(android.graphics.Typeface.create(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD));
+
+            String initial = label != null && !label.trim().isEmpty() ? label.trim().substring(0, 1).toUpperCase() : "C";
+            android.graphics.Rect bounds = new android.graphics.Rect();
+            paint.getTextBounds(initial, 0, initial.length(), bounds);
+            float y = (size / 2f) + (bounds.height() / 2f);
+            canvas.drawText(initial, size / 2f, y, paint);
+
+            return bitmap;
+        } catch (Exception e) {
+            android.util.Log.e("ChelonaNative", "Error generating fallback shortcut bitmap", e);
+            return null;
+        }
+    }
+
+    /**
+     * Configura le scorciatoie dinamiche visibili tenendo premuta l'icona di Chelona
+     */
+    private void setupDynamicShortcuts() {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N_MR1) {
+            try {
+                android.content.pm.ShortcutManager shortcutManager = getSystemService(android.content.pm.ShortcutManager.class);
+                if (shortcutManager != null) {
+                    android.content.Context context = getApplicationContext();
+
+                    Intent autoIntent = new Intent(context, MainActivity.class);
+                    autoIntent.setAction(Intent.ACTION_VIEW);
+                    autoIntent.putExtra("route", "auto");
+                    autoIntent.putExtra("fromShortcut", true);
+                    autoIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+
+                    android.content.pm.ShortcutInfo autoShortcut = new android.content.pm.ShortcutInfo.Builder(context, "dynamic_auto")
+                            .setShortLabel("Auto")
+                            .setLongLabel("Chelona Auto")
+                            .setIcon(android.graphics.drawable.Icon.createWithResource(context, R.mipmap.ic_launcher))
+                            .setIntent(autoIntent)
+                            .setRank(1)
+                            .build();
+
+                    Intent parkingIntent = new Intent(context, MainActivity.class);
+                    parkingIntent.setAction(Intent.ACTION_VIEW);
+                    parkingIntent.putExtra("route", "parking");
+                    parkingIntent.putExtra("fromShortcut", true);
+                    parkingIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+
+                    android.content.pm.ShortcutInfo parkingShortcut = new android.content.pm.ShortcutInfo.Builder(context, "dynamic_parking")
+                            .setShortLabel("Parcheggio")
+                            .setLongLabel("Dov'è la mia auto")
+                            .setIcon(android.graphics.drawable.Icon.createWithResource(context, R.mipmap.ic_launcher))
+                            .setIntent(parkingIntent)
+                            .setRank(2)
+                            .build();
+
+                    Intent spesaIntent = new Intent(context, MainActivity.class);
+                    spesaIntent.setAction(Intent.ACTION_VIEW);
+                    spesaIntent.putExtra("route", "supermarket");
+                    spesaIntent.putExtra("fromShortcut", true);
+                    spesaIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+
+                    android.content.pm.ShortcutInfo spesaShortcut = new android.content.pm.ShortcutInfo.Builder(context, "dynamic_spesa")
+                            .setShortLabel("Spesa")
+                            .setLongLabel("Lista della Spesa")
+                            .setIcon(android.graphics.drawable.Icon.createWithResource(context, R.mipmap.ic_launcher))
+                            .setIntent(spesaIntent)
+                            .setRank(3)
+                            .build();
+
+                    Intent volantiniIntent = new Intent(context, MainActivity.class);
+                    volantiniIntent.setAction(Intent.ACTION_VIEW);
+                    volantiniIntent.putExtra("route", "volantino");
+                    volantiniIntent.putExtra("fromShortcut", true);
+                    volantiniIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+
+                    android.content.pm.ShortcutInfo volantiniShortcut = new android.content.pm.ShortcutInfo.Builder(context, "dynamic_volantini")
+                            .setShortLabel("Volantini")
+                            .setLongLabel("Volantini & Offerte")
+                            .setIcon(android.graphics.drawable.Icon.createWithResource(context, R.mipmap.ic_launcher))
+                            .setIntent(volantiniIntent)
+                            .setRank(4)
+                            .build();
+
+                    java.util.List<android.content.pm.ShortcutInfo> dynamicList = new java.util.ArrayList<>();
+                    dynamicList.add(autoShortcut);
+                    dynamicList.add(parkingShortcut);
+                    dynamicList.add(spesaShortcut);
+                    dynamicList.add(volantiniShortcut);
+
+                    shortcutManager.setDynamicShortcuts(dynamicList);
+                }
+            } catch (Exception e) {
+                android.util.Log.w("MainActivity", "Failed to setup dynamic shortcuts", e);
             }
         }
     }

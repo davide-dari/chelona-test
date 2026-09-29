@@ -111,6 +111,17 @@ export const AutoEditScreen = ({ module, onSave, onCancel }: AutoEditScreenProps
         </div>
         <button
           type="button"
+          onClick={async () => {
+            const { createSectionShortcut } = await import('../services/shortcutService');
+            createSectionShortcut('auto');
+          }}
+          className="p-3 bg-[var(--card-bg)] hover:bg-[var(--surface-variant)] border border-[var(--border)] rounded-2xl text-[var(--text-muted)] hover:text-indigo-500 transition-all cursor-pointer"
+          title="Aggiungi collegamento Auto alla Home Android"
+        >
+          <Smartphone className="w-4 h-4" />
+        </button>
+        <button
+          type="button"
           onClick={handleSubmit}
           className="flex items-center gap-2 px-5 py-3 bg-amber-500 hover:bg-amber-600 active:scale-95 text-white rounded-2xl font-bold text-sm transition-all shadow-lg shadow-amber-500/20"
         >

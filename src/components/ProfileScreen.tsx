@@ -623,40 +623,6 @@ export function ProfileScreen({
       {/* ── Outer Responsive Container ── */}
       <div className="w-full max-w-4xl mx-auto flex-1 flex flex-col px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
 
-        {/* ── Sub-header / Breadcrumb Action Bar ── */}
-        <div className="flex items-center justify-between gap-3 mb-6 bg-[var(--card-bg)]/80 backdrop-blur-md px-4 py-3 rounded-2xl border border-[var(--border)] shadow-sm">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={onClose}
-              className="p-2 rounded-xl bg-[var(--surface-variant)] hover:bg-[var(--border)] text-[var(--text-main)] transition-all flex items-center gap-2 text-xs font-bold active:scale-95 cursor-pointer"
-              title="Torna alla Home"
-            >
-              <X className="w-4 h-4 text-[var(--text-muted)]" />
-              <span className="hidden sm:inline">Chiudi</span>
-            </button>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] font-mono px-2.5 py-1 rounded-full bg-[var(--surface-variant)] border border-[var(--border)] text-[var(--text-muted)] hidden sm:inline-block">
-              v{APP_VERSION}
-            </span>
-            <button 
-              onClick={onToggleTheme}
-              className="p-2 text-[var(--text-muted)] hover:text-[var(--accent)] bg-[var(--surface-variant)] hover:bg-[var(--border)] rounded-xl transition-all border border-[var(--border)] flex items-center gap-1.5 active:scale-95 cursor-pointer"
-              title="Cambia Tema Chiaro / Scuro"
-            >
-              {theme === 'light' ? (
-                <Moon className="w-4 h-4 text-indigo-500" />
-              ) : (
-                <Sun className="w-4 h-4 text-[var(--accent)]" />
-              )}
-              <span className="text-xs font-bold hidden md:inline">
-                {theme === 'light' ? 'Scuro' : 'Chiaro'}
-              </span>
-            </button>
-          </div>
-        </div>
-
         {/* ── Hero Profile Card (Material 3 Surface Elevation) ── */}
         <div className="relative overflow-hidden rounded-[var(--radius-lg)] p-6 lg:p-8 bg-gradient-to-br from-[var(--surface-variant)]/80 via-[var(--card-bg)] to-[var(--surface-variant)]/40 border border-[var(--border)] shadow-sm mb-6">
           <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6">
@@ -978,84 +944,6 @@ export function ProfileScreen({
                     }`}>
                       {theme === 'dark' && <Check className="w-3 h-3 stroke-[3]" />}
                     </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Home Shortcuts / Pinned Widgets Config */}
-              <div className="bg-[var(--card-bg)] rounded-[var(--radius-lg)] p-5 sm:p-6 border border-[var(--border)] shadow-sm space-y-5">
-                <div className="flex items-center justify-between gap-3 pb-3 border-b border-[var(--border)]">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-2xl bg-teal-500/10 flex items-center justify-center text-teal-600">
-                      <Sliders className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <h3 className="text-base font-bold text-[var(--text-main)]">Scorciatoie Rapide in Home</h3>
-                      <p className="text-xs text-[var(--text-muted)]">Personalizza i pulsanti mostrati nella sezione "Accesso Rapido" della dashboard</p>
-                    </div>
-                  </div>
-                  <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-[var(--surface-variant)] text-[var(--accent)] border border-[var(--border)]">
-                    {pinnedCategoryIds.length + pinnedToolIds.length} attivi
-                  </span>
-                </div>
-
-                {/* Section A: Categorie Moduli */}
-                <div className="space-y-2.5">
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)] flex items-center gap-1.5">
-                    <Layers className="w-3.5 h-3.5 text-[var(--accent)]" />
-                    <span>Categorie Vault</span>
-                  </h4>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-                    {AVAILABLE_PINNED_CATEGORIES.map(cat => {
-                      const isPinned = pinnedCategoryIds.includes(cat.id);
-                      const CatIcon = cat.icon;
-                      return (
-                        <button
-                          key={cat.id}
-                          type="button"
-                          onClick={() => handleTogglePinnedCategory(cat.id)}
-                          className={`p-3 rounded-xl border text-left flex items-center gap-2.5 transition-all text-xs font-bold cursor-pointer ${
-                            isPinned
-                              ? 'border-[var(--accent)] bg-[var(--accent-bg)] text-[var(--accent-on-container)] shadow-2xs'
-                              : 'border-[var(--border)] bg-[var(--bg)] text-[var(--text-muted)] hover:text-[var(--text-main)]'
-                          }`}
-                        >
-                          <CatIcon className={`w-4 h-4 shrink-0 ${isPinned ? 'text-[var(--accent)]' : cat.color}`} />
-                          <span className="truncate flex-1">{cat.label}</span>
-                          {isPinned && <Check className="w-3.5 h-3.5 shrink-0 stroke-[3]" />}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Section B: Strumenti Rapidi */}
-                <div className="space-y-2.5 pt-2 border-t border-[var(--border)]/60">
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)] flex items-center gap-1.5">
-                    <Sparkles className="w-3.5 h-3.5 text-indigo-500" />
-                    <span>Strumenti & Utility</span>
-                  </h4>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5">
-                    {AVAILABLE_PINNED_TOOLS.map(tool => {
-                      const isPinned = pinnedToolIds.includes(tool.id);
-                      const ToolIcon = tool.icon;
-                      return (
-                        <button
-                          key={tool.id}
-                          type="button"
-                          onClick={() => handleTogglePinnedTool(tool.id)}
-                          className={`p-3 rounded-xl border text-left flex items-center gap-2.5 transition-all text-xs font-bold cursor-pointer ${
-                            isPinned
-                              ? 'border-[var(--accent)] bg-[var(--accent-bg)] text-[var(--accent-on-container)] shadow-2xs'
-                              : 'border-[var(--border)] bg-[var(--bg)] text-[var(--text-muted)] hover:text-[var(--text-main)]'
-                          }`}
-                        >
-                          <ToolIcon className={`w-4 h-4 shrink-0 ${isPinned ? 'text-[var(--accent)]' : tool.color}`} />
-                          <span className="truncate flex-1">{tool.label}</span>
-                          {isPinned && <Check className="w-3.5 h-3.5 shrink-0 stroke-[3]" />}
-                        </button>
-                      );
-                    })}
                   </div>
                 </div>
               </div>

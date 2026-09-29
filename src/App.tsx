@@ -922,10 +922,21 @@ export default function App() {
     return () => window.removeEventListener('chelona_update_available', handleManualUpdate);
   }, [handleCheckUpdate]);
 
-  const handleNotificationRoute = React.useCallback((routeData: { route?: string; moduleId?: string; field?: string; action?: string; extra?: any }) => {
+  const handleNotificationRoute = React.useCallback((routeData: { route?: string; moduleId?: string; field?: string; action?: string; extra?: any; fromShortcut?: boolean }) => {
     if (!routeData || !routeData.route) return;
     console.log('[App] handleNotificationRoute received:', routeData);
-    const { route, moduleId, action } = routeData;
+    const { route, moduleId, action, fromShortcut } = routeData;
+
+    // Se aperto direttamente da collegamento Android ("come se fosse un'altra app")
+    if (fromShortcut) {
+      setIsAiOpen(false);
+      setIsToolsOpen(false);
+      setIsProfileOpen(false);
+      setIsSettingsOpen(false);
+      setIsAddressAndParkingOpen(false);
+      setIsRecipesOpen(false);
+      setSelectedType(null);
+    }
 
     if (route === 'update') {
       handleCheckUpdate(false);
@@ -935,6 +946,7 @@ export default function App() {
     if (route === 'auto') {
       const autoMod = moduleId ? modules.find(m => m.id === moduleId) : modules.find(m => m.type === 'auto');
       const doAction = () => {
+        setActiveNavTab('home');
         if (autoMod) {
           setEditingAutoModule(autoMod as any);
           if (action === 'open-km') {
@@ -953,6 +965,7 @@ export default function App() {
 
     if (route === 'document') {
       const doAction = () => {
+        setActiveNavTab('home');
         setSelectedType('document');
         if (moduleId) {
           const docMod = modules.find(m => m.id === moduleId);
@@ -964,8 +977,77 @@ export default function App() {
       return;
     }
 
+    if (route === 'parking') {
+      setActiveNavTab('home');
+      setAddressParkingTab('parking');
+      setAddressParkingAutoSave(action === 'save');
+      setIsAddressAndParkingOpen(true);
+      return;
+    }
+
+    if (route === 'volantino') {
+      setActiveNavTab('home');
+      let existingVol = modules.find(m => m.type === 'volantino') as import('./types').VolantinoModule | undefined;
+      if (!existingVol) {
+        existingVol = {
+          id: generateUUID(),
+          type: 'volantino',
+          title: 'Volantini',
+          offers: [],
+          flyers: [],
+          x: 0,
+          y: Infinity,
+          w: 3,
+          h: 3,
+          folderId: selectedFolderId || undefined
+        };
+        setModules(prev => {
+          const updated = [existingVol!, ...prev];
+          saveAppState(updated, folders).catch(console.error);
+          return updated;
+        });
+      }
+      setVolantinoInitialChain(null);
+      setEditingVolantinoModule(existingVol);
+      return;
+    }
+
+    if (route === 'supermarket') {
+      setActiveNavTab('home');
+      let sm = modules.find(m => m.type === 'supermarket') as import('./types').SupermarketModule | undefined;
+      if (!sm) {
+        sm = {
+          id: generateUUID(),
+          type: 'supermarket',
+          title: 'Lista della Spesa',
+          items: [],
+          x: 0,
+          y: Infinity,
+          w: 3,
+          h: 3,
+          folderId: selectedFolderId || undefined
+        };
+        setModules(prev => {
+          const updated = [sm!, ...prev];
+          saveAppState(updated, folders).catch(console.error);
+          return updated;
+        });
+      }
+      setEditingSupermarketModule(sm);
+      return;
+    }
+
+    if (route === 'recipes') {
+      setActiveNavTab('home');
+      setInitialRecipesSearch('');
+      setInitialRecipesCategory(null);
+      setIsRecipesOpen(true);
+      return;
+    }
+
     if (route === 'installments') {
       const doAction = () => {
+        setActiveNavTab('home');
         const instMod = moduleId ? modules.find(m => m.id === moduleId) : modules.find(m => m.type === 'installments');
         if (instMod) {
           setEditingInstallmentsModule(instMod as any);
@@ -980,13 +1062,14 @@ export default function App() {
 
     if (route === 'single-expense' || route === 'split') {
       const doAction = () => {
+        setActiveNavTab('home');
         if (moduleId) {
           const expMod = modules.find(m => m.id === moduleId);
           if (expMod?.type === 'split') setEditingSplitModule(expMod as any);
           else if (expMod?.type === 'single-expense') setEditingSingleExpenseModule(expMod as any);
-          else setSelectedType('split');
+          else setSelectedType(route as any);
         } else {
-          setSelectedType('split');
+          setSelectedType(route as any);
         }
       };
       if (!isSensitiveUnlocked) unlockAndProceed(doAction);
@@ -995,13 +1078,116 @@ export default function App() {
     }
 
     if (route === 'fitness') {
+      setActiveNavTab('home');
       const fitMod = moduleId ? modules.find(m => m.id === moduleId) : modules.find(m => m.type === 'fitness');
       if (fitMod) {
         setEditingFitnessModule(fitMod as any);
+      } else {
+        const newFitness: import('./types').FitnessModule = {
+          id: generateUUID(),
+          type: 'fitness',
+          title: 'Fitness & Dieta',
+          x: 0, y: 0, w: 3, h: 2,
+          folderId: selectedFolderId || undefined
+        };
+        setModules(prev => {
+          const updated = [newFitness, ...prev];
+          saveAppState(updated, folders).catch(console.error);
+          return updated;
+        });
+        setEditingFitnessModule(newFitness);
       }
       return;
     }
-  }, [modules, handleCheckUpdate]);
+
+    if (route === 'travel') {
+      setActiveNavTab('home');
+      const trMod = modules.find(m => m.type === 'travel') as import('./types').TravelModule | undefined;
+      if (trMod) {
+        setEditingTravelModule(trMod);
+      } else {
+        const newTravel: import('./types').TravelModule = {
+          id: generateUUID(),
+          type: 'travel',
+          title: 'Viaggi',
+          destinations: [],
+          x: 0, y: 0, w: 3, h: 3,
+          folderId: selectedFolderId || undefined
+        };
+        setModules(prev => {
+          const updated = [newTravel, ...prev];
+          saveAppState(updated, folders).catch(console.error);
+          return updated;
+        });
+        setEditingTravelModule(newTravel);
+      }
+      return;
+    }
+
+    if (route === 'furniture') {
+      setActiveNavTab('home');
+      const fMod = modules.find(m => m.type === 'furniture') as import('./types').FurnitureModule | undefined;
+      if (fMod) {
+        setEditingFurnitureModule(fMod);
+      } else {
+        const newFurniture: import('./types').FurnitureModule = {
+          id: generateUUID(),
+          type: 'furniture',
+          title: 'Arredamento',
+          rooms: [
+            { id: generateUUID(), name: 'Cucina', items: [] },
+            { id: generateUUID(), name: 'Salone', items: [] },
+            { id: generateUUID(), name: 'Camera da letto', items: [] },
+            { id: generateUUID(), name: 'Bagno', items: [] }
+          ],
+          x: 0, y: 0, w: 3, h: 3,
+          folderId: selectedFolderId || undefined
+        };
+        setModules(prev => {
+          const updated = [newFurniture, ...prev];
+          saveAppState(updated, folders).catch(console.error);
+          return updated;
+        });
+        setEditingFurnitureModule(newFurniture);
+      }
+      return;
+    }
+
+    if (route === 'notes' || route === 'generic') {
+      setActiveNavTab('home');
+      setSelectedType('generic');
+      return;
+    }
+
+    if (route === 'addresses' || route === 'address' || route === 'address-book') {
+      setActiveNavTab('home');
+      setAddressParkingTab('addresses');
+      setIsAddressAndParkingOpen(true);
+      return;
+    }
+
+    if (route === 'deadlines') {
+      setActiveNavTab('deadlines');
+      return;
+    }
+
+    if (route === 'tools' || route === 'scanner' || route === 'shortcuts') {
+      setActiveNavTab('tools');
+      setIsToolsOpen(true);
+      if (route === 'scanner' || action === 'scanner') {
+        setActiveToolId('scanner');
+      } else if (route === 'shortcuts' || action === 'shortcuts') {
+        setActiveToolId('shortcuts');
+      }
+      return;
+    }
+
+    if (route === 'ai' || route === 'chelona-ai') {
+      setIsAiOpen(true);
+      if (action === 'voice') setAiInitialVoiceMode(true);
+      return;
+    }
+  }, [modules, folders, selectedFolderId, isSensitiveUnlocked, handleCheckUpdate]);
 
   useEffect(() => {
     const handleRouteEvent = (e: any) => {
@@ -1649,6 +1835,23 @@ export default function App() {
     setIsProfileOpen(false);
     setIsSettingsOpen(false);
     setIsAddressAndParkingOpen(false);
+
+    if ((act as any).type === 'shortcut' || (act as any).shortcutId) {
+      const targetId = (act as any).shortcutId || 'auto';
+      import('./services/shortcutService').then(({ createSectionShortcut }) => {
+        createSectionShortcut(targetId).then(res => {
+          showToast(res.message, res.success ? 'success' : 'info');
+        });
+      });
+      return;
+    }
+
+    if ((act as any).type === 'shortcuts_hub') {
+      setActiveNavTab('tools');
+      setIsToolsOpen(true);
+      setActiveToolId('shortcuts');
+      return;
+    }
 
     if (act.type === 'navigate_parking') {
       if (act.url) {
@@ -4382,11 +4585,6 @@ export default function App() {
 
                           <div className="relative z-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-5">
                             <div className="space-y-2 max-w-lg">
-                              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-gradient-to-r from-amber-500/10 via-rose-500/10 to-indigo-500/10 border border-amber-500/25 text-[11px] font-bold text-amber-600 dark:text-amber-400 shadow-sm backdrop-blur-sm">
-                                <Sparkles className="w-3.5 h-3.5 text-amber-500 animate-pulse" />
-                                <span>Assistente Chelona AI</span>
-                              </div>
-
                               <h2 className="text-2xl sm:text-3xl font-black text-[var(--text-main)] tracking-tight leading-tight">
                                 Ciao <span className="bg-gradient-to-r from-amber-500 via-rose-500 to-indigo-500 bg-clip-text text-transparent">{(username?.trim()) || 'Utente'}</span>,
                                 <br />

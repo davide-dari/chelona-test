@@ -1,6 +1,6 @@
 import { 
   Layers, RotateCw, FileDown, Minimize, 
-  ImageIcon, Percent, Scan, Shirt, Sparkles
+  ImageIcon, Percent, Scan, Shirt, Sparkles, Smartphone
 } from 'lucide-react';
 
 export const TOOLS_PDF = [
@@ -12,6 +12,7 @@ export const TOOLS_PDF = [
 ];
 
 export const TOOLS_UTILITY = [
+  { id: 'shortcuts', title: 'App Schermata Home', desc: 'Crea icone indipendenti per ogni sezione su Android.', icon: Smartphone, color: 'text-indigo-600', bg: 'bg-indigo-500/10', category: 'utility' },
   { id: 'chelona-ai', title: 'Chelona AI', desc: 'Il tuo assistente personale intelligente.', icon: Sparkles, color: 'text-amber-500', bg: 'bg-amber-500/10', category: 'utility' },
   { id: 'vinted', title: 'Aiuto Vinted', desc: 'Misure su foto, titoli e descrizioni top.', icon: Shirt, color: 'text-teal-500', bg: 'bg-teal-500/10', category: 'utility' },
   { id: 'scanner', title: 'Scanner', desc: 'Scansiona e crea PDF.', icon: Scan, color: 'text-[var(--success)]', bg: 'bg-[var(--success)]/10', category: 'utility' },
@@ -20,3 +21,4 @@ export const TOOLS_UTILITY = [
 ];
 
 export const TOOLS = [...TOOLS_PDF, ...TOOLS_UTILITY];
+
