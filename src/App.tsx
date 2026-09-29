@@ -29,7 +29,6 @@ import { lzw } from './utils/lzw';
 import { updateService, UpdateInfo } from './services/updateService';
 import { App as CapApp } from '@capacitor/app';
 import { generateUUID } from './utils/uuid';
-import { SpeechRecognition } from '@capacitor-community/speech-recognition';
 import { voiceRecognitionService } from './services/voiceService';
 import { Share } from '@capacitor/share';
 import { Device } from '@capacitor/device';
@@ -323,7 +322,6 @@ export default function App() {
   const [activeNavTab, setActiveNavTab] = useState<'home' | 'deadlines' | 'ai' | 'tools' | 'profile'>('home');
   const [isAiOpen, setIsAiOpen] = useState(false);
   const [aiInitialVoiceMode, setAiInitialVoiceMode] = useState(false);
-  const [aiInitialDictationMode, setAiInitialDictationMode] = useState(false);
   const [isWakeWordEnabled, setIsWakeWordEnabled] = useState(() => wakeWordService.getEnabled());
   const [deadlinesFilter, setDeadlinesFilter] = useState<'all' | 'auto' | 'document' | 'installment'>('all');
 
@@ -3392,11 +3390,9 @@ export default function App() {
                   modules={modules}
                   username={username}
                   initialVoiceMode={aiInitialVoiceMode}
-                  initialDictationMode={aiInitialDictationMode}
                   onClose={() => {
                     setIsAiOpen(false);
                     setAiInitialVoiceMode(false);
-                    setAiInitialDictationMode(false);
                     if (activeNavTab === 'ai') setActiveNavTab('home');
                   }}
                   onOpenModule={(m) => {
@@ -4506,7 +4502,6 @@ export default function App() {
                                 whileTap={{ scale: 0.95 }}
                                 onClick={() => {
                                   setAiInitialVoiceMode(false);
-                                  setAiInitialDictationMode(false);
                                   setIsAiOpen(true);
                                   setActiveNavTab('ai');
                                   setIsToolsOpen(false);
@@ -4525,7 +4520,6 @@ export default function App() {
                                 type="button"
                                 onClick={() => {
                                   setAiInitialVoiceMode(false);
-                                  setAiInitialDictationMode(true);
                                   setIsAiOpen(true);
                                   setActiveNavTab('ai');
                                   setIsToolsOpen(false);
@@ -4533,8 +4527,8 @@ export default function App() {
                                   setSelectedType(null);
                                 }}
                                 className="p-3 rounded-2xl border transition-all shrink-0 active:scale-95 shadow-xs bg-[var(--surface-variant)] hover:bg-[var(--border)] border-[var(--border)] text-amber-500 flex items-center justify-center cursor-pointer"
-                                title="Dettatura vocale"
-                                aria-label="Dettatura vocale con Chelona AI"
+                                title="Parla con Chelona AI"
+                                aria-label="Parla con Chelona AI"
                               >
                                 <Mic className="w-5 h-5" />
                               </button>

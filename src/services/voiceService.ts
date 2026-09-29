@@ -120,6 +120,7 @@ class VoiceRecognitionService {
     this.isListening = true;
 
     const lang = options.lang || 'it-IT';
+    const isAndroid = typeof navigator !== 'undefined' && (/android/i.test(navigator.userAgent) || (window as any)?.Capacitor?.getPlatform() === 'android');
     const native = (window as any)?.ChelonaNative;
 
     // 1. Prova il recognizer nativo in-app (Android On-Device o standard senza dialog Google)
@@ -131,11 +132,19 @@ class VoiceRecognitionService {
           return true;
         }
       } catch (err) {
-        console.warn('[VoiceService] Native start failed, falling back to Web Speech', err);
+        console.warn('[VoiceService] Native start failed', err);
       }
     }
 
-    // 2. Fallback su Web Speech API (in-app, zero popup)
+    // Su Android NON usare MAI webkitSpeechRecognition perché il WebView di Chrome apre il popup di Google!
+    if (isAndroid) {
+      console.warn('[VoiceService] Suppressed Web Speech on Android to avoid external Google dialog.');
+      this.isListening = false;
+      options.onError?.('Microfono in-app non disponibile. Verifica i permessi nelle impostazioni.');
+      return false;
+    }
+
+    // 2. Fallback su Web Speech API SOLO per browser desktop (Chrome / Edge desktop)
     const SpeechRec = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (SpeechRec) {
       try {

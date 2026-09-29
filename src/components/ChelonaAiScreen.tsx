@@ -12,7 +12,6 @@ import {
   getLearnedMemories, deleteLearnedMemory, clearAllLearnedMemories, 
   saveLearnedMemory, queryGemmaNano, buildKnowledgeBase 
 } from '../services/gemmaNanoEngine';
-import { SpeechRecognition } from '@capacitor-community/speech-recognition';
 import {
   prepareNaturalSpeech,
   splitIntoSentences,
@@ -23,7 +22,6 @@ import {
 import { getSavedParking, getNavigationUrl } from '../services/parkingService';
 import { wakeWordService } from '../services/wakeWordService';
 import { voiceRecognitionService } from '../services/voiceService';
-import { VoiceAudioWaveform } from './VoiceAudioWaveform';
 
 interface ChelonaAiScreenProps {
   modules: Module[];
@@ -195,9 +193,6 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
         window.speechSynthesis.cancel();
       } catch {}
     }
-    try {
-      SpeechRecognition.stop().catch(() => {});
-    } catch {}
     if (webSpeechRecRef.current) {
       try {
         webSpeechRecRef.current.abort();
@@ -503,8 +498,7 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
           if (isVoiceSession) {
             handleSend(finalText, true, true);
           } else {
-            setInputText(finalText);
-            handleSend(finalText, false, true);
+            setInputText(finalText.trim());
           }
         } else if (isVoiceSession) {
           setVoiceStatus('idle');
@@ -609,22 +603,6 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
       return () => clearTimeout(t);
     }
   }, [initialVoiceMode, isVoiceModeOpen]);
-
-  const initialDictationTriggeredRef = useRef(false);
-
-  useEffect(() => {
-    if (!initialDictationMode) {
-      initialDictationTriggeredRef.current = false;
-      return;
-    }
-    if (initialDictationMode && !initialDictationTriggeredRef.current) {
-      initialDictationTriggeredRef.current = true;
-      const t = setTimeout(() => {
-        startVoiceRecognition(false);
-      }, 150);
-      return () => clearTimeout(t);
-    }
-  }, [initialDictationMode]);
 
   const handleSpeak = (msgId: string, text: string) => {
     if (!('speechSynthesis' in window)) {
@@ -967,21 +945,22 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
             </div>
           )}
 
-          {/* Visualizzatore Forma d'Onda Vocale In-App */}
-          <AnimatePresence>
-            {isListening && !isVoiceModeOpen && (
-              <div className="mb-2.5">
-                <VoiceAudioWaveform
-                  isListening={isListening}
-                  transcript={liveVoiceTranscript || inputText}
-                  volume={liveAudioVolume}
-                  onCancel={cancelVoiceRecognition}
-                  onConfirm={confirmVoiceRecognition}
-                  title="Ascolto vocale"
-                />
+          {/* Semplice feedback visivo quando il microfono è in ascolto */}
+          {isListening && !isVoiceModeOpen && (
+            <div className="flex items-center justify-between px-3 py-1.5 mb-2 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-500 text-xs font-semibold">
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping" />
+                <span>In ascolto... Parla pure</span>
               </div>
-            )}
-          </AnimatePresence>
+              <button
+                type="button"
+                onClick={cancelVoiceRecognition}
+                className="text-[11px] font-bold text-rose-500 hover:text-rose-600 underline cursor-pointer"
+              >
+                Ferma
+              </button>
+            </div>
+          )}
 
           <div className="flex items-end gap-2.5">
             <button
@@ -995,31 +974,39 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
               }}
               className={`p-3 rounded-2xl border transition-all shrink-0 active:scale-95 shadow-xs cursor-pointer ${
                 isListening
-                  ? 'bg-rose-500 text-white border-rose-500 animate-pulse'
+                  ? 'bg-rose-500 text-white border-rose-500 shadow-rose-500/30 animate-pulse'
                   : 'bg-[var(--surface-variant)] hover:bg-[var(--border)] border-[var(--border)] text-amber-500'
               }`}
-              title={isListening ? "Interrompi ascolto" : "Dettatura vocale"}
+              title={isListening ? "Tocca per fermare l'ascolto" : "Dettatura vocale"}
             >
               {isListening ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
             </button>
 
-            <div className="flex-1 bg-[var(--surface-variant)] rounded-2xl border border-[var(--border)] focus-within:border-amber-500 focus-within:ring-2 focus-within:ring-amber-500/20 transition-all p-1.5 flex items-center">
+            <div className={`flex-1 bg-[var(--surface-variant)] rounded-2xl border transition-all p-1.5 flex items-center ${
+              isListening ? 'border-rose-500/60 ring-2 ring-rose-500/20' : 'border-[var(--border)] focus-within:border-amber-500 focus-within:ring-2 focus-within:ring-amber-500/20'
+            }`}>
               <textarea
                 ref={textareaRef}
                 rows={1}
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="Scrivi a Chelona o insegna qualcosa..."
+                placeholder={isListening ? "In ascolto... Parla pure..." : "Scrivi a Chelona o insegna qualcosa..."}
                 className="w-full bg-transparent border-0 focus:outline-none focus:ring-0 text-sm text-[var(--text-main)] placeholder-[var(--text-muted)] resize-none py-1.5 px-2 max-h-28"
               />
             </div>
 
             <button
               type="button"
-              onClick={() => handleSend()}
+              onClick={() => {
+                if (isListening) {
+                  confirmVoiceRecognition();
+                } else {
+                  handleSend();
+                }
+              }}
               disabled={!inputText.trim() || isProcessing}
-              className="p-3 rounded-2xl bg-amber-500 hover:bg-amber-600 disabled:opacity-40 text-white transition-all shrink-0 active:scale-95 shadow-md shadow-amber-500/20"
+              className="p-3 rounded-2xl bg-amber-500 hover:bg-amber-600 disabled:opacity-40 text-white transition-all shrink-0 active:scale-95 shadow-md shadow-amber-500/20 cursor-pointer"
               title="Invia messaggio"
             >
               <Send className="w-5 h-5" />

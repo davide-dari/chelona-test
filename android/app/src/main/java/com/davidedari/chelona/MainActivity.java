@@ -430,7 +430,7 @@ public class MainActivity extends BridgeActivity {
             androidx.core.app.ActivityCompat.requestPermissions(this,
                     new String[]{android.Manifest.permission.RECORD_AUDIO},
                     PERMISSION_REQUEST_RECORD_AUDIO);
-            return false;
+            return true;
         }
 
         runOnUiThread(new Runnable() {
