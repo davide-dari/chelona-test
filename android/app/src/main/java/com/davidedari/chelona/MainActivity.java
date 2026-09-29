@@ -437,21 +437,27 @@ public class MainActivity extends BridgeActivity {
             @Override
             public void run() {
                 try {
+                    android.content.Context context = getApplicationContext();
+
                     if (nativeSpeechRecognizer != null) {
                         try {
-                            nativeSpeechRecognizer.stopListening();
-                            nativeSpeechRecognizer.destroy();
+                            nativeSpeechRecognizer.cancel();
                         } catch (Exception ignored) {}
-                        nativeSpeechRecognizer = null;
-                    }
-
-                    android.content.Context context = getApplicationContext();
-                    // Preferisci l'On-Device Speech Recognizer (Android 13+) per massima velocità e zero cloud
-                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU &&
-                            android.speech.SpeechRecognizer.isOnDeviceRecognitionAvailable(context)) {
-                        nativeSpeechRecognizer = android.speech.SpeechRecognizer.createOnDeviceSpeechRecognizer(context);
                     } else {
-                        nativeSpeechRecognizer = android.speech.SpeechRecognizer.createSpeechRecognizer(context);
+                        try {
+                            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU &&
+                                    android.speech.SpeechRecognizer.isOnDeviceRecognitionAvailable(context)) {
+                                nativeSpeechRecognizer = android.speech.SpeechRecognizer.createOnDeviceSpeechRecognizer(context);
+                            }
+                        } catch (Exception ignored) {}
+
+                        if (nativeSpeechRecognizer == null) {
+                            try {
+                                nativeSpeechRecognizer = android.speech.SpeechRecognizer.createSpeechRecognizer(context);
+                            } catch (Exception e) {
+                                android.util.Log.e("ChelonaNative", "Error creating speech recognizer", e);
+                            }
+                        }
                     }
 
                     if (nativeSpeechRecognizer == null) {
@@ -495,6 +501,18 @@ public class MainActivity extends BridgeActivity {
 
                         @Override
                         public void onError(int error) {
+                            try {
+                                if (nativeSpeechRecognizer != null) {
+                                    nativeSpeechRecognizer.cancel();
+                                }
+                            } catch (Exception ignored) {}
+                            if (error == android.speech.SpeechRecognizer.ERROR_RECOGNIZER_BUSY || 
+                                error == android.speech.SpeechRecognizer.ERROR_CLIENT) {
+                                try {
+                                    nativeSpeechRecognizer.destroy();
+                                } catch (Exception ignored) {}
+                                nativeSpeechRecognizer = null;
+                            }
                             emitJsEvent("chelona_speech_error", "{ \"error\": " + error + " }");
                         }
 
@@ -535,6 +553,12 @@ public class MainActivity extends BridgeActivity {
                     nativeSpeechRecognizer.startListening(intent);
                 } catch (Exception e) {
                     android.util.Log.e("ChelonaNative", "startSpeechRecognitionNative failed", e);
+                    try {
+                        if (nativeSpeechRecognizer != null) {
+                            nativeSpeechRecognizer.destroy();
+                            nativeSpeechRecognizer = null;
+                        }
+                    } catch (Exception ignored) {}
                     emitJsEvent("chelona_speech_error", "{ \"error\": \"" + e.getMessage() + "\" }");
                 }
             }

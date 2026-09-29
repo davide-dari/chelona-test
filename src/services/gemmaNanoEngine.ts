@@ -1252,13 +1252,65 @@ export async function queryGemmaNano(
       return {
         text: `Ho aggiunto alla tua **Lista della Spesa** 🛒:\n${newItems.map(i => `• **${i.name}** *(${i.category})*`).join('\n')}`,
         createdModule: targetModule,
-        autoAction: { label: 'Apri Lista Spesa', type: 'category', category: 'supermarket' },
-        actions: [{ label: 'Apri Lista Spesa', type: 'category', category: 'supermarket' }],
+        autoAction: { label: 'Apri Lista Spesa', type: 'category', category: 'supermarket', module: targetModule },
+        actions: [{ label: 'Apri Lista Spesa', type: 'category', category: 'supermarket', module: targetModule }],
       };
     }
   }
 
-  // 1b. AGGIUNGI NOTA
+  // 1b. TOGLI / RIMUOVI ARTICOLI DALLA LISTA DELLA SPESA TRAMITE VOCE/CHAT
+  const smRemoveMatch = query.match(/^(?:togli|rimuovi|cancella|elimina)\s+(.+?)\s+(?:dalla|dalla lista della|dalla lista|da|in)\s+(?:lista\s+(?:della\s+)?spesa|spesa)/i)
+    || query.match(/^(?:togli|rimuovi|cancella|elimina)\s+(?:dalla|dalla lista della|dalla lista|da)\s+(?:lista\s+(?:della\s+)?spesa|spesa)[:\s]+(.+)$/i)
+    || query.match(/^(?:togli|rimuovi|cancella|elimina)\s+(.+?)\s+(?:dalla|da)\s+spesa$/i);
+
+  if (smRemoveMatch) {
+    const rawItemsStr = smRemoveMatch[1].trim();
+    const rawItems = rawItemsStr.split(/,| e | and |\+/i).map(s => s.trim()).filter(s => s.length > 0);
+    const existingSm = modules.find(m => m.type === 'supermarket') as SupermarketModule | undefined;
+
+    if (!existingSm || !existingSm.items || existingSm.items.length === 0) {
+      return {
+        text: `La tua **Lista della Spesa** è già vuota, non ci sono articoli da togliere! 🛒`,
+        actions: [{ label: 'Apri Lista Spesa', type: 'category', category: 'supermarket' }],
+      };
+    }
+
+    const removedItems: SupermarketItem[] = [];
+    const remainingItems = [...existingSm.items].filter(item => {
+      const itemLower = item.name.toLowerCase().trim();
+      const shouldRemove = rawItems.some(raw => {
+        const cleanRaw = raw.replace(/^(?:il|lo|la|i|gli|le|l'|l’|un|uno|una|un')\s+/i, '').trim().toLowerCase();
+        return itemLower === cleanRaw || itemLower.includes(cleanRaw) || cleanRaw.includes(itemLower);
+      });
+      if (shouldRemove) {
+        removedItems.push(item);
+        return false;
+      }
+      return true;
+    });
+
+    if (removedItems.length === 0) {
+      return {
+        text: `Non ho trovato "${rawItemsStr}" nella tua Lista della Spesa. Gli articoli presenti sono:\n${existingSm.items.map(i => `• ${i.name}`).join('\n')}`,
+        autoAction: { label: 'Apri Lista Spesa', type: 'category', category: 'supermarket', module: existingSm },
+        actions: [{ label: 'Apri Lista Spesa', type: 'category', category: 'supermarket', module: existingSm }],
+      };
+    }
+
+    const targetModule: SupermarketModule = {
+      ...existingSm,
+      items: remainingItems,
+    };
+
+    return {
+      text: `Ho rimosso dalla tua **Lista della Spesa** 🛒:\n${removedItems.map(i => `• ~~${i.name}~~`).join('\n')}${remainingItems.length > 0 ? `\n\nRimangono ${remainingItems.length} articoli da acquistare.` : '\n\nLa lista della spesa ora è vuota.'}`,
+      createdModule: targetModule,
+      autoAction: { label: 'Apri Lista Spesa', type: 'category', category: 'supermarket', module: targetModule },
+      actions: [{ label: 'Apri Lista Spesa', type: 'category', category: 'supermarket', module: targetModule }],
+    };
+  }
+
+  // 1c. AGGIUNGI NOTA
   const noteMatch = query.match(/^(?:aggiungi|crea|segna|scrivi|salva)\s+(?:una\s+)?nota(?:\s*[:\-]\s*|\s+con\s+testo\s*[:\-]?\s*|\s+intitolata\s*[:\-]?\s*|\s+)(.+)$/i) 
     || query.match(/^nota:\s*(.+)$/i);
 

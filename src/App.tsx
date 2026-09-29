@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { Sun, Moon, Wrench, Plus, LayoutDashboard, Settings, User, LogOut, Search, Mic, Bell, CreditCard, Fingerprint, ShieldCheck, Lock, Menu, X, StickyNote, FileText, Grid2X2, Car, QrCode, Folder as FolderIcon, Check, Edit2, Trash2, BookOpen, ArrowLeft, ArrowRight, Camera, FileDown, Hourglass, Users, Download, Receipt, MapPin, SquareParking, Image as ImageIcon, Lightbulb, Globe, ChevronLeft, Bus, Home, Armchair, Activity, ShoppingBasket, BadgePercent, Sparkles, CalendarClock, Calendar, AlertCircle, CheckCircle2, Battery, Wallet, Flame, ArrowUpRight } from 'lucide-react';
+import { Sun, Moon, Wrench, Plus, LayoutDashboard, Settings, User, LogOut, Search, Mic, MicOff, Loader2, Bell, CreditCard, Fingerprint, ShieldCheck, Lock, Menu, X, StickyNote, FileText, Grid2X2, Car, QrCode, Folder as FolderIcon, Check, Edit2, Trash2, BookOpen, ArrowLeft, ArrowRight, Camera, FileDown, Hourglass, Users, Download, Receipt, MapPin, SquareParking, Image as ImageIcon, Lightbulb, Globe, ChevronLeft, Bus, Home, Armchair, Activity, ShoppingBasket, BadgePercent, Sparkles, CalendarClock, Calendar, AlertCircle, CheckCircle2, Battery, Wallet, Flame, ArrowUpRight } from 'lucide-react';
 
 import { Module, ModuleType, Folder, DocumentModule } from './types';
 import { isModuleSensitive } from './utils/security';
@@ -20,7 +20,7 @@ import { biometricService } from './services/biometricService';
 import { chelonaMemory } from './services/chelonaMemory';
 import { wakeWordService } from './services/wakeWordService';
 import { APP_VERSION } from './constants/version';
-import type { AiAction } from './services/gemmaNanoEngine';
+import { queryGemmaNano, type AiAction } from './services/gemmaNanoEngine';
 import { getSavedParking, getNavigationUrl } from './services/parkingService';
 
 import { motion, AnimatePresence } from 'motion/react';
@@ -324,6 +324,12 @@ export default function App() {
   const [aiInitialVoiceMode, setAiInitialVoiceMode] = useState(false);
   const [isWakeWordEnabled, setIsWakeWordEnabled] = useState(() => wakeWordService.getEnabled());
   const [deadlinesFilter, setDeadlinesFilter] = useState<'all' | 'auto' | 'document' | 'installment'>('all');
+
+  // Homepage Voice Assistant Direct State (Ascolto vocale rapido direttamente dalla home)
+  const [isHomeVoiceListening, setIsHomeVoiceListening] = useState(false);
+  const [homeVoiceTranscript, setHomeVoiceTranscript] = useState('');
+  const [homeVoiceVolume, setHomeVoiceVolume] = useState(0.2);
+  const [isHomeVoiceProcessing, setIsHomeVoiceProcessing] = useState(false);
 
   useEffect(() => {
     // Show splash screen briefly, then go to lock screen immediately
@@ -1971,7 +1977,7 @@ export default function App() {
 
       if (cat === 'supermarket' || (act.label && act.label.toLowerCase().includes('spesa') && !act.label.toLowerCase().includes('condivis') && !act.label.toLowerCase().includes('singol'))) {
         setActiveNavTab('home');
-        let sm = modules.find(m => m.type === 'supermarket') as import('./types').SupermarketModule | undefined;
+        let sm = (act.module as import('./types').SupermarketModule) || (modules.find(m => m.type === 'supermarket') as import('./types').SupermarketModule | undefined);
         if (!sm) {
           sm = {
             id: generateUUID(),
@@ -2203,6 +2209,119 @@ export default function App() {
       handleSelectCategoryWithSecurity(cat as any);
     }
   }, [modules, folders, selectedFolderId, openEditModalWithSecurity, handleSelectCategoryWithSecurity]);
+
+  const speakHomeAiResponse = useCallback((text: string) => {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+    try {
+      window.speechSynthesis.cancel();
+      const clean = text
+        .replace(/[*_#`~]/g, '')
+        .replace(/\n+/g, '. ')
+        .replace(/\s+/g, ' ')
+        .trim();
+      if (!clean) return;
+
+      const utterance = new SpeechSynthesisUtterance(clean);
+      utterance.lang = 'it-IT';
+      utterance.rate = 1.05;
+      utterance.pitch = 1.0;
+
+      const voices = window.speechSynthesis.getVoices();
+      const itVoice = voices.find(v => v.lang && v.lang.startsWith('it'));
+      if (itVoice) utterance.voice = itVoice;
+
+      window.speechSynthesis.speak(utterance);
+    } catch (e) {
+      console.warn('[HomeVoice] Speech synthesis error:', e);
+    }
+  }, []);
+
+  const executeHomeVoiceCommand = useCallback(async (command: string) => {
+    setIsHomeVoiceProcessing(true);
+    try {
+      const response = await queryGemmaNano(command, modules, username);
+
+      // 1. Se ha creato o aggiornato un modulo (es. Lista Spesa, Note)
+      if (response.createdModule) {
+        const targetMod = response.createdModule;
+        setModules(prev => {
+          const exists = prev.some(m => m.id === targetMod.id);
+          const updated = exists ? prev.map(m => m.id === targetMod.id ? targetMod : m) : [targetMod, ...prev];
+          saveAppState(updated, folders).catch(console.error);
+          return updated;
+        });
+
+        // Se è la lista della spesa, mostrala immediatamente aggiornata!
+        if (targetMod.type === 'supermarket') {
+          setEditingSupermarketModule(targetMod as import('./types').SupermarketModule);
+          setActiveNavTab('home');
+        }
+      }
+
+      // 2. Se c'è una navigazione automatica o azione associata
+      if (response.autoAction) {
+        handleAiNavigate(response.autoAction);
+      }
+
+      // 3. Feedback vocale
+      speakHomeAiResponse(response.text);
+
+      // 4. Feedback visivo con Toast
+      const firstLine = response.text.split('\n')[0].replace(/[*_#`~]/g, '').trim();
+      showToast(firstLine || 'Comando completato!', 'success');
+    } catch (e) {
+      console.error('[HomeVoice] Command execution error:', e);
+      showToast('Non ho potuto completare la richiesta. Riprova.', 'error');
+    } finally {
+      setIsHomeVoiceProcessing(false);
+      setHomeVoiceTranscript('');
+    }
+  }, [modules, username, folders, saveAppState, handleAiNavigate, speakHomeAiResponse, showToast]);
+
+  const handleToggleHomeVoice = useCallback(async () => {
+    if (isHomeVoiceListening) {
+      voiceRecognitionService.stop();
+      setIsHomeVoiceListening(false);
+      setHomeVoiceTranscript('');
+      return;
+    }
+
+    setIsHomeVoiceListening(true);
+    setHomeVoiceTranscript('');
+    setHomeVoiceVolume(0.2);
+
+    const started = await voiceRecognitionService.start({
+      lang: 'it-IT',
+      onStart: () => {
+        setIsHomeVoiceListening(true);
+      },
+      onRms: (normVolume) => {
+        setHomeVoiceVolume(normVolume);
+      },
+      onPartial: (partial) => {
+        setHomeVoiceTranscript(partial);
+      },
+      onResult: async (finalText) => {
+        setIsHomeVoiceListening(false);
+        setHomeVoiceTranscript(finalText);
+        if (finalText && finalText.trim().length > 0) {
+          await executeHomeVoiceCommand(finalText.trim());
+        }
+      },
+      onError: (err) => {
+        setIsHomeVoiceListening(false);
+        showToast(err || 'Errore microfono', 'error');
+      },
+      onEnd: () => {
+        setIsHomeVoiceListening(false);
+      },
+      autoStopSilenceMs: 1600,
+    });
+
+    if (!started) {
+      setIsHomeVoiceListening(false);
+    }
+  }, [isHomeVoiceListening, executeHomeVoiceCommand, showToast]);
 
   const handleSaveAutoEdit = async (updated: import('./types').AutoModule) => {
     if (!encryptionKey) return;
@@ -4516,24 +4635,106 @@ export default function App() {
                                 <span>Chiedi a Chelona</span>
                               </motion.button>
 
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setAiInitialVoiceMode(false);
-                                  setIsAiOpen(true);
-                                  setActiveNavTab('ai');
-                                  setIsToolsOpen(false);
-                                  setIsProfileOpen(false);
-                                  setSelectedType(null);
-                                }}
-                                className="p-3 rounded-2xl border transition-all shrink-0 active:scale-95 shadow-xs bg-[var(--surface-variant)] hover:bg-[var(--border)] border-[var(--border)] text-amber-500 flex items-center justify-center cursor-pointer"
-                                title="Parla con Chelona AI"
-                                aria-label="Parla con Chelona AI"
-                              >
-                                <Mic className="w-5 h-5" />
-                              </button>
+                              {isHomeVoiceProcessing ? (
+                                <div className="p-3 rounded-2xl border border-amber-500/30 bg-amber-500/10 text-amber-500 flex items-center justify-center shrink-0 shadow-xs">
+                                  <Loader2 className="w-5 h-5 animate-spin" />
+                                </div>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={handleToggleHomeVoice}
+                                  className={`relative p-3 rounded-2xl border transition-all shrink-0 active:scale-95 shadow-xs flex items-center justify-center cursor-pointer ${
+                                    isHomeVoiceListening
+                                      ? 'bg-rose-500 text-white border-rose-500 shadow-rose-500/30 ring-4 ring-rose-500/20'
+                                      : 'bg-[var(--surface-variant)] hover:bg-[var(--border)] border-[var(--border)] text-amber-500'
+                                  }`}
+                                  title={isHomeVoiceListening ? "Tocca per fermare l'ascolto" : "Parla con Chelona"}
+                                  aria-label={isHomeVoiceListening ? "Tocca per fermare l'ascolto" : "Parla con Chelona"}
+                                >
+                                  {isHomeVoiceListening && (
+                                    <span className="absolute inset-0 rounded-2xl bg-rose-500 animate-ping opacity-30 pointer-events-none" />
+                                  )}
+                                  {isHomeVoiceListening ? <MicOff className="w-5 h-5 relative z-10" /> : <Mic className="w-5 h-5" />}
+                                </button>
+                              )}
                             </div>
                           </div>
+
+                          {/* Homepage Voice Assistant Listening Banner / Waveform */}
+                          <AnimatePresence>
+                            {(isHomeVoiceListening || isHomeVoiceProcessing) && (
+                              <motion.div
+                                initial={{ opacity: 0, height: 0, marginTop: 0 }}
+                                animate={{ opacity: 1, height: 'auto', marginTop: 16 }}
+                                exit={{ opacity: 0, height: 0, marginTop: 0 }}
+                                transition={{ duration: 0.2 }}
+                                className="relative z-10 pt-3 border-t border-[var(--border)]/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3 overflow-hidden"
+                              >
+                                <div className="flex items-center gap-3">
+                                  <div className="relative flex items-center justify-center w-9 h-9 rounded-2xl bg-rose-500/10 text-rose-500 shrink-0 border border-rose-500/20">
+                                    {isHomeVoiceListening ? (
+                                      <>
+                                        <span
+                                          className="absolute inset-0 rounded-2xl bg-rose-500/20 animate-ping pointer-events-none"
+                                          style={{ transform: `scale(${1 + homeVoiceVolume * 0.8})` }}
+                                        />
+                                        <span className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-pulse" />
+                                      </>
+                                    ) : (
+                                      <Loader2 className="w-4 h-4 animate-spin text-amber-500" />
+                                    )}
+                                  </div>
+
+                                  <div className="min-w-0">
+                                    <p className="text-xs font-bold text-[var(--text-main)] flex items-center gap-1.5">
+                                      {isHomeVoiceListening ? (
+                                        <>
+                                          <span className="text-rose-500 font-black">In ascolto...</span>
+                                          <span className="text-[var(--text-muted)] font-normal">Parla pure</span>
+                                        </>
+                                      ) : (
+                                        <span className="text-amber-500 font-semibold">Elaborazione richiesta in corso...</span>
+                                      )}
+                                    </p>
+                                    <p className="text-xs text-[var(--text-muted)] truncate max-w-xs sm:max-w-md italic font-medium">
+                                      {homeVoiceTranscript ? `"${homeVoiceTranscript}"` : (isHomeVoiceListening ? 'Es: "Aggiungi latte alla spesa", "Togli pane dalla spesa"' : 'Un attimo...')}
+                                    </p>
+                                  </div>
+                                </div>
+
+                                {isHomeVoiceListening && (
+                                  <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        voiceRecognitionService.stop();
+                                        setIsHomeVoiceListening(false);
+                                        setHomeVoiceTranscript('');
+                                      }}
+                                      className="px-3 py-1.5 rounded-xl bg-[var(--surface-variant)] hover:bg-[var(--border)] text-[var(--text-muted)] hover:text-[var(--text-main)] text-xs font-semibold transition-all cursor-pointer"
+                                    >
+                                      Annulla
+                                    </button>
+                                    {homeVoiceTranscript.trim().length > 0 && (
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          const t = homeVoiceTranscript.trim();
+                                          voiceRecognitionService.stop();
+                                          setIsHomeVoiceListening(false);
+                                          executeHomeVoiceCommand(t);
+                                        }}
+                                        className="px-3.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold transition-all shadow-xs flex items-center gap-1 cursor-pointer active:scale-95"
+                                      >
+                                        <Check className="w-3.5 h-3.5" />
+                                        <span>Fatto</span>
+                                      </button>
+                                    )}
+                                  </div>
+                                )}
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
                         </motion.div>
 
                         {/* Widgets Section (Shortcuts) */}

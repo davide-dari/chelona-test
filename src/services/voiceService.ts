@@ -23,6 +23,7 @@ export interface VoiceServiceOptions {
 
 class VoiceRecognitionService {
   private isListening = false;
+  private resultFired = false;
   private currentOptions: VoiceServiceOptions | null = null;
   private currentTranscript = '';
   private silenceTimer: any = null;
@@ -38,6 +39,11 @@ class VoiceRecognitionService {
 
   private setupNativeListeners() {
     if (typeof window === 'undefined') return;
+
+    window.addEventListener('chelona_speech_ready', () => {
+      this.isListening = true;
+      this.currentOptions?.onStart?.();
+    });
 
     window.addEventListener('chelona_speech_start', () => {
       this.isListening = true;
@@ -66,15 +72,20 @@ class VoiceRecognitionService {
       const text = e.detail?.text || this.currentTranscript;
       this.clearSilenceTimer();
       this.isListening = false;
-      this.currentOptions?.onResult?.(text);
+      if (!this.resultFired && text && text.trim().length > 0) {
+        this.resultFired = true;
+        this.currentOptions?.onResult?.(text.trim());
+      }
     });
 
     window.addEventListener('chelona_speech_end', () => {
       this.clearSilenceTimer();
-      if (this.currentTranscript) {
-        this.currentOptions?.onResult?.(this.currentTranscript);
-      }
+      const text = this.currentTranscript.trim();
       this.isListening = false;
+      if (!this.resultFired && text.length > 0) {
+        this.resultFired = true;
+        this.currentOptions?.onResult?.(text);
+      }
       this.currentOptions?.onEnd?.();
     });
 
@@ -82,12 +93,21 @@ class VoiceRecognitionService {
       this.clearSilenceTimer();
       this.isListening = false;
       const err = e.detail?.error;
-      // Se abbiamo già catturato del testo parziale valido, consideralo un successo
-      if (this.currentTranscript.trim().length > 1) {
-        this.currentOptions?.onResult?.(this.currentTranscript);
+      const text = this.currentTranscript.trim();
+      if (!this.resultFired && text.length > 1) {
+        this.resultFired = true;
+        this.currentOptions?.onResult?.(text);
         this.currentOptions?.onEnd?.();
       } else {
-        this.currentOptions?.onError?.(typeof err === 'string' ? err : 'Errore ascolto vocale');
+        let msg = 'Errore ascolto vocale';
+        if (err === 7 || err === '7') {
+          msg = 'Nessuna voce rilevata. Riprova.';
+        } else if (err === 9 || err === '9' || err === 'permission_denied') {
+          msg = 'Permesso microfono non concesso.';
+        } else if (typeof err === 'string' && err !== '5' && err !== '8') {
+          msg = err;
+        }
+        this.currentOptions?.onError?.(msg);
         this.currentOptions?.onEnd?.();
       }
     });
@@ -117,6 +137,7 @@ class VoiceRecognitionService {
     this.stop();
     this.currentOptions = options;
     this.currentTranscript = '';
+    this.resultFired = false;
     this.isListening = true;
 
     const lang = options.lang || 'it-IT';
