@@ -22,6 +22,8 @@ import {
 } from '../utils/naturalSpeech';
 import { getSavedParking, getNavigationUrl } from '../services/parkingService';
 import { wakeWordService } from '../services/wakeWordService';
+import { voiceRecognitionService } from '../services/voiceService';
+import { VoiceAudioWaveform } from './VoiceAudioWaveform';
 
 interface ChelonaAiScreenProps {
   modules: Module[];
@@ -81,6 +83,8 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
   const [inputText, setInputText] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [isListening, setIsListening] = useState(false);
+  const [liveVoiceTranscript, setLiveVoiceTranscript] = useState('');
+  const [liveAudioVolume, setLiveAudioVolume] = useState(0.2);
   const [speakingMessageId, setSpeakingMessageId] = useState<string | null>(null);
   const [showMemoryDrawer, setShowMemoryDrawer] = useState(false);
   const [activeNeuralCategory, setActiveNeuralCategory] = useState<NeuralCategory>('all');
@@ -171,6 +175,7 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
       speechSessionIdRef.current++;
       clearTimeout(t1);
       clearTimeout(t2);
+      voiceRecognitionService.stop();
       if ('speechSynthesis' in window) {
         try {
           window.speechSynthesis.cancel();
@@ -184,6 +189,7 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
   const stopSpeaking = () => {
     cancelSpeechRef.current = true;
     speechSessionIdRef.current++;
+    voiceRecognitionService.stop();
     if ('speechSynthesis' in window) {
       try {
         window.speechSynthesis.cancel();
@@ -463,88 +469,83 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
   };
 
   const startVoiceRecognition = async (isVoiceSession = false) => {
+    voiceRecognitionService.stop();
+
     if (isVoiceSession) {
       setVoiceStatus('listening');
     } else {
       setIsListening(true);
     }
+    setLiveVoiceTranscript('');
+    setLiveAudioVolume(0.2);
 
-    // 1. Prova Capacitor Speech Recognition nativo
-    try {
-      const isAvailable = await SpeechRecognition.available();
-      if (isAvailable.available) {
-        const perm = await SpeechRecognition.checkPermissions();
-        if (perm.speechRecognition !== 'granted') {
-          await SpeechRecognition.requestPermissions();
+    const success = await voiceRecognitionService.start({
+      lang: 'it-IT',
+      onStart: () => {
+        setIsListening(true);
+        if (isVoiceSession) setVoiceStatus('listening');
+      },
+      onRms: (normVolume) => {
+        setLiveAudioVolume(normVolume);
+      },
+      onPartial: (partialText) => {
+        setLiveVoiceTranscript(partialText);
+        if (isVoiceSession) {
+          setLastUserSpeech(partialText);
+        } else {
+          setInputText(partialText);
         }
-        
-        SpeechRecognition.start({
-          language: 'it-IT',
-          maxResults: 1,
-          prompt: 'Parla con Chelona...',
-          partialResults: false,
-          popup: !isVoiceSession,
-        }).then((result) => {
-          if (result.matches && result.matches.length > 0) {
-            handleSend(result.matches[0], isVoiceSession, true);
-          } else if (isVoiceSession) {
-            setVoiceStatus('idle');
+      },
+      onResult: (finalText) => {
+        setIsListening(false);
+        setLiveVoiceTranscript(finalText);
+        if (finalText && finalText.trim().length > 0) {
+          if (isVoiceSession) {
+            handleSend(finalText, true, true);
+          } else {
+            setInputText(finalText);
+            handleSend(finalText, false, true);
           }
-        }).catch(err => {
-          console.warn('Speech error', err);
-          if (isVoiceSession) setVoiceStatus('idle');
-        }).finally(() => {
-          setIsListening(false);
-        });
-        return;
-      }
-    } catch (e) {
-      // Prova fallback Web Speech API
-    }
-
-    // 2. Web Speech API Fallback
-    const SpeechRec = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SpeechRec) {
-      showToast('Riconoscimento vocale non supportato su questo dispositivo.', 'error');
-      if (isVoiceSession) setVoiceStatus('idle');
-      setIsListening(false);
-      return;
-    }
-
-    try {
-      const rec = new SpeechRec();
-      webSpeechRecRef.current = rec;
-      rec.lang = 'it-IT';
-      rec.continuous = false;
-      rec.interimResults = false;
-
-      rec.onresult = (evt: any) => {
-        const text = evt.results[0][0].transcript;
-        if (text) {
-          handleSend(text, isVoiceSession, true);
         } else if (isVoiceSession) {
           setVoiceStatus('idle');
         }
+      },
+      onError: (errMsg) => {
+        console.warn('Voice recognition error:', errMsg);
         setIsListening(false);
-      };
-
-      rec.onerror = () => {
-        setIsListening(false);
-        webSpeechRecRef.current = null;
         if (isVoiceSession) setVoiceStatus('idle');
-      };
-
-      rec.onend = () => {
+        showToast(errMsg, 'error');
+      },
+      onEnd: () => {
         setIsListening(false);
-        webSpeechRecRef.current = null;
-      };
+        if (isVoiceSession && voiceStatus !== 'speaking') {
+          setVoiceStatus('idle');
+        }
+      },
+      autoStopSilenceMs: 1600,
+    });
 
-      rec.start();
-    } catch {
-      webSpeechRecRef.current = null;
+    if (!success) {
       setIsListening(false);
       if (isVoiceSession) setVoiceStatus('idle');
-      showToast('Errore durante l\'ascolto vocale.', 'error');
+    }
+  };
+
+  const cancelVoiceRecognition = () => {
+    voiceRecognitionService.stop();
+    setIsListening(false);
+    setLiveVoiceTranscript('');
+    if (isVoiceModeOpen) {
+      setVoiceStatus('idle');
+    }
+  };
+
+  const confirmVoiceRecognition = () => {
+    const textToSend = (liveVoiceTranscript || inputText).trim();
+    voiceRecognitionService.stop();
+    setIsListening(false);
+    if (textToSend.length > 0) {
+      handleSend(textToSend, isVoiceModeOpen, true);
     }
   };
 
@@ -553,6 +554,7 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
       setIsVoiceModeOpen(true);
       setShowVoiceSettings(false);
       setLastUserSpeech('');
+      setLiveVoiceTranscript('');
       const greeting = `Ciao ${username ? username + ', ' : ''}dimmi pure, ti ascolto.`;
       setLastAiSpeech(greeting);
       speakText(greeting, () => {
@@ -561,6 +563,7 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
         }, 250);
       });
     } else {
+      voiceRecognitionService.stop();
       stopSpeaking();
       setIsVoiceModeOpen(false);
       setShowVoiceSettings(false);
@@ -964,18 +967,40 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
             </div>
           )}
 
+          {/* Visualizzatore Forma d'Onda Vocale In-App */}
+          <AnimatePresence>
+            {isListening && !isVoiceModeOpen && (
+              <div className="mb-2.5">
+                <VoiceAudioWaveform
+                  isListening={isListening}
+                  transcript={liveVoiceTranscript || inputText}
+                  volume={liveAudioVolume}
+                  onCancel={cancelVoiceRecognition}
+                  onConfirm={confirmVoiceRecognition}
+                  title="Ascolto vocale"
+                />
+              </div>
+            )}
+          </AnimatePresence>
+
           <div className="flex items-end gap-2.5">
             <button
               type="button"
-              onClick={() => startVoiceRecognition(false)}
-              className={`p-3 rounded-2xl border transition-all shrink-0 active:scale-95 shadow-xs ${
+              onClick={() => {
+                if (isListening) {
+                  cancelVoiceRecognition();
+                } else {
+                  startVoiceRecognition(false);
+                }
+              }}
+              className={`p-3 rounded-2xl border transition-all shrink-0 active:scale-95 shadow-xs cursor-pointer ${
                 isListening
                   ? 'bg-rose-500 text-white border-rose-500 animate-pulse'
                   : 'bg-[var(--surface-variant)] hover:bg-[var(--border)] border-[var(--border)] text-amber-500'
               }`}
-              title="Dettatura vocale"
+              title={isListening ? "Interrompi ascolto" : "Dettatura vocale"}
             >
-              <Mic className="w-5 h-5" />
+              {isListening ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
             </button>
 
             <div className="flex-1 bg-[var(--surface-variant)] rounded-2xl border border-[var(--border)] focus-within:border-amber-500 focus-within:ring-2 focus-within:ring-amber-500/20 transition-all p-1.5 flex items-center">
@@ -1245,13 +1270,17 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
             ) : (
               <div className="flex flex-col items-center justify-center my-auto space-y-6 w-full max-w-md mx-auto text-center">
                 <div className="relative w-44 h-44 flex items-center justify-center">
-                  {/* Onde concentriche animate */}
+                  {/* Onde concentriche animate con volume RMS reale */}
                   <motion.div
                     animate={{
-                      scale: voiceStatus === 'listening' ? [1, 1.35, 1] : voiceStatus === 'speaking' ? [1, 1.25, 1] : [1, 1.05, 1],
-                      opacity: voiceStatus === 'idle' ? 0.2 : [0.3, 0.7, 0.3],
+                      scale: voiceStatus === 'listening' 
+                        ? [1 + liveAudioVolume * 0.2, 1.15 + liveAudioVolume * 0.35, 1 + liveAudioVolume * 0.2] 
+                        : voiceStatus === 'speaking' 
+                        ? [1, 1.25, 1] 
+                        : [1, 1.05, 1],
+                      opacity: voiceStatus === 'idle' ? 0.2 : [0.35, 0.75, 0.35],
                     }}
-                    transition={{ repeat: Infinity, duration: voiceStatus === 'speaking' ? 1.2 : 2, ease: "easeInOut" }}
+                    transition={{ repeat: Infinity, duration: voiceStatus === 'speaking' ? 1.2 : 1.8, ease: "easeInOut" }}
                     className="absolute inset-0 rounded-full bg-gradient-to-tr from-amber-500/30 via-rose-500/30 to-indigo-500/30 blur-xl"
                   />
 
@@ -1270,16 +1299,18 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
                         stopSpeaking();
                         setTimeout(() => startVoiceRecognition(true), 150);
                       } else if (voiceStatus === 'listening') {
-                        stopSpeaking();
+                        voiceRecognitionService.stop();
+                        setVoiceStatus('idle');
+                        setIsListening(false);
                       } else {
                         startVoiceRecognition(true);
                       }
                     }}
                     whileTap={{ scale: 0.93 }}
                     animate={{
-                      scale: voiceStatus === 'listening' ? [1, 1.2, 1] : voiceStatus === 'speaking' ? [1, 1.15, 1] : 1,
+                      scale: voiceStatus === 'listening' ? (1 + liveAudioVolume * 0.15) : voiceStatus === 'speaking' ? [1, 1.15, 1] : 1,
                     }}
-                    transition={{ repeat: Infinity, duration: 1.5, ease: "easeInOut" }}
+                    transition={voiceStatus === 'speaking' ? { repeat: Infinity, duration: 1.5, ease: "easeInOut" } : { type: 'spring', damping: 15, stiffness: 300 }}
                     className="relative w-32 h-32 rounded-full bg-gradient-to-tr from-amber-500 to-amber-600 p-2 shadow-2xl shadow-amber-500/40 flex items-center justify-center border-4 border-white/20 overflow-hidden cursor-pointer select-none active:scale-95 transition-transform"
                   >
                     <img src="/chelona_logo.png" alt="Chelona Voice" className="w-16 h-16 object-contain filter drop-shadow-md pointer-events-none" />
@@ -1290,7 +1321,7 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
                 <button
                   type="button"
                   onClick={() => setShowVoiceSettings(true)}
-                  className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[var(--surface-variant)]/90 hover:bg-[var(--surface-variant)] border border-[var(--border)] text-xs text-[var(--text-muted)] hover:text-amber-500 transition-all shadow-xs active:scale-95"
+                  className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[var(--surface-variant)]/90 hover:bg-[var(--surface-variant)] border border-[var(--border)] text-xs text-[var(--text-muted)] hover:text-amber-500 transition-all shadow-xs active:scale-95 cursor-pointer"
                 >
                   <Volume2 className="w-3.5 h-3.5 text-amber-500" />
                   <span className="font-semibold text-[var(--text-main)]">
@@ -1307,12 +1338,14 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
                     {voiceStatus === 'listening' && '🎙️ Ti ascolto... Parla ora'}
                     {voiceStatus === 'thinking' && '✨ Sto pensando...'}
                     {voiceStatus === 'speaking' && '🔊 Chelona sta rispondendo...'}
-                    {voiceStatus === 'idle' && 'Tocca il microfono per parlare'}
+                    {voiceStatus === 'idle' && 'Tocca il logo o il microfono per parlare'}
                   </span>
 
                   {/* Trascrizione in tempo reale */}
                   <p className="text-sm text-[var(--text-main)] font-medium max-w-sm mx-auto line-clamp-3 leading-relaxed">
-                    {lastAiSpeech || lastUserSpeech || 'Di\' qualcosa come: "Quando mi scade l\'assicurazione?"'}
+                    {liveVoiceTranscript 
+                      ? `"${liveVoiceTranscript}"` 
+                      : (lastAiSpeech || lastUserSpeech || 'Di\' qualcosa come: "Quando mi scade l\'assicurazione?"')}
                   </p>
                 </div>
               </div>
@@ -1338,7 +1371,9 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
                     stopSpeaking();
                     setTimeout(() => startVoiceRecognition(true), 150);
                   } else if (voiceStatus === 'listening') {
-                    stopSpeaking();
+                    voiceRecognitionService.stop();
+                    setVoiceStatus('idle');
+                    setIsListening(false);
                   } else {
                     startVoiceRecognition(true);
                   }

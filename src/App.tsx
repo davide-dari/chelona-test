@@ -30,6 +30,7 @@ import { updateService, UpdateInfo } from './services/updateService';
 import { App as CapApp } from '@capacitor/app';
 import { generateUUID } from './utils/uuid';
 import { SpeechRecognition } from '@capacitor-community/speech-recognition';
+import { voiceRecognitionService } from './services/voiceService';
 import { Share } from '@capacitor/share';
 import { Device } from '@capacitor/device';
 
@@ -2864,130 +2865,32 @@ export default function App() {
   };
 
   const handleVoiceSearch = async () => {
-    // Check if running on Capacitor (Android/iOS)
-    const { platform } = await Device.getInfo();
-    
-    if (platform === 'android' || platform === 'ios') {
-      try {
-        const { available } = await SpeechRecognition.available();
-        if (!available) {
-          showToast('La ricerca vocale non è disponibile su questo dispositivo.', 'error');
-          return;
-        }
+    setIsListening(true);
+    if (navigator.vibrate) navigator.vibrate(50);
 
-        let hasPermission = false;
-        try {
-          const perms = await SpeechRecognition.checkPermissions() as any;
-          if (perms.speech === 'granted' || perms.speechRecognition === 'granted') {
-            hasPermission = true;
-          }
-        } catch (e) { console.log('checkPermissions err:', e); }
-
-        if (!hasPermission) {
-          try {
-            const newPerms = await SpeechRecognition.requestPermissions() as any;
-            if (newPerms.speech === 'granted' || newPerms.speechRecognition === 'granted') {
-              hasPermission = true;
-            }
-          } catch (e) { console.log('requestPermissions err:', e); }
-        }
-
-        if (!hasPermission) {
-          showToast('Permesso microfono negato o non supportato.', 'error');
-          return;
-        }
-
+    const success = await voiceRecognitionService.start({
+      lang: 'it-IT',
+      onStart: () => {
         setIsListening(true);
-        if (navigator.vibrate) navigator.vibrate(50);
-
-        SpeechRecognition.start({
-          language: 'it-IT',
-          maxResults: 1,
-          prompt: 'Parla ora...',
-          partialResults: false,
-          popup: true,
-        }).then((result) => {
-          if (result.matches && result.matches.length > 0) {
-            processVoiceQuery(result.matches[0]);
-            if (navigator.vibrate) navigator.vibrate([30, 30]);
-          }
-        }).catch((err) => {
-          console.error('Speech recognition error:', err);
-          showToast('Errore durante la ricerca vocale.', 'error');
-        }).finally(() => {
-          setIsListening(false);
-        });
-
-      } catch (e) {
-        console.error('Capacitor Speech Recognition error:', e);
-        showToast('Errore durante l\'inizializzazione della ricerca vocale.', 'error');
+      },
+      onResult: (text) => {
+        setIsListening(false);
+        if (text && text.trim().length > 0) {
+          processVoiceQuery(text.trim());
+          if (navigator.vibrate) navigator.vibrate([30, 30]);
+        }
+      },
+      onError: (err) => {
+        console.warn('Voice search error:', err);
+        setIsListening(false);
+        showToast(err || 'Errore durante la ricerca vocale.', 'error');
+      },
+      onEnd: () => {
         setIsListening(false);
       }
-      return;
-    }
+    });
 
-    // Web Fallback
-    const SpeechRecognitionWeb = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SpeechRecognitionWeb) {
-      showToast('La ricerca vocale non è supportata su questo browser.', 'error');
-      return;
-    }
-
-    if (recognitionRef.current) {
-      try { recognitionRef.current.stop(); } catch(e) {}
-    }
-
-    if (!SpeechRecognitionWeb) {
-      showToast('La ricerca vocale non è supportata su questo browser.', 'error');
-      return;
-    }
-
-    const recognition = new SpeechRecognitionWeb();
-    recognitionRef.current = recognition;
-    recognition.lang = 'it-IT';
-    recognition.continuous = false;
-    recognition.interimResults = false;
-
-    let timeoutId: any;
-
-    recognition.onstart = () => {
-      setIsListening(true);
-      if (navigator.vibrate) navigator.vibrate(50);
-      timeoutId = setTimeout(() => {
-         recognition.stop();
-         setIsListening(false);
-      }, 5000); // 5s timeout if no speech detected
-    };
-
-    recognition.onresult = (event: any) => {
-      clearTimeout(timeoutId);
-      const transcript = event.results[0][0].transcript;
-      processVoiceQuery(transcript);
-      if (navigator.vibrate) navigator.vibrate([30, 30]);
-      setIsListening(false);
-    };
-
-    recognition.onerror = (event: any) => {
-      clearTimeout(timeoutId);
-      console.error('Speech recognition error', event.error);
-      if (event.error === 'not-allowed') {
-        showToast('Permesso microfono negato.', 'error');
-      } else {
-        showToast('Errore durante la ricerca vocale.', 'error');
-      }
-      setIsListening(false);
-    };
-
-    recognition.onend = () => {
-      clearTimeout(timeoutId);
-      setIsListening(false);
-      recognitionRef.current = null;
-    };
-
-    try {
-      recognition.start();
-    } catch (e) {
-      console.error('Failed to start recognition', e);
+    if (!success) {
       setIsListening(false);
     }
   };

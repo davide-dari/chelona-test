@@ -81,6 +81,24 @@ public class MainActivity extends BridgeActivity {
                     public boolean createPinnedShortcut(final String route, final String shortLabel, final String longLabel, final String iconBase64, final String colorHex) {
                         return MainActivity.this.createPinnedShortcutNative(route, shortLabel, longLabel, iconBase64, colorHex);
                     }
+
+                    @android.webkit.JavascriptInterface
+                    public boolean startSpeechRecognition(final String lang) {
+                        return MainActivity.this.startSpeechRecognitionNative(lang);
+                    }
+
+                    @android.webkit.JavascriptInterface
+                    public void stopSpeechRecognition() {
+                        MainActivity.this.stopSpeechRecognitionNative();
+                    }
+
+                    @android.webkit.JavascriptInterface
+                    public boolean isOnDeviceSpeechAvailable() {
+                        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+                            return android.speech.SpeechRecognizer.isOnDeviceRecognitionAvailable(getApplicationContext());
+                        }
+                        return false;
+                    }
                 }, "ChelonaNative");
             }
         });
@@ -132,6 +150,12 @@ public class MainActivity extends BridgeActivity {
 
     @Override
     public void onDestroy() {
+        if (nativeSpeechRecognizer != null) {
+            try {
+                nativeSpeechRecognizer.destroy();
+            } catch (Exception ignored) {}
+            nativeSpeechRecognizer = null;
+        }
         if (downloadWakeLock != null && downloadWakeLock.isHeld()) {
             try {
                 downloadWakeLock.release();
@@ -389,6 +413,169 @@ public class MainActivity extends BridgeActivity {
             } catch (Exception e) {
                 android.util.Log.w("MainActivity", "Failed to setup dynamic shortcuts", e);
             }
+        }
+    }
+
+    // =========================================================================
+    // RICONOSCIMENTO VOCALE NATIVO IN-APP (SENZA DIALOG GOOGLE)
+    // =========================================================================
+    private android.speech.SpeechRecognizer nativeSpeechRecognizer = null;
+    private static final int PERMISSION_REQUEST_RECORD_AUDIO = 2001;
+    private String pendingSpeechLang = "it-IT";
+
+    public boolean startSpeechRecognitionNative(final String lang) {
+        if (androidx.core.content.ContextCompat.checkSelfPermission(this, android.Manifest.permission.RECORD_AUDIO)
+                != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            this.pendingSpeechLang = (lang != null && !lang.isEmpty()) ? lang : "it-IT";
+            androidx.core.app.ActivityCompat.requestPermissions(this,
+                    new String[]{android.Manifest.permission.RECORD_AUDIO},
+                    PERMISSION_REQUEST_RECORD_AUDIO);
+            return false;
+        }
+
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    if (nativeSpeechRecognizer != null) {
+                        try {
+                            nativeSpeechRecognizer.stopListening();
+                            nativeSpeechRecognizer.destroy();
+                        } catch (Exception ignored) {}
+                        nativeSpeechRecognizer = null;
+                    }
+
+                    android.content.Context context = getApplicationContext();
+                    // Preferisci l'On-Device Speech Recognizer (Android 13+) per massima velocità e zero cloud
+                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU &&
+                            android.speech.SpeechRecognizer.isOnDeviceRecognitionAvailable(context)) {
+                        nativeSpeechRecognizer = android.speech.SpeechRecognizer.createOnDeviceSpeechRecognizer(context);
+                    } else {
+                        nativeSpeechRecognizer = android.speech.SpeechRecognizer.createSpeechRecognizer(context);
+                    }
+
+                    if (nativeSpeechRecognizer == null) {
+                        emitJsEvent("chelona_speech_error", "{ \"error\": \"not_available\" }");
+                        return;
+                    }
+
+                    Intent intent = new Intent(android.speech.RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
+                    intent.putExtra(android.speech.RecognizerIntent.EXTRA_LANGUAGE_MODEL, android.speech.RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
+                    String speechLang = (lang != null && !lang.isEmpty()) ? lang : "it-IT";
+                    intent.putExtra(android.speech.RecognizerIntent.EXTRA_LANGUAGE, speechLang);
+                    intent.putExtra(android.speech.RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, speechLang);
+                    intent.putExtra(android.speech.RecognizerIntent.EXTRA_PARTIAL_RESULTS, true);
+                    intent.putExtra(android.speech.RecognizerIntent.EXTRA_MAX_RESULTS, 1);
+                    intent.putExtra("android.speech.extra.DICTATION_MODE", true);
+                    intent.putExtra(android.speech.RecognizerIntent.EXTRA_CALLING_PACKAGE, getPackageName());
+
+                    nativeSpeechRecognizer.setRecognitionListener(new android.speech.RecognitionListener() {
+                        @Override
+                        public void onReadyForSpeech(Bundle params) {
+                            emitJsEvent("chelona_speech_ready", "{}");
+                        }
+
+                        @Override
+                        public void onBeginningOfSpeech() {
+                            emitJsEvent("chelona_speech_start", "{}");
+                        }
+
+                        @Override
+                        public void onRmsChanged(float rmsdB) {
+                            emitJsEvent("chelona_speech_rms", "{ \"rms\": " + rmsdB + " }");
+                        }
+
+                        @Override
+                        public void onBufferReceived(byte[] buffer) {}
+
+                        @Override
+                        public void onEndOfSpeech() {
+                            emitJsEvent("chelona_speech_end", "{}");
+                        }
+
+                        @Override
+                        public void onError(int error) {
+                            emitJsEvent("chelona_speech_error", "{ \"error\": " + error + " }");
+                        }
+
+                        @Override
+                        public void onResults(Bundle results) {
+                            java.util.ArrayList<String> matches = results.getStringArrayList(android.speech.SpeechRecognizer.RESULTS_RECOGNITION);
+                            if (matches != null && !matches.isEmpty()) {
+                                try {
+                                    org.json.JSONObject obj = new org.json.JSONObject();
+                                    obj.put("text", matches.get(0));
+                                    obj.put("isFinal", true);
+                                    emitJsEvent("chelona_speech_result", obj.toString());
+                                } catch (Exception e) {
+                                    emitJsEvent("chelona_speech_end", "{}");
+                                }
+                            } else {
+                                emitJsEvent("chelona_speech_end", "{}");
+                            }
+                        }
+
+                        @Override
+                        public void onPartialResults(Bundle partialResults) {
+                            java.util.ArrayList<String> matches = partialResults.getStringArrayList(android.speech.SpeechRecognizer.RESULTS_RECOGNITION);
+                            if (matches != null && !matches.isEmpty()) {
+                                try {
+                                    org.json.JSONObject obj = new org.json.JSONObject();
+                                    obj.put("text", matches.get(0));
+                                    obj.put("isFinal", false);
+                                    emitJsEvent("chelona_speech_partial", obj.toString());
+                                } catch (Exception ignored) {}
+                            }
+                        }
+
+                        @Override
+                        public void onEvent(int eventType, Bundle params) {}
+                    });
+
+                    nativeSpeechRecognizer.startListening(intent);
+                } catch (Exception e) {
+                    android.util.Log.e("ChelonaNative", "startSpeechRecognitionNative failed", e);
+                    emitJsEvent("chelona_speech_error", "{ \"error\": \"" + e.getMessage() + "\" }");
+                }
+            }
+        });
+        return true;
+    }
+
+    public void stopSpeechRecognitionNative() {
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                if (nativeSpeechRecognizer != null) {
+                    try {
+                        nativeSpeechRecognizer.stopListening();
+                    } catch (Exception ignored) {}
+                }
+            }
+        });
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == PERMISSION_REQUEST_RECORD_AUDIO) {
+            if (grantResults.length > 0 && grantResults[0] == android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                startSpeechRecognitionNative(this.pendingSpeechLang);
+            } else {
+                emitJsEvent("chelona_speech_error", "{ \"error\": \"permission_denied\" }");
+            }
+        }
+    }
+
+    private void emitJsEvent(final String eventName, final String jsonDetail) {
+        if (this.getBridge() != null && this.getBridge().getWebView() != null) {
+            this.getBridge().getWebView().post(new Runnable() {
+                @Override
+                public void run() {
+                    String js = "window.dispatchEvent(new CustomEvent('" + eventName + "', { detail: " + jsonDetail + " }));";
+                    MainActivity.this.getBridge().getWebView().evaluateJavascript(js, null);
+                }
+            });
         }
     }
 }
