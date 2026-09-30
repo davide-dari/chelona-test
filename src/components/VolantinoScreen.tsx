@@ -1173,6 +1173,15 @@ export default function VolantinoScreen({ module, onClose, initialOffer, initial
   const [syncFeedback, setSyncFeedback] = useState<string | null>(null);
   const [dismissExpiryAlert, setDismissExpiryAlert] = useState(false);
 
+  const viewRef = React.useRef<ViewMode>(view);
+  useEffect(() => {
+    viewRef.current = view;
+  }, [view]);
+
+  const handledInitialChainRef = React.useRef<string | null>(null);
+  const handledInitialOfferRef = React.useRef<string | null>(null);
+  const isDirectLaunchRef = React.useRef<boolean>(Boolean(initialChain || initialOffer?.fid));
+
   // Gestione apertura diretta catena / volantino / confronto prezzi da AI o collegamenti esterni
   const openDirectTarget = useCallback((target?: string) => {
     if (!target) return;
@@ -1200,16 +1209,17 @@ export default function VolantinoScreen({ module, onClose, initialOffer, initial
       if (list.length > 0) {
         setCalameoFlyer(list[0]);
         setCalameoPage(1);
-        setPreviousView(view);
+        setPreviousView(viewRef.current);
         setView('calameo');
       } else {
         setView('chain');
       }
     }
-  }, [db, view]);
+  }, [db]);
 
   useEffect(() => {
-    if (initialChain) {
+    if (initialChain && handledInitialChainRef.current !== initialChain) {
+      handledInitialChainRef.current = initialChain;
       openDirectTarget(initialChain);
     }
   }, [initialChain, openDirectTarget]);
@@ -1217,26 +1227,30 @@ export default function VolantinoScreen({ module, onClose, initialOffer, initial
   // Gestione apertura diretta offerta volantino con numero pagina (da Confronta Prezzi o Lista Spesa)
   useEffect(() => {
     if (initialOffer && initialOffer.fid) {
-      const fidStr = String(initialOffer.fid);
-      let targetChain: VolantinoChain | undefined;
-      let targetFlyer: VolantinoFlyer | undefined;
+      const offerKey = `${initialOffer.fid}-${initialOffer.pg}`;
+      if (handledInitialOfferRef.current !== offerKey) {
+        handledInitialOfferRef.current = offerKey;
+        const fidStr = String(initialOffer.fid);
+        let targetChain: VolantinoChain | undefined;
+        let targetFlyer: VolantinoFlyer | undefined;
 
-      for (const c of db.chains) {
-        const found = c.flyers.find(f => String(f.id) === fidStr || f.bkcode === fidStr);
-        if (found) {
-          targetChain = c;
-          targetFlyer = found;
-          break;
+        for (const c of db.chains) {
+          const found = c.flyers.find(f => String(f.id) === fidStr || f.bkcode === fidStr);
+          if (found) {
+            targetChain = c;
+            targetFlyer = found;
+            break;
+          }
         }
-      }
 
-      if (targetFlyer) {
-        if (targetChain) setCentroChain(targetChain);
-        setCalameoFlyer(targetFlyer);
-        const targetPage = typeof initialOffer.pg === 'number' ? initialOffer.pg + 1 : 1;
-        setCalameoPage(targetPage);
-        setPreviousView('stats');
-        setView('calameo');
+        if (targetFlyer) {
+          if (targetChain) setCentroChain(targetChain);
+          setCalameoFlyer(targetFlyer);
+          const targetPage = typeof initialOffer.pg === 'number' ? initialOffer.pg + 1 : 1;
+          setCalameoPage(targetPage);
+          setPreviousView('stats');
+          setView('calameo');
+        }
       }
     }
   }, [initialOffer, db]);
@@ -1351,8 +1365,16 @@ export default function VolantinoScreen({ module, onClose, initialOffer, initial
     if (view === 'calameo') {
       setCalameoFlyer(null);
       setCalameoPage(1);
+      // Se era un'apertura diretta (da Chelona AI o link esterno), tornare indietro chiude direttamente
+      // per riportare subito l'utente alla schermata di partenza (es. AI o Home)
+      if (isDirectLaunchRef.current && (previousView === 'centro' || !previousView)) {
+        onClose();
+        return;
+      }
       if (previousView === 'stats') {
         setView('stats');
+      } else if (previousView === 'chain' && centroChain) {
+        setView('chain');
       } else {
         const active = centroChain?.flyers.filter(f => !f.to || new Date(f.to) >= new Date()) || [];
         const list = active.length ? active : (centroChain?.flyers || []);
@@ -1427,9 +1449,9 @@ export default function VolantinoScreen({ module, onClose, initialOffer, initial
     setCalameoFlyer(targetFlyer);
     const targetPage = typeof page === 'number' && page >= 1 ? page : 1;
     setCalameoPage(targetPage);
-    setPreviousView(view);
+    setPreviousView(viewRef.current);
     setView('calameo');
-  }, [db, view]);
+  }, [db]);
 
   const headerSubtitle = () => {
     if (view === 'calameo' && calameoFlyer) {
@@ -1455,7 +1477,8 @@ export default function VolantinoScreen({ module, onClose, initialOffer, initial
       <header className="flex items-center gap-3 pt-[max(env(safe-area-inset-top),16px)] px-4 pb-3 bg-[var(--card-bg)] border-b border-[var(--border)] shrink-0 z-30">
         <button
           onClick={goBack}
-          className="p-2.5 -ml-2 hover:bg-[var(--surface-variant)] rounded-full text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors shrink-0"
+          className="p-2.5 -ml-2 hover:bg-[var(--surface-variant)] rounded-full text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors shrink-0 cursor-pointer"
+          title="Indietro"
         >
           <ChevronLeft className="w-6 h-6" />
         </button>
@@ -1477,7 +1500,24 @@ export default function VolantinoScreen({ module, onClose, initialOffer, initial
               </>
             )}
           </h1>
-          <p className="text-[11px] text-[var(--text-muted)] font-medium truncate">{headerSubtitle()}</p>
+          <div className="flex items-center justify-center gap-1.5 mt-0.5">
+            <p className="text-[11px] text-[var(--text-muted)] font-medium truncate">{headerSubtitle()}</p>
+            {view === 'calameo' && (
+              <button
+                type="button"
+                onClick={() => {
+                  isDirectLaunchRef.current = false;
+                  setCalameoFlyer(null);
+                  setCentroChain(null);
+                  setView('centro');
+                }}
+                className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[var(--surface-variant)] hover:bg-[var(--border)] text-[var(--accent)] border border-[var(--border)] transition-all shrink-0 cursor-pointer"
+                title="Sfoglia tutte le altre catene e supermercati"
+              >
+                Tutti i volantini
+              </button>
+            )}
+          </div>
         </div>
         
         {view === 'calameo' && calameoFlyer ? (
@@ -1485,7 +1525,7 @@ export default function VolantinoScreen({ module, onClose, initialOffer, initial
             {centroChain && (
               <button
                 onClick={() => toggleFavorite(centroChain.slug)}
-                className={`p-2.5 rounded-full hover:bg-[var(--surface-variant)] transition-colors ${
+                className={`p-2 rounded-full hover:bg-[var(--surface-variant)] transition-colors ${
                   favorites.includes(centroChain.slug) ? 'text-amber-500' : 'text-[var(--text-muted)] hover:text-amber-500'
                 }`}
                 title={favorites.includes(centroChain.slug) ? "Rimuovi dai preferiti" : "Aggiungi ai preferiti"}
@@ -1501,21 +1541,36 @@ export default function VolantinoScreen({ module, onClose, initialOffer, initial
                 const q = encodeURIComponent(`${chainName} supermercato ${loc}`.trim());
                 window.open(`https://www.google.com/maps/search/${q}`, '_blank');
               }}
-              className="p-2.5 rounded-full hover:bg-[var(--surface-variant)] text-[var(--text-muted)] hover:text-emerald-500 transition-colors"
+              className="p-2 rounded-full hover:bg-[var(--surface-variant)] text-[var(--text-muted)] hover:text-emerald-500 transition-colors"
               title="Trova il supermercato più vicino su Google Maps"
             >
               <MapPin className="w-5 h-5 text-emerald-500" />
             </button>
             <button
               onClick={() => window.open(getBrowserUrl(calameoFlyer, calameoPage), '_blank')}
-              className="p-2.5 -mr-2 hover:bg-[var(--surface-variant)] rounded-full text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors"
+              className="p-2 hover:bg-[var(--surface-variant)] rounded-full text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors"
               title="Apri nel browser esterno"
             >
               <ExternalLink className="w-5 h-5" />
             </button>
+            <button
+              onClick={onClose}
+              className="p-2 -mr-1 hover:bg-rose-500/10 rounded-full text-[var(--text-muted)] hover:text-rose-500 transition-colors cursor-pointer"
+              title="Chiudi volantino e torna alle altre schermate"
+            >
+              <X className="w-5 h-5" />
+            </button>
           </div>
         ) : (
-          <div className="w-9 shrink-0" />
+          <div className="flex items-center gap-1 shrink-0">
+            <button
+              onClick={onClose}
+              className="p-2 -mr-1 hover:bg-rose-500/10 rounded-full text-[var(--text-muted)] hover:text-rose-500 transition-colors cursor-pointer"
+              title="Chiudi volantini e torna alle altre schermate"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         )}
       </header>
 

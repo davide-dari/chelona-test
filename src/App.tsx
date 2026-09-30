@@ -324,12 +324,32 @@ export default function App() {
   const [volantinoInitialChain, setVolantinoInitialChain] = useState<string | null>(null);
   const [activeNavTab, setActiveNavTab] = useState<'home' | 'deadlines' | 'ai' | 'tools' | 'profile'>('home');
   const [isAiOpen, setIsAiOpen] = useState(false);
+  const [returnToAiOnClose, setReturnToAiOnClose] = useState(false);
   const [aiInitialVoiceMode, setAiInitialVoiceMode] = useState(false);
   const [aiInitialMemoryMode, setAiInitialMemoryMode] = useState(false);
   const [aiInitialMemoryOpen, setAiInitialMemoryOpen] = useState(false);
   const [showGemma2Setup, setShowGemma2Setup] = useState(false);
   const [isWakeWordEnabled, setIsWakeWordEnabled] = useState(() => wakeWordService.getEnabled());
   const [deadlinesFilter, setDeadlinesFilter] = useState<'all' | 'auto' | 'document' | 'installment'>('all');
+
+  const closeAllEditingModals = useCallback(() => {
+    setEditingVolantinoModule(null);
+    setFlyerInitialOffer(null);
+    setVolantinoInitialChain(null);
+    setEditingSupermarketModule(null);
+    setEditingFurnitureModule(null);
+    setEditingInstallmentsModule(null);
+    setEditingFitnessModule(null);
+    setEditingTravelModule(null);
+    setEditingStudyModule(null);
+    setEditingSplitModule(null);
+    setEditingSingleExpenseModule(null);
+    setEditingAutoModule(null);
+    setEditingDocumentModule(null);
+    setEditingGenericModule(null);
+    setEditingModuleId(null);
+    setIsAdding(false);
+  }, []);
 
   // Homepage Voice Assistant Direct State (Ascolto vocale rapido direttamente dalla home)
   const [isHomeVoiceListening, setIsHomeVoiceListening] = useState(false);
@@ -532,6 +552,9 @@ export default function App() {
     const handleOpenFlyerOffer = (e: Event) => {
       const d = (e as CustomEvent).detail;
       if (!d || !d.fid || typeof d.pg !== 'number') return;
+      if (isAiOpen || activeNavTab === 'ai') {
+        setReturnToAiOnClose(true);
+      }
       setFlyerInitialOffer({ fid: String(d.fid), pg: d.pg });
       const existingVolantino = modules.find(m => m.type === 'volantino') as import('./types').VolantinoModule | undefined;
       if (existingVolantino) {
@@ -566,6 +589,9 @@ export default function App() {
     const handleOpenVolantino = (e: Event) => {
       const d = (e as CustomEvent).detail;
       const chain = d?.chain || d?.store || d?.slug || null;
+      if (isAiOpen || activeNavTab === 'ai') {
+        setReturnToAiOnClose(true);
+      }
       setVolantinoInitialChain(chain);
       setIsAiOpen(false);
       setAiInitialVoiceMode(false);
@@ -1916,10 +1942,14 @@ export default function App() {
   };
 
   const handleAiNavigate = useCallback((act: AiAction) => {
+    if (isAiOpen || activeNavTab === 'ai') {
+      setReturnToAiOnClose(true);
+    }
+
     // Chiudi sempre Chelona AI e azzera i flag vocali
     setIsAiOpen(false);
     setAiInitialVoiceMode(false);
-                    setAiInitialMemoryOpen(false);
+    setAiInitialMemoryOpen(false);
 
     // Chiudi eventuali altri tab/overlay per evitare conflitti visivi
     setIsToolsOpen(false);
@@ -3482,6 +3512,7 @@ export default function App() {
                   {(activeNavTab !== 'home' || isToolsOpen || isProfileOpen || isAiOpen || selectedType || selectedFolderId) && (
                     <button 
                       onClick={() => { 
+                        closeAllEditingModals();
                         setActiveNavTab('home'); 
                         setIsToolsOpen(false); 
                         setIsProfileOpen(false); 
@@ -3737,6 +3768,11 @@ export default function App() {
                   setEditingVolantinoModule(null); 
                   setFlyerInitialOffer(null); 
                   setVolantinoInitialChain(null);
+                  if (returnToAiOnClose) {
+                    setIsAiOpen(true);
+                    setActiveNavTab('ai');
+                    setReturnToAiOnClose(false);
+                  }
                 }}
               />
             ) : editingSupermarketModule ? (
@@ -5319,6 +5355,7 @@ export default function App() {
                   icon: Home, 
                   label: 'Home', 
                   action: () => { 
+                    closeAllEditingModals();
                     setActiveNavTab('home'); 
                     setIsToolsOpen(false); 
                     setIsAiOpen(false);
@@ -5335,6 +5372,7 @@ export default function App() {
                   label: 'Scadenze', 
                   badge: urgentDeadlines.length,
                   action: () => { 
+                    closeAllEditingModals();
                     setActiveNavTab('deadlines'); 
                     setIsToolsOpen(false); 
                     setIsAiOpen(false);
@@ -5349,6 +5387,7 @@ export default function App() {
                   icon: Sparkles, 
                   label: 'Chelona AI', 
                   action: () => { 
+                    closeAllEditingModals();
                     setActiveNavTab('ai'); 
                     setIsAiOpen(true);
                     setAiInitialVoiceMode(false);
@@ -5363,6 +5402,7 @@ export default function App() {
                   icon: Wrench, 
                   label: 'Strumenti', 
                   action: () => { 
+                    closeAllEditingModals();
                     setActiveNavTab('tools'); 
                     setIsToolsOpen(true); 
                     setIsAiOpen(false);
@@ -5377,6 +5417,7 @@ export default function App() {
                   icon: User, 
                   label: 'Profilo', 
                   action: () => { 
+                    closeAllEditingModals();
                     setActiveNavTab('profile'); 
                     setIsProfileOpen(true); 
                     setIsAiOpen(false);
