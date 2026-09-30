@@ -6,15 +6,19 @@ import {
   Zap, HardDrive, Clock, ChevronRight
 } from 'lucide-react';
 import { gemma2ModelManager, type ModelInfo, type DownloadProgress } from '../services/gemma2ModelManager';
-import { ragEngine } from '../services/ragEngine';
+import { ragEngine, indexModulesIntoRAG } from '../services/ragEngine';
 import { promptCache } from '../services/promptCache';
+import { semanticCache } from '../services/semanticCache';
+import type { Module } from '../types';
 
 interface Gemma2SetupScreenProps {
   onClose: () => void;
   showToast: (msg: string, type?: 'success' | 'error' | 'info') => void;
+  modules?: Module[];
+  username?: string;
 }
 
-export const Gemma2SetupScreen: React.FC<Gemma2SetupScreenProps> = ({ onClose, showToast }) => {
+export const Gemma2SetupScreen: React.FC<Gemma2SetupScreenProps> = ({ onClose, showToast, modules = [], username = '' }) => {
   const [modelInfo, setModelInfo] = useState<ModelInfo>(gemma2ModelManager.info);
   const [downloadProgress, setDownloadProgress] = useState<DownloadProgress | null>(null);
   const [isOnWifi, setIsOnWifi] = useState<boolean | null>(null);
@@ -28,6 +32,17 @@ export const Gemma2SetupScreen: React.FC<Gemma2SetupScreenProps> = ({ onClose, s
     const unsubscribe = gemma2ModelManager.subscribe(setModelInfo);
     return unsubscribe;
   }, []);
+
+  // Sottoscrivi alle statistiche del Database Personale (RAG) in tempo reale
+  useEffect(() => {
+    return ragEngine.subscribe(setRagStats);
+  }, []);
+
+  // Sincronizza ed indicizza immediatamente tutti i moduli e ricordi personali nel RAG
+  useEffect(() => {
+    indexModulesIntoRAG(modules, username);
+    setRagStats(ragEngine.getStats());
+  }, [modules, username]);
 
   // Controlla WiFi e batteria
   useEffect(() => {
@@ -76,6 +91,7 @@ export const Gemma2SetupScreen: React.FC<Gemma2SetupScreenProps> = ({ onClose, s
   const handleClearRAGCache = useCallback(() => {
     ragEngine.clear();
     promptCache.invalidate();
+    semanticCache.clear();
     setRagStats(ragEngine.getStats());
     setCacheStats(promptCache.getStats());
     showToast('Database vettoriale e cache ripuliti', 'info');

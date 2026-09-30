@@ -156,6 +156,7 @@ class LocalDatabase {
       try {
         const tx = this.db.transaction('memories', 'readwrite');
         const store = tx.objectStore('memories');
+        store.clear();
         for (const mem of memories) {
           store.put(mem);
         }
@@ -165,6 +166,7 @@ class LocalDatabase {
     }
 
     try {
+      localStorage.setItem('chelona_ai_memories', JSON.stringify(memories));
       localStorage.setItem('chelona_learned_memories', JSON.stringify(memories));
     } catch {}
   }
@@ -185,7 +187,7 @@ class LocalDatabase {
     }
 
     try {
-      const raw = localStorage.getItem('chelona_learned_memories');
+      const raw = localStorage.getItem('chelona_ai_memories') || localStorage.getItem('chelona_learned_memories');
       if (raw) return JSON.parse(raw);
     } catch {}
 

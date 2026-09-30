@@ -307,6 +307,13 @@ export async function queryGemma2(
     };
   }
 
+  // ⚡ Sincronizzazione continua del Database Personale (RAG)
+  const currentModulesHash = computeModulesHash(modules);
+  if (currentModulesHash !== lastIndexedModulesHash) {
+    indexModulesIntoRAG(modules, username);
+    lastIndexedModulesHash = currentModulesHash;
+  }
+
   const executeFallback = async (): Promise<Gemma2Response> => {
     const { queryChelonaAi } = await import('./chelonaEngine');
     const result = await queryChelonaAi(userQuery, modules, username);

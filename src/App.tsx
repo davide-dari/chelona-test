@@ -23,6 +23,7 @@ import { APP_VERSION } from './constants/version';
 import { queryChelonaAi, type AiAction } from './services/chelonaEngine';
 import { getSavedParking, getNavigationUrl } from './services/parkingService';
 import { getAutoDeadlineTargetDate } from './utils/autoDeadlines';
+import { indexModulesIntoRAG } from './services/ragEngine';
 
 import { motion, AnimatePresence } from 'motion/react';
 import JSZip from 'jszip';
@@ -901,6 +902,16 @@ export default function App() {
     };
     init();
   }, [encryptionKey, currentProfileId]);
+
+  // Sincronizza costantemente il Database Personale (RAG) quando i moduli cambiano
+  useEffect(() => {
+    if (modules.length > 0) {
+      const timer = setTimeout(() => {
+        indexModulesIntoRAG(modules, username || '');
+      }, 350);
+      return () => clearTimeout(timer);
+    }
+  }, [modules, username]);
 
   const handleCheckUpdate = React.useCallback(async (silent = true) => {
     try {
@@ -6393,6 +6404,8 @@ export default function App() {
           <Gemma2SetupScreen
             onClose={() => setShowGemma2Setup(false)}
             showToast={showToast}
+            modules={modules}
+            username={username}
           />
         </React.Suspense>
       )}

@@ -21,6 +21,8 @@ import {
 import { storage } from './storage';
 import { TOOLS } from '../constants/tools';
 import { wakeWordService } from './wakeWordService';
+import { ragEngine } from './ragEngine';
+import { localDb } from './localDatabase';
 
 export interface AiMemory {
   id: string;
@@ -100,9 +102,26 @@ export function saveLearnedMemory(memory: Omit<AiMemory, 'id' | 'createdAt'>): A
   try {
     if (typeof window !== 'undefined' && typeof localStorage !== 'undefined' && localStorage?.setItem) {
       localStorage.setItem(MEMORIES_STORAGE_KEY, JSON.stringify(memories));
+      localStorage.setItem('chelona_learned_memories', JSON.stringify(memories));
     }
   } catch (e) {
     console.error('Failed to save AI memory', e);
+  }
+
+  // Sincronizza immediatamente nel database vettoriale RAG
+  try {
+    ragEngine.upsert({
+      id: `memory_${newMemory.id}`,
+      text: `Ricordo personale: ${newMemory.key}. ${newMemory.fact}${newMemory.category ? ` (categoria: ${newMemory.category})` : ''}`,
+      metadata: {
+        source: 'memory',
+        updatedAt: Date.now(),
+        title: newMemory.key,
+      },
+    });
+    localDb.saveMemories(memories).catch(() => {});
+  } catch (err) {
+    console.warn('[RAG] Errore sincronizzazione memoria con RAG', err);
   }
 
   return newMemory;
@@ -116,9 +135,17 @@ export function deleteLearnedMemory(id: string): void {
   try {
     if (typeof window !== 'undefined' && typeof localStorage !== 'undefined' && localStorage?.setItem) {
       localStorage.setItem(MEMORIES_STORAGE_KEY, JSON.stringify(memories));
+      localStorage.setItem('chelona_learned_memories', JSON.stringify(memories));
     }
   } catch (e) {
     console.error('Failed to delete memory', e);
+  }
+
+  try {
+    ragEngine.removeDocument(`memory_${id}`);
+    localDb.saveMemories(memories).catch(() => {});
+  } catch (err) {
+    console.warn('[RAG] Errore rimozione memoria da RAG', err);
   }
 }
 
@@ -129,9 +156,17 @@ export function clearAllLearnedMemories(): void {
   try {
     if (typeof window !== 'undefined' && typeof localStorage !== 'undefined' && localStorage?.removeItem) {
       localStorage.removeItem(MEMORIES_STORAGE_KEY);
+      localStorage.removeItem('chelona_learned_memories');
     }
   } catch (e) {
     console.error('Failed to clear memories', e);
+  }
+
+  try {
+    ragEngine.removeBySource('memory');
+    localDb.saveMemories([]).catch(() => {});
+  } catch (err) {
+    console.warn('[RAG] Errore svuotamento memorie RAG', err);
   }
 }
 
