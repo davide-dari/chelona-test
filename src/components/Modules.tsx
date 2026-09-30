@@ -369,50 +369,147 @@ export const AutoCard = ({ module, onDelete, onEdit, onToggleSensitivity }: { mo
   const brandLogo = module.brand ? module.brand.toLowerCase().replace(/ /g, '-') : '';
   const hasLogo = CAR_BRANDS.includes(brandLogo);
 
+  // Compute most urgent deadline
+  const urgentDeadline = (() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const checkDate = (label: string, dateStr?: string) => {
+      if (!dateStr) return null;
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return null;
+      d.setHours(0, 0, 0, 0);
+      const days = Math.round((d.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+      return { label, days };
+    };
+
+    const deadlines = [
+      checkDate('Assicurazione', module.lastInsurance),
+      checkDate('Bollo', module.lastTax),
+      checkDate('Revisione', module.lastRevision),
+      checkDate('Batteria 12V', module.battery12vExpiryDate),
+      checkDate('Bombola GPL', module.lastGplCylinder),
+      checkDate('Bombola Metano', module.lastMethaneCylinder),
+      checkDate('Garanzia EV', module.hybridBatteryExpiryDate),
+    ].filter(Boolean) as Array<{ label: string; days: number }>;
+
+    if (module.currentKm && module.lastServiceKm) {
+      const curKm = Number(module.currentKm);
+      const lastSvc = Number(module.lastServiceKm);
+      if (!isNaN(curKm) && !isNaN(lastSvc)) {
+        const nextSvc = lastSvc + 15000;
+        const kmRemaining = nextSvc - curKm;
+        if (kmRemaining <= 1000) {
+          deadlines.push({
+            label: 'Tagliando',
+            days: kmRemaining <= 0 ? -1 : Math.max(1, Math.round(kmRemaining / 40)),
+          });
+        }
+      }
+    }
+
+    if (deadlines.length === 0) return null;
+    deadlines.sort((a, b) => a.days - b.days);
+    return deadlines[0];
+  })();
+
+  const fuelColorMap: Record<string, string> = {
+    benzina: 'bg-amber-500/10 text-amber-500 border-amber-500/20',
+    diesel: 'bg-blue-500/10 text-blue-500 border-blue-500/20',
+    ibrida: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20',
+    elettrica: 'bg-cyan-500/10 text-cyan-500 border-cyan-500/20',
+    gpl: 'bg-orange-500/10 text-orange-500 border-orange-500/20',
+    metano: 'bg-sky-500/10 text-sky-500 border-sky-500/20',
+  };
+
+  const fuelBadge = module.fuelType ? fuelColorMap[module.fuelType.toLowerCase()] || 'bg-[var(--surface-variant)] text-[var(--text-muted)] border-[var(--border)]' : '';
+
   return (
     <ModuleWrapper module={module} onDelete={onDelete} onEdit={onEdit} onToggleSensitivity={onToggleSensitivity}>
       <div 
-        className="h-full flex flex-col cursor-pointer group/card hover:bg-[var(--bg)] transition-colors p-4 -m-4 rounded-2xl active:scale-[0.98]"
+        className="h-full flex flex-col justify-between cursor-pointer group/card hover:bg-[var(--bg)] transition-all duration-200 p-4 -m-4 rounded-2xl active:scale-[0.98]"
         onClick={() => onEdit(module)}
       >
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex flex-col flex-1">
-            <h4 className="font-bold text-[14px] text-[var(--text-main)] leading-tight">
-              {module.brand} {module.model}
-            </h4>
-            <p className="text-[9px] font-black text-[var(--text-muted)] uppercase tracking-widest mt-1 mb-3">
-              {module.fuelType} {module.registrationYear ? `• ${module.registrationYear}` : ''}
-            </p>
-            
-            {module.plate && (
-              <div className="inline-flex items-center border border-gray-300 rounded-md bg-white shadow-sm h-[24px] overflow-hidden self-start">
-                <div className="bg-blue-700 h-full w-[14px] flex flex-col items-center justify-end pb-[1px] shrink-0">
-                  <div className="w-1.5 h-1.5 border border-yellow-400 rounded-full mb-[1px] opacity-80" />
-                  <span className="text-[6px] text-white font-bold leading-none">I</span>
-                </div>
-                <span className="px-2.5 text-black font-black font-mono text-[12px] tracking-widest uppercase mt-[0.5px]">
-                  {module.plate}
-                </span>
-                <div className="bg-blue-700 h-full w-[14px] shrink-0" />
+        <div>
+          {/* Top Row: Brand & Model + Logo Badge */}
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex-1 min-w-0">
+              <h4 className="font-black text-[15px] text-[var(--text-main)] leading-tight tracking-tight truncate">
+                {module.brand} {module.model}
+              </h4>
+              <div className="flex items-center gap-1.5 mt-1">
+                {module.fuelType && (
+                  <span className={`text-[8.5px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md border ${fuelBadge}`}>
+                    {module.fuelType}
+                  </span>
+                )}
+                {module.registrationYear && (
+                  <span className="text-[9px] font-semibold text-[var(--text-muted)]">
+                    {module.registrationYear}
+                  </span>
+                )}
               </div>
-            )}
+            </div>
+
+            {/* Brand Logo Container */}
+            <div className="w-12 h-12 bg-[var(--bg)] border border-[var(--border)] rounded-2xl flex items-center justify-center shrink-0 shadow-sm relative group-hover/card:scale-105 transition-transform car-logo-bg">
+              {hasLogo ? (
+                <img src={`/logo_auto/${brandLogo}.png`} alt={module.brand} className="w-8 h-8 object-contain" />
+              ) : (
+                <Car className="w-6 h-6 text-[var(--text-muted)]" />
+              )}
+            </div>
           </div>
 
-          <div className="w-12 h-12 bg-[var(--bg)] border border-[var(--border)] rounded-2xl flex items-center justify-center shrink-0 shadow-sm relative car-logo-bg">
-            {hasLogo ? (
-              <img src={`/logo_auto/${brandLogo}.png`} alt={module.brand} className="w-8 h-8 object-contain" />
-            ) : (
-              <Car className="w-6 h-6 text-[var(--text-muted)]" />
-            )}
-          </div>
+          {/* Italian Plate Badge */}
+          {module.plate && (
+            <div className="mt-3 inline-flex items-center border border-zinc-300 dark:border-zinc-700 rounded-md bg-white shadow-xs h-[23px] overflow-hidden">
+              <div className="bg-blue-700 h-full w-[13px] flex flex-col items-center justify-center pb-[0.5px] shrink-0">
+                <div className="w-1.5 h-1.5 border border-yellow-300 rounded-full mb-[0.5px] opacity-90 scale-75" />
+                <span className="text-[5.5px] text-white font-black leading-none">I</span>
+              </div>
+              <span className="px-2 text-zinc-950 font-black font-mono text-[11px] tracking-widest uppercase select-none">
+                {module.plate}
+              </span>
+              <div className="bg-blue-700 h-full w-[13px] shrink-0" />
+            </div>
+          )}
         </div>
 
-        <div className="mt-auto pt-4 border-t border-[var(--border)] flex items-center justify-between">
-          <div className="flex items-center gap-1.5">
-             <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
-             <span className="text-[10px] font-bold text-[var(--text-muted)]">Gestione</span>
+        {/* Bottom Row: Odometer & Deadline Chip */}
+        <div className="mt-4 pt-3 border-t border-[var(--border)] flex items-center justify-between gap-2">
+          {/* Odometer readout */}
+          <div className="flex items-center gap-1.5 min-w-0">
+            <Gauge className="w-3.5 h-3.5 text-[var(--accent)] shrink-0" />
+            <span className="text-[11px] font-mono font-bold text-[var(--text-main)] truncate">
+              {module.currentKm ? `${Number(module.currentKm).toLocaleString('it-IT')} km` : '--- km'}
+            </span>
           </div>
-          <ChevronRight className="w-4 h-4 text-[var(--text-muted)] group-hover:translate-x-1 transition-transform" />
+
+          {/* Status chip */}
+          {urgentDeadline ? (
+            urgentDeadline.days < 0 ? (
+              <span className="inline-flex items-center gap-1 text-[8.5px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-red-500/10 text-red-500 border border-red-500/20 shrink-0">
+                <AlertCircle className="w-2.5 h-2.5" />
+                {urgentDeadline.label} Scaduto
+              </span>
+            ) : urgentDeadline.days <= 30 ? (
+              <span className="inline-flex items-center gap-1 text-[8.5px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-500 border border-amber-500/20 shrink-0">
+                <Clock className="w-2.5 h-2.5" />
+                {urgentDeadline.label} {urgentDeadline.days}gg
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1 text-[8.5px] font-bold tracking-wider px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 shrink-0">
+                <ShieldCheck className="w-2.5 h-2.5" />
+                In Regola
+              </span>
+            )
+          ) : (
+            <span className="inline-flex items-center gap-1 text-[8.5px] font-bold tracking-wider px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 shrink-0">
+              <ShieldCheck className="w-2.5 h-2.5" />
+              In Regola
+            </span>
+          )}
         </div>
       </div>
     </ModuleWrapper>

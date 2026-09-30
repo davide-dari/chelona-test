@@ -5801,6 +5801,10 @@ export default function App() {
           <AutoManagementScreen 
             module={editingAutoModule} 
             onSave={handleSaveAutoEdit} 
+            onAutoSave={(updated) => {
+              updateModuleDirect(updated);
+              setEditingAutoModule(updated);
+            }}
             onCancel={() => {
               setEditingAutoModule(null);
               if (!selectedType || selectedType === 'home') setIsSensitiveUnlocked(false);

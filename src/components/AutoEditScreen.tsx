@@ -1,9 +1,13 @@
 import React, { useState } from 'react';
-import { ArrowLeft, Save, Car, Wrench, Calendar, Fuel, User, Hash, Gauge, FileText, Scan, Check } from 'lucide-react';
-import { AutoModule } from '../types';
+import { 
+  ArrowLeft, Save, Car, Wrench, Calendar, Fuel, User, Gauge, 
+  FileText, Scan, Check, X, ShieldCheck, Eye, Trash2, Zap, 
+  Droplets, Flame, AlertCircle, Info 
+} from 'lucide-react';
+import { AutoModule, FuelType } from '../types';
 import { DocumentScanner } from './DocumentScanner';
+import { DocumentViewer } from './DocumentViewer';
 import { CAR_BRANDS } from '../utils/carBrands';
-import { CAR_MODELS } from '../constants/carModels';
 import { BrandModelPicker } from './BrandModelPicker';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -13,48 +17,18 @@ interface AutoEditScreenProps {
   onCancel: () => void;
 }
 
-const Field = ({
-  label,
-  children,
-  colSpan = 1,
-  onAttach,
-  hasDoc,
-}: {
-  label: string;
-  children: React.ReactNode;
-  colSpan?: 1 | 2;
-  onAttach?: () => void;
-  hasDoc?: boolean;
-}) => (
-  <div className={colSpan === 2 ? 'col-span-2 relative' : 'col-span-1 relative'}>
-    <div className="flex items-center justify-between mb-1.5">
-      <label className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest block">
-        {label}
-      </label>
-      {onAttach && (
-        <button 
-          type="button" 
-          onClick={onAttach}
-          className={`flex items-center gap-1.5 px-2 py-0.5 rounded-lg border transition-all text-[9px] font-bold uppercase tracking-widest ${hasDoc ? 'bg-[var(--success-bg)] border-[var(--success)]/20 text-[var(--success)]' : 'bg-[var(--card-bg)] border-[var(--border)] text-[var(--text-muted)] hover:text-amber-600 hover:border-amber-200 shadow-sm'}`}
-        >
-          {hasDoc ? <Check className="w-2.5 h-2.5" /> : <Scan className="w-2.5 h-2.5" />}
-          {hasDoc ? 'Documento Allegato' : 'Allega/Scan'}
-        </button>
-      )}
-    </div>
-    {children}
-  </div>
-);
-
 const inputCls =
-  'w-full p-3.5 bg-[var(--bg)] border border-[var(--border)] rounded-2xl outline-none focus:border-amber-400 transition-all text-sm font-semibold text-[var(--text-main)] placeholder:text-[var(--text-muted)]/50';
+  'w-full p-3.5 bg-[var(--bg)] border border-[var(--border)] rounded-2xl outline-none focus:border-[var(--accent)] transition-all text-sm font-semibold text-[var(--text-main)] placeholder:text-[var(--text-muted)]/50';
 
-const SectionTitle = ({ icon: Icon, label }: { icon: React.ElementType; label: string }) => (
-  <div className="flex items-center gap-2 mb-4 mt-8 first:mt-0">
-    <div className="p-1.5 bg-[var(--accent-bg)] rounded-lg">
-      <Icon className="w-3.5 h-3.5 text-[var(--accent)]" />
+const SectionTitle = ({ icon: Icon, label, subtitle }: { icon: React.ElementType; label: string; subtitle?: string }) => (
+  <div className="flex items-center gap-2.5 mb-4 mt-8 first:mt-0">
+    <div className="p-2 bg-[var(--accent-bg)] rounded-xl text-[var(--accent)] shrink-0">
+      <Icon className="w-4 h-4" />
     </div>
-    <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--accent)]">{label}</span>
+    <div className="flex-1">
+      <span className="text-[11px] font-black uppercase tracking-wider text-[var(--text-main)] block">{label}</span>
+      {subtitle && <p className="text-[10px] text-[var(--text-muted)] mt-0.5">{subtitle}</p>}
+    </div>
     <div className="flex-1 h-px bg-[var(--border)]" />
   </div>
 );
@@ -62,298 +36,728 @@ const SectionTitle = ({ icon: Icon, label }: { icon: React.ElementType; label: s
 export const AutoEditScreen = ({ module, onSave, onCancel }: AutoEditScreenProps) => {
   const [data, setData] = useState<AutoModule>({ ...module });
   const [capturingField, setCapturingField] = useState<{ key: keyof AutoModule; title: string } | null>(null);
+  const [viewingDoc, setViewingDoc] = useState<{ title: string; data: string } | null>(null);
   const [picker, setPicker] = useState<'brand' | 'model' | null>(null);
 
   const set = (key: keyof AutoModule, value: any) =>
     setData(prev => ({ ...prev, [key]: value }));
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     const title = `${data.brand || ''} ${data.model || ''}`.trim() || 'Auto';
-    onSave({ ...data, title, lastKmUpdatedAt: new Date().toISOString() });
+    onSave({
+      ...data,
+      title,
+      plate: (data.plate || '').toUpperCase().trim(),
+      lastKmUpdatedAt: new Date().toISOString(),
+    });
   };
 
-  // Car models autocomplete
-  const modelOptions: string[] =
-    data.brand
-      ? (CAR_MODELS[data.brand] ||
-          CAR_MODELS[
-            Object.keys(CAR_MODELS).find(
-              b => b.toLowerCase() === data.brand?.toLowerCase()
-            ) ?? ''
-          ] ||
-          [])
-      : [];
+  const brandLogo = data.brand ? data.brand.toLowerCase().replace(/ /g, '-') : '';
+  const hasLogo = CAR_BRANDS.includes(brandLogo);
+
+  const fuelOptions: Array<{ type: FuelType; label: string; icon: React.ElementType; color: string }> = [
+    { type: 'benzina', label: 'Benzina', icon: Droplets, color: 'text-amber-500 bg-amber-500/10 border-amber-500/20' },
+    { type: 'diesel', label: 'Diesel', icon: Droplets, color: 'text-blue-500 bg-blue-500/10 border-blue-500/20' },
+    { type: 'ibrida', label: 'Ibrida', icon: Zap, color: 'text-emerald-500 bg-emerald-500/10 border-emerald-500/20' },
+    { type: 'elettrica', label: 'Elettrica', icon: Zap, color: 'text-cyan-500 bg-cyan-500/10 border-cyan-500/20' },
+    { type: 'gpl', label: 'GPL', icon: Flame, color: 'text-orange-500 bg-orange-500/10 border-orange-500/20' },
+    { type: 'metano', label: 'Metano', icon: Flame, color: 'text-sky-500 bg-sky-500/10 border-sky-500/20' },
+  ];
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 24 }}
+      initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: 24 }}
+      exit={{ opacity: 0, y: 16 }}
       className="max-w-2xl mx-auto h-full flex flex-col w-full"
     >
-      {/* Header */}
-      <div className="flex items-center gap-4 mb-8">
-        <button
-          type="button"
-          onClick={onCancel}
-          className="p-2.5 hover:bg-[var(--card-bg)] border border-[var(--border)] rounded-xl text-[var(--text-muted)] hover:text-[var(--text-main)] transition-all"
-        >
-          <ArrowLeft className="w-5 h-5" />
-        </button>
-        <div className="flex-1">
-          <h2 className="text-2xl font-bold text-[var(--text-main)] leading-tight">
-            Modifica Auto
-          </h2>
-          <p className="text-xs text-[var(--text-muted)] font-medium mt-0.5">
-            {data.brand} {data.model} {data.plate ? `· ${data.plate}` : ''}
-          </p>
+      {/* Top Header */}
+      <div className="flex items-center justify-between gap-3 p-4 sm:p-6 pb-4 border-b border-[var(--border)] shrink-0 bg-[var(--card-bg)] rounded-3xl mb-4 shadow-xs">
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="p-2.5 hover:bg-[var(--surface-variant)] border border-[var(--border)] rounded-2xl text-[var(--text-muted)] hover:text-[var(--text-main)] transition-all cursor-pointer"
+            title="Annulla"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </button>
+          <div>
+            <h2 className="text-xl sm:text-2xl font-black text-[var(--text-main)] uppercase tracking-tight leading-tight">
+              Modifica Auto
+            </h2>
+            <p className="text-[11px] font-semibold text-[var(--text-muted)] tracking-wider">
+              {data.brand || 'Nuovo Veicolo'} {data.model || ''}
+            </p>
+          </div>
         </div>
+
         <button
           type="button"
-          onClick={handleSubmit}
-          className="flex items-center gap-2 px-5 py-3 bg-amber-500 hover:bg-amber-600 active:scale-95 text-white rounded-2xl font-bold text-sm transition-all shadow-lg shadow-amber-500/20"
+          onClick={() => handleSubmit()}
+          className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 active:scale-95 text-white rounded-2xl font-black text-xs uppercase tracking-widest transition-all shadow-md shadow-emerald-500/20 cursor-pointer"
         >
           <Save className="w-4 h-4" />
-          Salva
+          <span>Salva</span>
         </button>
       </div>
 
-      {/* Form body */}
+      {/* Main Form Scroll Area */}
       <form
         onSubmit={handleSubmit}
-        className="flex-1 overflow-y-auto pb-48 custom-scrollbar space-y-0"
+        className="flex-1 overflow-y-auto px-4 sm:px-6 pb-36 custom-scrollbar space-y-6"
       >
-        <div className="bg-[var(--card-bg)] border border-[var(--border)] rounded-3xl p-6 shadow-sm space-y-0">
+        {/* Live Plate & Brand Hero Preview */}
+        <div className="bg-gradient-to-br from-zinc-950 via-zinc-900 to-zinc-950 rounded-3xl p-6 text-white border border-zinc-800 shadow-xl relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-44 h-44 bg-teal-500/10 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none" />
+          
+          <div className="relative z-10 flex items-center justify-between gap-4">
+            <div>
+              <p className="text-[9px] font-black uppercase tracking-[0.25em] text-zinc-400 mb-2">Anteprima Targa & Veicolo</p>
+              
+              {/* Italian Plate Badge */}
+              <div className="inline-flex items-center border border-zinc-400/30 rounded-lg bg-white shadow-xl h-10 px-0.5 overflow-hidden">
+                <div className="bg-blue-700 h-full px-2 flex flex-col items-center justify-center shrink-0">
+                  <div className="w-2.5 h-2.5 border border-yellow-300 rounded-full opacity-90 scale-90" />
+                  <span className="text-[7.5px] text-white font-black leading-none mt-0.5">I</span>
+                </div>
+                <span className="px-3.5 text-zinc-950 font-black font-mono text-xl sm:text-2xl tracking-[0.2em] uppercase select-none">
+                  {data.plate || 'AA 000 AA'}
+                </span>
+                <div className="bg-blue-700 h-full w-4 flex flex-col items-center justify-center shrink-0">
+                  <div className="w-2 h-2 rounded-full border border-yellow-300/60" />
+                </div>
+              </div>
 
-          {/* ── Anagrafica ── */}
-          <SectionTitle icon={Car} label="Anagrafica" />
-          <div className="grid grid-cols-2 gap-4">
-            <Field label="Intestatario" colSpan={2}>
-              <input
-                type="text"
-                value={data.driverName || ''}
-                onChange={e => set('driverName', e.target.value)}
-                placeholder="Es. Mario Rossi"
-                className={inputCls}
-              />
-            </Field>
+              <div className="mt-3 flex items-center gap-3">
+                <span className="text-xs font-bold text-zinc-300">
+                  {data.driverName || 'Intestatario non specificato'}
+                </span>
+                {data.registrationYear && (
+                  <span className="text-[10px] font-semibold text-zinc-400 bg-white/10 px-2 py-0.5 rounded-md">
+                    Anno {data.registrationYear}
+                  </span>
+                )}
+              </div>
+            </div>
 
-            <Field label="Marca">
+            {/* Brand Logo Container */}
+            <div className="w-16 h-16 sm:w-20 sm:h-20 bg-white/10 backdrop-blur-md rounded-2xl flex items-center justify-center border border-white/10 shrink-0 car-logo-bg">
+              {hasLogo ? (
+                <img src={`/logo_auto/${brandLogo}.png`} alt={data.brand} className="w-10 h-10 sm:w-12 sm:h-12 object-contain" />
+              ) : (
+                <Car className="w-8 h-8 text-zinc-400" />
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* ── Section 1: Anagrafica Veicolo ── */}
+        <div className="bg-[var(--card-bg)] border border-[var(--border)] rounded-3xl p-5 sm:p-6 shadow-xs space-y-4">
+          <SectionTitle icon={Car} label="1. Dati Principali Veicolo" subtitle="Marca, modello, targa e alimentazione" />
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="sm:col-span-2">
+              <label className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider block mb-1.5">
+                Intestatario / Conducente
+              </label>
+              <div className="relative">
+                <User className="w-4 h-4 text-[var(--text-muted)] absolute left-3.5 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  value={data.driverName || ''}
+                  onChange={e => set('driverName', e.target.value)}
+                  placeholder="Es. Mario Rossi"
+                  className={`${inputCls} pl-10`}
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider block mb-1.5">
+                Marca
+              </label>
               <button
                 type="button"
                 onClick={() => setPicker('brand')}
-                className={`${inputCls} text-left flex justify-between items-center`}
+                className={`${inputCls} text-left flex items-center justify-between cursor-pointer`}
               >
-                {data.brand || 'Seleziona...'}
+                <span className={data.brand ? 'text-[var(--text-main)]' : 'text-[var(--text-muted)]'}>
+                  {data.brand || 'Seleziona marca...'}
+                </span>
+                <span className="text-[10px] uppercase font-bold text-[var(--accent)]">Scegli</span>
               </button>
-            </Field>
+            </div>
 
-            <Field label="Modello">
+            <div>
+              <label className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider block mb-1.5">
+                Modello
+              </label>
               <button
                 type="button"
                 onClick={() => setPicker('model')}
-                className={`${inputCls} text-left flex justify-between items-center`}
+                className={`${inputCls} text-left flex items-center justify-between cursor-pointer`}
               >
-                {data.model || 'Seleziona...'}
+                <span className={data.model ? 'text-[var(--text-main)]' : 'text-[var(--text-muted)]'}>
+                  {data.model || 'Seleziona modello...'}
+                </span>
+                <span className="text-[10px] uppercase font-bold text-[var(--accent)]">Scegli</span>
               </button>
-            </Field>
+            </div>
 
-            <Field label="Targa">
+            <div>
+              <label className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider block mb-1.5">
+                Targa
+              </label>
               <input
                 type="text"
                 value={data.plate || ''}
                 onChange={e => set('plate', e.target.value.toUpperCase())}
                 placeholder="Es. AB 123 CD"
-                className={`${inputCls} font-mono tracking-widest uppercase`}
+                className={`${inputCls} font-mono uppercase tracking-widest text-base`}
               />
-            </Field>
+            </div>
 
-            <Field label="Anno Immatricolazione">
+            <div>
+              <label className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider block mb-1.5">
+                Anno Immatricolazione
+              </label>
               <input
                 type="number"
                 value={data.registrationYear || ''}
                 onChange={e => set('registrationYear', e.target.value)}
-                placeholder="Es. 2021"
+                placeholder="Es. 2022"
                 min={1970}
                 max={new Date().getFullYear() + 1}
                 className={inputCls}
               />
-            </Field>
+            </div>
 
-            <Field label="Alimentazione" colSpan={2}>
-              <select
-                value={data.fuelType || ''}
-                onChange={e => set('fuelType', e.target.value)}
-                className={inputCls}
-              >
-                <option value="benzina">Benzina</option>
-                <option value="diesel">Diesel</option>
-                <option value="gpl">GPL</option>
-                <option value="metano">Metano</option>
-                <option value="ibrida">Ibrida</option>
-                <option value="elettrica">Elettrica</option>
-              </select>
-            </Field>
+            {/* Alimentazione Selector */}
+            <div className="sm:col-span-2">
+              <label className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider block mb-2">
+                Tipo di Alimentazione
+              </label>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {fuelOptions.map(fo => {
+                  const Icon = fo.icon;
+                  const isSelected = (data.fuelType || '').toLowerCase() === fo.type;
+                  return (
+                    <button
+                      key={fo.type}
+                      type="button"
+                      onClick={() => set('fuelType', fo.type)}
+                      className={`flex items-center gap-2.5 p-3 rounded-2xl border text-left transition-all cursor-pointer ${
+                        isSelected
+                          ? `${fo.color} border-current ring-1 ring-current shadow-xs`
+                          : 'bg-[var(--bg)] border-[var(--border)] text-[var(--text-muted)] hover:border-[var(--accent)]/40 hover:text-[var(--text-main)]'
+                      }`}
+                    >
+                      <Icon className="w-4 h-4 shrink-0" />
+                      <span className="text-xs font-bold capitalize">{fo.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
 
-            <Field label="Km Attuali" colSpan={2}>
+        {/* ── Section 2: Chilometri & Manutenzione ── */}
+        <div className="bg-[var(--card-bg)] border border-[var(--border)] rounded-3xl p-5 sm:p-6 shadow-xs space-y-4">
+          <SectionTitle icon={Gauge} label="2. Chilometraggio & Tagliandi" subtitle="Monitora lo stato d'uso e la periodicità degli interventi" />
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="sm:col-span-2">
+              <label className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider block mb-1.5">
+                Chilometri Attuali (Lettura Contachilometri)
+              </label>
+              <div className="relative">
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={data.currentKm || ''}
+                  onChange={e => set('currentKm', e.target.value.replace(/\D/g, ''))}
+                  placeholder="Es. 45000"
+                  className={`${inputCls} font-mono font-bold text-lg pr-12`}
+                />
+                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold text-[var(--text-muted)]">
+                  km
+                </span>
+              </div>
+            </div>
+
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider block">
+                  Km Ultimo Tagliando
+                </label>
+                {data.serviceDoc && (
+                  <button
+                    type="button"
+                    onClick={() => setViewingDoc({ title: 'Fattura Tagliando', data: data.serviceDoc! })}
+                    className="text-[9px] font-bold text-emerald-500 hover:underline flex items-center gap-1 cursor-pointer"
+                  >
+                    <Eye className="w-3 h-3" /> Allegato
+                  </button>
+                )}
+              </div>
+              <div className="relative">
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={data.lastServiceKm || ''}
+                  onChange={e => set('lastServiceKm', e.target.value.replace(/\D/g, ''))}
+                  placeholder="Es. 30000"
+                  className={`${inputCls} font-mono pr-10`}
+                />
+                <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-semibold text-[var(--text-muted)]">
+                  km
+                </span>
+              </div>
+              <p className="text-[10px] text-[var(--text-muted)] mt-1">Prossimo suggerito: +15.000 km</p>
+            </div>
+
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider block">
+                  Km Ultimo Controllo Gomme
+                </label>
+                {data.tireDoc && (
+                  <button
+                    type="button"
+                    onClick={() => setViewingDoc({ title: 'Controllo Gomme', data: data.tireDoc! })}
+                    className="text-[9px] font-bold text-emerald-500 hover:underline flex items-center gap-1 cursor-pointer"
+                  >
+                    <Eye className="w-3 h-3" /> Allegato
+                  </button>
+                )}
+              </div>
+              <div className="relative">
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={data.tiresKm || ''}
+                  onChange={e => set('tiresKm', e.target.value.replace(/\D/g, ''))}
+                  placeholder="Es. 35000"
+                  className={`${inputCls} font-mono pr-10`}
+                />
+                <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-semibold text-[var(--text-muted)]">
+                  km
+                </span>
+              </div>
+              <p className="text-[10px] text-[var(--text-muted)] mt-1">Intervallo standard: +10.000 km</p>
+            </div>
+
+            <div className="sm:col-span-2">
+              <label className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider block mb-1.5">
+                Tolleranza / Estensione Gomme Opzionale (+ Km)
+              </label>
               <input
                 type="text"
                 inputMode="numeric"
-                value={data.currentKm || ''}
-                onChange={e => set('currentKm', e.target.value.replace(/\D/g, ''))}
-                placeholder="Es. 45.000"
+                value={data.tiresSuggestedOffsetKm !== undefined ? String(data.tiresSuggestedOffsetKm) : ''}
+                onChange={e => {
+                  const cleaned = e.target.value.replace(/\D/g, '');
+                  set('tiresSuggestedOffsetKm', cleaned ? Number(cleaned) : undefined);
+                }}
+                placeholder="Es. 2000 (aggiunge km all'intervallo)"
                 className={inputCls}
               />
-            </Field>
+            </div>
           </div>
+        </div>
 
-          {/* ── Scadenze ── */}
-          <SectionTitle icon={Calendar} label="Scadenze" />
-          <div className="grid grid-cols-2 gap-4">
-            <Field label="Scadenza Assicurazione" onAttach={() => setCapturingField({ key: 'insuranceDoc', title: 'Assicurazione' })} hasDoc={!!data.insuranceDoc}>
+        {/* ── Section 3: Scadenze Legali & Amministrative ── */}
+        <div className="bg-[var(--card-bg)] border border-[var(--border)] rounded-3xl p-5 sm:p-6 shadow-xs space-y-4">
+          <SectionTitle icon={Calendar} label="3. Scadenze & Date Amministrative" subtitle="Assicurazione, bollo, revisione e controlli tecnici" />
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* Assicurazione */}
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider block">
+                  Scadenza Assicurazione (RCA)
+                </label>
+                <div className="flex items-center gap-1.5">
+                  {data.insuranceDoc && (
+                    <button
+                      type="button"
+                      onClick={() => setViewingDoc({ title: 'Polizza Assicurativa', data: data.insuranceDoc! })}
+                      className="text-[9px] font-bold text-emerald-500 hover:underline flex items-center gap-1 cursor-pointer"
+                    >
+                      <Eye className="w-3 h-3" /> Vedi
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setCapturingField({ key: 'insuranceDoc', title: 'Polizza Assicurazione' })}
+                    className="text-[9px] font-bold text-[var(--accent)] hover:underline flex items-center gap-1 cursor-pointer"
+                  >
+                    <Scan className="w-3 h-3" /> {data.insuranceDoc ? 'Riscansiona' : 'Allega'}
+                  </button>
+                </div>
+              </div>
               <input
                 type="date"
                 value={data.lastInsurance || ''}
                 onChange={e => set('lastInsurance', e.target.value)}
                 className={inputCls}
               />
-            </Field>
+            </div>
 
-            <Field label="Scadenza Prossimo Bollo" onAttach={() => setCapturingField({ key: 'taxDoc', title: 'Bollo Auto' })} hasDoc={!!data.taxDoc}>
+            {/* Bollo */}
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider block">
+                  Scadenza Bollo Auto
+                </label>
+                <div className="flex items-center gap-1.5">
+                  {data.taxDoc && (
+                    <button
+                      type="button"
+                      onClick={() => setViewingDoc({ title: 'Ricevuta Bollo', data: data.taxDoc! })}
+                      className="text-[9px] font-bold text-emerald-500 hover:underline flex items-center gap-1 cursor-pointer"
+                    >
+                      <Eye className="w-3 h-3" /> Vedi
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setCapturingField({ key: 'taxDoc', title: 'Ricevuta Bollo' })}
+                    className="text-[9px] font-bold text-[var(--accent)] hover:underline flex items-center gap-1 cursor-pointer"
+                  >
+                    <Scan className="w-3 h-3" /> {data.taxDoc ? 'Riscansiona' : 'Allega'}
+                  </button>
+                </div>
+              </div>
               <input
                 type="date"
                 value={data.lastTax || ''}
                 onChange={e => set('lastTax', e.target.value)}
                 className={inputCls}
               />
-            </Field>
+            </div>
 
-            <Field label="Data Ultima Revisione" colSpan={2} onAttach={() => setCapturingField({ key: 'revisionDoc', title: 'Revisione' })} hasDoc={!!data.revisionDoc}>
+            {/* Revisione */}
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider block">
+                  Data Ultima Revisione
+                </label>
+                <div className="flex items-center gap-1.5">
+                  {data.revisionDoc && (
+                    <button
+                      type="button"
+                      onClick={() => setViewingDoc({ title: 'Certificato Revisione', data: data.revisionDoc! })}
+                      className="text-[9px] font-bold text-emerald-500 hover:underline flex items-center gap-1 cursor-pointer"
+                    >
+                      <Eye className="w-3 h-3" /> Vedi
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setCapturingField({ key: 'revisionDoc', title: 'Certificato Revisione' })}
+                    className="text-[9px] font-bold text-[var(--accent)] hover:underline flex items-center gap-1 cursor-pointer"
+                  >
+                    <Scan className="w-3 h-3" /> {data.revisionDoc ? 'Riscansiona' : 'Allega'}
+                  </button>
+                </div>
+              </div>
               <input
                 type="date"
                 value={data.lastRevision || ''}
                 onChange={e => set('lastRevision', e.target.value)}
                 className={inputCls}
               />
-            </Field>
-          </div>
+              <p className="text-[10px] text-[var(--text-muted)] mt-1">Scade ogni 2 anni (4 anni se nuova)</p>
+            </div>
 
-          {/* ── Manutenzione ── */}
-          <SectionTitle icon={Wrench} label="Manutenzione" />
-          <div className="grid grid-cols-2 gap-4">
-            <Field label="Km Ultimo Tagliando" onAttach={() => setCapturingField({ key: 'serviceDoc', title: 'Tagliando' })} hasDoc={!!data.serviceDoc}>
+            {/* Batteria 12V */}
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider block">
+                  Scadenza Batteria 12V
+                </label>
+                <div className="flex items-center gap-1.5">
+                  {data.battery12vDoc && (
+                    <button
+                      type="button"
+                      onClick={() => setViewingDoc({ title: 'Garanzia Batteria 12V', data: data.battery12vDoc! })}
+                      className="text-[9px] font-bold text-emerald-500 hover:underline flex items-center gap-1 cursor-pointer"
+                    >
+                      <Eye className="w-3 h-3" /> Vedi
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setCapturingField({ key: 'battery12vDoc', title: 'Garanzia Batteria 12V' })}
+                    className="text-[9px] font-bold text-[var(--accent)] hover:underline flex items-center gap-1 cursor-pointer"
+                  >
+                    <Scan className="w-3 h-3" /> {data.battery12vDoc ? 'Riscansiona' : 'Allega'}
+                  </button>
+                </div>
+              </div>
               <input
-                type="text"
-                inputMode="numeric"
-                value={data.lastServiceKm || ''}
-                onChange={e => set('lastServiceKm', e.target.value.replace(/\D/g, ''))}
-                placeholder="Es. 30.000"
+                type="date"
+                value={data.battery12vExpiryDate || ''}
+                onChange={e => set('battery12vExpiryDate', e.target.value)}
                 className={inputCls}
               />
-            </Field>
+            </div>
 
-            <Field label="Km Ultimo Controllo Gomme" onAttach={() => setCapturingField({ key: 'tireDoc', title: 'Controllo Gomme' })} hasDoc={!!data.tireDoc}>
-              <input
-                type="text"
-                inputMode="numeric"
-                value={data.tiresKm || ''}
-                onChange={e => set('tiresKm', e.target.value.replace(/\D/g, ''))}
-                placeholder="Es. 40.000"
-                className={inputCls}
-              />
-            </Field>
-
-            <Field label="Estensione Suggerito Gomme (+ Km)">
-              <input
-                type="text"
-                inputMode="numeric"
-                value={data.tiresSuggestedOffsetKm || ''}
-                onChange={e => set('tiresSuggestedOffsetKm', e.target.value.replace(/\D/g, '') ? Number(e.target.value.replace(/\D/g, '')) : undefined)}
-                placeholder="Es. 2.000"
-                className={inputCls}
-              />
-            </Field>
-
-             <Field label="Scadenza Batteria 12v" colSpan={2} onAttach={() => setCapturingField({ key: 'battery12vDoc', title: 'Batteria 12v' })} hasDoc={!!data.battery12vDoc}>
-               <input
-                 type="date"
-                 value={data.battery12vExpiryDate || ''}
-                 onChange={e => set('battery12vExpiryDate', e.target.value)}
-                 className="w-full p-3.5 bg-[var(--bg)] border border-[var(--border)] rounded-2xl outline-none focus:border-amber-400 transition-all text-sm font-semibold text-[var(--text-main)]"
-               />
-             </Field>
- 
-             {(data.fuelType === 'ibrida' || data.fuelType === 'elettrica') && (
-               <Field label="Batteria Ibrida / EV (Km e Garanzia)" colSpan={2} onAttach={() => setCapturingField({ key: 'hybridBatteryDoc', title: 'Batteria Ibrida' })} hasDoc={!!data.hybridBatteryDoc}>
-                 <div className="flex flex-col gap-2">
-                   <input
-                     type="text"
-                     value={data.hybridBatteryWarranty || ''}
-                     onChange={e => set('hybridBatteryWarranty', e.target.value)}
-                     placeholder="Es. Km per prossimo controllo (es. 99180)"
-                     className="w-full p-3.5 bg-[var(--bg)] border border-[var(--border)] rounded-2xl outline-none focus:border-amber-400 transition-all text-sm font-semibold text-[var(--text-main)] placeholder:text-[var(--text-muted)]/50"
-                   />
-                   <div className="flex items-center gap-2">
-                     <span className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest whitespace-nowrap">Scadenza Garanzia:</span>
-                     <input
-                         type="date"
-                         value={data.hybridBatteryExpiryDate || ''}
-                         onChange={e => set('hybridBatteryExpiryDate', e.target.value)}
-                         className="flex-1 p-3.5 bg-[var(--bg)] border border-[var(--border)] rounded-2xl outline-none focus:border-amber-400 transition-all text-sm font-semibold text-[var(--text-main)]"
-                     />
-                   </div>
-                 </div>
-               </Field>
-             )}
-
-            {data.fuelType === 'gpl' && (
-              <Field label="Data Installazione Bombola GPL" colSpan={2}>
-                <input
-                  type="date"
-                  value={data.lastGplCylinder || ''}
-                  onChange={e => set('lastGplCylinder', e.target.value)}
-                  className={inputCls}
-                />
-              </Field>
+            {/* Ibrida / EV Specifica */}
+            {(data.fuelType === 'ibrida' || data.fuelType === 'elettrica') && (
+              <div className="sm:col-span-2 p-4 bg-[var(--surface-variant)]/60 rounded-2xl border border-[var(--border)] space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-emerald-500">
+                    <Zap className="w-4 h-4" />
+                    <span className="text-xs font-black uppercase tracking-wider">Garanzia Batteria Ibrida / Elettrica</span>
+                  </div>
+                  {data.hybridBatteryDoc ? (
+                    <button
+                      type="button"
+                      onClick={() => setViewingDoc({ title: 'Garanzia Batteria Ibrida', data: data.hybridBatteryDoc! })}
+                      className="text-[9px] font-bold text-emerald-500 hover:underline flex items-center gap-1 cursor-pointer"
+                    >
+                      <Eye className="w-3 h-3" /> Documento
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setCapturingField({ key: 'hybridBatteryDoc', title: 'Garanzia Batteria Ibrida' })}
+                      className="text-[9px] font-bold text-[var(--accent)] hover:underline flex items-center gap-1 cursor-pointer"
+                    >
+                      <Scan className="w-3 h-3" /> Allega
+                    </button>
+                  )}
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-wider block mb-1">
+                      Data Scadenza Garanzia
+                    </label>
+                    <input
+                      type="date"
+                      value={data.hybridBatteryExpiryDate || ''}
+                      onChange={e => set('hybridBatteryExpiryDate', e.target.value)}
+                      className={inputCls}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-wider block mb-1">
+                      Limite Km Garanzia (es. 100000)
+                    </label>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={data.hybridBatteryWarranty || ''}
+                      onChange={e => set('hybridBatteryWarranty', e.target.value.replace(/\D/g, ''))}
+                      placeholder="Es. 100000"
+                      className={inputCls}
+                    />
+                  </div>
+                </div>
+              </div>
             )}
 
-            {data.fuelType === 'metano' && (
-              <>
-                <Field label="Ultima Revisione Bombola Metano">
+            {/* GPL Specifica */}
+            {data.fuelType === 'gpl' && (
+              <div className="sm:col-span-2 p-4 bg-orange-500/5 rounded-2xl border border-orange-500/20 space-y-2">
+                <div className="flex items-center gap-2 text-orange-500">
+                  <Flame className="w-4 h-4" />
+                  <span className="text-xs font-black uppercase tracking-wider">Bombola GPL</span>
+                </div>
+                <div>
+                  <label className="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-wider block mb-1">
+                    Data Sostituzione Bombola (Validità 10 anni)
+                  </label>
                   <input
                     type="date"
-                    value={data.lastMethaneCylinder || ''}
-                    onChange={e => set('lastMethaneCylinder', e.target.value)}
+                    value={data.lastGplCylinder || ''}
+                    onChange={e => set('lastGplCylinder', e.target.value)}
                     className={inputCls}
                   />
-                </Field>
-                <Field label="Omologazione Bombola">
-                  <select
-                    value={data.methaneType || 'standard'}
-                    onChange={e => set('methaneType', e.target.value)}
-                    className={inputCls}
-                  >
-                    <option value="standard">Standard (4 anni)</option>
-                    <option value="r110">Europea R110 (5 anni)</option>
-                  </select>
-                </Field>
-              </>
+                </div>
+              </div>
+            )}
+
+            {/* Metano Specifica */}
+            {data.fuelType === 'metano' && (
+              <div className="sm:col-span-2 p-4 bg-sky-500/5 rounded-2xl border border-sky-500/20 space-y-3">
+                <div className="flex items-center gap-2 text-sky-500">
+                  <Flame className="w-4 h-4" />
+                  <span className="text-xs font-black uppercase tracking-wider">Bombola Metano</span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-wider block mb-1">
+                      Data Ultima Revisione Bombola
+                    </label>
+                    <input
+                      type="date"
+                      value={data.lastMethaneCylinder || ''}
+                      onChange={e => set('lastMethaneCylinder', e.target.value)}
+                      className={inputCls}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-wider block mb-1">
+                      Omologazione
+                    </label>
+                    <select
+                      value={data.methaneType || 'standard'}
+                      onChange={e => set('methaneType', e.target.value as 'standard' | 'r110')}
+                      className={inputCls}
+                    >
+                      <option value="standard">Standard Nazionale (4 anni)</option>
+                      <option value="r110">Europea R110 (5 anni)</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
             )}
           </div>
         </div>
 
-        {/* Bottom save button (mobile comfort) */}
-        <div className="pt-6">
+        {/* ── Section 4: Documenti Principali del Veicolo (Libretto & CDP) ── */}
+        <div className="bg-[var(--card-bg)] border border-[var(--border)] rounded-3xl p-5 sm:p-6 shadow-xs space-y-4">
+          <SectionTitle icon={FileText} label="4. Documenti Essenziali" subtitle="Libretto di circolazione e certificato di proprietà" />
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* Libretto di circolazione */}
+            <div className="p-4 bg-[var(--bg)] border border-[var(--border)] rounded-2xl flex flex-col justify-between">
+              <div className="flex items-start justify-between gap-2 mb-3">
+                <div>
+                  <h4 className="text-xs font-black uppercase tracking-wider text-[var(--text-main)]">
+                    Libretto di Circolazione
+                  </h4>
+                  <p className="text-[10px] text-[var(--text-muted)]">Documento Unico di Circolazione</p>
+                </div>
+                {data.librettoDoc ? (
+                  <span className="px-2 py-0.5 text-[8.5px] font-black uppercase tracking-wider rounded-md bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
+                    Presente
+                  </span>
+                ) : (
+                  <span className="px-2 py-0.5 text-[8.5px] font-bold uppercase tracking-wider rounded-md bg-[var(--surface-variant)] text-[var(--text-muted)]">
+                    Mancante
+                  </span>
+                )}
+              </div>
+
+              <div className="flex items-center gap-2 pt-2 border-t border-[var(--border)]">
+                {data.librettoDoc ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => setViewingDoc({ title: 'Libretto di Circolazione', data: data.librettoDoc! })}
+                      className="flex-1 py-1.5 px-3 bg-[var(--card-bg)] border border-[var(--border)] rounded-xl text-xs font-bold text-[var(--text-main)] hover:bg-[var(--surface-variant)] flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                    >
+                      <Eye className="w-3.5 h-3.5" /> Visualizza
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setCapturingField({ key: 'librettoDoc', title: 'Libretto di Circolazione' })}
+                      className="p-1.5 text-[var(--text-muted)] hover:text-[var(--accent)] rounded-xl transition-colors cursor-pointer"
+                      title="Sostituisci"
+                    >
+                      <Scan className="w-4 h-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => set('librettoDoc', undefined)}
+                      className="p-1.5 text-red-400 hover:text-red-500 rounded-xl transition-colors cursor-pointer"
+                      title="Rimuovi"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setCapturingField({ key: 'librettoDoc', title: 'Libretto di Circolazione' })}
+                    className="w-full py-2 px-3 bg-[var(--accent-bg)] border border-[var(--accent)]/20 rounded-xl text-xs font-bold text-[var(--accent)] hover:bg-[var(--accent)] hover:text-white flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                  >
+                    <Scan className="w-3.5 h-3.5" /> Allega Libretto
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Certificato di Proprietà (CDP) */}
+            <div className="p-4 bg-[var(--bg)] border border-[var(--border)] rounded-2xl flex flex-col justify-between">
+              <div className="flex items-start justify-between gap-2 mb-3">
+                <div>
+                  <h4 className="text-xs font-black uppercase tracking-wider text-[var(--text-main)]">
+                    Certificato di Proprietà
+                  </h4>
+                  <p className="text-[10px] text-[var(--text-muted)]">CDP Digitale o Atto di vendita</p>
+                </div>
+                {data.cdpDoc ? (
+                  <span className="px-2 py-0.5 text-[8.5px] font-black uppercase tracking-wider rounded-md bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
+                    Presente
+                  </span>
+                ) : (
+                  <span className="px-2 py-0.5 text-[8.5px] font-bold uppercase tracking-wider rounded-md bg-[var(--surface-variant)] text-[var(--text-muted)]">
+                    Mancante
+                  </span>
+                )}
+              </div>
+
+              <div className="flex items-center gap-2 pt-2 border-t border-[var(--border)]">
+                {data.cdpDoc ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => setViewingDoc({ title: 'Certificato di Proprietà', data: data.cdpDoc! })}
+                      className="flex-1 py-1.5 px-3 bg-[var(--card-bg)] border border-[var(--border)] rounded-xl text-xs font-bold text-[var(--text-main)] hover:bg-[var(--surface-variant)] flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                    >
+                      <Eye className="w-3.5 h-3.5" /> Visualizza
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setCapturingField({ key: 'cdpDoc', title: 'Certificato di Proprietà' })}
+                      className="p-1.5 text-[var(--text-muted)] hover:text-[var(--accent)] rounded-xl transition-colors cursor-pointer"
+                      title="Sostituisci"
+                    >
+                      <Scan className="w-4 h-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => set('cdpDoc', undefined)}
+                      className="p-1.5 text-red-400 hover:text-red-500 rounded-xl transition-colors cursor-pointer"
+                      title="Rimuovi"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setCapturingField({ key: 'cdpDoc', title: 'Certificato di Proprietà' })}
+                    className="w-full py-2 px-3 bg-[var(--accent-bg)] border border-[var(--accent)]/20 rounded-xl text-xs font-bold text-[var(--accent)] hover:bg-[var(--accent)] hover:text-white flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                  >
+                    <Scan className="w-3.5 h-3.5" /> Allega CDP
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Bottom Save Action Button */}
+        <div className="pt-2 pb-6">
           <button
             type="submit"
-            className="w-full py-4 bg-gradient-to-tr from-amber-500 to-amber-400 hover:from-amber-600 hover:to-amber-500 text-white rounded-2xl font-bold text-base transition-all shadow-xl shadow-amber-500/20 hover:scale-[1.01] active:scale-[0.99]"
+            className="w-full py-4 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 active:scale-[0.99] text-white rounded-2xl font-black text-sm uppercase tracking-wider transition-all shadow-xl shadow-emerald-500/20 cursor-pointer"
           >
-            Salva Modifiche
+            Salva Modifiche Veicolo
           </button>
         </div>
       </form>
 
+      {/* Modals & Pickers */}
       <AnimatePresence>
         {capturingField && (
           <DocumentScanner
@@ -364,19 +768,29 @@ export const AutoEditScreen = ({ module, onSave, onCancel }: AutoEditScreenProps
             onClose={() => setCapturingField(null)}
           />
         )}
+
         {picker && (
           <BrandModelPicker
             type={picker}
             brand={data.brand}
             onSelect={(v) => {
-               set(picker, v);
-               if (picker === 'brand') {
-                 setPicker('model');
-               } else {
-                 setPicker(null);
-               }
+              set(picker, v);
+              if (picker === 'brand') {
+                setPicker('model');
+              } else {
+                setPicker(null);
+              }
             }}
             onClose={() => setPicker(null)}
+          />
+        )}
+
+        {viewingDoc && (
+          <DocumentViewer
+            isOpen={!!viewingDoc}
+            title={viewingDoc.title}
+            data={viewingDoc.data}
+            onClose={() => setViewingDoc(null)}
           />
         )}
       </AnimatePresence>

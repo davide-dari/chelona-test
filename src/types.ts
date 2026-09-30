@@ -40,6 +40,24 @@ export interface DocumentModule extends BaseModule {
   selfDestructAt?: number; // timestamp in ms
 }
 
+export interface AutoMaintenanceRecord {
+  id: string;
+  date: string;
+  km?: string;
+  type: 'tagliando' | 'gomme' | 'freni' | 'revisione' | 'batteria' | 'riparazione' | 'altro';
+  title: string;
+  notes?: string;
+  cost?: number;
+  doc?: string;
+}
+
+export interface AutoKmRecord {
+  id: string;
+  date: string;
+  km: number;
+  note?: string;
+}
+
 export interface AutoModule extends BaseModule {
   type: 'auto';
   driverName: string;
@@ -77,6 +95,13 @@ export interface AutoModule extends BaseModule {
   tireDoc?: string;
   battery12vDoc?: string;
   hybridBatteryDoc?: string;
+  librettoDoc?: string;
+  cdpDoc?: string;
+  ownershipDoc?: string;
+
+  // Storico interventi e chilometri
+  maintenanceHistory?: AutoMaintenanceRecord[];
+  kmHistory?: AutoKmRecord[];
 }
 
 export interface SplitParticipant {
