@@ -3494,15 +3494,7 @@ export default function App() {
                   )}
 
                   <button 
-                    onClick={() => { setIsAiOpen(true); setActiveNavTab('ai'); setIsToolsOpen(false); setIsProfileOpen(false); setSelectedType(null); }}
-                    className="p-2 sm:p-2.5 bg-gradient-to-tr from-amber-500/10 via-rose-500/10 to-indigo-500/10 hover:from-amber-500/20 hover:to-indigo-500/20 rounded-full text-amber-500 border border-amber-500/30 transition-all flex items-center justify-center shadow-sm cursor-pointer"
-                    title="Chelona AI"
-                  >
-                    <Sparkles className="w-4 h-4 sm:w-5 sm:h-5" />
-                  </button>
-
-                  <button 
-                    onClick={() => { setIsToolsOpen(true); setIsProfileOpen(false); setIsAiOpen(false); setSelectedType(null); }}
+                    onClick={() => { setIsToolsOpen(true); setIsProfileOpen(false); setIsAiOpen(false); setSelectedType(null); }} 
                     className="p-2 sm:p-2.5 bg-[var(--surface-variant)] hover:bg-[var(--border)] rounded-full text-[var(--accent)] transition-all hidden md:flex items-center justify-center shadow-sm cursor-pointer"
                     title="Strumenti"
                   >
@@ -3519,26 +3511,9 @@ export default function App() {
                   </button>
 
                   <button 
-                    onClick={() => {
-                      setAddressParkingTab(hasActiveParking ? 'parking' : 'addresses');
-                      setIsAddressAndParkingOpen(true);
-                    }}
-                    className="relative p-2 sm:p-2.5 bg-[var(--surface-variant)] hover:bg-[var(--border)] rounded-full text-indigo-500 hover:text-indigo-600 transition-all flex items-center justify-center shadow-sm cursor-pointer"
-                    title="Indirizzi & Parcheggio"
-                  >
-                    <div className="relative flex items-center justify-center">
-                      <MapPin className="w-4 h-4 sm:w-5 sm:h-5" />
-                      {hasActiveParking && (
-                        <span className="absolute -top-1.5 -right-1.5 w-3.5 h-3.5 bg-indigo-500 text-[9px] font-black text-white rounded-full flex items-center justify-center ring-2 ring-[var(--surface)] shadow-sm">
-                          P
-                        </span>
-                      )}
-                    </div>
-                  </button>
-
-                  <button 
                     onClick={() => { setIsProfileOpen(true); setIsAiOpen(false); }} 
-                    className="w-9 h-9 lg:w-11 lg:h-11 rounded-full overflow-hidden border border-[var(--border)] focus:outline-none hover:opacity-80 transition-all bg-[var(--surface-variant)] shadow-sm cursor-pointer"
+                    className="w-11 h-11 sm:w-12 sm:h-12 lg:w-14 lg:h-14 rounded-full overflow-hidden border-2 border-[var(--accent)]/40 focus:outline-none hover:opacity-85 hover:border-[var(--accent)] transition-all bg-[var(--surface-variant)] shadow-md cursor-pointer ml-1"
+                    title="Profilo utente"
                   >
                     <img src={avatar || `https://ui-avatars.com/api/?name=${username}&background=E3E3E3&color=5E5E5E`} alt="Profile" className="w-full h-full object-cover" />
                   </button>
@@ -4538,29 +4513,7 @@ export default function App() {
                 </div>
               </motion.div>
             ) : (
-              <div className="h-full">
-                <div className="mb-6 lg:mb-10 w-full px-4 lg:px-8">
-                  <div className="relative group max-w-2xl mx-auto">
-                    <Search className="absolute left-6 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--text-muted)] group-focus-within:text-[var(--accent)] transition-colors" />
-                    <input 
-                      type="text" 
-                      placeholder={`Cerca ${selectedType ? (TEMPLATES[selectedType as keyof typeof TEMPLATES]?.title || 'nelle tue Sandbox') : 'nelle tue Sandbox'}...`}
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="w-full pl-14 pr-14 py-4.5 bg-[var(--surface-variant)] border-transparent rounded-[var(--radius-lg)] shadow-none outline-none focus:bg-[var(--bg)] focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)] transition-all text-base lg:text-lg font-medium text-[var(--text-main)] placeholder:text-[var(--text-muted)]"
-                    />
-                    {searchQuery && (
-                      <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center">
-                        <button 
-                          onClick={() => setSearchQuery('')}
-                          className="p-2 hover:bg-[var(--bg)] rounded-full text-[var(--text-muted)] transition-all"
-                        >
-                          <X className="w-5 h-5" />
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </div>
+              <div className="h-full pt-2">
 
                 <>
                     {searchQuery.trim() && filteredTools.length > 0 && (
@@ -4672,154 +4625,7 @@ export default function App() {
                         )}
                       </div>
                     ) : !selectedType && !selectedFolderId && !searchQuery.trim() ? (
-                      <div className="px-4 lg:px-8 pb-40">
-                        {/* Hero Greeting & Chelona AI Voice Assistant Card */}
-                        <motion.div
-                          initial={{ opacity: 0, y: 15 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ duration: 0.35, ease: 'easeOut' }}
-                          className="relative overflow-hidden mb-8 rounded-[2.5rem] p-6 sm:p-7 border border-[var(--border)] bg-gradient-to-br from-[var(--card-bg)] via-[var(--card-bg)] to-[var(--surface-variant)] shadow-xl shadow-amber-500/5 group"
-                        >
-                          {/* Ambient decorative lighting */}
-                          <div className="absolute -top-16 -right-16 w-56 h-56 bg-gradient-to-br from-amber-400/20 via-rose-400/15 to-indigo-500/15 rounded-full blur-3xl pointer-events-none" />
-                          <div className="absolute -bottom-16 -left-16 w-44 h-44 bg-gradient-to-tr from-teal-400/10 via-indigo-500/10 to-transparent rounded-full blur-2xl pointer-events-none" />
-
-                          <div className="relative z-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-5">
-                            <div className="space-y-2 max-w-lg">
-                              <h2 className="text-2xl sm:text-3xl font-black text-[var(--text-main)] tracking-tight leading-tight">
-                                Ciao <span className="bg-gradient-to-r from-amber-500 via-rose-500 to-indigo-500 bg-clip-text text-transparent">{(username?.trim()) || 'Utente'}</span>,
-                                <br />
-                                come posso aiutarti oggi?
-                              </h2>
-
-                              <p className="text-xs sm:text-sm text-[var(--text-muted)] font-medium leading-relaxed">
-                                Chiedimi qualsiasi cosa sui tuoi veicoli, scadenze, documenti, note o spese.
-                              </p>
-                            </div>
-
-                            {/* Ask Chelona AI Button (Chat) & Direct Mic Button */}
-                            <div className="flex items-center gap-2.5 shrink-0">
-                              <motion.button
-                                whileHover={{ scale: 1.02 }}
-                                whileTap={{ scale: 0.95 }}
-                                onClick={() => {
-                                  setAiInitialVoiceMode(false);
-                                  setIsAiOpen(true);
-                                  setActiveNavTab('ai');
-                                  setIsToolsOpen(false);
-                                  setIsProfileOpen(false);
-                                  setSelectedType(null);
-                                }}
-                                className="px-5 py-3 rounded-2xl bg-gradient-to-r from-amber-500 via-rose-500 to-indigo-600 hover:opacity-95 text-white font-bold text-sm shadow-md shadow-amber-500/20 transition-all flex items-center justify-center gap-2 active:scale-95 shrink-0 cursor-pointer"
-                                title="Apri chat con Chelona AI"
-                                aria-label="Apri chat con Chelona AI"
-                              >
-                                <Sparkles className="w-4 h-4 text-white" />
-                                <span>Chiedi a Chelona</span>
-                              </motion.button>
-
-                              {isHomeVoiceProcessing ? (
-                                <div className="p-3 rounded-2xl border border-amber-500/30 bg-amber-500/10 text-amber-500 flex items-center justify-center shrink-0 shadow-xs">
-                                  <Loader2 className="w-5 h-5 animate-spin" />
-                                </div>
-                              ) : (
-                                <button
-                                  type="button"
-                                  onClick={handleToggleHomeVoice}
-                                  className={`relative p-3 rounded-2xl border transition-all shrink-0 active:scale-95 shadow-xs flex items-center justify-center cursor-pointer ${
-                                    isHomeVoiceListening
-                                      ? 'bg-rose-500 text-white border-rose-500 shadow-rose-500/30 ring-4 ring-rose-500/20'
-                                      : 'bg-[var(--surface-variant)] hover:bg-[var(--border)] border-[var(--border)] text-amber-500'
-                                  }`}
-                                  title={isHomeVoiceListening ? "Tocca per fermare l'ascolto" : "Parla con Chelona"}
-                                  aria-label={isHomeVoiceListening ? "Tocca per fermare l'ascolto" : "Parla con Chelona"}
-                                >
-                                  {isHomeVoiceListening && (
-                                    <span className="absolute inset-0 rounded-2xl bg-rose-500 animate-ping opacity-30 pointer-events-none" />
-                                  )}
-                                  {isHomeVoiceListening ? <MicOff className="w-5 h-5 relative z-10" /> : <Mic className="w-5 h-5" />}
-                                </button>
-                              )}
-                            </div>
-                          </div>
-
-                          {/* Homepage Voice Assistant Listening Banner / Waveform */}
-                          <AnimatePresence>
-                            {(isHomeVoiceListening || isHomeVoiceProcessing) && (
-                              <motion.div
-                                initial={{ opacity: 0, height: 0, marginTop: 0 }}
-                                animate={{ opacity: 1, height: 'auto', marginTop: 16 }}
-                                exit={{ opacity: 0, height: 0, marginTop: 0 }}
-                                transition={{ duration: 0.2 }}
-                                className="relative z-10 pt-3 border-t border-[var(--border)]/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3 overflow-hidden"
-                              >
-                                <div className="flex items-center gap-3">
-                                  <div className="relative flex items-center justify-center w-9 h-9 rounded-2xl bg-rose-500/10 text-rose-500 shrink-0 border border-rose-500/20">
-                                    {isHomeVoiceListening ? (
-                                      <>
-                                        <span
-                                          className="absolute inset-0 rounded-2xl bg-rose-500/20 animate-ping pointer-events-none"
-                                          style={{ transform: `scale(${1 + homeVoiceVolume * 0.8})` }}
-                                        />
-                                        <span className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-pulse" />
-                                      </>
-                                    ) : (
-                                      <Loader2 className="w-4 h-4 animate-spin text-amber-500" />
-                                    )}
-                                  </div>
-
-                                  <div className="min-w-0">
-                                    <p className="text-xs font-bold text-[var(--text-main)] flex items-center gap-1.5">
-                                      {isHomeVoiceListening ? (
-                                        <>
-                                          <span className="text-rose-500 font-black">In ascolto...</span>
-                                          <span className="text-[var(--text-muted)] font-normal">Parla pure</span>
-                                        </>
-                                      ) : (
-                                        <span className="text-amber-500 font-semibold">Elaborazione richiesta in corso...</span>
-                                      )}
-                                    </p>
-                                    <p className="text-xs text-[var(--text-muted)] truncate max-w-xs sm:max-w-md italic font-medium">
-                                      {homeVoiceTranscript ? `"${homeVoiceTranscript}"` : (isHomeVoiceListening ? 'Es: "Aggiungi latte alla spesa", "Togli pane dalla spesa"' : 'Un attimo...')}
-                                    </p>
-                                  </div>
-                                </div>
-
-                                {isHomeVoiceListening && (
-                                  <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        voiceRecognitionService.stop();
-                                        setIsHomeVoiceListening(false);
-                                        setHomeVoiceTranscript('');
-                                      }}
-                                      className="px-3 py-1.5 rounded-xl bg-[var(--surface-variant)] hover:bg-[var(--border)] text-[var(--text-muted)] hover:text-[var(--text-main)] text-xs font-semibold transition-all cursor-pointer"
-                                    >
-                                      Annulla
-                                    </button>
-                                    {homeVoiceTranscript.trim().length > 0 && (
-                                      <button
-                                        type="button"
-                                        onClick={() => {
-                                          const t = homeVoiceTranscript.trim();
-                                          voiceRecognitionService.stop();
-                                          setIsHomeVoiceListening(false);
-                                          executeHomeVoiceCommand(t);
-                                        }}
-                                        className="px-3.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold transition-all shadow-xs flex items-center gap-1 cursor-pointer active:scale-95"
-                                      >
-                                        <Check className="w-3.5 h-3.5" />
-                                        <span>Fatto</span>
-                                      </button>
-                                    )}
-                                  </div>
-                                )}
-                              </motion.div>
-                            )}
-                          </AnimatePresence>
-                        </motion.div>
-
+                      <div className="px-4 lg:px-8 pb-40 pt-2">
                         {/* Widgets Section (Shortcuts) */}
                         {(pinnedToolIds.length > 0 || pinnedCategoryIds.length > 0) && (
                           <div className="mb-10">
@@ -5060,6 +4866,32 @@ export default function App() {
                               </div>
                               <p className="text-xs text-[var(--text-muted)] line-clamp-2 leading-relaxed">
                                 Pianifica mete, tappe del viaggio e scadenze valigie
+                              </p>
+                            </div>
+                          </button>
+
+                          {/* 7. Indirizzi & Parcheggio */}
+                          <button
+                            onClick={() => {
+                              setAddressParkingTab(hasActiveParking ? 'parking' : 'addresses');
+                              setIsAddressAndParkingOpen(true);
+                            }}
+                            className="bg-[var(--card-bg)] p-6 lg:p-7 rounded-[2.5rem] border border-[var(--border)] hover:border-amber-500/50 shadow-sm hover:shadow-lg transition-all text-left flex items-start gap-4 group active:scale-[0.99] relative overflow-hidden"
+                          >
+                            <div className="w-14 h-14 rounded-3xl bg-amber-500/10 text-amber-500 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform shadow-inner">
+                              <MapPin className="w-7 h-7" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center justify-between gap-2 mb-1">
+                                <h4 className="font-black text-base lg:text-lg text-[var(--text-main)]">Indirizzi & Parcheggio</h4>
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                                    {hasActiveParking ? 'P Attivo' : 'Posizione'}
+                                  </span>
+                                </div>
+                              </div>
+                              <p className="text-xs text-[var(--text-muted)] line-clamp-2 leading-relaxed">
+                                Dov'è l'auto, navigatore radar, parchimetro e rubrica indirizzi salvati
                               </p>
                             </div>
                           </button>

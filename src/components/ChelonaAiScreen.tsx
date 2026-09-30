@@ -512,6 +512,7 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
       },
       onEnd: () => {
         setIsListening(false);
+        setLiveAudioVolume(0);
         if (isVoiceSession && voiceStatus !== 'speaking') {
           setVoiceStatus('idle');
         }
@@ -521,6 +522,7 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
 
     if (!success) {
       setIsListening(false);
+      setLiveAudioVolume(0);
       if (isVoiceSession) setVoiceStatus('idle');
     }
   };
@@ -529,6 +531,7 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
     voiceRecognitionService.stop();
     setIsListening(false);
     setLiveVoiceTranscript('');
+    setLiveAudioVolume(0);
     if (isVoiceModeOpen) {
       setVoiceStatus('idle');
     }
@@ -538,6 +541,7 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
     const textToSend = (liveVoiceTranscript || inputText).trim();
     voiceRecognitionService.stop();
     setIsListening(false);
+    setLiveAudioVolume(0);
     if (textToSend.length > 0) {
       handleSend(textToSend, isVoiceModeOpen, true);
     }

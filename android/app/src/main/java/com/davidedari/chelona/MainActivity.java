@@ -442,21 +442,23 @@ public class MainActivity extends BridgeActivity {
                     if (nativeSpeechRecognizer != null) {
                         try {
                             nativeSpeechRecognizer.cancel();
+                            nativeSpeechRecognizer.destroy();
                         } catch (Exception ignored) {}
-                    } else {
-                        try {
-                            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU &&
-                                    android.speech.SpeechRecognizer.isOnDeviceRecognitionAvailable(context)) {
-                                nativeSpeechRecognizer = android.speech.SpeechRecognizer.createOnDeviceSpeechRecognizer(context);
-                            }
-                        } catch (Exception ignored) {}
+                        nativeSpeechRecognizer = null;
+                    }
 
-                        if (nativeSpeechRecognizer == null) {
-                            try {
-                                nativeSpeechRecognizer = android.speech.SpeechRecognizer.createSpeechRecognizer(context);
-                            } catch (Exception e) {
-                                android.util.Log.e("ChelonaNative", "Error creating speech recognizer", e);
-                            }
+                    try {
+                        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU &&
+                                android.speech.SpeechRecognizer.isOnDeviceRecognitionAvailable(context)) {
+                            nativeSpeechRecognizer = android.speech.SpeechRecognizer.createOnDeviceSpeechRecognizer(context);
+                        }
+                    } catch (Exception ignored) {}
+
+                    if (nativeSpeechRecognizer == null) {
+                        try {
+                            nativeSpeechRecognizer = android.speech.SpeechRecognizer.createSpeechRecognizer(context);
+                        } catch (Exception e) {
+                            android.util.Log.e("ChelonaNative", "Error creating speech recognizer", e);
                         }
                     }
 
@@ -504,15 +506,10 @@ public class MainActivity extends BridgeActivity {
                             try {
                                 if (nativeSpeechRecognizer != null) {
                                     nativeSpeechRecognizer.cancel();
+                                    nativeSpeechRecognizer.destroy();
+                                    nativeSpeechRecognizer = null;
                                 }
                             } catch (Exception ignored) {}
-                            if (error == android.speech.SpeechRecognizer.ERROR_RECOGNIZER_BUSY || 
-                                error == android.speech.SpeechRecognizer.ERROR_CLIENT) {
-                                try {
-                                    nativeSpeechRecognizer.destroy();
-                                } catch (Exception ignored) {}
-                                nativeSpeechRecognizer = null;
-                            }
                             emitJsEvent("chelona_speech_error", "{ \"error\": " + error + " }");
                         }
 
@@ -531,6 +528,12 @@ public class MainActivity extends BridgeActivity {
                             } else {
                                 emitJsEvent("chelona_speech_end", "{}");
                             }
+                            try {
+                                if (nativeSpeechRecognizer != null) {
+                                    nativeSpeechRecognizer.destroy();
+                                    nativeSpeechRecognizer = null;
+                                }
+                            } catch (Exception ignored) {}
                         }
 
                         @Override

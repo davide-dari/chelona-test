@@ -9,6 +9,7 @@
  * - Visualizzatore forma d'onda audio live (RMS decibel / Web Audio API)
  * - Rilevamento automatico fine parlato (Voice Activity Detection)
  */
+import { SpeechRecognition as CapSpeechRecognition } from '@capacitor-community/speech-recognition';
 
 export interface VoiceServiceOptions {
   lang?: string;
@@ -131,7 +132,10 @@ class VoiceRecognitionService {
   }
 
   /**
-   * Avvia il riconoscimento vocale in-app
+   * Avvia il riconoscimento vocale in-app con architettura multi-tier:
+   * 1. ChelonaNative in-app engine
+   * 2. Capacitor Community SpeechRecognition plugin
+   * 3. Web Speech API (webkitSpeechRecognition)
    */
   public async start(options: VoiceServiceOptions = {}): Promise<boolean> {
     this.stop();
@@ -141,10 +145,9 @@ class VoiceRecognitionService {
     this.isListening = true;
 
     const lang = options.lang || 'it-IT';
-    const isAndroid = typeof navigator !== 'undefined' && (/android/i.test(navigator.userAgent) || (window as any)?.Capacitor?.getPlatform() === 'android');
     const native = (window as any)?.ChelonaNative;
 
-    // 1. Prova il recognizer nativo in-app (Android On-Device o standard senza dialog Google)
+    // 1. Prova il recognizer nativo in-app ChelonaNative
     if (native && typeof native.startSpeechRecognition === 'function') {
       try {
         const started = native.startSpeechRecognition(lang);
@@ -153,19 +156,47 @@ class VoiceRecognitionService {
           return true;
         }
       } catch (err) {
-        console.warn('[VoiceService] Native start failed', err);
+        console.warn('[VoiceService] Native start failed, trying Capacitor plugin fallback...', err);
       }
     }
 
-    // Su Android NON usare MAI webkitSpeechRecognition perché il WebView di Chrome apre il popup di Google!
-    if (isAndroid) {
-      console.warn('[VoiceService] Suppressed Web Speech on Android to avoid external Google dialog.');
-      this.isListening = false;
-      options.onError?.('Microfono in-app non disponibile. Verifica i permessi nelle impostazioni.');
-      return false;
+    // 2. Fallback su Capacitor Community Speech Recognition plugin
+    try {
+      const isCapAvailable = await CapSpeechRecognition.available().catch(() => ({ available: false }));
+      if (isCapAvailable && isCapAvailable.available) {
+        const perm = await CapSpeechRecognition.checkPermissions().catch(() => null);
+        if (perm?.speechRecognition !== 'granted') {
+          await CapSpeechRecognition.requestPermissions().catch(() => {});
+        }
+
+        await CapSpeechRecognition.removeAllListeners().catch(() => {});
+        await CapSpeechRecognition.addListener('partialResults', (data: { matches: string[] }) => {
+          if (data.matches && data.matches.length > 0) {
+            const text = data.matches[0];
+            this.currentTranscript = text;
+            options.onPartial?.(text);
+            this.resetSilenceTimer();
+          }
+        });
+
+        await CapSpeechRecognition.start({
+          language: lang,
+          maxResults: 1,
+          prompt: 'Parla con Chelona AI...',
+          partialResults: true,
+          popup: false,
+        });
+
+        this.isListening = true;
+        options.onStart?.();
+        this.startWebAudioAnalyser(options.onRms);
+        return true;
+      }
+    } catch (capErr) {
+      console.warn('[VoiceService] CapSpeechRecognition start failed, trying Web Speech API...', capErr);
     }
 
-    // 2. Fallback su Web Speech API SOLO per browser desktop (Chrome / Edge desktop)
+    // 3. Fallback su Web Speech API (Chromium / Webkit)
     const SpeechRec = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (SpeechRec) {
       try {
@@ -248,6 +279,11 @@ class VoiceRecognitionService {
         native.stopSpeechRecognition();
       } catch (ignored) {}
     }
+
+    try {
+      CapSpeechRecognition.stop().catch(() => {});
+      CapSpeechRecognition.removeAllListeners().catch(() => {});
+    } catch (ignored) {}
 
     if (this.webRecognition) {
       try {
