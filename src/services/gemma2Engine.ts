@@ -336,13 +336,23 @@ export async function queryGemma2(
 
   engineState = 'ready';
 
-  // 8. Memorizzione in cache
+  // Se la risposta è vuota o insufficiente, delega al motore rule-based di Chelona
+  if (!responseText || responseText.length < 5) {
+    const { queryChelonaAi } = await import('./chelonaEngine');
+    const result = await queryChelonaAi(userQuery, modules, username);
+    return {
+      ...result,
+      engineUsed: 'chelona-engine',
+    };
+  }
+
+  // 8. Memorizzazione in cache
   if (!onToken && responseText) {
     promptCache.set(userQuery, ragContext, { text: responseText });
   }
 
   return {
-    text: responseText || 'Non ho trovato informazioni rilevanti nel tuo profilo per rispondere a questa domanda.',
+    text: responseText,
     engineUsed: 'gemma2-local',
     ragDocsUsed: ragDocs.length,
     cached: false,
