@@ -21,6 +21,8 @@ import {
 import { storage } from './storage';
 import { TOOLS } from '../constants/tools';
 import { wakeWordService } from './wakeWordService';
+import { checkGeminiNanoStatus, queryGeminiNanoOnDevice, type GeminiNanoStatus } from './geminiNanoService';
+export { checkGeminiNanoStatus, queryGeminiNanoOnDevice, type GeminiNanoStatus };
 
 export interface AiMemory {
   id: string;
@@ -1206,7 +1208,7 @@ export async function queryGemmaNano(
   userQuery: string,
   modules: Module[],
   username: string
-): Promise<{ text: string; actions?: AiAction[]; learnedFact?: string; createdModule?: Module; autoAction?: AiAction }> {
+): Promise<{ text: string; actions?: AiAction[]; learnedFact?: string; createdModule?: Module; autoAction?: AiAction; engineUsed?: 'gemini-nano' | 'local-engine' }> {
   await new Promise(res => setTimeout(res, 220));
 
   const query = userQuery.trim();
@@ -3005,16 +3007,21 @@ export async function queryGemmaNano(
     };
   }
 
-  // --- SEZIONE 18: PANORAMICA CAPABILITIES ("COSA PUOI FARE?", "CHI SEI?", "AIUTO") ---
+  // --- SEZIONE 18: PANORAMICA CAPABILITIES ("COSA PUOI FARE?", "CHI SEI?", "AIUTO", "VERSIONE", "MODELLO") ---
   if (
     lower.includes('cosa puoi fare') ||
     lower.includes('chi sei') ||
     lower.includes('aiuto') ||
     lower.includes('funzioni') ||
     lower.includes('cosa sai fare') ||
-    lower.includes('tutte le sezioni')
+    lower.includes('tutte le sezioni') ||
+    lower.includes('modello') ||
+    lower.includes('versione') ||
+    lower.includes('gemma') ||
+    lower.includes('gemini')
   ) {
-    let out = `🌟 **Sono Chelona AI**, il tuo assistente personale 100% on-device e privato. Conosco e posso gestire ogni sezione di Chelona:\n\n`;
+    let out = `🌟 **Sono Chelona AI**, il tuo assistente personale 100% on-device e privato.\n`;
+    out += `Supporto un'architettura **Ibrida Intelligente**: sfrutto l'accelerazione neurale di **Google Gemini Nano** on-device (se supportata dal tuo dispositivo) e il motore integrato ultra-rapido per gestire ogni modulo:\n\n`;
     out += `1. 🚗 **Veicoli & Auto**: Bollo, assicurazione, revisione, tagliando, gomme, km e targhe\n`;
     out += `2. 📄 **Documenti**: Patente, carta d'identità, passaporto, tessera sanitaria e scadenze\n`;
     out += `3. 👥 **Spese Condivise (Split)**: Gruppi uscite, bilancio e calcolo "chi deve a chi"\n`;
@@ -3199,6 +3206,28 @@ export async function queryGemmaNano(
     return { text: out, actions: actions.slice(0, 3) };
   }
 
+  // Tentativo di inferenza on-device con Gemini Nano per domande aperte e conversazionali
+  try {
+    const nanoResponse = await queryGeminiNanoOnDevice(
+      query,
+      `Utente: ${username || 'Utente'}\nModuli memorizzati: ${modules.length}`
+    );
+    if (nanoResponse) {
+      return {
+        text: nanoResponse,
+        actions: [
+          { label: 'Scadenze', type: 'deadlines' },
+          { label: 'Dov\'è l\'auto?', type: 'parking' },
+          { label: 'Volantini', type: 'volantino' },
+          { label: 'Tutti gli Strumenti', type: 'category', category: 'tools' },
+        ],
+        engineUsed: 'gemini-nano',
+      };
+    }
+  } catch (err) {
+    console.warn('[AI] Fallback on-device error:', err);
+  }
+
   // Fallback con suggerimenti pratici
   return {
     text: `Non ho trovato riferimenti precisi a questo nei tuoi moduli o appunti.\n\nPuoi chiedermi di:\n• **"Quali scadenze imminenti ho?"**\n• **"Dove ho parcheggiato l'auto?"**\n• **"Aggiungi latte alla lista della spesa"**\n• **"Chi deve a chi nelle spese condivise?"**\n• **"Mostrami le offerte dei volantini"**\n• **"Ricordati che..."** per salvare una memoria personale!`,
@@ -3207,5 +3236,6 @@ export async function queryGemmaNano(
       { label: 'Scadenze', type: 'deadlines' },
       { label: 'Dov\'è l\'auto?', type: 'parking' },
     ],
+    engineUsed: 'local-engine',
   };
 }

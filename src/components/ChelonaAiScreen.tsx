@@ -10,7 +10,8 @@ import { Module } from '../types';
 import { 
   AiMessage, AiMemory, AiAction, getChatHistory, saveChatHistory, 
   getLearnedMemories, deleteLearnedMemory, clearAllLearnedMemories, 
-  saveLearnedMemory, queryGemmaNano, buildKnowledgeBase 
+  saveLearnedMemory, queryGemmaNano, buildKnowledgeBase,
+  checkGeminiNanoStatus, type GeminiNanoStatus
 } from '../services/gemmaNanoEngine';
 import {
   prepareNaturalSpeech,
@@ -123,6 +124,14 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const isEmbedded = mode === 'embedded';
+
+  // Rilevamento hardware on-device Gemini Nano (Prompt API)
+  const [engineStatus, setEngineStatus] = useState<GeminiNanoStatus | null>(null);
+  useEffect(() => {
+    checkGeminiNanoStatus().then(status => {
+      setEngineStatus(status);
+    });
+  }, []);
 
   // Auto-scroll in basso nella chat
   useEffect(() => {
@@ -724,8 +733,25 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
             </div>
 
             <div>
-              <h2 className="text-base lg:text-lg font-black text-[var(--text-main)] tracking-tight">Chelona AI</h2>
-              <p className="text-xs text-[var(--text-muted)] font-medium">Il tuo assistente personale</p>
+              <div className="flex items-center gap-2">
+                <h2 className="text-base lg:text-lg font-black text-[var(--text-main)] tracking-tight">Chelona AI</h2>
+                {engineStatus?.supported && engineStatus.available === 'readily' ? (
+                  <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-emerald-500/10 border border-emerald-500/25 text-emerald-600 dark:text-emerald-400 flex items-center gap-1 shadow-2xs">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                    Gemini Nano
+                  </span>
+                ) : (
+                  <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center gap-1 shadow-2xs">
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                    On-Device
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-[var(--text-muted)] font-medium">
+                {engineStatus?.supported && engineStatus.available === 'readily'
+                  ? 'Hardware NPU Google • 100% Locale'
+                  : 'Motore Locale • 100% Offline e Privato'}
+              </p>
             </div>
           </div>
 
@@ -1425,6 +1451,38 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
 
               <div className="flex-1 overflow-y-auto p-5 space-y-6 custom-scrollbar">
                 
+                {/* 🧠 STATO ACCELERAZIONE HARDWARE NEURALE */}
+                <div className="p-3.5 rounded-2xl bg-[var(--surface-variant)] border border-[var(--border)] flex items-center justify-between gap-3 shadow-2xs">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
+                      engineStatus?.supported && engineStatus.available === 'readily'
+                        ? 'bg-emerald-500/15 text-emerald-500'
+                        : 'bg-amber-500/15 text-amber-500'
+                    }`}>
+                      <Sparkles className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-black text-[var(--text-main)]">
+                        {engineStatus?.supported && engineStatus.available === 'readily'
+                          ? 'Google Gemini Nano (On-Device NPU)'
+                          : 'Motore Locale On-Device'}
+                      </p>
+                      <p className="text-[10px] text-[var(--text-muted)]">
+                        {engineStatus?.supported && engineStatus.available === 'readily'
+                          ? 'Accelerato su NPU Google • Risposte avanzate'
+                          : '100% Offline • Zero consumo cloud • Privacy assoluta'}
+                      </p>
+                    </div>
+                  </div>
+                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider shrink-0 ${
+                    engineStatus?.supported && engineStatus.available === 'readily'
+                      ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30'
+                      : 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30'
+                  }`}>
+                    {engineStatus?.supported && engineStatus.available === 'readily' ? 'NPU Attiva' : 'Attivo'}
+                  </span>
+                </div>
+
                 {/* 🌌 DIAGRAMMA NEURALE INTERATTIVO MIGLIORATO */}
                 <div className="relative rounded-3xl bg-gradient-to-b from-slate-900 to-slate-800 border border-slate-700/50 p-4 shadow-xl overflow-hidden">
                   {/* Pattern punti griglia */}
