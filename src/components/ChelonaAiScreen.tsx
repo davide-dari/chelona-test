@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
-  Send, Mic, MicOff, Volume2, VolumeX, Trash2, ArrowLeft, 
+  Send, Mic, MicOff, Volume2, VolumeX, Trash2, Menu, Trash, ArrowLeft, 
   Brain, ExternalLink, Check, Copy, Plus, X,
   Radio, Car, FileText, CreditCard, StickyNote, Activity, Sparkles,
   Settings2, Sliders, Play, Utensils, Plane, Home, Navigation, BookUser, Wrench
@@ -35,6 +35,7 @@ interface ChelonaAiScreenProps {
   onOpenParking?: () => void;
   initialVoiceMode?: boolean;
   initialDictationMode?: boolean;
+  initialMemoryOpen?: boolean;
   onNavigate?: (action: AiAction) => void;
 }
 
@@ -51,7 +52,52 @@ function formatDate(dateStr?: string): string {
   }
 }
 
-export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
+
+// ---- Conversation History Types ----
+interface ChatConversation {
+  id: string;
+  title: string;
+  messages: AiMessage[];
+  createdAt: number;
+  updatedAt: number;
+}
+
+const CONV_STORAGE_KEY = 'chelona_conversations';
+const MAX_CONVERSATIONS = 50;
+
+function loadConversations(): ChatConversation[] {
+  try {
+    const raw = localStorage.getItem(CONV_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch { return []; }
+}
+
+function saveConversations(convs: ChatConversation[]) {
+  try {
+    const trimmed = convs.slice(0, MAX_CONVERSATIONS);
+    localStorage.setItem(CONV_STORAGE_KEY, JSON.stringify(trimmed));
+  } catch {}
+}
+
+function makeConvTitle(text: string): string {
+  const clean = text.replace(/\*|#|_/g, '').trim();
+  return clean.length > 42 ? clean.slice(0, 42).trimEnd() + '…' : clean;
+}
+
+function formatRelativeTime(ts: number): string {
+  const diff = Date.now() - ts;
+  const m = Math.floor(diff / 60000);
+  if (m < 1) return 'Adesso';
+  if (m < 60) return `{m} min fa`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `{h} ore fa`;
+  const d = Math.floor(h / 24);
+  if (d < 7) return `{d} giorni fa`;
+  return new Date(ts).toLocaleDateString('it-IT', { day: '2-digit', month: 'short' });
+}
+
+export const ChelonaAiScreen
+: React.FC<ChelonaAiScreenProps> = ({
   modules,
   username,
   onClose,
@@ -63,20 +109,117 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
   onOpenParking,
   initialVoiceMode = false,
   initialDictationMode = false,
+  initialMemoryOpen = false,
   onNavigate,
 }) => {
+  const [conversations, setConversations] = useState<ChatConversation[]>(() => loadConversations());
+  const [activeConvId, setActiveConvId] = useState<string | null>(() => {
+    const convs = loadConversations();
+    return convs.length > 0 ? convs[0].id : null;
+  });
   const [messages, setMessages] = useState<AiMessage[]>(() => {
-    const history = getChatHistory();
-    if (history.length > 0) return history;
+    const convs = loadConversations();
+    if (convs.length > 0 && convs[0].messages.length > 0) return convs[0].messages;
     return [
       {
         id: 'msg_welcome_' + Date.now(),
         sender: 'assistant',
-        text: `Ciao ${username || ''}! Come posso aiutarti oggi? Conosco tutte le sezioni di Chelona: veicoli, documenti, spese condivise, uscite, rate, volantini, lista spesa, ricette, fitness, viaggi, arredo casa, note, parcheggio, rubrica, scadenze, scanner e strumenti. Chiedimi qualsiasi cosa o dimmi *"Ricordati che..."*!`,
+        text: `Ciao ${username || ''}! Come posso aiutarti oggi? Conosco tutte le sezioni di Chelona. Chiedimi qualsiasi cosa!`,
         timestamp: Date.now(),
       }
     ];
   });
+  const [showHistoryDrawer, setShowHistoryDrawer] = useState(false);
+  const firstUserMsgSentRef = useRef(false);
+
+  // Sync to localStorage when conversations change
+  useEffect(() => {
+    saveConversations(conversations);
+  }, [conversations]);
+
+  // Aggiorna o crea conversazione quando arrivano nuovi messaggi
+  const updateConversationWithMessages = (newMessages: AiMessage[]) => {
+    setMessages(newMessages);
+    const hasUser = newMessages.some(m => m.sender === 'user');
+    if (!hasUser) return;
+
+    const firstUserMsg = newMessages.find(m => m.sender === 'user');
+    const autoTitle = firstUserMsg ? makeConvTitle(firstUserMsg.text) : 'Nuova Chat';
+
+    let targetId = activeConvId;
+    if (!targetId) {
+      targetId = 'conv_' + Date.now();
+      setActiveConvId(targetId);
+      const newConv: ChatConversation = {
+        id: targetId,
+        title: autoTitle,
+        messages: newMessages,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      };
+      setConversations(prev => [newConv, ...prev]);
+    } else {
+      setConversations(prev => {
+        const found = prev.some(c => c.id === targetId);
+        if (found) {
+          return prev.map(c => {
+            if (c.id === targetId) {
+              const title = c.title === 'Nuova Chat' || !c.title ? autoTitle : c.title;
+              return { ...c, title, messages: newMessages, updatedAt: Date.now() };
+            }
+            return c;
+          });
+        } else {
+          return [{
+            id: targetId!,
+            title: autoTitle,
+            messages: newMessages,
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
+          }, ...prev];
+        }
+      });
+    }
+  };
+
+  const handleNewConversation = () => {
+    setActiveConvId(null);
+    setMessages([
+      {
+        id: 'msg_welcome_' + Date.now(),
+        sender: 'assistant',
+        text: `Ciao ${username || ''}! Come posso aiutarti oggi? Conosco tutte le sezioni di Chelona. Chiedimi qualsiasi cosa!`,
+        timestamp: Date.now(),
+      }
+    ]);
+    setShowHistoryDrawer(false);
+  };
+
+  const handleSwitchConversation = (id: string) => {
+    setActiveConvId(id);
+    const conv = conversations.find(c => c.id === id);
+    if (conv) {
+      setMessages(conv.messages);
+    }
+    setShowHistoryDrawer(false);
+  };
+
+  const handleDeleteConversation = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (confirm('Vuoi davvero eliminare questa conversazione?')) {
+      setConversations(prev => prev.filter(c => c.id !== id));
+      if (activeConvId === id) {
+        handleNewConversation();
+      }
+    }
+  };
+
+  useEffect(() => {
+    if (initialMemoryOpen) {
+      setShowMemoryDrawer(true);
+    }
+  }, [initialMemoryOpen]);
+
 
   const [inputText, setInputText] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
@@ -357,7 +500,8 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
       timestamp: Date.now(),
     };
 
-    setMessages(prev => [...prev, userMsg]);
+    const msgsWithUser = [...messages, userMsg];
+    updateConversationWithMessages(msgsWithUser);
     setInputText('');
     setIsProcessing(true);
 
@@ -377,7 +521,8 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
         learnedFact: response.learnedFact,
       };
 
-      setMessages(prev => [...prev, assistantMsg]);
+      const msgsWithAssistant = [...msgsWithUser, assistantMsg];
+      updateConversationWithMessages(msgsWithAssistant);
       
       if (response.learnedFact) {
         setMemories(getLearnedMemories());
@@ -425,15 +570,16 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
       console.error('AI query error', e);
       const errMsg = `Scusami, si è verificato un piccolo errore. Riprova tra un attimo.`;
       const errId = 'msg_err_' + Date.now();
-      setMessages(prev => [
-        ...prev,
+      const msgsWithError: AiMessage[] = [
+        ...msgsWithUser,
         {
           id: errId,
           sender: 'assistant',
           text: errMsg,
           timestamp: Date.now(),
         }
-      ]);
+      ];
+      updateConversationWithMessages(msgsWithError);
       const mustSpeak = isVoiceSession || shouldSpeak;
       if (mustSpeak) {
         if (isVoiceSession) {
@@ -631,6 +777,19 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
     showToast('Copiato!');
   };
 
+  const handleDeleteMessage = (msgId: string) => {
+    setMessages(prev => prev.filter(m => m.id !== msgId));
+    if (activeConvId) {
+      setConversations(prev => prev.map(c => {
+        if (c.id === activeConvId) {
+          return { ...c, messages: c.messages.filter(m => m.id !== msgId), updatedAt: Date.now() };
+        }
+        return c;
+      }));
+    }
+    showToast('Messaggio rimosso');
+  };
+
   const handleClearChat = () => {
     if (confirm('Vuoi cancellare la conversazione?')) {
       const resetMsg: AiMessage[] = [
@@ -711,10 +870,17 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
         ? "flex flex-col h-full w-full bg-[var(--bg)] font-sans relative transition-colors duration-300"
         : "fixed inset-x-0 top-0 bottom-20 md:bottom-0 z-[120] bg-[var(--bg)] flex flex-col overflow-hidden font-sans transition-colors duration-300"
     }>
-      {/* HEADER PULITO CON LOGO CHELONA - SOLO IN FULLSCREEN */}
+      {/* HEADER PULITO CON LOGO CHELONA E MENU STORICO - SOLO IN FULLSCREEN */}
       {!isEmbedded && (
         <header className="h-16 lg:h-20 border-b border-[var(--border)] bg-[var(--header-bg)] backdrop-blur-2xl px-4 lg:px-8 flex items-center justify-between shrink-0 z-20 safe-area-header shadow-sm">
           <div className="flex items-center gap-3">
+            <button
+              onClick={() => setShowHistoryDrawer(true)}
+              className="p-2 hover:bg-[var(--surface-variant)] rounded-2xl text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors active:scale-95"
+              title="Storico Conversazioni"
+            >
+              <Menu className="w-5 h-5 lg:w-6 lg:h-6" />
+            </button>
             <button
               onClick={onClose}
               className="p-2 hover:bg-[var(--surface-variant)] rounded-2xl text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors active:scale-95"
@@ -722,51 +888,22 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
             >
               <ArrowLeft className="w-5 h-5 lg:w-6 lg:h-6" />
             </button>
-            
-            <div className="w-10 h-10 lg:w-11 lg:h-11 rounded-2xl bg-amber-500/10 border border-amber-500/20 p-1 flex items-center justify-center shrink-0 shadow-sm overflow-hidden">
-              <img src="/chelona_logo.png" alt="Chelona AI" className="w-full h-full object-contain" />
-            </div>
 
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="text-base lg:text-lg font-black text-[var(--text-main)] tracking-tight">Chelona AI</h2>
-                <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center gap-1 shadow-2xs">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                  Motore Locale
-                </span>
+                <h2 className="text-base lg:text-lg font-black text-[var(--text-main)] tracking-tight">
+                  {activeConvId ? conversations.find(c => c.id === activeConvId)?.title || 'Nuova Chat' : 'Nuova Chat'}
+                </h2>
               </div>
-              <p className="text-xs text-[var(--text-muted)] font-medium">100% On-Device • Risposta Istantanea</p>
             </div>
           </div>
-
           <div className="flex items-center gap-2">
             <button
-              onClick={toggleVoiceMode}
-              className="px-3 py-1.5 lg:px-4 lg:py-2 rounded-2xl bg-gradient-to-r from-amber-500 to-amber-600 text-white text-xs font-bold transition-all flex items-center gap-2 shadow-md shadow-amber-500/20 active:scale-95 hover:opacity-95"
-              title="Avvia conversazione a voce"
+              onClick={handleNewConversation}
+              className="p-2 hover:bg-[var(--surface-variant)] rounded-2xl text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors active:scale-95"
+              title="Nuova conversazione"
             >
-              <Radio className="w-4 h-4 animate-pulse" />
-              <span className="hidden sm:inline">Voce</span>
-            </button>
-
-            <button
-              onClick={() => setShowMemoryDrawer(true)}
-              className="px-3 py-1.5 lg:px-3.5 lg:py-2 rounded-2xl bg-[var(--surface-variant)] hover:bg-[var(--border)] text-[var(--text-main)] text-xs font-bold transition-all flex items-center gap-1.5 border border-[var(--border)] active:scale-95 shadow-sm"
-              title="Visualizza memoria"
-            >
-              <Brain className="w-4 h-4 text-amber-500" />
-              <span className="hidden md:inline">Memoria</span>
-              <span className="w-4 h-4 rounded-full bg-amber-500 text-white text-[10px] flex items-center justify-center font-bold">
-                {memories.length}
-              </span>
-            </button>
-
-            <button
-              onClick={handleClearChat}
-              className="p-2 lg:p-2.5 rounded-2xl bg-[var(--surface-variant)] hover:bg-rose-500/10 text-[var(--text-muted)] hover:text-rose-500 transition-colors border border-[var(--border)] active:scale-95"
-              title="Pulisci chat"
-            >
-              <Trash2 className="w-4 h-4" />
+              <Plus className="w-5 h-5 lg:w-6 lg:h-6" />
             </button>
           </div>
         </header>
@@ -877,6 +1014,13 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
                             <Copy className="w-3.5 h-3.5" />
                           )}
                         </button>
+                        <button
+                          onClick={() => handleDeleteMessage(msg.id)}
+                          className="hover:text-rose-500 transition-colors p-1"
+                          title="Elimina risposta"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
                       </div>
                     )}
                   </div>
@@ -928,29 +1072,20 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
           {isEmbedded && (
             <div className="flex items-center justify-end gap-2 px-1">
               <button
-                onClick={toggleVoiceMode}
-                className="px-3 py-1.5 rounded-2xl bg-gradient-to-r from-amber-500 to-amber-600 text-white text-xs font-bold transition-all flex items-center gap-1.5 shadow-md shadow-amber-500/20 active:scale-95 hover:opacity-95"
-              >
-                <Radio className="w-3.5 h-3.5 animate-pulse" />
-                <span>Voce</span>
-              </button>
-
-              <button
-                onClick={() => setShowMemoryDrawer(true)}
+                type="button"
+                onClick={() => setShowHistoryDrawer(true)}
                 className="px-3 py-1.5 rounded-2xl bg-[var(--surface-variant)] hover:bg-[var(--border)] text-[var(--text-main)] text-xs font-bold transition-all flex items-center gap-1.5 border border-[var(--border)] active:scale-95 shadow-sm"
               >
-                <Brain className="w-3.5 h-3.5 text-amber-500" />
-                <span>Memoria</span>
-                <span className="w-4 h-4 rounded-full bg-amber-500 text-white text-[10px] flex items-center justify-center font-bold">
-                  {memories.length}
-                </span>
+                <Menu className="w-3.5 h-3.5 text-amber-500" />
+                <span>Storico</span>
               </button>
-
               <button
-                onClick={handleClearChat}
-                className="p-1.5 rounded-2xl bg-[var(--surface-variant)] hover:bg-rose-500/10 text-[var(--text-muted)] hover:text-rose-500 transition-colors border border-[var(--border)] active:scale-95"
+                type="button"
+                onClick={handleNewConversation}
+                className="px-3 py-1.5 rounded-2xl bg-[var(--surface-variant)] hover:bg-[var(--border)] text-[var(--text-main)] text-xs font-bold transition-all flex items-center gap-1.5 border border-[var(--border)] active:scale-95 shadow-sm"
               >
-                <Trash2 className="w-4 h-4" />
+                <Plus className="w-3.5 h-3.5 text-amber-500" />
+                <span>Nuova</span>
               </button>
             </div>
           )}
@@ -1395,6 +1530,96 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
         )}
       </AnimatePresence>
 
+      {/* DRAWER STORICO CONVERSAZIONI (ChatGPT / Gemini style) */}
+      <AnimatePresence>
+        {showHistoryDrawer && (
+          <div className="fixed inset-0 z-[150] flex justify-start">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowHistoryDrawer(false)}
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            />
+
+            <motion.div
+              initial={{ x: '-100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '-100%' }}
+              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              className="relative w-full max-w-xs bg-[var(--bg)] h-full border-r border-[var(--border)] shadow-2xl flex flex-col z-10 safe-area-inset"
+            >
+              {/* Header Drawer */}
+              <div className="h-16 lg:h-20 border-b border-[var(--border)] px-5 flex items-center justify-between shrink-0 bg-[var(--header-bg)]">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-xl bg-amber-500/10 border border-amber-500/20 p-1 flex items-center justify-center overflow-hidden">
+                    <img src="/chelona_logo.png" alt="Chelona" className="w-full h-full object-contain" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-[var(--text-main)]">Cronologia Chat</h3>
+                    <p className="text-[10px] text-[var(--text-muted)]">I tuoi dialoghi salvati</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowHistoryDrawer(false)}
+                  className="p-2 hover:bg-[var(--surface-variant)] rounded-xl text-[var(--text-muted)] transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Nuova chat button */}
+              <div className="p-3 border-b border-[var(--border)]">
+                <button
+                  type="button"
+                  onClick={handleNewConversation}
+                  className="w-full py-2.5 px-3 rounded-xl bg-[var(--surface-variant)] hover:bg-[var(--border)] text-[var(--text-main)] text-xs font-bold border border-[var(--border)] flex items-center justify-center gap-2 transition-all active:scale-95 shadow-xs"
+                >
+                  <Plus className="w-4 h-4 text-amber-500" />
+                  <span>Nuova Conversazione</span>
+                </button>
+              </div>
+
+              {/* Lista conversazioni */}
+              <div className="flex-1 overflow-y-auto p-3 space-y-1.5 custom-scrollbar">
+                {conversations.length === 0 ? (
+                  <p className="text-xs text-[var(--text-muted)] text-center py-8">Nessuna conversazione salvata.</p>
+                ) : (
+                  conversations.map((conv) => {
+                    const isActive = conv.id === activeConvId;
+                    return (
+                      <div
+                        key={conv.id}
+                        onClick={() => handleSwitchConversation(conv.id)}
+                        className={`group p-2.5 rounded-xl text-xs flex items-center justify-between gap-2 cursor-pointer transition-all border ${
+                          isActive
+                            ? 'bg-amber-500/10 border-amber-500/30 text-[var(--text-main)] font-semibold shadow-xs'
+                            : 'bg-[var(--card-bg)] border-[var(--border)] text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--surface-variant)]'
+                        }`}
+                      >
+                        <div className="flex-1 min-w-0">
+                          <p className="truncate text-xs">{conv.title}</p>
+                          <p className="text-[10px] text-[var(--text-muted)] mt-0.5">{formatRelativeTime(conv.updatedAt)}</p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={(e) => handleDeleteConversation(conv.id, e)}
+                          className="opacity-0 group-hover:opacity-100 p-1 text-[var(--text-muted)] hover:text-rose-500 transition-all rounded-lg"
+                          title="Elimina conversazione"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
       {/* CASSETTO MEMORIA CON DIAGRAMMA NEURALE MIGLIORATO */}
       <AnimatePresence>
         {showMemoryDrawer && (
@@ -1434,26 +1659,6 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
               </div>
 
               <div className="flex-1 overflow-y-auto p-5 space-y-6 custom-scrollbar">
-                
-                {/* 🧠 STATO MOTORE LOCALE ON-DEVICE */}
-                <div className="p-3.5 rounded-2xl bg-[var(--surface-variant)] border border-[var(--border)] flex items-center justify-between gap-3 shadow-2xs">
-                  <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 bg-amber-500/15 text-amber-500">
-                      <Sparkles className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <p className="text-xs font-black text-[var(--text-main)]">
-                        Motore Locale Chelona Engine
-                      </p>
-                      <p className="text-[10px] text-[var(--text-muted)]">
-                        Elaborazione istantanea • 100% Offline • Zero cloud
-                      </p>
-                    </div>
-                  </div>
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider shrink-0 bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
-                    Istantaneo
-                  </span>
-                </div>
 
                 {/* 🌌 DIAGRAMMA NEURALE INTERATTIVO MIGLIORATO */}
                 <div className="relative rounded-3xl bg-gradient-to-b from-slate-900 to-slate-800 border border-slate-700/50 p-4 shadow-xl overflow-hidden">

@@ -7,7 +7,7 @@ import {
   Sliders, Layers, Folder as FolderIcon, Trash2, CheckCircle2, 
   AlertTriangle, Sparkles, Key, FileText, CheckCheck,
   Car, Users, Receipt, Globe, BookOpen, Activity, Home,
-  Percent, Scan, Shirt, ImageIcon, HardDrive, Edit2
+  Percent, Scan, Shirt, ImageIcon, HardDrive, Edit2, Brain
 } from 'lucide-react';
 import { storage } from '../services/storage';
 import { encryption } from '../services/encryption';
@@ -45,6 +45,7 @@ export interface ProfileScreenProps {
   onUpdateWidgets: (catIds: string[], toolIds: string[]) => void;
   theme: 'light' | 'dark';
   onToggleTheme: () => void;
+  onOpenAiMemory?: () => void;
 }
 
 type TabType = 'profile' | 'security' | 'backup' | 'system';
@@ -122,6 +123,7 @@ export function ProfileScreen({
   pinnedCategoryIds = [],
   pinnedToolIds = [],
   onUpdateWidgets,
+  onOpenAiMemory,
   theme,
   onToggleTheme
 }: ProfileScreenProps) {
@@ -890,6 +892,34 @@ export function ProfileScreen({
                     )}
                   </AnimatePresence>
                 </motion.button>
+              </div>
+
+              {/* Rete Neurale / Memoria AI Card */}
+              <div className="bg-[var(--card-bg)] rounded-[var(--radius-lg)] p-5 sm:p-6 border border-[var(--border)] shadow-sm space-y-4">
+                <div className="flex items-center justify-between gap-4 pb-3 border-b border-[var(--border)]">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-2xl bg-amber-500/10 flex items-center justify-center text-amber-500 shadow-inner">
+                      <Brain className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h3 className="text-base font-bold text-[var(--text-main)]">Rete Neurale Chelona</h3>
+                      <p className="text-xs text-[var(--text-muted)]">Gestisci la memoria e l'apprendimento dell'AI</p>
+                    </div>
+                  </div>
+                </div>
+                <p className="text-xs text-[var(--text-muted)] leading-relaxed">
+                  Visualizza cosa Chelona ha imparato sulle tue abitudini, veicoli e spese. Puoi modificare o eliminare singole memorie per migliorare l'assistenza personalizzata.
+                </p>
+                <div className="pt-2">
+                  <button
+                    type="button"
+                    onClick={onOpenAiMemory}
+                    className="w-full py-3.5 bg-[var(--surface-variant)] hover:bg-[var(--border)] text-[var(--text-main)] rounded-xl font-bold text-xs uppercase tracking-wider transition-all border border-[var(--border)] shadow-sm flex items-center justify-center gap-2 active:scale-95 cursor-pointer"
+                  >
+                    <Sparkles className="w-4 h-4 text-amber-500" />
+                    <span>Apri Rete Neurale</span>
+                  </button>
+                </div>
               </div>
             </motion.div>
           )}

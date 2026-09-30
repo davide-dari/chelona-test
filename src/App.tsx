@@ -323,6 +323,8 @@ export default function App() {
   const [activeNavTab, setActiveNavTab] = useState<'home' | 'deadlines' | 'ai' | 'tools' | 'profile'>('home');
   const [isAiOpen, setIsAiOpen] = useState(false);
   const [aiInitialVoiceMode, setAiInitialVoiceMode] = useState(false);
+  const [aiInitialMemoryMode, setAiInitialMemoryMode] = useState(false);
+  const [aiInitialMemoryOpen, setAiInitialMemoryOpen] = useState(false);
   const [isWakeWordEnabled, setIsWakeWordEnabled] = useState(() => wakeWordService.getEnabled());
   const [deadlinesFilter, setDeadlinesFilter] = useState<'all' | 'auto' | 'document' | 'installment'>('all');
 
@@ -564,6 +566,7 @@ export default function App() {
       setVolantinoInitialChain(chain);
       setIsAiOpen(false);
       setAiInitialVoiceMode(false);
+                    setAiInitialMemoryOpen(false);
       setIsToolsOpen(false);
       setIsProfileOpen(false);
       setActiveNavTab('home');
@@ -1902,6 +1905,7 @@ export default function App() {
     // Chiudi sempre Chelona AI e azzera i flag vocali
     setIsAiOpen(false);
     setAiInitialVoiceMode(false);
+                    setAiInitialMemoryOpen(false);
 
     // Chiudi eventuali altri tab/overlay per evitare conflitti visivi
     setIsToolsOpen(false);
@@ -3573,6 +3577,12 @@ export default function App() {
                   pinnedCategoryIds={pinnedCategoryIds}
                   pinnedToolIds={pinnedToolIds}
                   onUpdateWidgets={handleUpdateWidgets}
+                  onOpenAiMemory={() => {
+                    setIsProfileOpen(false);
+                    setAiInitialMemoryOpen(true);
+                    setIsAiOpen(true);
+                    setActiveNavTab('ai');
+                  }}
                   theme={theme}
                   onToggleTheme={toggleTheme}
                 />
@@ -3595,9 +3605,11 @@ export default function App() {
                   modules={modules}
                   username={username}
                   initialVoiceMode={aiInitialVoiceMode}
+                  initialMemoryOpen={aiInitialMemoryOpen}
                   onClose={() => {
                     setIsAiOpen(false);
                     setAiInitialVoiceMode(false);
+                    setAiInitialMemoryOpen(false);
                     if (activeNavTab === 'ai') setActiveNavTab('home');
                   }}
                   onOpenModule={(m) => {
@@ -5293,6 +5305,7 @@ export default function App() {
                     setIsToolsOpen(false); 
                     setIsAiOpen(false);
                     setAiInitialVoiceMode(false);
+                    setAiInitialMemoryOpen(false);
                     setSelectedType(null); 
                     setIsProfileOpen(false); 
                     setIsSensitiveUnlocked(false);
@@ -5308,6 +5321,7 @@ export default function App() {
                     setIsToolsOpen(false); 
                     setIsAiOpen(false);
                     setAiInitialVoiceMode(false);
+                    setAiInitialMemoryOpen(false);
                     setSelectedType(null); 
                     setIsProfileOpen(false); 
                   } 
@@ -5320,6 +5334,7 @@ export default function App() {
                     setActiveNavTab('ai'); 
                     setIsAiOpen(true);
                     setAiInitialVoiceMode(false);
+                    setAiInitialMemoryOpen(false);
                     setIsToolsOpen(false); 
                     setIsProfileOpen(false); 
                     setSelectedType(null); 
@@ -5334,6 +5349,7 @@ export default function App() {
                     setIsToolsOpen(true); 
                     setIsAiOpen(false);
                     setAiInitialVoiceMode(false);
+                    setAiInitialMemoryOpen(false);
                     setIsProfileOpen(false); 
                     setSelectedType(null); 
                   } 
@@ -5347,6 +5363,7 @@ export default function App() {
                     setIsProfileOpen(true); 
                     setIsAiOpen(false);
                     setAiInitialVoiceMode(false);
+                    setAiInitialMemoryOpen(false);
                     setIsToolsOpen(false); 
                     setSelectedType(null); 
                   } 
