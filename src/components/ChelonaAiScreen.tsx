@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   Send, Mic, MicOff, Volume2, VolumeX, Trash2, Menu, Trash, ArrowLeft, 
-  Brain, ExternalLink, Check, Copy, Plus, X,
+  Brain, ExternalLink, Check, Copy, Plus, X, Zap,
   Radio, Car, FileText, CreditCard, StickyNote, Activity, Sparkles,
   Settings2, Sliders, Play, Utensils, Plane, Home, Navigation, BookUser, Wrench
 } from 'lucide-react';
@@ -502,7 +502,19 @@ export const ChelonaAiScreen
     };
 
     const msgsWithUser = [...messages, userMsg];
-    updateConversationWithMessages(msgsWithUser);
+    const assistantMsgId = 'msg_ai_' + (Date.now() + 1);
+    let accumulatedText = '';
+
+    // Creiamo subito il messaggio assistant a schermo vuoto per lo streaming progressivo!
+    const placeholderAssistantMsg: AiMessage = {
+      id: assistantMsgId,
+      sender: 'assistant',
+      text: '',
+      timestamp: Date.now(),
+    };
+
+    const msgsWithPlaceholder = [...msgsWithUser, placeholderAssistantMsg];
+    updateConversationWithMessages(msgsWithPlaceholder);
     setInputText('');
     setIsProcessing(true);
 
@@ -511,20 +523,34 @@ export const ChelonaAiScreen
       setVoiceStatus('thinking');
     }
 
+    // Callback di streaming dei token in tempo reale
+    const onToken = (token: string) => {
+      accumulatedText += token;
+      setMessages(prev =>
+        prev.map(m => (m.id === assistantMsgId ? { ...m, text: accumulatedText } : m))
+      );
+    };
+
     try {
-      const queryPromise = queryGemma2(queryToSend, modules, username);
+      const queryPromise = queryGemma2(queryToSend, modules, username, onToken);
       const safetyTimeout = new Promise<import('../services/gemma2Engine').Gemma2Response>((resolve) => {
         setTimeout(async () => {
           try {
             const { queryChelonaAi } = await import('../services/chelonaEngine');
             const fallbackRes = await queryChelonaAi(queryToSend, modules, username);
+            if (fallbackRes && fallbackRes.text && !accumulatedText) {
+              const chunks = fallbackRes.text.split(/(\s+)/);
+              for (const c of chunks) onToken(c);
+            }
             resolve({
               ...fallbackRes,
               engineUsed: 'chelona-engine',
             });
           } catch {
+            const defaultTxt = `Eccomi ${username}! Sono pronta ad aiutarti con qualsiasi richiesta.`;
+            if (!accumulatedText) onToken(defaultTxt);
             resolve({
-              text: `Eccomi ${username}! Sono pronta ad aiutarti con qualsiasi richiesta.`,
+              text: defaultTxt,
               engineUsed: 'chelona-engine',
             });
           }
@@ -532,13 +558,17 @@ export const ChelonaAiScreen
       });
 
       const response = await Promise.race([queryPromise, safetyTimeout]);
+      const finalText = response.text || accumulatedText;
+
       const assistantMsg: AiMessage = {
-        id: 'msg_ai_' + Date.now(),
+        id: assistantMsgId,
         sender: 'assistant',
-        text: response.text,
+        text: finalText,
         timestamp: Date.now(),
         actions: response.actions,
         learnedFact: response.learnedFact,
+        isCached: response.cached,
+        engineUsed: response.engineUsed,
       };
 
       const msgsWithAssistant = [...msgsWithUser, assistantMsg];
@@ -954,9 +984,24 @@ export const ChelonaAiScreen
                         : 'bg-[var(--card-bg)] text-[var(--text-main)] border border-[var(--border)] rounded-tl-none shadow-sm'
                     }`}
                   >
-                    <div className="whitespace-pre-line text-inherit text-[13.5px]">
-                      {msg.text}
-                    </div>
+                    {!isUser && msg.isCached && (
+                      <div className="mb-2 inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 shadow-xs">
+                        <Zap className="w-3 h-3 text-amber-500 fill-amber-500" />
+                        <span>Memoria / Cache (0ms)</span>
+                      </div>
+                    )}
+
+                    {!msg.text && isProcessing ? (
+                      <div className="flex items-center gap-1.5 py-1 text-[var(--text-muted)]">
+                        <span className="w-2 h-2 rounded-full bg-[var(--accent)] animate-bounce" style={{ animationDelay: '0ms' }} />
+                        <span className="w-2 h-2 rounded-full bg-[var(--accent)] animate-bounce" style={{ animationDelay: '150ms' }} />
+                        <span className="w-2 h-2 rounded-full bg-[var(--accent)] animate-bounce" style={{ animationDelay: '300ms' }} />
+                      </div>
+                    ) : (
+                      <div className="whitespace-pre-line text-inherit text-[13.5px]">
+                        {msg.text}
+                      </div>
+                    )}
 
                     {msg.actions && msg.actions.length > 0 && (
                       <div className="mt-3 pt-2.5 border-t border-[var(--border)]/40 flex flex-wrap gap-1.5">

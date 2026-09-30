@@ -62,18 +62,18 @@ const DEFAULT_MODEL_PARAMS: ModelParams = {
 };
 
 const DEFAULT_GENERATE_PARAMS: Omit<GenerateOptions, 'prompt'> = {
-  maxTokens: 512,
-  temperature: 0.3,
+  maxTokens: 160, // Hard cap a 160 token per risposte brevi, veloci e a latenza ridotta
+  temperature: 0.25,
   top_p: 0.9,
   top_k: 40,
   repeat_penalty: 1.1,
-  stop: ['<end_of_turn>', '<start_of_turn>user', '<start_of_turn>system', '\n\n\n'],
+  stop: ['<end_of_turn>', '<start_of_turn>user', '<start_of_turn>system', '\n\n'],
 };
 
 const BATTERY_WARN_THRESHOLD = 20;
 const BATTERY_BLOCK_THRESHOLD = 10;
-const INFERENCE_TIMEOUT_MS = 30_000;
-const RAG_TOP_K = 5;
+const INFERENCE_TIMEOUT_MS = 15_000;
+const RAG_TOP_K = 1; // Solo 1 frammento più rilevante (max 150-200 token totali di contesto)
 
 // ---- Stato Engine ----
 
@@ -95,27 +95,16 @@ export interface Gemma2Response {
   similarityScore?: number;
 }
 
-// ---- Template Prompt Gemma 2 ----
+// ---- Template Prompt Gemma 2 Ottimizzato ----
 
 function buildGemmaPrompt(userQuery: string, ragContext: string, username: string): string {
-  const today = new Date().toLocaleDateString('it-IT', {
-    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
-  });
+  // Troncamento rigido a max 350 caratteri di contesto rilevante
+  const trimmedContext = ragContext ? ragContext.slice(0, 350).trim() : '';
+  const contextBlock = trimmedContext ? `\nDati personali:\n${trimmedContext}\n` : '';
 
   return `<start_of_turn>user
-Sei Chelona AI, un assistente personale italiano completamente locale e privato.
-Rispondi SOLO basandoti sul contesto personale fornito di seguito.
-Se le informazioni non sono nel contesto, dillo chiaramente senza inventare.
-Non inventare mai dati, date, numeri o informazioni non presenti nel contesto.
-Rispondi in italiano, in modo naturale, conciso e utile. Evita ripetizioni.
-
-CONTESTO PERSONALE DI ${username.toUpperCase()}:
-${ragContext}
-
-DATA ODIERNA: ${today}
-<end_of_turn>
-<start_of_turn>user
-${userQuery}
+Sei Chelona AI per ${username}. Rispondi in italiano in massimo 2 frasi concise ed esatte.${contextBlock}
+Domanda: ${userQuery}
 <end_of_turn>
 <start_of_turn>model
 `;
@@ -282,6 +271,7 @@ async function runGemmaInference(
 
 /**
  * Interroga Gemma 2 con RAG locale.
+ * Se la cache semantica intercetta la richiesta, restituisce immediatamente il dato a 0ms.
  * Se il modello non è pronto, va in timeout o fallisce, delega istantaneamente al chelonaEngine.
  */
 export async function queryGemma2(
@@ -290,10 +280,46 @@ export async function queryGemma2(
   username: string,
   onToken?: (token: string) => void
 ): Promise<Gemma2Response> {
+
+  // ⚡ STEP 0: CONTROLLO ISTANTANEO CACHE SEMANTICA IN RAM (Latenza 0ms)
+  // Ignora totalmente llama.rn, caricamenti, controlli batteria e RAG se c'è un hit!
+  const semanticHit = semanticCache.findMatch(userQuery);
+  if (semanticHit) {
+    console.log(`[SemanticCache] ⚡ HIT ISTANTANEO IN RAM (${semanticHit.exactMatch ? '100% esatto' : `similarità ${Math.round(semanticHit.similarity * 100)}%`}): "${userQuery}" -> "${semanticHit.entry.query}"`);
+    
+    // Se c'è un listener di streaming, emetti i token progressivamente per effetto typing fluido
+    if (onToken) {
+      const chunks = semanticHit.entry.response.text.split(/(\s+)/);
+      for (const chunk of chunks) {
+        onToken(chunk);
+      }
+    }
+
+    return {
+      text: semanticHit.entry.response.text,
+      actions: semanticHit.entry.response.actions as AiAction[] | undefined,
+      learnedFact: semanticHit.entry.response.learnedFact,
+      autoAction: semanticHit.entry.response.autoAction as AiAction | undefined,
+      engineUsed: 'gemma2-local',
+      cached: true,
+      semanticMatch: true,
+      similarityScore: semanticHit.similarity,
+    };
+  }
+
   const executeFallback = async (): Promise<Gemma2Response> => {
     const { queryChelonaAi } = await import('./chelonaEngine');
     const result = await queryChelonaAi(userQuery, modules, username);
-    if (!onToken && result && result.text) {
+
+    // Se richiesto streaming, emetti i frammenti progressivamente
+    if (onToken && result && result.text) {
+      const chunks = result.text.split(/(\s+)/);
+      for (const chunk of chunks) {
+        onToken(chunk);
+      }
+    }
+
+    if (result && result.text) {
       semanticCache.set(userQuery, lastIndexedModulesHash, {
         text: result.text,
         actions: result.actions,
@@ -301,6 +327,7 @@ export async function queryGemma2(
         autoAction: result.autoAction,
       });
     }
+
     return {
       ...result,
       engineUsed: 'chelona-engine',
@@ -317,9 +344,9 @@ export async function queryGemma2(
 
       // Limita i token se la batteria è scarica
       if (battery < BATTERY_WARN_THRESHOLD) {
-        DEFAULT_GENERATE_PARAMS.maxTokens = 128;
+        DEFAULT_GENERATE_PARAMS.maxTokens = 90;
       } else {
-        DEFAULT_GENERATE_PARAMS.maxTokens = 512;
+        DEFAULT_GENERATE_PARAMS.maxTokens = 160;
       }
 
       // 2. Verifica disponibilità modello
@@ -335,47 +362,14 @@ export async function queryGemma2(
         lastIndexedModulesHash = modulesHash;
       }
 
-      // 4. RAG Retrieval
-      const ragDocs = ragEngine.retrieve(userQuery, RAG_TOP_K);
-      const ragContext = ragEngine.formatContext(ragDocs);
+      // 4. RAG Retrieval — Massimo 1 singolo frammento più rilevante (max 150 token di contesto)
+      const ragDocs = ragEngine.retrieve(userQuery, 1);
+      const ragContext = ragDocs.length > 0 ? ragDocs[0].text.slice(0, 350).trim() : '';
 
-      // 5. Controlla la CACHE SEMANTICA in RAM (Semantic Cache: identica o molto simile)
-      if (!onToken) {
-        // Fast-path: controlla cache semantica in RAM
-        const semanticMatch = semanticCache.findMatch(userQuery, modulesHash);
-        if (semanticMatch) {
-          console.log(`[SemanticCache] Hit in RAM (${semanticMatch.exactMatch ? 'esatto' : `similarità ${Math.round(semanticMatch.similarity * 100)}%`}) - inferenza Gemma 2 bypassata!`);
-          return {
-            text: semanticMatch.entry.response.text,
-            actions: semanticMatch.entry.response.actions as AiAction[] | undefined,
-            learnedFact: semanticMatch.entry.response.learnedFact,
-            autoAction: semanticMatch.entry.response.autoAction as AiAction | undefined,
-            engineUsed: 'gemma2-local',
-            ragDocsUsed: ragDocs.length,
-            cached: true,
-            semanticMatch: true,
-            similarityScore: semanticMatch.similarity,
-          };
-        }
-
-        // Fallback: controlla cache esatta
-        const cached = promptCache.get(userQuery, ragContext);
-        if (cached && cached.text) {
-          return {
-            text: cached.text,
-            actions: cached.actions as AiAction[] | undefined,
-            engineUsed: 'gemma2-local',
-            ragDocsUsed: ragDocs.length,
-            cached: true,
-            semanticMatch: false,
-          };
-        }
-      }
-
-      // 6. Costruisci il prompt con template Gemma 2
+      // 5. Costruisci il prompt compatto con template Gemma 2
       const prompt = buildGemmaPrompt(userQuery, ragContext, username);
 
-      // 7. Inferenza
+      // 6. Inferenza con Streaming attivo
       engineState = 'generating';
       let responseText = '';
 
@@ -395,8 +389,8 @@ export async function queryGemma2(
         return await executeFallback();
       }
 
-      // 8. Memorizzazione in Cache Semantica in RAM e persistenza locale
-      if (!onToken && responseText) {
+      // 7. Memorizzazione in Cache Semantica in RAM e persistenza locale
+      if (responseText) {
         promptCache.set(userQuery, ragContext, { text: responseText });
         semanticCache.set(userQuery, modulesHash, { text: responseText });
       }

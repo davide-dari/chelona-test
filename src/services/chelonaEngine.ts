@@ -56,6 +56,8 @@ export interface AiMessage {
   timestamp: number;
   actions?: AiAction[];
   learnedFact?: string;
+  isCached?: boolean;
+  engineUsed?: string;
 }
 
 const MEMORIES_STORAGE_KEY = 'chelona_ai_memories';

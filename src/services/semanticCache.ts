@@ -1,5 +1,5 @@
 /**
- * Semantic Cache — Cache Semantica in RAM per Gemma 2
+ * Semantic Cache — Cache Semantica in RAM ad Altissima Velocità
  * 
  * Se l'utente effettua una richiesta identica o semanticamente molto simile ad una
  * già elaborata, restituisce immediatamente la risposta memorizzata nella cache in RAM,
@@ -8,25 +8,116 @@
  * Caratteristiche:
  * - Residente al 100% in RAM per risposte a latenza zero (< 1 ms).
  * - Matching esatto normalizzato (punteggio 1.0).
- * - Matching semantico vettoriale (Cosine Similarity su TF-IDF + Jaccard token overlap).
- * - Soglia semantica configurabile (default 0.85).
+ * - Mappatura sinonimi italiani (auto/macchina/veicolo, spesa/costi/uscite, ecc.).
+ * - Matching semantico vettoriale con soglia abbassata a 0.72 per massimizzare i cache hit.
  * - Politica di evacuazione LRU (massimo 200 elementi in memoria).
- * - Persistenza in background sul database locale per ripristino istantaneo al riavvio.
+ * - Persistenza in background su database locale.
  */
 
 import { localDb, CachedSemanticItem } from './localDatabase';
 
 const MAX_RAM_ENTRIES = 200;
-const DEFAULT_SIMILARITY_THRESHOLD = 0.82; // 82%+ similarità semantica per bypass
+const DEFAULT_SIMILARITY_THRESHOLD = 0.72; // Soglia permissiva per aumentare i cache hit (72%+)
+
 const STOPWORDS = new Set([
   'il', 'lo', 'la', 'i', 'gli', 'le', 'un', 'uno', 'una',
   'di', 'del', 'della', 'dei', 'degli', 'delle', 'da', 'dal',
   'in', 'nel', 'nella', 'a', 'al', 'alla', 'con', 'su', 'per',
   'e', 'ed', 'o', 'ma', 'se', 'non', 'che', 'cosa', 'chi',
   'come', 'quando', 'dove', 'perche', 'mi', 'ti', 'ci', 'vi',
-  'sono', 'sei', 'e', 'ha', 'ho', 'puoi', 'dimmi', 'mostrami',
-  'fammi', 'vedere', 'vorrei', 'sapere'
+  'sono', 'sei', 'e', 'ha', 'ho', 'hai', 'abbiamo', 'hanno',
+  'puoi', 'dimmi', 'mostrami', 'fammi', 'vedere', 'vorrei', 'sapere',
+  'trova', 'dammi', 'ci', 'sono', 'un', 'po', 'mio', 'mia', 'miei', 'mie',
+  'tuo', 'tua', 'tuoi', 'tue', 'nostro', 'nostra'
 ]);
+
+// Mappatura semantica canonica per l'italiano
+const SYNONYMS: Record<string, string> = {
+  // Veicoli & Auto
+  'macchina': 'auto',
+  'macchine': 'auto',
+  'vettura': 'auto',
+  'vetture': 'auto',
+  'veicolo': 'auto',
+  'veicoli': 'auto',
+  'automobile': 'auto',
+  'automobili': 'auto',
+
+  // Spese & Finanze
+  'spese': 'spesa',
+  'uscite': 'spesa',
+  'uscita': 'spesa',
+  'costi': 'spesa',
+  'costo': 'spesa',
+  'soldi': 'spesa',
+  'pagamenti': 'spesa',
+  'pagamento': 'spesa',
+  'budget': 'spesa',
+  'conti': 'spesa',
+  'conto': 'spesa',
+
+  // Scadenze
+  'scadenze': 'scadenza',
+  'scaduto': 'scadenza',
+  'scadute': 'scadenza',
+  'scaduti': 'scadenza',
+  'scadenza': 'scadenza',
+
+  // Documenti
+  'documenti': 'documento',
+  'documentazione': 'documento',
+  'patente': 'documento',
+  'passaporto': 'documento',
+  'carta': 'documento',
+
+  // Parcheggio
+  'parcheggiata': 'parcheggio',
+  'parcheggiai': 'parcheggio',
+  'parcheggi': 'parcheggio',
+  'parcheggiare': 'parcheggio',
+  'parchimetro': 'parcheggio',
+  'posto': 'parcheggio',
+
+  // Ricette & Cucina
+  'ricette': 'ricetta',
+  'cucinare': 'ricetta',
+  'cucina': 'ricetta',
+  'piatto': 'ricetta',
+  'piatti': 'ricetta',
+  'ingredienti': 'ricetta',
+  'cibo': 'ricetta',
+
+  // Fitness
+  'allenamento': 'fitness',
+  'allenamenti': 'fitness',
+  'palestra': 'fitness',
+  'esercizi': 'fitness',
+  'workout': 'fitness',
+  'scheda': 'fitness',
+
+  // Volantini & Offerte
+  'volantini': 'offerta',
+  'volantino': 'offerta',
+  'offerte': 'offerta',
+  'sconti': 'offerta',
+  'sconto': 'offerta',
+  'promozioni': 'offerta',
+  'promo': 'offerta',
+
+  // Viaggi & Mete
+  'viaggi': 'viaggio',
+  'vacanza': 'viaggio',
+  'vacanze': 'viaggio',
+  'itinerario': 'viaggio',
+  'itinerari': 'viaggio',
+  'tappe': 'viaggio',
+
+  // Note & Appunti
+  'appunti': 'nota',
+  'appunto': 'nota',
+  'note': 'nota',
+  'promemoria': 'nota',
+};
 
 export interface SemanticMatchResult {
   hit: boolean;
@@ -73,13 +164,14 @@ export class SemanticCache {
   }
 
   /**
-   * Estrae i token semantici escludendo le stopwords comuni italiane
+   * Estrae i token semantici canonici applicando lemmatizzazione dei sinonimi
    */
   public tokenize(text: string): string[] {
     const norm = this.normalize(text);
     return norm
       .split(' ')
-      .filter(t => t.length > 2 && !STOPWORDS.has(t));
+      .filter(t => t.length > 2 && !STOPWORDS.has(t))
+      .map(t => SYNONYMS[t] || t);
   }
 
   /**
@@ -98,7 +190,7 @@ export class SemanticCache {
   }
 
   /**
-   * Calcola la similarità coseno tra due vettori densi/sparsi
+   * Calcola la similarità coseno tra due vettori
    */
   private cosineSimilarity(vecA: number[], vecB: number[]): number {
     if (!vecA || !vecB || vecA.length === 0 || vecA.length !== vecB.length) return 0;
@@ -115,10 +207,10 @@ export class SemanticCache {
   }
 
   /**
-   * Costruisce un vettore TF-IDF sintetico veloce a dimensione fissa (hash space 128)
+   * Vettore denso ad hash per comparazione rapida
    */
   public computeFastEmbedding(tokens: string[]): number[] {
-    const dim = 128;
+    const dim = 64;
     const vec = new Array(dim).fill(0);
     if (tokens.length === 0) return vec;
 
@@ -132,18 +224,16 @@ export class SemanticCache {
       vec[idx] += 1;
     }
 
-    // Normalizzazione L2
     const norm = Math.sqrt(vec.reduce((sum, v) => sum + v * v, 0));
     return norm > 0 ? vec.map(v => v / norm) : vec;
   }
 
   /**
    * Cerca una risposta identica o semanticamente molto simile nella cache in RAM.
-   * Se trovata, restituisce immediatamente il risultato bypassando il modello Gemma 2.
+   * Restituisce immediatamente il risultato se trovato, bypassando totalmente Gemma 2.
    */
   public findMatch(
     query: string,
-    contextHash = '',
     threshold = DEFAULT_SIMILARITY_THRESHOLD
   ): SemanticMatchResult | null {
     this.totalQueries++;
@@ -153,30 +243,28 @@ export class SemanticCache {
     const queryTokens = this.tokenize(query);
     const queryEmbedding = this.computeFastEmbedding(queryTokens);
 
-    // 1. FAST PATH: Matching esatto normalizzato (Latenza ~ 0.05ms)
+    // 1. FAST PATH: Matching esatto normalizzato (Latenza ~ 0.02ms)
     for (let i = 0; i < this.ramEntries.length; i++) {
       const entry = this.ramEntries[i];
       if (entry.normalizedQuery === normQuery) {
-        // Se c'è un contesto RAG specificato, controlla che non sia cambiato drasticamente
-        if (!contextHash || !entry.contextHash || entry.contextHash === contextHash) {
-          entry.hits++;
-          entry.timestamp = Date.now();
-          // Muovi all'inizio (LRU)
-          this.ramEntries.splice(i, 1);
-          this.ramEntries.unshift(entry);
-          this.cacheHits++;
-          this.schedulePersist();
-          return {
-            hit: true,
-            similarity: 1.0,
-            entry,
-            exactMatch: true,
-          };
-        }
+        entry.hits++;
+        entry.timestamp = Date.now();
+        // Sposta in cima alla lista LRU
+        this.ramEntries.splice(i, 1);
+        this.ramEntries.unshift(entry);
+        this.cacheHits++;
+        this.schedulePersist();
+        console.log(`[SemanticCache] ⚡ Hit Esatto (100%): "${query}"`);
+        return {
+          hit: true,
+          similarity: 1.0,
+          entry,
+          exactMatch: true,
+        };
       }
     }
 
-    // 2. SEMANTIC PATH: Confronto vettoriale Cosine Similarity & Jaccard su token
+    // 2. SEMANTIC PATH: Confronto vettoriale con sinonimi e overlap token
     let bestEntry: CachedSemanticItem | null = null;
     let bestSimilarity = 0;
     let bestIndex = -1;
@@ -184,25 +272,29 @@ export class SemanticCache {
     for (let i = 0; i < this.ramEntries.length; i++) {
       const entry = this.ramEntries[i];
 
-      // Salta contesti incompatibili se specificati
-      if (contextHash && entry.contextHash && entry.contextHash !== contextHash) {
-        continue;
-      }
-
       const jaccard = this.jaccardSimilarity(queryTokens, entry.queryTokens);
       const cosine = this.cosineSimilarity(queryEmbedding, entry.embedding);
 
-      // Ponderazione: 65% cosine similarity vettoriale + 35% Jaccard token overlap
-      const combinedScore = (cosine * 0.65) + (jaccard * 0.35);
+      // Ponderazione: 50% cosine + 50% jaccard sui token canonici
+      let score = (cosine * 0.5) + (jaccard * 0.5);
 
-      if (combinedScore > bestSimilarity) {
-        bestSimilarity = combinedScore;
+      // Bonus se ci sono 2 o più token semantici identici (es. 'auto' + 'scadenza')
+      const sharedTokens = queryTokens.filter(t => entry.queryTokens.includes(t));
+      if (sharedTokens.length >= 2) {
+        score = Math.max(score, 0.85);
+      } else if (sharedTokens.length === 1 && queryTokens.length === 1 && entry.queryTokens.length === 1) {
+        // Query mono-termine con stesso concetto (es. "scadenze" vs "scadenza")
+        score = 0.95;
+      }
+
+      if (score > bestSimilarity) {
+        bestSimilarity = score;
         bestEntry = entry;
         bestIndex = i;
       }
     }
 
-    // Se la similarità supera la soglia, è un HIT semantico!
+    // Se la similarità supera la soglia permissiva (es. >= 72%)
     if (bestEntry && bestSimilarity >= threshold) {
       bestEntry.hits++;
       bestEntry.timestamp = Date.now();
@@ -212,6 +304,7 @@ export class SemanticCache {
       }
       this.cacheHits++;
       this.schedulePersist();
+      console.log(`[SemanticCache] ⚡ Hit Semantico (${Math.round(bestSimilarity * 100)}%): "${query}" coincide con "${bestEntry.query}"`);
       return {
         hit: true,
         similarity: Math.round(bestSimilarity * 100) / 100,
@@ -224,20 +317,20 @@ export class SemanticCache {
   }
 
   /**
-   * Salva una risposta generata nella cache in RAM e programma la persistenza su disco
+   * Salva una risposta generata nella cache in RAM e programma la persistenza
    */
   public set(
     query: string,
     contextHash: string,
     response: { text: string; actions?: any[]; learnedFact?: string; autoAction?: any }
   ): void {
-    if (!query || !response || !response.text) return;
+    if (!query || !response || !response.text || response.text.trim().length === 0) return;
 
     const normQuery = this.normalize(query);
     const tokens = this.tokenize(query);
     const embedding = this.computeFastEmbedding(tokens);
 
-    // Rimuovi eventuale duplicato esatto già presente
+    // Rimuovi eventuale duplicato già presente
     this.ramEntries = this.ramEntries.filter(e => e.normalizedQuery !== normQuery);
 
     const newItem: CachedSemanticItem = {
@@ -275,7 +368,7 @@ export class SemanticCache {
     if (this.saveTimeout) clearTimeout(this.saveTimeout);
     this.saveTimeout = setTimeout(() => {
       localDb.saveSemanticCache(this.ramEntries);
-    }, 1500);
+    }, 1200);
   }
 
   /**
