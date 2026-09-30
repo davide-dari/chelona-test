@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { Sun, Moon, Wrench, Plus, LayoutDashboard, Settings, User, LogOut, Search, Mic, MicOff, Loader2, Bell, CreditCard, Fingerprint, ShieldCheck, Lock, Menu, X, StickyNote, FileText, Grid2X2, Car, QrCode, Folder as FolderIcon, Check, Edit2, Trash2, BookOpen, ArrowLeft, ArrowRight, Camera, FileDown, Hourglass, Users, Download, Receipt, MapPin, SquareParking, Image as ImageIcon, Lightbulb, Globe, ChevronLeft, Bus, Home, Armchair, Activity, ShoppingBasket, BadgePercent, Sparkles, CalendarClock, Calendar, AlertCircle, CheckCircle2, Battery, Wallet, Flame, ArrowUpRight } from 'lucide-react';
+import { Sun, Moon, Wrench, Plus, LayoutDashboard, Settings, User, LogOut, Search, Mic, MicOff, Loader2, Bell, CreditCard, Fingerprint, ShieldCheck, Lock, Menu, X, StickyNote, FileText, Grid2X2, Car, QrCode, Folder as FolderIcon, Check, Edit2, Trash2, BookOpen, ArrowLeft, ArrowRight, Camera, FileDown, Hourglass, Users, Download, Receipt, MapPin, SquareParking, Image as ImageIcon, Lightbulb, Globe, ChevronLeft, Bus, Home, Armchair, Activity, ShoppingBasket, BadgePercent, Sparkles, CalendarClock, Calendar, AlertCircle, CheckCircle2, Battery, Wallet, Flame, ArrowUpRight, Smartphone } from 'lucide-react';
 
 import { Module, ModuleType, Folder, DocumentModule } from './types';
 import { isModuleSensitive } from './utils/security';
@@ -1176,6 +1176,15 @@ export default function App() {
       return;
     }
 
+    if (route === 'home') {
+      setActiveNavTab('home');
+      setIsToolsOpen(false);
+      setIsAiOpen(false);
+      setIsProfileOpen(false);
+      setSelectedType(null);
+      return;
+    }
+
     if (route === 'tools' || route === 'scanner' || route === 'shortcuts') {
       setActiveNavTab('tools');
       setIsToolsOpen(true);
@@ -1219,6 +1228,18 @@ export default function App() {
       window.removeEventListener('trigger-auto-km-page', handleTriggerWeeklyKm);
     };
   }, [handleNotificationRoute]);
+
+  // Sezione attualmente attiva per la creazione della scorciatoia/app singola Android
+  const activeShortcutSectionId = useMemo(() => {
+    if (selectedType === 'auto') return 'auto';
+    if (selectedType === 'document') return 'document';
+    if (selectedType === 'split' || selectedType === 'single-expense' || selectedType === 'installments') return 'split';
+    if (selectedType === 'home') return 'home';
+    if (selectedType === 'fitness') return 'fitness';
+    if (selectedType === 'travel') return 'travel';
+    if (isToolsOpen) return 'tools';
+    return null;
+  }, [selectedType, isToolsOpen]);
 
   // Calcolo centralizzato di tutte le scadenze (Auto, Documenti, Rate, Spese)
   const allUpcomingDeadlines = useMemo(() => {
@@ -3391,8 +3412,8 @@ export default function App() {
 
             <main className="flex-1 flex flex-col overflow-hidden w-full relative">
               <header className="h-16 lg:h-20 bg-[var(--bg)] px-6 lg:px-12 flex items-center justify-between shrink-0 z-10 safe-area-header transition-all">
-                {/* Left side: Contextual Title */}
-                <div className="flex items-center gap-4">
+                {/* Left side: Contextual Title or Logo */}
+                <div className="flex items-center gap-3 sm:gap-4">
                   {(activeNavTab !== 'home' || isToolsOpen || isProfileOpen || isAiOpen || selectedType || selectedFolderId) && (
                     <button 
                       onClick={() => { 
@@ -3405,47 +3426,102 @@ export default function App() {
                         setActiveToolId(null); 
                         setIsSensitiveUnlocked(false);
                       }}
-                      className="px-3.5 py-1.5 bg-[var(--surface-variant)] hover:bg-[var(--border)] rounded-2xl text-[var(--text-main)] font-black text-xs transition-all flex items-center gap-1.5 border border-[var(--border)] shadow-sm active:scale-95"
+                      className="px-3.5 py-1.5 bg-[var(--surface-variant)] hover:bg-[var(--border)] rounded-2xl text-[var(--text-main)] font-black text-xs transition-all flex items-center gap-1.5 border border-[var(--border)] shadow-sm active:scale-95 cursor-pointer"
                       title="Torna alla Home"
                     >
                       <ArrowLeft className="w-4 h-4 text-[var(--accent)]" />
                       <span>Home</span>
                     </button>
                   )}
-                  <h1 className="text-xl lg:text-2xl font-bold text-[var(--text-main)] tracking-tight">
-                    {isAiOpen ? 'Chelona AI' :
-                     activeNavTab === 'deadlines' ? 'Scadenze & Promemoria' :
-                     isToolsOpen ? 'Strumenti' : 
-                     isProfileOpen ? 'Profilo' :
-                     selectedFolderId ? (folders.find(f => f.id === selectedFolderId)?.name || 'Cartella') : 
-                     selectedType === 'home' ? 'Casa, Offerte & Spesa' :
-                     selectedType === 'split' ? 'Spese & Conti' :
-                     selectedType ? (TEMPLATES[selectedType as keyof typeof TEMPLATES]?.title || 'Sandbox') : 'Chelona'}
-                  </h1>
+
+                  {!selectedType && !isToolsOpen && !isProfileOpen && !isAiOpen && !selectedFolderId && activeNavTab === 'home' ? (
+                    <div 
+                      className="flex items-center gap-2.5 sm:gap-3 cursor-pointer select-none group"
+                      onClick={() => {
+                        setActiveNavTab('home');
+                        setSelectedType(null);
+                        setSelectedFolderId(null);
+                      }}
+                      title="Chelona Home"
+                    >
+                      <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-gradient-to-tr from-amber-500/20 via-rose-500/15 to-indigo-500/20 p-1 flex items-center justify-center border border-amber-500/30 shadow-sm shrink-0 group-hover:scale-105 transition-transform">
+                        <img src="/chelona_logo.png" alt="Chelona Logo" className="w-full h-full object-contain filter drop-shadow-sm" />
+                      </div>
+                      <div className="flex flex-col">
+                        <h1 className="text-xl sm:text-2xl font-black text-[var(--text-main)] tracking-tight leading-none">
+                          Chelona
+                        </h1>
+                        <span className="text-[10px] font-bold text-amber-500 uppercase tracking-widest leading-none mt-1">
+                          Personal Hub
+                        </span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2.5">
+                      <h1 className="text-xl lg:text-2xl font-bold text-[var(--text-main)] tracking-tight">
+                        {isAiOpen ? 'Chelona AI' :
+                         activeNavTab === 'deadlines' ? 'Scadenze & Promemoria' :
+                         isToolsOpen ? 'Strumenti' : 
+                         isProfileOpen ? 'Profilo' :
+                         selectedFolderId ? (folders.find(f => f.id === selectedFolderId)?.name || 'Cartella') : 
+                         selectedType === 'home' ? 'Casa, Offerte & Spesa' :
+                         selectedType === 'split' ? 'Spese & Conti' :
+                         selectedType ? (TEMPLATES[selectedType as keyof typeof TEMPLATES]?.title || 'Sandbox') : 'Chelona'}
+                      </h1>
+                    </div>
+                  )}
                 </div>
 
-                {/* Right side: Avatar (Lock and Theme moved to Profile) */}
-                <div className="flex items-center gap-2 sm:gap-4">
+                {/* Right side: Action buttons */}
+                <div className="flex items-center gap-2 sm:gap-3">
+                  {/* Pulsante Crea App Singola per la sezione attiva */}
+                  {activeShortcutSectionId && (
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        const { createSectionShortcut } = await import('./services/shortcutService');
+                        const res = await createSectionShortcut(activeShortcutSectionId);
+                        showToast(res.message, res.success ? 'success' : 'info');
+                      }}
+                      className="px-3 py-1.5 rounded-2xl bg-[var(--surface-variant)] hover:bg-[var(--border)] border border-[var(--border)] text-[var(--text-main)] hover:text-indigo-500 text-xs font-bold transition-all flex items-center gap-1.5 shadow-xs cursor-pointer active:scale-95"
+                      title="Crea icona app sulla schermata home"
+                    >
+                      <Smartphone className="w-3.5 h-3.5 text-indigo-500" />
+                      <span className="hidden sm:inline">Crea App Singola</span>
+                    </button>
+                  )}
+
                   <button 
                     onClick={() => { setIsAiOpen(true); setActiveNavTab('ai'); setIsToolsOpen(false); setIsProfileOpen(false); setSelectedType(null); }}
-                    className="p-2 sm:p-2.5 bg-gradient-to-tr from-amber-500/10 via-rose-500/10 to-indigo-500/10 hover:from-amber-500/20 hover:to-indigo-500/20 rounded-full text-amber-500 border border-amber-500/30 transition-all flex items-center justify-center shadow-sm"
+                    className="p-2 sm:p-2.5 bg-gradient-to-tr from-amber-500/10 via-rose-500/10 to-indigo-500/10 hover:from-amber-500/20 hover:to-indigo-500/20 rounded-full text-amber-500 border border-amber-500/30 transition-all flex items-center justify-center shadow-sm cursor-pointer"
                     title="Chelona AI"
                   >
                     <Sparkles className="w-5 h-5 sm:w-6 sm:h-6" />
                   </button>
+
                   <button 
                     onClick={() => { setIsToolsOpen(true); setIsProfileOpen(false); setIsAiOpen(false); setSelectedType(null); }}
-                    className="p-2 sm:p-2.5 bg-[var(--surface-variant)] hover:bg-[var(--border)] rounded-full text-[var(--accent)] transition-all flex items-center justify-center shadow-sm hidden md:flex"
+                    className="p-2 sm:p-2.5 bg-[var(--surface-variant)] hover:bg-[var(--border)] rounded-full text-[var(--accent)] transition-all flex items-center justify-center shadow-sm hidden md:flex cursor-pointer"
                     title="Strumenti"
                   >
                     <Wrench className="w-5 h-5 sm:w-6 sm:h-6" />
                   </button>
+
+                  {/* Tasto QR Code discreto nella Header (meno invasivo) */}
+                  <button 
+                    onClick={() => setIsScanning(true)} 
+                    className="p-2 sm:p-2.5 bg-[var(--surface-variant)] hover:bg-[var(--border)] rounded-full text-[var(--text-muted)] hover:text-emerald-500 transition-all flex items-center justify-center shadow-sm cursor-pointer"
+                    title="Scansiona QR Code"
+                  >
+                    <QrCode className="w-5 h-5 sm:w-6 sm:h-6" />
+                  </button>
+
                   <button 
                     onClick={() => {
                       setAddressParkingTab(hasActiveParking ? 'parking' : 'addresses');
                       setIsAddressAndParkingOpen(true);
                     }}
-                    className="relative p-2 sm:p-2.5 bg-[var(--surface-variant)] hover:bg-[var(--border)] rounded-full text-indigo-500 hover:text-indigo-600 transition-all flex items-center justify-center shadow-sm"
+                    className="relative p-2 sm:p-2.5 bg-[var(--surface-variant)] hover:bg-[var(--border)] rounded-full text-indigo-500 hover:text-indigo-600 transition-all flex items-center justify-center shadow-sm cursor-pointer"
                     title="Indirizzi & Parcheggio"
                   >
                     <div className="relative flex items-center justify-center">
@@ -3457,9 +3533,10 @@ export default function App() {
                       )}
                     </div>
                   </button>
+
                   <button 
                     onClick={() => { setIsProfileOpen(true); setIsAiOpen(false); }} 
-                    className="w-10 h-10 lg:w-11 lg:h-11 rounded-full overflow-hidden border border-[var(--border)] focus:outline-none hover:opacity-80 transition-all bg-[var(--surface-variant)] shadow-sm"
+                    className="w-10 h-10 lg:w-11 lg:h-11 rounded-full overflow-hidden border border-[var(--border)] focus:outline-none hover:opacity-80 transition-all bg-[var(--surface-variant)] shadow-sm cursor-pointer"
                   >
                     <img src={avatar || `https://ui-avatars.com/api/?name=${username}&background=E3E3E3&color=5E5E5E`} alt="Profile" className="w-full h-full object-cover" />
                   </button>
@@ -4813,9 +4890,24 @@ export default function App() {
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center justify-between gap-2 mb-1">
                                 <h4 className="font-black text-base lg:text-lg text-[var(--text-main)]">Auto & Mobilità</h4>
-                                <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-rose-500/10 text-rose-500 border border-rose-500/20">
-                                  {modules.filter(m => m.type === 'auto').length > 0 ? `${modules.filter(m => m.type === 'auto').length} Veicol${modules.filter(m => m.type === 'auto').length > 1 ? 'i' : 'o'}` : 'Configura'}
-                                </span>
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-rose-500/10 text-rose-500 border border-rose-500/20">
+                                    {modules.filter(m => m.type === 'auto').length > 0 ? `${modules.filter(m => m.type === 'auto').length} Veicol${modules.filter(m => m.type === 'auto').length > 1 ? 'i' : 'o'}` : 'Configura'}
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={async (e) => {
+                                      e.stopPropagation();
+                                      const { createSectionShortcut } = await import('./services/shortcutService');
+                                      const res = await createSectionShortcut('auto');
+                                      showToast(res.message, res.success ? 'success' : 'info');
+                                    }}
+                                    className="p-1 rounded-lg bg-rose-500/10 hover:bg-rose-500/25 text-rose-500 border border-rose-500/20 transition-all cursor-pointer active:scale-95"
+                                    title="Crea scorciatoia app Auto"
+                                  >
+                                    <Smartphone className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
                               </div>
                               <p className="text-xs text-[var(--text-muted)] line-clamp-2 leading-relaxed">
                                 Assicurazione, bollo, revisione, chilometri e manutenzioni
@@ -4834,9 +4926,24 @@ export default function App() {
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center justify-between gap-2 mb-1">
                                 <h4 className="font-black text-base lg:text-lg text-[var(--text-main)]">Documenti</h4>
-                                <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-blue-500/10 text-blue-500 border border-blue-500/20">
-                                  {modules.filter(m => m.type === 'document').length} Salvati
-                                </span>
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-blue-500/10 text-blue-500 border border-blue-500/20">
+                                    {modules.filter(m => m.type === 'document').length} Salvati
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={async (e) => {
+                                      e.stopPropagation();
+                                      const { createSectionShortcut } = await import('./services/shortcutService');
+                                      const res = await createSectionShortcut('document');
+                                      showToast(res.message, res.success ? 'success' : 'info');
+                                    }}
+                                    className="p-1 rounded-lg bg-blue-500/10 hover:bg-blue-500/25 text-blue-500 border border-blue-500/20 transition-all cursor-pointer active:scale-95"
+                                    title="Crea scorciatoia app Documenti"
+                                  >
+                                    <Smartphone className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
                               </div>
                               <p className="text-xs text-[var(--text-muted)] line-clamp-2 leading-relaxed">
                                 Carte d'identità, patenti, ricevute fiscali, contratti e scadenze
@@ -4855,9 +4962,24 @@ export default function App() {
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center justify-between gap-2 mb-1">
                                 <h4 className="font-black text-base lg:text-lg text-[var(--text-main)]">Spese & Conti</h4>
-                                <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-purple-500/10 text-purple-500 border border-purple-500/20">
-                                  Finanze
-                                </span>
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-purple-500/10 text-purple-500 border border-purple-500/20">
+                                    Finanze
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={async (e) => {
+                                      e.stopPropagation();
+                                      const { createSectionShortcut } = await import('./services/shortcutService');
+                                      const res = await createSectionShortcut('split');
+                                      showToast(res.message, res.success ? 'success' : 'info');
+                                    }}
+                                    className="p-1 rounded-lg bg-purple-500/10 hover:bg-purple-500/25 text-purple-500 border border-purple-500/20 transition-all cursor-pointer active:scale-95"
+                                    title="Crea scorciatoia app Spese & Conti"
+                                  >
+                                    <Smartphone className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
                               </div>
                               <p className="text-xs text-[var(--text-muted)] line-clamp-2 leading-relaxed">
                                 Spese quotidiane, conti condivisi in gruppo, rate e mutui
@@ -4876,9 +4998,24 @@ export default function App() {
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center justify-between gap-2 mb-1">
                                 <h4 className="font-black text-base lg:text-lg text-[var(--text-main)]">Casa, Offerte & Spesa</h4>
-                                <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-teal-500/10 text-teal-500 border border-teal-500/20">
-                                  Offerte & Casa
-                                </span>
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-teal-500/10 text-teal-500 border border-teal-500/20">
+                                    Offerte & Casa
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={async (e) => {
+                                      e.stopPropagation();
+                                      const { createSectionShortcut } = await import('./services/shortcutService');
+                                      const res = await createSectionShortcut('home');
+                                      showToast(res.message, res.success ? 'success' : 'info');
+                                    }}
+                                    className="p-1 rounded-lg bg-teal-500/10 hover:bg-teal-500/25 text-teal-600 border border-teal-500/20 transition-all cursor-pointer active:scale-95"
+                                    title="Crea scorciatoia app Casa, Offerte & Spesa"
+                                  >
+                                    <Smartphone className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
                               </div>
                               <p className="text-xs text-[var(--text-muted)] line-clamp-2 leading-relaxed">
                                 Volantini sconti supermercati, lista della spesa, ricettario e arredo
@@ -4916,9 +5053,24 @@ export default function App() {
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center justify-between gap-2 mb-1">
                                 <h4 className="font-black text-base lg:text-lg text-[var(--text-main)]">Salute, Fitness & Dieta</h4>
-                                <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
-                                  Trainer
-                                </span>
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
+                                    Trainer
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={async (e) => {
+                                      e.stopPropagation();
+                                      const { createSectionShortcut } = await import('./services/shortcutService');
+                                      const res = await createSectionShortcut('fitness');
+                                      showToast(res.message, res.success ? 'success' : 'info');
+                                    }}
+                                    className="p-1 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/25 text-emerald-600 border border-emerald-500/20 transition-all cursor-pointer active:scale-95"
+                                    title="Crea scorciatoia app Fitness & Dieta"
+                                  >
+                                    <Smartphone className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
                               </div>
                               <p className="text-xs text-[var(--text-muted)] line-clamp-2 leading-relaxed">
                                 Schede allenamento, timer recupero e pasti con grammature esatte
@@ -4957,9 +5109,24 @@ export default function App() {
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center justify-between gap-2 mb-1">
                                 <h4 className="font-black text-base lg:text-lg text-[var(--text-main)]">Viaggi & Mete</h4>
-                                <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-indigo-500/10 text-indigo-500 border border-indigo-500/20">
-                                  Itinerari
-                                </span>
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-indigo-500/10 text-indigo-500 border border-indigo-500/20">
+                                    Itinerari
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={async (e) => {
+                                      e.stopPropagation();
+                                      const { createSectionShortcut } = await import('./services/shortcutService');
+                                      const res = await createSectionShortcut('travel');
+                                      showToast(res.message, res.success ? 'success' : 'info');
+                                    }}
+                                    className="p-1 rounded-lg bg-indigo-500/10 hover:bg-indigo-500/25 text-indigo-500 border border-indigo-500/20 transition-all cursor-pointer active:scale-95"
+                                    title="Crea scorciatoia app Viaggi & Mete"
+                                  >
+                                    <Smartphone className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
                               </div>
                               <p className="text-xs text-[var(--text-muted)] line-clamp-2 leading-relaxed">
                                 Pianifica mete, tappe del viaggio e scadenze valigie
@@ -5173,18 +5340,20 @@ export default function App() {
           {/* Global FAB (Only on main dashboard and specific categories except gallery/travel) */}
           {(selectedType !== 'gallery') && !editingTravelModule && !editingStudyModule && !editingFitnessModule && !isAdding && !editingModuleId && !isArchiveOpen && !isToolsOpen && !editingAutoModule && !editingSplitModule && !editingSingleExpenseModule && !editingDocumentModule && !editingGenericModule && !editingFurnitureModule && !editingInstallmentsModule && !editingSupermarketModule && !editingVolantinoModule && (
             <>
-              {/* Scan QR Button: on homepage it sits at right-6, in categories it sits to the left of the + button */}
-              <motion.button
-                initial={{ scale: 0, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => setIsScanning(true)}
-                className={`fixed bottom-24 ${selectedType ? 'right-22 md:right-28' : 'right-6 md:right-10'} md:bottom-10 z-[60] w-13 h-13 md:w-14 md:h-14 bg-gradient-to-tr from-emerald-600 to-teal-600 text-white rounded-2xl shadow-xl shadow-emerald-500/30 flex items-center justify-center border border-white/20 animate-fade-in hover:scale-105 active:scale-95 transition-all cursor-pointer`}
-                title="Scansiona scheda"
-              >
-                <QrCode className="w-6 h-6" />
-              </motion.button>
+              {/* Scan QR Button: solo nelle categorie come tasto discreto e non invasivo */}
+              {selectedType && (
+                <motion.button
+                  initial={{ scale: 0, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => setIsScanning(true)}
+                  className="fixed bottom-24 right-20 md:right-28 md:bottom-10 z-[60] w-10 h-10 md:w-11 md:h-11 bg-[var(--surface-variant)]/90 backdrop-blur-md text-[var(--text-muted)] hover:text-emerald-500 rounded-full shadow-md border border-[var(--border)] flex items-center justify-center transition-all cursor-pointer"
+                  title="Scansiona QR"
+                >
+                  <QrCode className="w-4 h-4 md:w-5 md:h-5" />
+                </motion.button>
+              )}
 
               {/* Tasto + solo nelle categorie (NON nella homepage) */}
               {selectedType && (
@@ -5280,7 +5449,7 @@ export default function App() {
               {[
                 { 
                   id: 'home', 
-                  icon: LayoutDashboard, 
+                  icon: Home, 
                   label: 'Home', 
                   action: () => { 
                     setActiveNavTab('home'); 

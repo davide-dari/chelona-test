@@ -883,68 +883,67 @@ export function ProfileScreen({
               transition={{ duration: 0.2 }}
               className="space-y-6"
             >
-              {/* Theme Customization Card (Material 3 Segmented Selector) */}
+              {/* Theme Customization Card - Singolo Tasto Sole / Luna */}
               <div className="bg-[var(--card-bg)] rounded-[var(--radius-lg)] p-5 sm:p-6 border border-[var(--border)] shadow-sm space-y-4">
-                <div className="flex items-center gap-3 pb-3 border-b border-[var(--border)]">
-                  <div className="w-10 h-10 rounded-2xl bg-indigo-500/10 flex items-center justify-center text-indigo-500">
-                    {theme === 'light' ? <Sun className="w-5 h-5 text-amber-500" /> : <Moon className="w-5 h-5 text-indigo-400" />}
-                  </div>
-                  <div>
-                    <h3 className="text-base font-bold text-[var(--text-main)]">Tema & Aspetto</h3>
-                    <p className="text-xs text-[var(--text-muted)]">Scegli tra modalità chiara Oasis Teal o scura profonda</p>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
-                  {/* Light Theme Card */}
-                  <div
-                    onClick={() => theme !== 'light' && onToggleTheme()}
-                    className={`p-4 rounded-2xl border-2 cursor-pointer transition-all flex items-center justify-between group ${
-                      theme === 'light'
-                        ? 'border-[var(--accent)] bg-[var(--accent-bg)]/40 shadow-sm'
-                        : 'border-[var(--border)] bg-[var(--bg)] hover:border-[var(--text-muted)]'
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="w-11 h-11 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-500">
-                        <Sun className="w-5 h-5" />
-                      </div>
-                      <div>
-                        <h4 className="text-sm font-bold text-[var(--text-main)]">Modalità Chiara</h4>
-                        <p className="text-[11px] text-[var(--text-muted)]">Palette Oasis ad alto contrasto</p>
-                      </div>
-                    </div>
-                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                      theme === 'light' ? 'border-[var(--accent)] bg-[var(--accent)] text-white' : 'border-[var(--border)]'
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-11 h-11 rounded-2xl flex items-center justify-center transition-colors shadow-inner ${
+                      theme === 'dark' ? 'bg-indigo-500/15 text-indigo-400' : 'bg-amber-500/15 text-amber-500'
                     }`}>
-                      {theme === 'light' && <Check className="w-3 h-3 stroke-[3]" />}
+                      {theme === 'dark' ? <Moon className="w-6 h-6" /> : <Sun className="w-6 h-6" />}
+                    </div>
+                    <div>
+                      <h3 className="text-base font-bold text-[var(--text-main)]">
+                        {theme === 'dark' ? 'Modalità Scura Attiva' : 'Modalità Chiara Attiva'}
+                      </h3>
+                      <p className="text-xs text-[var(--text-muted)]">
+                        Tocca il tasto per alternare istantaneamente Sole e Luna
+                      </p>
                     </div>
                   </div>
 
-                  {/* Dark Theme Card */}
-                  <div
-                    onClick={() => theme !== 'dark' && onToggleTheme()}
-                    className={`p-4 rounded-2xl border-2 cursor-pointer transition-all flex items-center justify-between group ${
+                  {/* Singolo tasto Sole / Luna con animazione fluida */}
+                  <motion.button
+                    type="button"
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.92 }}
+                    onClick={onToggleTheme}
+                    className={`px-4 py-2.5 rounded-2xl border transition-all flex items-center gap-2.5 font-bold text-xs shadow-sm cursor-pointer ${
                       theme === 'dark'
-                        ? 'border-[var(--accent)] bg-[var(--accent-bg)]/40 shadow-sm'
-                        : 'border-[var(--border)] bg-[var(--bg)] hover:border-[var(--text-muted)]'
+                        ? 'bg-amber-500/15 border-amber-500/30 text-amber-300 hover:bg-amber-500/25'
+                        : 'bg-indigo-500/15 border-indigo-500/30 text-indigo-600 hover:bg-indigo-500/25'
                     }`}
+                    title={theme === 'dark' ? 'Passa alla modalità Chiara (Sole)' : 'Passa alla modalità Scura (Luna)'}
                   >
-                    <div className="flex items-center gap-3">
-                      <div className="w-11 h-11 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400">
-                        <Moon className="w-5 h-5" />
-                      </div>
-                      <div>
-                        <h4 className="text-sm font-bold text-[var(--text-main)]">Modalità Scura</h4>
-                        <p className="text-[11px] text-[var(--text-muted)]">Tonalità scure a basso affaticamento</p>
-                      </div>
+                    <div className="relative w-5 h-5 flex items-center justify-center">
+                      <AnimatePresence mode="wait">
+                        {theme === 'dark' ? (
+                          <motion.div
+                            key="sun-icon"
+                            initial={{ rotate: -90, scale: 0.5, opacity: 0 }}
+                            animate={{ rotate: 0, scale: 1, opacity: 1 }}
+                            exit={{ rotate: 90, scale: 0.5, opacity: 0 }}
+                            transition={{ duration: 0.2 }}
+                          >
+                            <Sun className="w-5 h-5 text-amber-400" />
+                          </motion.div>
+                        ) : (
+                          <motion.div
+                            key="moon-icon"
+                            initial={{ rotate: 90, scale: 0.5, opacity: 0 }}
+                            animate={{ rotate: 0, scale: 1, opacity: 1 }}
+                            exit={{ rotate: -90, scale: 0.5, opacity: 0 }}
+                            transition={{ duration: 0.2 }}
+                          >
+                            <Moon className="w-5 h-5 text-indigo-500" />
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
                     </div>
-                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                      theme === 'dark' ? 'border-[var(--accent)] bg-[var(--accent)] text-white' : 'border-[var(--border)]'
-                    }`}>
-                      {theme === 'dark' && <Check className="w-3 h-3 stroke-[3]" />}
-                    </div>
-                  </div>
+                    <span className="font-black tracking-wide">
+                      {theme === 'dark' ? 'Attiva Sole' : 'Attiva Luna'}
+                    </span>
+                  </motion.button>
                 </div>
               </div>
             </motion.div>

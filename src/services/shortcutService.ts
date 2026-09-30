@@ -321,6 +321,53 @@ export const SECTION_SHORTCUTS: SectionShortcutDef[] = [
       <path d="M3 5h4" />
       <path d="M17 19h4" />
     `
+  },
+  {
+    id: 'home',
+    route: 'home',
+    shortLabel: 'Casa & Spesa',
+    longLabel: 'Chelona Casa, Offerte & Spesa',
+    description: 'Volantini sconti, lista della spesa, ricettario e arredamento.',
+    category: 'casa',
+    colorHex: '#0D9488',
+    gradientFrom: '#0F766E',
+    gradientTo: '#14B8A6',
+    emoji: '🏡',
+    svgInner: `
+      <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+      <polyline points="9 22 9 12 15 12 15 22" />
+    `
+  },
+  {
+    id: 'tools',
+    route: 'tools',
+    shortLabel: 'Strumenti',
+    longLabel: 'Chelona Strumenti & Utility',
+    description: 'Scanner PDF, aiuto Vinted, calcolo percentuali e galleria.',
+    category: 'utility',
+    colorHex: '#6366F1',
+    gradientFrom: '#4F46E5',
+    gradientTo: '#818CF8',
+    emoji: '🛠️',
+    svgInner: `
+      <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
+    `
+  },
+  {
+    id: 'finance',
+    route: 'split',
+    shortLabel: 'Spese & Conti',
+    longLabel: 'Chelona Spese & Finanze',
+    description: 'Spese quotidiane, spese condivise in gruppo, rate e mutui.',
+    category: 'finanze',
+    colorHex: '#8B5CF6',
+    gradientFrom: '#7C3AED',
+    gradientTo: '#A78BFA',
+    emoji: '💳',
+    svgInner: `
+      <rect width="20" height="14" x="2" y="5" rx="2" />
+      <line x1="2" x2="22" y1="10" y2="10" />
+    `
   }
 ];
 
@@ -436,8 +483,17 @@ export async function createSectionShortcut(shortcutIdOrRoute: string): Promise<
   message: string;
   shortcut?: SectionShortcutDef;
 }> {
+  const cleanId = (shortcutIdOrRoute || '').trim().toLowerCase();
   const shortcut = SECTION_SHORTCUTS.find(
-    s => s.id === shortcutIdOrRoute || s.route === shortcutIdOrRoute
+    s => s.id === cleanId || s.route === cleanId
+  ) || (
+    cleanId === 'documenti' ? SECTION_SHORTCUTS.find(s => s.id === 'document') :
+    cleanId === 'spese' || cleanId === 'conti' || cleanId === 'spese e conti' ? SECTION_SHORTCUTS.find(s => s.id === 'finance' || s.id === 'split') :
+    cleanId === 'casa' || cleanId === 'casa offerte e spesa' ? SECTION_SHORTCUTS.find(s => s.id === 'home') :
+    cleanId === 'salute' || cleanId === 'salute e fitness e dieta' || cleanId === 'dieta' ? SECTION_SHORTCUTS.find(s => s.id === 'fitness') :
+    cleanId === 'viaggi' || cleanId === 'viaggi e mete' || cleanId === 'mete' ? SECTION_SHORTCUTS.find(s => s.id === 'travel') :
+    cleanId === 'strumenti' || cleanId === 'utility' ? SECTION_SHORTCUTS.find(s => s.id === 'tools') :
+    undefined
   );
 
   if (!shortcut) {
