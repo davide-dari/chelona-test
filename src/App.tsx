@@ -765,6 +765,7 @@ export default function App() {
         localStorage.removeItem('chelona_form_draft');
         return;
       }
+      if (showGemma2Setup) { setShowGemma2Setup(false); return; }
       if (isProfileOpen) { setIsProfileOpen(false); return; }
       if (isAiOpen) { setIsAiOpen(false); if (activeNavTab === 'ai') setActiveNavTab('home'); return; }
 

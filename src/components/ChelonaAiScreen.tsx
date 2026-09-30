@@ -12,6 +12,7 @@ import {
   getLearnedMemories, deleteLearnedMemory, clearAllLearnedMemories, 
   saveLearnedMemory, queryChelonaAi, buildKnowledgeBase
 } from '../services/chelonaEngine';
+import { queryGemma2 } from '../services/gemma2Engine';
 import {
   prepareNaturalSpeech,
   splitIntoSentences,
@@ -511,7 +512,7 @@ export const ChelonaAiScreen
     }
 
     try {
-      const response = await queryChelonaAi(queryToSend, modules, username);
+      const response = await queryGemma2(queryToSend, modules, username);
       const assistantMsg: AiMessage = {
         id: 'msg_ai_' + Date.now(),
         sender: 'assistant',

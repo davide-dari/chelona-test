@@ -84,6 +84,8 @@ export interface Gemma2Response {
   text: string;
   actions?: AiAction[];
   learnedFact?: string;
+  createdModule?: Module;
+  autoAction?: AiAction;
   engineUsed: 'gemma2-local' | 'chelona-engine';
   ragDocsUsed?: number;
   cached?: boolean;
