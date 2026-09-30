@@ -5,6 +5,7 @@ import { isModuleSensitive } from '../utils/security';
 import { EXPENSE_CATEGORIES } from '../constants/expenses';
 import { motion, AnimatePresence } from 'motion/react';
 import { CAR_BRANDS } from '../utils/carBrands';
+import { getAutoDeadlineTargetDate, isDeadlineFeminine } from '../utils/autoDeadlines';
 import { notificationService } from '../services/notificationService';
 import { DocumentViewer } from './DocumentViewer';
 
@@ -369,48 +370,77 @@ export const AutoCard = ({ module, onDelete, onEdit, onToggleSensitivity }: { mo
   const brandLogo = module.brand ? module.brand.toLowerCase().replace(/ /g, '-') : '';
   const hasLogo = CAR_BRANDS.includes(brandLogo);
 
-  // Compute most urgent deadline
+  // Compute most urgent deadline using accurate automotive calculations
   const urgentDeadline = (() => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    const checkDate = (label: string, dateStr?: string) => {
-      if (!dateStr) return null;
-      const d = new Date(dateStr);
-      if (isNaN(d.getTime())) return null;
-      d.setHours(0, 0, 0, 0);
-      const days = Math.round((d.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-      return { label, days };
+    const checkField = (field: string, label: string) => {
+      const val = (module as any)[field];
+      const target = getAutoDeadlineTargetDate(field, val, module);
+      if (!target) return null;
+      const days = Math.round((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+      return { label, days, isFeminine: isDeadlineFeminine(field) };
     };
 
-    const deadlines = [
-      checkDate('Assicurazione', module.lastInsurance),
-      checkDate('Bollo', module.lastTax),
-      checkDate('Revisione', module.lastRevision),
-      checkDate('Batteria 12V', module.battery12vExpiryDate),
-      checkDate('Bombola GPL', module.lastGplCylinder),
-      checkDate('Bombola Metano', module.lastMethaneCylinder),
-      checkDate('Garanzia EV', module.hybridBatteryExpiryDate),
-    ].filter(Boolean) as Array<{ label: string; days: number }>;
+    const deadlines: Array<{ label: string; days: number; isFeminine: boolean }> = [
+      checkField('lastInsurance', 'Assicurazione'),
+      checkField('lastTax', 'Bollo'),
+      checkField('lastRevision', 'Revisione'),
+      checkField('battery12vExpiryDate', 'Batteria 12V'),
+      checkField('lastGplCylinder', 'Bombola GPL'),
+      checkField('lastMethaneCylinder', 'Bombola Metano'),
+      checkField('hybridBatteryExpiryDate', 'Garanzia EV'),
+    ].filter(Boolean) as Array<{ label: string; days: number; isFeminine: boolean }>;
 
-    if (module.currentKm && module.lastServiceKm) {
-      const curKm = Number(module.currentKm);
-      const lastSvc = Number(module.lastServiceKm);
-      if (!isNaN(curKm) && !isNaN(lastSvc)) {
+    // Check Tagliando
+    const curKm = module.currentKm ? Number(String(module.currentKm).replace(/\D/g, '')) : undefined;
+    if (curKm !== undefined && module.lastServiceKm) {
+      const lastSvc = Number(String(module.lastServiceKm).replace(/\D/g, ''));
+      if (!isNaN(lastSvc)) {
         const nextSvc = lastSvc + 15000;
         const kmRemaining = nextSvc - curKm;
-        if (kmRemaining <= 1000) {
+        if (kmRemaining <= 1500) {
           deadlines.push({
             label: 'Tagliando',
             days: kmRemaining <= 0 ? -1 : Math.max(1, Math.round(kmRemaining / 40)),
+            isFeminine: false,
           });
         }
       }
     }
 
-    if (deadlines.length === 0) return null;
+    // Check Gomme
+    if (curKm !== undefined && module.tiresKm) {
+      const lastTires = Number(String(module.tiresKm).replace(/\D/g, ''));
+      const offset = module.tiresSuggestedOffsetKm ? Number(module.tiresSuggestedOffsetKm) : 0;
+      if (!isNaN(lastTires)) {
+        const nextTires = lastTires + 10000 + offset;
+        const kmRemaining = nextTires - curKm;
+        if (kmRemaining <= 1500) {
+          deadlines.push({
+            label: 'Gomme',
+            days: kmRemaining <= 0 ? -1 : Math.max(1, Math.round(kmRemaining / 40)),
+            isFeminine: true,
+          });
+        }
+      }
+    }
+
+    const hasAnyConfigured = Boolean(
+      module.lastInsurance ||
+      module.lastTax ||
+      module.lastRevision ||
+      module.lastServiceKm ||
+      module.tiresKm ||
+      module.battery12vExpiryDate
+    );
+
+    if (deadlines.length === 0) {
+      return { hasAnyConfigured, item: null };
+    }
     deadlines.sort((a, b) => a.days - b.days);
-    return deadlines[0];
+    return { hasAnyConfigured: true, item: deadlines[0] };
   })();
 
   const fuelColorMap: Record<string, string> = {
@@ -424,6 +454,14 @@ export const AutoCard = ({ module, onDelete, onEdit, onToggleSensitivity }: { mo
 
   const fuelBadge = module.fuelType ? fuelColorMap[module.fuelType.toLowerCase()] || 'bg-[var(--surface-variant)] text-[var(--text-muted)] border-[var(--border)]' : '';
 
+  const formattedKm = (() => {
+    if (!module.currentKm) return '--- km';
+    const num = Number(String(module.currentKm).replace(/\D/g, ''));
+    return isNaN(num) ? '--- km' : `${num.toLocaleString('it-IT')} km`;
+  })();
+
+  const carDisplayName = `${module.brand || module.title || 'Veicolo'} ${module.model || ''}`.trim();
+
   return (
     <ModuleWrapper module={module} onDelete={onDelete} onEdit={onEdit} onToggleSensitivity={onToggleSensitivity}>
       <div 
@@ -435,7 +473,7 @@ export const AutoCard = ({ module, onDelete, onEdit, onToggleSensitivity }: { mo
           <div className="flex items-start justify-between gap-3">
             <div className="flex-1 min-w-0">
               <h4 className="font-black text-[15px] text-[var(--text-main)] leading-tight tracking-tight truncate">
-                {module.brand} {module.model}
+                {carDisplayName}
               </h4>
               <div className="flex items-center gap-1.5 mt-1">
                 {module.fuelType && (
@@ -463,12 +501,12 @@ export const AutoCard = ({ module, onDelete, onEdit, onToggleSensitivity }: { mo
 
           {/* Italian Plate Badge */}
           {module.plate && (
-            <div className="mt-3 inline-flex items-center border border-zinc-300 dark:border-zinc-700 rounded-md bg-white shadow-xs h-[23px] overflow-hidden">
+            <div className="mt-3 inline-flex items-center border border-zinc-300 dark:border-zinc-700 rounded-md bg-white shadow-xs h-[23px] overflow-hidden max-w-full">
               <div className="bg-blue-700 h-full w-[13px] flex flex-col items-center justify-center pb-[0.5px] shrink-0">
                 <div className="w-1.5 h-1.5 border border-yellow-300 rounded-full mb-[0.5px] opacity-90 scale-75" />
                 <span className="text-[5.5px] text-white font-black leading-none">I</span>
               </div>
-              <span className="px-2 text-zinc-950 font-black font-mono text-[11px] tracking-widest uppercase select-none">
+              <span className="px-2 text-zinc-950 font-black font-mono text-[11px] tracking-widest uppercase select-none truncate">
                 {module.plate}
               </span>
               <div className="bg-blue-700 h-full w-[13px] shrink-0" />
@@ -482,21 +520,21 @@ export const AutoCard = ({ module, onDelete, onEdit, onToggleSensitivity }: { mo
           <div className="flex items-center gap-1.5 min-w-0">
             <Gauge className="w-3.5 h-3.5 text-[var(--accent)] shrink-0" />
             <span className="text-[11px] font-mono font-bold text-[var(--text-main)] truncate">
-              {module.currentKm ? `${Number(module.currentKm).toLocaleString('it-IT')} km` : '--- km'}
+              {formattedKm}
             </span>
           </div>
 
           {/* Status chip */}
-          {urgentDeadline ? (
-            urgentDeadline.days < 0 ? (
+          {urgentDeadline.item ? (
+            urgentDeadline.item.days < 0 ? (
               <span className="inline-flex items-center gap-1 text-[8.5px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-red-500/10 text-red-500 border border-red-500/20 shrink-0">
                 <AlertCircle className="w-2.5 h-2.5" />
-                {urgentDeadline.label} Scaduto
+                {urgentDeadline.item.label} {urgentDeadline.item.isFeminine ? 'Scaduta' : 'Scaduto'}
               </span>
-            ) : urgentDeadline.days <= 30 ? (
+            ) : urgentDeadline.item.days <= 30 ? (
               <span className="inline-flex items-center gap-1 text-[8.5px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-500 border border-amber-500/20 shrink-0">
                 <Clock className="w-2.5 h-2.5" />
-                {urgentDeadline.label} {urgentDeadline.days}gg
+                {urgentDeadline.item.label} {urgentDeadline.item.days === 0 ? 'Oggi' : `${urgentDeadline.item.days}gg`}
               </span>
             ) : (
               <span className="inline-flex items-center gap-1 text-[8.5px] font-bold tracking-wider px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 shrink-0">
@@ -504,10 +542,14 @@ export const AutoCard = ({ module, onDelete, onEdit, onToggleSensitivity }: { mo
                 In Regola
               </span>
             )
-          ) : (
+          ) : urgentDeadline.hasAnyConfigured ? (
             <span className="inline-flex items-center gap-1 text-[8.5px] font-bold tracking-wider px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 shrink-0">
               <ShieldCheck className="w-2.5 h-2.5" />
               In Regola
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1 text-[8.5px] font-bold tracking-wider px-2 py-0.5 rounded-full bg-[var(--surface-variant)] text-[var(--text-muted)] border border-[var(--border)] shrink-0">
+              Configura
             </span>
           )}
         </div>

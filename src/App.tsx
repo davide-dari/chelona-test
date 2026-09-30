@@ -22,6 +22,7 @@ import { wakeWordService } from './services/wakeWordService';
 import { APP_VERSION } from './constants/version';
 import { queryChelonaAi, type AiAction } from './services/chelonaEngine';
 import { getSavedParking, getNavigationUrl } from './services/parkingService';
+import { getAutoDeadlineTargetDate } from './utils/autoDeadlines';
 
 import { motion, AnimatePresence } from 'motion/react';
 import JSZip from 'jszip';
@@ -1321,24 +1322,22 @@ export default function App() {
         ];
         fields.forEach(f => {
           const val = (m as any)[f.key];
-          if (val) {
-            const d = new Date(val);
-            if (!isNaN(d.getTime())) {
-              const target = new Date(d.getFullYear(), d.getMonth(), d.getDate());
-              const diffDays = Math.ceil((target.getTime() - today.getTime()) / 86400000);
-              if (diffDays >= -30 && diffDays <= 60) {
-                list.push({
-                  id: `auto_${m.id}_${f.key}`,
-                  title: f.label,
-                  subtitle: carName,
-                  dueDate: target,
-                  daysLeft: diffDays,
-                  category: 'auto',
-                  icon: f.icon,
-                  color: f.color,
-                  openAction: () => openEditModalWithSecurity(m as any)
-                });
-              }
+          const target = getAutoDeadlineTargetDate(f.key, val, m as any);
+          if (target) {
+            const targetDateOnly = new Date(target.getFullYear(), target.getMonth(), target.getDate());
+            const diffDays = Math.ceil((targetDateOnly.getTime() - today.getTime()) / 86400000);
+            if (diffDays >= -30 && diffDays <= 60) {
+              list.push({
+                id: `auto_${m.id}_${f.key}`,
+                title: f.label,
+                subtitle: carName,
+                dueDate: targetDateOnly,
+                daysLeft: diffDays,
+                category: 'auto',
+                icon: f.icon,
+                color: f.color,
+                openAction: () => openEditModalWithSecurity(m as any)
+              });
             }
           }
         });

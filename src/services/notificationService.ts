@@ -3,6 +3,7 @@
  */
 
 import { storage } from './storage';
+import { getAutoDeadlineTargetDate } from '../utils/autoDeadlines';
 
 export interface NotificationPref {
   id: string;           // moduleId + '_' + field
@@ -149,12 +150,12 @@ export const notificationService = {
 
         fields.forEach(f => {
           const val = m[f.key];
-          if (val) {
+          const targetDate = getAutoDeadlineTargetDate(f.key, val, m);
+          if (targetDate) {
             const pref = this.get(m.id, f.key);
             const enabled = pref ? pref.enabled : true;
             const offset = pref ? pref.reminderOffset : 7;
             if (enabled) {
-              const targetDate = new Date(val);
               const remindDate = new Date(targetDate.getTime() - offset * 86400000);
               remindDate.setHours(9, 0, 0, 0);
 
@@ -162,7 +163,7 @@ export const notificationService = {
                 scheduledNotifs.push({
                   id: stringToNumericId(`auto_${m.id}_${f.key}`),
                   title: `⏰ Scadenza ${f.label}`,
-                  body: `La scadenza per ${carName} è il ${new Date(val).toLocaleDateString('it-IT')}!`,
+                  body: `La scadenza per ${carName} è il ${targetDate.toLocaleDateString('it-IT')}!`,
                   at: remindDate,
                   extra: { route: 'auto', moduleId: m.id, field: f.key }
                 });
