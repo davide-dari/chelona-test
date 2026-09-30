@@ -63,17 +63,25 @@ class ChelonaLlmPlugin : Plugin() {
     external fun nativeGetContextUsed(ctxPtr: Long): Int
 
     companion object {
+        var isNativeLibAvailable = false
         init {
             try {
                 System.loadLibrary("chelona_llm")
-            } catch (e: UnsatisfiedLinkError) {
-                android.util.Log.e("ChelonaLlm", "llama.cpp native library not found: ${e.message}")
+                isNativeLibAvailable = true
+            } catch (e: Throwable) {
+                android.util.Log.w("ChelonaLlm", "llama.cpp native library not present or failed to load: ${e.message}")
+                isNativeLibAvailable = false
             }
         }
     }
 
     @PluginMethod
     fun loadModel(call: PluginCall) {
+        if (!isNativeLibAvailable) {
+            call.reject("Native LLM engine library not installed on device")
+            return
+        }
+
         val path = call.getString("path") ?: run {
             call.reject("path is required")
             return
@@ -95,15 +103,17 @@ class ChelonaLlmPlugin : Plugin() {
                 }
 
                 if (isModelLoaded && nativeContextPtr != 0L) {
-                    nativeUnloadModel(nativeContextPtr)
+                    try { nativeUnloadModel(nativeContextPtr) } catch (_: Throwable) {}
                     isModelLoaded = false
                     nativeContextPtr = 0L
                 }
 
                 contextMax = nCtx
-                nativeContextPtr = nativeLoadModel(
-                    path, nCtx, nThreads, nBatch, nGpuLayers
-                )
+                nativeContextPtr = try {
+                    nativeLoadModel(path, nCtx, nThreads, nBatch, nGpuLayers)
+                } catch (e: Throwable) {
+                    0L
+                }
 
                 if (nativeContextPtr == 0L) {
                     call.reject("Failed to load model — out of memory or corrupt file")

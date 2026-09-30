@@ -99,6 +99,26 @@ public class MainActivity extends BridgeActivity {
                         }
                         return false;
                     }
+
+                    @android.webkit.JavascriptInterface
+                    public void startModelDownload(final String urlString, final String fileName) {
+                        MainActivity.this.startNativeModelDownload(urlString, fileName);
+                    }
+
+                    @android.webkit.JavascriptInterface
+                    public void cancelModelDownload() {
+                        MainActivity.this.cancelNativeModelDownload();
+                    }
+
+                    @android.webkit.JavascriptInterface
+                    public String getModelInfo(final String fileName) {
+                        return MainActivity.this.getNativeModelInfo(fileName);
+                    }
+
+                    @android.webkit.JavascriptInterface
+                    public boolean deleteModelFile(final String fileName) {
+                        return MainActivity.this.deleteNativeModelFile(fileName);
+                    }
                 }, "ChelonaNative");
             }
         });
@@ -603,6 +623,192 @@ public class MainActivity extends BridgeActivity {
                     MainActivity.this.getBridge().getWebView().evaluateJavascript(js, null);
                 }
             });
+        }
+    }
+
+    // =========================================================================
+    // NATIVE MODEL STREAMING DOWNLOAD (ZERO MEMORY BLOAT, STABLE ON MOBILE)
+    // =========================================================================
+    private Thread modelDownloadThread = null;
+    private volatile boolean isDownloadCanceled = false;
+
+    public void startNativeModelDownload(final String urlString, final String fileName) {
+        if (modelDownloadThread != null && modelDownloadThread.isAlive()) {
+            android.util.Log.w("ChelonaNative", "Download already in progress");
+            return;
+        }
+
+        isDownloadCanceled = false;
+        modelDownloadThread = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                java.io.InputStream input = null;
+                java.io.OutputStream output = null;
+                java.net.HttpURLConnection connection = null;
+
+                try {
+                    // Imposta download attivo (acquisisce WakeLock per non interrompere a schermo spento)
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            try {
+                                if (downloadWakeLock == null) {
+                                    android.os.PowerManager pm = (android.os.PowerManager) getSystemService(android.content.Context.POWER_SERVICE);
+                                    if (pm != null) {
+                                        downloadWakeLock = pm.newWakeLock(android.os.PowerManager.PARTIAL_WAKE_LOCK, "Chelona:AiDownload");
+                                        downloadWakeLock.acquire(60 * 60 * 1000L); // 60 min
+                                    }
+                                }
+                                isAiDownloading = true;
+                            } catch (Exception ignored) {}
+                        }
+                    });
+
+                    java.io.File targetDir = getFilesDir();
+                    java.io.File targetFile = new java.io.File(targetDir, fileName);
+                    java.io.File tempFile = new java.io.File(targetDir, fileName + ".tmp");
+
+                    java.net.URL url = new java.net.URL(urlString);
+                    connection = (java.net.HttpURLConnection) url.openConnection();
+                    connection.setInstanceFollowRedirects(true);
+                    connection.setConnectTimeout(30000);
+                    connection.setReadTimeout(30000);
+                    connection.connect();
+
+                    int responseCode = connection.getResponseCode();
+                    if (responseCode == java.net.HttpURLConnection.HTTP_MOVED_PERM || 
+                        responseCode == java.net.HttpURLConnection.HTTP_MOVED_TEMP || 
+                        responseCode == 307 || responseCode == 308) {
+                        String newUrl = connection.getHeaderField("Location");
+                        connection.disconnect();
+                        url = new java.net.URL(newUrl);
+                        connection = (java.net.HttpURLConnection) url.openConnection();
+                        connection.setConnectTimeout(30000);
+                        connection.setReadTimeout(30000);
+                        connection.connect();
+                    }
+
+                    long fileLength = connection.getContentLengthLong();
+                    input = connection.getInputStream();
+                    output = new java.io.FileOutputStream(tempFile);
+
+                    byte[] data = new byte[64 * 1024]; // 64 KB buffer
+                    long total = 0;
+                    int count;
+                    long lastEmitTime = System.currentTimeMillis();
+                    long startTime = System.currentTimeMillis();
+
+                    while ((count = input.read(data)) != -1) {
+                        if (isDownloadCanceled) {
+                            output.close();
+                            input.close();
+                            if (tempFile.exists()) tempFile.delete();
+                            emitJsEvent("chelona_model_download_canceled", "{}");
+                            return;
+                        }
+
+                        total += count;
+                        output.write(data, 0, count);
+
+                        long now = System.currentTimeMillis();
+                        if (now - lastEmitTime >= 250) { // Aggiorna ogni 250ms
+                            lastEmitTime = now;
+                            double elapsedSec = Math.max((now - startTime) / 1000.0, 0.1);
+                            double speed = total / elapsedSec;
+                            int progress = (fileLength > 0) ? (int) Math.min(99, (total * 100) / fileLength) : 0;
+
+                            org.json.JSONObject progressObj = new org.json.JSONObject();
+                            progressObj.put("progress", progress);
+                            progressObj.put("downloaded", total);
+                            progressObj.put("total", fileLength > 0 ? fileLength : 1630000000L);
+                            progressObj.put("speed", (long) speed);
+                            emitJsEvent("chelona_model_download_progress", progressObj.toString());
+                        }
+                    }
+
+                    output.flush();
+                    output.close();
+                    output = null;
+
+                    input.close();
+                    input = null;
+
+                    // Rinomina il file temporaneo nel file finale
+                    if (targetFile.exists()) {
+                        targetFile.delete();
+                    }
+                    boolean renamed = tempFile.renameTo(targetFile);
+                    if (!renamed) {
+                        throw new java.io.IOException("Failed to rename temp file to target file");
+                    }
+
+                    org.json.JSONObject successObj = new org.json.JSONObject();
+                    successObj.put("filePath", targetFile.getAbsolutePath());
+                    successObj.put("fileSize", targetFile.length());
+                    emitJsEvent("chelona_model_download_complete", successObj.toString());
+
+                } catch (final Exception e) {
+                    android.util.Log.e("ChelonaNative", "Native download failed", e);
+                    try {
+                        org.json.JSONObject errObj = new org.json.JSONObject();
+                        errObj.put("error", e.getMessage() != null ? e.getMessage() : "Unknown download error");
+                        emitJsEvent("chelona_model_download_error", errObj.toString());
+                    } catch (Exception ignored) {}
+                } finally {
+                    try { if (output != null) output.close(); } catch (Exception ignored) {}
+                    try { if (input != null) input.close(); } catch (Exception ignored) {}
+                    if (connection != null) connection.disconnect();
+
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            try {
+                                if (downloadWakeLock != null && downloadWakeLock.isHeld()) {
+                                    downloadWakeLock.release();
+                                    downloadWakeLock = null;
+                                }
+                                isAiDownloading = false;
+                            } catch (Exception ignored) {}
+                        }
+                    });
+                }
+            }
+        });
+        modelDownloadThread.start();
+    }
+
+    public void cancelNativeModelDownload() {
+        isDownloadCanceled = true;
+    }
+
+    public String getNativeModelInfo(String fileName) {
+        try {
+            java.io.File targetFile = new java.io.File(getFilesDir(), fileName);
+            org.json.JSONObject obj = new org.json.JSONObject();
+            if (targetFile.exists() && targetFile.length() > 100000000L) {
+                obj.put("exists", true);
+                obj.put("path", targetFile.getAbsolutePath());
+                obj.put("size", targetFile.length());
+            } else {
+                obj.put("exists", false);
+                obj.put("path", targetFile.getAbsolutePath());
+                obj.put("size", 0);
+            }
+            return obj.toString();
+        } catch (Exception e) {
+            return "{\"exists\":false,\"size\":0}";
+        }
+    }
+
+    public boolean deleteNativeModelFile(String fileName) {
+        try {
+            java.io.File targetFile = new java.io.File(getFilesDir(), fileName);
+            if (targetFile.exists()) {
+                return targetFile.delete();
+            }
+            return true;
+        } catch (Exception e) {
+            return false;
         }
     }
 }

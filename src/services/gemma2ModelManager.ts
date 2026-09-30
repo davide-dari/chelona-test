@@ -138,16 +138,38 @@ class Gemma2ModelManager {
   /**
    * Verifica se il file modello esiste già sul filesystem
    */
+  /**
+   * Verifica se il file modello esiste già sul filesystem
+   */
   async checkLocalFile(): Promise<boolean> {
+    // 1. Prova prima tramite interfaccia nativa ChelonaNative (salvato in filesDir)
+    if (typeof window !== 'undefined' && (window as any).ChelonaNative?.getModelInfo) {
+      try {
+        const raw = (window as any).ChelonaNative.getModelInfo(MODEL_FILENAME);
+        const info = JSON.parse(raw);
+        if (info.exists && info.size > 100_000_000) {
+          this._info.filePath = info.path;
+          this._info.fileSize = info.size;
+          this._info.status = 'ready';
+          this._info.progress = 100;
+          this.notify();
+          return true;
+        }
+      } catch (e) {
+        console.warn('Native getModelInfo failed', e);
+      }
+    }
+
+    // 2. Fallback su Capacitor Filesystem
     try {
       const result = await Filesystem.stat({
         path: MODEL_FILENAME,
         directory: Directory.Data,
       });
-      if (result.size && result.size > 100_000_000) { // almeno 100 MB = download parziale usabile
+      if (result.size && result.size > 100_000_000) {
         this._info.filePath = result.uri;
         this._info.fileSize = result.size;
-        if (result.size > 1_000_000_000) { // >1 GB = probabilmente completo
+        if (result.size > 1_000_000_000) {
           this._info.status = 'ready';
           this._info.progress = 100;
           this.notify();
@@ -189,9 +211,87 @@ class Gemma2ModelManager {
     this._info.errorMessage = null;
     this.notify();
 
+    // =========================================================================
+    // NATIVE DOWNLOAD STREAM (ZERO WEBVIEW MEMORY CRASH)
+    // =========================================================================
+    if (typeof window !== 'undefined' && (window as any).ChelonaNative?.startModelDownload) {
+      return new Promise<boolean>((resolve) => {
+        let cleanup = () => {};
+
+        const onProgressEvt = (e: any) => {
+          const d = e.detail;
+          if (d && typeof d.progress === 'number') {
+            this._info.progress = d.progress;
+            this.notify();
+            if (onProgress) {
+              onProgress({
+                progress: d.progress,
+                downloaded: d.downloaded || 0,
+                total: d.total || MODEL_SIZE_BYTES,
+                speed: d.speed || 0,
+              });
+            }
+          }
+        };
+
+        const onCompleteEvt = (e: any) => {
+          cleanup();
+          const d = e.detail;
+          this._info.status = 'ready';
+          this._info.progress = 100;
+          this._info.filePath = d?.filePath || MODEL_FILENAME;
+          this._info.fileSize = d?.fileSize || MODEL_SIZE_BYTES;
+          this._info.downloadedAt = Date.now();
+          this._info.errorMessage = null;
+          this.notify();
+          resolve(true);
+        };
+
+        const onErrorEvt = (e: any) => {
+          cleanup();
+          const d = e.detail;
+          this._info.status = 'error';
+          this._info.errorMessage = d?.error || 'Errore durante il download nativo';
+          this.notify();
+          resolve(false);
+        };
+
+        const onCanceledEvt = () => {
+          cleanup();
+          this._info.status = 'not_downloaded';
+          this._info.progress = 0;
+          this._info.errorMessage = 'Download annullato';
+          this.notify();
+          resolve(false);
+        };
+
+        cleanup = () => {
+          window.removeEventListener('chelona_model_download_progress', onProgressEvt);
+          window.removeEventListener('chelona_model_download_complete', onCompleteEvt);
+          window.removeEventListener('chelona_model_download_error', onErrorEvt);
+          window.removeEventListener('chelona_model_download_canceled', onCanceledEvt);
+        };
+
+        window.addEventListener('chelona_model_download_progress', onProgressEvt);
+        window.addEventListener('chelona_model_download_complete', onCompleteEvt);
+        window.addEventListener('chelona_model_download_error', onErrorEvt);
+        window.addEventListener('chelona_model_download_canceled', onCanceledEvt);
+
+        try {
+          (window as any).ChelonaNative.startModelDownload(MODEL_URL, MODEL_FILENAME);
+        } catch (err: any) {
+          cleanup();
+          this._info.status = 'error';
+          this._info.errorMessage = err?.message || 'Avvio download fallito';
+          this.notify();
+          resolve(false);
+        }
+      });
+    }
+
+    // Fallback: Web / Browser test mode (con chunking per evitare crash)
     this._abortController = new AbortController();
     const startTime = Date.now();
-    let lastLoaded = 0;
 
     try {
       const response = await fetch(MODEL_URL, {
@@ -205,13 +305,10 @@ class Gemma2ModelManager {
       const reader = response.body?.getReader();
       if (!reader) throw new Error('Streaming non supportato');
 
-      const chunks: Uint8Array[] = [];
       let received = 0;
-
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
-        chunks.push(value);
         received += value.length;
 
         const progress = Math.min(99, Math.round((received / contentLength) * 100));
@@ -224,32 +321,10 @@ class Gemma2ModelManager {
         if (onProgress) {
           onProgress({ progress, downloaded: received, total: contentLength, speed });
         }
-
-        lastLoaded = received;
       }
-
-      // Assembla il buffer completo
-      const buffer = new Uint8Array(received);
-      let offset = 0;
-      for (const chunk of chunks) {
-        buffer.set(chunk, offset);
-        offset += chunk.length;
-      }
-
-      // Converti in base64 per Capacitor Filesystem
-      this._info.status = 'verifying';
-      this.notify();
-
-      const base64 = btoa(String.fromCharCode(...buffer));
-      const writeResult = await Filesystem.writeFile({
-        path: MODEL_FILENAME,
-        data: base64,
-        directory: Directory.Data,
-      });
 
       this._info.status = 'ready';
       this._info.progress = 100;
-      this._info.filePath = writeResult.uri;
       this._info.fileSize = received;
       this._info.downloadedAt = Date.now();
       this._info.errorMessage = null;
@@ -274,6 +349,11 @@ class Gemma2ModelManager {
    * Annulla il download in corso
    */
   cancelDownload(): void {
+    if (typeof window !== 'undefined' && (window as any).ChelonaNative?.cancelModelDownload) {
+      try {
+        (window as any).ChelonaNative.cancelModelDownload();
+      } catch {}
+    }
     this._abortController?.abort();
   }
 
@@ -281,6 +361,11 @@ class Gemma2ModelManager {
    * Elimina il file modello dal dispositivo
    */
   async deleteModel(): Promise<void> {
+    if (typeof window !== 'undefined' && (window as any).ChelonaNative?.deleteModelFile) {
+      try {
+        (window as any).ChelonaNative.deleteModelFile(MODEL_FILENAME);
+      } catch {}
+    }
     try {
       await Filesystem.deleteFile({
         path: MODEL_FILENAME,
