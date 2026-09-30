@@ -512,7 +512,26 @@ export const ChelonaAiScreen
     }
 
     try {
-      const response = await queryGemma2(queryToSend, modules, username);
+      const queryPromise = queryGemma2(queryToSend, modules, username);
+      const safetyTimeout = new Promise<import('../services/gemma2Engine').Gemma2Response>((resolve) => {
+        setTimeout(async () => {
+          try {
+            const { queryChelonaAi } = await import('../services/chelonaEngine');
+            const fallbackRes = await queryChelonaAi(queryToSend, modules, username);
+            resolve({
+              ...fallbackRes,
+              engineUsed: 'chelona-engine',
+            });
+          } catch {
+            resolve({
+              text: `Eccomi ${username}! Sono pronta ad aiutarti con qualsiasi richiesta.`,
+              engineUsed: 'chelona-engine',
+            });
+          }
+        }, 9000);
+      });
+
+      const response = await Promise.race([queryPromise, safetyTimeout]);
       const assistantMsg: AiMessage = {
         id: 'msg_ai_' + Date.now(),
         sender: 'assistant',

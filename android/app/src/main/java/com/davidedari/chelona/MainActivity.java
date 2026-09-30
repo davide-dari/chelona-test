@@ -11,6 +11,7 @@ public class MainActivity extends BridgeActivity {
     
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        registerPlugin(ChelonaLlmPlugin.class);
         // Prevent screenshots and hide app preview in recent switcher for privacy
         getWindow().setFlags(WindowManager.LayoutParams.FLAG_SECURE, WindowManager.LayoutParams.FLAG_SECURE);
         

@@ -139,34 +139,53 @@ async function ensurePluginLoaded(): Promise<boolean> {
 // ---- Caricamento Modello ----
 
 async function ensureModelLoaded(): Promise<boolean> {
-  const pluginAvailable = await ensurePluginLoaded();
-  if (!pluginAvailable || !nativePlugin) return false;
+  // Se il modello non è pronto/scaricato sul dispositivo, non tentare il caricamento nativo
+  if (!gemma2ModelManager.isReady) {
+    return false;
+  }
 
   const modelPath = gemma2ModelManager.localPath;
   if (!modelPath) return false;
 
   if (engineState === 'ready' || engineState === 'generating') return true;
+
   if (engineState === 'loading') {
-    // Attendi che il caricamento termini
-    return new Promise(resolve => {
+    // Attendi con timeout massimo di 2.5s per evitare deadlock
+    return new Promise<boolean>(resolve => {
+      let elapsed = 0;
       const check = setInterval(() => {
-        if (engineState === 'ready') { clearInterval(check); resolve(true); }
-        if (engineState === 'error') { clearInterval(check); resolve(false); }
-      }, 200);
+        elapsed += 150;
+        if (engineState === 'ready') {
+          clearInterval(check);
+          resolve(true);
+        } else if (engineState === 'error' || elapsed >= 2500) {
+          clearInterval(check);
+          if (engineState === 'loading') engineState = 'idle';
+          resolve(false);
+        }
+      }, 150);
     });
   }
 
+  const pluginAvailable = await ensurePluginLoaded();
+  if (!pluginAvailable || !nativePlugin) return false;
+
   engineState = 'loading';
   try {
-    await nativePlugin.loadModel({
+    const loadPromise = nativePlugin.loadModel({
       path: modelPath,
       params: DEFAULT_MODEL_PARAMS,
     });
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('Timeout caricamento modello (4s)')), 4000)
+    );
+
+    await Promise.race([loadPromise, timeoutPromise]);
     engineState = 'ready';
     return true;
   } catch (err) {
-    console.error('[Gemma2] Errore caricamento modello:', err);
-    engineState = 'error';
+    console.warn('[Gemma2] Errore caricamento modello locale, fallback a chelonaEngine:', err);
+    engineState = 'idle';
     return false;
   }
 }
@@ -174,20 +193,31 @@ async function ensureModelLoaded(): Promise<boolean> {
 // ---- Controllo Batteria ----
 
 async function getBatteryLevel(): Promise<number> {
-  if (nativePlugin) {
-    try {
-      const { level } = await nativePlugin.getBatteryLevel();
-      return level;
-    } catch {}
-  }
   try {
-    const nav = navigator as any;
-    if (nav.getBattery) {
-      const battery = await nav.getBattery();
-      return Math.round(battery.level * 100);
-    }
-  } catch {}
-  return 100;
+    const checkPromise = (async () => {
+      if (nativePlugin) {
+        try {
+          const res = await nativePlugin.getBatteryLevel();
+          if (res && typeof res.level === 'number') return res.level;
+        } catch {}
+      }
+      try {
+        const nav = typeof navigator !== 'undefined' ? (navigator as any) : null;
+        if (nav?.getBattery) {
+          const battery = await nav.getBattery();
+          return Math.round(battery.level * 100);
+        }
+      } catch {}
+      return 100;
+    })();
+
+    return await Promise.race([
+      checkPromise,
+      new Promise<number>(resolve => setTimeout(() => resolve(100), 600))
+    ]);
+  } catch {
+    return 100;
+  }
 }
 
 // ---- Hash dei moduli per invalidazione RAG cache ----
@@ -206,8 +236,8 @@ async function runGemmaInference(
 
   return new Promise<string>(async (resolve, reject) => {
     const timeout = setTimeout(() => {
-      reject(new Error('Timeout inferenza (30s)'));
-    }, INFERENCE_TIMEOUT_MS);
+      reject(new Error('Timeout inferenza (15s)'));
+    }, 15_000);
 
     try {
       let fullText = '';
@@ -227,7 +257,7 @@ async function runGemmaInference(
           ...DEFAULT_GENERATE_PARAMS,
           prompt,
         });
-        fullText = result.text;
+        fullText = result?.text || '';
       }
 
       clearTimeout(timeout);
@@ -248,7 +278,7 @@ async function runGemmaInference(
 
 /**
  * Interroga Gemma 2 con RAG locale.
- * Se il modello non è disponibile, delega al chelonaEngine.
+ * Se il modello non è pronto, va in timeout o fallisce, delega istantaneamente al chelonaEngine.
  */
 export async function queryGemma2(
   userQuery: string,
@@ -256,107 +286,114 @@ export async function queryGemma2(
   username: string,
   onToken?: (token: string) => void
 ): Promise<Gemma2Response> {
-
-  // 1. Controlla batteria
-  const battery = await getBatteryLevel();
-  if (battery < BATTERY_BLOCK_THRESHOLD) {
-    // Fallback al motore regole
+  const executeFallback = async (): Promise<Gemma2Response> => {
     const { queryChelonaAi } = await import('./chelonaEngine');
     const result = await queryChelonaAi(userQuery, modules, username);
     return {
       ...result,
       engineUsed: 'chelona-engine',
     };
-  }
-
-  // Limita i token se la batteria è scarica
-  if (battery < BATTERY_WARN_THRESHOLD) {
-    DEFAULT_GENERATE_PARAMS.maxTokens = 128;
-  } else {
-    DEFAULT_GENERATE_PARAMS.maxTokens = 512;
-  }
-
-  // 2. Verifica disponibilità modello
-  const modelReady = await ensureModelLoaded();
-  if (!modelReady) {
-    // Fallback al motore regole
-    const { queryChelonaAi } = await import('./chelonaEngine');
-    const result = await queryChelonaAi(userQuery, modules, username);
-    return {
-      ...result,
-      engineUsed: 'chelona-engine',
-    };
-  }
-
-  // 3. Aggiorna indice RAG se i moduli sono cambiati
-  const modulesHash = computeModulesHash(modules);
-  if (modulesHash !== lastIndexedModulesHash) {
-    indexModulesIntoRAG(modules, username);
-    lastIndexedModulesHash = modulesHash;
-  }
-
-  // 4. RAG Retrieval
-  const ragDocs = ragEngine.retrieve(userQuery, RAG_TOP_K);
-  const ragContext = ragEngine.formatContext(ragDocs);
-
-  // 5. Controlla la cache (solo per query senza streaming)
-  if (!onToken) {
-    const cached = promptCache.get(userQuery, ragContext);
-    if (cached) {
-      return {
-        text: cached.text,
-        actions: cached.actions as AiAction[] | undefined,
-        engineUsed: 'gemma2-local',
-        ragDocsUsed: ragDocs.length,
-        cached: true,
-      };
-    }
-  }
-
-  // 6. Costruisci il prompt con template Gemma 2
-  const prompt = buildGemmaPrompt(userQuery, ragContext, username);
-
-  // 7. Inferenza
-  engineState = 'generating';
-  let responseText = '';
+  };
 
   try {
-    responseText = await runGemmaInference(prompt, onToken);
+    const responsePromise = (async (): Promise<Gemma2Response> => {
+      // 1. Controlla batteria
+      const battery = await getBatteryLevel();
+      if (battery < BATTERY_BLOCK_THRESHOLD) {
+        return await executeFallback();
+      }
+
+      // Limita i token se la batteria è scarica
+      if (battery < BATTERY_WARN_THRESHOLD) {
+        DEFAULT_GENERATE_PARAMS.maxTokens = 128;
+      } else {
+        DEFAULT_GENERATE_PARAMS.maxTokens = 512;
+      }
+
+      // 2. Verifica disponibilità modello
+      const modelReady = await ensureModelLoaded();
+      if (!modelReady) {
+        return await executeFallback();
+      }
+
+      // 3. Aggiorna indice RAG se i moduli sono cambiati
+      const modulesHash = computeModulesHash(modules);
+      if (modulesHash !== lastIndexedModulesHash) {
+        indexModulesIntoRAG(modules, username);
+        lastIndexedModulesHash = modulesHash;
+      }
+
+      // 4. RAG Retrieval
+      const ragDocs = ragEngine.retrieve(userQuery, RAG_TOP_K);
+      const ragContext = ragEngine.formatContext(ragDocs);
+
+      // 5. Controlla la cache (solo per query senza streaming)
+      if (!onToken) {
+        const cached = promptCache.get(userQuery, ragContext);
+        if (cached && cached.text) {
+          return {
+            text: cached.text,
+            actions: cached.actions as AiAction[] | undefined,
+            engineUsed: 'gemma2-local',
+            ragDocsUsed: ragDocs.length,
+            cached: true,
+          };
+        }
+      }
+
+      // 6. Costruisci il prompt con template Gemma 2
+      const prompt = buildGemmaPrompt(userQuery, ragContext, username);
+
+      // 7. Inferenza
+      engineState = 'generating';
+      let responseText = '';
+
+      try {
+        responseText = await runGemmaInference(prompt, onToken);
+      } catch (err) {
+        console.warn('[Gemma2] Errore inferenza, fallback a chelonaEngine:', err);
+        return await executeFallback();
+      } finally {
+        if (engineState === 'generating') {
+          engineState = 'ready';
+        }
+      }
+
+      // Se la risposta è vuota o insufficiente, delega al motore rule-based di Chelona
+      if (!responseText || responseText.trim().length < 5) {
+        return await executeFallback();
+      }
+
+      // 8. Memorizzazione in cache
+      if (!onToken && responseText) {
+        promptCache.set(userQuery, ragContext, { text: responseText });
+      }
+
+      return {
+        text: responseText,
+        engineUsed: 'gemma2-local',
+        ragDocsUsed: ragDocs.length,
+        cached: false,
+      };
+    })();
+
+    // Protezione globale: timeout massimo di 8 secondi prima di ripiegare su chelonaEngine
+    const globalTimeout = new Promise<Gemma2Response>((resolve) => {
+      setTimeout(async () => {
+        console.warn('[Gemma2] Timeout globale di sicurezza (8s) scattato, fallback a chelonaEngine');
+        resolve(await executeFallback());
+      }, 8000);
+    });
+
+    const finalRes = await Promise.race([responsePromise, globalTimeout]);
+    if (!finalRes || !finalRes.text || finalRes.text.trim().length === 0) {
+      return await executeFallback();
+    }
+    return finalRes;
   } catch (err) {
-    console.error('[Gemma2] Errore inferenza, fallback a chelonaEngine:', err);
-    engineState = 'ready';
-
-    const { queryChelonaAi } = await import('./chelonaEngine');
-    const result = await queryChelonaAi(userQuery, modules, username);
-    return {
-      ...result,
-      engineUsed: 'chelona-engine',
-    };
+    console.error('[Gemma2] Errore critico queryGemma2, fallback a chelonaEngine:', err);
+    return await executeFallback();
   }
-
-  engineState = 'ready';
-
-  // Se la risposta è vuota o insufficiente, delega al motore rule-based di Chelona
-  if (!responseText || responseText.length < 5) {
-    const { queryChelonaAi } = await import('./chelonaEngine');
-    const result = await queryChelonaAi(userQuery, modules, username);
-    return {
-      ...result,
-      engineUsed: 'chelona-engine',
-    };
-  }
-
-  // 8. Memorizzazione in cache
-  if (!onToken && responseText) {
-    promptCache.set(userQuery, ragContext, { text: responseText });
-  }
-
-  return {
-    text: responseText,
-    engineUsed: 'gemma2-local',
-    ragDocsUsed: ragDocs.length,
-    cached: false,
-  };
 }
 
 // ---- Utilità esportate ----
