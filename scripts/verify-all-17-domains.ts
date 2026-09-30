@@ -1,4 +1,4 @@
-import { queryGemmaNano, buildKnowledgeBase, calculateSplitSettlements } from '../src/services/gemmaNanoEngine';
+import { queryChelonaAi, buildKnowledgeBase, calculateSplitSettlements } from '../src/services/chelonaEngine';
 import { Module } from '../src/types';
 
 async function runTests() {
@@ -229,7 +229,7 @@ async function runTests() {
 
   for (const t of tests) {
     console.log(`Checking [${t.domain}]: "${t.query}"`);
-    const res = await queryGemmaNano(t.query, mockModules, 'Davide');
+    const res = await queryChelonaAi(t.query, mockModules, 'Davide');
     if (!res.text.includes(t.expect)) {
       throw new Error(`Test failed for ${t.domain}: expected text to include "${t.expect}", got: ${res.text.slice(0, 150)}...`);
     }

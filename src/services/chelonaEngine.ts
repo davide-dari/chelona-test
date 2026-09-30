@@ -1,10 +1,10 @@
 /**
- * Gemma 4 Nano Local Intelligence Engine for Chelona
+ * Chelona Engine - Motore di Intelligenza Locale On-Device per Chelona
  * 
- * 100% On-Device • Zero External APIs • Zero Cloud Calls
- * Operates purely locally on the user's smartphone / browser.
- * Learns continuously from all notes, vehicles, documents, expenses, recipes,
- * fitness routines, travel plans, furniture, parking, address book, tools and user inputs.
+ * 100% On-Device • Zero Chiamate Cloud • Zero API Esterne
+ * Esecuzione istantanea ad altissima velocità e privacy assoluta.
+ * Apprende ed elabora continuamente da note, veicoli, documenti, spese, ricette,
+ * fitness, viaggi, arredo, parcheggio, rubrica, strumenti e input utente.
  */
 import { 
   Module, AutoModule, DocumentModule, SingleExpenseModule, 
@@ -21,8 +21,6 @@ import {
 import { storage } from './storage';
 import { TOOLS } from '../constants/tools';
 import { wakeWordService } from './wakeWordService';
-import { checkGeminiNanoStatus, queryGeminiNanoOnDevice, type GeminiNanoStatus } from './geminiNanoService';
-export { checkGeminiNanoStatus, queryGeminiNanoOnDevice, type GeminiNanoStatus };
 
 export interface AiMemory {
   id: string;
@@ -638,7 +636,7 @@ export interface ChelonaKnowledge {
 }
 
 /**
- * Estrae e indicizza tutti i moduli e dati dell'app per la comprensione neurale locale di Gemma 4 Nano
+ * Estrae e indicizza tutti i moduli e dati dell'app per la comprensione neurale locale di Chelona Engine
  */
 export function buildKnowledgeBase(modules: Module[], username: string): ChelonaKnowledge {
   const k: ChelonaKnowledge = {
@@ -1200,17 +1198,17 @@ function detectRequestedChain(query: string, chains: VolantinoChain[]): { chain:
 }
 
 /**
- * Motore neurale locale Gemma 4 Nano per Chelona.
+ * Motore neurale locale Chelona Engine.
  * 100% On-Device, zero cloud o API esterne.
+ * Esecuzione istantanea ad altissima velocità (zero overhead, zero delay artificiale).
  * Copre tutte le 17 sezioni, moduli e strumenti applicativi.
  */
-export async function queryGemmaNano(
+export async function queryChelonaAi(
   userQuery: string,
   modules: Module[],
   username: string
-): Promise<{ text: string; actions?: AiAction[]; learnedFact?: string; createdModule?: Module; autoAction?: AiAction; engineUsed?: 'gemini-nano' | 'local-engine' }> {
-  await new Promise(res => setTimeout(res, 220));
-
+): Promise<{ text: string; actions?: AiAction[]; learnedFact?: string; createdModule?: Module; autoAction?: AiAction; engineUsed?: 'chelona-engine' }> {
+  // Elaborazione istantanea ad altissima velocità senza ritardi artificiali
   const query = userQuery.trim();
   const lower = query.toLowerCase();
 
@@ -3017,11 +3015,10 @@ export async function queryGemmaNano(
     lower.includes('tutte le sezioni') ||
     lower.includes('modello') ||
     lower.includes('versione') ||
-    lower.includes('gemma') ||
-    lower.includes('gemini')
+    lower.includes('motore')
   ) {
-    let out = `🌟 **Sono Chelona AI**, il tuo assistente personale 100% on-device e privato.\n`;
-    out += `Supporto un'architettura **Ibrida Intelligente**: sfrutto l'accelerazione neurale di **Google Gemini Nano** on-device (se supportata dal tuo dispositivo) e il motore integrato ultra-rapido per gestire ogni modulo:\n\n`;
+    let out = `🌟 **Sono Chelona AI**, il tuo assistente personale 100% on-device, istantaneo e privato.\n`;
+    out += `Funziono interamente in locale con il **Motore Chelona Engine**, elaborando all'istante ogni richiesta senza chiamate esterne:\n\n`;
     out += `1. 🚗 **Veicoli & Auto**: Bollo, assicurazione, revisione, tagliando, gomme, km e targhe\n`;
     out += `2. 📄 **Documenti**: Patente, carta d'identità, passaporto, tessera sanitaria e scadenze\n`;
     out += `3. 👥 **Spese Condivise (Split)**: Gruppi uscite, bilancio e calcolo "chi deve a chi"\n`;
@@ -3206,28 +3203,6 @@ export async function queryGemmaNano(
     return { text: out, actions: actions.slice(0, 3) };
   }
 
-  // Tentativo di inferenza on-device con Gemini Nano per domande aperte e conversazionali
-  try {
-    const nanoResponse = await queryGeminiNanoOnDevice(
-      query,
-      `Utente: ${username || 'Utente'}\nModuli memorizzati: ${modules.length}`
-    );
-    if (nanoResponse) {
-      return {
-        text: nanoResponse,
-        actions: [
-          { label: 'Scadenze', type: 'deadlines' },
-          { label: 'Dov\'è l\'auto?', type: 'parking' },
-          { label: 'Volantini', type: 'volantino' },
-          { label: 'Tutti gli Strumenti', type: 'category', category: 'tools' },
-        ],
-        engineUsed: 'gemini-nano',
-      };
-    }
-  } catch (err) {
-    console.warn('[AI] Fallback on-device error:', err);
-  }
-
   // Fallback con suggerimenti pratici
   return {
     text: `Non ho trovato riferimenti precisi a questo nei tuoi moduli o appunti.\n\nPuoi chiedermi di:\n• **"Quali scadenze imminenti ho?"**\n• **"Dove ho parcheggiato l'auto?"**\n• **"Aggiungi latte alla lista della spesa"**\n• **"Chi deve a chi nelle spese condivise?"**\n• **"Mostrami le offerte dei volantini"**\n• **"Ricordati che..."** per salvare una memoria personale!`,
@@ -3236,6 +3211,6 @@ export async function queryGemmaNano(
       { label: 'Scadenze', type: 'deadlines' },
       { label: 'Dov\'è l\'auto?', type: 'parking' },
     ],
-    engineUsed: 'local-engine',
+    engineUsed: 'chelona-engine',
   };
 }

@@ -20,7 +20,7 @@ import { biometricService } from './services/biometricService';
 import { chelonaMemory } from './services/chelonaMemory';
 import { wakeWordService } from './services/wakeWordService';
 import { APP_VERSION } from './constants/version';
-import { queryGemmaNano, type AiAction } from './services/gemmaNanoEngine';
+import { queryChelonaAi, type AiAction } from './services/chelonaEngine';
 import { getSavedParking, getNavigationUrl } from './services/parkingService';
 
 import { motion, AnimatePresence } from 'motion/react';
@@ -2264,7 +2264,7 @@ export default function App() {
   const executeHomeVoiceCommand = useCallback(async (command: string) => {
     setIsHomeVoiceProcessing(true);
     try {
-      const response = await queryGemmaNano(command, modules, username);
+      const response = await queryChelonaAi(command, modules, username);
 
       // 1. Se ha creato o aggiornato un modulo (es. Lista Spesa, Note)
       if (response.createdModule) {
