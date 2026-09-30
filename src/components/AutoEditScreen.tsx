@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ArrowLeft, Save, Car, Wrench, Calendar, Fuel, User, Hash, Gauge, FileText, Smartphone, Scan, Check } from 'lucide-react';
+import { ArrowLeft, Save, Car, Wrench, Calendar, Fuel, User, Hash, Gauge, FileText, Scan, Check } from 'lucide-react';
 import { AutoModule } from '../types';
 import { DocumentScanner } from './DocumentScanner';
 import { CAR_BRANDS } from '../utils/carBrands';
@@ -109,17 +109,6 @@ export const AutoEditScreen = ({ module, onSave, onCancel }: AutoEditScreenProps
             {data.brand} {data.model} {data.plate ? `· ${data.plate}` : ''}
           </p>
         </div>
-        <button
-          type="button"
-          onClick={async () => {
-            const { createSectionShortcut } = await import('../services/shortcutService');
-            createSectionShortcut('auto');
-          }}
-          className="p-3 bg-[var(--card-bg)] hover:bg-[var(--surface-variant)] border border-[var(--border)] rounded-2xl text-[var(--text-muted)] hover:text-indigo-500 transition-all cursor-pointer"
-          title="Aggiungi collegamento Auto alla Home Android"
-        >
-          <Smartphone className="w-4 h-4" />
-        </button>
         <button
           type="button"
           onClick={handleSubmit}

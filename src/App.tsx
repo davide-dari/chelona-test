@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { Sun, Moon, Wrench, Plus, LayoutDashboard, Settings, User, LogOut, Search, Mic, MicOff, Loader2, Bell, CreditCard, Fingerprint, ShieldCheck, Lock, Menu, X, StickyNote, FileText, Grid2X2, Car, QrCode, Folder as FolderIcon, Check, Edit2, Trash2, BookOpen, ArrowLeft, ArrowRight, Camera, FileDown, Hourglass, Users, Download, Receipt, MapPin, SquareParking, Image as ImageIcon, Lightbulb, Globe, ChevronLeft, Bus, Home, Armchair, Activity, ShoppingBasket, BadgePercent, Sparkles, CalendarClock, Calendar, AlertCircle, CheckCircle2, Battery, Wallet, Flame, ArrowUpRight, Smartphone, Pin } from 'lucide-react';
+import { Sun, Moon, Wrench, Plus, LayoutDashboard, Settings, User, LogOut, Search, Mic, MicOff, Loader2, Bell, CreditCard, Fingerprint, ShieldCheck, Lock, Menu, X, StickyNote, FileText, Grid2X2, Car, QrCode, Folder as FolderIcon, Check, Edit2, Trash2, BookOpen, ArrowLeft, ArrowRight, Camera, FileDown, Hourglass, Users, Download, Receipt, MapPin, SquareParking, Image as ImageIcon, Lightbulb, Globe, ChevronLeft, Bus, Home, Armchair, Activity, ShoppingBasket, BadgePercent, Sparkles, CalendarClock, Calendar, AlertCircle, CheckCircle2, Battery, Wallet, Flame, ArrowUpRight, Smartphone } from 'lucide-react';
 
 import { Module, ModuleType, Folder, DocumentModule } from './types';
 import { isModuleSensitive } from './utils/security';
@@ -1229,17 +1229,65 @@ export default function App() {
     };
   }, [handleNotificationRoute]);
 
-  // Sezione attualmente attiva per la creazione della scorciatoia/app singola Android
-  const activeShortcutSectionId = useMemo(() => {
-    if (selectedType === 'auto') return 'auto';
-    if (selectedType === 'document') return 'document';
-    if (selectedType === 'split' || selectedType === 'single-expense' || selectedType === 'installments') return 'split';
-    if (selectedType === 'home') return 'home';
-    if (selectedType === 'fitness') return 'fitness';
-    if (selectedType === 'travel') return 'travel';
-    if (isToolsOpen) return 'tools';
-    return null;
-  }, [selectedType, isToolsOpen]);
+  // Gestione creazione scorciatoia/app singola tramite pressione prolungata (Long-press)
+  interface SectionShortcutPrompt {
+    id: string;
+    title: string;
+    icon: any;
+    color: string;
+  }
+
+  const [shortcutPromptSection, setShortcutPromptSection] = useState<SectionShortcutPrompt | null>(null);
+  const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isLongPressRef = useRef(false);
+  const touchStartPosRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+
+  const handleSectionPressStart = (section: SectionShortcutPrompt, e: React.TouchEvent | React.MouseEvent) => {
+    isLongPressRef.current = false;
+    if ('touches' in e && e.touches.length > 0) {
+      touchStartPosRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    } else if ('clientX' in e) {
+      touchStartPosRef.current = { x: e.clientX, y: e.clientY };
+    }
+
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+    }
+
+    longPressTimerRef.current = setTimeout(() => {
+      isLongPressRef.current = true;
+      if (navigator.vibrate) {
+        try { navigator.vibrate(60); } catch (_) {}
+      }
+      setShortcutPromptSection(section);
+    }, 550);
+  };
+
+  const handleSectionPressEnd = () => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+  };
+
+  const handleSectionTouchMove = (e: React.TouchEvent) => {
+    if (longPressTimerRef.current && e.touches.length > 0) {
+      const deltaX = Math.abs(e.touches[0].clientX - touchStartPosRef.current.x);
+      const deltaY = Math.abs(e.touches[0].clientY - touchStartPosRef.current.y);
+      if (deltaX > 10 || deltaY > 10) {
+        clearTimeout(longPressTimerRef.current);
+        longPressTimerRef.current = null;
+      }
+    }
+  };
+
+  const handleCardClick = (action: () => void) => {
+    if (isLongPressRef.current) {
+      isLongPressRef.current = false;
+      return;
+    }
+    action();
+  };
 
   // Calcolo centralizzato di tutte le scadenze (Auto, Documenti, Rate, Spese)
   const allUpcomingDeadlines = useMemo(() => {
@@ -3474,25 +3522,6 @@ export default function App() {
 
                 {/* Right side: Action buttons */}
                 <div className="flex items-center gap-1.5 sm:gap-2">
-                  {/* Pulsante Crea App Singola per la sezione attiva */}
-                  {activeShortcutSectionId && (
-                    <div className="hidden sm:block">
-                      <button
-                        type="button"
-                        onClick={async () => {
-                          const { createSectionShortcut } = await import('./services/shortcutService');
-                          const res = await createSectionShortcut(activeShortcutSectionId);
-                          showToast(res.message, res.success ? 'success' : 'info');
-                        }}
-                        className="px-3 py-1.5 rounded-2xl bg-[var(--surface-variant)] hover:bg-[var(--border)] border border-[var(--border)] text-[var(--text-main)] hover:text-indigo-500 text-xs font-bold transition-all flex items-center gap-1.5 shadow-xs cursor-pointer active:scale-95"
-                        title="Crea icona app sulla schermata home"
-                      >
-                        <Pin className="w-3.5 h-3.5 text-indigo-500" />
-                        <span className="inline">Aggiungi a Home</span>
-                      </button>
-                    </div>
-                  )}
-
                   <button 
                     onClick={() => { setIsToolsOpen(true); setIsProfileOpen(false); setIsAiOpen(false); setSelectedType(null); }} 
                     className="p-2 sm:p-2.5 bg-[var(--surface-variant)] hover:bg-[var(--border)] rounded-full text-[var(--accent)] transition-all hidden md:flex items-center justify-center shadow-sm cursor-pointer"
@@ -4673,24 +4702,35 @@ export default function App() {
                         )}
 
                         {/* 5 MACRO-HUBS UNIFICATI */}
-                        <div className="mb-4">
-                          <h3 className="text-lg font-black text-[var(--text-main)] mb-4 flex items-center gap-2">
+                        <div className="mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
+                          <h3 className="text-lg font-black text-[var(--text-main)] flex items-center gap-2">
                             <span>Aree Principali</span>
                           </h3>
+                          <p className="text-xs text-[var(--text-muted)] flex items-center gap-1.5 font-medium">
+                            <Smartphone className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
+                            <span>Tieni premuta una sezione per salvarla come app</span>
+                          </p>
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pb-12">
                           {/* 1. Auto & Mobilità */}
                           <button
-                            onClick={() => {
+                            onClick={() => handleCardClick(() => {
                               const existingAuto = modules.find(m => m.type === 'auto') as import('./types').AutoModule;
                               if (existingAuto) {
                                 openEditModalWithSecurity(existingAuto);
                               } else {
                                 handleSelectCategoryWithSecurity('auto');
                               }
-                            }}
-                            className="bg-[var(--card-bg)] p-6 lg:p-7 rounded-[2.5rem] border border-[var(--border)] hover:border-rose-500/50 shadow-sm hover:shadow-lg transition-all text-left flex items-start gap-4 group active:scale-[0.99] relative overflow-hidden"
+                            })}
+                            onTouchStart={(e) => handleSectionPressStart({ id: 'auto', title: 'Auto & Mobilità', icon: Car, color: 'rose' }, e)}
+                            onTouchEnd={handleSectionPressEnd}
+                            onTouchMove={handleSectionTouchMove}
+                            onMouseDown={(e) => handleSectionPressStart({ id: 'auto', title: 'Auto & Mobilità', icon: Car, color: 'rose' }, e)}
+                            onMouseUp={handleSectionPressEnd}
+                            onMouseLeave={handleSectionPressEnd}
+                            onContextMenu={(e) => e.preventDefault()}
+                            className="bg-[var(--card-bg)] p-6 lg:p-7 rounded-[2.5rem] border border-[var(--border)] hover:border-rose-500/50 shadow-sm hover:shadow-lg transition-all text-left flex items-start gap-4 group active:scale-[0.99] relative overflow-hidden select-none cursor-pointer"
                           >
                             <div className="w-14 h-14 rounded-3xl bg-rose-500/10 text-rose-500 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform shadow-inner">
                               <Car className="w-7 h-7" />
@@ -4702,7 +4742,6 @@ export default function App() {
                                   <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-rose-500/10 text-rose-500 border border-rose-500/20">
                                     {modules.filter(m => m.type === 'auto').length > 0 ? `${modules.filter(m => m.type === 'auto').length} Veicol${modules.filter(m => m.type === 'auto').length > 1 ? 'i' : 'o'}` : 'Configura'}
                                   </span>
-
                                 </div>
                               </div>
                               <p className="text-xs text-[var(--text-muted)] line-clamp-2 leading-relaxed">
@@ -4713,8 +4752,15 @@ export default function App() {
 
                           {/* 2. Documenti & Scadenze */}
                           <button
-                            onClick={() => handleSelectCategoryWithSecurity('document')}
-                            className="bg-[var(--card-bg)] p-6 lg:p-7 rounded-[2.5rem] border border-[var(--border)] hover:border-blue-500/50 shadow-sm hover:shadow-lg transition-all text-left flex items-start gap-4 group active:scale-[0.99] relative overflow-hidden"
+                            onClick={() => handleCardClick(() => handleSelectCategoryWithSecurity('document'))}
+                            onTouchStart={(e) => handleSectionPressStart({ id: 'document', title: 'Documenti', icon: FileText, color: 'blue' }, e)}
+                            onTouchEnd={handleSectionPressEnd}
+                            onTouchMove={handleSectionTouchMove}
+                            onMouseDown={(e) => handleSectionPressStart({ id: 'document', title: 'Documenti', icon: FileText, color: 'blue' }, e)}
+                            onMouseUp={handleSectionPressEnd}
+                            onMouseLeave={handleSectionPressEnd}
+                            onContextMenu={(e) => e.preventDefault()}
+                            className="bg-[var(--card-bg)] p-6 lg:p-7 rounded-[2.5rem] border border-[var(--border)] hover:border-blue-500/50 shadow-sm hover:shadow-lg transition-all text-left flex items-start gap-4 group active:scale-[0.99] relative overflow-hidden select-none cursor-pointer"
                           >
                             <div className="w-14 h-14 rounded-3xl bg-blue-500/10 text-blue-500 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform shadow-inner">
                               <FileText className="w-7 h-7" />
@@ -4726,7 +4772,6 @@ export default function App() {
                                   <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-blue-500/10 text-blue-500 border border-blue-500/20">
                                     {modules.filter(m => m.type === 'document').length} Salvati
                                   </span>
-
                                 </div>
                               </div>
                               <p className="text-xs text-[var(--text-muted)] line-clamp-2 leading-relaxed">
@@ -4737,8 +4782,15 @@ export default function App() {
 
                           {/* 3. Spese & Conti */}
                           <button
-                            onClick={() => handleSelectCategoryWithSecurity('split')}
-                            className="bg-[var(--card-bg)] p-6 lg:p-7 rounded-[2.5rem] border border-[var(--border)] hover:border-purple-500/50 shadow-sm hover:shadow-lg transition-all text-left flex items-start gap-4 group active:scale-[0.99] relative overflow-hidden"
+                            onClick={() => handleCardClick(() => handleSelectCategoryWithSecurity('split'))}
+                            onTouchStart={(e) => handleSectionPressStart({ id: 'split', title: 'Spese & Conti', icon: Wallet, color: 'purple' }, e)}
+                            onTouchEnd={handleSectionPressEnd}
+                            onTouchMove={handleSectionTouchMove}
+                            onMouseDown={(e) => handleSectionPressStart({ id: 'split', title: 'Spese & Conti', icon: Wallet, color: 'purple' }, e)}
+                            onMouseUp={handleSectionPressEnd}
+                            onMouseLeave={handleSectionPressEnd}
+                            onContextMenu={(e) => e.preventDefault()}
+                            className="bg-[var(--card-bg)] p-6 lg:p-7 rounded-[2.5rem] border border-[var(--border)] hover:border-purple-500/50 shadow-sm hover:shadow-lg transition-all text-left flex items-start gap-4 group active:scale-[0.99] relative overflow-hidden select-none cursor-pointer"
                           >
                             <div className="w-14 h-14 rounded-3xl bg-purple-500/10 text-purple-500 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform shadow-inner">
                               <Wallet className="w-7 h-7" />
@@ -4750,7 +4802,6 @@ export default function App() {
                                   <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-purple-500/10 text-purple-500 border border-purple-500/20">
                                     Finanze
                                   </span>
-
                                 </div>
                               </div>
                               <p className="text-xs text-[var(--text-muted)] line-clamp-2 leading-relaxed">
@@ -4761,8 +4812,15 @@ export default function App() {
 
                           {/* 4. Casa, Spesa & Offerte */}
                           <button
-                            onClick={() => setSelectedType('home')}
-                            className="bg-[var(--card-bg)] p-6 lg:p-7 rounded-[2.5rem] border border-[var(--border)] hover:border-teal-500/50 shadow-sm hover:shadow-lg transition-all text-left flex items-start gap-4 group active:scale-[0.99] relative overflow-hidden"
+                            onClick={() => handleCardClick(() => setSelectedType('home'))}
+                            onTouchStart={(e) => handleSectionPressStart({ id: 'home', title: 'Casa, Offerte & Spesa', icon: Home, color: 'teal' }, e)}
+                            onTouchEnd={handleSectionPressEnd}
+                            onTouchMove={handleSectionTouchMove}
+                            onMouseDown={(e) => handleSectionPressStart({ id: 'home', title: 'Casa, Offerte & Spesa', icon: Home, color: 'teal' }, e)}
+                            onMouseUp={handleSectionPressEnd}
+                            onMouseLeave={handleSectionPressEnd}
+                            onContextMenu={(e) => e.preventDefault()}
+                            className="bg-[var(--card-bg)] p-6 lg:p-7 rounded-[2.5rem] border border-[var(--border)] hover:border-teal-500/50 shadow-sm hover:shadow-lg transition-all text-left flex items-start gap-4 group active:scale-[0.99] relative overflow-hidden select-none cursor-pointer"
                           >
                             <div className="w-14 h-14 rounded-3xl bg-teal-500/10 text-teal-500 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform shadow-inner">
                               <Home className="w-7 h-7" />
@@ -4774,7 +4832,6 @@ export default function App() {
                                   <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-teal-500/10 text-teal-500 border border-teal-500/20">
                                     Offerte & Casa
                                   </span>
-
                                 </div>
                               </div>
                               <p className="text-xs text-[var(--text-muted)] line-clamp-2 leading-relaxed">
@@ -4785,7 +4842,7 @@ export default function App() {
 
                           {/* 5. Salute, Fitness & Dieta */}
                           <button
-                            onClick={() => {
+                            onClick={() => handleCardClick(() => {
                               const existingFitness = modules.find(m => m.type === 'fitness');
                               if (existingFitness) {
                                 setEditingFitnessModule(existingFitness as import('./types').FitnessModule);
@@ -4804,8 +4861,15 @@ export default function App() {
                                 });
                                 setEditingFitnessModule(newFitness);
                               }
-                            }}
-                            className="bg-[var(--card-bg)] p-6 lg:p-7 rounded-[2.5rem] border border-[var(--border)] hover:border-emerald-500/50 shadow-sm hover:shadow-lg transition-all text-left flex items-start gap-4 group active:scale-[0.99] relative overflow-hidden"
+                            })}
+                            onTouchStart={(e) => handleSectionPressStart({ id: 'fitness', title: 'Salute, Fitness & Dieta', icon: Activity, color: 'emerald' }, e)}
+                            onTouchEnd={handleSectionPressEnd}
+                            onTouchMove={handleSectionTouchMove}
+                            onMouseDown={(e) => handleSectionPressStart({ id: 'fitness', title: 'Salute, Fitness & Dieta', icon: Activity, color: 'emerald' }, e)}
+                            onMouseUp={handleSectionPressEnd}
+                            onMouseLeave={handleSectionPressEnd}
+                            onContextMenu={(e) => e.preventDefault()}
+                            className="bg-[var(--card-bg)] p-6 lg:p-7 rounded-[2.5rem] border border-[var(--border)] hover:border-emerald-500/50 shadow-sm hover:shadow-lg transition-all text-left flex items-start gap-4 group active:scale-[0.99] relative overflow-hidden select-none cursor-pointer"
                           >
                             <div className="w-14 h-14 rounded-3xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform shadow-inner">
                               <Activity className="w-7 h-7" />
@@ -4817,7 +4881,6 @@ export default function App() {
                                   <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
                                     Trainer
                                   </span>
-
                                 </div>
                               </div>
                               <p className="text-xs text-[var(--text-muted)] line-clamp-2 leading-relaxed">
@@ -4826,9 +4889,9 @@ export default function App() {
                             </div>
                           </button>
 
-                          {/* Viaggi (se presente o per esplorare) */}
+                          {/* 6. Viaggi & Mete */}
                           <button
-                            onClick={() => {
+                            onClick={() => handleCardClick(() => {
                               const existingTravel = modules.find(m => m.type === 'travel') as import('./types').TravelModule;
                               if (existingTravel) {
                                 setEditingTravelModule(existingTravel);
@@ -4848,8 +4911,15 @@ export default function App() {
                                 });
                                 setEditingTravelModule(newTravel);
                               }
-                            }}
-                            className="bg-[var(--card-bg)] p-6 lg:p-7 rounded-[2.5rem] border border-[var(--border)] hover:border-indigo-500/50 shadow-sm hover:shadow-lg transition-all text-left flex items-start gap-4 group active:scale-[0.99] relative overflow-hidden"
+                            })}
+                            onTouchStart={(e) => handleSectionPressStart({ id: 'travel', title: 'Viaggi & Mete', icon: Globe, color: 'indigo' }, e)}
+                            onTouchEnd={handleSectionPressEnd}
+                            onTouchMove={handleSectionTouchMove}
+                            onMouseDown={(e) => handleSectionPressStart({ id: 'travel', title: 'Viaggi & Mete', icon: Globe, color: 'indigo' }, e)}
+                            onMouseUp={handleSectionPressEnd}
+                            onMouseLeave={handleSectionPressEnd}
+                            onContextMenu={(e) => e.preventDefault()}
+                            className="bg-[var(--card-bg)] p-6 lg:p-7 rounded-[2.5rem] border border-[var(--border)] hover:border-indigo-500/50 shadow-sm hover:shadow-lg transition-all text-left flex items-start gap-4 group active:scale-[0.99] relative overflow-hidden select-none cursor-pointer"
                           >
                             <div className="w-14 h-14 rounded-3xl bg-indigo-500/10 text-indigo-500 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform shadow-inner">
                               <Globe className="w-7 h-7" />
@@ -4861,7 +4931,6 @@ export default function App() {
                                   <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-indigo-500/10 text-indigo-500 border border-indigo-500/20">
                                     Itinerari
                                   </span>
-
                                 </div>
                               </div>
                               <p className="text-xs text-[var(--text-muted)] line-clamp-2 leading-relaxed">
@@ -4872,11 +4941,18 @@ export default function App() {
 
                           {/* 7. Indirizzi & Parcheggio */}
                           <button
-                            onClick={() => {
+                            onClick={() => handleCardClick(() => {
                               setAddressParkingTab(hasActiveParking ? 'parking' : 'addresses');
                               setIsAddressAndParkingOpen(true);
-                            }}
-                            className="bg-[var(--card-bg)] p-6 lg:p-7 rounded-[2.5rem] border border-[var(--border)] hover:border-amber-500/50 shadow-sm hover:shadow-lg transition-all text-left flex items-start gap-4 group active:scale-[0.99] relative overflow-hidden"
+                            })}
+                            onTouchStart={(e) => handleSectionPressStart({ id: 'parking', title: 'Indirizzi & Parcheggio', icon: MapPin, color: 'amber' }, e)}
+                            onTouchEnd={handleSectionPressEnd}
+                            onTouchMove={handleSectionTouchMove}
+                            onMouseDown={(e) => handleSectionPressStart({ id: 'parking', title: 'Indirizzi & Parcheggio', icon: MapPin, color: 'amber' }, e)}
+                            onMouseUp={handleSectionPressEnd}
+                            onMouseLeave={handleSectionPressEnd}
+                            onContextMenu={(e) => e.preventDefault()}
+                            className="bg-[var(--card-bg)] p-6 lg:p-7 rounded-[2.5rem] border border-[var(--border)] hover:border-amber-500/50 shadow-sm hover:shadow-lg transition-all text-left flex items-start gap-4 group active:scale-[0.99] relative overflow-hidden select-none cursor-pointer"
                           >
                             <div className="w-14 h-14 rounded-3xl bg-amber-500/10 text-amber-500 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform shadow-inner">
                               <MapPin className="w-7 h-7" />
@@ -6204,6 +6280,80 @@ export default function App() {
                   </button>
                 </div>
               </form>
+            </motion.div>
+          </div>
+        )}
+
+        {/* Modale Conferma Creazione App da Sezione (Long Press) */}
+        {shortcutPromptSection && (
+          <div 
+            className="fixed inset-0 z-[1000] flex items-center justify-center p-6"
+            onClick={() => setShortcutPromptSection(null)}
+          >
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              transition={{ type: "spring", duration: 0.35, bounce: 0.15 }}
+              onClick={(e) => e.stopPropagation()}
+              className="relative w-full max-w-sm bg-[var(--card-bg)] rounded-[2.5rem] p-7 sm:p-8 shadow-2xl border border-[var(--border)] text-center flex flex-col items-center"
+            >
+              <div className="w-18 h-18 rounded-3xl bg-[var(--surface-variant)] border border-[var(--border)] flex items-center justify-center text-indigo-500 mb-4 shadow-inner relative group">
+                {React.createElement(shortcutPromptSection.icon, { className: "w-9 h-9" })}
+                <div className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-indigo-600 text-white flex items-center justify-center shadow">
+                  <Smartphone className="w-3.5 h-3.5" />
+                </div>
+              </div>
+
+              <span className="text-[10px] font-black uppercase tracking-wider px-3 py-1 rounded-full bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 mb-2">
+                Applicazione Indipendente
+              </span>
+
+              <h3 className="text-xl font-black text-[var(--text-main)] mb-1">
+                Salva come App
+              </h3>
+
+              <p className="text-sm font-bold text-indigo-500 dark:text-indigo-400 mb-2">
+                {shortcutPromptSection.title}
+              </p>
+
+              <p className="text-xs text-[var(--text-muted)] leading-relaxed mb-6 px-1">
+                Vuoi creare una vera app autonoma sulla schermata principale del tuo telefono per accedere direttamente a <strong>{shortcutPromptSection.title}</strong>?
+              </p>
+
+              <div className="flex gap-3 w-full">
+                <button
+                  type="button"
+                  onClick={() => setShortcutPromptSection(null)}
+                  className="flex-1 py-3.5 bg-[var(--surface-variant)] hover:bg-[var(--border)] text-[var(--text-muted)] hover:text-[var(--text-main)] rounded-2xl font-bold text-xs transition-colors cursor-pointer"
+                >
+                  Annulla
+                </button>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const target = shortcutPromptSection;
+                    setShortcutPromptSection(null);
+                    try {
+                      const { createSectionShortcut } = await import('./services/shortcutService');
+                      const res = await createSectionShortcut(target.id);
+                      showToast(res.message, res.success ? 'success' : 'info');
+                    } catch (err) {
+                      showToast('Errore durante la creazione dell\'app', 'error');
+                    }
+                  }}
+                  className="flex-1 py-3.5 bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white rounded-2xl font-bold text-xs transition-all shadow-lg shadow-indigo-600/25 flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <Smartphone className="w-4 h-4" />
+                  <span>Salva come App</span>
+                </button>
+              </div>
             </motion.div>
           </div>
         )}

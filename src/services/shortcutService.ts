@@ -487,11 +487,13 @@ export async function createSectionShortcut(shortcutIdOrRoute: string): Promise<
   const shortcut = SECTION_SHORTCUTS.find(
     s => s.id === cleanId || s.route === cleanId
   ) || (
-    cleanId === 'documenti' ? SECTION_SHORTCUTS.find(s => s.id === 'document') :
-    cleanId === 'spese' || cleanId === 'conti' || cleanId === 'spese e conti' ? SECTION_SHORTCUTS.find(s => s.id === 'finance' || s.id === 'split') :
-    cleanId === 'casa' || cleanId === 'casa offerte e spesa' ? SECTION_SHORTCUTS.find(s => s.id === 'home') :
-    cleanId === 'salute' || cleanId === 'salute e fitness e dieta' || cleanId === 'dieta' ? SECTION_SHORTCUTS.find(s => s.id === 'fitness') :
-    cleanId === 'viaggi' || cleanId === 'viaggi e mete' || cleanId === 'mete' ? SECTION_SHORTCUTS.find(s => s.id === 'travel') :
+    cleanId === 'documenti' || cleanId === 'documenti & scadenze' || cleanId === 'documenti e scadenze' ? SECTION_SHORTCUTS.find(s => s.id === 'document') :
+    cleanId === 'auto & mobilità' || cleanId === 'auto e mobilità' || cleanId === 'veicoli' ? SECTION_SHORTCUTS.find(s => s.id === 'auto') :
+    cleanId === 'spese' || cleanId === 'conti' || cleanId === 'spese e conti' || cleanId === 'spese & conti' ? SECTION_SHORTCUTS.find(s => s.id === 'finance' || s.id === 'split') :
+    cleanId === 'casa' || cleanId === 'casa offerte e spesa' || cleanId === 'casa, offerte & spesa' || cleanId === 'casa, offerte e spesa' ? SECTION_SHORTCUTS.find(s => s.id === 'home') :
+    cleanId === 'salute' || cleanId === 'salute e fitness e dieta' || cleanId === 'salute, fitness & dieta' || cleanId === 'salute, fitness e dieta' || cleanId === 'dieta' ? SECTION_SHORTCUTS.find(s => s.id === 'fitness') :
+    cleanId === 'viaggi' || cleanId === 'viaggi e mete' || cleanId === 'viaggi & mete' || cleanId === 'mete' ? SECTION_SHORTCUTS.find(s => s.id === 'travel') :
+    cleanId === 'indirizzi' || cleanId === 'parcheggio' || cleanId === 'indirizzi & parcheggio' || cleanId === 'indirizzi e parcheggio' ? SECTION_SHORTCUTS.find(s => s.id === 'parking' || s.id === 'addresses') :
     cleanId === 'strumenti' || cleanId === 'utility' ? SECTION_SHORTCUTS.find(s => s.id === 'tools') :
     undefined
   );

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Save, Car, Wrench, Calendar, Fuel, User, Hash, Gauge, FileText, Smartphone, Scan, Check, QrCode, Bell, ChevronRight, X, ShieldCheck, Edit2, Trash2, Plus, Info } from 'lucide-react';
+import { ArrowLeft, Save, Car, Wrench, Calendar, Fuel, User, Hash, Gauge, FileText, Scan, Check, QrCode, Bell, ChevronRight, X, ShieldCheck, Edit2, Trash2, Plus, Info } from 'lucide-react';
 import { AutoModule, FuelType } from '../types';
 import { DocumentScanner } from './DocumentScanner';
 import { CAR_BRANDS } from '../utils/carBrands';
@@ -261,17 +261,6 @@ export const AutoManagementScreen = ({ module, onSave, onCancel, onDelete, onSha
           </div>
         </div>
         <div className="flex items-center gap-2">
-           <button
-             type="button"
-             onClick={async () => {
-               const { createSectionShortcut } = await import('../services/shortcutService');
-               createSectionShortcut('auto');
-             }}
-             className="p-2.5 text-[var(--text-muted)] hover:text-indigo-500 hover:bg-indigo-500/10 rounded-xl transition-all cursor-pointer"
-             title="Aggiungi collegamento Auto alla Home Android"
-           >
-             <Smartphone className="w-5 h-5" />
-           </button>
            {onDelete && (
              <button 
                onClick={() => setShowDeleteConfirm(true)}

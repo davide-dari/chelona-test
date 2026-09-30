@@ -4,7 +4,7 @@ import {
   ArrowLeft, MapPin, Plus, Navigation, Trash2, Edit2, X, Share2, 
   Car, Clock, AlertCircle, RefreshCw, Check, ExternalLink, Timer, 
   Edit3, Bell, Coins, Search, QrCode, Bookmark, ChevronRight,
-  ShieldCheck, AlertTriangle, Play, CheckCircle2, RotateCcw, Smartphone
+  ShieldCheck, AlertTriangle, Play, CheckCircle2, RotateCcw
 } from 'lucide-react';
 import { generateUUID } from '../utils/uuid';
 import { Share } from '@capacitor/share';
@@ -12,7 +12,6 @@ import { storage } from '../services/storage';
 import { QrScanner } from './QrScanner';
 import { QRCodeSVG } from 'qrcode.react';
 import { ConfirmDialog } from './ConfirmDialog';
-import { createSectionShortcut } from '../services/shortcutService';
 import { 
   SavedParking, getSavedParking, saveParking, clearSavedParking, 
   autoSaveParking, manualSaveParking, getCurrentGpsPosition, reverseGeocodeCoordinates,
@@ -608,19 +607,6 @@ export const AddressAndParkingScreen: React.FC<AddressAndParkingScreenProps> = (
 
         {/* Azioni rapide Header */}
         <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={async () => {
-              const routeId = activeTab === 'parking' ? 'parking' : 'addresses';
-              const res = await createSectionShortcut(routeId);
-              showToast?.(res.message, res.success ? 'success' : 'info');
-            }}
-            className="p-2.5 rounded-2xl bg-[var(--surface-variant)] hover:bg-[var(--border)] text-[var(--text-muted)] hover:text-indigo-500 transition-colors border border-[var(--border)] active:scale-95 cursor-pointer"
-            title={`Aggiungi ${activeTab === 'parking' ? 'Parcheggio' : 'Rubrica'} alla Home Android`}
-          >
-            <Smartphone className="w-5 h-5" />
-          </button>
-
           {activeTab === 'addresses' ? (
             <>
               <button

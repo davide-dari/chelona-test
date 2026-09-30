@@ -154,7 +154,7 @@ export const HomeScreenShortcutsModal: React.FC<HomeScreenShortcutsModalProps> =
               <Sparkles className="w-4 h-4 text-indigo-500 shrink-0 mt-0.5" />
               <div className="leading-relaxed">
                 <strong className="text-indigo-600 dark:text-indigo-400 font-semibold">Come funziona: </strong>
-                Tocca <strong>"Aggiungi a Home"</strong> su qualsiasi sezione. Sul tuo telefono apparirà il dialogo Android per confermare l'aggiunta. Toccando l'icona sul launcher, si aprirà <em>immediatamente e a tutto schermo</em> quella specifica sezione come se fosse un'applicazione dedicata!
+                Tieni premuta qualsiasi sezione nell'<strong>Area Principale</strong> della home, oppure tocca <strong>Aggiungi a Home</strong> da questa schermata. Sul tuo telefono apparirà la conferma per salvare la sezione come app indipendente sul tuo telefono!
               </div>
             </div>
           </div>
