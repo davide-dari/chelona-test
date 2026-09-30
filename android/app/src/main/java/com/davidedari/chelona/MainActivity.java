@@ -1,14 +1,29 @@
 package com.davidedari.chelona;
 
+import android.Manifest;
+import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.location.Location;
+import android.location.LocationManager;
 import android.os.Bundle;
 import android.view.View;
 import android.view.WindowManager;
 import android.webkit.WebView;
+import androidx.core.content.ContextCompat;
 import com.getcapacitor.BridgeActivity;
+import com.google.android.gms.location.CurrentLocationRequest;
+import com.google.android.gms.location.FusedLocationProviderClient;
+import com.google.android.gms.location.LocationServices;
+import com.google.android.gms.location.Priority;
+import com.google.android.gms.tasks.CancellationTokenSource;
+import com.google.android.gms.tasks.OnFailureListener;
+import com.google.android.gms.tasks.OnSuccessListener;
 
 public class MainActivity extends BridgeActivity {
     
+    private FusedLocationProviderClient fusedLocationClient;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         registerPlugin(ChelonaLlmPlugin.class);
@@ -16,6 +31,12 @@ public class MainActivity extends BridgeActivity {
         getWindow().setFlags(WindowManager.LayoutParams.FLAG_SECURE, WindowManager.LayoutParams.FLAG_SECURE);
         
         super.onCreate(savedInstanceState);
+
+        try {
+            fusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
+        } catch (Exception e) {
+            android.util.Log.w("MainActivity", "Failed to init fusedLocationClient: " + e.getMessage());
+        }
 
         // Disabilita swipe back/forward nativo del WebView per evitare
         // navigazioni inaspettate con le gesture Android edge-swipe
@@ -119,6 +140,16 @@ public class MainActivity extends BridgeActivity {
                     @android.webkit.JavascriptInterface
                     public boolean deleteModelFile(final String fileName) {
                         return MainActivity.this.deleteNativeModelFile(fileName);
+                    }
+
+                    @android.webkit.JavascriptInterface
+                    public String getLastKnownLocation(final long maxAgeMs) {
+                        return MainActivity.this.getLastKnownLocationNative(maxAgeMs);
+                    }
+
+                    @android.webkit.JavascriptInterface
+                    public void getZeroLatencyLocation(final long maxAgeMs, final long timeoutMs) {
+                        MainActivity.this.getZeroLatencyLocationNative(maxAgeMs, timeoutMs);
                     }
                 }, "ChelonaNative");
             }
@@ -811,5 +842,190 @@ public class MainActivity extends BridgeActivity {
         } catch (Exception e) {
             return false;
         }
+    }
+
+    // =========================================================================
+    // GEOLOCALIZZAZIONE A LATENZA ZERO (FusedLocationProviderClient)
+    // =========================================================================
+
+    public String getLastKnownLocationNative(long maxAgeMs) {
+        try {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED &&
+                ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                return null;
+            }
+
+            LocationManager lm = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
+            if (lm == null) return null;
+
+            Location bestLocation = null;
+            java.util.List<String> providers = lm.getProviders(true);
+            long now = System.currentTimeMillis();
+
+            for (String provider : providers) {
+                try {
+                    Location l = lm.getLastKnownLocation(provider);
+                    if (l != null) {
+                        if (bestLocation == null || l.getTime() > bestLocation.getTime()) {
+                            bestLocation = l;
+                        }
+                    }
+                } catch (SecurityException ignored) {}
+            }
+
+            if (bestLocation != null) {
+                long age = now - bestLocation.getTime();
+                if (age <= maxAgeMs) {
+                    org.json.JSONObject obj = new org.json.JSONObject();
+                    obj.put("latitude", bestLocation.getLatitude());
+                    obj.put("longitude", bestLocation.getLongitude());
+                    obj.put("accuracy", bestLocation.getAccuracy());
+                    obj.put("altitude", bestLocation.hasAltitude() ? bestLocation.getAltitude() : null);
+                    obj.put("speed", bestLocation.hasSpeed() ? bestLocation.getSpeed() : null);
+                    obj.put("heading", bestLocation.hasBearing() ? bestLocation.getBearing() : null);
+                    obj.put("timestamp", bestLocation.getTime());
+                    obj.put("fromCache", true);
+                    obj.put("ageMs", age);
+                    obj.put("provider", bestLocation.getProvider() != null ? bestLocation.getProvider() : "gps-cached");
+                    return obj.toString();
+                }
+            }
+        } catch (Exception e) {
+            android.util.Log.w("ChelonaNative", "Error getting sync last location: " + e.getMessage());
+        }
+        return null;
+    }
+
+    public void getZeroLatencyLocationNative(final long maxAgeMs, final long timeoutMs) {
+        try {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED &&
+                ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                emitLocationError("Permessi di geolocalizzazione non concessi.");
+                return;
+            }
+
+            if (fusedLocationClient == null) {
+                fusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
+            }
+
+            // 1. Estrazione istantanea della posizione da getLastLocation() (Latenza 0ms)
+            fusedLocationClient.getLastLocation().addOnSuccessListener(this, new OnSuccessListener<Location>() {
+                @Override
+                public void onSuccess(Location location) {
+                    long now = System.currentTimeMillis();
+                    if (location != null && (now - location.getTime() <= maxAgeMs)) {
+                        // Posizione memorizzata valida e non obsoleta!
+                        emitLocationSuccess(location, true);
+                    } else {
+                        // Dato assente o troppo obsoleto -> Richiesta hardware PRIORITY_HIGH_ACCURACY
+                        requestFreshHardwareLocation(maxAgeMs, timeoutMs);
+                    }
+                }
+            }).addOnFailureListener(new OnFailureListener() {
+                @Override
+                public void onFailure(Exception e) {
+                    requestFreshHardwareLocation(maxAgeMs, timeoutMs);
+                }
+            });
+
+        } catch (SecurityException se) {
+            emitLocationError("Permesso di localizzazione negato.");
+        } catch (Exception e) {
+            emitLocationError(e.getMessage() != null ? e.getMessage() : "Errore localizzazione");
+        }
+    }
+
+    private void requestFreshHardwareLocation(final long maxAgeMs, final long timeoutMs) {
+        try {
+            if (fusedLocationClient == null) {
+                fusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
+            }
+
+            CancellationTokenSource cts = new CancellationTokenSource();
+            CurrentLocationRequest request = new CurrentLocationRequest.Builder()
+                    .setPriority(Priority.PRIORITY_HIGH_ACCURACY)
+                    .setMaxUpdateAgeMillis(maxAgeMs)
+                    .setDurationMillis(timeoutMs > 0 ? timeoutMs : 8000L)
+                    .build();
+
+            fusedLocationClient.getCurrentLocation(request, cts.getToken())
+                    .addOnSuccessListener(MainActivity.this, new OnSuccessListener<Location>() {
+                        @Override
+                        public void onSuccess(Location location) {
+                            if (location != null) {
+                                emitLocationSuccess(location, false);
+                            } else {
+                                // Se nullo, controlla eventuale ultima posizione da LocationManager
+                                String cachedSync = getLastKnownLocationNative(300000L); // 5 min
+                                if (cachedSync != null) {
+                                    emitRawLocationSuccess(cachedSync);
+                                } else {
+                                    emitLocationError("Impossibile agganciare il segnale GPS.");
+                                }
+                            }
+                        }
+                    })
+                    .addOnFailureListener(new OnFailureListener() {
+                        @Override
+                        public void onFailure(Exception e) {
+                            emitLocationError(e.getMessage() != null ? e.getMessage() : "Errore hardware GPS");
+                        }
+                    });
+        } catch (SecurityException se) {
+            emitLocationError("Permessi di localizzazione mancanti.");
+        } catch (Exception e) {
+            emitLocationError("Errore richiesta hardware: " + e.getMessage());
+        }
+    }
+
+    private void emitLocationSuccess(Location location, boolean fromCache) {
+        try {
+            org.json.JSONObject obj = new org.json.JSONObject();
+            obj.put("latitude", location.getLatitude());
+            obj.put("longitude", location.getLongitude());
+            obj.put("accuracy", location.getAccuracy());
+            obj.put("altitude", location.hasAltitude() ? location.getAltitude() : null);
+            obj.put("speed", location.hasSpeed() ? location.getSpeed() : null);
+            obj.put("heading", location.hasBearing() ? location.getBearing() : null);
+            obj.put("timestamp", location.getTime());
+            obj.put("fromCache", fromCache);
+            obj.put("ageMs", System.currentTimeMillis() - location.getTime());
+            obj.put("provider", location.getProvider() != null ? location.getProvider() : "fused");
+
+            emitRawLocationSuccess(obj.toString());
+        } catch (Exception e) {
+            emitLocationError(e.getMessage());
+        }
+    }
+
+    private void emitRawLocationSuccess(final String jsonString) {
+        final String script = "window.dispatchEvent(new CustomEvent('chelona-zero-latency-location', { detail: " + jsonString + " }));";
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    WebView wv = getBridge().getWebView();
+                    if (wv != null) {
+                        wv.evaluateJavascript(script, null);
+                    }
+                } catch (Exception ignored) {}
+            }
+        });
+    }
+
+    private void emitLocationError(final String errorMessage) {
+        final String safeMsg = (errorMessage != null ? errorMessage.replace("'", "\\'") : "Errore");
+        final String script = "window.dispatchEvent(new CustomEvent('chelona-zero-latency-location-error', { detail: { message: '" + safeMsg + "' } }));";
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    WebView wv = getBridge().getWebView();
+                    if (wv != null) {
+                        wv.evaluateJavascript(script, null);
+                    }
+                } catch (Exception ignored) {}
+            }
+        });
     }
 }

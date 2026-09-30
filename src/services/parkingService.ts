@@ -10,6 +10,7 @@
 
 import { Geolocation } from '@capacitor/geolocation';
 import { Capacitor, CapacitorHttp } from '@capacitor/core';
+import { zeroLatencyLocationService } from './zeroLatencyLocation';
 
 export interface SavedParking {
   id: string;
@@ -194,37 +195,50 @@ export function setParkingMeterEndTime(newEndTime: number, hourlyRate?: number):
 }
 
 /**
- * Ottiene la posizione GPS attuale (tramite Capacitor o Fallback Browser)
+ * Ottiene la posizione GPS attuale a latenza zero tramite FusedLocationProviderClient
+ * (oppure fallback standard se assente)
  */
 export async function getCurrentGpsPosition(): Promise<{ latitude: number; longitude: number; accuracy?: number }> {
   try {
-    const pos = await Geolocation.getCurrentPosition({
-      enableHighAccuracy: true,
-      timeout: 12000,
+    const pos = await zeroLatencyLocationService.getPosition({
+      maxAgeMs: 60_000,   // Accetta posizione in cache se recente (< 1 min) per risposta a 0ms
+      timeoutMs: 10_000,  // Massimo 10s per nuova scansione hardware ad alta precisione
     });
     return {
-      latitude: pos.coords.latitude,
-      longitude: pos.coords.longitude,
-      accuracy: pos.coords.accuracy,
+      latitude: pos.latitude,
+      longitude: pos.longitude,
+      accuracy: pos.accuracy,
     };
   } catch (err) {
-    console.warn('Capacitor Geolocation non disponibile o fallita, provo fallback browser...', err);
-    if (typeof navigator !== 'undefined' && 'geolocation' in navigator) {
-      return new Promise((resolve, reject) => {
-        navigator.geolocation.getCurrentPosition(
-          (pos) => {
-            resolve({
-              latitude: pos.coords.latitude,
-              longitude: pos.coords.longitude,
-              accuracy: pos.coords.accuracy,
-            });
-          },
-          (error) => reject(error),
-          { enableHighAccuracy: true, timeout: 12000 }
-        );
+    console.warn('[ParkingService] Errore zeroLatencyLocationService, tento fallback d\'emergenza...', err);
+    try {
+      const pos = await Geolocation.getCurrentPosition({
+        enableHighAccuracy: true,
+        timeout: 10000,
       });
+      return {
+        latitude: pos.coords.latitude,
+        longitude: pos.coords.longitude,
+        accuracy: pos.coords.accuracy,
+      };
+    } catch (e2) {
+      if (typeof navigator !== 'undefined' && 'geolocation' in navigator) {
+        return new Promise((resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(
+            (pos) => {
+              resolve({
+                latitude: pos.coords.latitude,
+                longitude: pos.coords.longitude,
+                accuracy: pos.coords.accuracy,
+              });
+            },
+            (error) => reject(error),
+            { enableHighAccuracy: true, timeout: 10000 }
+          );
+        });
+      }
+      throw new Error('Impossibile ottenere la posizione GPS attuale.');
     }
-    throw new Error('Impossibile ottenere la posizione GPS attuale.');
   }
 }
 

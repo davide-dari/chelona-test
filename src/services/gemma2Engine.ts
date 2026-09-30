@@ -16,6 +16,8 @@
 
 import { ragEngine, indexModulesIntoRAG } from './ragEngine';
 import { promptCache } from './promptCache';
+import { semanticCache } from './semanticCache';
+import { localDb } from './localDatabase';
 import { gemma2ModelManager } from './gemma2ModelManager';
 import type { Module } from '../types';
 import type { AiMessage, AiAction, AiMemory } from './chelonaEngine';
@@ -89,6 +91,8 @@ export interface Gemma2Response {
   engineUsed: 'gemma2-local' | 'chelona-engine';
   ragDocsUsed?: number;
   cached?: boolean;
+  semanticMatch?: boolean;
+  similarityScore?: number;
 }
 
 // ---- Template Prompt Gemma 2 ----
@@ -289,6 +293,14 @@ export async function queryGemma2(
   const executeFallback = async (): Promise<Gemma2Response> => {
     const { queryChelonaAi } = await import('./chelonaEngine');
     const result = await queryChelonaAi(userQuery, modules, username);
+    if (!onToken && result && result.text) {
+      semanticCache.set(userQuery, lastIndexedModulesHash, {
+        text: result.text,
+        actions: result.actions,
+        learnedFact: result.learnedFact,
+        autoAction: result.autoAction,
+      });
+    }
     return {
       ...result,
       engineUsed: 'chelona-engine',
@@ -327,8 +339,26 @@ export async function queryGemma2(
       const ragDocs = ragEngine.retrieve(userQuery, RAG_TOP_K);
       const ragContext = ragEngine.formatContext(ragDocs);
 
-      // 5. Controlla la cache (solo per query senza streaming)
+      // 5. Controlla la CACHE SEMANTICA in RAM (Semantic Cache: identica o molto simile)
       if (!onToken) {
+        // Fast-path: controlla cache semantica in RAM
+        const semanticMatch = semanticCache.findMatch(userQuery, modulesHash);
+        if (semanticMatch) {
+          console.log(`[SemanticCache] Hit in RAM (${semanticMatch.exactMatch ? 'esatto' : `similarità ${Math.round(semanticMatch.similarity * 100)}%`}) - inferenza Gemma 2 bypassata!`);
+          return {
+            text: semanticMatch.entry.response.text,
+            actions: semanticMatch.entry.response.actions as AiAction[] | undefined,
+            learnedFact: semanticMatch.entry.response.learnedFact,
+            autoAction: semanticMatch.entry.response.autoAction as AiAction | undefined,
+            engineUsed: 'gemma2-local',
+            ragDocsUsed: ragDocs.length,
+            cached: true,
+            semanticMatch: true,
+            similarityScore: semanticMatch.similarity,
+          };
+        }
+
+        // Fallback: controlla cache esatta
         const cached = promptCache.get(userQuery, ragContext);
         if (cached && cached.text) {
           return {
@@ -337,6 +367,7 @@ export async function queryGemma2(
             engineUsed: 'gemma2-local',
             ragDocsUsed: ragDocs.length,
             cached: true,
+            semanticMatch: false,
           };
         }
       }
@@ -364,9 +395,10 @@ export async function queryGemma2(
         return await executeFallback();
       }
 
-      // 8. Memorizzazione in cache
+      // 8. Memorizzazione in Cache Semantica in RAM e persistenza locale
       if (!onToken && responseText) {
         promptCache.set(userQuery, ragContext, { text: responseText });
+        semanticCache.set(userQuery, modulesHash, { text: responseText });
       }
 
       return {
@@ -374,6 +406,7 @@ export async function queryGemma2(
         engineUsed: 'gemma2-local',
         ragDocsUsed: ragDocs.length,
         cached: false,
+        semanticMatch: false,
       };
     })();
 
@@ -403,12 +436,14 @@ export function getGemma2State(): {
   modelInfo: import('./gemma2ModelManager').ModelInfo;
   ragStats: ReturnType<typeof ragEngine['getStats']>;
   cacheStats: ReturnType<typeof promptCache['getStats']>;
+  semanticCacheStats: ReturnType<typeof semanticCache['getStats']>;
 } {
   return {
     engineState,
     modelInfo: gemma2ModelManager.info as any,
     ragStats: ragEngine.getStats(),
     cacheStats: promptCache.getStats(),
+    semanticCacheStats: semanticCache.getStats(),
   };
 }
 
@@ -421,5 +456,5 @@ export async function unloadGemma2Model(): Promise<void> {
   engineState = 'idle';
 }
 
-export { ragEngine, promptCache, gemma2ModelManager };
+export { ragEngine, promptCache, semanticCache, localDb, gemma2ModelManager };
 export type { AiMessage, AiAction, AiMemory };
