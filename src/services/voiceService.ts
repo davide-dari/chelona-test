@@ -348,6 +348,37 @@ class VoiceRecognitionService {
     this.analyser = null;
   }
 
+  /**
+   * Annulla l'ascolto scartando il testo parziale senza emettere onResult
+   */
+  public cancel() {
+    this.clearSilenceTimer();
+    this.stopWebAudioAnalyser();
+    this.resultFired = true;
+    this.currentTranscript = '';
+
+    const native = (window as any)?.ChelonaNative;
+    if (native && typeof native.stopSpeechRecognition === 'function') {
+      try {
+        native.stopSpeechRecognition();
+      } catch (ignored) {}
+    }
+
+    try {
+      CapSpeechRecognition.stop().catch(() => {});
+      CapSpeechRecognition.removeAllListeners().catch(() => {});
+    } catch (ignored) {}
+
+    if (this.webRecognition) {
+      try {
+        this.webRecognition.stop();
+      } catch (ignored) {}
+      this.webRecognition = null;
+    }
+
+    this.isListening = false;
+  }
+
   public getIsListening(): boolean {
     return this.isListening;
   }
@@ -366,3 +397,32 @@ class VoiceRecognitionService {
 }
 
 export const voiceRecognitionService = new VoiceRecognitionService();
+
+export const STORAGE_KEY_VOICE_AUTO_SEND = 'chelona_voice_auto_send';
+
+/**
+ * Restituisce se l'invio automatico vocale da microfono è abilitato (default: true).
+ */
+export const getVoiceAutoSendEnabled = (): boolean => {
+  if (typeof window === 'undefined') return true;
+  try {
+    const val = localStorage.getItem(STORAGE_KEY_VOICE_AUTO_SEND);
+    return val === null ? true : val === 'true';
+  } catch {
+    return true;
+  }
+};
+
+/**
+ * Imposta la preferenza di invio automatico vocale e notifica l'app via evento.
+ */
+export const setVoiceAutoSendEnabled = (enabled: boolean): void => {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(STORAGE_KEY_VOICE_AUTO_SEND, String(enabled));
+    window.dispatchEvent(new CustomEvent('chelona_voice_auto_send_changed', { detail: { enabled } }));
+  } catch (err) {
+    console.warn('[VoiceService] Failed to save voice auto-send setting:', err);
+  }
+};
+

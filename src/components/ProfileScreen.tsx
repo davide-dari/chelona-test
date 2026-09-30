@@ -14,6 +14,7 @@ import { encryption } from '../services/encryption';
 import { updateService } from '../services/updateService';
 import { notificationService } from '../services/notificationService';
 import { wakeWordService } from '../services/wakeWordService';
+import { getVoiceAutoSendEnabled, setVoiceAutoSendEnabled } from '../services/voiceService';
 import { Module, Folder } from '../types';
 import { QRCodeSVG } from 'qrcode.react';
 import { APP_VERSION } from '../constants/version';
@@ -165,6 +166,9 @@ export function ProfileScreen({
   // Wake word
   const [isWakeWordEnabled, setIsWakeWordEnabled] = useState(() => wakeWordService.getEnabled());
 
+  // Invio automatico microfono AI
+  const [isVoiceAutoSendEnabled, setIsVoiceAutoSendEnabled] = useState(() => getVoiceAutoSendEnabled());
+
   // Updates
   const [isCheckingUpdate, setIsCheckingUpdate] = useState(false);
 
@@ -174,6 +178,17 @@ export function ProfileScreen({
   // Sync wake word subscription
   useEffect(() => {
     return wakeWordService.subscribe(st => setIsWakeWordEnabled(st.isEnabled));
+  }, []);
+
+  // Sync invio automatico vocale
+  useEffect(() => {
+    const handleVoiceAutoSendChange = (e: any) => {
+      if (typeof e.detail?.enabled === 'boolean') {
+        setIsVoiceAutoSendEnabled(e.detail.enabled);
+      }
+    };
+    window.addEventListener('chelona_voice_auto_send_changed', handleVoiceAutoSendChange);
+    return () => window.removeEventListener('chelona_voice_auto_send_changed', handleVoiceAutoSendChange);
   }, []);
 
   // Update internal name when prop changes
@@ -235,6 +250,19 @@ export function ProfileScreen({
     } else {
       showToast('Permesso microfono necessario per attivare il comando vocale.', 'error');
     }
+  };
+
+  // Toggle invio automatico al microfono AI
+  const handleToggleVoiceAutoSend = () => {
+    const next = !isVoiceAutoSendEnabled;
+    setVoiceAutoSendEnabled(next);
+    setIsVoiceAutoSendEnabled(next);
+    showToast(
+      next
+        ? 'Invio automatico microfono attivato!'
+        : 'Invio automatico disattivato (dovrai premere Invia).',
+      next ? 'success' : 'info'
+    );
   };
 
   // ZIP Backup creation (includes profiles, state files, address book, and notifications)
@@ -950,6 +978,31 @@ export function ProfileScreen({
                   </p>
                 </div>
               )}
+
+              {/* Invio Automatico da Microfono */}
+              <div className="bg-[var(--card-bg)] rounded-[var(--radius-lg)] p-5 sm:p-6 border border-[var(--border)] shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-10 h-10 rounded-2xl bg-amber-500/10 flex items-center justify-center text-amber-500 shrink-0">
+                    <Mic className="w-5 h-5" />
+                  </div>
+                  <div className="min-w-0">
+                    <h3 className="text-base font-bold text-[var(--text-main)] leading-tight">Invio Automatico da Microfono</h3>
+                    <p className="text-xs text-[var(--text-muted)] font-medium mt-0.5">Invia subito il messaggio in chat appena smetti di parlare al microfono</p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleToggleVoiceAutoSend}
+                  className={`px-5 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider transition-all shrink-0 active:scale-95 cursor-pointer ${
+                    isVoiceAutoSendEnabled
+                      ? 'bg-amber-500 text-white shadow-md shadow-amber-500/20'
+                      : 'bg-[var(--surface-variant)] text-[var(--text-muted)] border border-[var(--border)] hover:text-[var(--text-main)]'
+                  }`}
+                >
+                  {isVoiceAutoSendEnabled ? 'Attivo' : 'Disattivo'}
+                </button>
+              </div>
             </motion.div>
           )}
 
@@ -1363,6 +1416,31 @@ export function ProfileScreen({
                   }`}
                 >
                   {isWakeWordEnabled ? 'Disattiva' : 'Attiva'}
+                </button>
+              </div>
+
+              {/* Invio Vocale Automatico Microfono */}
+              <div className="bg-[var(--card-bg)] rounded-[var(--radius-lg)] p-5 sm:p-6 border border-[var(--border)] shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-10 h-10 rounded-2xl bg-amber-500/10 flex items-center justify-center text-amber-500 shrink-0">
+                    <Mic className="w-5 h-5" />
+                  </div>
+                  <div className="min-w-0">
+                    <h3 className="text-base font-bold text-[var(--text-main)] leading-tight">Invio Automatico da Microfono</h3>
+                    <p className="text-xs text-[var(--text-muted)] font-medium mt-0.5">Invia subito il messaggio in chat appena smetti di parlare al microfono</p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleToggleVoiceAutoSend}
+                  className={`px-5 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider transition-all shrink-0 active:scale-95 cursor-pointer ${
+                    isVoiceAutoSendEnabled
+                      ? 'bg-amber-500 text-white shadow-md shadow-amber-500/20'
+                      : 'bg-[var(--surface-variant)] text-[var(--text-muted)] border border-[var(--border)] hover:text-[var(--text-main)]'
+                  }`}
+                >
+                  {isVoiceAutoSendEnabled ? 'Attivo' : 'Disattivo'}
                 </button>
               </div>
 
