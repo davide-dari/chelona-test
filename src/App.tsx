@@ -1935,6 +1935,10 @@ export default function App() {
         });
       }
       setVolantinoInitialChain(chain);
+      if (act.flyerId) {
+        const pgNum = typeof act.page === 'number' ? act.page - 1 : 0;
+        setFlyerInitialOffer({ fid: String(act.flyerId), pg: pgNum });
+      }
       setEditingVolantinoModule(existingVol);
       return;
     }

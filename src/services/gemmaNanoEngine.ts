@@ -45,6 +45,8 @@ export interface AiAction {
   search?: string;
   recipeCategory?: string;
   shortcutId?: string;
+  flyerId?: string;
+  page?: number;
 }
 
 export interface AiMessage {
@@ -2200,7 +2202,15 @@ export async function queryGemmaNano(
         text += `\n`;
       }
 
-      actions.push({ label: `Apri Volantino ${best.s}`, type: 'volantino', storeName: best.s });
+      const bestPage = typeof best.pg === 'number' ? best.pg + 1 : 1;
+      actions.push({ 
+        label: `Apri Volantino ${best.s} (Pag. ${bestPage})`, 
+        type: 'volantino', 
+        storeName: best.s,
+        chainSlug: best.s.toLowerCase(),
+        flyerId: best.fid,
+        page: bestPage
+      });
       actions.push({ label: 'Confronta Tutti i Prezzi', type: 'volantino', chainSlug: 'stats' });
 
       return { text, actions };

@@ -188,8 +188,10 @@ const STORE_SLUG_MAP: Record<string, string> = {
   'Tigotà': 'tigota',
   'Risparmio Casa': 'risparmiocasa',
   'NaturaSì': 'naturasi',
-  'In\'s': 'ins',
+  "iN's": 'ins',
+  "In's": 'ins',
   'Dpiù': 'dpiu',
+  'A&O': 'aeo',
   'Oasi': 'oasi',
   'Tigre': 'tigre',
   'Coal': 'coal',
@@ -198,15 +200,27 @@ const STORE_SLUG_MAP: Record<string, string> = {
   'Metro': 'metro',
 };
 
-// Helper URL volantino: apre direttamente il reader completo Calaméo (esattamente il link del tasto in alto a destra)
-const getFlyerUrl = (f: VolantinoFlyer) => {
-  if (f.directUrl) return f.directUrl;
-  return `https://www.calameo.com/read/${f.bkcode}${f.authid ? `?authid=${f.authid}` : ''}`;
+// Helper URL volantino: apre direttamente il reader completo Calaméo al numero di pagina richiesto
+const getFlyerUrl = (f: VolantinoFlyer, page?: number) => {
+  const targetPage = typeof page === 'number' && page >= 1 ? Math.floor(page) : 1;
+  if (f.directUrl) {
+    if (targetPage > 1) {
+      const sep = f.directUrl.includes('?') ? '&' : '?';
+      return `${f.directUrl}${sep}page=${targetPage}#page/${targetPage}`;
+    }
+    return f.directUrl;
+  }
+  const pageParam = targetPage > 1 ? `&page=${targetPage}` : '';
+  const hashParam = targetPage > 1 ? `#page/${targetPage}` : '';
+  if (f.authid) {
+    return `https://www.calameo.com/read/${f.bkcode}?authid=${f.authid}${pageParam}${hashParam}`;
+  }
+  return `https://www.calameo.com/read/${f.bkcode}${targetPage > 1 ? `?page=${targetPage}${hashParam}` : ''}`;
 };
 
 // URL per apertura nel browser esterno
-const getBrowserUrl = (f: VolantinoFlyer) => {
-  return getFlyerUrl(f);
+const getBrowserUrl = (f: VolantinoFlyer, page?: number) => {
+  return getFlyerUrl(f, page);
 };
 
 /* ═══════════════════════════════════════════════════════════════════
@@ -937,7 +951,7 @@ function StatsView(props: {
   db: VolantiniDb;
   query: string;
   onQuery: (q: string) => void;
-  onOpenFlyer: (storeName: string) => void;
+  onOpenFlyer: (storeName: string, page?: number, flyerId?: string | number) => void;
   favorites: string[];
   initialFilterFavorites?: boolean;
 }) {
@@ -1087,12 +1101,16 @@ function StatsView(props: {
                       {g.o.map((e, i) => {
                         const isBest = g.o.length > 1 && e === b;
                         const isFav = isStoreFav(e.s);
-                        const hasFlyer = !!(STORE_SLUG_MAP[e.s] && db.chains.find(c => c.slug === STORE_SLUG_MAP[e.s])?.flyers.length);
+                        const hasFlyer = !!(
+                          (STORE_SLUG_MAP[e.s] && db.chains.find(c => c.slug === STORE_SLUG_MAP[e.s])?.flyers.length) ||
+                          db.chains.some(c => c.slug.toLowerCase() === e.s.toLowerCase() || c.name.toLowerCase().includes(e.s.toLowerCase()))
+                        );
+                        const displayPage = typeof e.pg === 'number' ? e.pg + 1 : 1;
                         return (
                           <button
                             key={`${e.s}-${i}`}
-                            onClick={() => hasFlyer && onOpenFlyer(e.s)}
-                            title={hasFlyer ? `Apri volantino ${e.s}` : undefined}
+                            onClick={() => onOpenFlyer(e.s, displayPage, e.fid)}
+                            title={`Apri volantino ${e.s} a Pagina ${displayPage}`}
                             className={`w-full flex items-center gap-3 px-2.5 py-2 rounded-2xl text-left transition-colors ${
                               isBest
                                 ? 'bg-emerald-500/10 ring-1 ring-emerald-500/25 active:bg-emerald-500/20'
@@ -1105,6 +1123,11 @@ function StatsView(props: {
                             <div className="flex-1 min-w-0">
                               <p className={`text-xs font-bold truncate flex items-center gap-1.5 ${isBest ? 'text-emerald-600' : 'text-[var(--text-main)]'}`}>
                                 <span>{e.s} {e.b !== e.s ? `· ${e.b}` : ''}</span>
+                                {typeof e.pg === 'number' && (
+                                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-blue-500/15 text-blue-600 dark:text-blue-400">
+                                    Pag. {e.pg + 1}
+                                  </span>
+                                )}
                                 {isFav && (
                                   <span className="text-[9px] font-bold text-amber-600 bg-amber-500/15 rounded-full px-1.5 py-0.2">
                                     ★ Preferito
@@ -1151,8 +1174,10 @@ function StatsView(props: {
    ═══════════════════════════════════════════════════════════════════ */
 export default function VolantinoScreen({ module, onClose, initialOffer, initialChain }: VolantinoScreenProps) {
   const [view, setView] = useState<ViewMode>('centro');
+  const [previousView, setPreviousView] = useState<ViewMode>('centro');
   const [centroChain, setCentroChain] = useState<VolantinoChain | null>(null);
   const [calameoFlyer, setCalameoFlyer] = useState<VolantinoFlyer | null>(null);
+  const [calameoPage, setCalameoPage] = useState<number>(1);
   const [statsQuery, setStatsQuery] = useState('');
   const [statsFavOnly, setStatsFavOnly] = useState(false);
 
@@ -1188,18 +1213,88 @@ export default function VolantinoScreen({ module, onClose, initialOffer, initial
       const list = active.length ? active : chain.flyers;
       if (list.length > 0) {
         setCalameoFlyer(list[0]);
+        setCalameoPage(1);
+        setPreviousView(view);
         setView('calameo');
       } else {
         setView('chain');
       }
     }
-  }, [db]);
+  }, [db, view]);
 
   useEffect(() => {
     if (initialChain) {
       openDirectTarget(initialChain);
     }
   }, [initialChain, openDirectTarget]);
+
+  // Gestione apertura diretta offerta volantino con numero pagina (da Confronta Prezzi o Lista Spesa)
+  useEffect(() => {
+    if (initialOffer && initialOffer.fid) {
+      const fidStr = String(initialOffer.fid);
+      let targetChain: VolantinoChain | undefined;
+      let targetFlyer: VolantinoFlyer | undefined;
+
+      for (const c of db.chains) {
+        const found = c.flyers.find(f => String(f.id) === fidStr || f.bkcode === fidStr);
+        if (found) {
+          targetChain = c;
+          targetFlyer = found;
+          break;
+        }
+      }
+
+      if (targetFlyer) {
+        if (targetChain) setCentroChain(targetChain);
+        setCalameoFlyer(targetFlyer);
+        const targetPage = typeof initialOffer.pg === 'number' ? initialOffer.pg + 1 : 1;
+        setCalameoPage(targetPage);
+        setPreviousView('stats');
+        setView('calameo');
+      }
+    }
+  }, [initialOffer, db]);
+
+  // Ascolto evento open-flyer-offer dispatchato da altri componenti
+  useEffect(() => {
+    const handleFlyerOffer = (e: any) => {
+      const d = e.detail;
+      if (!d || !d.fid) return;
+      const fidStr = String(d.fid);
+      const pageNum = typeof d.pg === 'number' ? d.pg + 1 : (typeof d.page === 'number' ? d.page : 1);
+      
+      let targetChain: VolantinoChain | undefined;
+      let targetFlyer: VolantinoFlyer | undefined;
+
+      for (const c of db.chains) {
+        const found = c.flyers.find(f => String(f.id) === fidStr || f.bkcode === fidStr);
+        if (found) {
+          targetChain = c;
+          targetFlyer = found;
+          break;
+        }
+      }
+
+      if (!targetFlyer && d.store) {
+        const slug = STORE_SLUG_MAP[d.store];
+        const chain = db.chains.find(c => c.slug === slug || c.name.toLowerCase() === String(d.store).toLowerCase());
+        if (chain && chain.flyers.length > 0) {
+          targetChain = chain;
+          targetFlyer = chain.flyers[0];
+        }
+      }
+
+      if (targetFlyer) {
+        if (targetChain) setCentroChain(targetChain);
+        setCalameoFlyer(targetFlyer);
+        setCalameoPage(pageNum);
+        setPreviousView('stats');
+        setView('calameo');
+      }
+    };
+    window.addEventListener('open-flyer-offer', handleFlyerOffer);
+    return () => window.removeEventListener('open-flyer-offer', handleFlyerOffer);
+  }, [db]);
 
   useEffect(() => {
     const handleOpenEvent = (e: any) => {
@@ -1269,13 +1364,18 @@ export default function VolantinoScreen({ module, onClose, initialOffer, initial
   const goBack = useCallback(() => {
     if (view === 'calameo') {
       setCalameoFlyer(null);
-      const active = centroChain?.flyers.filter(f => !f.to || new Date(f.to) >= new Date()) || [];
-      const list = active.length ? active : (centroChain?.flyers || []);
-      if (list.length <= 1) {
-        setCentroChain(null);
-        setView('centro');
+      setCalameoPage(1);
+      if (previousView === 'stats') {
+        setView('stats');
       } else {
-        setView('chain');
+        const active = centroChain?.flyers.filter(f => !f.to || new Date(f.to) >= new Date()) || [];
+        const list = active.length ? active : (centroChain?.flyers || []);
+        if (list.length <= 1) {
+          setCentroChain(null);
+          setView('centro');
+        } else {
+          setView('chain');
+        }
       }
     } else if (view === 'chain') {
       setCentroChain(null);
@@ -1285,7 +1385,7 @@ export default function VolantinoScreen({ module, onClose, initialOffer, initial
     } else {
       onClose();
     }
-  }, [view, centroChain, onClose]);
+  }, [view, centroChain, previousView, onClose]);
 
   // Ascolta il tasto back di Android (gestito da App.tsx → dispatch 'volantino-back')
   useEffect(() => {
@@ -1294,23 +1394,62 @@ export default function VolantinoScreen({ module, onClose, initialOffer, initial
     return () => window.removeEventListener('volantino-back', handler);
   }, [goBack]);
 
-  // Apri il volantino di una catena a partire dal nome negozio (es. "Lidl")
-  const onOpenFlyer = useCallback((storeName: string) => {
-    const slug = STORE_SLUG_MAP[storeName];
-    if (!slug) return;
-    const chain = db.chains.find(c => c.slug === slug);
-    if (!chain || chain.flyers.length === 0) return;
-    const active = chain.flyers.filter(f => !f.to || new Date(f.to) >= new Date());
-    const flyer = (active.length ? active : chain.flyers)[0];
-    setCentroChain(chain);
-    setCalameoFlyer(flyer);
+  // Apri il volantino di una catena con supporto a numero pagina e flyerId
+  const onOpenFlyer = useCallback((storeName: string, page?: number, flyerId?: string | number) => {
+    const cleanStore = storeName.trim().toLowerCase();
+    const slug = STORE_SLUG_MAP[storeName] || 
+      STORE_SLUG_MAP[Object.keys(STORE_SLUG_MAP).find(k => k.toLowerCase() === cleanStore) || ''] || 
+      cleanStore;
+
+    let chain = db.chains.find(c => 
+      c.slug === slug || 
+      c.slug.toLowerCase() === cleanStore || 
+      c.name.toLowerCase() === cleanStore ||
+      c.name.toLowerCase().includes(cleanStore) ||
+      cleanStore.includes(c.name.toLowerCase())
+    );
+
+    let targetFlyer: VolantinoFlyer | undefined;
+
+    // 1. Cerca per flyerId specifico
+    if (flyerId) {
+      const fidStr = String(flyerId);
+      if (chain) {
+        targetFlyer = chain.flyers.find(f => String(f.id) === fidStr || f.bkcode === fidStr);
+      }
+      if (!targetFlyer) {
+        for (const c of db.chains) {
+          const f = c.flyers.find(x => String(x.id) === fidStr || x.bkcode === fidStr);
+          if (f) {
+            targetFlyer = f;
+            if (!chain) chain = c;
+            break;
+          }
+        }
+      }
+    }
+
+    // 2. Fallback sul primo volantino attivo della catena
+    if (!targetFlyer && chain && chain.flyers.length > 0) {
+      const active = chain.flyers.filter(f => !f.to || new Date(f.to) >= new Date());
+      targetFlyer = (active.length ? active : chain.flyers)[0];
+    }
+
+    if (!targetFlyer) return;
+
+    if (chain) setCentroChain(chain);
+    setCalameoFlyer(targetFlyer);
+    const targetPage = typeof page === 'number' && page >= 1 ? page : 1;
+    setCalameoPage(targetPage);
+    setPreviousView(view);
     setView('calameo');
-  }, [db]);
+  }, [db, view]);
 
   const headerSubtitle = () => {
     if (view === 'calameo' && calameoFlyer) {
       const expiry = getFlyerExpiryInfo(calameoFlyer);
-      return `${expiry.label} · ${calameoFlyer.subtitle || 'Volantino Digitale'}`;
+      const pageInfo = calameoPage && calameoPage > 1 ? ` · Pagina ${calameoPage}` : '';
+      return `${expiry.label}${pageInfo} · ${calameoFlyer.subtitle || 'Volantino Digitale'}`;
     }
     if (view === 'chain' && centroChain) {
       return `${centroChain.flyers.length} volantini`;
@@ -1382,7 +1521,7 @@ export default function VolantinoScreen({ module, onClose, initialOffer, initial
               <MapPin className="w-5 h-5 text-emerald-500" />
             </button>
             <button
-              onClick={() => window.open(getBrowserUrl(calameoFlyer), '_blank')}
+              onClick={() => window.open(getBrowserUrl(calameoFlyer, calameoPage), '_blank')}
               className="p-2.5 -mr-2 hover:bg-[var(--surface-variant)] rounded-full text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors"
               title="Apri nel browser esterno"
             >
@@ -1409,6 +1548,8 @@ export default function VolantinoScreen({ module, onClose, initialOffer, initial
                     const list = active.length ? active : c.flyers;
                     if (list.length > 0) {
                       setCalameoFlyer(list[0]);
+                      setCalameoPage(1);
+                      setPreviousView('centro');
                       setView('calameo');
                     } else {
                       setView('chain'); 
@@ -1434,7 +1575,12 @@ export default function VolantinoScreen({ module, onClose, initialOffer, initial
               <CentroChainView
                 key={`chain-${centroChain.slug}`}
                 chain={centroChain}
-                onOpen={(f) => { setCalameoFlyer(f); setView('calameo'); }}
+                onOpen={(f) => { 
+                  setCalameoFlyer(f); 
+                  setCalameoPage(1);
+                  setPreviousView('chain');
+                  setView('calameo'); 
+                }}
                 onBack={() => setView('centro')}
                 isFavorite={favorites.includes(centroChain.slug)}
                 onToggleFavorite={() => toggleFavorite(centroChain.slug)}
@@ -1492,9 +1638,17 @@ export default function VolantinoScreen({ module, onClose, initialOffer, initial
           })()}
 
           <div className="flex-1 min-h-0 relative">
+            {calameoPage > 1 && (
+              <div className="absolute top-3 left-1/2 -translate-x-1/2 z-20 pointer-events-none">
+                <span className="px-3.5 py-1.5 rounded-full bg-black/80 backdrop-blur-md text-white text-xs font-black shadow-lg border border-white/20 flex items-center gap-1.5 animate-in fade-in zoom-in duration-300">
+                  <span>📖</span>
+                  <span>Aperto a Pagina {calameoPage}</span>
+                </span>
+              </div>
+            )}
             <iframe
-              key={`flyer-frame-${calameoFlyer.id}-${calameoFlyer.bkcode || ''}`}
-              src={getFlyerUrl(calameoFlyer)}
+              key={`flyer-frame-${calameoFlyer.id}-${calameoFlyer.bkcode || ''}-p${calameoPage}`}
+              src={getFlyerUrl(calameoFlyer, calameoPage)}
               title={calameoFlyer.title}
               className="w-full h-full border-0"
               allow="fullscreen"
