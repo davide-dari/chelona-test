@@ -7,7 +7,7 @@ import {
   Sliders, Layers, Folder as FolderIcon, Trash2, CheckCircle2, 
   AlertTriangle, Sparkles, Key, FileText, CheckCheck,
   Car, Users, Receipt, Globe, BookOpen, Activity, Home,
-  Percent, Scan, Shirt, ImageIcon, HardDrive, Edit2, Brain
+  Percent, Scan, Shirt, ImageIcon, HardDrive, Edit2, Brain, Cpu, ChevronRight
 } from 'lucide-react';
 import { storage } from '../services/storage';
 import { encryption } from '../services/encryption';
@@ -46,6 +46,8 @@ export interface ProfileScreenProps {
   theme: 'light' | 'dark';
   onToggleTheme: () => void;
   onOpenAiMemory?: () => void;
+  onOpenGemma2Setup?: () => void;
+
 }
 
 type TabType = 'profile' | 'security' | 'backup' | 'system';
@@ -124,6 +126,7 @@ export function ProfileScreen({
   pinnedToolIds = [],
   onUpdateWidgets,
   onOpenAiMemory,
+  onOpenGemma2Setup,
   theme,
   onToggleTheme
 }: ProfileScreenProps) {
@@ -921,8 +924,35 @@ export function ProfileScreen({
                   </button>
                 </div>
               </div>
+
+              {/* Gemma 2 AI Locale Card */}
+              {onOpenGemma2Setup && (
+                <div className="bg-[var(--card-bg)] rounded-[var(--radius-lg)] p-5 sm:p-6 border border-[var(--border)] shadow-sm">
+                  <div className="flex items-center gap-3">
+                    <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-violet-500/20 to-indigo-500/20 flex items-center justify-center text-violet-500 shadow-inner shrink-0">
+                      <Cpu className="w-5 h-5" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-sm font-black text-[var(--text-main)]">Gemma 2 AI Locale</h3>
+                      <p className="text-xs text-[var(--text-muted)]">Motore AI on-device · 100% privato</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={onOpenGemma2Setup}
+                      className="w-9 h-9 rounded-xl bg-[var(--surface-variant)] flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--accent)] transition-colors cursor-pointer shrink-0"
+                      title="Configura AI Locale"
+                    >
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+                  </div>
+                  <p className="text-xs text-[var(--text-muted)] leading-relaxed mt-3">
+                    Scarica e usa il modello Gemma 2 2B direttamente sul tuo dispositivo. Risposte più intelligenti senza mai inviare dati al cloud.
+                  </p>
+                </div>
+              )}
             </motion.div>
           )}
+
 
           {activeTab === 'security' && (
             <motion.div

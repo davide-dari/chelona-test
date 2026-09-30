@@ -58,6 +58,7 @@ const SupermarketScreen = React.lazy(() => import('./components/SupermarketScree
 const VolantinoScreen = React.lazy(() => import('./components/VolantinoScreen').then(m => ({ default: m.default })));
 const ShareScreen = React.lazy(() => import('./components/ShareScreen').then(m => ({ default: m.ShareScreen })));
 const ChelonaAiScreen = React.lazy(() => import('./components/ChelonaAiScreen').then(m => ({ default: m.ChelonaAiScreen })));
+const Gemma2SetupScreen = React.lazy(() => import('./components/Gemma2SetupScreen').then(m => ({ default: m.Gemma2SetupScreen })));
 const ParkingScreen = React.lazy(() => import('./components/ParkingScreen').then(m => ({ default: m.ParkingScreen })));
 const AddressAndParkingScreen = React.lazy(() => import('./components/AddressAndParkingScreen').then(m => ({ default: m.AddressAndParkingScreen })));
 // UI Libraries removed as per request (CSS Grid migration)
@@ -325,6 +326,7 @@ export default function App() {
   const [aiInitialVoiceMode, setAiInitialVoiceMode] = useState(false);
   const [aiInitialMemoryMode, setAiInitialMemoryMode] = useState(false);
   const [aiInitialMemoryOpen, setAiInitialMemoryOpen] = useState(false);
+  const [showGemma2Setup, setShowGemma2Setup] = useState(false);
   const [isWakeWordEnabled, setIsWakeWordEnabled] = useState(() => wakeWordService.getEnabled());
   const [deadlinesFilter, setDeadlinesFilter] = useState<'all' | 'auto' | 'document' | 'installment'>('all');
 
@@ -3585,6 +3587,10 @@ export default function App() {
                   }}
                   theme={theme}
                   onToggleTheme={toggleTheme}
+                  onOpenGemma2Setup={() => {
+                    setIsProfileOpen(false);
+                    setShowGemma2Setup(true);
+                  }}
                 />
               </React.Suspense>
             ) : isToolsOpen ? (
@@ -6379,6 +6385,16 @@ export default function App() {
         )}
       </AnimatePresence>
       </React.Suspense>
+
+      {/* Gemma 2 AI Setup Overlay */}
+      {showGemma2Setup && (
+        <React.Suspense fallback={null}>
+          <Gemma2SetupScreen
+            onClose={() => setShowGemma2Setup(false)}
+            showToast={showToast}
+          />
+        </React.Suspense>
+      )}
 
       </div>
       </React.Suspense>
