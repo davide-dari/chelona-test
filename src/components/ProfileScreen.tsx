@@ -751,46 +751,6 @@ export function ProfileScreen({
                     Account Principale Chelona • Crittografia Hardware Locale
                   </p>
                 </div>
-
-                <div className="flex items-center justify-center sm:justify-start gap-2 pt-1 sm:pt-0">
-                  <button
-                    onClick={handleCopyProfileId}
-                    className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[var(--bg)] border border-[var(--border)] text-[11px] font-mono font-bold text-[var(--text-muted)] hover:text-[var(--accent)] hover:border-[var(--accent)]/40 transition-colors shadow-2xs cursor-pointer active:scale-95"
-                    title="Copia ID Profilo univoco"
-                  >
-                    <Key className="w-3 h-3 text-[var(--accent)]" />
-                    <span>ID: {currentProfileId.slice(0, 8)}…</span>
-                    <Copy className="w-2.5 h-2.5 opacity-60" />
-                  </button>
-                </div>
-              </div>
-
-              {/* Badges strip */}
-              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 pt-1">
-                <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-black tracking-wide uppercase border ${
-                  hasCustomPassword
-                    ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400'
-                    : 'bg-amber-500/10 border-amber-500/20 text-amber-600 dark:text-amber-400'
-                }`}>
-                  <ShieldCheck className="w-3.5 h-3.5" />
-                  {hasCustomPassword ? 'Dati Cifrati AES-256' : 'Avvio Libero'}
-                </span>
-
-                <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-black tracking-wide uppercase border ${
-                  isBioEnabled
-                    ? 'bg-indigo-500/10 border-indigo-500/20 text-indigo-600 dark:text-indigo-400'
-                    : isBioSupported
-                    ? 'bg-blue-500/10 border-blue-500/20 text-blue-600 dark:text-blue-400'
-                    : 'bg-gray-500/10 border-gray-500/20 text-gray-500'
-                }`}>
-                  <Fingerprint className="w-3.5 h-3.5" />
-                  {isBioEnabled ? 'Biometria Attiva' : isBioSupported ? 'Biometria Pronta' : 'No Biometria'}
-                </span>
-
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[var(--accent-bg)] border border-[var(--accent)]/20 text-[var(--accent)] text-[11px] font-black tracking-wide uppercase">
-                  <Database className="w-3.5 h-3.5" />
-                  100% Offline
-                </span>
               </div>
             </div>
           </div>
@@ -844,29 +804,27 @@ export function ProfileScreen({
         </div>
 
         {/* ── Material 3 Segmented Navigation Tabs ── */}
-        <div className="flex items-center justify-between p-1.5 bg-[var(--surface-variant)] rounded-2xl border border-[var(--border)] mb-6 overflow-x-auto no-scrollbar">
-          {(
-            [
-              { id: 'profile', label: 'Profilo & Aspetto', icon: User },
-              { id: 'security', label: 'Sicurezza & PIN', icon: ShieldCheck },
-              { id: 'backup', label: 'Dati & Backup', icon: Database },
-              { id: 'system', label: 'App & Sistema', icon: Sliders },
-            ] as const
-          ).map(tab => {
+        <div className="flex items-center p-1 bg-[var(--surface-variant)] rounded-2xl border border-[var(--border)] mb-6">
+          {([
+            { id: 'profile', label: 'Profilo', icon: User },
+            { id: 'security', label: 'Sicurezza', icon: ShieldCheck },
+            { id: 'backup', label: 'Backup', icon: Database },
+            { id: 'system', label: 'Sistema', icon: Sliders },
+          ] as const).map(tab => {
             const isActive = activeTab === tab.id;
             const Icon = tab.icon;
             return (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex-1 min-w-[110px] py-2.5 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all relative select-none cursor-pointer ${
-                  isActive 
-                    ? 'text-[var(--accent-on-container)] bg-[var(--card-bg)] shadow-sm' 
-                    : 'text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--card-bg)]/40'
+                className={`flex-1 py-2 px-1 rounded-xl font-bold text-[11px] flex flex-col items-center justify-center gap-1 transition-all select-none cursor-pointer ${
+                  isActive
+                    ? 'bg-[var(--card-bg)] text-[var(--accent)] shadow-sm'
+                    : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
                 }`}
               >
-                <Icon className={`w-4 h-4 ${isActive ? 'text-[var(--accent)]' : 'opacity-70'}`} />
-                <span className="truncate">{tab.label}</span>
+                <Icon className={`w-4 h-4 ${isActive ? 'text-[var(--accent)]' : 'opacity-60'}`} />
+                <span>{tab.label}</span>
               </button>
             );
           })}
@@ -883,68 +841,55 @@ export function ProfileScreen({
               transition={{ duration: 0.2 }}
               className="space-y-6"
             >
-              {/* Theme Customization Card - Singolo Tasto Sole / Luna */}
-              <div className="bg-[var(--card-bg)] rounded-[var(--radius-lg)] p-5 sm:p-6 border border-[var(--border)] shadow-sm space-y-4">
-                <div className="flex items-center justify-between gap-4">
-                  <div className="flex items-center gap-3">
-                    <div className={`w-11 h-11 rounded-2xl flex items-center justify-center transition-colors shadow-inner ${
-                      theme === 'dark' ? 'bg-indigo-500/15 text-indigo-400' : 'bg-amber-500/15 text-amber-500'
-                    }`}>
-                      {theme === 'dark' ? <Moon className="w-6 h-6" /> : <Sun className="w-6 h-6" />}
-                    </div>
-                    <div>
-                      <h3 className="text-base font-bold text-[var(--text-main)]">
-                        {theme === 'dark' ? 'Modalità Scura Attiva' : 'Modalità Chiara Attiva'}
-                      </h3>
-                      <p className="text-xs text-[var(--text-muted)]">
-                        Tocca il tasto per alternare istantaneamente Sole e Luna
-                      </p>
-                    </div>
+              {/* Theme Toggle — solo icona piccola, niente card grande */}
+              <div className="flex items-center justify-between bg-[var(--card-bg)] rounded-2xl px-5 py-4 border border-[var(--border)] shadow-sm">
+                <div className="flex items-center gap-3">
+                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${
+                    theme === 'dark' ? 'bg-indigo-500/15 text-indigo-400' : 'bg-amber-500/15 text-amber-500'
+                  }`}>
+                    {theme === 'dark' ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
                   </div>
-
-                  {/* Singolo tasto Sole / Luna con animazione fluida */}
-                  <motion.button
-                    type="button"
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.92 }}
-                    onClick={onToggleTheme}
-                    className={`px-4 py-2.5 rounded-2xl border transition-all flex items-center gap-2.5 font-bold text-xs shadow-sm cursor-pointer ${
-                      theme === 'dark'
-                        ? 'bg-amber-500/15 border-amber-500/30 text-amber-300 hover:bg-amber-500/25'
-                        : 'bg-indigo-500/15 border-indigo-500/30 text-indigo-600 hover:bg-indigo-500/25'
-                    }`}
-                    title={theme === 'dark' ? 'Passa alla modalità Chiara (Sole)' : 'Passa alla modalità Scura (Luna)'}
-                  >
-                    <div className="relative w-5 h-5 flex items-center justify-center">
-                      <AnimatePresence mode="wait">
-                        {theme === 'dark' ? (
-                          <motion.div
-                            key="sun-icon"
-                            initial={{ rotate: -90, scale: 0.5, opacity: 0 }}
-                            animate={{ rotate: 0, scale: 1, opacity: 1 }}
-                            exit={{ rotate: 90, scale: 0.5, opacity: 0 }}
-                            transition={{ duration: 0.2 }}
-                          >
-                            <Sun className="w-5 h-5 text-amber-400" />
-                          </motion.div>
-                        ) : (
-                          <motion.div
-                            key="moon-icon"
-                            initial={{ rotate: 90, scale: 0.5, opacity: 0 }}
-                            animate={{ rotate: 0, scale: 1, opacity: 1 }}
-                            exit={{ rotate: -90, scale: 0.5, opacity: 0 }}
-                            transition={{ duration: 0.2 }}
-                          >
-                            <Moon className="w-5 h-5 text-indigo-500" />
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
-                    </div>
-                    <span className="font-black tracking-wide">
-                      {theme === 'dark' ? 'Attiva Sole' : 'Attiva Luna'}
-                    </span>
-                  </motion.button>
+                  <div>
+                    <p className="text-sm font-bold text-[var(--text-main)]">{theme === 'dark' ? 'Modalità Scura' : 'Modalità Chiara'}</p>
+                    <p className="text-xs text-[var(--text-muted)]">{theme === 'dark' ? 'Tema notturno attivo' : 'Tema giorno attivo'}</p>
+                  </div>
                 </div>
+                <motion.button
+                  type="button"
+                  whileHover={{ scale: 1.08 }}
+                  whileTap={{ scale: 0.88 }}
+                  onClick={onToggleTheme}
+                  className={`w-11 h-11 rounded-2xl border flex items-center justify-center transition-all shadow-sm cursor-pointer ${
+                    theme === 'dark'
+                      ? 'bg-amber-500/15 border-amber-500/30 text-amber-300 hover:bg-amber-500/25'
+                      : 'bg-indigo-500/15 border-indigo-500/30 text-indigo-500 hover:bg-indigo-500/25'
+                  }`}
+                  title={theme === 'dark' ? 'Attiva modalità Chiara' : 'Attiva modalità Scura'}
+                >
+                  <AnimatePresence mode="wait">
+                    {theme === 'dark' ? (
+                      <motion.div
+                        key="sun"
+                        initial={{ rotate: -90, scale: 0.5, opacity: 0 }}
+                        animate={{ rotate: 0, scale: 1, opacity: 1 }}
+                        exit={{ rotate: 90, scale: 0.5, opacity: 0 }}
+                        transition={{ duration: 0.18 }}
+                      >
+                        <Sun className="w-5 h-5 text-amber-400" />
+                      </motion.div>
+                    ) : (
+                      <motion.div
+                        key="moon"
+                        initial={{ rotate: 90, scale: 0.5, opacity: 0 }}
+                        animate={{ rotate: 0, scale: 1, opacity: 1 }}
+                        exit={{ rotate: -90, scale: 0.5, opacity: 0 }}
+                        transition={{ duration: 0.18 }}
+                      >
+                        <Moon className="w-5 h-5 text-indigo-500" />
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </motion.button>
               </div>
             </motion.div>
           )}
@@ -960,14 +905,15 @@ export function ProfileScreen({
             >
               {/* Protezione Dati & Avvio Libero Info */}
               <div className="bg-[var(--card-bg)] rounded-[var(--radius-lg)] p-5 sm:p-6 border border-[var(--border)] shadow-sm space-y-4">
-                <div className="flex items-center gap-3 pb-3 border-b border-[var(--border)]">
-                  <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 flex items-center justify-center text-emerald-500">
-                    <ShieldCheck className="w-5 h-5" />
+                <div className="flex items-center gap-3 pb-4 border-b border-[var(--border)]">
+                  <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-500/20 to-teal-500/20 flex items-center justify-center text-emerald-500 shadow-inner">
+                    <ShieldCheck className="w-6 h-6" />
                   </div>
-                  <div>
-                    <h3 className="text-base font-bold text-[var(--text-main)]">Politica di Sicurezza & Crittografia</h3>
-                    <p className="text-xs text-[var(--text-muted)]">Crittografia AES-GCM zero-knowledge su hardware locale</p>
+                  <div className="flex-1">
+                    <h3 className="text-base font-black text-[var(--text-main)]">Protezione Dati</h3>
+                    <p className="text-xs text-[var(--text-muted)] mt-0.5">Crittografia AES-GCM 256 • Solo dispositivo</p>
                   </div>
+                  <span className="px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-[10px] font-black uppercase tracking-wide">Attivo</span>
                 </div>
 
                 <div className="p-4 rounded-2xl bg-[var(--surface-variant)]/60 border border-[var(--border)] space-y-2">
@@ -1240,13 +1186,13 @@ export function ProfileScreen({
             >
               {/* Esporta Backup ZIP Card */}
               <div className="bg-[var(--card-bg)] rounded-[var(--radius-lg)] p-5 sm:p-6 border border-[var(--border)] shadow-sm space-y-4">
-                <div className="flex items-center gap-3 pb-3 border-b border-[var(--border)]">
-                  <div className="w-10 h-10 rounded-2xl bg-amber-500/10 flex items-center justify-center text-amber-500">
-                    <FileArchive className="w-5 h-5" />
+                <div className="flex items-center gap-3 pb-4 border-b border-[var(--border)]">
+                  <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500/20 to-blue-500/20 flex items-center justify-center text-indigo-500 shadow-inner">
+                    <Database className="w-6 h-6" />
                   </div>
-                  <div>
-                    <h3 className="text-base font-bold text-[var(--text-main)]">Backup Completo Database (.ZIP)</h3>
-                    <p className="text-xs text-[var(--text-muted)]">Salva l'intero archivio cifrato, inclusi rubrica contatti, scadenze e documenti</p>
+                  <div className="flex-1">
+                    <h3 className="text-base font-black text-[var(--text-main)]">Backup & Ripristino</h3>
+                    <p className="text-xs text-[var(--text-muted)] mt-0.5">Esporta e ripristina tutti i tuoi dati</p>
                   </div>
                 </div>
 

@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { Sun, Moon, Wrench, Plus, LayoutDashboard, Settings, User, LogOut, Search, Mic, MicOff, Loader2, Bell, CreditCard, Fingerprint, ShieldCheck, Lock, Menu, X, StickyNote, FileText, Grid2X2, Car, QrCode, Folder as FolderIcon, Check, Edit2, Trash2, BookOpen, ArrowLeft, ArrowRight, Camera, FileDown, Hourglass, Users, Download, Receipt, MapPin, SquareParking, Image as ImageIcon, Lightbulb, Globe, ChevronLeft, Bus, Home, Armchair, Activity, ShoppingBasket, BadgePercent, Sparkles, CalendarClock, Calendar, AlertCircle, CheckCircle2, Battery, Wallet, Flame, ArrowUpRight, Smartphone } from 'lucide-react';
+import { Sun, Moon, Wrench, Plus, LayoutDashboard, Settings, User, LogOut, Search, Mic, MicOff, Loader2, Bell, CreditCard, Fingerprint, ShieldCheck, Lock, Menu, X, StickyNote, FileText, Grid2X2, Car, QrCode, Folder as FolderIcon, Check, Edit2, Trash2, BookOpen, ArrowLeft, ArrowRight, Camera, FileDown, Hourglass, Users, Download, Receipt, MapPin, SquareParking, Image as ImageIcon, Lightbulb, Globe, ChevronLeft, Bus, Home, Armchair, Activity, ShoppingBasket, BadgePercent, Sparkles, CalendarClock, Calendar, AlertCircle, CheckCircle2, Battery, Wallet, Flame, ArrowUpRight, Smartphone, Pin } from 'lucide-react';
 
 import { Module, ModuleType, Folder, DocumentModule } from './types';
 import { isModuleSensitive } from './utils/security';
@@ -3411,7 +3411,7 @@ export default function App() {
           <div className="flex h-full w-full bg-[var(--bg)] overflow-hidden relative font-sans transition-colors duration-300">
 
             <main className="flex-1 flex flex-col overflow-hidden w-full relative">
-              <header className="h-16 lg:h-20 bg-[var(--bg)] px-6 lg:px-12 flex items-center justify-between shrink-0 z-10 safe-area-header transition-all">
+              <header className="h-16 lg:h-20 bg-[var(--bg)] px-3 sm:px-5 lg:px-12 flex items-center justify-between shrink-0 z-10 safe-area-header transition-all">
                 {/* Left side: Contextual Title or Logo */}
                 <div className="flex items-center gap-3 sm:gap-4">
                   {(activeNavTab !== 'home' || isToolsOpen || isProfileOpen || isAiOpen || selectedType || selectedFolderId) && (
@@ -3473,22 +3473,24 @@ export default function App() {
                 </div>
 
                 {/* Right side: Action buttons */}
-                <div className="flex items-center gap-2 sm:gap-3">
+                <div className="flex items-center gap-1.5 sm:gap-2">
                   {/* Pulsante Crea App Singola per la sezione attiva */}
                   {activeShortcutSectionId && (
-                    <button
-                      type="button"
-                      onClick={async () => {
-                        const { createSectionShortcut } = await import('./services/shortcutService');
-                        const res = await createSectionShortcut(activeShortcutSectionId);
-                        showToast(res.message, res.success ? 'success' : 'info');
-                      }}
-                      className="px-3 py-1.5 rounded-2xl bg-[var(--surface-variant)] hover:bg-[var(--border)] border border-[var(--border)] text-[var(--text-main)] hover:text-indigo-500 text-xs font-bold transition-all flex items-center gap-1.5 shadow-xs cursor-pointer active:scale-95"
-                      title="Crea icona app sulla schermata home"
-                    >
-                      <Smartphone className="w-3.5 h-3.5 text-indigo-500" />
-                      <span className="hidden sm:inline">Crea App Singola</span>
-                    </button>
+                    <div className="hidden sm:block">
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          const { createSectionShortcut } = await import('./services/shortcutService');
+                          const res = await createSectionShortcut(activeShortcutSectionId);
+                          showToast(res.message, res.success ? 'success' : 'info');
+                        }}
+                        className="px-3 py-1.5 rounded-2xl bg-[var(--surface-variant)] hover:bg-[var(--border)] border border-[var(--border)] text-[var(--text-main)] hover:text-indigo-500 text-xs font-bold transition-all flex items-center gap-1.5 shadow-xs cursor-pointer active:scale-95"
+                        title="Crea icona app sulla schermata home"
+                      >
+                        <Pin className="w-3.5 h-3.5 text-indigo-500" />
+                        <span className="inline">Aggiungi a Home</span>
+                      </button>
+                    </div>
                   )}
 
                   <button 
@@ -3496,24 +3498,24 @@ export default function App() {
                     className="p-2 sm:p-2.5 bg-gradient-to-tr from-amber-500/10 via-rose-500/10 to-indigo-500/10 hover:from-amber-500/20 hover:to-indigo-500/20 rounded-full text-amber-500 border border-amber-500/30 transition-all flex items-center justify-center shadow-sm cursor-pointer"
                     title="Chelona AI"
                   >
-                    <Sparkles className="w-5 h-5 sm:w-6 sm:h-6" />
+                    <Sparkles className="w-4 h-4 sm:w-5 sm:h-5" />
                   </button>
 
                   <button 
                     onClick={() => { setIsToolsOpen(true); setIsProfileOpen(false); setIsAiOpen(false); setSelectedType(null); }}
-                    className="p-2 sm:p-2.5 bg-[var(--surface-variant)] hover:bg-[var(--border)] rounded-full text-[var(--accent)] transition-all flex items-center justify-center shadow-sm hidden md:flex cursor-pointer"
+                    className="p-2 sm:p-2.5 bg-[var(--surface-variant)] hover:bg-[var(--border)] rounded-full text-[var(--accent)] transition-all hidden md:flex items-center justify-center shadow-sm cursor-pointer"
                     title="Strumenti"
                   >
-                    <Wrench className="w-5 h-5 sm:w-6 sm:h-6" />
+                    <Wrench className="w-4 h-4 sm:w-5 sm:h-5" />
                   </button>
 
                   {/* Tasto QR Code discreto nella Header (meno invasivo) */}
                   <button 
                     onClick={() => setIsScanning(true)} 
-                    className="p-2 sm:p-2.5 bg-[var(--surface-variant)] hover:bg-[var(--border)] rounded-full text-[var(--text-muted)] hover:text-emerald-500 transition-all flex items-center justify-center shadow-sm cursor-pointer"
+                    className="p-2 sm:p-2.5 bg-[var(--surface-variant)] hover:bg-[var(--border)] rounded-full text-[var(--text-muted)] hover:text-emerald-500 transition-all hidden sm:flex items-center justify-center shadow-sm cursor-pointer"
                     title="Scansiona QR Code"
                   >
-                    <QrCode className="w-5 h-5 sm:w-6 sm:h-6" />
+                    <QrCode className="w-4 h-4 sm:w-5 sm:h-5" />
                   </button>
 
                   <button 
@@ -3525,7 +3527,7 @@ export default function App() {
                     title="Indirizzi & Parcheggio"
                   >
                     <div className="relative flex items-center justify-center">
-                      <MapPin className="w-5 h-5 sm:w-6 sm:h-6" />
+                      <MapPin className="w-4 h-4 sm:w-5 sm:h-5" />
                       {hasActiveParking && (
                         <span className="absolute -top-1.5 -right-1.5 w-3.5 h-3.5 bg-indigo-500 text-[9px] font-black text-white rounded-full flex items-center justify-center ring-2 ring-[var(--surface)] shadow-sm">
                           P
@@ -3536,7 +3538,7 @@ export default function App() {
 
                   <button 
                     onClick={() => { setIsProfileOpen(true); setIsAiOpen(false); }} 
-                    className="w-10 h-10 lg:w-11 lg:h-11 rounded-full overflow-hidden border border-[var(--border)] focus:outline-none hover:opacity-80 transition-all bg-[var(--surface-variant)] shadow-sm cursor-pointer"
+                    className="w-9 h-9 lg:w-11 lg:h-11 rounded-full overflow-hidden border border-[var(--border)] focus:outline-none hover:opacity-80 transition-all bg-[var(--surface-variant)] shadow-sm cursor-pointer"
                   >
                     <img src={avatar || `https://ui-avatars.com/api/?name=${username}&background=E3E3E3&color=5E5E5E`} alt="Profile" className="w-full h-full object-cover" />
                   </button>
@@ -4894,19 +4896,7 @@ export default function App() {
                                   <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-rose-500/10 text-rose-500 border border-rose-500/20">
                                     {modules.filter(m => m.type === 'auto').length > 0 ? `${modules.filter(m => m.type === 'auto').length} Veicol${modules.filter(m => m.type === 'auto').length > 1 ? 'i' : 'o'}` : 'Configura'}
                                   </span>
-                                  <button
-                                    type="button"
-                                    onClick={async (e) => {
-                                      e.stopPropagation();
-                                      const { createSectionShortcut } = await import('./services/shortcutService');
-                                      const res = await createSectionShortcut('auto');
-                                      showToast(res.message, res.success ? 'success' : 'info');
-                                    }}
-                                    className="p-1 rounded-lg bg-rose-500/10 hover:bg-rose-500/25 text-rose-500 border border-rose-500/20 transition-all cursor-pointer active:scale-95"
-                                    title="Crea scorciatoia app Auto"
-                                  >
-                                    <Smartphone className="w-3.5 h-3.5" />
-                                  </button>
+
                                 </div>
                               </div>
                               <p className="text-xs text-[var(--text-muted)] line-clamp-2 leading-relaxed">
@@ -4930,19 +4920,7 @@ export default function App() {
                                   <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-blue-500/10 text-blue-500 border border-blue-500/20">
                                     {modules.filter(m => m.type === 'document').length} Salvati
                                   </span>
-                                  <button
-                                    type="button"
-                                    onClick={async (e) => {
-                                      e.stopPropagation();
-                                      const { createSectionShortcut } = await import('./services/shortcutService');
-                                      const res = await createSectionShortcut('document');
-                                      showToast(res.message, res.success ? 'success' : 'info');
-                                    }}
-                                    className="p-1 rounded-lg bg-blue-500/10 hover:bg-blue-500/25 text-blue-500 border border-blue-500/20 transition-all cursor-pointer active:scale-95"
-                                    title="Crea scorciatoia app Documenti"
-                                  >
-                                    <Smartphone className="w-3.5 h-3.5" />
-                                  </button>
+
                                 </div>
                               </div>
                               <p className="text-xs text-[var(--text-muted)] line-clamp-2 leading-relaxed">
@@ -4966,19 +4944,7 @@ export default function App() {
                                   <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-purple-500/10 text-purple-500 border border-purple-500/20">
                                     Finanze
                                   </span>
-                                  <button
-                                    type="button"
-                                    onClick={async (e) => {
-                                      e.stopPropagation();
-                                      const { createSectionShortcut } = await import('./services/shortcutService');
-                                      const res = await createSectionShortcut('split');
-                                      showToast(res.message, res.success ? 'success' : 'info');
-                                    }}
-                                    className="p-1 rounded-lg bg-purple-500/10 hover:bg-purple-500/25 text-purple-500 border border-purple-500/20 transition-all cursor-pointer active:scale-95"
-                                    title="Crea scorciatoia app Spese & Conti"
-                                  >
-                                    <Smartphone className="w-3.5 h-3.5" />
-                                  </button>
+
                                 </div>
                               </div>
                               <p className="text-xs text-[var(--text-muted)] line-clamp-2 leading-relaxed">
@@ -5002,19 +4968,7 @@ export default function App() {
                                   <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-teal-500/10 text-teal-500 border border-teal-500/20">
                                     Offerte & Casa
                                   </span>
-                                  <button
-                                    type="button"
-                                    onClick={async (e) => {
-                                      e.stopPropagation();
-                                      const { createSectionShortcut } = await import('./services/shortcutService');
-                                      const res = await createSectionShortcut('home');
-                                      showToast(res.message, res.success ? 'success' : 'info');
-                                    }}
-                                    className="p-1 rounded-lg bg-teal-500/10 hover:bg-teal-500/25 text-teal-600 border border-teal-500/20 transition-all cursor-pointer active:scale-95"
-                                    title="Crea scorciatoia app Casa, Offerte & Spesa"
-                                  >
-                                    <Smartphone className="w-3.5 h-3.5" />
-                                  </button>
+
                                 </div>
                               </div>
                               <p className="text-xs text-[var(--text-muted)] line-clamp-2 leading-relaxed">
@@ -5057,19 +5011,7 @@ export default function App() {
                                   <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
                                     Trainer
                                   </span>
-                                  <button
-                                    type="button"
-                                    onClick={async (e) => {
-                                      e.stopPropagation();
-                                      const { createSectionShortcut } = await import('./services/shortcutService');
-                                      const res = await createSectionShortcut('fitness');
-                                      showToast(res.message, res.success ? 'success' : 'info');
-                                    }}
-                                    className="p-1 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/25 text-emerald-600 border border-emerald-500/20 transition-all cursor-pointer active:scale-95"
-                                    title="Crea scorciatoia app Fitness & Dieta"
-                                  >
-                                    <Smartphone className="w-3.5 h-3.5" />
-                                  </button>
+
                                 </div>
                               </div>
                               <p className="text-xs text-[var(--text-muted)] line-clamp-2 leading-relaxed">
@@ -5113,19 +5055,7 @@ export default function App() {
                                   <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-indigo-500/10 text-indigo-500 border border-indigo-500/20">
                                     Itinerari
                                   </span>
-                                  <button
-                                    type="button"
-                                    onClick={async (e) => {
-                                      e.stopPropagation();
-                                      const { createSectionShortcut } = await import('./services/shortcutService');
-                                      const res = await createSectionShortcut('travel');
-                                      showToast(res.message, res.success ? 'success' : 'info');
-                                    }}
-                                    className="p-1 rounded-lg bg-indigo-500/10 hover:bg-indigo-500/25 text-indigo-500 border border-indigo-500/20 transition-all cursor-pointer active:scale-95"
-                                    title="Crea scorciatoia app Viaggi & Mete"
-                                  >
-                                    <Smartphone className="w-3.5 h-3.5" />
-                                  </button>
+
                                 </div>
                               </div>
                               <p className="text-xs text-[var(--text-muted)] line-clamp-2 leading-relaxed">
