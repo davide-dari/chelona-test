@@ -13,29 +13,41 @@ export const SignaturePad: React.FC<SignaturePadProps> = ({
   height = 180 
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const drawingRef = useRef(false);
   const hasInkRef = useRef(false);
   const strokesHistoryRef = useRef<ImageData[]>([]);
+  const lastEmittedRef = useRef<string | null>(null);
   const [hasInk, setHasInk] = useState(Boolean(value));
 
+  // Configura stile tratto e coordinate DPR sul contesto
+  const applyContextStyles = (ctx: CanvasRenderingContext2D, dpr: number) => {
+    ctx.setTransform(1, 0, 0, 1, 0, 0); // Reset transform
+    ctx.scale(dpr, dpr);
+    ctx.strokeStyle = '#0F172A'; // Slate-900 per contrasto e leggibilità elevati
+    ctx.lineWidth = 2.4;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+  };
+
   // Inizializza il canvas e supporta devicePixelRatio per rendering ultra nitido
-  const setupCanvas = useCallback(() => {
+  const setupCanvas = useCallback((initialSrc?: string | null) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const rect = canvas.getBoundingClientRect();
+    if (rect.width === 0 || rect.height === 0) return;
+
     const dpr = window.devicePixelRatio || 2;
-    canvas.width = rect.width * dpr;
-    canvas.height = rect.height * dpr;
+    canvas.width = Math.round(rect.width * dpr);
+    canvas.height = Math.round(rect.height * dpr);
+
     const ctx = canvas.getContext('2d');
     if (ctx) {
-      ctx.scale(dpr, dpr);
-      ctx.strokeStyle = '#0F172A'; // Dark slate per tratto leggibile
-      ctx.lineWidth = 2.4;
-      ctx.lineCap = 'round';
-      ctx.lineJoin = 'round';
+      applyContextStyles(ctx, dpr);
     }
 
-    if (value) {
+    const srcToLoad = initialSrc !== undefined ? initialSrc : value;
+    if (srcToLoad) {
       const img = new Image();
       img.onload = () => {
         const ctx2 = canvas.getContext('2d');
@@ -45,16 +57,68 @@ export const SignaturePad: React.FC<SignaturePadProps> = ({
           setHasInk(true);
         }
       };
-      img.src = value;
+      img.src = srcToLoad;
     }
   }, [value]);
 
+  // Montaggio iniziale e resize listener
   useEffect(() => {
-    setupCanvas();
-    const handleResize = () => setupCanvas();
+    setupCanvas(value);
+
+    let resizeTimer: ReturnType<typeof setTimeout> | null = null;
+    const handleResize = () => {
+      if (resizeTimer) clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(() => {
+        // Se c'è inchiostro, salva l'immagine prima di riallocare il buffer
+        const currentData = canvasRef.current && hasInkRef.current
+          ? canvasRef.current.toDataURL('image/png')
+          : null;
+        setupCanvas(currentData);
+      }, 100);
+    };
+
     window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, [setupCanvas]);
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      if (resizeTimer) clearTimeout(resizeTimer);
+    };
+  }, []); // Run only once on mount
+
+  // Sincronizzazione con cambi di `value` esterni (es. reset form o apertura da archivio)
+  useEffect(() => {
+    if (value === lastEmittedRef.current) {
+      // Ignora aggiornamenti causati dall'evento pointerUp interno del canvas stesso
+      return;
+    }
+
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    if (!value) {
+      // Valore azzerato dall'esterno
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      hasInkRef.current = false;
+      strokesHistoryRef.current = [];
+      setHasInk(false);
+      lastEmittedRef.current = null;
+    } else {
+      // Valore caricato dall'esterno (es. riapertura da archivio)
+      const rect = canvas.getBoundingClientRect();
+      const img = new Image();
+      img.onload = () => {
+        const dpr = window.devicePixelRatio || 2;
+        applyContextStyles(ctx, dpr);
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 0, 0, rect.width, rect.height);
+        hasInkRef.current = true;
+        setHasInk(true);
+        lastEmittedRef.current = value;
+      };
+      img.src = value;
+    }
+  }, [value]);
 
   const getPos = (e: React.PointerEvent) => {
     const canvas = canvasRef.current;
@@ -73,14 +137,16 @@ export const SignaturePad: React.FC<SignaturePadProps> = ({
     if (!canvas || !ctx) return;
 
     // Salva snapshot per undo
-    const dpr = window.devicePixelRatio || 2;
     try {
       const snap = ctx.getImageData(0, 0, canvas.width, canvas.height);
       strokesHistoryRef.current.push(snap);
-      if (strokesHistoryRef.current.length > 20) strokesHistoryRef.current.shift();
+      if (strokesHistoryRef.current.length > 25) strokesHistoryRef.current.shift();
     } catch {}
 
-    canvas.setPointerCapture(e.pointerId);
+    try {
+      canvas.setPointerCapture(e.pointerId);
+    } catch {}
+
     drawingRef.current = true;
     hasInkRef.current = true;
     setHasInk(true);
@@ -108,8 +174,18 @@ export const SignaturePad: React.FC<SignaturePadProps> = ({
     if (!drawingRef.current) return;
     drawingRef.current = false;
     const canvas = canvasRef.current;
-    if (canvas && hasInkRef.current) {
-      onChange(canvas.toDataURL('image/png'));
+    if (!canvas) return;
+
+    try {
+      if (canvas.hasPointerCapture(e.pointerId)) {
+        canvas.releasePointerCapture(e.pointerId);
+      }
+    } catch {}
+
+    if (hasInkRef.current) {
+      const dataUrl = canvas.toDataURL('image/png');
+      lastEmittedRef.current = dataUrl;
+      onChange(dataUrl);
     }
   };
 
@@ -120,6 +196,7 @@ export const SignaturePad: React.FC<SignaturePadProps> = ({
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       hasInkRef.current = false;
       strokesHistoryRef.current = [];
+      lastEmittedRef.current = null;
       setHasInk(false);
       onChange(null);
     }
@@ -133,14 +210,16 @@ export const SignaturePad: React.FC<SignaturePadProps> = ({
     const prevSnap = strokesHistoryRef.current.pop();
     if (prevSnap) {
       ctx.putImageData(prevSnap, 0, 0);
-      onChange(canvas.toDataURL('image/png'));
+      const dataUrl = canvas.toDataURL('image/png');
+      lastEmittedRef.current = dataUrl;
+      onChange(dataUrl);
     } else {
       handleClear();
     }
   }, [handleClear, onChange]);
 
   return (
-    <div className="w-full select-none">
+    <div className="w-full select-none" ref={containerRef}>
       <div 
         className="relative bg-white dark:bg-slate-100 rounded-3xl border-2 border-dashed border-indigo-300 dark:border-indigo-400/50 shadow-inner overflow-hidden transition-all"
         style={{ height }}

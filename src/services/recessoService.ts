@@ -43,22 +43,43 @@ export interface LegalTermsEvaluation {
  * Calcolo matematico dei termini di ripensamento legale o preavviso ordinario
  */
 export function evaluateRecessoLegalTerms(contractDateStr: string, sendDate: Date = new Date()): LegalTermsEvaluation {
-  if (!contractDateStr) {
-    const eff = new Date(sendDate);
-    eff.setDate(eff.getDate() + 30);
+  const effDefault = new Date(sendDate);
+  effDefault.setDate(effDefault.getDate() + 30);
+
+  if (!contractDateStr || typeof contractDateStr !== 'string') {
     return {
       elapsedDays: 999,
       isRipensamento14Days: false,
-      effectiveDate: eff.toLocaleDateString('it-IT'),
+      effectiveDate: effDefault.toLocaleDateString('it-IT'),
       legalBasis: 'Recesso con preavviso contrattuale ordinario',
       legalArticle: 'Legge n. 40/2007 (Decreto Bersani)',
       summaryBadge: 'Preavviso 30gg (L. Bersani)',
     };
   }
 
-  const contractTime = new Date(contractDateStr).getTime();
-  const sendTime = sendDate.getTime();
-  const elapsedDays = Math.max(0, Math.floor((sendTime - contractTime) / (1000 * 60 * 60 * 24)));
+  let contractDateObj: Date;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(contractDateStr.trim())) {
+    const [y, m, d] = contractDateStr.trim().split('-').map(Number);
+    contractDateObj = new Date(y, m - 1, d);
+  } else {
+    contractDateObj = new Date(contractDateStr);
+  }
+
+  if (isNaN(contractDateObj.getTime())) {
+    return {
+      elapsedDays: 999,
+      isRipensamento14Days: false,
+      effectiveDate: effDefault.toLocaleDateString('it-IT'),
+      legalBasis: 'Recesso con preavviso contrattuale ordinario',
+      legalArticle: 'Legge n. 40/2007 (Decreto Bersani)',
+      summaryBadge: 'Preavviso 30gg (L. Bersani)',
+    };
+  }
+
+  const sendDateMidnight = new Date(sendDate.getFullYear(), sendDate.getMonth(), sendDate.getDate());
+  const contractDateMidnight = new Date(contractDateObj.getFullYear(), contractDateObj.getMonth(), contractDateObj.getDate());
+  const diffMs = sendDateMidnight.getTime() - contractDateMidnight.getTime();
+  const elapsedDays = Math.max(0, Math.round(diffMs / (1000 * 60 * 60 * 24)));
 
   if (elapsedDays <= 14) {
     // Diritto di Ripensamento entro 14 giorni (Art. 52 Codice del Consumo)
@@ -72,7 +93,7 @@ export function evaluateRecessoLegalTerms(contractDateStr: string, sendDate: Dat
     };
   } else {
     // Recesso ordinario con 30 giorni di preavviso
-    const effDate = new Date(sendDate);
+    const effDate = new Date(sendDateMidnight);
     effDate.setDate(effDate.getDate() + 30);
     return {
       elapsedDays,
@@ -96,9 +117,19 @@ export function buildRecessoFormalBody(
   const fullName = `${data.userFirstName} ${data.userLastName}`.trim();
   const city = data.userCity || 'Italia';
   const todayStr = sendDate.toLocaleDateString('it-IT');
-  const contractDateFormatted = data.contractDate
-    ? new Date(data.contractDate).toLocaleDateString('it-IT')
-    : 'data di sottoscrizione';
+  
+  let contractDateFormatted = 'data di sottoscrizione';
+  if (data.contractDate) {
+    if (/^\d{4}-\d{2}-\d{2}$/.test(data.contractDate.trim())) {
+      const [y, m, d] = data.contractDate.trim().split('-').map(Number);
+      contractDateFormatted = new Date(y, m - 1, d).toLocaleDateString('it-IT');
+    } else {
+      const d = new Date(data.contractDate);
+      if (!isNaN(d.getTime())) {
+        contractDateFormatted = d.toLocaleDateString('it-IT');
+      }
+    }
+  }
 
   const recipientLines: string[] = [
     `Spett.le ${data.companyName.trim()}`,
@@ -264,9 +295,18 @@ export async function generateRecessoPdfDoc(
   };
 
   const fullName = `${data.userFirstName} ${data.userLastName}`.trim();
-  const contractDateFormatted = data.contractDate
-    ? new Date(data.contractDate).toLocaleDateString('it-IT')
-    : 'data contrattuale';
+  let contractDateFormatted = 'data contrattuale';
+  if (data.contractDate) {
+    if (/^\d{4}-\d{2}-\d{2}$/.test(data.contractDate.trim())) {
+      const [y, m, d] = data.contractDate.trim().split('-').map(Number);
+      contractDateFormatted = new Date(y, m - 1, d).toLocaleDateString('it-IT');
+    } else {
+      const d = new Date(data.contractDate);
+      if (!isNaN(d.getTime())) {
+        contractDateFormatted = d.toLocaleDateString('it-IT');
+      }
+    }
+  }
 
   let intro = `Il/La sottoscritto/a ${fullName}, residente in ${data.userAddress || '...'}, ${data.userCap || ''} ${data.userCity || ''} (${data.userProvince || ''}), Codice Fiscale: ${data.userFiscalCode || 'N/D'}`;
   if (data.userPhone) intro += `, tel: ${data.userPhone}`;

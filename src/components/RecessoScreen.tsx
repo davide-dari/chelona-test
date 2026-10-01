@@ -4,7 +4,7 @@ import {
   ArrowLeft, FileText, Send, Share2, CheckCircle2, AlertTriangle,
   Building2, ShieldCheck, Search, Plus, Calendar, FileSignature,
   Download, ExternalLink, HelpCircle, ChevronRight, RefreshCw, X,
-  Clock, Check, Sparkles, User, MapPin, Hash, Zap
+  Clock, Check, Sparkles, User, MapPin, Hash, Zap, Smartphone
 } from 'lucide-react';
 import {
   RECESSO_PROVIDERS, RECESSO_CATEGORIES, Provider, ProviderCategory,
@@ -15,6 +15,7 @@ import {
   buildRecessoMailto, shareRecessoPdf, generateRecessoPdfDoc
 } from '../services/recessoService';
 import { validateFiscalCode } from '../services/cfValidator';
+import { createSectionShortcut } from '../services/shortcutService';
 import { SignaturePad } from './SignaturePad';
 
 export interface RecessoScreenProps {
@@ -77,6 +78,27 @@ export const RecessoScreen: React.FC<RecessoScreenProps> = ({
 
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+
+  // Sincronizzazione automatica se i dati utente arrivano asincronamente dalla cassaforte
+  useEffect(() => {
+    if (defaultUserName && !formData.userLastName && !formData.userFirstName) {
+      const parts = defaultUserName.trim().split(' ');
+      setFormData(prev => ({
+        ...prev,
+        userFirstName: parts[0] || prev.userFirstName,
+        userLastName: parts.slice(1).join(' ') || prev.userLastName,
+      }));
+    }
+  }, [defaultUserName, formData.userFirstName, formData.userLastName]);
+
+  useEffect(() => {
+    if (defaultUserFiscalCode && !formData.userFiscalCode) {
+      setFormData(prev => ({
+        ...prev,
+        userFiscalCode: defaultUserFiscalCode.toUpperCase(),
+      }));
+    }
+  }, [defaultUserFiscalCode, formData.userFiscalCode]);
 
   // Calcolo matematico in tempo reale dei termini legali
   const legalTerms = useMemo(() => {
@@ -174,9 +196,8 @@ export const RecessoScreen: React.FC<RecessoScreenProps> = ({
     try {
       const { dataUri } = await generateRecessoPdfDoc(formData, legalTerms);
       const title = `Disdetta ${formData.companyName || 'Contratto'}`;
-      onSaveToSandbox(title, dataUri, 'Contratti');
+      await onSaveToSandbox(title, dataUri, 'Contratti');
       handleSaveToHistory();
-      showToast?.('Documento salvato nel Vault di Chelona sotto "Contratti"!', 'success');
     } catch (e: any) {
       showToast?.('Errore nel salvataggio in archivio', 'error');
     } finally {
@@ -216,6 +237,22 @@ export const RecessoScreen: React.FC<RecessoScreenProps> = ({
         </div>
 
         <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={async () => {
+              try {
+                const res = await createSectionShortcut('recesso');
+                showToast?.(res.message, res.success ? 'success' : 'info');
+              } catch {
+                showToast?.('Errore durante la creazione del collegamento', 'error');
+              }
+            }}
+            className="w-10 h-10 rounded-2xl bg-[var(--surface-variant)] hover:bg-rose-500/10 hover:border-rose-500/30 border border-[var(--border)] text-rose-600 dark:text-rose-400 flex items-center justify-center transition-all cursor-pointer"
+            title="Salva come App sulla Home (Android)"
+          >
+            <Smartphone className="w-4 h-4" />
+          </button>
+
           {savedRecessi.length > 0 && (
             <button
               type="button"

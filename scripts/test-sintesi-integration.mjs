@@ -119,6 +119,24 @@ assert.strictEqual(terms1.elapsedDays, 5);
 assert.ok(terms1.legalArticle.includes('D.Lgs. 206/2005'));
 assert.strictEqual(terms1.effectiveDate, 'Immediata (senza penali)');
 
+// Exact 14-day boundary
+const contract14DaysAgo = '2026-09-17';
+const terms14 = evaluateRecessoLegalTerms(contract14DaysAgo, today);
+assert.strictEqual(terms14.isRipensamento14Days, true, 'Day 14 must be within cooling-off');
+assert.strictEqual(terms14.elapsedDays, 14);
+
+// 15-day boundary -> ordinary withdrawal
+const contract15DaysAgo = '2026-09-16';
+const terms15 = evaluateRecessoLegalTerms(contract15DaysAgo, today);
+assert.strictEqual(terms15.isRipensamento14Days, false, 'Day 15 must NOT be cooling-off');
+assert.strictEqual(terms15.elapsedDays, 15);
+
+// Invalid date -> must fallback gracefully without NaN
+const termsInvalid = evaluateRecessoLegalTerms('invalid-date-string', today);
+assert.strictEqual(isNaN(termsInvalid.elapsedDays), false, 'elapsedDays must not be NaN');
+assert.strictEqual(termsInvalid.isRipensamento14Days, false);
+assert.ok(termsInvalid.summaryBadge.includes('30gg'));
+
 // Contract signed 60 days ago -> ordinary withdrawal with 30-day notice (Bersani)
 const contract60DaysAgo = '2026-08-02';
 const terms2 = evaluateRecessoLegalTerms(contract60DaysAgo, today);
@@ -155,8 +173,20 @@ assert.ok(formalBody.includes('RSSMRA80A01H501U'));
 
 console.log('✓ Recesso legal terms and body generator tests passed.');
 
-// 4. Test Home Screen Shortcuts Definition
-console.log('4. Testing Android Pinned Shortcuts definitions...');
+// 4. Test Recesso Providers Database
+console.log('4. Testing Providers Database Coverage & Integrity...');
+const { RECESSO_PROVIDERS, getProviderById } = await import('../src/data/recessoProviders.ts');
+assert.strictEqual(RECESSO_PROVIDERS.length, 50, 'Must contain all 50 verified Italian providers');
+assert.ok(getProviderById('tiscali'), 'Tiscali must exist');
+assert.ok(getProviderById('prime'), 'Prime Video must exist');
+assert.ok(getProviderById('eon'), 'E.ON must exist');
+assert.ok(getProviderById('now-sport'), 'NOW Sport must exist');
+assert.ok(getProviderById('digi'), 'Digi Mobil must exist');
+assert.ok(getProviderById('virgin-active'), 'Virgin Active must exist');
+console.log('✓ Providers database coverage tests passed.');
+
+// 5. Test Home Screen Shortcuts Definition
+console.log('5. Testing Android Pinned Shortcuts definitions...');
 const doctorShortcut = SECTION_SHORTCUTS.find(s => s.id === 'doctor');
 assert.ok(doctorShortcut, 'Doctor shortcut definition must exist');
 assert.strictEqual(doctorShortcut.route, 'doctor');

@@ -992,6 +992,8 @@ export default function App() {
       setIsSettingsOpen(false);
       setIsAddressAndParkingOpen(false);
       setIsRecipesOpen(false);
+      setIsDoctorOpen(false);
+      setIsRecessoOpen(false);
       setSelectedType(null);
     }
 
@@ -2730,8 +2732,11 @@ export default function App() {
     return TOOLS.filter((t: any) => t.title.toLowerCase().includes(query) || t.desc.toLowerCase().includes(query));
   }, [searchQuery, isToolsOpen]);
 
-  const handleSaveToSandbox = async (title: string, base64: string, targetFolderName?: string) => {
-    if (!encryptionKey || !currentProfileId) return;
+  const handleSaveToSandbox = async (title: string, base64: string, targetFolderName?: string): Promise<void> => {
+    if (!encryptionKey || !currentProfileId) {
+      showToast('Cassaforte protetta: sblocca prima la cassaforte con PIN', 'error');
+      return;
+    }
 
     let folderId = undefined;
     let newFolders = folders;

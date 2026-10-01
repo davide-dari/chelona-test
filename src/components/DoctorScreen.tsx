@@ -4,7 +4,7 @@ import {
   ArrowLeft, Stethoscope, Clock, Phone, MapPin, Mail, Plus, Trash2,
   Check, Send, Settings, ChevronDown, ChevronUp, Copy, CheckCircle2,
   Calendar, AlertCircle, Edit3, X, Sparkles, Navigation, Pill, FileText,
-  Search, ShieldCheck, Download, Upload, ExternalLink
+  Search, ShieldCheck, Download, Upload, ExternalLink, Smartphone
 } from 'lucide-react';
 import {
   DoctorProfile, MedicineItem, DoctorState, DAYS_NAMES,
@@ -12,6 +12,7 @@ import {
   buildPrescriptionEmail, DEFAULT_DOCTOR_STATE, DoctorDaySchedule
 } from '../services/doctorService';
 import { validateFiscalCode } from '../services/cfValidator';
+import { createSectionShortcut } from '../services/shortcutService';
 
 export interface DoctorScreenProps {
   onClose: () => void;
@@ -63,6 +64,19 @@ export const DoctorScreen: React.FC<DoctorScreenProps> = ({
     const timer = setInterval(() => setCurrentTime(new Date()), 30000);
     return () => clearInterval(timer);
   }, []);
+
+  // Sincronizzazione automatica se i dati arrivano asincronamente dalla cassaforte
+  useEffect(() => {
+    if (defaultPatientName && (patientName === 'Assistito' || !patientName)) {
+      setPatientName(defaultPatientName);
+    }
+  }, [defaultPatientName, patientName]);
+
+  useEffect(() => {
+    if (defaultPatientFiscalCode && !patientFiscalCode) {
+      setPatientFiscalCode(defaultPatientFiscalCode);
+    }
+  }, [defaultPatientFiscalCode, patientFiscalCode]);
 
   // Calcolo matematico in tempo reale dello stato dello studio
   const studioStatus = useMemo(() => {
@@ -207,7 +221,12 @@ export const DoctorScreen: React.FC<DoctorScreenProps> = ({
       showToast?.('Nessun numero di telefono registrato', 'info');
       return;
     }
-    window.location.href = `tel:${number.replace(/\s+/g, '')}`;
+    const cleanNumber = number.replace(/\s+/g, '');
+    try {
+      window.open(`tel:${cleanNumber}`, '_system') || (window.location.href = `tel:${cleanNumber}`);
+    } catch {
+      window.location.href = `tel:${cleanNumber}`;
+    }
   };
 
   // Backup
@@ -274,6 +293,21 @@ export const DoctorScreen: React.FC<DoctorScreenProps> = ({
         </div>
 
         <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={async () => {
+              try {
+                const res = await createSectionShortcut('doctor');
+                showToast?.(res.message, res.success ? 'success' : 'info');
+              } catch {
+                showToast?.('Errore durante la creazione del collegamento', 'error');
+              }
+            }}
+            className="w-10 h-10 rounded-2xl bg-[var(--surface-variant)] hover:bg-teal-500/10 hover:border-teal-500/30 border border-[var(--border)] text-teal-600 dark:text-teal-400 flex items-center justify-center transition-all cursor-pointer"
+            title="Salva come App sulla Home (Android)"
+          >
+            <Smartphone className="w-4 h-4" />
+          </button>
           <button
             type="button"
             onClick={handleOpenBackup}
