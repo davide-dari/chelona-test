@@ -214,7 +214,7 @@ export const Gemma2SetupScreen: React.FC<Gemma2SetupScreenProps> = ({ onClose, s
               <Sparkles className="w-4 h-4 text-amber-500" />
               Seleziona Modello di Inferenza
             </h3>
-            <span className="text-[11px] font-bold text-[var(--text-muted)]">3 disponibili</span>
+            <span className="text-[11px] font-bold text-[var(--text-muted)]">{AVAILABLE_MODELS.length} disponibili</span>
           </div>
 
           <div className="space-y-2.5">

@@ -572,7 +572,7 @@ export const ChelonaAiScreen
               engineUsed: 'chelona-engine',
             });
           }
-        }, 3000);
+        }, 2000);
       });
 
       const response = await Promise.race([queryPromise, safetyTimeout]);
