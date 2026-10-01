@@ -56,6 +56,65 @@ export const FIDELITY_CARDS: Record<string, string> = {
   "C+C Cash & Carry": "C+C Card"
 };
 
+/* Mappa nomi insegna (da confronto prezzi) → slug catena (volantiniDb) */
+export const STORE_SLUG_MAP: Record<string, string> = {
+  'Pewex': 'pewex',
+  'Pim': 'pim',
+  'Dem': 'dem',
+  'Il Castoro': 'il-castoro',
+  'Ipertriscount': 'ipertriscount',
+  'Ipercarni': 'ipercarni',
+  'CTS': 'cts',
+  'Top': 'top',
+  'Effepiù': 'effepiu',
+  'Sir': 'sir',
+  'Sacoph': 'sacoph',
+  'Idromarket': 'idromarket',
+  'MA': 'ma',
+  'Gros': 'gros',
+  'Crai': 'crai',
+  'Decò': 'deco',
+  'Esselunga': 'esselunga',
+  'Eurospin': 'eurospin',
+  'Interspar': 'despar',
+  'Despar': 'despar',
+  'Lidl': 'lidl',
+  'MD': 'md-discount',
+  'Pam': 'pam',
+  'Todis': 'todis',
+  'Conad': 'conad',
+  'Coop': 'coop',
+  'Ipercoop': 'ipercoop',
+  'Aldi': 'aldi',
+  'Carrefour': 'carrefour',
+  'Penny': 'penny-market',
+  'Penny Market': 'penny-market',
+  'Bennet': 'bennet',
+  'Famila': 'famila',
+  'Il Gigante': 'il-gigante',
+  'Iperal': 'iperal',
+  'Tigros': 'tigros',
+  'Basko': 'basko',
+  'Migross': 'migross',
+  'Alì': 'ali-supermercati',
+  'Unes': 'unes',
+  'Acqua e Sapone': 'acqua-e-sapone',
+  'Acqua & Sapone': 'acqua-e-sapone',
+  'Tigotà': 'tigota',
+  'Risparmio Casa': 'risparmiocasa',
+  'NaturaSì': 'naturasi',
+  "iN's": 'ins',
+  "In's": 'ins',
+  'Dpiù': 'dpiu',
+  'A&O': 'aeo',
+  'Oasi': 'oasi',
+  'Tigre': 'tigre',
+  'Coal': 'coal',
+  'Italmark': 'italmark',
+  'Prix': 'prix',
+  'Metro': 'metro',
+};
+
 /* Normalizza una stringa per il confronto (minuscole, senza accenti) */
 export const normalizeOfferName = (s: string): string =>
   s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
@@ -128,6 +187,78 @@ export const findOffersForName = (name: string): OfferEntry[] => {
     .filter(m => m.score === best)
     .map(m => m.e)
     .sort((a, b) => a.p / a.q - b.p / b.q);
+};
+
+export interface ConvenientDeal {
+  groupId: string;
+  groupName: string;
+  emoji: string;
+  store: string;
+  chainSlug: string;
+  productName: string;
+  brand: string;
+  price: number;
+  qty: number;
+  unit: 'kg' | 'l' | 'pz';
+  unitPrice: number;
+  avgUnitPrice: number;
+  savingPct: number;
+  fid: string;
+  page: number; // 1-based display page (pg + 1)
+}
+
+/* Calcola e restituisce le migliori offerte convenienti dalla sezione Confronta Prezzi
+   (solo quelle con reale convenienza e forte risparmio rispetto alla media dei supermercati). */
+export const getBestConvenientDeals = (limit = 6): ConvenientDeal[] => {
+  const deals: ConvenientDeal[] = [];
+
+  for (const g of OFFER_GROUPS) {
+    if (g.o.length < 2) continue;
+    const unitPrices = g.o.map(e => e.p / e.q);
+    const avg = unitPrices.reduce((a, b) => a + b, 0) / unitPrices.length;
+    const best = g.o.reduce((min, cur) => (cur.p / cur.q < min.p / min.q ? cur : min), g.o[0]);
+    const bestUnit = best.p / best.q;
+    const savingPct = Math.round((1 - bestUnit / avg) * 100);
+
+    // Solo quelle convenienti: almeno 20% sotto la media dei supermercati
+    if (savingPct >= 20) {
+      deals.push({
+        groupId: g.id,
+        groupName: g.g,
+        emoji: g.e,
+        store: best.s,
+        chainSlug: STORE_SLUG_MAP[best.s] || best.s.toLowerCase(),
+        productName: best.n,
+        brand: best.b,
+        price: best.p,
+        qty: best.q,
+        unit: best.u,
+        unitPrice: bestUnit,
+        avgUnitPrice: avg,
+        savingPct,
+        fid: best.fid,
+        page: typeof best.pg === 'number' ? best.pg + 1 : 1,
+      });
+    }
+  }
+
+  // Ordina per percentuale di risparmio decrescente
+  deals.sort((a, b) => b.savingPct - a.savingPct);
+
+  // Diversifica le catene per offrire una panoramica equilibrata (max 2 per catena)
+  const storeCounts: Record<string, number> = {};
+  const selected: ConvenientDeal[] = [];
+
+  for (const d of deals) {
+    const count = storeCounts[d.store] || 0;
+    if (count < 2) {
+      storeCounts[d.store] = count + 1;
+      selected.push(d);
+      if (selected.length >= limit) break;
+    }
+  }
+
+  return selected.length > 0 ? selected : deals.slice(0, limit);
 };
 
 export const OFFER_GROUPS: OfferGroup[] = [

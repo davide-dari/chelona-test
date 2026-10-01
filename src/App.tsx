@@ -554,7 +554,9 @@ export default function App() {
       if (!d || !d.fid || typeof d.pg !== 'number') return;
       if (isAiOpen || activeNavTab === 'ai') {
         setReturnToAiOnClose(true);
+        setIsAiOpen(false);
       }
+      setVolantinoInitialChain(null);
       setFlyerInitialOffer({ fid: String(d.fid), pg: d.pg });
       const existingVolantino = modules.find(m => m.type === 'volantino') as import('./types').VolantinoModule | undefined;
       if (existingVolantino) {
@@ -2050,10 +2052,13 @@ export default function App() {
           return updated;
         });
       }
-      setVolantinoInitialChain(chain);
-      if (act.flyerId) {
-        const pgNum = typeof act.page === 'number' ? act.page - 1 : 0;
-        setFlyerInitialOffer({ fid: String(act.flyerId), pg: pgNum });
+      if (act.flyerId || (typeof act.page === 'number' && act.page >= 1)) {
+        const pgNum = typeof act.page === 'number' ? Math.max(0, act.page - 1) : 0;
+        setFlyerInitialOffer({ fid: String(act.flyerId || ''), pg: pgNum });
+        setVolantinoInitialChain(null);
+      } else {
+        setFlyerInitialOffer(null);
+        setVolantinoInitialChain(chain);
       }
       setEditingVolantinoModule(existingVol);
       return;

@@ -82,4 +82,25 @@ console.log('✅ Token streaming test passed');
 assert(elapsedFastPath < 3000, 'Must be < 3 seconds');
 assert(elapsedStream < 3000, 'Must be < 3 seconds');
 
+// 7. Generic offers request -> Rimando a tutti i volantini
+const resGenericOffers = await queryChelonaAi('Quali sono le offerte?', [], 'Davide');
+assert(resGenericOffers && resGenericOffers.autoAction, 'Generic offers must have autoAction');
+assert.strictEqual(resGenericOffers.autoAction.type, 'volantino', 'autoAction must be type volantino');
+assert(resGenericOffers.text.toLowerCase().includes('tutti i volantini'), 'Text must mention tutti i volantini');
+console.log('✅ Generic offers -> Rimando a tutti i volantini test passed');
+
+// 8. Best offers request -> Confronta Prezzi convenient deals
+const resBestOffers = await queryChelonaAi('Quali sono le migliori offerte?', [], 'Davide');
+assert(resBestOffers && resBestOffers.actions && resBestOffers.actions.length > 0, 'Best offers must return action buttons');
+assert(resBestOffers.text.includes('Confronta Prezzi'), 'Must mention Confronta Prezzi');
+assert(resBestOffers.text.includes('sotto la media'), 'Must include savings vs average');
+// Check that action items have valid flyerId and page
+const flyerActions = resBestOffers.actions.filter(a => a.type === 'volantino' && a.flyerId);
+assert(flyerActions.length >= 3, 'Must have at least 3 direct flyer actions with exact page');
+for (const a of flyerActions) {
+  assert(typeof a.page === 'number' && a.page >= 1, 'Page must be >= 1');
+  assert(a.flyerId, 'Must have flyerId');
+}
+console.log('✅ Best offers -> Confronta Prezzi with exact flyer pages test passed');
+
 console.log('🎉 ALL AI LATENCY AND TIMING TESTS PASSED PERFECTLY!');

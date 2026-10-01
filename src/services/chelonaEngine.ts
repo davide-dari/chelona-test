@@ -14,7 +14,7 @@ import {
 } from '../types';
 import { VOLANTINI_DB, type VolantinoChain } from '../data/volantiniDb';
 import { getLiveVolantiniDb, getFlyerExpiryInfo } from './volantiniSync';
-import { OFFER_GROUPS, findOffersForName, type OfferEntry } from '../data/offerStats';
+import { OFFER_GROUPS, findOffersForName, getBestConvenientDeals, STORE_SLUG_MAP, type OfferEntry } from '../data/offerStats';
 import { 
   getSavedParking, formatElapsedParkingTime, getNavigationUrl 
 } from './parkingService';
@@ -2120,13 +2120,16 @@ export async function queryChelonaAi(
     lower.includes('scont') ||
     lower.includes('promo') ||
     lower.includes('convenien') ||
+    lower.includes('convien') ||
+    lower.includes('miglior') ||
     lower.includes('risparmio') ||
+    lower.includes('risparmi') ||
     lower.includes('coupon') ||
     lower.includes('prezz') ||
     lower.includes('costa meno') ||
     lower.includes('chi ha') ||
     lower.includes('dove trovo') ||
-    ((lower.includes('supermercat') || lower.includes('catene')) && (lower.includes('offert') || lower.includes('scont') || lower.includes('promo'))) ||
+    ((lower.includes('supermercat') || lower.includes('catene')) && (lower.includes('offert') || lower.includes('scont') || lower.includes('promo') || lower.includes('prezz'))) ||
     (matchedChain !== null && (lower.includes('volantin') || lower.includes('scont') || lower.includes('offert') || lower.includes('apri') || lower.includes('mostra') || lower.includes('sfoglia')))
   );
 
@@ -2189,14 +2192,7 @@ export async function queryChelonaAi(
       return { text, actions };
     }
 
-    if (lower.includes('apri') || lower.includes('vai') || lower.trim() === 'volantini') {
-      return {
-        text: `Ti porto subito alla sezione con tutti i volantini e le promozioni dei supermercati! 🛒`,
-        autoAction: { label: 'Tutti i Volantini', type: 'volantino' },
-        actions: [],
-      };
-    }
-
+    // 1. Apertura diretta Sezione Confronta Prezzi
     if (lower.includes('confronta') || lower.includes('comparat') || lower.includes('statistiche prezz')) {
       return {
         text: `Ti apro subito il confronto prezzi nazionale per trovare i prodotti più convenienti! 📊`,
@@ -2205,11 +2201,20 @@ export async function queryChelonaAi(
       };
     }
 
-    // Ricerca prodotti in offerta
+    // 2. Ricerca prodotti specifici in offerta (es. "caffè", "pasta", "tonno", "olio")
+    const VOLANTINI_STOPWORDS = new Set([
+      'chi', 'ha', 'la', 'il', 'lo', 'le', 'gli', 'dei', 'del', 'della', 'delle', 'degli',
+      'cosa', 'dove', 'trovo', 'costa', 'meno', 'sconti', 'sconto', 'offerte', 'offerta',
+      'volantino', 'volantini', 'miglior', 'migliore', 'migliori', 'conveniente', 'convenienti',
+      'conviene', 'prezzo', 'prezzi', 'quali', 'quale', 'sono', 'un', 'una', 'uno', 'ci',
+      'c', 'è', 'ce', 'comprare', 'prendere', 'vedere', 'mostra', 'mostrami', 'trova', 'trovami',
+      'dimmi', 'sapere', 'consigli', 'consigliami', 'oggi', 'adesso', 'supermercato', 'supermercati'
+    ]);
+
     const cleanTokens = query.toLowerCase()
       .replace(/[?!,.:;()"]/g, ' ')
       .split(/\s+/)
-      .filter(t => t.length >= 3 && !['chi', 'ha', 'la', 'il', 'lo', 'le', 'gli', 'dei', 'del', 'delle', 'cosa', 'dove', 'trovo', 'costa', 'meno', 'sconti', 'offerte', 'volantino'].includes(t));
+      .filter(t => t.length >= 3 && !VOLANTINI_STOPWORDS.has(t));
 
     let matchedOffers: OfferEntry[] = [];
     let searchedKeyword = '';
@@ -2229,38 +2234,100 @@ export async function queryChelonaAi(
 
       let text = `Ho esaminato i volantini e il confronto prezzi per **"${searchedKeyword.toUpperCase()}"** 🔍\n\n`;
       text += `🥇 **Miglior Prezzo**: da **${best.s}** a **€ ${best.p.toFixed(2)}**\n`;
-      text += `   *${best.n}* (${best.b}) — ${best.q} ${best.u} (€ ${(best.p / best.q).toFixed(2)}/${best.u})\n\n`;
+      text += `   *${best.n}* (${best.b}) — ${best.q} ${best.u} (€ ${(best.p / best.q).toFixed(2)}/${best.u}) · *Pagina ${typeof best.pg === 'number' ? best.pg + 1 : 1}*\n\n`;
 
       if (others.length > 0) {
         text += `Alternative rilevate:\n`;
         others.forEach(o => {
-          text += `• **${o.s}**: € ${o.p.toFixed(2)} (*${o.n}*, ${o.q} ${o.u})\n`;
+          text += `• **${o.s}**: € ${o.p.toFixed(2)} (*${o.n}*, ${o.q} ${o.u}) · *Pag. ${typeof o.pg === 'number' ? o.pg + 1 : 1}*\n`;
         });
         text += `\n`;
       }
 
       const bestPage = typeof best.pg === 'number' ? best.pg + 1 : 1;
+      const chainSlug = STORE_SLUG_MAP[best.s] || best.s.toLowerCase();
       actions.push({ 
         label: `Apri Volantino ${best.s} (Pag. ${bestPage})`, 
         type: 'volantino', 
         storeName: best.s,
-        chainSlug: best.s.toLowerCase(),
+        chainSlug,
         flyerId: best.fid,
         page: bestPage
       });
       actions.push({ label: 'Confronta Tutti i Prezzi', type: 'volantino', chainSlug: 'stats' });
+      actions.push({ label: 'Tutti i Volantini', type: 'volantino' });
 
       return { text, actions };
     }
 
-    // Panoramica offerte
-    let text = `Ho esaminato i volantini attivi di **oltre ${liveDb.chains.length} catene** e il confronto prezzi nazionale 🛒\n\n`;
-    text += `Puoi chiedermi volantini specifici (es. *"Apri volantino Lidl"*, *"Sconti Conad"*, *"Offerte Coop"*) oppure cercare prodotti (es. *"Chi ha il caffè in offerta?"*).\n\nTocca in basso per sfogliare o confrontare!`;
+    // 3. Richiesta "le migliori offerte" / "offerte più convenienti" / "cosa conviene"
+    // Si basa sulla sezione Confronta Prezzi, selezionando solo quelle convenienti con il massimo risparmio!
+    const isBestDealsRequest = (
+      lower.includes('miglior') ||
+      lower.includes('convenient') ||
+      lower.includes('piu conveniente') ||
+      lower.includes('più conveniente') ||
+      lower.includes('cosa conviene') ||
+      lower.includes('dove conviene') ||
+      lower.includes('super offerte') ||
+      lower.includes('prezzo migliore') ||
+      lower.includes('prezzi migliori') ||
+      lower.includes('affar') ||
+      lower.includes('risparmi') ||
+      lower.includes('top offerte')
+    );
 
-    actions.push({ label: 'Confronta Tutti i Prezzi', type: 'volantino', chainSlug: 'stats' });
-    actions.push({ label: 'Tutti i Volantini', type: 'volantino' });
+    if (isBestDealsRequest) {
+      const topDeals = getBestConvenientDeals(5);
 
-    return { text, actions };
+      let text = `Ho analizzato la sezione **Confronta Prezzi** e selezionato **solo le offerte più convenienti** con il massimo risparmio rispetto alla media dei supermercati: 🏷️✨\n\n`;
+
+      topDeals.forEach(deal => {
+        text += `• ${deal.emoji} **${deal.productName}** (${deal.store})\n`;
+        text += `   Prezzo: **€ ${deal.price.toFixed(2)}** · 🔥 **-${deal.savingPct}%** sotto la media · *Pagina ${deal.page}*\n\n`;
+      });
+
+      text += `Tocca un prezzo in basso per aprire subito il volantino alla pagina esatta!`;
+
+      // Azioni dirette con pagina esatta per ciascuna offerta conveniente
+      topDeals.forEach(deal => {
+        const shortName = deal.productName.length > 20 ? deal.productName.slice(0, 20).trim() + '…' : deal.productName;
+        actions.push({
+          label: `${deal.store}: ${shortName} (Pag. ${deal.page})`,
+          type: 'volantino',
+          storeName: deal.store,
+          chainSlug: deal.chainSlug,
+          flyerId: deal.fid,
+          page: deal.page,
+        });
+      });
+
+      actions.push({
+        label: '📊 Apri Confronta Prezzi',
+        type: 'volantino',
+        chainSlug: 'stats',
+      });
+
+      actions.push({
+        label: '🛒 Tutti i Volantini',
+        type: 'volantino',
+      });
+
+      return { text, actions };
+    }
+
+    // 4. "Quando chiedo le offerte vorrei che mi rimandi a tutti i volantini"
+    // Per richieste generiche di offerte/volantini (es. "offerte", "ci sono offerte?", "mostrami le offerte", "volantini", "sconti"):
+    // Rimanda direttamente a tutti i volantini tramite autoAction!
+    return {
+      text: `Ti porto subito a **tutti i volantini** e le offerte attive dei supermercati! 🛒\n\nPuoi sfogliare tutte le catene nazionali e locali oppure chiedermi le **migliori offerte** per vedere solo quelle più convenienti.`,
+      autoAction: { label: 'Tutti i Volantini', type: 'volantino' },
+      actions: [
+        { label: '🛒 Tutti i Volantini', type: 'volantino' },
+        { label: '🏷️ Le Migliori Offerte', type: 'volantino', chainSlug: 'stats' },
+        { label: '📊 Confronta Prezzi', type: 'volantino', chainSlug: 'stats' },
+      ],
+    };
   }
 
   // --- SEZIONE 7: LISTA DELLA SPESA & SUPERMERCATO ---

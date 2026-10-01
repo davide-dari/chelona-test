@@ -6,7 +6,7 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { StoreLogo } from './StoreLogo';
 import { VOLANTINI_DB, type VolantiniDb, type VolantinoChain, type VolantinoFlyer } from '../data/volantiniDb';
-import { OFFER_GROUPS, OFFER_DATE, FIDELITY_CARDS, type OfferEntry, type OfferCategory } from '../data/offerStats';
+import { OFFER_GROUPS, OFFER_DATE, FIDELITY_CARDS, STORE_SLUG_MAP, type OfferEntry, type OfferCategory } from '../data/offerStats';
 import { loadZone, saveZone, resolveCap, type VolantiniZone } from '../services/zoneService';
 import { nearbySupermarketService } from '../services/nearbySupermarketService';
 import { 
@@ -141,64 +141,6 @@ const CHAIN_CATEGORY_MAP: Record<string, string> = {
   'mondo-convenienza': 'arredamento',
 };
 
-// Mappa nomi insegna (da confronto prezzi) → slug (volantiniDb)
-const STORE_SLUG_MAP: Record<string, string> = {
-  'Pewex': 'pewex',
-  'Pim': 'pim',
-  'Dem': 'dem',
-  'Il Castoro': 'il-castoro',
-  'Ipertriscount': 'ipertriscount',
-  'Ipercarni': 'ipercarni',
-  'CTS': 'cts',
-  'Top': 'top',
-  'Effepiù': 'effepiu',
-  'Sir': 'sir',
-  'Sacoph': 'sacoph',
-  'Idromarket': 'idromarket',
-  'MA': 'ma',
-  'Gros': 'gros',
-  'Crai': 'crai',
-  'Decò': 'deco',
-  'Esselunga': 'esselunga',
-  'Eurospin': 'eurospin',
-  'Interspar': 'despar',
-  'Despar': 'despar',
-  'Lidl': 'lidl',
-  'MD': 'md-discount',
-  'Pam': 'pam',
-  'Todis': 'todis',
-  'Conad': 'conad',
-  'Coop': 'coop',
-  'Ipercoop': 'ipercoop',
-  'Aldi': 'aldi',
-  'Carrefour': 'carrefour',
-  'Penny': 'penny-market',
-  'Bennet': 'bennet',
-  'Famila': 'famila',
-  'Il Gigante': 'il-gigante',
-  'Iperal': 'iperal',
-  'Tigros': 'tigros',
-  'Basko': 'basko',
-  'Migross': 'migross',
-  'Alì': 'ali-supermercati',
-  'Unes': 'unes',
-  'Acqua e Sapone': 'acqua-e-sapone',
-  'Acqua & Sapone': 'acqua-e-sapone',
-  'Tigotà': 'tigota',
-  'Risparmio Casa': 'risparmiocasa',
-  'NaturaSì': 'naturasi',
-  "iN's": 'ins',
-  "In's": 'ins',
-  'Dpiù': 'dpiu',
-  'A&O': 'aeo',
-  'Oasi': 'oasi',
-  'Tigre': 'tigre',
-  'Coal': 'coal',
-  'Italmark': 'italmark',
-  'Prix': 'prix',
-  'Metro': 'metro',
-};
-
 // Helper URL volantino: apre direttamente il reader completo Calaméo al numero di pagina richiesto
 const getFlyerUrl = (f: VolantinoFlyer, page?: number) => {
   const targetPage = typeof page === 'number' && page >= 1 ? Math.floor(page) : 1;
@@ -209,12 +151,15 @@ const getFlyerUrl = (f: VolantinoFlyer, page?: number) => {
     }
     return f.directUrl;
   }
-  const pageParam = targetPage > 1 ? `&page=${targetPage}` : '';
-  const hashParam = targetPage > 1 ? `#page/${targetPage}` : '';
-  if (f.authid) {
-    return `https://www.calameo.com/read/${f.bkcode}?authid=${f.authid}${pageParam}${hashParam}`;
+  const params: string[] = [];
+  if (f.authid) params.push(`authid=${encodeURIComponent(f.authid)}`);
+  if (targetPage > 1) {
+    params.push(`page=${targetPage}`);
+    params.push(`p=${targetPage}`);
   }
-  return `https://www.calameo.com/read/${f.bkcode}${targetPage > 1 ? `?page=${targetPage}${hashParam}` : ''}`;
+  const queryString = params.length > 0 ? `?${params.join('&')}` : '';
+  const hashString = targetPage > 1 ? `#page/${targetPage}` : '';
+  return `https://www.calameo.com/read/${f.bkcode}${queryString}${hashString}`;
 };
 
 // URL per apertura nel browser esterno
@@ -1218,18 +1163,20 @@ export default function VolantinoScreen({ module, onClose, initialOffer, initial
   }, [db]);
 
   useEffect(() => {
+    if (initialOffer && initialOffer.fid) return;
     if (initialChain && handledInitialChainRef.current !== initialChain) {
       handledInitialChainRef.current = initialChain;
       openDirectTarget(initialChain);
     }
-  }, [initialChain, openDirectTarget]);
+  }, [initialChain, initialOffer, openDirectTarget]);
 
-  // Gestione apertura diretta offerta volantino con numero pagina (da Confronta Prezzi o Lista Spesa)
+  // Gestione apertura diretta offerta volantino con numero pagina (da Confronta Prezzi, AI o Lista Spesa)
   useEffect(() => {
     if (initialOffer && initialOffer.fid) {
       const offerKey = `${initialOffer.fid}-${initialOffer.pg}`;
       if (handledInitialOfferRef.current !== offerKey) {
         handledInitialOfferRef.current = offerKey;
+        if (initialChain) handledInitialChainRef.current = initialChain;
         const fidStr = String(initialOffer.fid);
         let targetChain: VolantinoChain | undefined;
         let targetFlyer: VolantinoFlyer | undefined;
@@ -1246,14 +1193,14 @@ export default function VolantinoScreen({ module, onClose, initialOffer, initial
         if (targetFlyer) {
           if (targetChain) setCentroChain(targetChain);
           setCalameoFlyer(targetFlyer);
-          const targetPage = typeof initialOffer.pg === 'number' ? initialOffer.pg + 1 : 1;
+          const targetPage = typeof initialOffer.pg === 'number' ? Math.max(1, initialOffer.pg + 1) : 1;
           setCalameoPage(targetPage);
           setPreviousView('stats');
           setView('calameo');
         }
       }
     }
-  }, [initialOffer, db]);
+  }, [initialOffer, initialChain, db]);
 
   // Ascolto evento open-flyer-offer dispatchato da altri componenti
   useEffect(() => {
