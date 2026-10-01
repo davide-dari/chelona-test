@@ -12,7 +12,7 @@ import {
   getLearnedMemories, deleteLearnedMemory, clearAllLearnedMemories, 
   saveLearnedMemory, queryChelonaAi, buildKnowledgeBase
 } from '../services/chelonaEngine';
-import { queryGemma2 } from '../services/gemma2Engine';
+import { queryGemma2, preloadEngine } from '../services/gemma2Engine';
 import {
   prepareNaturalSpeech,
   splitIntoSentences,
@@ -220,6 +220,11 @@ export const ChelonaAiScreen
       setShowMemoryDrawer(true);
     }
   }, [initialMemoryOpen]);
+
+  // Warm-up e precaricamento background del motore AI per azzerare i tempi della prima risposta senza cache
+  useEffect(() => {
+    preloadEngine(modules, username);
+  }, [modules, username]);
 
 
   const [inputText, setInputText] = useState('');

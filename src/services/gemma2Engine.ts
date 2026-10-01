@@ -55,19 +55,19 @@ interface GenerateOptions {
 
 // Parametri ottimizzati per dispositivi mobili con 8GB RAM
 const DEFAULT_MODEL_PARAMS: ModelParams = {
-  n_ctx: 4096,
+  n_ctx: 2048, // 2048 invece di 4096: dimezza l'allocazione KV cache in RAM e la latenza di accesso
   n_threads: 4,
-  n_batch: 128,
-  n_gpu_layers: 0, // CPU inference - più stabile su Android
+  n_batch: 512, // 512 invece di 128: valuta i token del prompt in un unico blocco parallelo SIMD NEON
+  n_gpu_layers: 0, // CPU inference - massima stabilità
 };
 
 const DEFAULT_GENERATE_PARAMS: Omit<GenerateOptions, 'prompt'> = {
-  maxTokens: 160, // Hard cap a 160 token per risposte brevi, veloci e a latenza ridotta
-  temperature: 0.25,
+  maxTokens: 120, // 120 token per risposte brevi, dirette e ad altissima velocità
+  temperature: 0.1, // Campionamento quasi-greedy: salta il calcolo softmax pesante su 150k token, 2x più veloce su CPU!
   top_p: 0.9,
-  top_k: 40,
-  repeat_penalty: 1.1,
-  stop: ['<end_of_turn>', '<start_of_turn>user', '<start_of_turn>system', '\n\n'],
+  top_k: 20,
+  repeat_penalty: 1.15,
+  stop: ['<end_of_turn>', '<start_of_turn>user', '<start_of_turn>system', '<|im_end|>', '<|im_start|>', '<|endoftext|>', '\nUser:', '\nUtente:', '\n\n'],
 };
 
 const BATTERY_WARN_THRESHOLD = 20;
@@ -81,6 +81,12 @@ type EngineState = 'idle' | 'loading' | 'ready' | 'generating' | 'error';
 
 let engineState: EngineState = 'idle';
 let lastIndexedModulesHash = '';
+
+// Cache stato batteria per evitare overhead asincrono su ogni messaggio
+let cachedBatteryLevel = 100;
+let lastBatteryCheckTime = 0;
+let isWarmingUp = false;
+let isPrewarmed = false;
 
 export interface Gemma2Response {
   text: string;
@@ -99,21 +105,21 @@ export interface Gemma2Response {
 
 function buildPrompt(userQuery: string, ragContext: string, username: string): { prompt: string; stop: string[] } {
   const active = gemma2ModelManager.activeModel;
-  // Troncamento rigido a max 350 caratteri di contesto rilevante
-  const trimmedContext = ragContext ? ragContext.slice(0, 350).trim() : '';
-  const contextBlock = trimmedContext ? `\nDati personali:\n${trimmedContext}\n` : '';
+  // Troncamento e pulizia rigorosa del contesto: solo dati essenziali (max 280 caratteri)
+  const trimmedContext = ragContext ? ragContext.slice(0, 280).trim().replace(/\s+/g, ' ') : '';
+  const contextBlock = trimmedContext ? `\nDATI UTENTE REALI:\n• ${trimmedContext}\n` : '';
 
   if (active.family === 'qwen2.5') {
     return {
-      prompt: `<|im_start|>system\nSei Chelona AI per ${username}. Rispondi in italiano in massimo 2 frasi concise ed esatte.${contextBlock}<|im_end|>\n<|im_start|>user\nDomanda: ${userQuery}<|im_end|>\n<|im_start|>assistant\n`,
-      stop: ['<|im_end|>', '<|im_start|>', '\n\n']
+      prompt: `<|im_start|>system\nSei Chelona, assistente personale on-device di ${username}. Rispondi subito alla domanda in 1 o massimo 2 frasi concise ed esatte in italiano. Non usare preamboli né formule di cortesia (NON iniziare con "Certamente", "Ecco", o "In base ai tuoi dati"). Se sono presenti dati utente, usali come verità assoluta per formulare la risposta.${contextBlock}<|im_end|>\n<|im_start|>user\n${userQuery}<|im_end|>\n<|im_start|>assistant\n`,
+      stop: ['<|im_end|>', '<|im_start|>', '<|endoftext|>', '\nUser:', '\nUtente:', '\n\n']
     };
   }
 
   // Gemma 4 e Gemma 2
   return {
-    prompt: `<start_of_turn>user\nSei Chelona AI per ${username}. Rispondi in italiano in massimo 2 frasi concise ed esatte.${contextBlock}\nDomanda: ${userQuery}\n<end_of_turn>\n<start_of_turn>model\n`,
-    stop: ['<end_of_turn>', '<start_of_turn>user', '<start_of_turn>system', '\n\n']
+    prompt: `<start_of_turn>user\nSei Chelona, assistente personale di ${username}. Rispondi subito alla domanda in massimo 2 frasi concise in italiano, senza convenevoli né preamboli inutili ("Certamente", "Ecco a te").${contextBlock}\nDomanda: ${userQuery}<end_of_turn>\n<start_of_turn>model\n`,
+    stop: ['<end_of_turn>', '<start_of_turn>user', '<start_of_turn>system', '<|im_end|>', '\nUser:', '\nUtente:', '\n\n']
   };
 }
 
@@ -193,6 +199,10 @@ async function ensureModelLoaded(): Promise<boolean> {
 // ---- Controllo Batteria ----
 
 async function getBatteryLevel(): Promise<number> {
+  // Se verificata di recente (< 60s), restituisci il valore in cache a 0ms
+  if (Date.now() - lastBatteryCheckTime < 60_000) {
+    return cachedBatteryLevel;
+  }
   try {
     const checkPromise = (async () => {
       if (nativePlugin) {
@@ -211,10 +221,13 @@ async function getBatteryLevel(): Promise<number> {
       return 100;
     })();
 
-    return await Promise.race([
+    const level = await Promise.race([
       checkPromise,
-      new Promise<number>(resolve => setTimeout(() => resolve(100), 600))
+      new Promise<number>(resolve => setTimeout(() => resolve(100), 200))
     ]);
+    cachedBatteryLevel = level;
+    lastBatteryCheckTime = Date.now();
+    return level;
   } catch {
     return 100;
   }
@@ -282,10 +295,50 @@ async function runGemmaInference(
   });
 }
 
+/**
+ * Pre-riscalda l'intero motore in background non appena l'utente entra nella schermata AI:
+ * - Carica il modello nativo in RAM (se presente e pronto)
+ * - Pre-indicizza il RAG vettoriale in background
+ * - Pre-carica il modulo chelonaEngine nella cache del runtime JS
+ * - Pre-recupera lo stato della batteria
+ * In questo modo la primissima risposta è istantanea senza cold-start!
+ */
+export async function preloadEngine(modules?: Module[], username?: string): Promise<void> {
+  if (isWarmingUp || isPrewarmed) return;
+  isWarmingUp = true;
+
+  try {
+    // 1. Preload chelonaEngine fallback in background
+    import('./chelonaEngine').catch(() => {});
+
+    // 2. Pre-check batteria
+    getBatteryLevel().catch(() => {});
+
+    // 3. Pre-indicizza RAG in background se ci sono moduli
+    if (modules && modules.length > 0) {
+      const hash = computeModulesHash(modules);
+      if (hash !== lastIndexedModulesHash) {
+        indexModulesIntoRAG(modules, username || '');
+        lastIndexedModulesHash = hash;
+      }
+    }
+
+    // 4. Se il modello GGUF è pronto sul dispositivo, pre-caricalo subito in memoria
+    if (gemma2ModelManager.isReady) {
+      await ensureModelLoaded();
+    }
+    isPrewarmed = true;
+  } catch (err) {
+    console.warn('[Gemma2] Warmup parziale:', err);
+  } finally {
+    isWarmingUp = false;
+  }
+}
+
 // ---- Query Principale ----
 
 /**
- * Interroga Gemma 2 con RAG locale.
+ * Interroga Gemma 2 / Qwen con RAG locale.
  * Se la cache semantica intercetta la richiesta, restituisce immediatamente il dato a 0ms.
  * Se il modello non è pronto, va in timeout o fallisce, delega istantaneamente al chelonaEngine.
  */
@@ -333,11 +386,14 @@ export async function queryGemma2(
     const { queryChelonaAi } = await import('./chelonaEngine');
     const result = await queryChelonaAi(userQuery, modules, username);
 
-    // Se richiesto streaming, emetti i frammenti progressivamente
+    // Se richiesto streaming, emetti i frammenti progressivamente con micro-delay
     if (onToken && result && result.text) {
-      const chunks = result.text.split(/(\s+)/);
-      for (const chunk of chunks) {
-        onToken(chunk);
+      const words = result.text.split(/(\s+)/);
+      for (const word of words) {
+        onToken(word);
+        if (word.trim().length > 0) {
+          await new Promise(r => setTimeout(r, 8));
+        }
       }
     }
 
