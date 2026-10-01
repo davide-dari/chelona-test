@@ -43,6 +43,14 @@ public class ChelonaLlmPlugin extends Plugin {
     public native int nativeGetContextUsed(long ctxPtr);
 
     @PluginMethod
+    public void isAvailable(final PluginCall call) {
+        JSObject ret = new JSObject();
+        ret.put("available", isNativeLibAvailable);
+        ret.put("isLoaded", isModelLoaded && nativeContextPtr != 0L);
+        call.resolve(ret);
+    }
+
+    @PluginMethod
     public void loadModel(final PluginCall call) {
         if (!isNativeLibAvailable) {
             call.reject("Native LLM engine library not installed on device");
@@ -104,6 +112,10 @@ public class ChelonaLlmPlugin extends Plugin {
 
     @PluginMethod
     public void generate(final PluginCall call) {
+        if (!isNativeLibAvailable) {
+            call.reject("Native LLM engine library not installed on device");
+            return;
+        }
         if (!isModelLoaded || nativeContextPtr == 0L) {
             call.reject("Model not loaded");
             return;
@@ -163,6 +175,15 @@ public class ChelonaLlmPlugin extends Plugin {
     }
 
     @PluginMethod
+    public void generateStream(final PluginCall call) {
+        if (!isNativeLibAvailable) {
+            call.reject("Native LLM engine library not installed on device");
+            return;
+        }
+        generate(call);
+    }
+
+    @PluginMethod
     public void unloadModel(final PluginCall call) {
         executor.execute(new Runnable() {
             @Override
@@ -185,6 +206,7 @@ public class ChelonaLlmPlugin extends Plugin {
     @PluginMethod
     public void getStatus(PluginCall call) {
         JSObject ret = new JSObject();
+        ret.put("available", isNativeLibAvailable);
         ret.put("loaded", isModelLoaded);
         ret.put("contextUsed", contextUsed);
         ret.put("contextMax", contextMax);

@@ -28,11 +28,12 @@ import type { AiMessage, AiAction, AiMemory } from './chelonaEngine';
 let nativePlugin: ChelonaLlmPlugin | null = null;
 
 interface ChelonaLlmPlugin {
-  loadModel(options: { path: string; params: ModelParams }): Promise<void>;
+  loadModel(options: { path: string; params: ModelParams }): Promise<{ loaded: boolean }>;
   generate(options: GenerateOptions): Promise<{ text: string }>;
-  generateStream(options: GenerateOptions & { onToken: (token: string) => void }): Promise<void>;
+  generateStream(options: GenerateOptions & { onToken?: (token: string) => void }): Promise<{ text?: string }>;
   unloadModel(): Promise<void>;
-  getStatus(): Promise<{ loaded: boolean; contextUsed: number; contextMax: number }>;
+  getStatus(): Promise<{ loaded: boolean; contextUsed: number; contextMax: number; available?: boolean }>;
+  isAvailable(): Promise<{ available: boolean; isLoaded?: boolean }>;
   getBatteryLevel(): Promise<{ level: number; charging: boolean }>;
 }
 
@@ -53,17 +54,17 @@ interface GenerateOptions {
   stop: string[];
 }
 
-// Parametri ottimizzati per dispositivi mobili con 8GB RAM
+// Parametri ottimizzati per dispositivi mobili con 8GB RAM e inferenza ultra-veloce (< 2.5s)
 const DEFAULT_MODEL_PARAMS: ModelParams = {
-  n_ctx: 2048, // 2048 invece di 4096: dimezza l'allocazione KV cache in RAM e la latenza di accesso
-  n_threads: 4,
-  n_batch: 512, // 512 invece di 128: valuta i token del prompt in un unico blocco parallelo SIMD NEON
-  n_gpu_layers: 0, // CPU inference - massima stabilità
+  n_ctx: 1024, // 1024 token di contesto: dimezza l'overhead di memoria KV e velocizza l'elaborazione
+  n_threads: 4, // 4 thread CPU performanti per architettura mobile
+  n_batch: 512, // batch parallelo per prompt evaluation istantanea SIMD NEON
+  n_gpu_layers: 0, // CPU inference ad alta stabilità
 };
 
 const DEFAULT_GENERATE_PARAMS: Omit<GenerateOptions, 'prompt'> = {
-  maxTokens: 120, // 120 token per risposte brevi, dirette e ad altissima velocità
-  temperature: 0.1, // Campionamento quasi-greedy: salta il calcolo softmax pesante su 150k token, 2x più veloce su CPU!
+  maxTokens: 80, // Risposte concise ed esatte (1-2 frasi), latenza CPU contenuta sotto i 2 secondi
+  temperature: 0.1, // Campionamento quasi-greedy: salta il calcolo softmax pesante, 2x più veloce su CPU
   top_p: 0.9,
   top_k: 20,
   repeat_penalty: 1.15,
@@ -72,8 +73,48 @@ const DEFAULT_GENERATE_PARAMS: Omit<GenerateOptions, 'prompt'> = {
 
 const BATTERY_WARN_THRESHOLD = 20;
 const BATTERY_BLOCK_THRESHOLD = 10;
-const INFERENCE_TIMEOUT_MS = 15_000;
+const INFERENCE_TIMEOUT_MS = 2500; // Timeout hard inferenza nativa a 2.5s (obiettivo < 3s complessivi)
+const GLOBAL_SAFETY_TIMEOUT_MS = 2800; // Timeout globale di sicurezza massimo a 2.8s
 const RAG_TOP_K = 1; // Solo 1 frammento più rilevante (max 150-200 token totali di contesto)
+
+// Cache stato libreria nativa C++
+let nativeAvailableCache: boolean | null = null;
+let lastNativeCheckTime = 0;
+
+export async function checkNativeLlmAvailability(): Promise<boolean> {
+  if (nativeAvailableCache !== null && Date.now() - lastNativeCheckTime < 60_000) {
+    return nativeAvailableCache;
+  }
+
+  const pluginAvailable = await ensurePluginLoaded();
+  if (!pluginAvailable || !nativePlugin) {
+    nativeAvailableCache = false;
+    lastNativeCheckTime = Date.now();
+    return false;
+  }
+
+  try {
+    const checkPromise = (async () => {
+      if (typeof nativePlugin.isAvailable === 'function') {
+        const res = await nativePlugin.isAvailable();
+        return !!res?.available;
+      }
+      if (typeof nativePlugin.getStatus === 'function') {
+        const res = await nativePlugin.getStatus();
+        return !!res?.available;
+      }
+      return false;
+    })();
+
+    const timeoutPromise = new Promise<boolean>((resolve) => setTimeout(() => resolve(false), 80));
+    nativeAvailableCache = await Promise.race([checkPromise, timeoutPromise]);
+  } catch {
+    nativeAvailableCache = false;
+  }
+
+  lastNativeCheckTime = Date.now();
+  return nativeAvailableCache;
+}
 
 // ---- Stato Engine ----
 
@@ -145,6 +186,12 @@ async function ensurePluginLoaded(): Promise<boolean> {
 // ---- Caricamento Modello ----
 
 async function ensureModelLoaded(): Promise<boolean> {
+  // Se la libreria nativa C++ non è disponibile sul dispositivo, fallisci all'istante (0ms)
+  const isNative = await checkNativeLlmAvailability();
+  if (!isNative) {
+    return false;
+  }
+
   // Se il modello non è pronto/scaricato sul dispositivo, non tentare il caricamento nativo
   if (!gemma2ModelManager.isReady) {
     return false;
@@ -156,20 +203,20 @@ async function ensureModelLoaded(): Promise<boolean> {
   if (engineState === 'ready' || engineState === 'generating') return true;
 
   if (engineState === 'loading') {
-    // Attendi con timeout massimo di 2.5s per evitare deadlock
+    // Attendi con timeout massimo di 1.2s per evitare deadlock
     return new Promise<boolean>(resolve => {
       let elapsed = 0;
       const check = setInterval(() => {
-        elapsed += 150;
+        elapsed += 80;
         if (engineState === 'ready') {
           clearInterval(check);
           resolve(true);
-        } else if (engineState === 'error' || elapsed >= 2500) {
+        } else if (engineState === 'error' || elapsed >= 1200) {
           clearInterval(check);
           if (engineState === 'loading') engineState = 'idle';
           resolve(false);
         }
-      }, 150);
+      }, 80);
     });
   }
 
@@ -183,7 +230,7 @@ async function ensureModelLoaded(): Promise<boolean> {
       params: DEFAULT_MODEL_PARAMS,
     });
     const timeoutPromise = new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error('Timeout caricamento modello (4s)')), 4000)
+      setTimeout(() => reject(new Error('Timeout caricamento modello (2s)')), 2000)
     );
 
     await Promise.race([loadPromise, timeoutPromise]);
@@ -223,7 +270,7 @@ async function getBatteryLevel(): Promise<number> {
 
     const level = await Promise.race([
       checkPromise,
-      new Promise<number>(resolve => setTimeout(() => resolve(100), 200))
+      new Promise<number>(resolve => setTimeout(() => resolve(100), 120))
     ]);
     cachedBatteryLevel = level;
     lastBatteryCheckTime = Date.now();
@@ -246,37 +293,25 @@ async function runGemmaInference(
   onToken?: (token: string) => void,
   stopTokens?: string[]
 ): Promise<string> {
-  if (!nativePlugin) throw new Error('Plugin nativo non disponibile');
+  const isNative = await checkNativeLlmAvailability();
+  if (!isNative || !nativePlugin) throw new Error('Plugin nativo non disponibile');
 
   const stops = stopTokens || DEFAULT_GENERATE_PARAMS.stop;
 
   return new Promise<string>(async (resolve, reject) => {
     const timeout = setTimeout(() => {
-      reject(new Error('Timeout inferenza (15s)'));
-    }, 15_000);
+      reject(new Error(`Timeout inferenza (${INFERENCE_TIMEOUT_MS}ms)`));
+    }, INFERENCE_TIMEOUT_MS);
 
     try {
       let fullText = '';
 
-      if (onToken) {
-        // Streaming mode
-        await nativePlugin!.generateStream({
-          ...DEFAULT_GENERATE_PARAMS,
-          stop: stops,
-          prompt,
-          onToken: (token: string) => {
-            fullText += token;
-            onToken(token);
-          },
-        });
-      } else {
-        const result = await nativePlugin!.generate({
-          ...DEFAULT_GENERATE_PARAMS,
-          stop: stops,
-          prompt,
-        });
-        fullText = result?.text || '';
-      }
+      const result = await nativePlugin!.generate({
+        ...DEFAULT_GENERATE_PARAMS,
+        stop: stops,
+        prompt,
+      });
+      fullText = result?.text || '';
 
       clearTimeout(timeout);
       // Pulizia: rimuovi eventuali stop token dal testo
@@ -287,6 +322,15 @@ async function runGemmaInference(
         .replace(/<\|im_end\|>/g, '')
         .replace(/<\|im_start\|>[\s\S]*/g, '')
         .trim();
+
+      // Streaming fluido progressivo se richiesto dal chiamante
+      if (onToken && cleaned) {
+        const tokens = cleaned.split(/(\s+)/);
+        for (const token of tokens) {
+          onToken(token);
+        }
+      }
+
       resolve(cleaned);
     } catch (err) {
       clearTimeout(timeout);
@@ -314,7 +358,10 @@ export async function preloadEngine(modules?: Module[], username?: string): Prom
     // 2. Pre-check batteria
     getBatteryLevel().catch(() => {});
 
-    // 3. Pre-indicizza RAG in background se ci sono moduli
+    // 3. Pre-check disponibilità libreria nativa a 0ms
+    checkNativeLlmAvailability().catch(() => {});
+
+    // 4. Pre-indicizza RAG in background se ci sono moduli
     if (modules && modules.length > 0) {
       const hash = computeModulesHash(modules);
       if (hash !== lastIndexedModulesHash) {
@@ -323,8 +370,9 @@ export async function preloadEngine(modules?: Module[], username?: string): Prom
       }
     }
 
-    // 4. Se il modello GGUF è pronto sul dispositivo, pre-caricalo subito in memoria
-    if (gemma2ModelManager.isReady) {
+    // 5. Se la libreria nativa è disponibile e il modello GGUF è pronto sul dispositivo, pre-caricalo subito in memoria
+    const isNative = await checkNativeLlmAvailability();
+    if (isNative && gemma2ModelManager.isReady) {
       await ensureModelLoaded();
     }
     isPrewarmed = true;
@@ -340,7 +388,8 @@ export async function preloadEngine(modules?: Module[], username?: string): Prom
 /**
  * Interroga Gemma 2 / Qwen con RAG locale.
  * Se la cache semantica intercetta la richiesta, restituisce immediatamente il dato a 0ms.
- * Se il modello non è pronto, va in timeout o fallisce, delega istantaneamente al chelonaEngine.
+ * Se la libreria nativa o il modello non sono pronti, delega istantaneamente al chelonaEngine in < 100ms.
+ * Risposta garantita entro 2.8 secondi in qualsiasi condizione.
  */
 export async function queryGemma2(
   userQuery: string,
@@ -392,7 +441,7 @@ export async function queryGemma2(
       for (const word of words) {
         onToken(word);
         if (word.trim().length > 0) {
-          await new Promise(r => setTimeout(r, 8));
+          await new Promise(r => setTimeout(r, 6));
         }
       }
     }
@@ -412,6 +461,13 @@ export async function queryGemma2(
     };
   };
 
+  // ⚡ FAST-PATH IMMEDIATO: Se la libreria nativa non è presente o il modello non è pronto,
+  // esegui il fallback istantaneo su chelonaEngine in < 50ms SENZA timeout o blocchi!
+  const isNative = await checkNativeLlmAvailability();
+  if (!isNative || !gemma2ModelManager.isReady) {
+    return await executeFallback();
+  }
+
   try {
     const responsePromise = (async (): Promise<Gemma2Response> => {
       // 1. Controlla batteria
@@ -422,9 +478,9 @@ export async function queryGemma2(
 
       // Limita i token se la batteria è scarica
       if (battery < BATTERY_WARN_THRESHOLD) {
-        DEFAULT_GENERATE_PARAMS.maxTokens = 90;
+        DEFAULT_GENERATE_PARAMS.maxTokens = 60;
       } else {
-        DEFAULT_GENERATE_PARAMS.maxTokens = 160;
+        DEFAULT_GENERATE_PARAMS.maxTokens = 80;
       }
 
       // 2. Verifica disponibilità modello
@@ -482,12 +538,12 @@ export async function queryGemma2(
       };
     })();
 
-    // Protezione globale: timeout massimo di 8 secondi prima di ripiegare su chelonaEngine
+    // Protezione globale: timeout massimo di 2.8 secondi prima di ripiegare su chelonaEngine
     const globalTimeout = new Promise<Gemma2Response>((resolve) => {
       setTimeout(async () => {
-        console.warn('[Gemma2] Timeout globale di sicurezza (8s) scattato, fallback a chelonaEngine');
+        console.warn('[Gemma2] Timeout globale di sicurezza (2.8s) scattato, fallback a chelonaEngine');
         resolve(await executeFallback());
-      }, 8000);
+      }, GLOBAL_SAFETY_TIMEOUT_MS);
     });
 
     const finalRes = await Promise.race([responsePromise, globalTimeout]);
