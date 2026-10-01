@@ -95,19 +95,26 @@ export interface Gemma2Response {
   similarityScore?: number;
 }
 
-// ---- Template Prompt Gemma 2 Ottimizzato ----
+// ---- Template Prompt Multi-Modello (Gemma 4 / Gemma 2 / Qwen 2.5) ----
 
-function buildGemmaPrompt(userQuery: string, ragContext: string, username: string): string {
+function buildPrompt(userQuery: string, ragContext: string, username: string): { prompt: string; stop: string[] } {
+  const active = gemma2ModelManager.activeModel;
   // Troncamento rigido a max 350 caratteri di contesto rilevante
   const trimmedContext = ragContext ? ragContext.slice(0, 350).trim() : '';
   const contextBlock = trimmedContext ? `\nDati personali:\n${trimmedContext}\n` : '';
 
-  return `<start_of_turn>user
-Sei Chelona AI per ${username}. Rispondi in italiano in massimo 2 frasi concise ed esatte.${contextBlock}
-Domanda: ${userQuery}
-<end_of_turn>
-<start_of_turn>model
-`;
+  if (active.family === 'qwen2.5') {
+    return {
+      prompt: `<|im_start|>system\nSei Chelona AI per ${username}. Rispondi in italiano in massimo 2 frasi concise ed esatte.${contextBlock}<|im_end|>\n<|im_start|>user\nDomanda: ${userQuery}<|im_end|>\n<|im_start|>assistant\n`,
+      stop: ['<|im_end|>', '<|im_start|>', '\n\n']
+    };
+  }
+
+  // Gemma 4 e Gemma 2
+  return {
+    prompt: `<start_of_turn>user\nSei Chelona AI per ${username}. Rispondi in italiano in massimo 2 frasi concise ed esatte.${contextBlock}\nDomanda: ${userQuery}\n<end_of_turn>\n<start_of_turn>model\n`,
+    stop: ['<end_of_turn>', '<start_of_turn>user', '<start_of_turn>system', '\n\n']
+  };
 }
 
 // ---- Inizializzazione Plugin Nativo ----
@@ -223,9 +230,12 @@ function computeModulesHash(modules: Module[]): string {
 
 async function runGemmaInference(
   prompt: string,
-  onToken?: (token: string) => void
+  onToken?: (token: string) => void,
+  stopTokens?: string[]
 ): Promise<string> {
   if (!nativePlugin) throw new Error('Plugin nativo non disponibile');
+
+  const stops = stopTokens || DEFAULT_GENERATE_PARAMS.stop;
 
   return new Promise<string>(async (resolve, reject) => {
     const timeout = setTimeout(() => {
@@ -239,6 +249,7 @@ async function runGemmaInference(
         // Streaming mode
         await nativePlugin!.generateStream({
           ...DEFAULT_GENERATE_PARAMS,
+          stop: stops,
           prompt,
           onToken: (token: string) => {
             fullText += token;
@@ -248,6 +259,7 @@ async function runGemmaInference(
       } else {
         const result = await nativePlugin!.generate({
           ...DEFAULT_GENERATE_PARAMS,
+          stop: stops,
           prompt,
         });
         fullText = result?.text || '';
@@ -258,6 +270,9 @@ async function runGemmaInference(
       const cleaned = fullText
         .replace(/<end_of_turn>/g, '')
         .replace(/<start_of_turn>user[\s\S]*/g, '')
+        .replace(/<start_of_turn>model/g, '')
+        .replace(/<\|im_end\|>/g, '')
+        .replace(/<\|im_start\|>[\s\S]*/g, '')
         .trim();
       resolve(cleaned);
     } catch (err) {
@@ -373,15 +388,15 @@ export async function queryGemma2(
       const ragDocs = ragEngine.retrieve(userQuery, 1);
       const ragContext = ragDocs.length > 0 ? ragDocs[0].text.slice(0, 350).trim() : '';
 
-      // 5. Costruisci il prompt compatto con template Gemma 2
-      const prompt = buildGemmaPrompt(userQuery, ragContext, username);
+      // 5. Costruisci il prompt compatto con template del modello attivo (Gemma 4 / Gemma 2 / Qwen 2.5)
+      const promptObj = buildPrompt(userQuery, ragContext, username);
 
       // 6. Inferenza con Streaming attivo
       engineState = 'generating';
       let responseText = '';
 
       try {
-        responseText = await runGemmaInference(prompt, onToken);
+        responseText = await runGemmaInference(promptObj.prompt, onToken, promptObj.stop);
       } catch (err) {
         console.warn('[Gemma2] Errore inferenza, fallback a chelonaEngine:', err);
         return await executeFallback();
@@ -404,7 +419,7 @@ export async function queryGemma2(
 
       return {
         text: responseText,
-        engineUsed: 'gemma2-local',
+        engineUsed: `${gemma2ModelManager.activeModel.family}-local` as any,
         ragDocsUsed: ragDocs.length,
         cached: false,
         semanticMatch: false,

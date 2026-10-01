@@ -3,9 +3,11 @@ import { motion, AnimatePresence } from 'motion/react';
 import {
   Download, Wifi, WifiOff, BatteryLow, BatteryMedium, BatteryFull,
   CheckCircle, XCircle, AlertCircle, Trash2, Cpu, Brain, RefreshCw,
-  Zap, HardDrive, Clock, ChevronRight
+  Zap, HardDrive, Clock, ShieldCheck, Sparkles, Check
 } from 'lucide-react';
-import { gemma2ModelManager, type ModelInfo, type DownloadProgress } from '../services/gemma2ModelManager';
+import {
+  gemma2ModelManager, AVAILABLE_MODELS, type ModelInfo, type DownloadProgress, type ModelPreset
+} from '../services/gemma2ModelManager';
 import { ragEngine, indexModulesIntoRAG } from '../services/ragEngine';
 import { promptCache } from '../services/promptCache';
 import { semanticCache } from '../services/semanticCache';
@@ -20,6 +22,7 @@ interface Gemma2SetupScreenProps {
 
 export const Gemma2SetupScreen: React.FC<Gemma2SetupScreenProps> = ({ onClose, showToast, modules = [], username = '' }) => {
   const [modelInfo, setModelInfo] = useState<ModelInfo>(gemma2ModelManager.info);
+  const [activeModel, setActiveModel] = useState<ModelPreset>(gemma2ModelManager.activeModel);
   const [downloadProgress, setDownloadProgress] = useState<DownloadProgress | null>(null);
   const [isOnWifi, setIsOnWifi] = useState<boolean | null>(null);
   const [batteryLevel, setBatteryLevel] = useState<number>(100);
@@ -29,7 +32,10 @@ export const Gemma2SetupScreen: React.FC<Gemma2SetupScreenProps> = ({ onClose, s
 
   // Sottoscrivi ai cambiamenti di stato del modello
   useEffect(() => {
-    const unsubscribe = gemma2ModelManager.subscribe(setModelInfo);
+    const unsubscribe = gemma2ModelManager.subscribe((info) => {
+      setModelInfo(info);
+      setActiveModel(gemma2ModelManager.activeModel);
+    });
     return unsubscribe;
   }, []);
 
@@ -62,18 +68,25 @@ export const Gemma2SetupScreen: React.FC<Gemma2SetupScreenProps> = ({ onClose, s
     gemma2ModelManager.checkLocalFile();
   }, []);
 
+  const handleSelectModel = useCallback(async (preset: ModelPreset) => {
+    if (preset.id === activeModel.id) return;
+    await gemma2ModelManager.setActiveModel(preset.id);
+    setActiveModel(preset);
+    showToast(`Modello attivo impostato su: ${preset.name}`, 'info');
+  }, [activeModel.id, showToast]);
+
   const handleDownload = useCallback(async () => {
     const success = await gemma2ModelManager.downloadModel((progress) => {
       setDownloadProgress(progress);
     });
     if (success) {
-      showToast('Modello Gemma 2 scaricato con successo! 🎉', 'success');
+      showToast(`Modello ${activeModel.name} scaricato con successo! 🎉`, 'success');
       setDownloadProgress(null);
     } else {
       showToast(gemma2ModelManager.info.errorMessage || 'Errore durante il download', 'error');
       setDownloadProgress(null);
     }
-  }, [showToast]);
+  }, [activeModel.name, showToast]);
 
   const handleCancelDownload = useCallback(() => {
     gemma2ModelManager.cancelDownload();
@@ -85,8 +98,8 @@ export const Gemma2SetupScreen: React.FC<Gemma2SetupScreenProps> = ({ onClose, s
     await gemma2ModelManager.deleteModel();
     promptCache.invalidate();
     setShowDeleteConfirm(false);
-    showToast('Modello eliminato dal dispositivo', 'info');
-  }, [showToast]);
+    showToast(`Modello ${activeModel.name} eliminato dal dispositivo`, 'info');
+  }, [activeModel.name, showToast]);
 
   const handleClearRAGCache = useCallback(() => {
     ragEngine.clear();
@@ -125,13 +138,13 @@ export const Gemma2SetupScreen: React.FC<Gemma2SetupScreenProps> = ({ onClose, s
   return (
     <div className="fixed inset-0 z-[200] flex flex-col" style={{ background: 'var(--bg)' }}>
       {/* Header */}
-      <div className="flex items-center gap-3 px-5 py-4 border-b border-[var(--border)] shrink-0">
+      <div className="flex items-center gap-3 px-5 py-4 border-b border-[var(--border)] shrink-0 bg-[var(--card-bg)]">
         <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-violet-500/20 to-indigo-500/20 flex items-center justify-center">
           <Brain className="w-5 h-5 text-violet-500" />
         </div>
         <div className="flex-1">
-          <h2 className="text-base font-black text-[var(--text-main)]">Gemma 2 AI Locale</h2>
-          <p className="text-xs text-[var(--text-muted)]">Motore di inferenza on-device</p>
+          <h2 className="text-base font-black text-[var(--text-main)]">Gemma 4 & Modelli Locali</h2>
+          <p className="text-xs text-[var(--text-muted)]">Motore di inferenza on-device ad altissima velocità</p>
         </div>
         <button
           type="button"
@@ -144,7 +157,18 @@ export const Gemma2SetupScreen: React.FC<Gemma2SetupScreenProps> = ({ onClose, s
 
       <div className="flex-1 overflow-y-auto px-5 py-5 space-y-4">
 
-        {/* Stato sistema */}
+        {/* ── BANNER GARANZIA ZERO PERDITA CACHE ── */}
+        <div className="flex items-start gap-3 p-3.5 bg-gradient-to-r from-emerald-500/10 via-teal-500/10 to-indigo-500/10 rounded-2xl border border-emerald-500/20">
+          <ShieldCheck className="w-5 h-5 text-emerald-500 shrink-0 mt-0.5" />
+          <div className="text-xs">
+            <p className="font-bold text-[var(--text-main)]">Zero Perdita di Dati o Cache</p>
+            <p className="text-[var(--text-muted)] mt-0.5">
+              La <strong>Semantic Cache in RAM</strong>, i <strong>ricordi personali</strong> e il <strong>Database RAG</strong> sono separati dai pesi del modello. Cambiando modello, tutte le risposte memorizzate rimangono intatte al 100%!
+            </p>
+          </div>
+        </div>
+
+        {/* Stato sistema (WiFi, Batteria, On-Device) */}
         <div className="bg-[var(--card-bg)] rounded-2xl p-4 border border-[var(--border)] flex gap-4">
           {/* WiFi */}
           <div className="flex-1 text-center">
@@ -178,11 +202,81 @@ export const Gemma2SetupScreen: React.FC<Gemma2SetupScreenProps> = ({ onClose, s
               <Cpu className="w-5 h-5 text-indigo-500" />
             </div>
             <p className="text-xs font-bold text-[var(--text-main)]">On-Device</p>
-            <p className="text-[10px] text-[var(--text-muted)]">100% Locale</p>
+            <p className="text-[10px] text-[var(--text-muted)]">Target 8GB RAM</p>
           </div>
         </div>
 
-        {/* Stato modello */}
+        {/* ── SELETTORE MODELLI (Gemma 4 E2B, Qwen 2.5 1.5B Speed, Gemma 2 2B) ── */}
+        <div className="bg-[var(--card-bg)] rounded-2xl p-4 border border-[var(--border)] space-y-3">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-black text-[var(--text-main)] flex items-center gap-1.5">
+              <Sparkles className="w-4 h-4 text-amber-500" />
+              Seleziona Modello di Inferenza
+            </h3>
+            <span className="text-[11px] font-bold text-[var(--text-muted)]">3 disponibili</span>
+          </div>
+
+          <div className="space-y-2.5">
+            {AVAILABLE_MODELS.map((preset) => {
+              const isSelected = preset.id === activeModel.id;
+              const isReady = isSelected && (modelInfo.status === 'ready' || modelInfo.status === 'loaded');
+
+              return (
+                <div
+                  key={preset.id}
+                  onClick={() => handleSelectModel(preset)}
+                  className={`p-3.5 rounded-2xl border transition-all cursor-pointer relative ${
+                    isSelected
+                      ? 'border-indigo-500 bg-indigo-500/5 ring-1 ring-indigo-500/30 shadow-xs'
+                      : 'border-[var(--border)] bg-[var(--surface-variant)] hover:border-[var(--text-muted)]/40'
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap mb-1">
+                        <span className="font-black text-sm text-[var(--text-main)]">{preset.name}</span>
+                        <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider ${
+                          preset.badgeColor === 'emerald'
+                            ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30'
+                            : preset.badgeColor === 'amber'
+                            ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30'
+                            : 'bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border border-indigo-500/30'
+                        }`}>
+                          {preset.tag}
+                        </span>
+                        <span className="text-[10px] text-[var(--text-muted)] font-mono">{preset.sizeDisplay}</span>
+                      </div>
+                      <p className="text-xs text-[var(--text-muted)] leading-relaxed">
+                        {preset.description}
+                      </p>
+                      <div className="flex items-center gap-3 mt-2 text-[10px] font-bold text-[var(--text-muted)]">
+                        <span className="text-amber-600 dark:text-amber-400">{preset.speedRating}</span>
+                        <span>Velocità stimata: {preset.tokensPerSecEstimate}</span>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col items-end gap-1.5 shrink-0">
+                      {isSelected ? (
+                        <div className="w-6 h-6 rounded-full bg-indigo-500 text-white flex items-center justify-center shadow-xs">
+                          <Check className="w-3.5 h-3.5 stroke-[3]" />
+                        </div>
+                      ) : (
+                        <div className="w-6 h-6 rounded-full border border-[var(--border)]" />
+                      )}
+                      {isReady && (
+                        <span className="text-[9px] font-black text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded-md">
+                          Scaricato
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* ── STATO DEL MODELLO SELEZIONATO & DOWNLOAD ── */}
         <div className="bg-[var(--card-bg)] rounded-2xl p-4 border border-[var(--border)]">
           <div className="flex items-center gap-3 mb-3">
             <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
@@ -207,24 +301,24 @@ export const Gemma2SetupScreen: React.FC<Gemma2SetupScreenProps> = ({ onClose, s
               )}
             </div>
             <div className="flex-1">
-              <p className="text-sm font-black text-[var(--text-main)]">gemma-2-2b-it-Q4_K_M.gguf</p>
+              <p className="text-sm font-black text-[var(--text-main)]">{activeModel.filename}</p>
               <p className="text-xs text-[var(--text-muted)]">
-                {modelInfo.status === 'not_downloaded' && 'Non scaricato · ~1.55 GB'}
+                {modelInfo.status === 'not_downloaded' && `Non scaricato · ${activeModel.sizeDisplay}`}
                 {modelInfo.status === 'downloading' && 'Download in corso...'}
                 {modelInfo.status === 'verifying' && 'Verifica integrità...'}
-                {(modelInfo.status === 'ready' || modelInfo.status === 'loaded') && `Pronto · ${modelInfo.fileSize ? formatSize(modelInfo.fileSize) : '~1.55 GB'}`}
+                {(modelInfo.status === 'ready' || modelInfo.status === 'loaded') && `Pronto all'uso · ${modelInfo.fileSize ? formatSize(modelInfo.fileSize) : activeModel.sizeDisplay}`}
                 {modelInfo.status === 'loading' && 'Caricamento in memoria...'}
                 {modelInfo.status === 'error' && 'Errore'}
               </p>
             </div>
             {modelInfo.status === 'not_downloaded' && (
               <span className="px-2.5 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 text-[10px] font-black uppercase tracking-wide">
-                Non attivo
+                Da scaricare
               </span>
             )}
             {(modelInfo.status === 'ready' || modelInfo.status === 'loaded') && (
               <span className="px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-[10px] font-black uppercase tracking-wide">
-                Attivo
+                Attivo & Pronto
               </span>
             )}
           </div>
@@ -275,7 +369,7 @@ export const Gemma2SetupScreen: React.FC<Gemma2SetupScreenProps> = ({ onClose, s
             </div>
           )}
 
-          {/* Pulsanti */}
+          {/* Pulsanti Azione */}
           <div className="mt-3 flex gap-2">
             {(modelInfo.status === 'not_downloaded' || modelInfo.status === 'error') && (
               <motion.button
@@ -290,7 +384,7 @@ export const Gemma2SetupScreen: React.FC<Gemma2SetupScreenProps> = ({ onClose, s
                 }`}
               >
                 <Download className="w-4 h-4" />
-                Scarica Modello (~1.55 GB)
+                Scarica {activeModel.name} ({activeModel.sizeDisplay})
               </motion.button>
             )}
 
@@ -313,7 +407,7 @@ export const Gemma2SetupScreen: React.FC<Gemma2SetupScreenProps> = ({ onClose, s
                 className="py-2.5 px-4 rounded-xl bg-red-500/10 text-red-600 dark:text-red-400 text-sm font-bold flex items-center gap-1.5 cursor-pointer hover:bg-red-500/20 transition-colors"
               >
                 <Trash2 className="w-4 h-4" />
-                Elimina
+                Elimina Modello
               </button>
             )}
 
@@ -338,18 +432,18 @@ export const Gemma2SetupScreen: React.FC<Gemma2SetupScreenProps> = ({ onClose, s
           </div>
         </div>
 
-        {/* Info tecnica */}
+        {/* Info tecnica dinamica */}
         <div className="bg-[var(--card-bg)] rounded-2xl p-4 border border-[var(--border)] space-y-3">
-          <h3 className="text-sm font-black text-[var(--text-main)]">Specifiche Tecniche</h3>
+          <h3 className="text-sm font-black text-[var(--text-main)]">Specifiche Tecniche {activeModel.name}</h3>
           <div className="space-y-2">
             {[
-              { label: 'Modello', value: 'Gemma 2 2B Instruct' },
-              { label: 'Formato', value: 'GGUF Q4_K_M (quantizzato 4-bit)' },
-              { label: 'Dimensione', value: '~1.55 GB su disco' },
-              { label: 'Memoria richiesta', value: '~2 GB RAM attivi' },
-              { label: 'Inferenza', value: 'CPU nativa Android (ARMv8)' },
-              { label: 'Lingua', value: 'Italiano (fine-tuned)' },
-              { label: 'Privacy', value: '100% locale, zero cloud' },
+              { label: 'Architettura', value: activeModel.name },
+              { label: 'Formato', value: 'GGUF Q4_K_M (Quantizzazione 4-bit)' },
+              { label: 'Dimensione su disco', value: activeModel.sizeDisplay },
+              { label: 'Velocità di inferenza', value: activeModel.speedRating },
+              { label: 'Inferenza hardware', value: 'CPU / NPU nativa Android (ARMv8)' },
+              { label: 'Semantic Cache & RAG', value: 'Condivisi al 100%, zero perdita' },
+              { label: 'Privacy', value: '100% locale sul dispositivo, zero cloud' },
             ].map(({ label, value }) => (
               <div key={label} className="flex items-center justify-between text-xs">
                 <span className="text-[var(--text-muted)]">{label}</span>
@@ -362,7 +456,7 @@ export const Gemma2SetupScreen: React.FC<Gemma2SetupScreenProps> = ({ onClose, s
         {/* RAG & Cache stats */}
         <div className="bg-[var(--card-bg)] rounded-2xl p-4 border border-[var(--border)] space-y-3">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-black text-[var(--text-main)]">Database Personale (RAG)</h3>
+            <h3 className="text-sm font-black text-[var(--text-main)]">Database Personale (RAG) & Cache</h3>
             <button
               type="button"
               onClick={handleClearRAGCache}
@@ -374,7 +468,7 @@ export const Gemma2SetupScreen: React.FC<Gemma2SetupScreenProps> = ({ onClose, s
           <div className="grid grid-cols-3 gap-3">
             <div className="text-center p-2 bg-[var(--surface-variant)] rounded-xl">
               <p className="text-base font-black text-[var(--text-main)]">{ragStats.docCount}</p>
-              <p className="text-[10px] text-[var(--text-muted)]">Documenti</p>
+              <p className="text-[10px] text-[var(--text-muted)]">Documenti RAG</p>
             </div>
             <div className="text-center p-2 bg-[var(--surface-variant)] rounded-xl">
               <p className="text-base font-black text-[var(--text-main)]">{ragStats.vocabSize}</p>
@@ -382,16 +476,16 @@ export const Gemma2SetupScreen: React.FC<Gemma2SetupScreenProps> = ({ onClose, s
             </div>
             <div className="text-center p-2 bg-[var(--surface-variant)] rounded-xl">
               <p className="text-base font-black text-[var(--text-main)]">{cacheStats.size}</p>
-              <p className="text-[10px] text-[var(--text-muted)]">Cache hit</p>
+              <p className="text-[10px] text-[var(--text-muted)]">Cache Hit</p>
             </div>
           </div>
         </div>
 
-        {/* Nota */}
+        {/* Nota di sicurezza e privacy */}
         <div className="flex items-start gap-2 p-3 bg-[var(--surface-variant)] rounded-xl text-[var(--text-muted)]">
           <Zap className="w-4 h-4 shrink-0 mt-0.5 text-[var(--accent)]" />
           <p className="text-xs leading-relaxed">
-            Quando il modello non è scaricato, Chelona AI utilizza automaticamente il motore locale ad alta velocità integrato nell'app, senza mai ricorrere a servizi cloud.
+            Se il modello selezionato non è ancora scaricato, Chelona AI utilizza automaticamente il motore locale ad alta velocità integrato nell'app, garantendo sempre risposte istantanee senza alcuna chiamata esterna.
           </p>
         </div>
       </div>

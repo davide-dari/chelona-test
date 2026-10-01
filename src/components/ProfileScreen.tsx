@@ -961,8 +961,8 @@ export function ProfileScreen({
                       <Cpu className="w-5 h-5" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <h3 className="text-sm font-black text-[var(--text-main)]">Gemma 2 AI Locale</h3>
-                      <p className="text-xs text-[var(--text-muted)]">Motore AI on-device · 100% privato</p>
+                      <h3 className="text-sm font-black text-[var(--text-main)]">Gemma 4 & Modelli AI Locali</h3>
+                      <p className="text-xs text-[var(--text-muted)]">Motore AI on-device · 100% privato · Zero cloud</p>
                     </div>
                     <button
                       type="button"
@@ -974,7 +974,7 @@ export function ProfileScreen({
                     </button>
                   </div>
                   <p className="text-xs text-[var(--text-muted)] leading-relaxed mt-3">
-                    Scarica e usa il modello Gemma 2 2B direttamente sul tuo dispositivo. Risposte più intelligenti senza mai inviare dati al cloud.
+                    Configura e usa Gemma 4 E2B o modelli ultra-rapidi direttamente sul tuo dispositivo. Più intelligenti e veloci senza mai perdere la cache.
                   </p>
                 </div>
               )}
