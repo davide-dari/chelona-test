@@ -29,6 +29,7 @@ export const Gemma2SetupScreen: React.FC<Gemma2SetupScreenProps> = ({ onClose, s
   const [ragStats, setRagStats] = useState(ragEngine.getStats());
   const [cacheStats, setCacheStats] = useState(promptCache.getStats());
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [allowCellular, setAllowCellular] = useState(false);
 
   // Sottoscrivi ai cambiamenti di stato del modello
   useEffect(() => {
@@ -78,7 +79,7 @@ export const Gemma2SetupScreen: React.FC<Gemma2SetupScreenProps> = ({ onClose, s
   const handleDownload = useCallback(async () => {
     const success = await gemma2ModelManager.downloadModel((progress) => {
       setDownloadProgress(progress);
-    });
+    }, allowCellular);
     if (success) {
       showToast(`Modello ${activeModel.name} scaricato con successo! 🎉`, 'success');
       setDownloadProgress(null);
@@ -86,7 +87,7 @@ export const Gemma2SetupScreen: React.FC<Gemma2SetupScreenProps> = ({ onClose, s
       showToast(gemma2ModelManager.info.errorMessage || 'Errore durante il download', 'error');
       setDownloadProgress(null);
     }
-  }, [activeModel.name, showToast]);
+  }, [activeModel.name, allowCellular, showToast]);
 
   const handleCancelDownload = useCallback(() => {
     gemma2ModelManager.cancelDownload();
@@ -133,7 +134,7 @@ export const Gemma2SetupScreen: React.FC<Gemma2SetupScreenProps> = ({ onClose, s
 
   const BatteryIcon = batteryLevel >= 60 ? BatteryFull : batteryLevel >= 30 ? BatteryMedium : BatteryLow;
   const batteryColor = batteryLevel >= 60 ? 'text-emerald-500' : batteryLevel >= 30 ? 'text-amber-500' : 'text-red-500';
-  const isDownloadBlocked = !isOnWifi || batteryLevel < 20;
+  const isDownloadBlocked = (!isOnWifi && !allowCellular) || batteryLevel < 10;
 
   return (
     <div className="fixed inset-0 z-[200] flex flex-col" style={{ background: 'var(--bg)' }}>
@@ -358,14 +359,39 @@ export const Gemma2SetupScreen: React.FC<Gemma2SetupScreenProps> = ({ onClose, s
             </div>
           )}
 
-          {/* Avviso WiFi/Batteria */}
-          {isDownloadBlocked && modelInfo.status === 'not_downloaded' && (
-            <div className="mt-3 flex items-start gap-2 p-3 bg-amber-500/10 rounded-xl border border-amber-500/20">
-              <AlertCircle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
-              <p className="text-xs text-amber-700 dark:text-amber-300">
-                {!isOnWifi ? 'Connetti al WiFi per scaricare il modello (risparmio dati).' : ''}
-                {batteryLevel < 20 ? ' Carica il dispositivo sopra il 20% prima di scaricare.' : ''}
-              </p>
+          {/* Opzione Rete Dati Cellulare se non connesso a WiFi */}
+          {!isOnWifi && (modelInfo.status === 'not_downloaded' || modelInfo.status === 'error') && (
+            <div className="mt-3 p-3 bg-amber-500/10 rounded-xl border border-amber-500/25 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2 min-w-0">
+                <AlertCircle className="w-4 h-4 text-amber-500 shrink-0" />
+                <span className="text-xs text-[var(--text-main)] font-semibold truncate">
+                  WiFi non rilevato
+                </span>
+              </div>
+              <label className="flex items-center gap-2 text-xs font-bold text-indigo-500 dark:text-indigo-400 cursor-pointer select-none shrink-0">
+                <input
+                  type="checkbox"
+                  checked={allowCellular}
+                  onChange={(e) => setAllowCellular(e.target.checked)}
+                  className="w-4 h-4 rounded accent-indigo-500 cursor-pointer"
+                />
+                Consenti con rete dati ({activeModel.sizeDisplay})
+              </label>
+            </div>
+          )}
+
+          {/* Avviso Batteria */}
+          {batteryLevel < 20 && batteryLevel >= 10 && (modelInfo.status === 'not_downloaded' || modelInfo.status === 'error') && (
+            <div className="mt-2 flex items-center gap-2 px-3 py-2 bg-amber-500/10 rounded-xl text-[11px] text-amber-600 dark:text-amber-400">
+              <BatteryLow className="w-3.5 h-3.5 shrink-0" />
+              <span>Batteria al {batteryLevel}%. Si consiglia di collegare il caricatore prima del download.</span>
+            </div>
+          )}
+
+          {batteryLevel < 10 && (modelInfo.status === 'not_downloaded' || modelInfo.status === 'error') && (
+            <div className="mt-2 flex items-center gap-2 px-3 py-2 bg-red-500/10 rounded-xl text-[11px] text-red-600 dark:text-red-400">
+              <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+              <span>Batteria critica (&lt; 10%). Collega il caricatore per avviare il download.</span>
             </div>
           )}
 
@@ -379,12 +405,14 @@ export const Gemma2SetupScreen: React.FC<Gemma2SetupScreenProps> = ({ onClose, s
                 disabled={isDownloadBlocked}
                 className={`flex-1 py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
                   isDownloadBlocked
-                    ? 'bg-[var(--surface-variant)] text-[var(--text-muted)] cursor-not-allowed'
+                    ? 'bg-[var(--surface-variant)] text-[var(--text-muted)] cursor-not-allowed opacity-60'
                     : 'bg-gradient-to-r from-violet-500 to-indigo-500 text-white shadow-md shadow-indigo-500/20 hover:opacity-90'
                 }`}
               >
                 <Download className="w-4 h-4" />
-                Scarica {activeModel.name} ({activeModel.sizeDisplay})
+                {!isOnWifi && allowCellular
+                  ? `Scarica con Rete Dati (${activeModel.sizeDisplay})`
+                  : `Scarica ${activeModel.name} (${activeModel.sizeDisplay})`}
               </motion.button>
             )}
 

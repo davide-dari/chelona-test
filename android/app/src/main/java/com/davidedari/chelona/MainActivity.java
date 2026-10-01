@@ -707,17 +707,23 @@ public class MainActivity extends BridgeActivity {
                     connection.setReadTimeout(30000);
                     connection.connect();
 
-                    int responseCode = connection.getResponseCode();
-                    if (responseCode == java.net.HttpURLConnection.HTTP_MOVED_PERM || 
-                        responseCode == java.net.HttpURLConnection.HTTP_MOVED_TEMP || 
-                        responseCode == 307 || responseCode == 308) {
-                        String newUrl = connection.getHeaderField("Location");
-                        connection.disconnect();
-                        url = new java.net.URL(newUrl);
-                        connection = (java.net.HttpURLConnection) url.openConnection();
-                        connection.setConnectTimeout(30000);
-                        connection.setReadTimeout(30000);
-                        connection.connect();
+                    int redirects = 0;
+                    while (redirects < 6) {
+                        int responseCode = connection.getResponseCode();
+                        if (responseCode == java.net.HttpURLConnection.HTTP_MOVED_PERM || 
+                            responseCode == java.net.HttpURLConnection.HTTP_MOVED_TEMP || 
+                            responseCode == 307 || responseCode == 308) {
+                            String newUrl = connection.getHeaderField("Location");
+                            connection.disconnect();
+                            url = new java.net.URL(newUrl);
+                            connection = (java.net.HttpURLConnection) url.openConnection();
+                            connection.setConnectTimeout(30000);
+                            connection.setReadTimeout(30000);
+                            connection.connect();
+                            redirects++;
+                        } else {
+                            break;
+                        }
                     }
 
                     long fileLength = connection.getContentLengthLong();

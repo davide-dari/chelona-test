@@ -47,10 +47,10 @@ export const AVAILABLE_MODELS: ModelPreset[] = [
     tag: 'Consigliato',
     badgeColor: 'emerald',
     description: 'Nuova generazione Google DeepMind Mobile. Multi-Token Prediction (MTP), precisione superiore su 8GB RAM e risposte concise in italiano.',
-    url: 'https://huggingface.co/bartowski/gemma-4-e2b-it-GGUF/resolve/main/gemma-4-e2b-it-Q4_K_M.gguf',
-    filename: 'gemma-4-e2b-it-Q4_K_M.gguf',
-    sizeBytes: 1_450_000_000,
-    sizeDisplay: '~1.45 GB',
+    url: 'https://huggingface.co/unsloth/gemma-4-E2B-it-GGUF/resolve/main/gemma-4-E2B-it-Q4_K_M.gguf',
+    filename: 'gemma-4-E2B-it-Q4_K_M.gguf',
+    sizeBytes: 3_106_738_272,
+    sizeDisplay: '~3.10 GB',
     speedRating: '⚡⚡⚡⚡ Ultra Veloce',
     tokensPerSecEstimate: '~25-35 tok/s'
   },
@@ -64,8 +64,8 @@ export const AVAILABLE_MODELS: ModelPreset[] = [
     description: 'Il modello più scattante in assoluto per CPU mobile. Latenza minima (< 50ms) e risposte istantanee con ottima conoscenza dell\'italiano.',
     url: 'https://huggingface.co/bartowski/Qwen2.5-1.5B-Instruct-GGUF/resolve/main/Qwen2.5-1.5B-Instruct-Q4_K_M.gguf',
     filename: 'Qwen2.5-1.5B-Instruct-Q4_K_M.gguf',
-    sizeBytes: 1_050_000_000,
-    sizeDisplay: '~1.05 GB',
+    sizeBytes: 986_048_768,
+    sizeDisplay: '~986 MB',
     speedRating: '⚡⚡⚡⚡⚡ Fulmineo',
     tokensPerSecEstimate: '~40-55 tok/s'
   },
@@ -79,8 +79,8 @@ export const AVAILABLE_MODELS: ModelPreset[] = [
     description: 'Versione standard Google DeepMind precedente con pesi bilanciati 4-bit.',
     url: 'https://huggingface.co/bartowski/gemma-2-2b-it-GGUF/resolve/main/gemma-2-2b-it-Q4_K_M.gguf',
     filename: 'gemma-2-2b-it-Q4_K_M.gguf',
-    sizeBytes: 1_630_000_000,
-    sizeDisplay: '~1.55 GB',
+    sizeBytes: 1_708_582_752,
+    sizeDisplay: '~1.70 GB',
     speedRating: '⚡⚡ Standard',
     tokensPerSecEstimate: '~15-20 tok/s'
   }
@@ -264,8 +264,9 @@ class Gemma2ModelManager {
   async checkModelExists(model: ModelPreset): Promise<boolean> {
     if (typeof window !== 'undefined' && (window as any).ChelonaNative?.getModelInfo) {
       try {
-        const info = await (window as any).ChelonaNative.getModelInfo(model.filename);
-        if (info.exists && info.size > 80_000_000) {
+        const rawInfo = await (window as any).ChelonaNative.getModelInfo(model.filename);
+        const info = typeof rawInfo === 'string' ? JSON.parse(rawInfo) : rawInfo;
+        if (info && info.exists && info.size > 80_000_000) {
           return true;
         }
       } catch {}
@@ -289,8 +290,9 @@ class Gemma2ModelManager {
     const active = this.activeModel;
     if (typeof window !== 'undefined' && (window as any).ChelonaNative?.getModelInfo) {
       try {
-        const info = await (window as any).ChelonaNative.getModelInfo(active.filename);
-        if (info.exists && info.size > 80_000_000) {
+        const rawInfo = await (window as any).ChelonaNative.getModelInfo(active.filename);
+        const info = typeof rawInfo === 'string' ? JSON.parse(rawInfo) : rawInfo;
+        if (info && info.exists && info.size > 80_000_000) {
           this._info.filePath = info.path;
           this._info.fileSize = info.size;
           this._info.status = 'ready';
@@ -327,25 +329,27 @@ class Gemma2ModelManager {
   }
 
   /**
-   * Avvia il download del modello attivo (solo su WiFi)
+   * Avvia il download del modello attivo
+   * @param onProgress Callback di aggiornamento progresso
+   * @param allowCellular Se true, consente il download anche su rete dati cellulare
    */
-  async downloadModel(onProgress?: DownloadProgressCallback): Promise<boolean> {
+  async downloadModel(onProgress?: DownloadProgressCallback, allowCellular: boolean = false): Promise<boolean> {
     const active = this.activeModel;
 
-    // 1. Verifica WiFi
+    // 1. Verifica Connettività
     const wifi = await this.isOnWifi();
-    if (!wifi) {
+    if (!wifi && !allowCellular) {
       this._info.status = 'error';
-      this._info.errorMessage = 'Download disponibile solo su connessione WiFi per risparmio dati.';
+      this._info.errorMessage = 'Download su WiFi consigliato per risparmio dati. Se desideri procedere comunque, seleziona "Consenti con dati cellulare".';
       this.notify();
       return false;
     }
 
-    // 2. Verifica batteria
+    // 2. Verifica batteria (blocco solo se critica < 10%)
     const battery = await this.getBatteryLevel();
-    if (battery < BATTERY_THRESHOLD) {
+    if (battery < 10) {
       this._info.status = 'error';
-      this._info.errorMessage = `Batteria troppo scarica (${battery}%). Ricarica il dispositivo prima di scaricare il modello.`;
+      this._info.errorMessage = `Batteria critica (${battery}%). Collega il dispositivo al caricatore prima di scaricare il modello.`;
       this.notify();
       return false;
     }
