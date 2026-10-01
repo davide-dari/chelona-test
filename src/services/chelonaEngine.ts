@@ -1240,14 +1240,116 @@ function detectRequestedChain(query: string, chains: VolantinoChain[]): { chain:
  * Esecuzione istantanea ad altissima velocità (zero overhead, zero delay artificiale).
  * Copre tutte le 17 sezioni, moduli e strumenti applicativi.
  */
+ // =============================================================================
+ // MAPPA DI CONTESTO SEZIONE → DOMINIO SEMANTICO
+ // Ogni sezione dell'app fornisce un bias contestuale all'intent resolver.
+ // =============================================================================
+ const SECTION_CONTEXT_MAP: Record<string, { domain: string; keywords: string[]; }> = {
+   'fitness': { domain: 'fitness', keywords: ['esercizio', 'allenamento', 'serie', 'ripetizioni', 'muscolo', 'cardio', 'dieta', 'scheda', 'workout', 'peso', 'corsa'] },
+   'recipes': { domain: 'ricette', keywords: ['ricetta', 'ingredienti', 'cucinare', 'piatto', 'pranzo', 'cena', 'colazione', 'porzioni', 'cottura', 'forno'] },
+   'auto': { domain: 'auto', keywords: ['auto', 'macchina', 'revisione', 'bollo', 'assicurazione', 'tagliando', 'gomme', 'km', 'carburante'] },
+   'document': { domain: 'documenti', keywords: ['documento', 'patente', 'passaporto', 'tessera', 'identità', 'scadenza', 'carta'] },
+   'split': { domain: 'spese_condivise', keywords: ['spesa', 'debito', 'credito', 'pagare', 'diviso', 'gruppo', 'conto', 'coinquilino', 'amico'] },
+   'supermarket': { domain: 'lista_spesa', keywords: ['lista', 'spesa', 'comprare', 'supermercato', 'prodotto', 'articolo'] },
+   'volantino': { domain: 'volantini', keywords: ['volantino', 'offerta', 'sconto', 'promozione', 'prezzo', 'conveniente', 'conad', 'lidl', 'coop'] },
+   'travel': { domain: 'viaggi', keywords: ['viaggio', 'meta', 'itinerario', 'volo', 'hotel', 'vacanza', 'partenza', 'valigia'] },
+   'furniture': { domain: 'casa_arredo', keywords: ['casa', 'stanza', 'arredo', 'mobile', 'misure', 'camera', 'cucina', 'soggiorno'] },
+   'notes': { domain: 'note', keywords: ['nota', 'appunto', 'promemoria', 'scrivi', 'ricorda', 'pensiero'] },
+   'parking': { domain: 'parcheggio', keywords: ['parcheggio', 'dove', 'gps', 'posizione', 'navigatore', 'parchimetro', 'strada'] },
+   'doctor': { domain: 'medico', keywords: ['medico', 'dottore', 'farmaco', 'medicina', 'prescrizione', 'visita', 'orari', 'studio'] },
+   'recesso': { domain: 'disdette', keywords: ['disdetta', 'recesso', 'contratto', 'fornitore', 'pec', 'lettera', 'cancellazione'] },
+   'address': { domain: 'rubrica', keywords: ['contatto', 'indirizzo', 'telefono', 'rubrica', 'recapito'] },
+   'home': { domain: 'offerte_spesa', keywords: ['offerta', 'volantino', 'spesa', 'supermercato', 'lista', 'promo', 'sconto'] },
+ };
+
 export async function queryChelonaAi(
   userQuery: string,
   modules: Module[],
-  username: string
+  username: string,
+  activeSection?: string
 ): Promise<{ text: string; actions?: AiAction[]; learnedFact?: string; createdModule?: Module; autoAction?: AiAction; engineUsed?: 'chelona-engine' }> {
   // Elaborazione istantanea ad altissima velocità senza ritardi artificiali
   const query = userQuery.trim();
   const lower = query.toLowerCase();
+
+  // =========================================================================
+  // 0. CONTESTO SEZIONE — Bias dell'intent resolver per la sezione attiva
+  // Aumentiamo il peso semantico degli intent della sezione corrente con
+  // early-return contestualizzato prima del processing standard.
+  // =========================================================================
+  if (activeSection) {
+    const wordCount = query.split(/\s+/).length;
+
+    // RICETTE / FITNESS: ingredienti citati → ricerca ricetta contestuale
+    if (activeSection === 'recipes' || activeSection === 'fitness') {
+      const foodKeywords = ['pollo', 'pasta', 'riso', 'carne', 'pesce', 'verdure', 'uova', 'formaggio',
+        'patate', 'insalata', 'zuppa', 'fagioli', 'lenticchie', 'manzo', 'maiale', 'salmone', 'tonno',
+        'broccoli', 'spinaci', 'carote', 'zucchine', 'melanzane', 'pomodori', 'funghi', 'cipolla',
+        'aglio', 'basilico', 'parmigiano', 'mozzarella', 'ricotta', 'prosciutto', 'pane', 'farina'];
+      const mentionedFood = foodKeywords.filter(f => lower.includes(f));
+      const isRecipeQuery = mentionedFood.length > 0 && wordCount <= 8 &&
+        !lower.includes('compra') && !lower.includes('lista della spesa') &&
+        !lower.includes('aggiungi alla spesa');
+
+      if (isRecipeQuery) {
+        const kb = buildKnowledgeBase(modules, username);
+        if (kb.recipes && kb.recipes.count > 0) {
+          const matching = kb.recipes.all.filter(r =>
+            mentionedFood.some(f =>
+              r.title.toLowerCase().includes(f) ||
+              (r.ingredients || []).some((i: any) =>
+                (typeof i === 'string' ? i : (i.name || '')).toLowerCase().includes(f)
+              )
+            )
+          );
+          if (matching.length > 0) {
+            const recipeList = matching.slice(0, 3).map(r => `• **${r.title}**${r.category ? ` (${r.category})` : ''}`).join('\n');
+            return {
+              text: `Ho trovato ${matching.length > 1 ? `${matching.length} ricette` : 'questa ricetta'} con ${mentionedFood.join(', ')}:\n\n${recipeList}\n\nVuoi aprire la sezione Ricette per tutti i dettagli?`,
+              actions: [{ type: 'category', label: '🍴 Apri Ricette', category: 'recipes' }],
+              engineUsed: 'chelona-engine',
+            };
+          } else {
+            return {
+              text: `Non ho trovato ricette salvate con ${mentionedFood.join(', ')}. Nella sezione Ricette puoi aggiungere nuove ricette e io le ricorderò! 🍳`,
+              actions: [{ type: 'category', label: '🍴 Vai alle Ricette', category: 'recipes' }],
+              engineUsed: 'chelona-engine',
+            };
+          }
+        }
+        return {
+          text: `Stai cercando una ricetta con ${mentionedFood.join(', ')}? Apri la sezione Ricette per trovare ispirazione e aggiungere le tue ricette preferite! 🍴`,
+          actions: [{ type: 'category', label: '🍴 Apri Ricette', category: 'recipes' }],
+          engineUsed: 'chelona-engine',
+        };
+      }
+    }
+
+    // DOCTOR: domande su farmaci/orari in sezione medica
+    if (activeSection === 'doctor' && wordCount <= 6) {
+      const medTerms = ['farmaco', 'medicina', 'pillola', 'compressa', 'dose', 'orari', 'studio', 'appuntamento', 'visita', 'prescrizione'];
+      if (medTerms.some(t => lower.includes(t))) {
+        return {
+          text: `Tutto quello che riguarda farmaci, orari dello studio medico e le tue prescrizioni è disponibile nella sezione Medico & Salute. Puoi consultare gli orari in tempo reale e inviare richieste direttamente al tuo medico.`,
+          actions: [{ type: 'navigate', label: '🏥 Vai a Medico & Salute', route: 'doctor' }],
+          engineUsed: 'chelona-engine',
+        };
+      }
+    }
+
+    // RECESSO: domande su disdette in sezione recesso
+    if (activeSection === 'recesso' && wordCount <= 6) {
+      const recessoTerms = ['disdetta', 'recesso', 'cancellazione', 'pec', 'fornitore', 'provider', 'contratto', 'lettera'];
+      if (recessoTerms.some(t => lower.includes(t))) {
+        return {
+          text: `Il wizard Disdette & Recessi ti guida passo passo nella generazione di una lettera di recesso legalmente valida. Seleziona il fornitore, compila il wizard e generiamo la PEC insieme!`,
+          actions: [{ type: 'navigate', label: '📝 Avvia Wizard Recesso', route: 'recesso' }],
+          engineUsed: 'chelona-engine',
+        };
+      }
+    }
+  }
+
 
   // =========================================================================
   // 1. COMANDI DI CREAZIONE RAPIDA (Note, Spese, Lista Spesa, Memorie)

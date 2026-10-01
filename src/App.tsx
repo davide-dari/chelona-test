@@ -3681,6 +3681,19 @@ export default function App() {
                   username={username}
                   initialVoiceMode={aiInitialVoiceMode}
                   initialMemoryOpen={aiInitialMemoryOpen}
+                   activeSection={
+                     selectedType === 'home' ? 'home' :
+                     selectedType === 'split' ? 'split' :
+                     selectedType === 'supermarket' ? 'supermarket' :
+                     selectedType === 'volantino' ? 'volantino' :
+                     selectedType === 'travel' ? 'travel' :
+                     selectedType === 'furniture' ? 'furniture' :
+                     selectedType === 'notes' ? 'notes' :
+                     selectedType === 'auto' ? 'auto' :
+                     selectedType === 'document' ? 'document' :
+                     selectedType ? String(selectedType) :
+                     undefined
+                   }
                   onClose={() => {
                     setIsAiOpen(false);
                     setAiInitialVoiceMode(false);
@@ -5847,25 +5860,41 @@ export default function App() {
             </React.Suspense>
           )}
           {isDoctorOpen && (
-            <React.Suspense fallback={<div className="flex items-center justify-center p-20"><div className="w-8 h-8 border-4 border-teal-500 border-t-transparent rounded-full animate-spin"></div></div>}>
-              <DoctorScreen
-                onClose={() => setIsDoctorOpen(false)}
-                showToast={showToast}
-                defaultPatientName={username}
-                defaultPatientFiscalCode={(modules.find(m => m.type === 'document' && (m as DocumentModule).documentType === 'tax_code') as DocumentModule | undefined)?.number || ''}
-              />
-            </React.Suspense>
+            <motion.div
+              initial={{ opacity: 0, y: '100%' }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: '100%' }}
+              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              className="fixed inset-0 z-[200]"
+            >
+              <React.Suspense fallback={<div className="fixed inset-0 z-[200] flex items-center justify-center bg-[var(--bg)]"><div className="w-8 h-8 border-4 border-teal-500 border-t-transparent rounded-full animate-spin"></div></div>}>
+                <DoctorScreen
+                  onClose={() => setIsDoctorOpen(false)}
+                  showToast={showToast}
+                  defaultPatientName={username}
+                  defaultPatientFiscalCode={(modules.find(m => m.type === 'document' && (m as DocumentModule).documentType === 'tax_code') as DocumentModule | undefined)?.number || ''}
+                />
+              </React.Suspense>
+            </motion.div>
           )}
           {isRecessoOpen && (
-            <React.Suspense fallback={<div className="flex items-center justify-center p-20"><div className="w-8 h-8 border-4 border-rose-500 border-t-transparent rounded-full animate-spin"></div></div>}>
-              <RecessoScreen
-                onClose={() => setIsRecessoOpen(false)}
-                showToast={showToast}
-                defaultUserName={username}
-                defaultUserFiscalCode={(modules.find(m => m.type === 'document' && (m as DocumentModule).documentType === 'tax_code') as DocumentModule | undefined)?.number || ''}
-                onSaveToSandbox={handleSaveToSandbox}
-              />
-            </React.Suspense>
+            <motion.div
+              initial={{ opacity: 0, y: '100%' }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: '100%' }}
+              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              className="fixed inset-0 z-[200]"
+            >
+              <React.Suspense fallback={<div className="fixed inset-0 z-[200] flex items-center justify-center bg-[var(--bg)]"><div className="w-8 h-8 border-4 border-rose-500 border-t-transparent rounded-full animate-spin"></div></div>}>
+                <RecessoScreen
+                  onClose={() => setIsRecessoOpen(false)}
+                  showToast={showToast}
+                  defaultUserName={username}
+                  defaultUserFiscalCode={(modules.find(m => m.type === 'document' && (m as DocumentModule).documentType === 'tax_code') as DocumentModule | undefined)?.number || ''}
+                  onSaveToSandbox={handleSaveToSandbox}
+                />
+              </React.Suspense>
+            </motion.div>
           )}
       </AnimatePresence>
 

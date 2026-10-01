@@ -38,6 +38,7 @@ interface ChelonaAiScreenProps {
   initialDictationMode?: boolean;
   initialMemoryOpen?: boolean;
   onNavigate?: (action: AiAction) => void;
+  activeSection?: string; // Sezione corrente dell'app per il contesto AI
 }
 
 type NeuralCategory = 'all' | 'vehicles' | 'documents' | 'finances' | 'notes' | 'fitness' | 'recipes' | 'travel' | 'furniture' | 'parking' | 'addresses' | 'memories';
@@ -112,6 +113,7 @@ export const ChelonaAiScreen
   initialDictationMode = false,
   initialMemoryOpen = false,
   onNavigate,
+  activeSection,
 }) => {
   const [conversations, setConversations] = useState<ChatConversation[]>(() => loadConversations());
   const [activeConvId, setActiveConvId] = useState<string | null>(() => {
@@ -552,11 +554,11 @@ export const ChelonaAiScreen
     };
 
     try {
-      const queryPromise = queryGemma2(queryToSend, modules, username, onToken);
+      const queryPromise = queryGemma2(queryToSend, modules, username, onToken, activeSection);
       const safetyTimeout = new Promise<import('../services/gemma2Engine').Gemma2Response>((resolve) => {
         setTimeout(async () => {
           try {
-            const fallbackRes = await queryChelonaAi(queryToSend, modules, username);
+            const fallbackRes = await queryChelonaAi(queryToSend, modules, username, activeSection);
             if (fallbackRes && fallbackRes.text && !accumulatedText) {
               onToken(fallbackRes.text);
             }

@@ -414,7 +414,8 @@ export async function queryGemma2(
   userQuery: string,
   modules: Module[],
   username: string,
-  onToken?: (token: string) => void
+  onToken?: (token: string) => void,
+  activeSection?: string
 ): Promise<Gemma2Response> {
 
   // ⚡ STEP 0: CONTROLLO ISTANTANEO CACHE SEMANTICA IN RAM (Latenza 0ms)
@@ -447,7 +448,7 @@ export async function queryGemma2(
   const currentModulesHash = computeModulesHash(modules);
 
   const executeFallback = async (options?: { immediate?: boolean }): Promise<Gemma2Response> => {
-    const result = await queryChelonaAi(userQuery, modules, username);
+    const result = await queryChelonaAi(userQuery, modules, username, activeSection);
 
     // Se richiesto streaming, emetti i frammenti progressivamente
     if (onToken && result && result.text) {
@@ -487,7 +488,7 @@ export async function queryGemma2(
   // Se la richiesta è un comando operativo o una domanda specifica sui dati di Chelona
   // (auto, scadenze, lista spesa, parcheggio, volantini, spese, ricette, utility),
   // risolvila immediatamente con accuratezza 100% in 2ms a costo zero!
-  const directMatch = await queryChelonaAi(userQuery, modules, username);
+  const directMatch = await queryChelonaAi(userQuery, modules, username, activeSection);
   if (directMatch && (directMatch.actions?.length || directMatch.autoAction || directMatch.createdModule || directMatch.learnedFact)) {
     console.log(`[FastPath] ⚡ RISOLUZIONE SPECULATIVA ISTANTANEA (< 2ms): "${userQuery}"`);
     return await executeFallback({ immediate: false });
