@@ -368,6 +368,40 @@ export const SECTION_SHORTCUTS: SectionShortcutDef[] = [
       <rect width="20" height="14" x="2" y="5" rx="2" />
       <line x1="2" x2="22" y1="10" y2="10" />
     `
+  },
+  {
+    id: 'doctor',
+    route: 'doctor',
+    shortLabel: 'Medico',
+    longLabel: 'Chelona Studio Medico & Ricette',
+    description: 'Orari studio medico in tempo reale, prescrizioni farmaci e visite.',
+    category: 'utility',
+    colorHex: '#0D9488',
+    gradientFrom: '#0F766E',
+    gradientTo: '#14B8A6',
+    emoji: '🩺',
+    svgInner: `
+      <path d="M4.8 2.3A.3.3 0 1 0 5 2H4a2 2 0 0 0-2 2v5a6 6 0 0 0 6 6v0a6 6 0 0 0 6-6V4a2 2 0 0 0-2-2h-1a.2.2 0 1 0 .3.3" />
+      <path d="M8 15v1a6 6 0 0 0 6 6v0a6 6 0 0 0 6-6v-4" />
+      <circle cx="20" cy="10" r="2" />
+    `
+  },
+  {
+    id: 'recesso',
+    route: 'recesso',
+    shortLabel: 'Disdette',
+    longLabel: 'Chelona Disdette & Recessi',
+    description: 'Disdetta contratti telefonia, energia, streaming e palestre via PEC.',
+    category: 'vault',
+    colorHex: '#E11D48',
+    gradientFrom: '#BE123C',
+    gradientTo: '#F43F5E',
+    emoji: '✍️',
+    svgInner: `
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+      <polyline points="14 2 14 8 20 8" />
+      <path d="M10.4 12.6a2 2 0 1 1 3 3L8 21l-4 1 1-4Z" />
+    `
   }
 ];
 
@@ -494,6 +528,8 @@ export async function createSectionShortcut(shortcutIdOrRoute: string): Promise<
     cleanId === 'salute' || cleanId === 'salute e fitness e dieta' || cleanId === 'salute, fitness & dieta' || cleanId === 'salute, fitness e dieta' || cleanId === 'dieta' ? SECTION_SHORTCUTS.find(s => s.id === 'fitness') :
     cleanId === 'viaggi' || cleanId === 'viaggi e mete' || cleanId === 'viaggi & mete' || cleanId === 'mete' ? SECTION_SHORTCUTS.find(s => s.id === 'travel') :
     cleanId === 'indirizzi' || cleanId === 'parcheggio' || cleanId === 'indirizzi & parcheggio' || cleanId === 'indirizzi e parcheggio' ? SECTION_SHORTCUTS.find(s => s.id === 'parking' || s.id === 'addresses') :
+    cleanId === 'doctor' || cleanId === 'medico' || cleanId === 'ricette' || cleanId === 'studio medico' || cleanId === 'prescriptions' ? SECTION_SHORTCUTS.find(s => s.id === 'doctor') :
+    cleanId === 'recesso' || cleanId === 'disdette' || cleanId === 'disdetta' || cleanId === 'recessi' || cleanId === 'pec' ? SECTION_SHORTCUTS.find(s => s.id === 'recesso') :
     cleanId === 'strumenti' || cleanId === 'utility' ? SECTION_SHORTCUTS.find(s => s.id === 'tools') :
     undefined
   );

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { DocumentModule } from '../types';
-import { ArrowLeft, FileText, Calendar, Shield, Trash2, Edit2, Save, Download, Eye, QrCode, Share2, MoreVertical, X, Clock, MapPin, Building2, Hash, Copy, CheckCheck } from 'lucide-react';
+import { ArrowLeft, FileText, Calendar, Shield, Trash2, Edit2, Save, Download, Eye, QrCode, Share2, MoreVertical, X, Clock, MapPin, Building2, Hash, Copy, CheckCheck, FileSignature } from 'lucide-react';
 import { ConfirmDialog } from './ConfirmDialog';
 
 interface DocumentManagementScreenProps {
@@ -130,21 +130,29 @@ export const DocumentManagementScreen = ({ module, onSave, onCancel, onDelete, o
           </div>
         </div>
         <div className="flex items-center gap-2">
-           {!isEditing ? (
-             <button 
-               onClick={() => setIsEditing(true)}
-               className="p-2 bg-[var(--accent-bg)] text-[var(--accent)] border border-[var(--accent)]/20 rounded-xl hover:bg-[var(--accent)] hover:text-white transition-all"
-             >
-               <Edit2 className="w-4 h-4" />
-             </button>
-           ) : (
-             <button 
-               onClick={handleSave}
-               className="p-2 bg-emerald-500 text-white rounded-xl shadow-lg shadow-emerald-500/20 active:scale-95 transition-all"
-             >
-               <Save className="w-4 h-4" />
-             </button>
-           )}
+          <button 
+            onClick={() => window.dispatchEvent(new CustomEvent('notificationRouteReceived', { detail: { route: 'recesso' } }))}
+            className="p-2 sm:px-3 sm:py-2 bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20 rounded-xl hover:bg-rose-500/20 transition-all flex items-center gap-1.5 text-xs font-bold"
+            title="Nuova Disdetta o Recesso PEC"
+          >
+            <FileSignature className="w-4 h-4" />
+            <span className="hidden sm:inline">Disdetta PEC</span>
+          </button>
+          {!isEditing ? (
+            <button 
+              onClick={() => setIsEditing(true)}
+              className="p-2 bg-[var(--accent-bg)] text-[var(--accent)] border border-[var(--accent)]/20 rounded-xl hover:bg-[var(--accent)] hover:text-white transition-all"
+            >
+              <Edit2 className="w-4 h-4" />
+            </button>
+          ) : (
+            <button 
+              onClick={handleSave}
+              className="p-2 bg-emerald-500 text-white rounded-xl shadow-lg shadow-emerald-500/20 active:scale-95 transition-all"
+            >
+              <Save className="w-4 h-4" />
+            </button>
+          )}
         </div>
       </div>
 

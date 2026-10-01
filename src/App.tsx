@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { Sun, Moon, Wrench, Plus, LayoutDashboard, Settings, User, LogOut, Search, Mic, MicOff, Loader2, Bell, CreditCard, Fingerprint, ShieldCheck, Lock, Menu, X, StickyNote, FileText, Grid2X2, Car, QrCode, Folder as FolderIcon, Check, Edit2, Trash2, BookOpen, ArrowLeft, ArrowRight, Camera, FileDown, Hourglass, Users, Download, Receipt, MapPin, SquareParking, Image as ImageIcon, Lightbulb, Globe, ChevronLeft, Bus, Home, Armchair, Activity, ShoppingBasket, BadgePercent, Sparkles, CalendarClock, Calendar, AlertCircle, CheckCircle2, Battery, Wallet, Flame, ArrowUpRight, Smartphone } from 'lucide-react';
+import { Sun, Moon, Wrench, Plus, LayoutDashboard, Settings, User, LogOut, Search, Mic, MicOff, Loader2, Bell, CreditCard, Fingerprint, ShieldCheck, Lock, Menu, X, StickyNote, FileText, Grid2X2, Car, QrCode, Folder as FolderIcon, Check, Edit2, Trash2, BookOpen, ArrowLeft, ArrowRight, Camera, FileDown, Hourglass, Users, Download, Receipt, MapPin, SquareParking, Image as ImageIcon, Lightbulb, Globe, ChevronLeft, Bus, Home, Armchair, Activity, ShoppingBasket, BadgePercent, Sparkles, CalendarClock, Calendar, AlertCircle, CheckCircle2, Battery, Wallet, Flame, ArrowUpRight, Smartphone, Stethoscope, FileSignature } from 'lucide-react';
 
 import { Module, ModuleType, Folder, DocumentModule } from './types';
 import { isModuleSensitive } from './utils/security';
@@ -62,6 +62,8 @@ const ChelonaAiScreen = React.lazy(() => import('./components/ChelonaAiScreen').
 const Gemma2SetupScreen = React.lazy(() => import('./components/Gemma2SetupScreen').then(m => ({ default: m.Gemma2SetupScreen })));
 const ParkingScreen = React.lazy(() => import('./components/ParkingScreen').then(m => ({ default: m.ParkingScreen })));
 const AddressAndParkingScreen = React.lazy(() => import('./components/AddressAndParkingScreen').then(m => ({ default: m.AddressAndParkingScreen })));
+const DoctorScreen = React.lazy(() => import('./components/DoctorScreen').then(m => ({ default: m.DoctorScreen })));
+const RecessoScreen = React.lazy(() => import('./components/RecessoScreen').then(m => ({ default: m.RecessoScreen })));
 // UI Libraries removed as per request (CSS Grid migration)
 
 // ResponsiveGridLayout removed (DnD disabled)
@@ -501,6 +503,8 @@ export default function App() {
   const [isAddressBookOpen, setIsAddressBookOpen] = useState(false);
   const [isParkingOpen, setIsParkingOpen] = useState(false);
   const [isAddressAndParkingOpen, setIsAddressAndParkingOpen] = useState(false);
+  const [isDoctorOpen, setIsDoctorOpen] = useState(false);
+  const [isRecessoOpen, setIsRecessoOpen] = useState(false);
   const [addressParkingTab, setAddressParkingTab] = useState<'addresses' | 'parking'>('addresses');
   const [addressParkingAutoSave, setAddressParkingAutoSave] = useState(false);
   const [hasActiveParking, setHasActiveParking] = useState<boolean>(() => {
@@ -802,6 +806,8 @@ export default function App() {
       if (isToolsOpen) { setIsToolsOpen(false); return; }
       if (isArchiveOpen) { setIsArchiveOpen(false); return; }
       if (isRecipesOpen) { window.dispatchEvent(new CustomEvent('recipes-back')); return; }
+      if (isDoctorOpen) { setIsDoctorOpen(false); return; }
+      if (isRecessoOpen) { setIsRecessoOpen(false); return; }
       if (isAddressAndParkingOpen) { setIsAddressAndParkingOpen(false); return; }
       if (isParkingOpen) { setIsParkingOpen(false); return; }
       if (isAddressBookOpen) { setIsAddressBookOpen(false); return; }
@@ -824,7 +830,7 @@ export default function App() {
     editingAutoModule, editingSplitModule, editingSingleExpenseModule,
     editingTravelModule, editingStudyModule, editingFitnessModule, editingDocumentModule,
     editingGenericModule, editingFurnitureModule, editingInstallmentsModule, editingSupermarketModule, editingVolantinoModule, editingModuleId, isAdding, isProfileOpen,
-    activeToolId, isToolsOpen, isArchiveOpen, isAddressAndParkingOpen, isAddressBookOpen, isParkingOpen, isRecipesOpen,
+    activeToolId, isToolsOpen, isArchiveOpen, isAddressAndParkingOpen, isAddressBookOpen, isParkingOpen, isRecipesOpen, isDoctorOpen, isRecessoOpen,
     isSidebarOpen, selectedFolderId, selectedType, spesaSubMenu
   ]);
 
@@ -1245,6 +1251,16 @@ export default function App() {
     if (route === 'ai' || route === 'chelona-ai') {
       setIsAiOpen(true);
       if (action === 'voice') setAiInitialVoiceMode(true);
+      return;
+    }
+
+    if (route === 'doctor' || route === 'medico' || route === 'ricette' || route === 'prescriptions') {
+      setIsDoctorOpen(true);
+      return;
+    }
+
+    if (route === 'recesso' || route === 'disdette' || route === 'disdetta' || route === 'recessi') {
+      setIsRecessoOpen(true);
       return;
     }
   }, [modules, folders, selectedFolderId, isSensitiveUnlocked, handleCheckUpdate]);
@@ -5041,6 +5057,66 @@ export default function App() {
                               </p>
                             </div>
                           </button>
+
+                          {/* 8. Medico & Ricette */}
+                          <button
+                            onClick={() => handleCardClick(() => setIsDoctorOpen(true))}
+                            onTouchStart={(e) => handleSectionPressStart({ id: 'doctor', title: 'Medico & Ricette', icon: Stethoscope, color: 'teal' }, e)}
+                            onTouchEnd={handleSectionPressEnd}
+                            onTouchMove={handleSectionTouchMove}
+                            onMouseDown={(e) => handleSectionPressStart({ id: 'doctor', title: 'Medico & Ricette', icon: Stethoscope, color: 'teal' }, e)}
+                            onMouseUp={handleSectionPressEnd}
+                            onMouseLeave={handleSectionPressEnd}
+                            onContextMenu={(e) => e.preventDefault()}
+                            className="bg-[var(--card-bg)] p-6 lg:p-7 rounded-[2.5rem] border border-[var(--border)] hover:border-teal-500/50 shadow-sm hover:shadow-lg transition-all text-left flex items-start gap-4 group active:scale-[0.99] relative overflow-hidden select-none cursor-pointer"
+                          >
+                            <div className="w-14 h-14 rounded-3xl bg-teal-500/10 text-teal-600 dark:text-teal-400 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform shadow-inner">
+                              <Stethoscope className="w-7 h-7" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center justify-between gap-2 mb-1">
+                                <h4 className="font-black text-base lg:text-lg text-[var(--text-main)]">Medico & Ricette</h4>
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-teal-500/10 text-teal-600 dark:text-teal-400 border border-teal-500/20">
+                                    Live Studio
+                                  </span>
+                                </div>
+                              </div>
+                              <p className="text-xs text-[var(--text-muted)] line-clamp-2 leading-relaxed">
+                                Orari studio medico in tempo reale, prescrizione farmaci ed esami
+                              </p>
+                            </div>
+                          </button>
+
+                          {/* 9. Disdette & Recessi */}
+                          <button
+                            onClick={() => handleCardClick(() => setIsRecessoOpen(true))}
+                            onTouchStart={(e) => handleSectionPressStart({ id: 'recesso', title: 'Disdette & Recessi', icon: FileSignature, color: 'rose' }, e)}
+                            onTouchEnd={handleSectionPressEnd}
+                            onTouchMove={handleSectionTouchMove}
+                            onMouseDown={(e) => handleSectionPressStart({ id: 'recesso', title: 'Disdette & Recessi', icon: FileSignature, color: 'rose' }, e)}
+                            onMouseUp={handleSectionPressEnd}
+                            onMouseLeave={handleSectionPressEnd}
+                            onContextMenu={(e) => e.preventDefault()}
+                            className="bg-[var(--card-bg)] p-6 lg:p-7 rounded-[2.5rem] border border-[var(--border)] hover:border-rose-500/50 shadow-sm hover:shadow-lg transition-all text-left flex items-start gap-4 group active:scale-[0.99] relative overflow-hidden select-none cursor-pointer"
+                          >
+                            <div className="w-14 h-14 rounded-3xl bg-rose-500/10 text-rose-500 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform shadow-inner">
+                              <FileSignature className="w-7 h-7" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center justify-between gap-2 mb-1">
+                                <h4 className="font-black text-base lg:text-lg text-[var(--text-main)]">Disdette & Recessi</h4>
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-rose-500/10 text-rose-500 border border-rose-500/20">
+                                    PEC Legale
+                                  </span>
+                                </div>
+                              </div>
+                              <p className="text-xs text-[var(--text-muted)] line-clamp-2 leading-relaxed">
+                                Disdetta contratti telefonia, energia, streaming e palestre con firma
+                              </p>
+                            </div>
+                          </button>
                         </div>
                       </div>
                     ) : selectedType === 'home' ? (
@@ -5763,6 +5839,27 @@ export default function App() {
           {isParkingOpen && (
             <React.Suspense fallback={<div className="flex items-center justify-center p-20"><div className="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div></div>}>
               <AddressAndParkingScreen initialTab="parking" onClose={() => setIsParkingOpen(false)} showToast={showToast} />
+            </React.Suspense>
+          )}
+          {isDoctorOpen && (
+            <React.Suspense fallback={<div className="flex items-center justify-center p-20"><div className="w-8 h-8 border-4 border-teal-500 border-t-transparent rounded-full animate-spin"></div></div>}>
+              <DoctorScreen
+                onClose={() => setIsDoctorOpen(false)}
+                showToast={showToast}
+                defaultPatientName={username}
+                defaultPatientFiscalCode={(modules.find(m => m.type === 'document' && (m as DocumentModule).documentType === 'tax_code') as DocumentModule | undefined)?.number || ''}
+              />
+            </React.Suspense>
+          )}
+          {isRecessoOpen && (
+            <React.Suspense fallback={<div className="flex items-center justify-center p-20"><div className="w-8 h-8 border-4 border-rose-500 border-t-transparent rounded-full animate-spin"></div></div>}>
+              <RecessoScreen
+                onClose={() => setIsRecessoOpen(false)}
+                showToast={showToast}
+                defaultUserName={username}
+                defaultUserFiscalCode={(modules.find(m => m.type === 'document' && (m as DocumentModule).documentType === 'tax_code') as DocumentModule | undefined)?.number || ''}
+                onSaveToSandbox={handleSaveToSandbox}
+              />
             </React.Suspense>
           )}
       </AnimatePresence>

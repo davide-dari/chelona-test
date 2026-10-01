@@ -1,10 +1,12 @@
 import { 
   Layers, RotateCw, FileDown, Minimize, 
-  ImageIcon, Percent, Scan, Shirt, Sparkles, Smartphone
+  ImageIcon, Percent, Scan, Shirt, Sparkles, Smartphone,
+  FileSignature, Stethoscope
 } from 'lucide-react';
 
 export const TOOLS_PDF = [
   { id: 'merge', title: 'Unisci PDF', desc: 'Unisci più documenti in uno.', icon: Layers, color: 'text-rose-500', bg: 'bg-rose-500/10', category: 'pdf' },
+  { id: 'recesso', title: 'Disdette & Recessi PEC', desc: 'Disdetta contratti telefonia, energia e streaming con firma.', icon: FileSignature, color: 'text-rose-600', bg: 'bg-rose-500/10', category: 'pdf' },
   { id: 'img2pdf', title: 'JPG in PDF', desc: 'Converti immagini in PDF.', icon: ImageIcon, color: 'text-[var(--accent)]', bg: 'bg-[var(--accent)]/10', category: 'pdf' },
   { id: 'rotate', title: 'Ruota PDF', desc: 'Cambia orientamento alle pagine.', icon: RotateCw, color: 'text-blue-500', bg: 'bg-blue-500/10', category: 'pdf' },
   { id: 'docx2pdf', title: 'Word in PDF', desc: 'Converti documenti .docx in PDF.', icon: FileDown, color: 'text-blue-600', bg: 'bg-blue-600/10', category: 'pdf' },
@@ -13,6 +15,7 @@ export const TOOLS_PDF = [
 
 export const TOOLS_UTILITY = [
   { id: 'shortcuts', title: 'App Schermata Home', desc: 'Crea icone indipendenti per ogni sezione su Android.', icon: Smartphone, color: 'text-indigo-600', bg: 'bg-indigo-500/10', category: 'utility' },
+  { id: 'doctor', title: 'Studio Medico & Ricette', desc: 'Orari live studio e prescrizione farmaci ed esami.', icon: Stethoscope, color: 'text-teal-600', bg: 'bg-teal-500/10', category: 'utility' },
   { id: 'chelona-ai', title: 'Chelona AI', desc: 'Il tuo assistente personale intelligente.', icon: Sparkles, color: 'text-amber-500', bg: 'bg-amber-500/10', category: 'utility' },
   { id: 'vinted', title: 'Aiuto Vinted', desc: 'Misure su foto, titoli e descrizioni top.', icon: Shirt, color: 'text-teal-500', bg: 'bg-teal-500/10', category: 'utility' },
   { id: 'scanner', title: 'Scanner', desc: 'Scansiona e crea PDF.', icon: Scan, color: 'text-[var(--success)]', bg: 'bg-[var(--success)]/10', category: 'utility' },

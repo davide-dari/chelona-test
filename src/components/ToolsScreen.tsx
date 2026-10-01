@@ -54,6 +54,14 @@ export const ToolsScreen = ({ showToast, onSaveToSandbox, initialToolId, onReset
         setIsShortcutsModalOpen(true);
         return;
       }
+      if (initialToolId === 'recesso' || initialToolId === 'disdette') {
+        window.dispatchEvent(new CustomEvent('notificationRouteReceived', { detail: { route: 'recesso' } }));
+        return;
+      }
+      if (initialToolId === 'doctor' || initialToolId === 'medico') {
+        window.dispatchEvent(new CustomEvent('notificationRouteReceived', { detail: { route: 'doctor' } }));
+        return;
+      }
       setActiveTool(initialToolId);
     }
   }, [initialToolId]);
@@ -382,6 +390,14 @@ export const ToolsScreen = ({ showToast, onSaveToSandbox, initialToolId, onReset
                         }
                         if (t.id === 'shortcuts') {
                           setIsShortcutsModalOpen(true);
+                          return;
+                        }
+                        if (t.id === 'recesso') {
+                          window.dispatchEvent(new CustomEvent('notificationRouteReceived', { detail: { route: 'recesso' } }));
+                          return;
+                        }
+                        if (t.id === 'doctor') {
+                          window.dispatchEvent(new CustomEvent('notificationRouteReceived', { detail: { route: 'doctor' } }));
                           return;
                         }
                         setActiveTool(t.id);

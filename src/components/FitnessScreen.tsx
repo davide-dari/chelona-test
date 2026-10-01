@@ -2,7 +2,8 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { 
   ArrowLeft, ArrowRight, Check, ChevronDown, ChevronUp, RefreshCw, Play, Award, 
   TrendingUp, Target, Activity, Heart, Dumbbell, Utensils, ExternalLink, X, Bell, 
-  Clock, QrCode, Share2, Users, Copy, CheckCheck, Camera, Sparkles, Scale, ChefHat, Info 
+  Clock, QrCode, Share2, Users, Copy, CheckCheck, Camera, Sparkles, Scale, ChefHat, Info,
+  Stethoscope
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { QRCodeSVG } from 'qrcode.react';
@@ -1949,6 +1950,15 @@ export function FitnessScreen({ module, onClose, onSave }: FitnessScreenProps) {
           >
             <QrCode className="w-4 h-4" />
             <span className="hidden md:inline">Ricevi da Partner</span>
+          </button>
+
+          <button
+            onClick={() => window.dispatchEvent(new CustomEvent('notificationRouteReceived', { detail: { route: 'doctor' } }))}
+            className="p-2 sm:px-3 sm:py-2 bg-teal-500/10 border border-teal-500/30 text-teal-600 dark:text-teal-400 rounded-xl sm:rounded-2xl transition-all shadow-sm flex items-center gap-1.5 text-xs font-bold hover:bg-teal-500/20 active:scale-95 cursor-pointer"
+            title="Studio Medico & Ricette"
+          >
+            <Stethoscope className="w-4 h-4" />
+            <span className="hidden lg:inline">Studio Medico</span>
           </button>
         </div>
       </header>
