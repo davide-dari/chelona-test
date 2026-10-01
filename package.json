@@ -1,7 +1,7 @@
 {
   "name": "chelona-test",
   "private": true,
-  "version": "1.30.103",
+  "version": "1.30.104",
   "type": "module",
   "scripts": {
     "dev": "vite --port=3000 --host=0.0.0.0",
@@ -9,7 +9,7 @@
     "preview": "vite preview",
     "clean": "rm -rf dist",
     "lint": "tsc --noEmit",
-    "test": "node --experimental-strip-types scripts/test-auto-deadlines.mjs",
+    "test": "node --experimental-strip-types scripts/test-auto-deadlines.mjs && npx tsx scripts/test-ai-benchmark.mjs",
     "update:volantini": "node scripts/enrich-volantini.mjs",
     "publish:release": "node scripts/publish-release.mjs",
     "version:bump": "node scripts/bump-version.cjs"

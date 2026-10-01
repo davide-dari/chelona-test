@@ -19,8 +19,9 @@ import { promptCache } from './promptCache';
 import { semanticCache } from './semanticCache';
 import { localDb } from './localDatabase';
 import { gemma2ModelManager } from './gemma2ModelManager';
+import { Capacitor } from '@capacitor/core';
 import type { Module } from '../types';
-import type { AiMessage, AiAction, AiMemory } from './chelonaEngine';
+import { queryChelonaAi, type AiMessage, type AiAction, type AiMemory } from './chelonaEngine';
 
 // ---- Plugin Bridge ----
 // Il plugin nativo @chelona/capacitor-llm viene caricato dinamicamente
@@ -86,6 +87,23 @@ export async function checkNativeLlmAvailability(): Promise<boolean> {
     return nativeAvailableCache;
   }
 
+  // Se siamo in un browser/PWA (non app nativa Android), non c'è la libreria C++: esci istantaneamente a 0ms
+  if (!Capacitor.isNativePlatform()) {
+    nativeAvailableCache = false;
+    lastNativeCheckTime = Date.now();
+    return false;
+  }
+
+  // Interfaccia diretta sincrona ChelonaNative (0ms) esposta su Android WebView
+  if (typeof window !== 'undefined' && typeof (window as any).ChelonaNative?.isNativeLlmAvailable === 'function') {
+    try {
+      const avail = !!(window as any).ChelonaNative.isNativeLlmAvailable();
+      nativeAvailableCache = avail;
+      lastNativeCheckTime = Date.now();
+      return avail;
+    } catch {}
+  }
+
   const pluginAvailable = await ensurePluginLoaded();
   if (!pluginAvailable || !nativePlugin) {
     nativeAvailableCache = false;
@@ -106,7 +124,7 @@ export async function checkNativeLlmAvailability(): Promise<boolean> {
       return false;
     })();
 
-    const timeoutPromise = new Promise<boolean>((resolve) => setTimeout(() => resolve(false), 80));
+    const timeoutPromise = new Promise<boolean>((resolve) => setTimeout(() => resolve(false), 50));
     nativeAvailableCache = await Promise.race([checkPromise, timeoutPromise]);
   } catch {
     nativeAvailableCache = false;
@@ -424,35 +442,38 @@ export async function queryGemma2(
     };
   }
 
-  // ⚡ Sincronizzazione continua del Database Personale (RAG)
+  // ⚡ Sincronizzazione continua del Database Personale (RAG) solo quando necessario
   const currentModulesHash = computeModulesHash(modules);
-  if (currentModulesHash !== lastIndexedModulesHash) {
-    indexModulesIntoRAG(modules, username);
-    lastIndexedModulesHash = currentModulesHash;
-  }
 
-  const executeFallback = async (): Promise<Gemma2Response> => {
-    const { queryChelonaAi } = await import('./chelonaEngine');
+  const executeFallback = async (options?: { immediate?: boolean }): Promise<Gemma2Response> => {
     const result = await queryChelonaAi(userQuery, modules, username);
 
-    // Se richiesto streaming, emetti i frammenti progressivamente con micro-delay
+    // Se richiesto streaming, emetti i frammenti progressivamente
     if (onToken && result && result.text) {
-      const words = result.text.split(/(\s+)/);
-      for (const word of words) {
-        onToken(word);
-        if (word.trim().length > 0) {
-          await new Promise(r => setTimeout(r, 6));
+      if (options?.immediate) {
+        onToken(result.text);
+      } else {
+        // Micro-streaming ultra rapido a blocchi di 2 parole con micro-attesa di 4ms
+        // Latenza totale dell'animazione: < 250ms per fluidità visiva istantanea
+        const words = result.text.split(/(\s+)/);
+        for (let i = 0; i < words.length; i += 2) {
+          const chunk = (words[i] || '') + (words[i + 1] || '');
+          onToken(chunk);
+          if (chunk.trim().length > 0) {
+            await new Promise(r => setTimeout(r, 4));
+          }
         }
       }
     }
 
     if (result && result.text) {
-      semanticCache.set(userQuery, lastIndexedModulesHash, {
+      semanticCache.set(userQuery, currentModulesHash, {
         text: result.text,
         actions: result.actions,
         learnedFact: result.learnedFact,
         autoAction: result.autoAction,
       });
+      promptCache.set(userQuery, '', { text: result.text, actions: result.actions });
     }
 
     return {
@@ -468,12 +489,20 @@ export async function queryGemma2(
     return await executeFallback();
   }
 
+  // ⚡ Sincronizzazione Database Personale (RAG) SOLO se il motore nativo è presente e attivo
+  if (currentModulesHash !== lastIndexedModulesHash) {
+    indexModulesIntoRAG(modules, username);
+    lastIndexedModulesHash = currentModulesHash;
+  }
+
   try {
+    let isCancelled = false;
+
     const responsePromise = (async (): Promise<Gemma2Response> => {
       // 1. Controlla batteria
       const battery = await getBatteryLevel();
       if (battery < BATTERY_BLOCK_THRESHOLD) {
-        return await executeFallback();
+        return await executeFallback({ immediate: true });
       }
 
       // Limita i token se la batteria è scarica
@@ -485,20 +514,27 @@ export async function queryGemma2(
 
       // 2. Verifica disponibilità modello
       const modelReady = await ensureModelLoaded();
-      if (!modelReady) {
-        return await executeFallback();
+      if (!modelReady || isCancelled) {
+        return await executeFallback({ immediate: true });
       }
 
-      // 3. Aggiorna indice RAG se i moduli sono cambiati
-      const modulesHash = computeModulesHash(modules);
-      if (modulesHash !== lastIndexedModulesHash) {
-        indexModulesIntoRAG(modules, username);
-        lastIndexedModulesHash = modulesHash;
-      }
-
-      // 4. RAG Retrieval — Massimo 1 singolo frammento più rilevante (max 150 token di contesto)
+      // 3. RAG Retrieval — Massimo 1 singolo frammento più rilevante (max 150 token di contesto)
       const ragDocs = ragEngine.retrieve(userQuery, 1);
       const ragContext = ragDocs.length > 0 ? ragDocs[0].text.slice(0, 350).trim() : '';
+
+      // 4. Controllo Prompt Cache prima di invocare il modello pesante
+      const cachedPrompt = promptCache.get(userQuery, ragContext);
+      if (cachedPrompt && cachedPrompt.text) {
+        if (onToken) onToken(cachedPrompt.text);
+        return {
+          text: cachedPrompt.text,
+          actions: cachedPrompt.actions as AiAction[] | undefined,
+          engineUsed: `${gemma2ModelManager.activeModel.family}-local` as any,
+          ragDocsUsed: ragDocs.length,
+          cached: true,
+          semanticMatch: false,
+        };
+      }
 
       // 5. Costruisci il prompt compatto con template del modello attivo (Gemma 4 / Gemma 2 / Qwen 2.5)
       const promptObj = buildPrompt(userQuery, ragContext, username);
@@ -508,25 +544,35 @@ export async function queryGemma2(
       let responseText = '';
 
       try {
-        responseText = await runGemmaInference(promptObj.prompt, onToken, promptObj.stop);
+        responseText = await runGemmaInference(
+          promptObj.prompt,
+          (tok) => {
+            if (!isCancelled && onToken) onToken(tok);
+          },
+          promptObj.stop
+        );
       } catch (err) {
         console.warn('[Gemma2] Errore inferenza, fallback a chelonaEngine:', err);
-        return await executeFallback();
+        return await executeFallback({ immediate: true });
       } finally {
         if (engineState === 'generating') {
           engineState = 'ready';
         }
       }
 
+      if (isCancelled) {
+        return await executeFallback({ immediate: true });
+      }
+
       // Se la risposta è vuota o insufficiente, delega al motore rule-based di Chelona
       if (!responseText || responseText.trim().length < 5) {
-        return await executeFallback();
+        return await executeFallback({ immediate: true });
       }
 
       // 7. Memorizzazione in Cache Semantica in RAM e persistenza locale
       if (responseText) {
         promptCache.set(userQuery, ragContext, { text: responseText });
-        semanticCache.set(userQuery, modulesHash, { text: responseText });
+        semanticCache.set(userQuery, currentModulesHash, { text: responseText });
       }
 
       return {
@@ -541,19 +587,20 @@ export async function queryGemma2(
     // Protezione globale: timeout massimo di 2.8 secondi prima di ripiegare su chelonaEngine
     const globalTimeout = new Promise<Gemma2Response>((resolve) => {
       setTimeout(async () => {
-        console.warn('[Gemma2] Timeout globale di sicurezza (2.8s) scattato, fallback a chelonaEngine');
-        resolve(await executeFallback());
+        isCancelled = true;
+        console.warn('[Gemma2] Timeout globale di sicurezza (2.8s) scattato, fallback immediato a chelonaEngine');
+        resolve(await executeFallback({ immediate: true }));
       }, GLOBAL_SAFETY_TIMEOUT_MS);
     });
 
     const finalRes = await Promise.race([responsePromise, globalTimeout]);
     if (!finalRes || !finalRes.text || finalRes.text.trim().length === 0) {
-      return await executeFallback();
+      return await executeFallback({ immediate: true });
     }
     return finalRes;
   } catch (err) {
     console.error('[Gemma2] Errore critico queryGemma2, fallback a chelonaEngine:', err);
-    return await executeFallback();
+    return await executeFallback({ immediate: true });
   }
 }
 

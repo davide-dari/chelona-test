@@ -541,8 +541,10 @@ export const ChelonaAiScreen
       setVoiceStatus('thinking');
     }
 
+    let isFinished = false;
     // Callback di streaming dei token in tempo reale
     const onToken = (token: string) => {
+      if (isFinished) return;
       accumulatedText += token;
       setMessages(prev =>
         prev.map(m => (m.id === assistantMsgId ? { ...m, text: accumulatedText } : m))
@@ -554,11 +556,9 @@ export const ChelonaAiScreen
       const safetyTimeout = new Promise<import('../services/gemma2Engine').Gemma2Response>((resolve) => {
         setTimeout(async () => {
           try {
-            const { queryChelonaAi } = await import('../services/chelonaEngine');
             const fallbackRes = await queryChelonaAi(queryToSend, modules, username);
             if (fallbackRes && fallbackRes.text && !accumulatedText) {
-              const chunks = fallbackRes.text.split(/(\s+)/);
-              for (const c of chunks) onToken(c);
+              onToken(fallbackRes.text);
             }
             resolve({
               ...fallbackRes,
@@ -576,6 +576,7 @@ export const ChelonaAiScreen
       });
 
       const response = await Promise.race([queryPromise, safetyTimeout]);
+      isFinished = true;
       const finalText = response.text || accumulatedText;
 
       const assistantMsg: AiMessage = {

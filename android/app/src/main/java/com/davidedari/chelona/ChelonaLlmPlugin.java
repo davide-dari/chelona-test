@@ -185,6 +185,12 @@ public class ChelonaLlmPlugin extends Plugin {
 
     @PluginMethod
     public void unloadModel(final PluginCall call) {
+        if (!isNativeLibAvailable || nativeContextPtr == 0L) {
+            isModelLoaded = false;
+            contextUsed = 0;
+            call.resolve();
+            return;
+        }
         executor.execute(new Runnable() {
             @Override
             public void run() {

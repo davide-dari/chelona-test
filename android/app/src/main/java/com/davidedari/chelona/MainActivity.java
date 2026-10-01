@@ -151,6 +151,11 @@ public class MainActivity extends BridgeActivity {
                     public void getZeroLatencyLocation(final long maxAgeMs, final long timeoutMs) {
                         MainActivity.this.getZeroLatencyLocationNative(maxAgeMs, timeoutMs);
                     }
+
+                    @android.webkit.JavascriptInterface
+                    public boolean isNativeLlmAvailable() {
+                        return ChelonaLlmPlugin.isNativeLibAvailable;
+                    }
                 }, "ChelonaNative");
             }
         });
