@@ -24,6 +24,8 @@ export interface DoctorProfile {
   email: string;
   landline: string;
   mobile: string;
+  landlines?: string[];
+  mobiles?: string[];
   notes: string;
   schedule: Record<number, DoctorDaySchedule>; // 0 = Domenica, 1 = Lunedì ... 6 = Sabato
 }
