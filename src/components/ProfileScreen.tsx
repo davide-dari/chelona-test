@@ -953,32 +953,6 @@ export function ProfileScreen({
                 </div>
               </div>
 
-              {/* Gemma 2 AI Locale Card */}
-              {onOpenGemma2Setup && (
-                <div className="bg-[var(--card-bg)] rounded-[var(--radius-lg)] p-5 sm:p-6 border border-[var(--border)] shadow-sm">
-                  <div className="flex items-center gap-3">
-                    <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-violet-500/20 to-indigo-500/20 flex items-center justify-center text-violet-500 shadow-inner shrink-0">
-                      <Cpu className="w-5 h-5" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h3 className="text-sm font-black text-[var(--text-main)]">Gemma 4 & Modelli AI Locali</h3>
-                      <p className="text-xs text-[var(--text-muted)]">Motore AI on-device · 100% privato · Zero cloud</p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={onOpenGemma2Setup}
-                      className="w-9 h-9 rounded-xl bg-[var(--surface-variant)] flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--accent)] transition-colors cursor-pointer shrink-0"
-                      title="Configura AI Locale"
-                    >
-                      <ChevronRight className="w-4 h-4" />
-                    </button>
-                  </div>
-                  <p className="text-xs text-[var(--text-muted)] leading-relaxed mt-3">
-                    Configura e usa Gemma 4 E2B o modelli ultra-rapidi direttamente sul tuo dispositivo. Più intelligenti e veloci senza mai perdere la cache.
-                  </p>
-                </div>
-              )}
-
               {/* Invio Automatico da Microfono */}
               <div className="bg-[var(--card-bg)] rounded-[var(--radius-lg)] p-5 sm:p-6 border border-[var(--border)] shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div className="flex items-center gap-3 min-w-0">

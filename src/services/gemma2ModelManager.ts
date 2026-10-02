@@ -40,36 +40,6 @@ export interface ModelPreset {
 
 export const AVAILABLE_MODELS: ModelPreset[] = [
   {
-    id: 'qwen-2.5-0.5b',
-    name: 'Qwen 2.5 0.5B Quantum',
-    version: '2.5',
-    family: 'qwen2.5',
-    tag: '⚡ Sub-Secondo (< 0.5s)',
-    badgeColor: 'emerald',
-    description: 'Il micro-modello quantizzato più scattante in assoluto. Pesa solo ~398 MB, genera oltre 80-120 tok/s su CPU mobile e garantisce risposte stabili sotto al secondo.',
-    url: 'https://huggingface.co/bartowski/Qwen2.5-0.5B-Instruct-GGUF/resolve/main/Qwen2.5-0.5B-Instruct-Q4_K_M.gguf',
-    filename: 'Qwen2.5-0.5B-Instruct-Q4_K_M.gguf',
-    sizeBytes: 397_808_192,
-    sizeDisplay: '~398 MB',
-    speedRating: '⚡⚡⚡⚡⚡ Sub-Secondo',
-    tokensPerSecEstimate: '~80-120 tok/s'
-  },
-  {
-    id: 'qwen-2.5-1.5b',
-    name: 'Qwen 2.5 1.5B Speed',
-    version: '2.5',
-    family: 'qwen2.5',
-    tag: 'Fulmineo (~1s)',
-    badgeColor: 'amber',
-    description: 'Ottimo bilanciamento tra intelligenza e velocità per CPU mobile. Latenza minima (< 50ms) e risposte istantanee con ottima padronanza dell\'italiano.',
-    url: 'https://huggingface.co/bartowski/Qwen2.5-1.5B-Instruct-GGUF/resolve/main/Qwen2.5-1.5B-Instruct-Q4_K_M.gguf',
-    filename: 'Qwen2.5-1.5B-Instruct-Q4_K_M.gguf',
-    sizeBytes: 986_048_768,
-    sizeDisplay: '~986 MB',
-    speedRating: '⚡⚡⚡⚡⚡ Fulmineo',
-    tokensPerSecEstimate: '~40-55 tok/s'
-  },
-  {
     id: 'gemma-4-e2b',
     name: 'Gemma 4 E2B Compact',
     version: '4.0',
@@ -83,21 +53,6 @@ export const AVAILABLE_MODELS: ModelPreset[] = [
     sizeDisplay: '~2.53 GB',
     speedRating: '⚡⚡⚡⚡ Ultra Veloce',
     tokensPerSecEstimate: '~30-40 tok/s'
-  },
-  {
-    id: 'gemma-2-2b',
-    name: 'Gemma 2 2B',
-    version: '2.0',
-    family: 'gemma2',
-    tag: 'Classico',
-    badgeColor: 'indigo',
-    description: 'Versione standard Google DeepMind precedente con pesi bilanciati 4-bit.',
-    url: 'https://huggingface.co/bartowski/gemma-2-2b-it-GGUF/resolve/main/gemma-2-2b-it-Q4_K_M.gguf',
-    filename: 'gemma-2-2b-it-Q4_K_M.gguf',
-    sizeBytes: 1_708_582_752,
-    sizeDisplay: '~1.70 GB',
-    speedRating: '⚡⚡ Standard',
-    tokensPerSecEstimate: '~15-20 tok/s'
   }
 ];
 
@@ -145,25 +100,19 @@ class Gemma2ModelManager {
   }
 
   private initActiveModel(): void {
-    try {
-      const savedId = localStorage.getItem(ACTIVE_MODEL_STORAGE_KEY);
-      if (savedId && AVAILABLE_MODELS.some(m => m.id === savedId)) {
-        this._activeModelId = savedId;
-      } else {
-        // Se c'è già il file legacy gemma-2 scaricato, mantienilo inizialmente, altrimenti default gemma-4-e2b
-        const legacyStatus = localStorage.getItem('chelona_gemma2_model_status');
-        if (legacyStatus) {
-          try {
-            const parsed = JSON.parse(legacyStatus);
-            if (parsed.status === 'ready' || parsed.status === 'loaded') {
-              this._activeModelId = 'gemma-2-2b';
-            }
-          } catch {}
-        }
-      }
-    } catch {}
+    this._activeModelId = 'gemma-4-e2b';
     this._info.activeModelId = this._activeModelId;
     this.loadPersistedStatusForActiveModel();
+    
+    // Auto-download silently in the background if not present
+    setTimeout(() => {
+      this.checkLocalFile().then(exists => {
+        if (!exists && this._info.status !== 'downloading') {
+          // Pass true for allowCellular so it doesn't prompt the user
+          this.downloadModel(undefined, true).catch(() => {});
+        }
+      });
+    }, 2000);
   }
 
   get activeModel(): ModelPreset {
