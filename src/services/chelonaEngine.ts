@@ -23,6 +23,25 @@ import { TOOLS } from '../constants/tools';
 import { wakeWordService } from './wakeWordService';
 import { ragEngine } from './ragEngine';
 import { localDb } from './localDatabase';
+import { 
+  extractFoodEntities, 
+  matchRecipesByIngredients, 
+  formatRecipeMatchResponse, 
+  getOrLoadAllRecipes,
+  searchRecipeByDishTitle,
+  formatSingleRecipeResponse,
+  detectSupermarketCategory,
+  extractExpenseQuery,
+  extractVehicleQuery,
+  extractDocumentQuery,
+  extractDoctorQuery,
+  extractRecessoQuery,
+  tokenFuzzySimilarity,
+  italianStem,
+  type RecipeCatalogItem
+} from './mathLanguageEngine';
+import { loadDoctorState, computeDoctorStudioStatus, type DoctorState, type StudioStatusResult } from './doctorService';
+import { RECESSO_PROVIDERS } from '../data/recessoProviders';
 
 export interface AiMemory {
   id: string;
@@ -35,7 +54,7 @@ export interface AiMemory {
 
 export interface AiAction {
   label: string;
-  type: 'module' | 'category' | 'deadlines' | 'parking' | 'navigate_parking' | 'save_parking' | 'volantino' | 'tool' | 'recipes' | 'address' | 'gallery' | 'shortcut' | 'shortcuts_hub';
+  type: 'module' | 'category' | 'deadlines' | 'parking' | 'navigate_parking' | 'save_parking' | 'volantino' | 'tool' | 'recipes' | 'address' | 'gallery' | 'shortcut' | 'shortcuts_hub' | 'navigate' | 'doctor' | 'recesso' | 'add_shopping_items';
   moduleId?: string;
   category?: string;
   module?: Module;
@@ -49,6 +68,9 @@ export interface AiAction {
   shortcutId?: string;
   flyerId?: string;
   page?: number;
+  route?: string;
+  recipe?: any;
+  items?: { name: string; quantity?: string; category?: string }[];
 }
 
 export interface AiMessage {
@@ -402,20 +424,9 @@ export function calculateSplitSettlements(
 }
 
 /**
- * Classifica automatica delle categorie per la lista spesa
+ * Classifica automatica delle categorie per la lista spesa (da mathLanguageEngine)
  */
-export function detectSupermarketCategory(name: string): SupermarketCategory {
-  const n = name.toLowerCase();
-  if (/mela|mele|banana|banane|arancia|arance|limon|frutt|verdur|pomodor|insalat|carot|zucch|cipoll|patat|aglio|basilic|spinac|pesc[ae]|fragol/i.test(n)) return 'frutta-verdura';
-  if (/latt|formaggi|yogurt|burr|mozzarell|parmigian|grana|uov|uova|ricott|panna|stracchin|gorgonzol|mascarpon/i.test(n)) return 'latticini-uova';
-  if (/carn|pesc|poll|manz|maial|tonn|salmon|merluzz|prosciutt|salame|affettat|bresaol|tacchin|salsicci|wurstel|orata|spigol/i.test(n)) return 'carne-pesce';
-  if (/pan[ei]|focacci|cornett|biscott|croissant|fett[ae]\s+biscottat|tort[ae]|brioche|dolc/i.test(n)) return 'pane-pasticceria';
-  if (/past|ris|farin|oli|aceto|sal[ei]|zuccher|caff|passat|pelat|legum|ceci|fagiol|lenticchi|tonno|crackers|cereali|miele|marmellat|cioccolat/i.test(n)) return 'dispensa';
-  if (/acqu|vin|birr|succ|coc[ae]|aranciat|tè|the|bevand|spumant|champagne/i.test(n)) return 'bevande';
-  if (/detersiv|sgrassator|candeggin|spugn|scottex|carta\s+igienic|lavatric|lavastovigli|sacchett|panni|alcool|ammoniac/i.test(n)) return 'pulizia';
-  if (/shampoo|bagnoschium|dentifrici|sapon|deodorant|balsam|crema|rasoi|schiuma\s+da\s+barba|fazzolett/i.test(n)) return 'igiene';
-  return 'altro';
-}
+export { detectSupermarketCategory };
 
 function loadRecipesKnowledge(): ChelonaKnowledge['recipes'] {
   let customList: { id: string; title: string; category: string; ingredients: string[] }[] = [];
@@ -457,6 +468,8 @@ function loadRecipesKnowledge(): ChelonaKnowledge['recipes'] {
   const allIngredients = Array.from(new Set([...fridgeIngredients, ...pantryIngredients, ...freezerIngredients]));
 
   return {
+    count: customList.length,
+    all: customList,
     customCount: customList.length,
     customList,
     favoritesCount: favoritesList.length,
@@ -625,6 +638,8 @@ export interface ChelonaKnowledge {
     stores: string[];
   }[];
   recipes: {
+    count: number;
+    all: any[];
     customCount: number;
     customList: { id: string; title: string; category: string; ingredients: string[] }[];
     favoritesCount: number;
@@ -661,6 +676,14 @@ export interface ChelonaKnowledge {
     count: number;
     list: { id: string; title: string; query: string }[];
   };
+  doctor: {
+    configured: boolean;
+    state: DoctorState;
+    status: StudioStatusResult;
+  };
+  recesso: {
+    providersCount: number;
+  };
   tools: {
     availableList: { id: string; title: string; desc: string }[];
     galleryCount: number;
@@ -676,6 +699,9 @@ export interface ChelonaKnowledge {
  * Estrae e indicizza tutti i moduli e dati dell'app per la comprensione neurale locale di Chelona Engine
  */
 export function buildKnowledgeBase(modules: Module[], username: string): ChelonaKnowledge {
+  const doctorState = loadDoctorState();
+  const doctorStatus = computeDoctorStudioStatus(doctorState.doctor.schedule);
+
   const k: ChelonaKnowledge = {
     vehicles: [],
     documents: [],
@@ -690,6 +716,14 @@ export function buildKnowledgeBase(modules: Module[], username: string): Chelona
     furniture: { roomsCount: 0, itemsCount: 0, totalCost: 0, rooms: [] },
     parking: loadParkingKnowledge(),
     addresses: loadAddressesKnowledge(),
+    doctor: {
+      configured: doctorState.configured,
+      state: doctorState,
+      status: doctorStatus,
+    },
+    recesso: {
+      providersCount: RECESSO_PROVIDERS.length,
+    },
     tools: {
       availableList: TOOLS.map(t => ({ id: t.id, title: t.title, desc: t.desc })),
       galleryCount: 0,
@@ -1280,73 +1314,56 @@ export async function queryChelonaAi(
   if (activeSection) {
     const wordCount = query.split(/\s+/).length;
 
-    // RICETTE / FITNESS: ingredienti citati → ricerca ricetta contestuale
+    // RICETTE / FITNESS: ingredienti citati → ricerca ricetta contestuale con Il Matematico
     if (activeSection === 'recipes' || activeSection === 'fitness') {
-      const foodKeywords = ['pollo', 'pasta', 'riso', 'carne', 'pesce', 'verdure', 'uova', 'formaggio',
-        'patate', 'insalata', 'zuppa', 'fagioli', 'lenticchie', 'manzo', 'maiale', 'salmone', 'tonno',
-        'broccoli', 'spinaci', 'carote', 'zucchine', 'melanzane', 'pomodori', 'funghi', 'cipolla',
-        'aglio', 'basilico', 'parmigiano', 'mozzarella', 'ricotta', 'prosciutto', 'pane', 'farina'];
-      const mentionedFood = foodKeywords.filter(f => lower.includes(f));
-      const isRecipeQuery = mentionedFood.length > 0 && wordCount <= 8 &&
-        !lower.includes('compra') && !lower.includes('lista della spesa') &&
-        !lower.includes('aggiungi alla spesa');
-
-      if (isRecipeQuery) {
-        const kb = buildKnowledgeBase(modules, username);
-        if (kb.recipes && kb.recipes.count > 0) {
-          const matching = kb.recipes.all.filter(r =>
-            mentionedFood.some(f =>
-              r.title.toLowerCase().includes(f) ||
-              (r.ingredients || []).some((i: any) =>
-                (typeof i === 'string' ? i : (i.name || '')).toLowerCase().includes(f)
-              )
-            )
-          );
-          if (matching.length > 0) {
-            const recipeList = matching.slice(0, 3).map(r => `• **${r.title}**${r.category ? ` (${r.category})` : ''}`).join('\n');
-            return {
-              text: `Ho trovato ${matching.length > 1 ? `${matching.length} ricette` : 'questa ricetta'} con ${mentionedFood.join(', ')}:\n\n${recipeList}\n\nVuoi aprire la sezione Ricette per tutti i dettagli?`,
-              actions: [{ type: 'category', label: '🍴 Apri Ricette', category: 'recipes' }],
-              engineUsed: 'chelona-engine',
-            };
-          } else {
-            return {
-              text: `Non ho trovato ricette salvate con ${mentionedFood.join(', ')}. Nella sezione Ricette puoi aggiungere nuove ricette e io le ricorderò! 🍳`,
-              actions: [{ type: 'category', label: '🍴 Vai alle Ricette', category: 'recipes' }],
-              engineUsed: 'chelona-engine',
-            };
-          }
-        }
+      const foodEntities = extractFoodEntities(query);
+      if (foodEntities.length > 0 && !lower.includes('compra') && !lower.includes('lista della spesa') && !lower.includes('aggiungi alla spesa')) {
+        const catalog = await getOrLoadAllRecipes();
+        const matches = matchRecipesByIngredients(foodEntities, catalog);
+        const formatted = formatRecipeMatchResponse(foodEntities, matches);
         return {
-          text: `Stai cercando una ricetta con ${mentionedFood.join(', ')}? Apri la sezione Ricette per trovare ispirazione e aggiungere le tue ricette preferite! 🍴`,
-          actions: [{ type: 'category', label: '🍴 Apri Ricette', category: 'recipes' }],
+          ...formatted,
           engineUsed: 'chelona-engine',
         };
       }
     }
 
     // DOCTOR: domande su farmaci/orari in sezione medica
-    if (activeSection === 'doctor' && wordCount <= 6) {
-      const medTerms = ['farmaco', 'medicina', 'pillola', 'compressa', 'dose', 'orari', 'studio', 'appuntamento', 'visita', 'prescrizione'];
-      if (medTerms.some(t => lower.includes(t))) {
-        return {
-          text: `Tutto quello che riguarda farmaci, orari dello studio medico e le tue prescrizioni è disponibile nella sezione Medico & Salute. Puoi consultare gli orari in tempo reale e inviare richieste direttamente al tuo medico.`,
-          actions: [{ type: 'navigate', label: '🏥 Vai a Medico & Salute', route: 'doctor' }],
-          engineUsed: 'chelona-engine',
-        };
+    if (activeSection === 'doctor' && wordCount <= 8) {
+      const docQuery = extractDoctorQuery(query);
+      if (docQuery) {
+        if (docQuery.intent === 'status') {
+          const s = docQuery.doctorState;
+          const status = computeDoctorStudioStatus(s.doctor.schedule);
+          return {
+            text: `🩺 **Studio Medico del Dott. ${s.doctor.lastName || 'Curante'}**: attualmente **${status.label}**.\n\n• ${status.detail}${status.nextOpeningText ? `\n• ${status.nextOpeningText}` : ''}\n\nPuoi inviare richieste ricette o consultare tutti gli orari settimanali nella sezione.`,
+            actions: [{ type: 'doctor', label: '🏥 Vai a Medico & Salute', route: 'doctor' }],
+            engineUsed: 'chelona-engine',
+          };
+        }
       }
+      return {
+        text: `Tutto quello che riguarda farmaci, orari dello studio medico e le tue prescrizioni è disponibile nella sezione Medico & Salute. Puoi consultare gli orari in tempo reale e inviare richieste direttamente al tuo medico.`,
+        actions: [{ type: 'doctor', label: '🏥 Vai a Medico & Salute', route: 'doctor' }],
+        engineUsed: 'chelona-engine',
+      };
     }
 
     // RECESSO: domande su disdette in sezione recesso
-    if (activeSection === 'recesso' && wordCount <= 6) {
-      const recessoTerms = ['disdetta', 'recesso', 'cancellazione', 'pec', 'fornitore', 'provider', 'contratto', 'lettera'];
-      if (recessoTerms.some(t => lower.includes(t))) {
+    if (activeSection === 'recesso' && wordCount <= 8) {
+      const rec = extractRecessoQuery(query);
+      if (rec?.provider) {
         return {
-          text: `Il wizard Disdette & Recessi ti guida passo passo nella generazione di una lettera di recesso legalmente valida. Seleziona il fornitore, compila il wizard e generiamo la PEC insieme!`,
-          actions: [{ type: 'navigate', label: '📝 Avvia Wizard Recesso', route: 'recesso' }],
+          text: `📄 **Disdetta ${rec.provider.name}**:\n\n• PEC ufficiale: \`${rec.provider.pec}\`\n• Indirizzo: ${rec.provider.address}\n\nPuoi avviare il wizard per calcolare i termini (14gg ripensamento vs 30gg preavviso) e generare la lettera firmata!`,
+          actions: [{ type: 'recesso', label: `📝 Disdetta ${rec.provider.name}`, route: 'recesso' }],
           engineUsed: 'chelona-engine',
         };
       }
+      return {
+        text: `Il wizard Disdette & Recessi ti guida passo passo nella generazione di una lettera di recesso legalmente valida. Seleziona il fornitore, compila il wizard e generiamo la PEC insieme!`,
+        actions: [{ type: 'recesso', label: '📝 Avvia Wizard Recesso', route: 'recesso' }],
+        engineUsed: 'chelona-engine',
+      };
     }
   }
 
@@ -1534,6 +1551,101 @@ export async function queryChelonaAi(
   // =========================================================================
   const k = buildKnowledgeBase(modules, username);
   const customMemories = getLearnedMemories();
+
+  // =========================================================================
+  // 2b. MOTORE MATEMATICO GASTRONOMICO (Ingredienti, Ricette, Fuzzy Matching)
+  // =========================================================================
+  const foodEntities = extractFoodEntities(query);
+  const isCookingOrRecipeQuery = (
+    foodEntities.length >= 2 ||
+    (foodEntities.length >= 1 && (
+      lower.includes('ricett') || lower.includes('cucin') || lower.includes('prepar') ||
+      lower.includes('mangiar') || lower.includes('piatt') || lower.includes('pranz') ||
+      lower.includes('cena') || lower.includes('colazion') || lower.includes('merend') ||
+      lower.includes('cosa fare') || lower.includes('cosa faccio') || lower.includes('cosa posso') ||
+      lower.includes('consigli') || lower.includes('idee') || lower.includes('ho del') ||
+      lower.includes('ho dei') || lower.includes('ho un po') || lower.includes('avanzat') ||
+      lower.includes('in frigo') || lower.includes('in dispensa') || lower.includes('trova') || lower.includes('cerca')
+    ))
+  ) && !lower.includes('compra') && !lower.includes('lista della spesa') && !lower.includes('aggiungi alla spesa') && !lower.includes('metti nella spesa') && !lower.startsWith('togli');
+
+  if (isCookingOrRecipeQuery && foodEntities.length > 0) {
+    const catalog = await getOrLoadAllRecipes();
+    const matches = matchRecipesByIngredients(foodEntities, catalog);
+    const formatted = formatRecipeMatchResponse(foodEntities, matches);
+    return {
+      ...formatted,
+      engineUsed: 'chelona-engine',
+    };
+  }
+
+  // Cerca ricetta specifica per nome piatto (es: "ricetta carbonara", "come fare tiramisù", "ricetta pancake")
+  const dishMatch = query.match(/(?:cerca|trova|come fare|come si fa|come preparare|ricetta di|ricetta del|ricetta della|ricetta per|ricetta)\s+([a-zA-Zàèéìòù\s]{3,35})/i);
+  if (dishMatch && !lower.includes('cosa cucino') && !lower.includes('cosa ho') && !lower.includes('frigo') && !lower.includes('dispensa')) {
+    const catalog = await getOrLoadAllRecipes();
+    const specificDish = searchRecipeByDishTitle(query, catalog);
+    if (specificDish) {
+      const formatted = formatSingleRecipeResponse(specificDish);
+      return {
+        ...formatted,
+        engineUsed: 'chelona-engine',
+      };
+    }
+  }
+
+  // --- STUDIO MEDICO & SALUTE (Il Matematico) ---
+  const docQuery = extractDoctorQuery(query);
+  if (docQuery) {
+    const s = docQuery.doctorState;
+    if (docQuery.intent === 'status') {
+      const status = computeDoctorStudioStatus(s.doctor.schedule);
+      return {
+        text: `🩺 **Studio Medico del Dott. ${s.doctor.lastName || 'Curante'}**: attualmente **${status.label}**.\n\n• ${status.detail}${status.nextOpeningText ? `\n• ${status.nextOpeningText}` : ''}\n\nPuoi consultare gli orari completi della settimana o inviare subito una richiesta nella sezione Medico & Salute.`,
+        actions: [{ type: 'doctor', label: '🏥 Vai a Medico & Salute', route: 'doctor' }],
+        engineUsed: 'chelona-engine',
+      };
+    } else if (docQuery.intent === 'contact') {
+      const phone = s.doctor.mobile || s.doctor.landline || 'Non impostato';
+      const address = [s.doctor.address, s.doctor.city, s.doctor.cap].filter(Boolean).join(', ') || 'Non impostato';
+      return {
+        text: `📞 **Contatti Studio Medico Dott. ${s.doctor.lastName || 'Curante'}**:\n\n• Telefono: ${phone}\n• Indirizzo: ${address}\n• Email: ${s.doctor.email || 'Non impostata'}\n\nPuoi chiamare o avviare la navigazione direttamente dalla sezione Medico.`,
+        actions: [{ type: 'doctor', label: '🏥 Scheda Medico', route: 'doctor' }],
+        engineUsed: 'chelona-engine',
+      };
+    } else if (docQuery.intent === 'prescription') {
+      const med = docQuery.medicineName;
+      return {
+        text: `💊 **Richiesta Prescrizione Farmaco**${med ? ` per **${med}**` : ''}:\n\nPuoi generare ed inviare la richiesta di ricetta al Dott. ${s.doctor.lastName || 'Curante'} via email o WhatsApp in un tocco.`,
+        actions: [{ type: 'doctor', label: `💊 Richiedi ${med || 'Ricetta'}`, route: 'doctor' }],
+        engineUsed: 'chelona-engine',
+      };
+    } else {
+      return {
+        text: `🩺 Tutto quello che riguarda farmaci, orari dello studio medico e prescrizioni è gestito nel modulo **Medico & Salute**.`,
+        actions: [{ type: 'doctor', label: '🏥 Vai a Medico & Salute', route: 'doctor' }],
+        engineUsed: 'chelona-engine',
+      };
+    }
+  }
+
+  // --- DISDETTE & RECESSI (Il Matematico) ---
+  const recQuery = extractRecessoQuery(query);
+  if (recQuery) {
+    if (recQuery.provider) {
+      const p = recQuery.provider;
+      return {
+        text: `📄 **Disdetta ${p.name}** (${p.categoryLabel || p.category}):\n\n• 📮 **PEC Ufficiale**: \`${p.pec || 'Da verificare nel wizard'}\`\n• 🏢 **Sede Legale**: ${p.address || 'Disponibile nel modulo di recesso'}\n• ⚖️ **Termini di Legge**: 14 giorni per ripensamento senza penali (contratti stipulati online o via telefono), oppure 30 giorni di preavviso ordinario.\n\nVuoi avviare il wizard per generare la lettera firmata da inviare via PEC?`,
+        actions: [{ type: 'recesso', label: `📝 Disdetta ${p.name}`, route: 'recesso' }],
+        engineUsed: 'chelona-engine',
+      };
+    } else {
+      return {
+        text: `📄 Nel modulo **Disdette & Recessi** puoi trovare gli indirizzi PEC ufficiali di oltre 50 fornitori (Telefonia, Luce, Gas, Pay-TV, Palestre) e compilare guidato la lettera di recesso a norma di legge.`,
+        actions: [{ type: 'recesso', label: '📝 Avvia Wizard Recesso', route: 'recesso' }],
+        engineUsed: 'chelona-engine',
+      };
+    }
+  }
 
   // =========================================================================
   // 3. INTENT RECOGNITION DEI 17 DOMINI
@@ -2508,6 +2620,14 @@ export async function queryChelonaAi(
     const searchMatch = query.match(/(?:cerca|trova|come fare|ricetta\s+di|ricetta\s+del|ricetta)\s+([a-zA-Zàèéìòù\s]{3,30})/i);
     if (searchMatch && !lower.includes('cosa cucino') && !lower.includes('cosa ho')) {
       const q = searchMatch[1].trim();
+      const catalog = await getOrLoadAllRecipes();
+      const specificDish = searchRecipeByDishTitle(q, catalog);
+      if (specificDish) {
+        return {
+          ...formatSingleRecipeResponse(specificDish),
+          engineUsed: 'chelona-engine',
+        };
+      }
       return {
         text: `Cerco la ricetta per **"${q}"** nel tuo ricettario e nel database gastronomico! 🍲`,
         autoAction: { label: `Cerca ${q}`, type: 'recipes', search: q },
@@ -2519,8 +2639,26 @@ export async function queryChelonaAi(
     if (lower.includes('frigo') || lower.includes('dispensa') || lower.includes('cosa ho') || lower.includes('ingredienti')) {
       const fridge = k.recipes.fridgeIngredients;
       const pantry = k.recipes.pantryIngredients;
-      let out = `🧑‍🍳 **Ingredienti disponibili registrati:**\n\n`;
+      const combined = [...fridge, ...pantry];
 
+      if (combined.length > 0) {
+        const foodEntities = extractFoodEntities(combined.join(', '));
+        if (foodEntities.length > 0) {
+          const catalog = await getOrLoadAllRecipes();
+          const matches = matchRecipesByIngredients(foodEntities, catalog);
+          if (matches.length > 0) {
+            const formatted = formatRecipeMatchResponse(foodEntities, matches);
+            return {
+              text: `❄️ **Con ciò che hai registrato nel Frigo e nella Dispensa (${combined.join(', ')}):**\n\n${formatted.text}`,
+              actions: formatted.actions,
+              autoAction: formatted.autoAction,
+              engineUsed: 'chelona-engine',
+            };
+          }
+        }
+      }
+
+      let out = `🧑‍🍳 **Ingredienti disponibili registrati:**\n\n`;
       if (fridge.length > 0) out += `❄️ **Nel Frigo**: ${fridge.join(', ')}\n`;
       if (pantry.length > 0) out += `🏺 **In Dispensa**: ${pantry.join(', ')}\n`;
 

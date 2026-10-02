@@ -89,6 +89,9 @@ const STORAGE_KEY = 'chelona_doctor_state_v1';
 
 export function loadDoctorState(): DoctorState {
   try {
+    if (typeof window === 'undefined' || typeof localStorage === 'undefined' || !localStorage?.getItem) {
+      return DEFAULT_DOCTOR_STATE;
+    }
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
@@ -113,7 +116,9 @@ export function loadDoctorState(): DoctorState {
 
 export function saveDoctorState(state: DoctorState): void {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    if (typeof window !== 'undefined' && typeof localStorage !== 'undefined' && localStorage?.setItem) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    }
   } catch (e) {
     console.error('Error saving doctor state:', e);
   }

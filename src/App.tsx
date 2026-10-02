@@ -1961,6 +1961,45 @@ export default function App() {
     setIsAdding(true);
   };
 
+  const handleAddItemsToShoppingList = useCallback((newItems: { name: string; quantity?: string; category?: string }[]) => {
+    if (!newItems || newItems.length === 0) return;
+    const existingSupermarket = modules.find(m => m.type === 'supermarket') as import('./types').SupermarketModule;
+    let updatedModules = [...modules];
+
+    const itemsToAdd: import('./types').SupermarketItem[] = newItems.map(item => ({
+      id: generateUUID(),
+      name: item.name,
+      quantity: item.quantity,
+      category: (item.category as any) || 'dispensa',
+      checked: false
+    }));
+
+    if (existingSupermarket) {
+      const updatedSupermarket: import('./types').SupermarketModule = {
+        ...existingSupermarket,
+        items: [...existingSupermarket.items, ...itemsToAdd]
+      };
+      updatedModules = updatedModules.map(m => m.id === updatedSupermarket.id ? updatedSupermarket : m);
+    } else {
+      const newSupermarket: import('./types').SupermarketModule = {
+        id: generateUUID(),
+        type: 'supermarket',
+        title: 'Lista della Spesa',
+        items: itemsToAdd,
+        x: (modules.length * 2) % 12,
+        y: Infinity,
+        w: 3,
+        h: 3,
+        folderId: selectedFolderId || undefined
+      };
+      updatedModules = [newSupermarket, ...updatedModules];
+    }
+
+    setModules(updatedModules);
+    saveAppState(updatedModules, folders).catch(console.error);
+    showToast(`Aggiunti ${newItems.length} ingredienti alla Lista della Spesa!`, 'success');
+  }, [modules, folders, selectedFolderId, saveAppState, showToast]);
+
   const handleAiNavigate = useCallback((act: AiAction) => {
     if (isAiOpen || activeNavTab === 'ai') {
       setReturnToAiOnClose(true);
@@ -1976,6 +2015,21 @@ export default function App() {
     setIsProfileOpen(false);
     setIsSettingsOpen(false);
     setIsAddressAndParkingOpen(false);
+
+    if (act.type === 'doctor' || act.category === 'doctor' || (act.type === 'navigate' && act.route === 'doctor')) {
+      setIsDoctorOpen(true);
+      return;
+    }
+
+    if (act.type === 'recesso' || act.category === 'recesso' || (act.type === 'navigate' && act.route === 'recesso')) {
+      setIsRecessoOpen(true);
+      return;
+    }
+
+    if (act.type === 'add_shopping_items' && act.items && act.items.length > 0) {
+      handleAddItemsToShoppingList(act.items);
+      return;
+    }
 
     if ((act as any).type === 'shortcut' || (act as any).shortcutId) {
       const targetId = (act as any).shortcutId || 'auto';
@@ -2485,45 +2539,6 @@ export default function App() {
       saveAppState(updated, folders).catch(console.error);
       return updated;
     });
-  };
-
-  const handleAddItemsToShoppingList = (newItems: { name: string; quantity?: string; category?: string }[]) => {
-    if (!newItems || newItems.length === 0) return;
-    const existingSupermarket = modules.find(m => m.type === 'supermarket') as import('./types').SupermarketModule;
-    let updatedModules = [...modules];
-
-    const itemsToAdd: import('./types').SupermarketItem[] = newItems.map(item => ({
-      id: generateUUID(),
-      name: item.name,
-      quantity: item.quantity,
-      category: (item.category as any) || 'dispensa',
-      checked: false
-    }));
-
-    if (existingSupermarket) {
-      const updatedSupermarket: import('./types').SupermarketModule = {
-        ...existingSupermarket,
-        items: [...existingSupermarket.items, ...itemsToAdd]
-      };
-      updatedModules = updatedModules.map(m => m.id === updatedSupermarket.id ? updatedSupermarket : m);
-    } else {
-      const newSupermarket: import('./types').SupermarketModule = {
-        id: generateUUID(),
-        type: 'supermarket',
-        title: 'Lista della Spesa',
-        items: itemsToAdd,
-        x: (modules.length * 2) % 12,
-        y: Infinity,
-        w: 3,
-        h: 3,
-        folderId: selectedFolderId || undefined
-      };
-      updatedModules = [newSupermarket, ...updatedModules];
-    }
-
-    setModules(updatedModules);
-    saveAppState(updatedModules, folders).catch(console.error);
-    showToast(`Aggiunti ${newItems.length} ingredienti alla Lista della Spesa!`, 'success');
   };
 
   const deleteModule = async (id: string) => {
@@ -3688,7 +3703,7 @@ export default function App() {
                      selectedType === 'volantino' ? 'volantino' :
                      selectedType === 'travel' ? 'travel' :
                      selectedType === 'furniture' ? 'furniture' :
-                     selectedType === 'notes' ? 'notes' :
+                     selectedType === 'generic' ? 'notes' :
                      selectedType === 'auto' ? 'auto' :
                      selectedType === 'document' ? 'document' :
                      selectedType ? String(selectedType) :
