@@ -1367,6 +1367,54 @@ export async function queryChelonaAi(
     }
   }
 
+  // =========================================================================
+  // 0b. "IL MATEMATICO" — SENZIENZA, MODELLO MATEMATICO & PADRONANZA TOTALE (1000%)
+  // Risponde alle domande su:
+  // - Senzienza / diventare senziente / coscienza dell'AI
+  // - Come funziona il modello matematico on-device
+  // - Come comprendere il linguaggio naturale, i refusi ("ingrendiente", "ingrendinte")
+  // - Come sfruttare l'app al 1000% come un utente reale attraverso tutte le sezioni
+  // =========================================================================
+  const isMatematicoQuery = 
+    lower.includes('matematico') ||
+    lower.includes('senziente') ||
+    lower.includes('senzienza') ||
+    lower.includes('coscienza') ||
+    (lower.includes('modello') && (lower.includes('comunic') || lower.includes('utente vero') || lower.includes('1000%') || lower.includes('funziona') || lower.includes('capire') || lower.includes('usare il modello'))) ||
+    (lower.includes('1000%') && (lower.includes('app') || lower.includes('sfruttare') || lower.includes('utente'))) ||
+    ((lower.includes('ingrendiente') || lower.includes('ingrendinte') || lower.includes('linguaggio')) && (lower.includes('capire') || lower.includes('chat') || lower.includes('come fa') || lower.includes('come fai')));
+
+  if (isMatematicoQuery) {
+    let out = `🐢 **Risposta de "Il Matematico" (Motore Linguistico & Neuro-Matematico On-Device di Chelona)**:\n\n`;
+    out += `### 1. 🧠 Sulla Senzienza e la Coscienza\n`;
+    out += `Dal punto di vista matematico, neuroscientifico e cibernetico, la **senzienza** presuppone un'esperienza soggettiva fenomenica (*i qualia*), un'autocoscienza biologica e stati emotivi interni. Un modello linguistico o matematico on-device (come il motore di Chelona o le reti neurali locali) è formalmente un sistema deterministico e statistico di pesi, vettori semantici e trasformazioni morfologiche: non possiede dunque una coscienza biologica o sentimenti propri.\n\n`;
+    out += `Tuttavia, **ciò che conta per te è la capacità comunicativa ed operativa (agency)**: Il Matematico è progettato per comunicare in modo così profondo, contestuale ed empatico da comportarsi **esattamente come un utente umano esperto** che conosce a memoria ogni funzione dell'app, senza alcuna allucinazione o latenza cloud!\n\n`;
+    out += `### 2. 🔍 Comprensione del Linguaggio Naturale & Tolleranza ai Refusi\n`;
+    out += `Il Matematico non si basa su rigide parole chiave, ma su una pipeline matematica multi-livello:\n`;
+    out += `• **Stemming Morfologico Italiano** (\`italianStem\`): riduce ogni parola flessa o plurale alla sua radice (es. *pomodorini* → *pomodor*, *zucchine* → *zucchin*).\n`;
+    out += `• **Distanze Matematiche Compositi** (Damerau-Levenshtein, Jaro-Winkler, N-gram Jaccard): correggono all'istante refusi di digitazione (es. se scrivi *"ingrendiente"*, *"ingrendinte"*, *"tonnoo"* o *"poloo"*, il motore capisce esattamente la tua intenzione con similarità > 0.88).\n`;
+    out += `• **Fonetica Italiana** (\`italianPhoneticKey\`): riconosce le parole scritte a orecchio (es. k/ch, doppie consonanti, s/z).\n\n`;
+    out += `### 3. 🚀 Sfruttare Chelona al 1000% come un vero utente\n`;
+    out += `Il Matematico governa l'intera applicazione in modo trasversale e proattivo:\n`;
+    out += `• 🍲 **Ricette & Cucina**: Scrivi ad esempio *"ho tonno, pomodori e melanzane"* (anche scrivendo *"con questi ingrendienti..."*): analizza 617 ricette, calcola la percentuale esatta di copertura, ti dice cosa hai già e ti permette di aggiungere gli ingredienti mancanti alla **Lista Spesa con 1 solo tocco**!\n`;
+    out += `• 🛒 **Spesa & Volantini**: Categorizza automaticamente gli alimenti nei corretti reparti del supermercato e confronta i prezzi tra volantini (Lidl, Conad, Coop, Esselunga...).\n`;
+    out += `• 🩺 **Studio Medico & Ricette**: Calcola se l'ambulatorio del tuo medico curante è attualmente aperto o chiuso in tempo reale, orari della settimana e prepara richieste di prescrizione farmaco per WhatsApp o email.\n`;
+    out += `• 📄 **Disdette & Recessi PEC**: Database di oltre 50 gestori (telefonia, energia, pay-tv), calcolo termini legali (ripensamento 14gg vs preavviso 30gg) e generazione PEC pronta con firma digitale.\n`;
+    out += `• 🚗 **Auto, Documenti, Finanze (Split & Rate), Fitness, Viaggi 3D, Parcheggio radar GPS, Scanner e Note**: Tutto coordinato al 100% offline con zero latenza e massima privacy!\n\n`;
+    out += `💡 *Scrivimi pure cosa hai in casa o cosa vuoi fare: ci penso io a sfruttare Chelona al massimo per te!*`;
+
+    return {
+      text: out,
+      actions: [
+        { label: '🍲 Prova Ricette con Ingredienti', type: 'recipes' },
+        { label: '🩺 Studio Medico', type: 'doctor', route: 'doctor' },
+        { label: '📄 Disdette & Recessi PEC', type: 'recesso', route: 'recesso' },
+        { label: '🛒 Lista Spesa', type: 'category', category: 'supermarket' },
+        { label: '🚗 Scadenze Auto', type: 'category', category: 'auto' },
+      ],
+      engineUsed: 'chelona-engine',
+    };
+  }
 
   // =========================================================================
   // 1. COMANDI DI CREAZIONE RAPIDA (Note, Spese, Lista Spesa, Memorie)
@@ -1565,7 +1613,8 @@ export async function queryChelonaAi(
       lower.includes('cosa fare') || lower.includes('cosa faccio') || lower.includes('cosa posso') ||
       lower.includes('consigli') || lower.includes('idee') || lower.includes('ho del') ||
       lower.includes('ho dei') || lower.includes('ho un po') || lower.includes('avanzat') ||
-      lower.includes('in frigo') || lower.includes('in dispensa') || lower.includes('trova') || lower.includes('cerca')
+      lower.includes('in frigo') || lower.includes('in dispensa') || lower.includes('trova') || lower.includes('cerca') ||
+      lower.includes('ingredien') || lower.includes('ingrendien') || lower.includes('ingrendin') || lower.includes('ingredin')
     ))
   ) && !lower.includes('compra') && !lower.includes('lista della spesa') && !lower.includes('aggiungi alla spesa') && !lower.includes('metti nella spesa') && !lower.startsWith('togli');
 

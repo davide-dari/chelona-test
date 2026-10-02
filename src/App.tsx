@@ -2001,6 +2001,12 @@ export default function App() {
   }, [modules, folders, selectedFolderId, saveAppState, showToast]);
 
   const handleAiNavigate = useCallback((act: AiAction) => {
+    // Se l'azione è solo l'aggiunta di ingredienti alla spesa, esegui e rimani in chat
+    if (act.type === 'add_shopping_items' && act.items && act.items.length > 0) {
+      handleAddItemsToShoppingList(act.items);
+      return;
+    }
+
     if (isAiOpen || activeNavTab === 'ai') {
       setReturnToAiOnClose(true);
     }
@@ -2023,11 +2029,6 @@ export default function App() {
 
     if (act.type === 'recesso' || act.category === 'recesso' || (act.type === 'navigate' && act.route === 'recesso')) {
       setIsRecessoOpen(true);
-      return;
-    }
-
-    if (act.type === 'add_shopping_items' && act.items && act.items.length > 0) {
-      handleAddItemsToShoppingList(act.items);
       return;
     }
 

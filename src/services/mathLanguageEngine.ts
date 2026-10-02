@@ -13,11 +13,11 @@ import type { SupermarketCategory } from '../types';
  */
 export function detectSupermarketCategory(name: string): SupermarketCategory {
   const n = name.toLowerCase();
-  if (/mela|mele|banana|banane|arancia|arance|limon|frutt|verdur|pomodor|insalat|carot|zucch|cipoll|patat|aglio|basilic|spinac|pesc[ae]|fragol/i.test(n)) return 'frutta-verdura';
-  if (/latt|formaggi|yogurt|burr|mozzarell|parmigian|grana|uov|uova|ricott|panna|stracchin|gorgonzol|mascarpon/i.test(n)) return 'latticini-uova';
-  if (/carn|pesc|poll|manz|maial|tonn|salmon|merluzz|prosciutt|salame|affettat|bresaol|tacchin|salsicci|wurstel|orata|spigol/i.test(n)) return 'carne-pesce';
-  if (/pan[ei]|focacci|cornett|biscott|croissant|fett[ae]\s+biscottat|tort[ae]|brioche|dolc/i.test(n)) return 'pane-pasticceria';
-  if (/past|ris|farin|oli|aceto|sal[ei]|zuccher|caff|passat|pelat|legum|ceci|fagiol|lenticchi|tonno|crackers|cereali|miele|marmellat|cioccolat/i.test(n)) return 'dispensa';
+  if (/mela|mele|banana|banane|arancia|arance|limon|frutt|verdur|pomodor|insalat|carot|zucch|cipoll|patat|aglio|basilic|spinac|pesc[ae]|fragol|melanzan|peperon|fung|broccol|cavol|zucc|asparag|carciof|sedan|porr|finocch|cetriol|rucol|radicchi|pisell|fagiolin|albicocc|cilieg|kiwi|ananas|uva|mirtill|lampo|more|avocado/i.test(n)) return 'frutta-verdura';
+  if (/latt|formaggi|yogurt|burr|mozzarell|parmigian|grana|uov|uova|ricott|panna|stracchin|gorgonzol|mascarpon|pecorin|provol|scamorz|fontin|caciocavall|crescenz|brie|feta/i.test(n)) return 'latticini-uova';
+  if (/carn|pesc|poll|manz|maial|tonn|salmon|merluzz|prosciutt|salame|affettat|bresaol|tacchin|salsicci|wurstel|orata|spigol|gamber|calamar|seppi|polp|cozz|vongol|acciug|alic|vitell|agnell|pancett|guancial|mortadell|speck|bistecc|filetto|tranci/i.test(n)) return 'carne-pesce';
+  if (/pan[ei]|focacci|cornett|biscott|croissant|fett[ae]\s+biscottat|tort[ae]|brioche|dolc|lievit|pangrattat|crostin|piadin/i.test(n)) return 'pane-pasticceria';
+  if (/past|ris|farin|oli|aceto|sal[ei]|zuccher|caff|passat|pelat|legum|ceci|fagiol|lenticchi|tonno|crackers|cereali|miele|marmellat|cioccolat|caca|spezie|origan|rosmarin|timo|noce|mandorl|nocciol|pinol|pistacch|arachid|gnocch|mais|orzo|farro|aven|couscous/i.test(n)) return 'dispensa';
   if (/acqu|vin|birr|succ|coc[ae]|aranciat|tè|the|bevand|spumant|champagne/i.test(n)) return 'bevande';
   if (/detersiv|sgrassator|candeggin|spugn|scottex|carta\s+igienic|lavatric|lavastovigli|sacchett|panni|alcool|ammoniac/i.test(n)) return 'pulizia';
   if (/shampoo|bagnoschium|dentifrici|sapon|deodorant|balsam|crema|rasoi|schiuma\s+da\s+barba|fazzolett/i.test(n)) return 'igiene';
@@ -246,6 +246,38 @@ const IRREGULAR_STEMS: Record<string, string> = {
   salmoni: 'salmon',
   formaggio: 'formagg',
   formaggi: 'formagg',
+  peperone: 'peperon',
+  peperoni: 'peperon',
+  carciofo: 'carciof',
+  carciofi: 'carciof',
+  broccolo: 'broccol',
+  broccoli: 'broccol',
+  fagiolo: 'fagiol',
+  fagioli: 'fagiol',
+  cece: 'cec',
+  ceci: 'cec',
+  pisello: 'pisell',
+  piselli: 'pisell',
+  gambero: 'gamber',
+  gamberi: 'gamber',
+  gamberetto: 'gamber',
+  gamberetti: 'gamber',
+  salsiccia: 'salsicc',
+  salsicce: 'salsicc',
+  calamaro: 'calamar',
+  calamari: 'calamar',
+  seppia: 'seppi',
+  seppie: 'seppi',
+  cozza: 'cozz',
+  cozze: 'cozz',
+  vongola: 'vongol',
+  vongole: 'vongol',
+  limone: 'limon',
+  limoni: 'limon',
+  fragola: 'fragol',
+  fragole: 'fragol',
+  pesca: 'pesc',
+  pesche: 'pesc',
 };
 
 /**
@@ -361,31 +393,70 @@ export function tokenFuzzySimilarity(t1: string, t2: string): number {
 // ============================================================================
 
 export const FOOD_SYNONYMS: Record<string, string[]> = {
-  pollo: ['petto di pollo', 'coscia di pollo', 'fusi di pollo', 'straccetti di pollo', 'pollo a fette'],
-  tonno: ['tonno in scatola', 'tonno sott olio', 'trancio di tonno', 'filetto di tonno'],
-  salmone: ['salmone fresco', 'filetto di salmone', 'salmone affumicato'],
-  pasta: ['spaghetti', 'penne', 'rigatoni', 'fusilli', 'farfalle', 'tagliatelle', 'pasta integrale', 'tortiglioni'],
-  riso: ['riso basmati', 'riso carnaroli', 'riso arborio', 'riso venere', 'riso integrale'],
+  pollo: ['petto di pollo', 'coscia di pollo', 'cosce di pollo', 'fusi di pollo', 'straccetti di pollo', 'pollo a fette', 'alette di pollo', 'bocconcini di pollo'],
+  tacchino: ['petto di tacchino', 'fesa di tacchino', 'straccetti di tacchino', 'fesa'],
+  tonno: ['tonno in scatola', 'tonno sott olio', 'trancio di tonno', 'filetto di tonno', 'tonno fresco'],
+  salmone: ['salmone fresco', 'filetto di salmone', 'salmone affumicato', 'trancio di salmone'],
+  merluzzo: ['filetto di merluzzo', 'baccala', 'baccalà', 'nasello'],
+  orata: ['filetto di orata'],
+  spigola: ['branzino', 'filetto di branzino', 'filetto di spigola'],
+  pesce: ['pesce spada', 'pesce fresco', 'pesce azzurro', 'pesce persico'],
+  gamberi: ['gambero', 'gamberetti', 'mazzancolle', 'scampi', 'gamberoni'],
+  calamari: ['calamaro', 'totani', 'seppie', 'seppia', 'anelli di calamaro'],
+  polpo: ['polipo', 'tentacoli di polpo'],
+  cozze: ['cozza', 'mitili'],
+  vongole: ['vongola', 'telline'],
+  pasta: ['spaghetti', 'penne', 'rigatoni', 'fusilli', 'farfalle', 'tagliatelle', 'pasta integrale', 'tortiglioni', 'paccheri', 'orecchiette', 'linguine', 'bucatini'],
+  riso: ['riso basmati', 'riso carnaroli', 'riso arborio', 'riso venere', 'riso integrale', 'risotto'],
+  gnocchi: ['gnocchi di patate', 'chicche di patate'],
+  couscous: ['cuscus'],
   uova: ['uovo', 'tuorlo', 'tuorli', 'albume', 'albumi'],
-  carne: ['macinato', 'carne macinata', 'tritato', 'manzo', 'maiale', 'vitello', 'bistecca', 'hamburger'],
-  pomodori: ['pomodoro', 'pomodorini', 'pomodoro ciliegino', 'datterini', 'pelati', 'passata di pomodoro', 'polpa di pomodoro'],
-  parmigiano: ['grana', 'grana padano', 'parmigiano reggiano', 'parmigiano grattugiato', 'pecorino'],
-  formaggio: ['mozzarella', 'ricotta', 'stracchino', 'scamorza', 'gorgonzola', 'provola', 'fontina', 'caciocavallo'],
-  pane: ['pane fresco', 'pane raffermo', 'pancarre', 'pan bauletto', 'crostini', 'pangrattato', 'pane grattugiato'],
-  zucchine: ['zucchina', 'zucchine tagliate', 'zucchine rondelle'],
+  carne: ['macinato', 'carne macinata', 'tritato', 'manzo', 'maiale', 'vitello', 'bistecca', 'hamburger', 'fettina', 'fettine', 'spezzatino', 'tagliata'],
+  maiale: ['arista', 'lonza', 'costine', 'braciola', 'pancetta'],
+  salsiccia: ['salsicce', 'salamella', 'luganega'],
+  prosciutto: ['prosciutto cotto', 'prosciutto crudo', 'speck', 'bresaola', 'mortadella', 'salame', 'guanciale', 'affettati'],
+  pomodori: ['pomodoro', 'pomodorini', 'pomodoro ciliegino', 'datterini', 'pelati', 'passata di pomodoro', 'polpa di pomodoro', 'sugo'],
+  parmigiano: ['grana', 'grana padano', 'parmigiano reggiano', 'parmigiano grattugiato', 'pecorino', 'formaggio grattugiato'],
+  formaggio: ['mozzarella', 'ricotta', 'stracchino', 'scamorza', 'gorgonzola', 'provola', 'fontina', 'caciocavallo', 'feta', 'burrata', 'mascarpone', 'crescenza', 'emmental'],
+  pane: ['pane fresco', 'pane raffermo', 'pancarre', 'pan bauletto', 'crostini', 'pangrattato', 'pane grattugiato', 'bruschetta', 'focaccia'],
+  zucchine: ['zucchina', 'zucchine tagliate', 'zucchine rondelle', 'fiori di zucca'],
   carote: ['carota', 'carote a julienne'],
-  farina: ['farina 00', 'farina 0', 'farina integrale', 'farina manitoba', 'farina d avena'],
+  melanzane: ['melanzana', 'melanzane a fette', 'melanzane grigliate'],
+  peperoni: ['peperone', 'peperoni rossi', 'peperoni gialli', 'friggitelli'],
+  patate: ['patata', 'patate dolci', 'patate lesse', 'patatine'],
+  cipolle: ['cipolla', 'cipolla rossa', 'cipolla bianca', 'cipolla bionda', 'scalogno', 'cipollotto', 'porri', 'porro'],
+  funghi: ['fungo', 'champignon', 'porcini', 'chiodini', 'funghi secchi', 'tartufo'],
+  spinaci: ['spinacio', 'bietole', 'erbette', 'spinaci surgelati'],
+  zucca: ['zucca gialla', 'zucca butternut'],
+  carciofi: ['carciofo', 'cuori di carciofo'],
+  asparagi: ['asparago'],
+  piselli: ['pisello', 'pisellini', 'piselli surgelati'],
+  fagiolini: ['tegoline', 'cornetti'],
+  broccoli: ['broccolo', 'cavolfiore', 'cime di rapa', 'cavolo'],
+  sedano: ['costa di sedano', 'sedano rapa'],
+  finocchi: ['finocchio'],
+  insalata: ['lattuga', 'rucola', 'radicchio', 'valeriana', 'iceberg'],
+  farina: ['farina 00', 'farina 0', 'farina integrale', 'farina manitoba', 'farina d avena', 'farina di riso', 'fecola di patate', 'amido di mais', 'maizena'],
   latte: ['latte scremato', 'latte parzialmente scremato', 'latte intero', 'latte di mandorla', 'latte di soia', 'latte d avena'],
+  panna: ['panna fresca', 'panna da cucina', 'panna liquida', 'panna montata'],
   olio: ['olio extravergine', 'olio di oliva', 'olio evo', 'olio di semi'],
-  patate: ['patata', 'patate dolci', 'patate lesse'],
-  ceci: ['ceci cotti', 'ceci in scatola', 'farina di ceci'],
-  lenticchie: ['lenticchie secche', 'lenticchie in barattolo'],
-  fagioli: ['fagioli borlotti', 'fagioli cannellini'],
-  avocado: ['avocado maturo'],
   burro: ['burro chiarificato', 'burro di arachidi'],
-  miele: ['miele millefiori', 'miele d acacia'],
-  cioccolato: ['cioccolato fondente', 'cacao', 'cacao amaro'],
+  ceci: ['ceci cotti', 'ceci in scatola', 'ceci in barattolo', 'farina di ceci'],
+  lenticchie: ['lenticchie secche', 'lenticchie in barattolo', 'lenticchie in scatola'],
+  fagioli: ['fagioli borlotti', 'fagioli cannellini', 'fagioli neri', 'fagioli rossi'],
+  mele: ['mela', 'mela renetta', 'mele golden'],
+  pere: ['pera', 'pere abate'],
+  banane: ['banana'],
+  arance: ['arancia', 'mandarini', 'clementine', 'spremuta'],
+  limone: ['limoni', 'succo di limone', 'scorza di limone'],
+  fragole: ['fragola'],
+  pesche: ['pesca', 'albicocche', 'albicocca'],
   mirtilli: ['frutti di bosco', 'more', 'lamponi'],
+  avocado: ['avocado maturo'],
+  noci: ['noce', 'mandorle', 'mandorla', 'nocciole', 'nocciola', 'pinoli', 'pistacchi'],
+  miele: ['miele millefiori', 'miele d acacia'],
+  cioccolato: ['cioccolato fondente', 'cioccolato al latte', 'cacao', 'cacao amaro', 'gocce di cioccolato'],
+  lievito: ['lievito di birra', 'lievito per dolci', 'lievito istantaneo'],
 };
 
 // Cibi base sempre presenti in dispensa (non penalizzano severamente se mancano)
@@ -411,11 +482,13 @@ const CONVERSATIONAL_FOOD_STOPWORDS = new Set([
   'cosa', 'posso', 'preparare', 'cucinare', 'fare', 'trovare', 'mi', 'consigli', 'consigliami',
   'stasera', 'oggi', 'domani', 'pranzo', 'cena', 'colazione', 'merenda',
   'ricetta', 'ricette', 'col', 'colla', 'coi', 'e', 'ed', 'anche',
-  'ingrediente', 'ingredienti', 'ingrendiente', 'ingrendienti', 'ingr', 'ingred', 'ingrend',
+  'ingrediente', 'ingredienti', 'ingrendiente', 'ingrendienti', 'ingrendinte', 'ingrendinti', 'ingredinte', 'ingredinti', 'ingr', 'ingred', 'ingrend',
   'cibo', 'cibi', 'alimento', 'alimenti', 'roba',
   'vorrei', 'dimmi', 'trovami', 'suggerisci', 'idee', 'piatto', 'piatti',
   'due', 'tre', 'quattro', 'cinque', 'chilo', 'chili', 'kg', 'etto', 'etti', 'g', 'grammi',
   'barattolo', 'scatoletta', 'bustina', 'scatola', 'confezione', 'pacchetto', 'fetta', 'fette',
+  'questo', 'questa', 'questi', 'queste', 'quello', 'quella', 'quelli', 'quelle',
+  'alcun', 'alcuno', 'alcuna', 'alcuni', 'alcune', 'tutto', 'tutta', 'tutti', 'tutte',
   'trova', 'cerca', 'cercami', 'mostra', 'mostrami', 'apri', 'vai'
 ]);
 
@@ -437,6 +510,7 @@ export interface ExtractedFoodEntity {
 export function resolveCanonicalFood(token: string): string | null {
   const norm = normalizeItalianText(token);
   if (!norm || norm.length < 3) return null;
+  if (/^ingr[e|en][d|nd]in?t[ei]?$/i.test(norm) || CONVERSATIONAL_FOOD_STOPWORDS.has(norm)) return null;
   const stem = italianStem(norm);
 
   // 1. Corrispondenza diretta con chiave canonica o radice
@@ -454,7 +528,7 @@ export function resolveCanonicalFood(token: string): string | null {
   // 3. Controlla dispense e staples
   if (PANTRY_STAPLES.has(norm) || PANTRY_STAPLES.has(stem)) return norm;
 
-  // 4. Fuzzy similarity ad alta soglia (>= 0.86) per correzione refusi (es: 'tonoo' -> 'tonno', 'poloo' -> 'pollo')
+  // 4. Fuzzy similarity ad alta soglia (>= 0.85) per correzione refusi (es: 'tonoo' -> 'tonno', 'poloo' -> 'pollo')
   let bestKey: string | null = null;
   let bestSim = 0.85;
 
@@ -473,7 +547,15 @@ export function resolveCanonicalFood(token: string): string | null {
     }
   }
 
-  return bestKey;
+  if (bestKey) return bestKey;
+
+  // 5. Se la parola appartiene a una categoria alimentare del supermercato
+  const cat = detectSupermarketCategory(norm);
+  if (cat === 'frutta-verdura' || cat === 'carne-pesce' || cat === 'latticini-uova' || cat === 'pane-pasticceria' || cat === 'dispensa') {
+    return norm;
+  }
+
+  return null;
 }
 
 /**
@@ -493,9 +575,11 @@ export function extractFoodEntities(sentence: string): ExtractedFoodEntity[] {
   const clauses = clean.split(/(?:,|\be\b|\bed\b|\bcon\b|\bpiu\b|\bpiù\b|\bo\b|\binoltre\b)/g);
   const candidates: string[] = [];
 
+  const isStopWord = (w: string) => CONVERSATIONAL_FOOD_STOPWORDS.has(w) || /^ingr[e|en][d|nd]in?t[ei]?$/i.test(w);
+
   for (const clause of clauses) {
     const words = clause.trim().split(/\s+/).filter(Boolean);
-    const filtered = words.filter(w => !CONVERSATIONAL_FOOD_STOPWORDS.has(w) && w.length >= 2);
+    const filtered = words.filter(w => !isStopWord(w) && w.length >= 2);
     
     if (filtered.length === 0) continue;
 
@@ -504,7 +588,7 @@ export function extractFoodEntities(sentence: string): ExtractedFoodEntity[] {
     // Controlla se la frase intera corrisponde a un cibo noto o sinonimo
     let matchedCompound = false;
     for (const [canonical, syns] of Object.entries(FOOD_SYNONYMS)) {
-      if (joined === canonical || syns.some(s => joined.includes(s) || s.includes(joined))) {
+      if (joined === canonical || syns.some(s => joined === s)) {
         candidates.push(canonical);
         matchedCompound = true;
         break;
@@ -514,7 +598,7 @@ export function extractFoodEntities(sentence: string): ExtractedFoodEntity[] {
     if (!matchedCompound) {
       // Altrimenti aggiungi le singole parole significative
       for (const w of filtered) {
-        if (!CONVERSATIONAL_FOOD_STOPWORDS.has(w)) {
+        if (!isStopWord(w)) {
           candidates.push(w);
         }
       }
@@ -862,7 +946,6 @@ export function formatRecipeMatchResponse(
       actions: [
         { label: '🍴 Apri Ricettario', type: 'recipes', search: userEntities[0]?.canonical || '' },
       ],
-      autoAction: { label: 'Apri Ricettario', type: 'recipes', search: userEntities[0]?.canonical || '' },
     };
   }
 
@@ -930,7 +1013,6 @@ export function formatRecipeMatchResponse(
   return {
     text: out,
     actions,
-    autoAction: { label: `Apri ${best.recipe.title}`, type: 'recipes', search: best.recipe.title },
   };
 }
 
@@ -1043,7 +1125,6 @@ export function formatSingleRecipeResponse(recipe: RecipeCatalogItem): { text: s
   return {
     text: out,
     actions,
-    autoAction: { label: `Apri ${recipe.title}`, type: 'recipes', search: recipe.title },
   };
 }
 

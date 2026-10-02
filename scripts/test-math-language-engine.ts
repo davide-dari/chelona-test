@@ -68,6 +68,22 @@ async function main() {
   // Ensure "ingrendienti" is NOT an entity
   if (entitiesTypo.some(e => e.raw.includes('ingrend'))) throw new Error('Typo ingrendienti was mistakenly treated as food!');
 
+  // Test typo "ingrendinte: melanzane e pomodori"
+  const queryIngrendinte = "ho questi ingrendinte: melanzane e pomodori";
+  const entitiesIngrendinte = extractFoodEntities(queryIngrendinte);
+  console.log('  Entities for ingrendinte typo:', queryIngrendinte);
+  console.log('  Found:', entitiesIngrendinte.map(e => e.canonical));
+  if (!entitiesIngrendinte.some(e => e.canonical === 'melanzane')) throw new Error('Missing melanzane in ingrendinte test');
+  if (!entitiesIngrendinte.some(e => e.canonical === 'pomodori')) throw new Error('Missing pomodori in ingrendinte test');
+
+  // Test vegetables, meats, seafood
+  const querySeafood = "ho funghi e salsiccia";
+  const entitiesSeafood = extractFoodEntities(querySeafood);
+  if (!entitiesSeafood.some(e => e.canonical === 'funghi') || !entitiesSeafood.some(e => e.canonical === 'salsiccia')) {
+    throw new Error(`Failed to extract funghi and salsiccia: ${JSON.stringify(entitiesSeafood)}`);
+  }
+  console.log('  Extracted funghi e salsiccia:', entitiesSeafood.map(e => e.canonical));
+
   // 4. Recipe matching against 617 database
   console.log('\n4. Test Recipe Matching:');
   const catalog = await getOrLoadAllRecipes();
@@ -83,6 +99,9 @@ async function main() {
   const formatted = formatRecipeMatchResponse(entities1, matches);
   if (!formatted.text.includes('pollo') || !formatted.actions || formatted.actions.length === 0) {
     throw new Error('Formatted response missing expected contents');
+  }
+  if (formatted.autoAction) {
+    throw new Error('Recipe match response should NOT have autoAction to avoid auto-closing user chat!');
   }
   console.log('  Formatted actions count:', formatted.actions.length);
 
@@ -164,11 +183,25 @@ async function main() {
     } as any
   ];
 
-  // Test recipe natural query in general chat
-  const aiRecipeRes = await queryChelonaAi('ho del pollo, carote e zucchine cosa posso cucinare?', mockModules, 'Davide');
+  // Test user request about "Il Matematico", sentience, and 1000% app usage
+  const matematicoPrompt = "vorrei chiedere al matematico se è possibile usare il modello per farlo diventare senziente o comunque che riesca a comunicare bene con l'utente a tutte le richieste inerenti all'app, che possa sfruttare al 1000% l'app come se fosse un utente vero, come ti facevo prima l'esempio degli ingrendienti e trovi le ricette corrispondenti, quindi che riesca a capire il nome dell'ingrendinte che scrivi in chat o comunque il linguaggio che si usa";
+  const matematicoRes = await queryChelonaAi(matematicoPrompt, mockModules, 'Davide');
+  console.log('  Matematico sentience query reply preview:\n  ', matematicoRes.text.split('\n')[0]);
+  if (!matematicoRes.text.includes('Il Matematico') || !matematicoRes.text.includes('Senzienza')) {
+    throw new Error('queryChelonaAi did not address Il Matematico sentience inquiry!');
+  }
+  if (!matematicoRes.actions || matematicoRes.actions.length === 0) {
+    throw new Error('queryChelonaAi should provide cross-app navigation actions for Matematico query!');
+  }
+
+  // Test recipe natural query in general chat with typo "ingrendinte"
+  const aiRecipeRes = await queryChelonaAi('ho questi ingrendinte: melanzane e pomodori cosa posso cucinare?', mockModules, 'Davide');
   console.log('  queryChelonaAi recipe response text preview:\n  ', aiRecipeRes.text.split('\n')[0]);
   if (!aiRecipeRes.actions || aiRecipeRes.actions.length === 0) {
-    throw new Error('queryChelonaAi did not return recipe actions!');
+    throw new Error('queryChelonaAi did not return recipe actions for ingrendinte query!');
+  }
+  if (aiRecipeRes.autoAction) {
+    throw new Error('queryChelonaAi should NOT return autoAction on recipe recommendations!');
   }
 
   // Test doctor natural query in general chat
