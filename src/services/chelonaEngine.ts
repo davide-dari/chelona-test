@@ -1302,6 +1302,40 @@ export async function queryChelonaAi(
   username: string,
   activeSection?: string
 ): Promise<{ text: string; actions?: AiAction[]; learnedFact?: string; createdModule?: Module; autoAction?: AiAction; engineUsed?: 'chelona-engine' }> {
+  const result = await _queryChelonaAiInner(userQuery, modules, username, activeSection);
+  
+  const lower = userQuery.toLowerCase();
+  const isExplicitNavigation = 
+    lower.includes('apri') || 
+    lower.includes('vai') || 
+    lower.includes('mostra') || 
+    lower.includes('vedi') ||
+    lower.includes('chiudi') ||
+    lower.trim() === 'ricette' ||
+    lower.trim() === 'ricettario' ||
+    lower.trim() === 'fitness' ||
+    lower.trim() === 'spesa' ||
+    lower.trim() === 'documenti' ||
+    lower.trim() === 'profilo' ||
+    lower.trim() === 'auto' ||
+    lower.trim() === 'parcheggio' ||
+    lower.trim() === 'volantini' ||
+    lower.trim() === 'impostazioni' ||
+    lower.trim() === 'offerte';
+
+  if (!isExplicitNavigation && result.autoAction) {
+    delete result.autoAction;
+  }
+
+  return result;
+}
+
+async function _queryChelonaAiInner(
+  userQuery: string,
+  modules: Module[],
+  username: string,
+  activeSection?: string
+): Promise<{ text: string; actions?: AiAction[]; learnedFact?: string; createdModule?: Module; autoAction?: AiAction; engineUsed?: 'chelona-engine' }> {
   // Elaborazione istantanea ad altissima velocità senza ritardi artificiali
   const query = userQuery.trim();
   const lower = query.toLowerCase();
@@ -1458,7 +1492,7 @@ export async function queryChelonaAi(
       return {
         text: `Ho aggiunto alla tua **Lista della Spesa** 🛒:\n${newItems.map(i => `• **${i.name}** *(${i.category})*`).join('\n')}`,
         createdModule: targetModule,
-        // autoAction: { label: 'Apri Lista Spesa', type: 'category', category: 'supermarket', module: targetModule },
+        autoAction: { label: 'Apri Lista Spesa', type: 'category', category: 'supermarket', module: targetModule },
         actions: [{ label: 'Apri Lista Spesa', type: 'category', category: 'supermarket', module: targetModule }],
       };
     }
@@ -1498,7 +1532,7 @@ export async function queryChelonaAi(
     if (removedItems.length === 0) {
       return {
         text: `Non ho trovato "${rawItemsStr}" nella tua Lista della Spesa. Gli articoli presenti sono:\n${existingSm.items.map(i => `• ${i.name}`).join('\n')}`,
-        // autoAction: { label: 'Apri Lista Spesa', type: 'category', category: 'supermarket', module: existingSm },
+        autoAction: { label: 'Apri Lista Spesa', type: 'category', category: 'supermarket', module: existingSm },
         actions: [{ label: 'Apri Lista Spesa', type: 'category', category: 'supermarket', module: existingSm }],
       };
     }
@@ -1511,7 +1545,7 @@ export async function queryChelonaAi(
     return {
       text: `Ho rimosso dalla tua **Lista della Spesa** 🛒:\n${removedItems.map(i => `• ~~${i.name}~~`).join('\n')}${remainingItems.length > 0 ? `\n\nRimangono ${remainingItems.length} articoli da acquistare.` : '\n\nLa lista della spesa ora è vuota.'}`,
       createdModule: targetModule,
-      // autoAction: { label: 'Apri Lista Spesa', type: 'category', category: 'supermarket', module: targetModule },
+      autoAction: { label: 'Apri Lista Spesa', type: 'category', category: 'supermarket', module: targetModule },
       actions: [{ label: 'Apri Lista Spesa', type: 'category', category: 'supermarket', module: targetModule }],
     };
   }
@@ -2624,7 +2658,7 @@ export async function queryChelonaAi(
       const checked = k.supermarket.checkedItems.map(i => `• [x] ~~${i}~~`).join('\n');
       return {
         text: `🛒 **Articoli già acquistati / spuntati (${k.supermarket.checkedItems.length}):**\n\n${checked}\n\n*Ci sono ancora ${k.supermarket.itemsToBuy.length} articoli da acquistare.*`,
-        // autoAction: { label: 'Lista Spesa', type: 'category', category: 'supermarket' },
+        autoAction: { label: 'Lista Spesa', type: 'category', category: 'supermarket' },
         actions: [{ label: 'Vai alla Spesa', type: 'category', category: 'supermarket' }],
       };
     }
@@ -2639,7 +2673,7 @@ export async function queryChelonaAi(
     const items = k.supermarket.itemsToBuy.map(i => `• [ ] ${i}`).join('\n');
     return {
       text: `🛒 **Articoli ancora da acquistare (${k.supermarket.itemsToBuy.length}):**\n\n${items}\n\n*Puoi dirmi "Aggiungi pane alla spesa" per aggiungere altro!*`,
-      // autoAction: { label: 'Lista Spesa', type: 'category', category: 'supermarket' },
+      autoAction: { label: 'Lista Spesa', type: 'category', category: 'supermarket' },
       actions: [{ label: 'Vai alla Spesa', type: 'category', category: 'supermarket' }],
     };
   }
@@ -2679,7 +2713,7 @@ export async function queryChelonaAi(
       }
       return {
         text: `Cerco la ricetta per **"${q}"** nel tuo ricettario e nel database gastronomico! 🍲`,
-        // autoAction: { label: `Cerca ${q}`, type: 'recipes', search: q },
+        autoAction: { label: `Cerca ${q}`, type: 'recipes', search: q },
         actions: [{ label: `Cerca ${q}`, type: 'recipes', search: q }],
       };
     }
@@ -2700,7 +2734,7 @@ export async function queryChelonaAi(
             return {
               text: `❄️ **Con ciò che hai registrato nel Frigo e nella Dispensa (${combined.join(', ')}):**\n\n${formatted.text}`,
               actions: formatted.actions,
-              // // autoAction: formatted.autoAction,
+              autoAction: formatted.autoAction,
               engineUsed: 'chelona-engine',
             };
           }
@@ -3082,7 +3116,7 @@ export async function queryChelonaAi(
 
       return {
         text,
-        // autoAction: { label: 'Apri Parcheggio', type: 'parking' },
+        autoAction: { label: 'Apri Parcheggio', type: 'parking' },
         actions: [
           { label: 'Naviga all\'Auto (Maps)', type: 'navigate_parking' },
           { label: 'Apri Radar Parcheggio', type: 'parking' },
@@ -3360,7 +3394,7 @@ export async function queryChelonaAi(
     if (lower.includes('biometr') || lower.includes('impront') || lower.includes('face') || lower.includes('crittograf') || lower.includes('vault')) {
       return {
         text: `🔐 **Sicurezza & Crittografia:**\n\nChelona protegge tutti i tuoi dati e documenti con un **Vault crittografico AES-256-GCM** locale.\nPuoi sbloccare l'app e i tuoi dati sensibili utilizzando l'impronta digitale o Face ID del tuo smartphone, senza digitare ogni volta la master password.`,
-        // autoAction: { label: 'Sicurezza Profilo', type: 'category', category: 'profile' },
+        autoAction: { label: 'Sicurezza Profilo', type: 'category', category: 'profile' },
         actions: [{ label: 'Apri Profilo', type: 'category', category: 'profile' }],
       };
     }
@@ -3369,7 +3403,7 @@ export async function queryChelonaAi(
     if (lower.includes('wake word') || lower.includes('ciao chelona') || lower.includes('vocale') || lower.includes('voce')) {
       return {
         text: `🎙️ **Comando Vocale "Ciao Chelona":**\n\nStato attuale: ${k.profile.isWakeWordEnabled ? '✅ **Attivo**' : '⚪ **Disattivato**'}.\nQuando è attivo, puoi dire *"Ciao Chelona"* in qualsiasi momento per risvegliarmi a mani libere e chiedermi qualsiasi cosa. Puoi attivarlo o disattivarlo dal tuo profilo!`,
-        // autoAction: { label: 'Impostazioni Voce', type: 'category', category: 'profile' },
+        autoAction: { label: 'Impostazioni Voce', type: 'category', category: 'profile' },
         actions: [{ label: 'Apri Profilo', type: 'category', category: 'profile' }],
       };
     }
@@ -3378,7 +3412,7 @@ export async function queryChelonaAi(
     if (lower.includes('tema') || lower.includes('scuro') || lower.includes('chiaro')) {
       return {
         text: `🎨 **Tema & Aspetto:**\n\nChelona supporta il tema Scuro (Dark OLED) per risparmiare batteria e il tema Chiaro. Puoi cambiare tema con un tocco direttamente nella schermata Profilo!`,
-        // autoAction: { label: 'Cambia Tema', type: 'category', category: 'profile' },
+        autoAction: { label: 'Cambia Tema', type: 'category', category: 'profile' },
         actions: [{ label: 'Apri Profilo', type: 'category', category: 'profile' }],
       };
     }
@@ -3393,7 +3427,7 @@ export async function queryChelonaAi(
 
     return {
       text,
-      // autoAction: { label: 'Apri Profilo', type: 'category', category: 'profile' },
+      autoAction: { label: 'Apri Profilo', type: 'category', category: 'profile' },
       actions: [{ label: 'Apri Profilo & Impostazioni', type: 'category', category: 'profile' }],
     };
   }
@@ -3607,3 +3641,4 @@ export async function queryChelonaAi(
     engineUsed: 'chelona-engine',
   };
 }
+
