@@ -5,8 +5,9 @@ import {
   Check, Send, Settings, ChevronDown, ChevronUp, Copy, CheckCircle2,
   Calendar, AlertCircle, Edit3, X, Sparkles, Navigation, Pill, FileText,
   Search, ShieldCheck, Download, Upload, ExternalLink, Smartphone, User,
-  ChevronLeft, ChevronRight, Wand2
+  ChevronLeft, ChevronRight, Wand2, QrCode
 } from 'lucide-react';
+import { QRCodeSVG } from 'qrcode.react';
 import {
   DoctorProfile, MedicineItem, DoctorState, DAYS_NAMES,
   loadDoctorState, saveDoctorState, computeDoctorStudioStatus,
@@ -1160,16 +1161,13 @@ export const DoctorScreen: React.FC<DoctorScreenProps> = ({
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2.5 min-w-0">
             <div className="w-10 h-10 rounded-2xl bg-teal-500/10 text-teal-600 dark:text-teal-400 flex items-center justify-center shrink-0 border border-teal-500/20 shadow-inner">
               <Stethoscope className="w-5 h-5" />
             </div>
-            <div>
-              <h2 className="font-black text-base lg:text-lg leading-tight flex items-center gap-2">
-                <span>Studio Medico & Ricette</span>
-                <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-teal-500/10 text-teal-600 dark:text-teal-400 border border-teal-500/20">
-                  Live
-                </span>
+            <div className="min-w-0">
+              <h2 className="font-black text-base lg:text-lg leading-tight flex items-center gap-2 truncate">
+                <span className="truncate">Studio Medico</span>
               </h2>
               <p className="text-[11px] text-[var(--text-muted)] truncate">
                 {state.doctor.lastName ? doctorFullName : 'Configura il tuo medico di base'}
@@ -1178,48 +1176,22 @@ export const DoctorScreen: React.FC<DoctorScreenProps> = ({
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          {/* Tasto Riavvia Configurazione Guidata Originale */}
-          <button
-            type="button"
-            onClick={handleRestartIntroWizard}
-            className="w-10 h-10 rounded-2xl bg-[var(--surface-variant)] hover:bg-teal-500/10 hover:border-teal-500/30 border border-[var(--border)] text-teal-600 dark:text-teal-400 flex items-center justify-center transition-all cursor-pointer"
-            title="Configura tutte le info con la procedura guidata originale"
-          >
-            <Wand2 className="w-4 h-4" />
-          </button>
-
-          <button
-            type="button"
-            onClick={async () => {
-              try {
-                const res = await createSectionShortcut('doctor');
-                showToast?.(res.message, res.success ? 'success' : 'info');
-              } catch {
-                showToast?.('Errore durante la creazione del collegamento', 'error');
-              }
-            }}
-            className="w-10 h-10 rounded-2xl bg-[var(--surface-variant)] hover:bg-teal-500/10 hover:border-teal-500/30 border border-[var(--border)] text-teal-600 dark:text-teal-400 flex items-center justify-center transition-all cursor-pointer"
-            title="Salva come App sulla Home (Android)"
-          >
-            <Smartphone className="w-4 h-4" />
-          </button>
+        <div className="flex items-center gap-2 shrink-0">
           <button
             type="button"
             onClick={handleOpenBackup}
             className="w-10 h-10 rounded-2xl bg-[var(--surface-variant)] hover:bg-[var(--border)] text-[var(--text-muted)] hover:text-[var(--text-main)] flex items-center justify-center transition-colors cursor-pointer"
-            title="Backup e Ripristino"
+            title="Codice QR Profilo Medico"
           >
-            <Download className="w-4 h-4" />
+            <QrCode className="w-4 h-4" />
           </button>
           <button
             type="button"
             onClick={handleOpenEditDoctor}
-            className="px-3.5 py-2 rounded-2xl bg-teal-600 hover:bg-teal-500 active:scale-95 text-white font-bold text-xs flex items-center gap-1.5 transition-all shadow-md shadow-teal-600/20 cursor-pointer"
-            title="Modifica dati studio"
+            className="w-10 h-10 rounded-2xl bg-teal-600 hover:bg-teal-500 active:scale-95 text-white flex items-center justify-center transition-all shadow-md shadow-teal-600/20 cursor-pointer"
+            title="Impostazioni"
           >
             <Settings className="w-4 h-4" />
-            <span className="hidden sm:inline">Dati Medico</span>
           </button>
         </div>
       </header>
@@ -1976,7 +1948,7 @@ export const DoctorScreen: React.FC<DoctorScreenProps> = ({
         )}
       </AnimatePresence>
 
-      {/* Modale: Backup & Ripristino */}
+      {/* Modale: QR Code Profilo Medico */}
       <AnimatePresence>
         {isBackupOpen && (
           <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
@@ -1984,14 +1956,14 @@ export const DoctorScreen: React.FC<DoctorScreenProps> = ({
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-[var(--card-bg)] rounded-[2.5rem] border border-[var(--border)] max-w-md w-full p-6 shadow-2xl space-y-4"
+              className="bg-[var(--card-bg)] rounded-[2.5rem] border border-[var(--border)] max-w-sm w-full p-6 shadow-2xl space-y-4"
             >
               <div className="flex items-center justify-between border-b border-[var(--border)] pb-3">
                 <div className="flex items-center gap-2">
                   <div className="p-2 rounded-xl bg-teal-500/10 text-teal-600">
-                    <Download className="w-5 h-5" />
+                    <QrCode className="w-5 h-5" />
                   </div>
-                  <h3 className="font-black text-base text-[var(--text-main)]">Backup & Ripristino</h3>
+                  <h3 className="font-black text-base text-[var(--text-main)]">Codice QR Profilo</h3>
                 </div>
                 <button
                   type="button"
@@ -2002,45 +1974,12 @@ export const DoctorScreen: React.FC<DoctorScreenProps> = ({
                 </button>
               </div>
 
-              <div className="space-y-3 text-xs">
-                <div>
-                  <label className="block font-bold text-[var(--text-muted)] mb-1">Copia Codice Backup</label>
-                  <div className="relative">
-                    <textarea
-                      readOnly
-                      rows={3}
-                      value={backupCode}
-                      className="w-full p-2.5 rounded-xl bg-[var(--surface-variant)] border border-[var(--border)] font-mono text-[10px]"
-                    />
-                    <button
-                      type="button"
-                      onClick={handleCopyBackup}
-                      className="absolute right-2 bottom-2 px-2.5 py-1 bg-teal-600 text-white rounded-lg font-bold text-[10px] flex items-center gap-1 cursor-pointer"
-                    >
-                      <Copy className="w-3 h-3" />
-                      <span>{copiedBackup ? 'Copiato!' : 'Copia'}</span>
-                    </button>
-                  </div>
-                </div>
-
-                <div className="pt-2 border-t border-[var(--border)]">
-                  <label className="block font-bold text-[var(--text-muted)] mb-1">Incolla Codice per Ripristinare</label>
-                  <textarea
-                    rows={3}
-                    value={importCode}
-                    onChange={e => setImportCode(e.target.value)}
-                    placeholder="Incolla qui il JSON di backup..."
-                    className="w-full p-2.5 rounded-xl bg-[var(--surface-variant)] border border-[var(--border)] font-mono text-[10px]"
-                  />
-                  <button
-                    type="button"
-                    onClick={handleImportBackup}
-                    disabled={!importCode.trim()}
-                    className="w-full mt-2 py-2.5 bg-[var(--surface-variant)] hover:bg-[var(--border)] text-[var(--text-main)] font-black rounded-xl text-xs flex items-center justify-center gap-1.5 transition-colors disabled:opacity-40 cursor-pointer"
-                  >
-                    <Upload className="w-3.5 h-3.5" />
-                    <span>Ripristina Dati Studio</span>
-                  </button>
+              <div className="flex flex-col items-center gap-4 text-center">
+                <p className="text-xs text-[var(--text-muted)]">
+                  Mostra questo codice QR per condividere i dati dello studio medico o per un backup rapido.
+                </p>
+                <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">
+                  <QRCodeSVG value={backupCode} size={200} />
                 </div>
               </div>
             </motion.div>
