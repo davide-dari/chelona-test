@@ -476,12 +476,14 @@ export async function queryGemma2(
     lowerQ.includes('ricett') || lowerQ.includes('cucin') || lowerQ.includes('mangiar') ||
     lowerQ.includes('prepar') || lowerQ.includes('piatt') || lowerQ.includes('ingred') ||
     lowerQ.includes('ingrand') || lowerQ.includes('ingrend') || lowerQ.includes('igred') ||
-    lowerQ.includes('pranzo') || lowerQ.includes('cena');
+    lowerQ.includes('ingrid') || lowerQ.includes('pranzo') || lowerQ.includes('cena') ||
+    lowerQ.includes('a base di') || lowerQ.includes('cosa cucino') || lowerQ.includes('frigo') || lowerQ.includes('dispensa') ||
+    lowerQ.includes('chiedo gli');
 
   // Per le ricette e consigli gastronomici, esegui SEMPRE la lettura dinamica aggiornata dal catalogo 617+ ricette
   if (isRecipeOrCookingQuery) {
     const directMatch = await queryChelonaAi(userQuery, modules, username, activeSection);
-    if (directMatch && (directMatch.actions?.length || directMatch.autoAction || directMatch.createdModule || directMatch.learnedFact)) {
+    if (directMatch && directMatch.text && directMatch.text.trim().length > 0) {
       console.log(`[FastPath] ⚡ RISOLUZIONE SPECULATIVA RICETTE (< 2ms): "${userQuery}"`);
       return await executeFallback({ immediate: false });
     }

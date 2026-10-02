@@ -2983,6 +2983,15 @@ export default function App() {
                           text.includes('revisione') || text.includes('tagliando') || text.includes('bollo') || 
                           text.includes('assicurazione') || text.includes('gomme') || text.includes('targa') || text.includes('km') || text.includes('chilometri');
 
+    const isCookingRelated = text.includes('ricett') || text.includes('cucin') || text.includes('ingred') || text.includes('ingrand') || text.includes('igred') || text.includes('pranz') || text.includes('cena') || text.includes('piatt');
+
+    if (isCookingRelated || (!isAutoRelated && text.split(/\s+/).length > 2)) {
+      // Invia alla chat AI evitando rigorosamente di sporcare qualsiasi barra di ricerca
+      setIsAiOpen(true);
+      setActiveNavTab('ai');
+      return;
+    }
+
     if (!isAutoRelated) {
       setSearchQuery(queryText);
       return;

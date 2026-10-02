@@ -278,6 +278,54 @@ async function main() {
     throw new Error('Ingredient matching query text missing matched ingredients!');
   }
 
+  // Test 11: Asking about ingredients of a dish with typos ("quando chiedo gli ingrandienti della carbonara")
+  console.log('\n11. Test Dish Ingredients Inquiries:');
+  const dishIngrQuery = "quando chiedo gli ingrandienti della carbonara";
+  const dishIngrRes = await queryChelonaAi(dishIngrQuery, mockModules, 'Davide');
+  if (!dishIngrRes.text.includes('Carbonara') && !dishIngrRes.text.includes('Spaghetti alla Carbonara')) {
+    throw new Error(`Dish ingredients query failed to find Carbonara: ${dishIngrRes.text.slice(0, 100)}`);
+  }
+  if (!dishIngrRes.text.includes('Guanciale') && !dishIngrRes.text.includes('Uova') && !dishIngrRes.text.includes('Pecorino')) {
+    throw new Error(`Dish ingredients query failed to display Carbonara ingredients: ${dishIngrRes.text}`);
+  }
+  if (dishIngrRes.autoAction) {
+    throw new Error('Dish ingredients query must not have autoAction!');
+  }
+  for (const act of dishIngrRes.actions || []) {
+    if ((act as any).search) {
+      throw new Error(`Dish ingredients action has forbidden search property: ${(act as any).search}`);
+    }
+  }
+
+  // Test 12: General ingredient query ("chiedo gli ingrandienti")
+  console.log('\n12. Test General Ingredient Query:');
+  const generalIngrQuery = "chiedo gli ingrandienti";
+  const generalIngrRes = await queryChelonaAi(generalIngrQuery, mockModules, 'Davide');
+  if (!generalIngrRes.text.includes('Matematico') || !generalIngrRes.text.includes('ricette')) {
+    throw new Error(`General ingredient inquiry failed: ${generalIngrRes.text.slice(0, 100)}`);
+  }
+  if (generalIngrRes.autoAction) {
+    throw new Error('General ingredient query must not have autoAction!');
+  }
+  for (const act of generalIngrRes.actions || []) {
+    if ((act as any).search) {
+      throw new Error(`General ingredient action has forbidden search property: ${(act as any).search}`);
+    }
+  }
+
+  // Test 13: Corresponding or similar ingredients
+  console.log('\n13. Test Corresponding or Similar Ingredients:');
+  const similarQuery = "trova ricette con ingredienti corrispondenti o simili a pomodoro";
+  const similarRes = await queryChelonaAi(similarQuery, mockModules, 'Davide');
+  if (!similarRes.text.includes('pomodoro') && !similarRes.text.includes('Pomodoro')) {
+    throw new Error(`Similar ingredients query did not match pomodoro: ${similarRes.text.slice(0, 100)}`);
+  }
+  for (const act of similarRes.actions || []) {
+    if ((act as any).search) {
+      throw new Error(`Similar ingredients action has forbidden search property: ${(act as any).search}`);
+    }
+  }
+
   console.log('\n✨ === TUTTI I TEST DE "IL MATEMATICO" COMPLETATI CON SUCCESSO! === ✨');
 }
 

@@ -12,15 +12,15 @@ import type { SupermarketCategory } from '../types';
  * Classifica automatica delle categorie per la lista spesa
  */
 export function detectSupermarketCategory(name: string): SupermarketCategory {
-  const n = name.toLowerCase();
-  if (/mela|mele|banana|banane|arancia|arance|limon|frutt|verdur|pomodor|insalat|carot|zucch|cipoll|patat|aglio|basilic|spinac|pesc[ae]|fragol|melanzan|peperon|fung|broccol|cavol|zucc|asparag|carciof|sedan|porr|finocch|cetriol|rucol|radicchi|pisell|fagiolin|albicocc|cilieg|kiwi|ananas|uva|mirtill|lampo|more|avocado/i.test(n)) return 'frutta-verdura';
-  if (/latt|formaggi|yogurt|burr|mozzarell|parmigian|grana|uov|uova|ricott|panna|stracchin|gorgonzol|mascarpon|pecorin|provol|scamorz|fontin|caciocavall|crescenz|brie|feta/i.test(n)) return 'latticini-uova';
-  if (/carn|pesc|poll|manz|maial|tonn|salmon|merluzz|prosciutt|salame|affettat|bresaol|tacchin|salsicci|wurstel|orata|spigol|gamber|calamar|seppi|polp|cozz|vongol|acciug|alic|vitell|agnell|pancett|guancial|mortadell|speck|bistecc|filetto|tranci/i.test(n)) return 'carne-pesce';
-  if (/pan[ei]|focacci|cornett|biscott|croissant|fett[ae]\s+biscottat|tort[ae]|brioche|dolc|lievit|pangrattat|crostin|piadin/i.test(n)) return 'pane-pasticceria';
-  if (/past|ris|farin|oli|aceto|sal[ei]|zuccher|caff|passat|pelat|legum|ceci|fagiol|lenticchi|tonno|crackers|cereali|miele|marmellat|cioccolat|caca|spezie|origan|rosmarin|timo|noce|mandorl|nocciol|pinol|pistacch|arachid|gnocch|mais|orzo|farro|aven|couscous/i.test(n)) return 'dispensa';
-  if (/acqu|vin|birr|succ|coc[ae]|aranciat|tè|the|bevand|spumant|champagne/i.test(n)) return 'bevande';
-  if (/detersiv|sgrassator|candeggin|spugn|scottex|carta\s+igienic|lavatric|lavastovigli|sacchett|panni|alcool|ammoniac/i.test(n)) return 'pulizia';
-  if (/shampoo|bagnoschium|dentifrici|sapon|deodorant|balsam|crema|rasoi|schiuma\s+da\s+barba|fazzolett/i.test(n)) return 'igiene';
+  const n = name.toLowerCase().trim();
+  if (/\b(?:mela|mele|banana|banane|arancia|arance|limon[ei]|frutt[ae]|verdur[ae]|pomodor[oi]|pomodorin[oi]|insalat[ae]|carot[ae]|zocchin[ae]|zucchine?|cipoll[ae]|patat[ae]|aglio|basilico|spinac[ie]|pesc[ae]|fragol[ae]|melanzan[ae]|peperon[ei]|fungh?i?|broccol[oi]|cavol[oi]|zucc[ahie]|asparag[oi]|carciof[oi]|sedano?|porr[oi]|finocchi?o?|cetriol[oi]|rucola|radicchio|pisell[oi]|fagiolin[oi]|albicocc[ae]|cilieg[ie]|kiwi|ananas|uva|mirtill[oi]|lampon[ei]|more|avocado)\b/i.test(n)) return 'frutta-verdura';
+  if (/\b(?:latt[ei]|formagg[oi]|yogurt|burro?|mozzarell[ae]|parmigiano?|grana|uov[ao]|ricott[ae]|panna|stracchino?|gorgonzola|mascarpone?|pecorino?|provol[ae]|scamorz[ae]|fontina|caciocavallo|crescenza|brie|feta)\b/i.test(n)) return 'latticini-uova';
+  if (/\b(?:carn[ei]|pesc[ei]|poll[oi]|manzo?|maiale?|tonno?|salmon[ei]|merluzzo?|prosciutt[oi]|salame?|affettat[oi]|bresaol[ae]|tacchino?|salsicci[ae]|wurstel|orata|spigola|gamber[oi]|calamar[oi]|seppi[ae]|polpo?|cozz[ae]|vongol[ae]|acciugh?e?|alici?|vitello?|agnello?|pancetta|guanciale|mortadella|speck|bistecc[ae]|filett[oi]|tranci[oi])\b/i.test(n)) return 'carne-pesce';
+  if (/\b(?:pan[ei]|focacci[ae]|cornett[oi]|biscott[oi]|croissant|fett[ae]\s+biscottat[ae]|tort[ae]|brioche|dolc[ei]|lievito?|pangrattato|crostin[oi]|piadin[ae])\b/i.test(n)) return 'pane-pasticceria';
+  if (/\b(?:past[aeo]?|ris[oi]|risott[oi]|farin[ae]|oli[oi]|aceto|sal[ei]|zuccher[oi]|caff[eè]?|passat[ae]|pelat[ie]|legum[ie]|ceci|fagiol[ie]|lenticchi[ae]|tonno|crackers|cereali|miele|marmellat[ae]|cioccolat[oi]|cacao|spezie|origano|rosmarino|timo|noc[ie]|mandorl[ae]|nocciol[ae]|pinol[ie]|pistacch[ie]|arachid[ie]|gnocch[ie]|mais|orzo|farro|aven[ae]|couscous)\b/i.test(n)) return 'dispensa';
+  if (/\b(?:acqu[ae]|vin[oi]|birr[ae]|succ[ohi]|coc[ae]|aranciat[ae]|tè|the|bevand[ae]|spumant[ei]|champagne)\b/i.test(n)) return 'bevande';
+  if (/\b(?:detersiv[oi]|sgrassator[ei]|candeggin[ae]|spugn[ae]|scottex|carta\s+igienic[ae]|lavatric[ei]|lavastovigli[ae]|sacchett[oi]|panni|alcool|ammoniac[ae])\b/i.test(n)) return 'pulizia';
+  if (/\b(?:shampoo|bagnoschiuma|dentifrici[oi]|sapon[ei]|deodorant[ei]|balsamo|crema|rasoi|schiuma\s+da\s+barba|fazzolett[oi])\b/i.test(n)) return 'igiene';
   return 'altro';
 }
 
@@ -494,7 +494,8 @@ const CONVERSATIONAL_FOOD_STOPWORDS = new Set([
   'barattolo', 'scatoletta', 'bustina', 'scatola', 'confezione', 'pacchetto', 'fetta', 'fette',
   'questo', 'questa', 'questi', 'queste', 'quello', 'quella', 'quelli', 'quelle',
   'alcun', 'alcuno', 'alcuna', 'alcuni', 'alcune', 'tutto', 'tutta', 'tutti', 'tutte',
-  'trova', 'cerca', 'cercami', 'mostra', 'mostrami', 'apri', 'vai'
+  'trova', 'cerca', 'cercami', 'mostra', 'mostrami', 'apri', 'vai',
+  'corrispondente', 'corrispondenti', 'simile', 'simili', 'affinita', 'affine', 'affini', 'tipo', 'come', 'quali', 'quale'
 ]);
 
 // ============================================================================
@@ -1052,14 +1053,57 @@ export function cleanIngredientDisplayName(raw: string): string {
 }
 
 /**
+ * Pulisce la query di ricerca di un piatto rimuovendo parole conversazionali,
+ * richieste di ingredienti, verbi, articoli e preposizioni.
+ */
+export function cleanDishSearchQuery(query: string): string {
+  let norm = normalizeItalianText(query);
+  if (!norm) return '';
+
+  // Rimuovi prefissi interrogativi, verbali o conversazionali comuni
+  norm = norm
+    .replace(/^(?:quando\s+chiedo\s+(?:gli\s+)?(?:ingrandienti|ingredienti|la\s+ricetta|le\s+ricette)|quando\s+chiedo|chiedo\s+gli\s+(?:ingrandienti|ingredienti|la\s+ricetta)|chiedo|vorrei\s+sapere|vorrei\s+conoscere|vorrei|dimmi|dammi|mi\s+dici|mi\s+dai|fammi\s+vedere|mostrami|spiegami|quali\s+sono|quale\s+e|qual\s+e|che|cosa|cerca|trova|come\s+fare|come\s+si\s+fa|come\s+preparare|come\s+si\s+prepara|come\s+cucinare|come\s+si\s+cucina)\s+/i, '')
+    .trim();
+
+  // Rimuovi parole relative a ricetta/ingredienti (comprese forme scorrette e refusi come ingrandienti, igredienti)
+  norm = norm
+    .replace(/^(?:la\s+ricetta|le\s+ricette|ricetta|ricette|gli\s+ingredienti|gli\s+ingrandienti|gli\s+ingrendienti|gli\s+igredienti|gli\s+ingridienti|gli\s+ingred|gli\s+ingrand|ingredienti|ingrandienti|ingrendienti|igredienti|ingridienti|ingrediente|ingrandiente|ingrendiente|igrediente|ingridiente|ingred|ingrand|igred)\s+/i, '')
+    .trim();
+
+  // Rimuovi particelle verbali (es: "servono per", "ci vogliono per", "usare per", "necessari per")
+  norm = norm
+    .replace(/^(?:che\s+servono\s+per|servono\s+per|ci\s+vogliono\s+per|usare\s+per|necessari\s+per|da\s+usare\s+per)\s+/i, '')
+    .trim();
+
+  // Rimuovi preposizioni di raccordo (di, del, della, dello, dei, degli, delle, per, a base di)
+  norm = norm
+    .replace(/^(?:a\s+base\s+di|di|del|dello|della|dei|degli|delle|per)\s+/i, '')
+    .trim();
+
+  // Rimuovi articoli determinativi iniziali
+  norm = norm
+    .replace(/^(?:il|lo|la|i|gli|le|l[\'\s])\s*/i, '')
+    .trim();
+
+  // Rimuovi suffissi conversazionali finali
+  norm = norm
+    .replace(/\s+(?:per\s+(?:il\s+)?pranzo|per\s+(?:la\s+)?cena|di\s+domani|per\s+domani)$/i, '')
+    .trim();
+
+  return norm;
+}
+
+/**
  * Cerca una ricetta per nome/titolo specifico nel catalogo con corrispondenza fuzzy
  */
 export function searchRecipeByDishTitle(query: string, catalog: RecipeCatalogItem[]): RecipeCatalogItem | null {
-  const norm = normalizeItalianText(query);
-  const cleanQ = norm
-    .replace(/^(?:cerca|trova|come fare|come si fa|come preparare|ricetta di|ricetta del|ricetta della|ricetta per|ricetta)\s+/i, '')
-    .trim();
+  const cleanQ = cleanDishSearchQuery(query);
   if (!cleanQ || cleanQ.length < 3) return null;
+
+  // Evita falsi positivi con parole generiche o stopwords
+  if (CONVERSATIONAL_FOOD_STOPWORDS.has(cleanQ) || cleanQ === 'un' || cleanQ === 'uno' || cleanQ === 'una' || cleanQ === 'un ingrediente' || cleanQ === 'ingrediente') {
+    return null;
+  }
 
   // 1. Corrispondenza esatta
   for (const r of catalog) {
@@ -1067,13 +1111,24 @@ export function searchRecipeByDishTitle(query: string, catalog: RecipeCatalogIte
     if (t === cleanQ) return r;
   }
 
-  // 2. Corrispondenza per sottostringa
+  // 2. Corrispondenza per sottostringa (es: "carbonara" in "Spaghetti alla Carbonara")
   for (const r of catalog) {
     const t = normalizeItalianText(r.title);
     if (t.includes(cleanQ) || cleanQ.includes(t)) return r;
   }
 
-  // 3. Similarità fuzzy
+  // 3. Corrispondenza su singole parole chiave del titolo (es. parole con >= 4 lettere)
+  const cleanTokens = cleanQ.split(/\s+/).filter(tok => tok.length >= 4 && !CONVERSATIONAL_FOOD_STOPWORDS.has(tok));
+  if (cleanTokens.length > 0) {
+    for (const r of catalog) {
+      const t = normalizeItalianText(r.title);
+      const titleTokens = t.split(/\s+/);
+      const allFound = cleanTokens.every(ct => titleTokens.some(tt => tt === ct || tt.startsWith(ct) || ct.startsWith(tt)));
+      if (allFound) return r;
+    }
+  }
+
+  // 4. Similarità fuzzy
   let bestRecipe: RecipeCatalogItem | null = null;
   let bestSim = 0.74;
   for (const r of catalog) {

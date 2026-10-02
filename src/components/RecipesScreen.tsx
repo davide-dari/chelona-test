@@ -188,10 +188,12 @@ export function RecipesScreen({
   }, [selectedMeal]);
 
   useEffect(() => {
-    if (initialSearchQuery !== undefined) {
+    if (initialRecipe) {
+      setSearchQuery('');
+    } else if (initialSearchQuery !== undefined) {
       setSearchQuery(initialSearchQuery);
     }
-  }, [initialSearchQuery]);
+  }, [initialRecipe, initialSearchQuery]);
 
   const handleBack = useCallback(() => {
     if (isScanningMenuQr) {
