@@ -1,16 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   Send, Mic, MicOff, Volume2, VolumeX, Trash2, Menu, Trash, ArrowLeft, 
-  ExternalLink, Check, Copy, Plus, X, Zap,
-  Radio, Car, FileText, CreditCard, StickyNote, Activity,
-  Settings2, Sliders, Play, Utensils, Plane, Home, Navigation, BookUser, Wrench
+  ExternalLink, Check, Copy, Plus, X, Zap, ChevronRight, UtensilsCrossed, Flame,
+  Settings2, Sliders, Play
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Module } from '../types';
 import { 
-  AiMessage, AiMemory, AiAction, getChatHistory, saveChatHistory, 
-  getLearnedMemories, deleteLearnedMemory, clearAllLearnedMemories, 
-  saveLearnedMemory, queryChelonaAi, buildKnowledgeBase
+  AiMessage, AiAction, getChatHistory, saveChatHistory, 
+  queryChelonaAi
 } from '../services/chelonaEngine';
 import { queryGemma2, preloadEngine } from '../services/gemma2Engine';
 import {
@@ -36,12 +34,9 @@ interface ChelonaAiScreenProps {
   onOpenParking?: () => void;
   initialVoiceMode?: boolean;
   initialDictationMode?: boolean;
-  initialMemoryOpen?: boolean;
   onNavigate?: (action: AiAction) => void;
   activeSection?: string; // Sezione corrente dell'app per il contesto AI
 }
-
-type NeuralCategory = 'all' | 'vehicles' | 'documents' | 'finances' | 'notes' | 'fitness' | 'recipes' | 'travel' | 'furniture' | 'parking' | 'addresses' | 'memories';
 
 function formatDate(dateStr?: string): string {
   if (!dateStr) return 'N/D';
@@ -111,7 +106,6 @@ export const ChelonaAiScreen
   onOpenParking,
   initialVoiceMode = false,
   initialDictationMode = false,
-  initialMemoryOpen = false,
   onNavigate,
   activeSection,
 }) => {
@@ -214,14 +208,19 @@ export const ChelonaAiScreen
       if (activeConvId === id) {
         handleNewConversation();
       }
+      showToast('Conversazione eliminata.', 'info');
     }
   };
 
-  useEffect(() => {
-    if (initialMemoryOpen) {
-      setShowMemoryDrawer(true);
+  const handleDeleteCurrentConversation = () => {
+    if (confirm('Vuoi eliminare la conversazione corrente?')) {
+      if (activeConvId) {
+        setConversations(prev => prev.filter(c => c.id !== activeConvId));
+      }
+      handleNewConversation();
+      showToast('Conversazione eliminata.', 'info');
     }
-  }, [initialMemoryOpen]);
+  };
 
   // Warm-up e precaricamento background del motore AI per azzerare i tempi della prima risposta senza cache
   useEffect(() => {
@@ -235,9 +234,6 @@ export const ChelonaAiScreen
   const [liveVoiceTranscript, setLiveVoiceTranscript] = useState('');
   const [liveAudioVolume, setLiveAudioVolume] = useState(0.2);
   const [speakingMessageId, setSpeakingMessageId] = useState<string | null>(null);
-  const [showMemoryDrawer, setShowMemoryDrawer] = useState(false);
-  const [activeNeuralCategory, setActiveNeuralCategory] = useState<NeuralCategory>('all');
-  const [memories, setMemories] = useState<AiMemory[]>(() => getLearnedMemories());
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
   // Voci di sintesi vocale e preferenze umane
@@ -278,10 +274,6 @@ export const ChelonaAiScreen
   const [voiceStatus, setVoiceStatus] = useState<'idle' | 'listening' | 'thinking' | 'speaking'>('idle');
   const [lastUserSpeech, setLastUserSpeech] = useState<string>('');
   const [lastAiSpeech, setLastAiSpeech] = useState<string>('');
-
-  // Form per nuova memoria manuale
-  const [newKey, setNewKey] = useState('');
-  const [newFact, setNewFact] = useState('');
 
   const chatEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -594,10 +586,6 @@ export const ChelonaAiScreen
 
       const msgsWithAssistant = [...msgsWithUser, assistantMsg];
       updateConversationWithMessages(msgsWithAssistant);
-      
-      if (response.learnedFact) {
-        setMemories(getLearnedMemories());
-      }
 
       if (response.createdModule && onAddModule) {
         onAddModule(response.createdModule);
@@ -889,32 +877,6 @@ export const ChelonaAiScreen
     }
   };
 
-  const handleAddManualMemory = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newKey.trim() || !newFact.trim()) return;
-
-    saveLearnedMemory({
-      key: newKey.trim(),
-      fact: newFact.trim(),
-      category: 'custom',
-      source: 'learned_from_chat',
-    });
-
-    setMemories(getLearnedMemories());
-    setNewKey('');
-    setNewFact('');
-    showToast('Memoria salvata!', 'success');
-  };
-
-  const handleDeleteMemory = (id: string) => {
-    deleteLearnedMemory(id);
-    setMemories(getLearnedMemories());
-    showToast('Memoria rimossa.');
-  };
-
-  const knowledge = buildKnowledgeBase(modules, username);
-
-
   const quickPrompts = [
     { label: '🚗 La mia auto', query: 'Fammi un riepilogo della mia auto, scadenze e km' },
     { label: '📅 Scadenze', query: 'Quali scadenze imminenti ho nei prossimi 60 giorni?' },
@@ -971,7 +933,14 @@ export const ChelonaAiScreen
               </div>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={handleDeleteCurrentConversation}
+              className="p-2 hover:bg-rose-500/10 rounded-2xl text-[var(--text-muted)] hover:text-rose-500 transition-colors active:scale-95"
+              title="Elimina conversazione corrente"
+            >
+              <Trash2 className="w-5 h-5 lg:w-6 lg:h-6" />
+            </button>
             <button
               onClick={handleNewConversation}
               className="p-2 hover:bg-[var(--surface-variant)] rounded-2xl text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors active:scale-95"
@@ -1027,57 +996,121 @@ export const ChelonaAiScreen
                       </div>
                     )}
 
-                    {msg.actions && msg.actions.length > 0 && (
-                      <div className="mt-3 pt-2.5 border-t border-[var(--border)]/40 flex flex-wrap gap-1.5">
-                        {msg.actions.map((act, i) => (
-                          <button
-                            key={i}
-                            onClick={() => {
-                              if (act.type === 'save_parking') {
-                                handleSend('Salva il parcheggio qui');
-                                return;
-                              }
-                              if (act.type === 'navigate_parking') {
-                                if (act.url) {
-                                  window.open(act.url, '_blank');
-                                } else {
-                                  const p = getSavedParking();
-                                  if (p) window.open(getNavigationUrl(p.latitude, p.longitude), '_blank');
-                                }
-                                return;
-                              }
-                              if (onNavigate) {
-                                onNavigate(act);
-                                return;
-                              }
-                              if (act.type === 'parking' && onOpenParking) {
-                                onOpenParking();
-                                if (!isEmbedded) onClose();
-                              } else if (act.type === 'volantino') {
-                                window.dispatchEvent(new CustomEvent('open-volantino', { 
-                                  detail: { 
-                                    chain: act.chainSlug || act.storeName,
-                                    slug: act.chainSlug,
-                                    store: act.storeName 
-                                  } 
-                                }));
-                                if (!isEmbedded) onClose();
-                              } else if (act.type === 'module' && act.module) {
-                                onOpenModule(act.module);
-                                if (!isEmbedded) onClose();
-                              } else if (act.type === 'category' && act.category) {
-                                onOpenCategory(act.category);
-                                if (!isEmbedded) onClose();
-                              }
-                            }}
-                            className="px-3 py-1 rounded-xl bg-[var(--surface-variant)] hover:bg-[var(--accent)] hover:text-white border border-[var(--border)] text-xs font-semibold text-[var(--text-main)] transition-all flex items-center gap-1.5 active:scale-95 shadow-xs"
-                          >
-                            <ExternalLink className="w-3 h-3" />
-                            <span>{act.label}</span>
-                          </button>
-                        ))}
-                      </div>
-                    )}
+                    {msg.actions && msg.actions.length > 0 && (() => {
+                      const recipeActions = msg.actions.filter(a => a.type === 'recipes' && a.recipe);
+                      const otherActions = msg.actions.filter(a => !(a.type === 'recipes' && a.recipe));
+
+                      const handleActionClick = (act: AiAction) => {
+                        if (act.type === 'save_parking') {
+                          handleSend('Salva il parcheggio qui');
+                          return;
+                        }
+                        if (act.type === 'navigate_parking') {
+                          if (act.url) {
+                            window.open(act.url, '_blank');
+                          } else {
+                            const p = getSavedParking();
+                            if (p) window.open(getNavigationUrl(p.latitude, p.longitude), '_blank');
+                          }
+                          return;
+                        }
+                        if (onNavigate) {
+                          onNavigate(act);
+                          return;
+                        }
+                        if (act.type === 'parking' && onOpenParking) {
+                          onOpenParking();
+                          if (!isEmbedded) onClose();
+                        } else if (act.type === 'volantino') {
+                          window.dispatchEvent(new CustomEvent('open-volantino', { 
+                            detail: { 
+                              chain: act.chainSlug || act.storeName,
+                              slug: act.chainSlug,
+                              store: act.storeName 
+                            } 
+                          }));
+                          if (!isEmbedded) onClose();
+                        } else if (act.type === 'module' && act.module) {
+                          onOpenModule(act.module);
+                          if (!isEmbedded) onClose();
+                        } else if (act.type === 'category' && act.category) {
+                          onOpenCategory(act.category);
+                          if (!isEmbedded) onClose();
+                        }
+                      };
+
+                      return (
+                        <div className="mt-3 pt-2.5 border-t border-[var(--border)]/40 space-y-2">
+                          {/* Schede ricette interattive con layout visivo moderno e pulito */}
+                          {recipeActions.length > 0 && (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                              {recipeActions.map((act, i) => {
+                                const r = act.recipe;
+                                return (
+                                  <button
+                                    key={`recipe-${i}`}
+                                    onClick={() => handleActionClick(act)}
+                                    className="w-full text-left p-2.5 rounded-2xl bg-[var(--surface-variant)]/70 hover:bg-[var(--surface-variant)] border border-[var(--border)] hover:border-amber-500/40 shadow-xs hover:shadow-md transition-all active:scale-[0.98] flex items-center gap-3 group cursor-pointer"
+                                  >
+                                    {r?.image ? (
+                                      <img
+                                        src={r.image}
+                                        alt={r.title || act.label}
+                                        className="w-12 h-12 rounded-xl object-cover shrink-0 border border-[var(--border)] shadow-xs"
+                                        onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
+                                      />
+                                    ) : (
+                                      <div className="w-11 h-11 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center shrink-0 border border-amber-500/20">
+                                        <UtensilsCrossed className="w-5 h-5" />
+                                      </div>
+                                    )}
+
+                                    <div className="flex-1 min-w-0">
+                                      <div className="flex items-center gap-1.5 flex-wrap mb-0.5">
+                                        {r?.category && (
+                                          <span className="text-[9.5px] font-bold uppercase tracking-wider px-1.5 py-0.2 rounded-md bg-amber-500/10 text-amber-600 dark:text-amber-400">
+                                            {r.category}
+                                          </span>
+                                        )}
+                                        {r?.calories && (
+                                          <span className="text-[10px] font-semibold text-[var(--text-muted)] flex items-center gap-0.5">
+                                            <Flame className="w-3 h-3 text-orange-500" />
+                                            {r.calories} kcal
+                                          </span>
+                                        )}
+                                      </div>
+                                      <h4 className="text-xs font-bold text-[var(--text-main)] group-hover:text-amber-500 transition-colors truncate">
+                                        {r?.title || act.label}
+                                      </h4>
+                                    </div>
+
+                                    <div className="p-1.5 rounded-xl bg-[var(--card-bg)] text-[var(--text-muted)] group-hover:text-amber-500 group-hover:bg-amber-500/10 transition-colors shrink-0">
+                                      <ChevronRight className="w-4 h-4" />
+                                    </div>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          )}
+
+                          {/* Altre azioni secondarie (es. Aggiungi alla spesa, Ricettario) */}
+                          {otherActions.length > 0 && (
+                            <div className="flex flex-wrap gap-1.5 pt-0.5">
+                              {otherActions.map((act, i) => (
+                                <button
+                                  key={`other-${i}`}
+                                  onClick={() => handleActionClick(act)}
+                                  className="px-3 py-1.5 rounded-xl bg-[var(--surface-variant)] hover:bg-[var(--accent)] hover:text-white border border-[var(--border)] text-xs font-semibold text-[var(--text-main)] transition-all flex items-center gap-1.5 active:scale-95 shadow-xs cursor-pointer"
+                                >
+                                  <ExternalLink className="w-3 h-3" />
+                                  <span>{act.label}</span>
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
 
                     {!isUser && (
                       <div className="mt-2 pt-1 flex items-center justify-end gap-2 text-[11px] text-[var(--text-muted)]">
@@ -1744,10 +1777,10 @@ export const ChelonaAiScreen
                         <button
                           type="button"
                           onClick={(e) => handleDeleteConversation(conv.id, e)}
-                          className="opacity-0 group-hover:opacity-100 p-1 text-[var(--text-muted)] hover:text-rose-500 transition-all rounded-lg"
+                          className="p-1.5 text-[var(--text-muted)] hover:text-rose-500 hover:bg-rose-500/10 transition-all rounded-lg shrink-0 cursor-pointer"
                           title="Elimina conversazione"
                         >
-                          <Trash2 className="w-3.5 h-3.5" />
+                          <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
                     );
@@ -1761,16 +1794,16 @@ export const ChelonaAiScreen
                   <button
                     type="button"
                     onClick={() => {
-                      if (confirm('Vuoi eliminare tutte le conversazioni?')) {
+                      if (confirm('Vuoi eliminare tutte le conversazioni salvate?')) {
                         setConversations([]);
                         handleNewConversation();
-                        showToast('Tutte le conversazioni eliminate.', 'success');
+                        showToast('Tutte le conversazioni sono state eliminate.', 'info');
                       }
                     }}
-                    className="w-full py-2.5 px-3 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 text-xs font-bold border border-rose-500/20 flex items-center justify-center gap-2 transition-all active:scale-95"
+                    className="w-full py-2.5 px-3 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 text-xs font-bold border border-rose-500/20 flex items-center justify-center gap-2 transition-all active:scale-95 cursor-pointer"
                   >
                     <Trash className="w-4 h-4" />
-                    <span>Elimina tutte le chat</span>
+                    <span>Elimina tutte le conversazioni</span>
                   </button>
                 </div>
               )}
@@ -1779,399 +1812,6 @@ export const ChelonaAiScreen
         )}
       </AnimatePresence>
 
-      {/* CASSETTO MEMORIA */}
-      <AnimatePresence>
-        {showMemoryDrawer && (
-          <div className="fixed inset-0 z-[150] flex justify-end">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setShowMemoryDrawer(false)}
-              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-            />
-
-            <motion.div
-              initial={{ x: '100%' }}
-              animate={{ x: 0 }}
-              exit={{ x: '100%' }}
-              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="relative w-full max-w-lg bg-[var(--bg)] h-full border-l border-[var(--border)] shadow-2xl flex flex-col z-10 safe-area-inset"
-            >
-              {/* Header Drawer */}
-              <div className="h-16 lg:h-20 border-b border-[var(--border)] px-6 flex items-center justify-between shrink-0 bg-[var(--header-bg)]">
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-2xl bg-amber-500/10 border border-amber-500/20 p-1 flex items-center justify-center overflow-hidden">
-                    <img src="/chelona_logo.png" alt="Chelona" className="w-full h-full object-contain" />
-                  </div>
-                  <div>
-                    <h3 className="text-base font-bold text-[var(--text-main)]">Memoria Chelona</h3>
-                    <p className="text-xs text-[var(--text-muted)]">Conoscenze e fatti appresi</p>
-                  </div>
-                </div>
-                <button
-                  onClick={() => setShowMemoryDrawer(false)}
-                  className="p-2 hover:bg-[var(--surface-variant)] rounded-xl text-[var(--text-muted)] transition-colors"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              <div className="flex-1 overflow-y-auto p-5 space-y-6 custom-scrollbar">
-
-                {/* Selettore rapido categorie (Pill bar orizzontale scrollabile) */}
-                <div className="flex items-center gap-1.5 overflow-x-auto pb-2 scrollbar-none my-2">
-                  {[
-                    { id: 'all', label: 'Tutto', count: null },
-                    { id: 'vehicles', label: 'Veicoli', count: knowledge.vehicles.length },
-                    { id: 'documents', label: 'Documenti', count: knowledge.documents.length },
-                    { id: 'finances', label: 'Finanze', count: knowledge.installments.modules.length + knowledge.expenses.count },
-                    { id: 'recipes', label: 'Ricette', count: knowledge.recipes.customCount },
-                    { id: 'fitness', label: 'Fitness', count: knowledge.fitness ? 1 : 0 },
-                    { id: 'travel', label: 'Viaggi', count: knowledge.travel.destinationsCount },
-                    { id: 'furniture', label: 'Casa', count: knowledge.furniture.roomsCount },
-                    { id: 'notes', label: 'Appunti', count: knowledge.notes.length },
-                    { id: 'parking', label: 'Parcheggio', count: knowledge.parking.hasParking ? 1 : 0 },
-                    { id: 'addresses', label: 'Rubrica', count: knowledge.addresses.count },
-                    { id: 'memories', label: 'Memorie', count: memories.length },
-                  ].map(tab => {
-                    const isSel = activeNeuralCategory === tab.id;
-                    return (
-                      <button
-                        key={tab.id}
-                        type="button"
-                        onClick={() => setActiveNeuralCategory(tab.id as NeuralCategory)}
-                        className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all flex items-center gap-1.5 ${
-                          isSel
-                            ? 'bg-amber-500 text-white shadow-sm'
-                            : 'bg-[var(--surface-variant)] text-[var(--text-muted)] hover:text-[var(--text-main)]'
-                        }`}
-                      >
-                        {tab.label}
-                        {tab.count !== null && tab.count > 0 && (
-                          <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${isSel ? 'bg-white/20 text-white' : 'bg-[var(--border)] text-[var(--text-main)]'}`}>
-                            {tab.count}
-                          </span>
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-
-                {/* Dettagli Dinamici Categoria Neurale Selezionata */}
-                {activeNeuralCategory === 'vehicles' && (
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <h4 className="text-xs font-bold text-[var(--text-main)] flex items-center gap-1.5">
-                        <Car className="w-3.5 h-3.5 text-amber-500" />
-                        Veicoli Rilevati ({knowledge.vehicles.length})
-                      </h4>
-                      <button onClick={() => setActiveNeuralCategory('all')} className="text-[11px] text-amber-500 hover:underline">Tutti i nodi</button>
-                    </div>
-                    {knowledge.vehicles.length === 0 ? (
-                      <p className="text-xs text-[var(--text-muted)] p-4 border border-dashed border-[var(--border)] rounded-2xl text-center">Nessun veicolo registrato.</p>
-                    ) : (
-                      knowledge.vehicles.map(v => (
-                        <div key={v.module.id} className="p-3 rounded-2xl bg-[var(--card-bg)] border border-[var(--border)] space-y-1 text-xs">
-                          <div className="font-bold text-[var(--text-main)]">{v.name} ({v.plate})</div>
-                          <div className="text-[var(--text-muted)]">Km: {v.km} • Carburante: {v.fuel.toUpperCase()}</div>
-                          <div className="text-[11px] text-amber-500">Assicurazione: {v.insurance.date ? formatDate(v.insurance.date) : 'N/D'} • Bollo: {v.tax.date ? formatDate(v.tax.date) : 'N/D'}</div>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                )}
-
-                {activeNeuralCategory === 'documents' && (
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <h4 className="text-xs font-bold text-[var(--text-main)] flex items-center gap-1.5">
-                        <FileText className="w-3.5 h-3.5 text-blue-500" />
-                        Documenti Archiviati ({knowledge.documents.length})
-                      </h4>
-                      <button onClick={() => setActiveNeuralCategory('all')} className="text-[11px] text-blue-500 hover:underline">Tutti i nodi</button>
-                    </div>
-                    {knowledge.documents.length === 0 ? (
-                      <p className="text-xs text-[var(--text-muted)] p-4 border border-dashed border-[var(--border)] rounded-2xl text-center">Nessun documento registrato.</p>
-                    ) : (
-                      knowledge.documents.map(d => (
-                        <div key={d.module.id} className="p-3 rounded-2xl bg-[var(--card-bg)] border border-[var(--border)] space-y-1 text-xs">
-                          <div className="font-bold text-[var(--text-main)]">{d.title} ({d.docType})</div>
-                          {d.number && <div className="text-[var(--text-muted)]">N. {d.number}</div>}
-                          <div className={`text-[11px] ${d.isExpired ? 'text-rose-500 font-bold' : 'text-emerald-500'}`}>
-                            {d.expiryDate ? `Scadenza: ${formatDate(d.expiryDate)} (${d.days} gg)` : 'Senza scadenza'}
-                          </div>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                )}
-
-                {activeNeuralCategory === 'finances' && (
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <h4 className="text-xs font-bold text-[var(--text-main)] flex items-center gap-1.5">
-                        <CreditCard className="w-3.5 h-3.5 text-emerald-500" />
-                        Quadro Finanziario
-                      </h4>
-                      <button onClick={() => setActiveNeuralCategory('all')} className="text-[11px] text-emerald-500 hover:underline">Tutti i nodi</button>
-                    </div>
-                    <div className="p-3 rounded-2xl bg-[var(--card-bg)] border border-[var(--border)] space-y-2 text-xs">
-                      <div>Spese questo mese: <span className="font-black text-[var(--text-main)]">€ {knowledge.expenses.totalThisMonth.toFixed(2)}</span></div>
-                      <div>Rate attive residue: <span className="font-black text-[var(--text-main)]">€ {knowledge.installments.totalPending.toFixed(2)}</span> ({knowledge.installments.modules.length} piani)</div>
-                      <div>Gruppi split: <span className="font-black text-[var(--text-main)]">{knowledge.splits.length}</span></div>
-                    </div>
-                  </div>
-                )}
-
-                {activeNeuralCategory === 'notes' && (
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <h4 className="text-xs font-bold text-[var(--text-main)] flex items-center gap-1.5">
-                        <StickyNote className="w-3.5 h-3.5 text-purple-500" />
-                        Note & Appunti ({knowledge.notes.length})
-                      </h4>
-                      <button onClick={() => setActiveNeuralCategory('all')} className="text-[11px] text-purple-500 hover:underline">Tutti i nodi</button>
-                    </div>
-                    {knowledge.notes.length === 0 ? (
-                      <p className="text-xs text-[var(--text-muted)] p-4 border border-dashed border-[var(--border)] rounded-2xl text-center">Nessuna nota registrata.</p>
-                    ) : (
-                      knowledge.notes.map(n => (
-                        <div key={n.module.id} className="p-3 rounded-2xl bg-[var(--card-bg)] border border-[var(--border)] space-y-1 text-xs">
-                          <div className="font-bold text-[var(--text-main)]">{n.title}</div>
-                          <div className="text-[var(--text-muted)] line-clamp-2">{n.snippet}</div>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                )}
-
-                {activeNeuralCategory === 'fitness' && (
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <h4 className="text-xs font-bold text-[var(--text-main)] flex items-center gap-1.5">
-                        <Activity className="w-3.5 h-3.5 text-pink-500" />
-                        Fitness & Nutrizione
-                      </h4>
-                      <button onClick={() => setActiveNeuralCategory('all')} className="text-[11px] text-pink-500 hover:underline">Tutti i nodi</button>
-                    </div>
-                    {knowledge.fitness ? (
-                      <div className="p-3 rounded-2xl bg-[var(--card-bg)] border border-[var(--border)] space-y-2 text-xs">
-                        <div>Obiettivo: <span className="font-black text-[var(--text-main)]">{knowledge.fitness.goal?.toUpperCase() || 'Forma fisica'}</span></div>
-                        {knowledge.fitness.calories && <div>Calorie target: <span className="font-black text-[var(--text-main)]">{knowledge.fitness.calories} kcal/giorno</span></div>}
-                        {knowledge.fitness.weight && <div>Peso: <span className="font-black text-[var(--text-main)]">{knowledge.fitness.weight} kg</span></div>}
-                        <div>Frequenza: <span className="font-black text-[var(--text-main)]">{knowledge.fitness.workoutDays || 3} gg/settimana</span></div>
-                      </div>
-                    ) : (
-                      <p className="text-xs text-[var(--text-muted)] p-4 border border-dashed border-[var(--border)] rounded-2xl text-center">Fitness non ancora configurato.</p>
-                    )}
-                  </div>
-                )}
-
-                {activeNeuralCategory === 'recipes' && (
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <h4 className="text-xs font-bold text-[var(--text-main)] flex items-center gap-1.5">
-                        <Utensils className="w-3.5 h-3.5 text-orange-500" />
-                        Ricettario & Cucina
-                      </h4>
-                      <button onClick={() => setActiveNeuralCategory('all')} className="text-[11px] text-orange-500 hover:underline">Tutti i nodi</button>
-                    </div>
-                    <div className="p-3 rounded-2xl bg-[var(--card-bg)] border border-[var(--border)] space-y-2 text-xs">
-                      <div>Ricette personali salvate: <span className="font-black text-[var(--text-main)]">{knowledge.recipes.customCount}</span></div>
-                      <div>Piatti preferiti: <span className="font-black text-[var(--text-main)]">{knowledge.recipes.favoritesCount}</span></div>
-                      {knowledge.recipes.fridgeIngredients.length > 0 && (
-                        <div>Nel frigo: <span className="text-[var(--text-muted)]">{knowledge.recipes.fridgeIngredients.join(', ')}</span></div>
-                      )}
-                      {knowledge.recipes.pantryIngredients.length > 0 && (
-                        <div>In dispensa: <span className="text-[var(--text-muted)]">{knowledge.recipes.pantryIngredients.join(', ')}</span></div>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {activeNeuralCategory === 'travel' && (
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <h4 className="text-xs font-bold text-[var(--text-main)] flex items-center gap-1.5">
-                        <Plane className="w-3.5 h-3.5 text-sky-500" />
-                        Viaggi & Itinerari ({knowledge.travel.destinationsCount})
-                      </h4>
-                      <button onClick={() => setActiveNeuralCategory('all')} className="text-[11px] text-sky-500 hover:underline">Tutti i nodi</button>
-                    </div>
-                    {knowledge.travel.destinationsCount === 0 ? (
-                      <p className="text-xs text-[var(--text-muted)] p-4 border border-dashed border-[var(--border)] rounded-2xl text-center">Nessuna destinazione di viaggio salvata.</p>
-                    ) : (
-                      knowledge.travel.destinations.map((d, i) => (
-                        <div key={i} className="p-3 rounded-2xl bg-[var(--card-bg)] border border-[var(--border)] space-y-1 text-xs">
-                          <div className="font-bold text-[var(--text-main)]">{d.name}</div>
-                          <div className="text-[var(--text-muted)]">{d.city || ''} {d.nation ? `(${d.nation})` : ''} • {d.type === 'itinerary' ? 'Tappa itinerario' : 'Luogo d\'interesse'}</div>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                )}
-
-                {activeNeuralCategory === 'furniture' && (
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <h4 className="text-xs font-bold text-[var(--text-main)] flex items-center gap-1.5">
-                        <Home className="w-3.5 h-3.5 text-teal-500" />
-                        Casa & Arredamento ({knowledge.furniture.roomsCount} stanze)
-                      </h4>
-                      <button onClick={() => setActiveNeuralCategory('all')} className="text-[11px] text-teal-500 hover:underline">Tutti i nodi</button>
-                    </div>
-                    {knowledge.furniture.roomsCount === 0 ? (
-                      <p className="text-xs text-[var(--text-muted)] p-4 border border-dashed border-[var(--border)] rounded-2xl text-center">Nessuna stanza configurata.</p>
-                    ) : (
-                      knowledge.furniture.rooms.map((r, i) => (
-                        <div key={i} className="p-3 rounded-2xl bg-[var(--card-bg)] border border-[var(--border)] space-y-1 text-xs">
-                          <div className="font-bold text-[var(--text-main)]">{r.name} {r.dimensions ? `(${r.dimensions})` : ''}</div>
-                          <div className="text-[var(--text-muted)]">{r.items.length} mobili inseriti</div>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                )}
-
-                {activeNeuralCategory === 'parking' && (
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <h4 className="text-xs font-bold text-[var(--text-main)] flex items-center gap-1.5">
-                        <Navigation className="w-3.5 h-3.5 text-emerald-500" />
-                        Parcheggio & Posizione GPS
-                      </h4>
-                      <button onClick={() => setActiveNeuralCategory('all')} className="text-[11px] text-emerald-500 hover:underline">Tutti i nodi</button>
-                    </div>
-                    {knowledge.parking.hasParking ? (
-                      <div className="p-3 rounded-2xl bg-[var(--card-bg)] border border-[var(--border)] space-y-1 text-xs">
-                        <div className="font-bold text-[var(--text-main)]">{knowledge.parking.address || 'Posizione salvata'}</div>
-                        <div className="text-[var(--text-muted)]">Parcheggiata: {knowledge.parking.elapsedTime}</div>
-                        {knowledge.parking.notes && <div className="text-[11px] text-amber-500">Note: {knowledge.parking.notes}</div>}
-                        {knowledge.parking.meterRemainingMinutes !== undefined && (
-                          <div className={`text-[11px] font-bold ${knowledge.parking.meterRemainingMinutes > 0 ? 'text-blue-500' : 'text-rose-500'}`}>
-                            {knowledge.parking.meterRemainingMinutes > 0 ? `Parchimetro: ${knowledge.parking.meterRemainingMinutes} min rimanenti` : 'Parchimetro scaduto!'}
-                          </div>
-                        )}
-                      </div>
-                    ) : (
-                      <p className="text-xs text-[var(--text-muted)] p-4 border border-dashed border-[var(--border)] rounded-2xl text-center">Nessun parcheggio registrato.</p>
-                    )}
-                  </div>
-                )}
-
-                {activeNeuralCategory === 'addresses' && (
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <h4 className="text-xs font-bold text-[var(--text-main)] flex items-center gap-1.5">
-                        <BookUser className="w-3.5 h-3.5 text-indigo-500" />
-                        Rubrica Indirizzi ({knowledge.addresses.count})
-                      </h4>
-                      <button onClick={() => setActiveNeuralCategory('all')} className="text-[11px] text-indigo-500 hover:underline">Tutti i nodi</button>
-                    </div>
-                    {knowledge.addresses.count === 0 ? (
-                      <p className="text-xs text-[var(--text-muted)] p-4 border border-dashed border-[var(--border)] rounded-2xl text-center">Nessun indirizzo salvato.</p>
-                    ) : (
-                      knowledge.addresses.list.map((a, i) => (
-                        <div key={i} className="p-3 rounded-2xl bg-[var(--card-bg)] border border-[var(--border)] space-y-1 text-xs">
-                          <div className="font-bold text-[var(--text-main)]">{a.title}</div>
-                          <div className="text-[var(--text-muted)] truncate">{a.query}</div>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                )}
-
-                {/* Form pulito per insegnare qualcosa (solo per all o memories) */}
-                {(activeNeuralCategory === 'all' || activeNeuralCategory === 'memories') && (
-                  <>
-                    <form onSubmit={handleAddManualMemory} className="p-4 rounded-3xl bg-[var(--card-bg)] border border-[var(--border)] space-y-2.5">
-                      <h4 className="text-xs font-bold text-[var(--text-main)] flex items-center gap-1.5">
-                        <Plus className="w-3.5 h-3.5 text-amber-500" />
-                        Insegna a Chelona
-                      </h4>
-                      <input
-                        type="text"
-                        value={newKey}
-                        onChange={e => setNewKey(e.target.value)}
-                        placeholder="Argomento (es. Codice portone, Taglia scarpe...)"
-                        className="w-full px-3 py-2 rounded-xl bg-[var(--surface-variant)] border border-[var(--border)] text-xs text-[var(--text-main)] placeholder-[var(--text-muted)] focus:outline-none focus:border-amber-500"
-                      />
-                      <textarea
-                        rows={2}
-                        value={newFact}
-                        onChange={e => setNewFact(e.target.value)}
-                        placeholder="Dettaglio da ricordare..."
-                        className="w-full px-3 py-2 rounded-xl bg-[var(--surface-variant)] border border-[var(--border)] text-xs text-[var(--text-main)] placeholder-[var(--text-muted)] focus:outline-none focus:border-amber-500 resize-none"
-                      />
-                      <button
-                        type="submit"
-                        disabled={!newKey.trim() || !newFact.trim()}
-                        className="w-full py-2 bg-amber-500 hover:bg-amber-600 disabled:opacity-40 text-white rounded-xl text-xs font-bold transition-all active:scale-95 shadow-sm"
-                      >
-                        Salva nella Memoria
-                      </button>
-                    </form>
-
-                    {/* Lista Memorie Personali */}
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <h4 className="text-xs font-bold text-[var(--text-main)]">
-                          Appunti Personali Ricordati ({memories.length})
-                        </h4>
-                        {memories.length > 0 && (
-                          <button
-                            onClick={() => {
-                              if (confirm('Vuoi azzerare tutte le memorie apprese?')) {
-                                clearAllLearnedMemories();
-                                setMemories([]);
-                                showToast('Memorie cancellate.');
-                              }
-                            }}
-                            className="text-[11px] font-bold text-rose-500 hover:underline"
-                          >
-                            Azzera tutto
-                          </button>
-                        )}
-                      </div>
-
-                      {memories.length === 0 ? (
-                        <div className="p-6 text-center border border-dashed border-[var(--border)] rounded-2xl">
-                          <p className="text-xs text-[var(--text-muted)]">Nessuna memoria personalizzata registrata.</p>
-                          <p className="text-[11px] text-[var(--text-muted)] mt-1">Puoi dirmi in chat *"Ricordati che..."* per memorizzare dati!</p>
-                        </div>
-                      ) : (
-                        <div className="space-y-2">
-                          {memories.map(m => (
-                            <div
-                              key={m.id}
-                              className="p-3 rounded-2xl bg-[var(--card-bg)] border border-[var(--border)] flex items-start justify-between gap-3 shadow-xs"
-                            >
-                              <div>
-                                <span className="text-[10px] font-bold uppercase tracking-wider text-amber-500 px-2 py-0.5 rounded-md bg-amber-500/10 inline-block mb-1">
-                                  {m.key}
-                                </span>
-                                <p className="text-xs text-[var(--text-main)] leading-relaxed">{m.fact}</p>
-                              </div>
-                              <button
-                                onClick={() => handleDeleteMemory(m.id)}
-                                className="p-1 text-[var(--text-muted)] hover:text-rose-500 transition-colors shrink-0"
-                                title="Elimina"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </>
-                )}
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
     </div>
   );
 };

@@ -240,15 +240,19 @@ async function main() {
   if (recipeActs.length < 3) {
     throw new Error(`Expected at least 3 recipe actions with recipe objects, found ${recipeActs.length}`);
   }
-  // Check that preparation, calories, ingredients are included in the text
-  if (!lunchAdviceRes.text.includes('Preparazione') && !lunchAdviceRes.text.includes('preparazione')) {
-    throw new Error('Lunch advice text missing preparation steps!');
+  // Verify minimalist text output (short intro, no giant walls of preparation text or ingredient dumps)
+  if (lunchAdviceRes.text.includes('Preparazione') || lunchAdviceRes.text.includes('preparazione')) {
+    throw new Error('Lunch advice text must NOT include long preparation steps in body!');
   }
-  if (!lunchAdviceRes.text.includes('kcal')) {
-    throw new Error('Lunch advice text missing calories!');
+  if (lunchAdviceRes.text.length > 250) {
+    throw new Error(`Lunch advice text should be concise and minimalist, but length was ${lunchAdviceRes.text.length}`);
   }
-  if (!lunchAdviceRes.text.includes('Ingredienti') && !lunchAdviceRes.text.includes('ingredienti')) {
-    throw new Error('Lunch advice text missing ingredients!');
+  // Verify that recipes have metadata (title, category) in the action buttons
+  for (const act of recipeActs) {
+    const r = (act as any).recipe;
+    if (!r.title || !r.category) {
+      throw new Error(`Recipe action missing title or category: ${JSON.stringify(r)}`);
+    }
   }
 
   // Test typo "ingrandienti" with meal query

@@ -1780,35 +1780,20 @@ async function _queryChelonaAiInner(
     }
 
     const isIngredientInquiryOnly = (lower.includes('chiedo') || lower.includes('quando chiedo')) && !lower.includes('pranz') && !lower.includes('cena') && !lower.includes('domani');
-    const mealLabel = isPranzo ? 'il tuo pranzo di domani' : isCena ? 'la tua cena di domani' : 'il tuo pasto';
-    let text = isIngredientInquiryOnly
-      ? `🧑‍🍳 **Certamente! Con "Il Matematico" di Chelona puoi trovare le ricette perfette leggendo e confrontando tutti gli ingredienti (anche simili o con refusi di battitura) tra oltre 600 piatti!**\n\n💡 **Come funziona:**\n• Scrivi gli ingredienti che hai in casa: *"ho pollo e zucchine"*, *"pasta e tonno"*, *"pomodorini e mozzarella"*...\n• Chiedi idee per un pasto: *"consigliami ricette per il pranzo di domani"*\n• Oppure chiedi un piatto: *"ingredienti della carbonara"*, *"come fare il tiramisù"*\n\nNel frattempo, ecco alcune delle migliori ricette selezionate per te dal catalogo:\n\n`
-      : `🧑‍🍳 **Certamente! Ho selezionato per te le migliori ricette per ${mealLabel} dal catalogo di oltre 600 piatti:**\n\n`;
+    const mealLabel = isPranzo ? 'il tuo pranzo di domani' : isCena ? 'la tua cena di domani' : 'te';
+    const text = isIngredientInquiryOnly
+      ? `Ecco le ricette consigliate da "Il Matematico" per te:`
+      : `Ecco le ricette perfette per ${mealLabel}:`;
 
     const actions: any[] = [];
-    suggested.forEach((r, idx) => {
-      const medal = ['🥇', '🥈', '🥉'][idx] || '•';
-      text += `${medal} **${r.title}** (${r.category})\n`;
-      if (r.ingredients && r.ingredients.length > 0) {
-        const ings = r.ingredients.slice(0, 4).map(i => typeof i === 'string' ? i : (i as any).name || (i as any).nome || '');
-        text += `   • 🛒 *Ingredienti*: ${ings.join(', ')}\n`;
-      }
-      if (r.calories) text += `   • 🔥 *${r.calories} kcal${r.protein ? ` • ${r.protein}g proteine` : ''}*\n`;
-      if (r.steps && r.steps.length > 0) {
-        const prep = r.steps.slice(0, 2).map((s, i) => `${i + 1}. ${s}`).join(' ');
-        text += `   • ⏱️ *Preparazione*: ${prep}${r.steps.length > 2 ? ' ...' : ''}\n`;
-      }
-      text += `\n`;
-
-      // Bottone per aprire direttamente la ricetta nel modal, senza toccare la barra di ricerca
+    suggested.forEach((r) => {
       actions.push({
-        label: `🍴 Dettagli: ${r.title.slice(0, 24)}...`,
+        label: r.title,
         type: 'recipes',
         recipe: r,
       });
     });
 
-    text += `💡 *Dimmi pure se hai degli ingredienti specifici (anche con refusi o termini simili: pollo, zucchine, salmone, uova, pomodori...): "Il Matematico" calcolerà subito le ricette ideali leggendo tutto il catalogo!* 🐢`;
     actions.push({ label: '📖 Sfoglia Tutte le Ricette', type: 'recipes' });
 
     return {

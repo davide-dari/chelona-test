@@ -959,9 +959,9 @@ export function formatRecipeMatchResponse(
 
   if (!matches || matches.length === 0) {
     return {
-      text: `🧑‍🍳 Ho cercato nel tuo ricettario e nel database di Chelona (oltre 600 ricette), ma non ho trovato una ricetta specifica che combini esattamente **${userIngredientsList}**.\n\n💡 Vuoi aprire il Ricettario per creare la tua ricetta personale o consultare i piatti per categoria?`,
+      text: `Non ho trovato ricette con **${userIngredientsList}**.`,
       actions: [
-        { label: '🍴 Apri Ricettario', type: 'recipes' },
+        { label: '📖 Sfoglia Ricettario', type: 'recipes' },
       ],
     };
   }
@@ -969,40 +969,13 @@ export function formatRecipeMatchResponse(
   const topMatches = matches.slice(0, 3);
   const best = topMatches[0];
 
-  let out = `🧑‍🍳 **Ho analizzato i tuoi ingredienti!**\n\n`;
-  out += `Hai a disposizione: **${userIngredientsList}**.\n`;
-  out += `Ecco le ricette migliori calcolate dal nostro motore gastronomico per sfruttare al meglio ciò che hai:\n\n`;
-
-  const medals = ['🥇', '🥈', '🥉'];
+  const text = `Ecco le ricette perfette con i tuoi ingredienti (${userIngredientsList}):`;
   const actions: any[] = [];
 
-  topMatches.forEach((m, idx) => {
+  topMatches.forEach((m) => {
     const r = m.recipe;
-    const medal = medals[idx] || '•';
-    out += `${medal} **${r.title}** (${r.category})\n`;
-    out += `   • 📊 **Copertura ingredienti**: **${m.userCoveragePercent}%**\n`;
-    out += `   • ✅ **Hai già**: ${m.matchedUserIngredients.join(', ')}\n`;
-    
-    if (m.missingIngredients.length > 0) {
-      const displayMissing = m.missingIngredients.slice(0, 3).map(cleanIngredientDisplayName).join(', ');
-      out += `   • 🛒 **Ti manca**: ${displayMissing}${m.missingIngredients.length > 3 ? ` *(+ altri ${m.missingIngredients.length - 3})*` : ''}\n`;
-    } else {
-      out += `   • ✨ **Hai tutti gli ingredienti necessari!**\n`;
-    }
-
-    if (r.calories) {
-      out += `   • 🔥 *${r.calories} kcal${r.protein ? ` • ${r.protein}g proteine` : ''}*\n`;
-    }
-
-    if (r.steps && r.steps.length > 0) {
-      const prepSummary = r.steps.slice(0, 2).map((s, i) => `${i + 1}. ${s}`).join(' ');
-      out += `   • ⏱️ **Preparazione**: ${prepSummary}${r.steps.length > 2 ? ' ...' : ''}\n`;
-    }
-    out += `\n`;
-
-    // Bottone azione per aprire la ricetta specifica (senza sporcare la barra di ricerca)
     actions.push({
-      label: `🍴 Apri: ${r.title.slice(0, 24)}...`,
+      label: r.title,
       type: 'recipes',
       recipe: r,
     });
@@ -1030,10 +1003,8 @@ export function formatRecipeMatchResponse(
     type: 'recipes',
   });
 
-  out += `Tocca uno dei bottoni per visualizzare la preparazione dettagliata o mettere subito nella lista della spesa ciò che ti serve! 🐢`;
-
   return {
-    text: out,
+    text,
     actions,
   };
 }
@@ -1147,32 +1118,15 @@ export function searchRecipeByDishTitle(query: string, catalog: RecipeCatalogIte
  * Formatta la risposta per una singola ricetta trovata per titolo
  */
 export function formatSingleRecipeResponse(recipe: RecipeCatalogItem): { text: string; actions: any[]; autoAction?: any } {
-  let out = `🧑‍🍳 **Ecco la ricetta:** **${recipe.title}** (${recipe.category})!\n\n`;
+  let out = `Ecco la ricetta per **${recipe.title}** (${recipe.category}):`;
   if (recipe.ingredients && recipe.ingredients.length > 0) {
-    out += `🥗 **Ingredienti necessari:**\n`;
-    recipe.ingredients.slice(0, 8).forEach(i => {
+    const list = recipe.ingredients.slice(0, 6).map(i => {
       const line = typeof i === 'string' ? i : (i as any).name || (i as any).nome || '';
-      out += `• ${line}\n`;
-    });
-    if (recipe.ingredients.length > 8) {
-      out += `*(+ altri ${recipe.ingredients.length - 8} ingredienti nel ricettario)*\n`;
+      return cleanIngredientDisplayName(line);
+    }).filter(Boolean);
+    if (list.length > 0) {
+      out += `\n• **Ingredienti**: ${list.join(', ')}`;
     }
-    out += `\n`;
-  }
-
-  if (recipe.steps && recipe.steps.length > 0) {
-    out += `⏱️ **Preparazione:**\n`;
-    recipe.steps.slice(0, 3).forEach((s, idx) => {
-      out += `${idx + 1}. ${s}\n`;
-    });
-    if (recipe.steps.length > 3) {
-      out += `*(+ altri ${recipe.steps.length - 3} passaggi nel ricettario)*\n`;
-    }
-    out += `\n`;
-  }
-
-  if (recipe.calories) {
-    out += `🔥 **Nutrizione**: *${recipe.calories} kcal${recipe.protein ? ` • ${recipe.protein}g proteine` : ''}${recipe.carbs ? ` • ${recipe.carbs}g carboidrati` : ''}${recipe.fat ? ` • ${recipe.fat}g grassi` : ''}*\n\n`;
   }
 
   const itemsToAdd = (recipe.ingredients || []).slice(0, 8).map(raw => {
@@ -1185,7 +1139,7 @@ export function formatSingleRecipeResponse(recipe: RecipeCatalogItem): { text: s
   }).filter(i => i.name.length > 0);
 
   const actions: any[] = [
-    { label: `🍴 Dettagli Ricetta`, type: 'recipes', recipe: recipe },
+    { label: recipe.title, type: 'recipes', recipe: recipe },
   ];
 
   if (itemsToAdd.length > 0) {

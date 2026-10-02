@@ -690,5 +690,23 @@ export async function unloadGemma2Model(): Promise<void> {
   engineState = 'idle';
 }
 
-export { ragEngine, promptCache, semanticCache, localDb, gemma2ModelManager };
+export function getSemanticCacheEntries() {
+  return semanticCache.getCacheEntries();
+}
+
+export function deleteSemanticCacheEntry(key: string) {
+  semanticCache.deleteCacheEntry(key);
+}
+
+export function clearSemanticCache() {
+  semanticCache.clearAllCache();
+}
+
+export { 
+  ragEngine, 
+  promptCache, 
+  semanticCache, 
+  localDb, 
+  gemma2ModelManager
+};
 export type { AiMessage, AiAction, AiMemory };

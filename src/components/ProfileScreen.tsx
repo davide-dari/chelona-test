@@ -23,7 +23,7 @@ import { lzw } from '../utils/lzw';
 import { Filesystem, Directory } from '@capacitor/filesystem';
 import { Capacitor } from '@capacitor/core';
 import CryptoJS from 'crypto-js';
-import { semanticCache } from '../services/semanticCache';
+import { getSemanticCacheEntries, deleteSemanticCacheEntry, clearSemanticCache } from '../services/gemma2Engine';
 
 
 export interface ProfileScreenProps {
@@ -48,7 +48,6 @@ export interface ProfileScreenProps {
   onUpdateWidgets: (catIds: string[], toolIds: string[]) => void;
   theme: 'light' | 'dark';
   onToggleTheme: () => void;
-  onOpenAiMemory?: () => void;
   onOpenGemma2Setup?: () => void;
 
 }
@@ -128,7 +127,6 @@ export function ProfileScreen({
   pinnedCategoryIds = [],
   pinnedToolIds = [],
   onUpdateWidgets,
-  onOpenAiMemory,
   onOpenGemma2Setup,
   theme,
   onToggleTheme
@@ -175,9 +173,10 @@ export function ProfileScreen({
   const [isCheckingUpdate, setIsCheckingUpdate] = useState(false);
 
   // Cache management
-  type CacheEntry = { query: string; responsePreview: string; timestamp: number; hits: number };
-  const [cacheEntries, setCacheEntries] = useState<CacheEntry[]>(() => semanticCache.getCacheEntries());
+  type CacheEntry = { query: string; responsePreview: string; responseText: string; timestamp: number; hits: number };
+  const [cacheEntries, setCacheEntries] = useState<CacheEntry[]>(() => getSemanticCacheEntries());
   const [selectedCacheKeys, setSelectedCacheKeys] = useState<Set<string>>(new Set());
+  const [expandedCacheKey, setExpandedCacheKey] = useState<string | null>(null);
 
   // Restore input ref
   const restoreZipInputRef = useRef<HTMLInputElement>(null);
@@ -1488,51 +1487,137 @@ export function ProfileScreen({
                       </p>
                     </div>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => setCacheEntries(semanticCache.getCacheEntries())}
-                    className="p-2 hover:bg-[var(--surface-variant)] rounded-xl text-[var(--text-muted)] transition-colors"
-                    title="Aggiorna lista"
-                  >
-                    <RefreshCw className="w-4 h-4" />
-                  </button>
+                  <div className="flex items-center gap-1.5">
+                    {cacheEntries.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (selectedCacheKeys.size === cacheEntries.length) {
+                            setSelectedCacheKeys(new Set());
+                          } else {
+                            setSelectedCacheKeys(new Set(cacheEntries.map(e => e.query)));
+                          }
+                        }}
+                        className="px-2.5 py-1.5 hover:bg-[var(--surface-variant)] rounded-xl text-xs font-semibold text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors"
+                      >
+                        {selectedCacheKeys.size === cacheEntries.length ? 'Deseleziona' : 'Seleziona tutti'}
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setCacheEntries(getSemanticCacheEntries())}
+                      className="p-2 hover:bg-[var(--surface-variant)] rounded-xl text-[var(--text-muted)] transition-colors"
+                      title="Aggiorna lista"
+                    >
+                      <RefreshCw className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
 
                 {cacheEntries.length === 0 ? (
-                  <p className="text-xs text-[var(--text-muted)] text-center py-4">Nessuna risposta salvata nella cache.</p>
+                  <p className="text-xs text-[var(--text-muted)] text-center py-6 text-[var(--text-muted)]">Nessuna risposta memorizzata nella cache locale.</p>
                 ) : (
-                  <div className="space-y-2 max-h-64 overflow-y-auto custom-scrollbar pr-1">
+                  <div className="space-y-2.5 max-h-80 overflow-y-auto custom-scrollbar pr-1">
                     {cacheEntries.map((entry) => {
                       const isSelected = selectedCacheKeys.has(entry.query);
+                      const isExpanded = expandedCacheKey === entry.query;
+
                       return (
                         <div
                           key={entry.query}
-                          onClick={() => {
-                            setSelectedCacheKeys(prev => {
-                              const next = new Set(prev);
-                              if (next.has(entry.query)) next.delete(entry.query);
-                              else next.add(entry.query);
-                              return next;
-                            });
-                          }}
-                          className={`p-3 rounded-xl border text-xs cursor-pointer transition-all flex items-start gap-2.5 ${
+                          className={`rounded-2xl border text-xs transition-all ${
                             isSelected
-                              ? 'bg-rose-500/10 border-rose-500/30'
+                              ? 'bg-rose-500/5 border-rose-500/30'
                               : 'bg-[var(--surface-variant)] border-[var(--border)] hover:border-amber-500/40'
                           }`}
                         >
-                          <div className={`mt-0.5 w-4 h-4 rounded-md border-2 shrink-0 flex items-center justify-center transition-all ${
-                            isSelected ? 'border-rose-500 bg-rose-500' : 'border-[var(--border)]'
-                          }`}>
-                            {isSelected && <Check className="w-2.5 h-2.5 text-white" />}
+                          <div className="p-3 flex items-start gap-2.5">
+                            <div 
+                              onClick={() => {
+                                setSelectedCacheKeys(prev => {
+                                  const next = new Set(prev);
+                                  if (next.has(entry.query)) next.delete(entry.query);
+                                  else next.add(entry.query);
+                                  return next;
+                                });
+                              }}
+                              className={`mt-0.5 w-4 h-4 rounded-md border-2 shrink-0 flex items-center justify-center transition-all cursor-pointer ${
+                                isSelected ? 'border-rose-500 bg-rose-500' : 'border-[var(--border)] hover:border-amber-500'
+                              }`}
+                            >
+                              {isSelected && <Check className="w-2.5 h-2.5 text-white" />}
+                            </div>
+
+                            <div 
+                              className="flex-1 min-w-0 cursor-pointer"
+                              onClick={() => setExpandedCacheKey(isExpanded ? null : entry.query)}
+                            >
+                              <div className="flex items-center justify-between gap-2">
+                                <p className="font-bold text-[var(--text-main)] truncate">{entry.query}</p>
+                                <span className="text-[10px] text-amber-500 font-semibold bg-amber-500/10 px-1.5 py-0.2 rounded shrink-0">
+                                  {entry.hits} {entry.hits === 1 ? 'richiesta' : 'richieste'}
+                                </span>
+                              </div>
+                              <p className="text-[var(--text-muted)] mt-1 line-clamp-2 leading-relaxed">
+                                {entry.responsePreview}
+                              </p>
+                              <div className="flex items-center justify-between mt-2 pt-1 border-t border-[var(--border)]/40 text-[10px] text-[var(--text-muted)]">
+                                <span>{new Date(entry.timestamp).toLocaleDateString('it-IT', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
+                                <span className="text-amber-500 font-semibold hover:underline">
+                                  {isExpanded ? 'Nascondi dettagli' : 'Visualizza risposta completa'}
+                                </span>
+                              </div>
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                deleteSemanticCacheEntry(entry.query);
+                                setCacheEntries(getSemanticCacheEntries());
+                                setSelectedCacheKeys(prev => {
+                                  const next = new Set(prev);
+                                  next.delete(entry.query);
+                                  return next;
+                                });
+                                showToast('Elemento rimosso dalla cache.');
+                              }}
+                              className="p-1.5 text-[var(--text-muted)] hover:text-rose-500 hover:bg-rose-500/10 rounded-xl transition-colors shrink-0"
+                              title="Elimina questa risposta dalla cache"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
                           </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="font-semibold text-[var(--text-main)] truncate">{entry.query}</p>
-                            <p className="text-[var(--text-muted)] mt-0.5 line-clamp-2">{entry.responsePreview}{entry.responsePreview.length >= 120 ? '…' : ''}</p>
-                            <p className="text-[10px] text-[var(--text-muted)] mt-1">
-                              {entry.hits} {entry.hits === 1 ? 'richiesta' : 'richieste'} • {new Date(entry.timestamp).toLocaleDateString('it-IT', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
-                            </p>
-                          </div>
+
+                          {/* Dettaglio risposta completa espandibile */}
+                          {isExpanded && (
+                            <div className="px-3 pb-3 pt-1 border-t border-[var(--border)]/60 bg-[var(--card-bg)] rounded-b-2xl space-y-2">
+                              <p className="text-[11px] font-bold text-[var(--text-muted)] uppercase tracking-wider">Risposta Memorizzata:</p>
+                              <div className="p-2.5 rounded-xl bg-[var(--surface-variant)] border border-[var(--border)] max-h-48 overflow-y-auto custom-scrollbar whitespace-pre-wrap text-[11.5px] text-[var(--text-main)] leading-relaxed select-text">
+                                {entry.responseText || entry.responsePreview}
+                              </div>
+                              <div className="flex justify-end gap-2 pt-1">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    deleteSemanticCacheEntry(entry.query);
+                                    setCacheEntries(getSemanticCacheEntries());
+                                    setExpandedCacheKey(null);
+                                    setSelectedCacheKeys(prev => {
+                                      const next = new Set(prev);
+                                      next.delete(entry.query);
+                                      return next;
+                                    });
+                                    showToast('Risposta rimossa dalla cache.');
+                                  }}
+                                  className="px-3 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 border border-rose-500/20 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                  <span>Rimuovi dettaglio</span>
+                                </button>
+                              </div>
+                            </div>
+                          )}
                         </div>
                       );
                     })}
@@ -1544,12 +1629,12 @@ export function ProfileScreen({
                     <button
                       type="button"
                       onClick={() => {
-                        selectedCacheKeys.forEach(q => semanticCache.deleteCacheEntry(q));
+                        selectedCacheKeys.forEach(q => deleteSemanticCacheEntry(q));
                         setSelectedCacheKeys(new Set());
-                        setCacheEntries(semanticCache.getCacheEntries());
+                        setCacheEntries(getSemanticCacheEntries());
                         showToast(`${selectedCacheKeys.size} voc${selectedCacheKeys.size === 1 ? 'e' : 'i'} rimoss${selectedCacheKeys.size === 1 ? 'a' : 'e'} dalla cache.`);
                       }}
-                      className="flex-1 py-2.5 bg-rose-500 hover:bg-rose-600 text-white rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-1.5 active:scale-95"
+                      className="flex-1 py-2.5 bg-rose-500 hover:bg-rose-600 text-white rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-1.5 active:scale-95 shadow-sm"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                       Elimina selezionate ({selectedCacheKeys.size})
@@ -1559,9 +1644,10 @@ export function ProfileScreen({
                     type="button"
                     onClick={() => {
                       if (confirm('Vuoi svuotare completamente la cache delle risposte AI?')) {
-                        semanticCache.clearAllCache();
+                        clearSemanticCache();
                         setCacheEntries([]);
                         setSelectedCacheKeys(new Set());
+                        setExpandedCacheKey(null);
                         showToast('Cache AI svuotata.', 'success');
                       }
                     }}

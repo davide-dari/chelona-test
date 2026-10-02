@@ -393,10 +393,11 @@ export class SemanticCache {
   /**
    * Restituisce tutte le voci della cache per la UI di gestione
    */
-  public getCacheEntries(): Array<{ query: string; responsePreview: string; timestamp: number; hits: number }> {
+  public getCacheEntries(): Array<{ query: string; responsePreview: string; responseText: string; timestamp: number; hits: number }> {
     return this.ramEntries.map(e => ({
       query: e.query,
-      responsePreview: (e.response.text || '').slice(0, 120),
+      responsePreview: (e.response.text || '').slice(0, 140),
+      responseText: e.response.text || '',
       timestamp: e.timestamp,
       hits: e.hits,
     }));
@@ -420,3 +421,15 @@ export class SemanticCache {
 }
 
 export const semanticCache = new SemanticCache();
+
+export function getSemanticCacheEntries(): Array<{ query: string; responsePreview: string; responseText: string; timestamp: number; hits: number }> {
+  return semanticCache.getCacheEntries();
+}
+
+export function deleteSemanticCacheEntry(query: string): void {
+  semanticCache.deleteCacheEntry(query);
+}
+
+export function clearSemanticCache(): void {
+  semanticCache.clearAllCache();
+}
