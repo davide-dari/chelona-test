@@ -7,7 +7,8 @@ import {
   Sliders, Layers, Folder as FolderIcon, Trash2, CheckCircle2, 
   AlertTriangle, Sparkles, Key, FileText, CheckCheck,
   Car, Users, Receipt, Globe, BookOpen, Activity, Home,
-  Percent, Scan, Shirt, ImageIcon, HardDrive, Edit2, Cpu, ChevronRight
+  Percent, Scan, Shirt, ImageIcon, HardDrive, Edit2, Cpu, ChevronRight,
+  Search, Brain
 } from 'lucide-react';
 import { storage } from '../services/storage';
 import { encryption } from '../services/encryption';
@@ -23,7 +24,16 @@ import { lzw } from '../utils/lzw';
 import { Filesystem, Directory } from '@capacitor/filesystem';
 import { Capacitor } from '@capacitor/core';
 import CryptoJS from 'crypto-js';
-import { getSemanticCacheEntries, deleteSemanticCacheEntry, clearSemanticCache } from '../services/gemma2Engine';
+import { 
+  getSemanticCacheEntries, 
+  deleteSemanticCacheEntry, 
+  deleteSemanticCacheEntries, 
+  clearSemanticCache,
+  getLearnedMemories,
+  deleteLearnedMemory,
+  clearAllLearnedMemories,
+  type AiMemory
+} from '../services/gemma2Engine';
 
 
 export interface ProfileScreenProps {
@@ -177,6 +187,26 @@ export function ProfileScreen({
   const [cacheEntries, setCacheEntries] = useState<CacheEntry[]>(() => getSemanticCacheEntries());
   const [selectedCacheKeys, setSelectedCacheKeys] = useState<Set<string>>(new Set());
   const [expandedCacheKey, setExpandedCacheKey] = useState<string | null>(null);
+  const [cacheSearchFilter, setCacheSearchFilter] = useState('');
+
+  // Learned memories state
+  const [memories, setMemories] = useState<AiMemory[]>(() => getLearnedMemories());
+
+  useEffect(() => {
+    if (activeTab === 'system') {
+      setCacheEntries(getSemanticCacheEntries());
+      setMemories(getLearnedMemories());
+    }
+  }, [activeTab]);
+
+  const filteredCacheEntries = useMemo(() => {
+    if (!cacheSearchFilter.trim()) return cacheEntries;
+    const q = cacheSearchFilter.toLowerCase();
+    return cacheEntries.filter(e =>
+      e.query.toLowerCase().includes(q) ||
+      (e.responseText || e.responsePreview).toLowerCase().includes(q)
+    );
+  }, [cacheEntries, cacheSearchFilter]);
 
   // Restore input ref
   const restoreZipInputRef = useRef<HTMLInputElement>(null);
@@ -1484,23 +1514,34 @@ export function ProfileScreen({
                       <h3 className="text-base font-bold text-[var(--text-main)]">Cache Risposte AI</h3>
                       <p className="text-xs text-[var(--text-muted)]">
                         {cacheEntries.length} {cacheEntries.length === 1 ? 'risposta salvata' : 'risposte salvate'} in memoria
+                        {cacheSearchFilter.trim() ? ` (${filteredCacheEntries.length} visualizzate)` : ''}
                       </p>
                     </div>
                   </div>
                   <div className="flex items-center gap-1.5">
-                    {cacheEntries.length > 0 && (
+                    {filteredCacheEntries.length > 0 && (
                       <button
                         type="button"
                         onClick={() => {
-                          if (selectedCacheKeys.size === cacheEntries.length) {
-                            setSelectedCacheKeys(new Set());
+                          const allFilteredKeys = filteredCacheEntries.map(e => e.query);
+                          const allSelected = allFilteredKeys.every(k => selectedCacheKeys.has(k));
+                          if (allSelected) {
+                            setSelectedCacheKeys(prev => {
+                              const next = new Set(prev);
+                              allFilteredKeys.forEach(k => next.delete(k));
+                              return next;
+                            });
                           } else {
-                            setSelectedCacheKeys(new Set(cacheEntries.map(e => e.query)));
+                            setSelectedCacheKeys(prev => {
+                              const next = new Set(prev);
+                              allFilteredKeys.forEach(k => next.add(k));
+                              return next;
+                            });
                           }
                         }}
                         className="px-2.5 py-1.5 hover:bg-[var(--surface-variant)] rounded-xl text-xs font-semibold text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors"
                       >
-                        {selectedCacheKeys.size === cacheEntries.length ? 'Deseleziona' : 'Seleziona tutti'}
+                        {filteredCacheEntries.every(e => selectedCacheKeys.has(e.query)) && filteredCacheEntries.length > 0 ? 'Deseleziona' : 'Seleziona tutti'}
                       </button>
                     )}
                     <button
@@ -1514,11 +1555,35 @@ export function ProfileScreen({
                   </div>
                 </div>
 
+                {cacheEntries.length > 0 && (
+                  <div className="relative">
+                    <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" />
+                    <input
+                      type="text"
+                      value={cacheSearchFilter}
+                      onChange={e => setCacheSearchFilter(e.target.value)}
+                      placeholder="Cerca tra domande e risposte..."
+                      className="w-full pl-9 pr-8 py-2 rounded-xl bg-[var(--surface-variant)] border border-[var(--border)] text-xs text-[var(--text-main)] placeholder-[var(--text-muted)] focus:outline-none focus:border-amber-500"
+                    />
+                    {cacheSearchFilter && (
+                      <button
+                        type="button"
+                        onClick={() => setCacheSearchFilter('')}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 p-0.5 text-[var(--text-muted)] hover:text-[var(--text-main)]"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+                )}
+
                 {cacheEntries.length === 0 ? (
                   <p className="text-xs text-[var(--text-muted)] text-center py-6 text-[var(--text-muted)]">Nessuna risposta memorizzata nella cache locale.</p>
+                ) : filteredCacheEntries.length === 0 ? (
+                  <p className="text-xs text-[var(--text-muted)] text-center py-6">Nessuna risposta corrisponde alla ricerca "{cacheSearchFilter}".</p>
                 ) : (
                   <div className="space-y-2.5 max-h-80 overflow-y-auto custom-scrollbar pr-1">
-                    {cacheEntries.map((entry) => {
+                    {filteredCacheEntries.map((entry) => {
                       const isSelected = selectedCacheKeys.has(entry.query);
                       const isExpanded = expandedCacheKey === entry.query;
 
@@ -1610,7 +1675,7 @@ export function ProfileScreen({
                                     });
                                     showToast('Risposta rimossa dalla cache.');
                                   }}
-                                  className="px-3 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 border border-rose-500/20 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all"
+                                  className="px-3 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 border border-rose-500/20 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer"
                                 >
                                   <Trash2 className="w-3.5 h-3.5" />
                                   <span>Rimuovi dettaglio</span>
@@ -1629,12 +1694,13 @@ export function ProfileScreen({
                     <button
                       type="button"
                       onClick={() => {
-                        selectedCacheKeys.forEach(q => deleteSemanticCacheEntry(q));
+                        const count = selectedCacheKeys.size;
+                        deleteSemanticCacheEntries(Array.from(selectedCacheKeys));
                         setSelectedCacheKeys(new Set());
                         setCacheEntries(getSemanticCacheEntries());
-                        showToast(`${selectedCacheKeys.size} voc${selectedCacheKeys.size === 1 ? 'e' : 'i'} rimoss${selectedCacheKeys.size === 1 ? 'a' : 'e'} dalla cache.`);
+                        showToast(`${count} voc${count === 1 ? 'e' : 'i'} rimoss${count === 1 ? 'a' : 'e'} dalla cache.`);
                       }}
-                      className="flex-1 py-2.5 bg-rose-500 hover:bg-rose-600 text-white rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-1.5 active:scale-95 shadow-sm"
+                      className="flex-1 py-2.5 bg-rose-500 hover:bg-rose-600 text-white rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-1.5 active:scale-95 shadow-sm cursor-pointer"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                       Elimina selezionate ({selectedCacheKeys.size})
@@ -1652,12 +1718,95 @@ export function ProfileScreen({
                       }
                     }}
                     disabled={cacheEntries.length === 0}
-                    className="flex-1 py-2.5 bg-[var(--surface-variant)] hover:bg-[var(--border)] text-[var(--text-main)] border border-[var(--border)] rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-1.5 active:scale-95 disabled:opacity-40"
+                    className="flex-1 py-2.5 bg-[var(--surface-variant)] hover:bg-[var(--border)] text-[var(--text-main)] border border-[var(--border)] rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-1.5 active:scale-95 disabled:opacity-40 cursor-pointer"
                   >
                     <Trash2 className="w-3.5 h-3.5 text-rose-500" />
                     Svuota Cache Completa
                   </button>
                 </div>
+              </div>
+
+              {/* Memorie Personali AI (Fatti Appresi) */}
+              <div className="bg-[var(--card-bg)] rounded-[var(--radius-lg)] p-5 sm:p-6 border border-[var(--border)] shadow-sm space-y-4">
+                <div className="flex items-center justify-between gap-4 pb-3 border-b border-[var(--border)]">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-2xl bg-amber-500/10 flex items-center justify-center text-amber-500">
+                      <Brain className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h3 className="text-base font-bold text-[var(--text-main)]">Memorie Personali AI</h3>
+                      <p className="text-xs text-[var(--text-muted)]">
+                        {memories.length} {memories.length === 1 ? 'appunto ricordato' : 'appunti ricordati'} da Chelona
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setMemories(getLearnedMemories())}
+                      className="p-2 hover:bg-[var(--surface-variant)] rounded-xl text-[var(--text-muted)] transition-colors"
+                      title="Aggiorna lista"
+                    >
+                      <RefreshCw className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+
+                {memories.length === 0 ? (
+                  <p className="text-xs text-[var(--text-muted)] text-center py-6">
+                    Nessuna memoria personalizzata registrata. Puoi dire a Chelona in chat *"Ricordati che..."* per memorizzare appunti personali.
+                  </p>
+                ) : (
+                  <div className="space-y-2.5 max-h-64 overflow-y-auto custom-scrollbar pr-1">
+                    {memories.map((m) => (
+                      <div
+                        key={m.id}
+                        className="p-3 rounded-2xl bg-[var(--surface-variant)] border border-[var(--border)] flex items-start justify-between gap-3 text-xs"
+                      >
+                        <div className="flex-1 min-w-0">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-amber-500 px-2 py-0.5 rounded-md bg-amber-500/10 inline-block mb-1">
+                            {m.key}
+                          </span>
+                          <p className="text-[var(--text-main)] leading-relaxed">{m.fact}</p>
+                          <span className="text-[10px] text-[var(--text-muted)] block mt-1">
+                            {new Date(m.createdAt).toLocaleDateString('it-IT', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            deleteLearnedMemory(m.id);
+                            setMemories(getLearnedMemories());
+                            showToast('Memoria rimossa.');
+                          }}
+                          className="p-1.5 text-[var(--text-muted)] hover:text-rose-500 hover:bg-rose-500/10 rounded-xl transition-colors shrink-0 cursor-pointer"
+                          title="Elimina memoria"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {memories.length > 0 && (
+                  <div className="pt-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (confirm('Vuoi azzerare tutte le memorie apprese da Chelona?')) {
+                          clearAllLearnedMemories();
+                          setMemories([]);
+                          showToast('Tutte le memorie sono state azzerate.', 'info');
+                        }
+                      }}
+                      className="w-full py-2.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 border border-rose-500/20 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-1.5 active:scale-95 cursor-pointer"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>Azzera tutte le memorie ({memories.length})</span>
+                    </button>
+                  </div>
+                )}
               </div>
 
               {/* Offline & Privacy Manifesto Card */}

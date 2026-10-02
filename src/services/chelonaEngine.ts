@@ -87,32 +87,45 @@ export interface AiMessage {
 const MEMORIES_STORAGE_KEY = 'chelona_ai_memories';
 const CHAT_HISTORY_KEY = 'chelona_ai_chat_history';
 
+let ramMemories: AiMemory[] | null = null;
+
 /**
  * Carica le memorie salvate in locale
  */
 export function getLearnedMemories(): AiMemory[] {
   try {
-    if (typeof window === 'undefined' || typeof localStorage === 'undefined' || !localStorage?.getItem) return [];
-    const raw = localStorage.getItem(MEMORIES_STORAGE_KEY);
-    if (!raw) return [];
-    return JSON.parse(raw);
+    if (typeof localStorage !== 'undefined' && localStorage?.getItem) {
+      const raw = localStorage.getItem(MEMORIES_STORAGE_KEY);
+      if (raw) {
+        ramMemories = JSON.parse(raw);
+        return ramMemories || [];
+      }
+    }
   } catch (e) {
     console.error('Failed to load AI memories', e);
-    return [];
   }
+  return ramMemories || [];
 }
 
 /**
  * Salva una nuova memoria locale
  */
-export function saveLearnedMemory(memory: Omit<AiMemory, 'id' | 'createdAt'>): AiMemory {
-  const memories = getLearnedMemories();
+export function saveLearnedMemory(memory: {
+  key: string;
+  fact: string;
+  category?: AiMemory['category'];
+  source?: AiMemory['source'];
+}): AiMemory {
+  const memories = [...getLearnedMemories()];
   const existingIdx = memories.findIndex(m => m.key.toLowerCase() === memory.key.toLowerCase());
   
   const newMemory: AiMemory = {
     id: 'mem_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7),
     createdAt: new Date().toISOString(),
-    ...memory,
+    key: memory.key,
+    fact: memory.fact,
+    category: memory.category || 'personal',
+    source: memory.source || 'learned_from_chat',
   };
 
   if (existingIdx >= 0) {
@@ -120,9 +133,10 @@ export function saveLearnedMemory(memory: Omit<AiMemory, 'id' | 'createdAt'>): A
   } else {
     memories.unshift(newMemory);
   }
+  ramMemories = memories;
 
   try {
-    if (typeof window !== 'undefined' && typeof localStorage !== 'undefined' && localStorage?.setItem) {
+    if (typeof localStorage !== 'undefined' && localStorage?.setItem) {
       localStorage.setItem(MEMORIES_STORAGE_KEY, JSON.stringify(memories));
       localStorage.setItem('chelona_learned_memories', JSON.stringify(memories));
     }
@@ -154,8 +168,9 @@ export function saveLearnedMemory(memory: Omit<AiMemory, 'id' | 'createdAt'>): A
  */
 export function deleteLearnedMemory(id: string): void {
   const memories = getLearnedMemories().filter(m => m.id !== id);
+  ramMemories = memories;
   try {
-    if (typeof window !== 'undefined' && typeof localStorage !== 'undefined' && localStorage?.setItem) {
+    if (typeof localStorage !== 'undefined' && localStorage?.setItem) {
       localStorage.setItem(MEMORIES_STORAGE_KEY, JSON.stringify(memories));
       localStorage.setItem('chelona_learned_memories', JSON.stringify(memories));
     }
@@ -175,8 +190,9 @@ export function deleteLearnedMemory(id: string): void {
  * Cancella tutte le memorie
  */
 export function clearAllLearnedMemories(): void {
+  ramMemories = [];
   try {
-    if (typeof window !== 'undefined' && typeof localStorage !== 'undefined' && localStorage?.removeItem) {
+    if (typeof localStorage !== 'undefined' && localStorage?.removeItem) {
       localStorage.removeItem(MEMORIES_STORAGE_KEY);
       localStorage.removeItem('chelona_learned_memories');
     }
@@ -188,7 +204,7 @@ export function clearAllLearnedMemories(): void {
     ragEngine.removeBySource('memory');
     localDb.saveMemories([]).catch(() => {});
   } catch (err) {
-    console.warn('[RAG] Errore svuotamento memorie RAG', err);
+    console.warn('[RAG] Errore reset memorie in RAG', err);
   }
 }
 
@@ -2863,7 +2879,7 @@ async function _queryChelonaAiInner(
           if (matches.length > 0) {
             const formatted = formatRecipeMatchResponse(foodEntities, matches);
             return {
-              text: `❄️ **Con ciò che hai registrato nel Frigo e nella Dispensa (${combined.join(', ')}):**\n\n${formatted.text}`,
+              text: formatted.text,
               actions: formatted.actions,
               engineUsed: 'chelona-engine',
             };

@@ -85,11 +85,11 @@ function formatRelativeTime(ts: number): string {
   const diff = Date.now() - ts;
   const m = Math.floor(diff / 60000);
   if (m < 1) return 'Adesso';
-  if (m < 60) return `{m} min fa`;
+  if (m < 60) return `${m} min fa`;
   const h = Math.floor(m / 60);
-  if (h < 24) return `{h} ore fa`;
+  if (h < 24) return `${h} ore fa`;
   const d = Math.floor(h / 24);
-  if (d < 7) return `{d} giorni fa`;
+  if (d < 7) return `${d} giorni fa`;
   return new Date(ts).toLocaleDateString('it-IT', { day: '2-digit', month: 'short' });
 }
 
@@ -204,7 +204,9 @@ export const ChelonaAiScreen
   const handleDeleteConversation = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
     if (confirm('Vuoi davvero eliminare questa conversazione?')) {
-      setConversations(prev => prev.filter(c => c.id !== id));
+      const remaining = conversations.filter(c => c.id !== id);
+      setConversations(remaining);
+      saveConversations(remaining);
       if (activeConvId === id) {
         handleNewConversation();
       }
@@ -215,7 +217,9 @@ export const ChelonaAiScreen
   const handleDeleteCurrentConversation = () => {
     if (confirm('Vuoi eliminare la conversazione corrente?')) {
       if (activeConvId) {
-        setConversations(prev => prev.filter(c => c.id !== activeConvId));
+        const remaining = conversations.filter(c => c.id !== activeConvId);
+        setConversations(remaining);
+        saveConversations(remaining);
       }
       handleNewConversation();
       showToast('Conversazione eliminata.', 'info');
@@ -936,7 +940,12 @@ export const ChelonaAiScreen
           <div className="flex items-center gap-1.5">
             <button
               onClick={handleDeleteCurrentConversation}
-              className="p-2 hover:bg-rose-500/10 rounded-2xl text-[var(--text-muted)] hover:text-rose-500 transition-colors active:scale-95"
+              disabled={messages.length <= 1 && !activeConvId}
+              className={`p-2 rounded-2xl transition-colors active:scale-95 ${
+                messages.length <= 1 && !activeConvId
+                  ? 'text-[var(--text-muted)]/30 cursor-not-allowed'
+                  : 'hover:bg-rose-500/10 text-[var(--text-muted)] hover:text-rose-500 cursor-pointer'
+              }`}
               title="Elimina conversazione corrente"
             >
               <Trash2 className="w-5 h-5 lg:w-6 lg:h-6" />
@@ -1052,18 +1061,17 @@ export const ChelonaAiScreen
                                     onClick={() => handleActionClick(act)}
                                     className="w-full text-left p-2.5 rounded-2xl bg-[var(--surface-variant)]/70 hover:bg-[var(--surface-variant)] border border-[var(--border)] hover:border-amber-500/40 shadow-xs hover:shadow-md transition-all active:scale-[0.98] flex items-center gap-3 group cursor-pointer"
                                   >
-                                    {r?.image ? (
-                                      <img
-                                        src={r.image}
-                                        alt={r.title || act.label}
-                                        className="w-12 h-12 rounded-xl object-cover shrink-0 border border-[var(--border)] shadow-xs"
-                                        onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
-                                      />
-                                    ) : (
-                                      <div className="w-11 h-11 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center shrink-0 border border-amber-500/20">
-                                        <UtensilsCrossed className="w-5 h-5" />
-                                      </div>
-                                    )}
+                                    <div className="w-12 h-12 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center shrink-0 border border-amber-500/20 overflow-hidden relative">
+                                      <UtensilsCrossed className="w-5 h-5 absolute" />
+                                      {r?.image && (
+                                        <img
+                                          src={r.image}
+                                          alt={r.title || act.label}
+                                          className="w-full h-full object-cover relative z-10"
+                                          onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
+                                        />
+                                      )}
+                                    </div>
 
                                     <div className="flex-1 min-w-0">
                                       <div className="flex items-center gap-1.5 flex-wrap mb-0.5">

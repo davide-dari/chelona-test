@@ -698,9 +698,20 @@ export function deleteSemanticCacheEntry(key: string) {
   semanticCache.deleteCacheEntry(key);
 }
 
+export function deleteSemanticCacheEntries(keys: string[]) {
+  semanticCache.deleteCacheEntries(keys);
+}
+
 export function clearSemanticCache() {
   semanticCache.clearAllCache();
 }
+
+export {
+  getLearnedMemories,
+  saveLearnedMemory,
+  deleteLearnedMemory,
+  clearAllLearnedMemories,
+} from './chelonaEngine';
 
 export { 
   ragEngine, 
@@ -710,3 +721,4 @@ export {
   gemma2ModelManager
 };
 export type { AiMessage, AiAction, AiMemory };
+

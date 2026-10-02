@@ -16,6 +16,17 @@ import {
   extractRecessoQuery 
 } from '../src/services/mathLanguageEngine';
 import { queryChelonaAi } from '../src/services/chelonaEngine';
+import { 
+  semanticCache, 
+  getSemanticCacheEntries, 
+  deleteSemanticCacheEntry, 
+  deleteSemanticCacheEntries, 
+  clearSemanticCache,
+  getLearnedMemories,
+  saveLearnedMemory,
+  deleteLearnedMemory,
+  clearAllLearnedMemories
+} from '../src/services/gemma2Engine';
 import { Module } from '../src/types';
 
 async function main() {
@@ -329,6 +340,68 @@ async function main() {
       throw new Error(`Similar ingredients action has forbidden search property: ${(act as any).search}`);
     }
   }
+
+  // Test 14: Semantic Cache Inspection and Granular Deletion
+  console.log('\n14. Test Semantic Cache Inspection & Deletion:');
+  clearSemanticCache();
+  if (getSemanticCacheEntries().length !== 0) {
+    throw new Error('clearSemanticCache failed to empty cache');
+  }
+
+  semanticCache.set('come fare la pasta al pomodoro', 'hash1', { text: 'Ecco la ricetta semplice per la pasta al pomodoro fresco.' });
+  semanticCache.set('quanto costa il bollo auto', 'hash2', { text: 'Il bollo auto dipende dai kW e dalla regione.' });
+  semanticCache.set('orario studio medico curante', 'hash3', { text: 'Lo studio apre alle 09:00.' });
+
+  const entries = getSemanticCacheEntries();
+  if (entries.length !== 3) {
+    throw new Error(`Expected 3 cached entries, got ${entries.length}`);
+  }
+  const pastaEntry = entries.find(e => e.query.includes('pasta al pomodoro'));
+  if (!pastaEntry || !pastaEntry.responseText.includes('pasta al pomodoro')) {
+    throw new Error('Cached entry responseText missing or incorrect');
+  }
+
+  // Selective single delete
+  deleteSemanticCacheEntry('quanto costa il bollo auto');
+  const entriesAfterSingle = getSemanticCacheEntries();
+  if (entriesAfterSingle.length !== 2 || entriesAfterSingle.some(e => e.query.includes('bollo auto'))) {
+    throw new Error('deleteSemanticCacheEntry failed to remove single item');
+  }
+
+  // Batch delete
+  deleteSemanticCacheEntries(['come fare la pasta al pomodoro', 'orario studio medico curante']);
+  const entriesAfterBatch = getSemanticCacheEntries();
+  if (entriesAfterBatch.length !== 0) {
+    throw new Error('deleteSemanticCacheEntries failed to batch remove items');
+  }
+  console.log('  Semantic cache inspection, single deletion, and batch deletion passed!');
+
+  // Test 15: Learned Memory Management
+  console.log('\n15. Test Learned Memories Functional Management:');
+  clearAllLearnedMemories();
+  const initialMems = getLearnedMemories();
+  if (initialMems.length !== 0) {
+    throw new Error('clearAllLearnedMemories failed to clear memories');
+  }
+
+  const m1 = saveLearnedMemory({ key: 'Codice Cancello', fact: 'Il codice del cancello è 4821' });
+  const m2 = saveLearnedMemory({ key: 'Taglia Scarpe', fact: 'La taglia di scarpe è 43' });
+  const allMems = getLearnedMemories();
+  if (allMems.length !== 2) {
+    throw new Error(`Expected 2 learned memories, got ${allMems.length}`);
+  }
+
+  deleteLearnedMemory(m1.id);
+  const remainingMems = getLearnedMemories();
+  if (remainingMems.length !== 1 || remainingMems[0].key !== 'Taglia Scarpe') {
+    throw new Error('deleteLearnedMemory failed to delete single memory');
+  }
+
+  clearAllLearnedMemories();
+  if (getLearnedMemories().length !== 0) {
+    throw new Error('clearAllLearnedMemories failed to reset memories');
+  }
+  console.log('  Learned memories add, query, delete single, and clear all passed!');
 
   console.log('\n✨ === TUTTI I TEST DE "IL MATEMATICO" COMPLETATI CON SUCCESSO! === ✨');
 }

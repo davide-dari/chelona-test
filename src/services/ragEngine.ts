@@ -107,9 +107,11 @@ class RagEngine {
   load(): void {
     if (this.loaded) return;
     try {
-      const raw = localStorage.getItem(RAG_DB_KEY);
-      if (raw) {
-        this.db = JSON.parse(raw);
+      if (typeof localStorage !== 'undefined' && localStorage?.getItem) {
+        const raw = localStorage.getItem(RAG_DB_KEY);
+        if (raw) {
+          this.db = JSON.parse(raw);
+        }
       }
     } catch {
       this.db = { documents: [], vocabulary: [], idfScores: {}, version: 1, updatedAt: Date.now() };
@@ -125,7 +127,9 @@ class RagEngine {
           .sort((a, b) => b.metadata.updatedAt - a.metadata.updatedAt)
           .slice(0, MAX_DOCUMENTS);
       }
-      localStorage.setItem(RAG_DB_KEY, JSON.stringify(this.db));
+      if (typeof localStorage !== 'undefined' && localStorage?.setItem) {
+        localStorage.setItem(RAG_DB_KEY, JSON.stringify(this.db));
+      }
     } catch (e) {
       console.warn('[RAG] Impossibile salvare il database vettoriale', e);
     }

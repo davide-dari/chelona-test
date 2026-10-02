@@ -404,12 +404,27 @@ export class SemanticCache {
   }
 
   /**
-   * Elimina una singola voce dalla cache (per query normalizzata)
+   * Elimina una singola voce dalla cache (per query normalizzata o originale)
    */
   public deleteCacheEntry(query: string): void {
     const normQuery = this.normalize(query);
-    this.ramEntries = this.ramEntries.filter(e => e.normalizedQuery !== normQuery);
-    this.schedulePersist();
+    this.ramEntries = this.ramEntries.filter(e => e.normalizedQuery !== normQuery && e.query !== query);
+    if (this.saveTimeout) clearTimeout(this.saveTimeout);
+    localDb.saveSemanticCache(this.ramEntries);
+  }
+
+  /**
+   * Elimina un insieme di voci dalla cache
+   */
+  public deleteCacheEntries(queries: string[]): void {
+    if (!queries || queries.length === 0) return;
+    const querySet = new Set(queries);
+    const normSet = new Set(queries.map(q => this.normalize(q)));
+    this.ramEntries = this.ramEntries.filter(
+      e => !querySet.has(e.query) && !normSet.has(e.normalizedQuery)
+    );
+    if (this.saveTimeout) clearTimeout(this.saveTimeout);
+    localDb.saveSemanticCache(this.ramEntries);
   }
 
   /**
@@ -430,6 +445,11 @@ export function deleteSemanticCacheEntry(query: string): void {
   semanticCache.deleteCacheEntry(query);
 }
 
+export function deleteSemanticCacheEntries(queries: string[]): void {
+  semanticCache.deleteCacheEntries(queries);
+}
+
 export function clearSemanticCache(): void {
   semanticCache.clearAllCache();
 }
+
