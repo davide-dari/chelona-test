@@ -444,6 +444,9 @@ export const FOOD_SYNONYMS: Record<string, string[]> = {
   ceci: ['ceci cotti', 'ceci in scatola', 'ceci in barattolo', 'farina di ceci'],
   lenticchie: ['lenticchie secche', 'lenticchie in barattolo', 'lenticchie in scatola'],
   fagioli: ['fagioli borlotti', 'fagioli cannellini', 'fagioli neri', 'fagioli rossi'],
+  tofu: ['tofu al naturale', 'tofu affumicato', 'seitan', 'tempeh'],
+  avena: ['fiocchi d avena', 'farina d avena', 'porridge'],
+  quinoa: ['quinoa bianca', 'quinoa rossa', 'farro', 'orzo', 'couscous'],
   mele: ['mela', 'mela renetta', 'mele golden'],
   pere: ['pera', 'pere abate'],
   banane: ['banana'],
@@ -482,7 +485,8 @@ const CONVERSATIONAL_FOOD_STOPWORDS = new Set([
   'cosa', 'posso', 'preparare', 'cucinare', 'fare', 'trovare', 'mi', 'consigli', 'consigliami',
   'stasera', 'oggi', 'domani', 'pranzo', 'cena', 'colazione', 'merenda',
   'ricetta', 'ricette', 'col', 'colla', 'coi', 'e', 'ed', 'anche',
-  'ingrediente', 'ingredienti', 'ingrendiente', 'ingrendienti', 'ingrendinte', 'ingrendinti', 'ingredinte', 'ingredinti', 'ingr', 'ingred', 'ingrend',
+  'ingrediente', 'ingredienti', 'ingrendiente', 'ingrendienti', 'ingrendinte', 'ingrendinti', 'ingredinte', 'ingredinti', 'igrediente', 'igredienti', 'ingr', 'ingred', 'ingrend',
+  'base', 'a base di', 'devo', 'devo fare', 'devo preparare',
   'cibo', 'cibi', 'alimento', 'alimenti', 'roba',
   'vorrei', 'dimmi', 'trovami', 'suggerisci', 'idee', 'piatto', 'piatti',
   'due', 'tre', 'quattro', 'cinque', 'chilo', 'chili', 'kg', 'etto', 'etti', 'g', 'grammi',
@@ -510,7 +514,7 @@ export interface ExtractedFoodEntity {
 export function resolveCanonicalFood(token: string): string | null {
   const norm = normalizeItalianText(token);
   if (!norm || norm.length < 3) return null;
-  if (/^ingr[e|en][d|nd]in?t[ei]?$/i.test(norm) || CONVERSATIONAL_FOOD_STOPWORDS.has(norm)) return null;
+  if (/^i(?:n)?g(?:r|ren)?d(?:i|ien)?t[ei]?$/i.test(norm) || CONVERSATIONAL_FOOD_STOPWORDS.has(norm)) return null;
   const stem = italianStem(norm);
 
   // 1. Corrispondenza diretta con chiave canonica o radice
@@ -575,7 +579,7 @@ export function extractFoodEntities(sentence: string): ExtractedFoodEntity[] {
   const clauses = clean.split(/(?:,|\be\b|\bed\b|\bcon\b|\bpiu\b|\bpiù\b|\bo\b|\binoltre\b)/g);
   const candidates: string[] = [];
 
-  const isStopWord = (w: string) => CONVERSATIONAL_FOOD_STOPWORDS.has(w) || /^ingr[e|en][d|nd]in?t[ei]?$/i.test(w);
+  const isStopWord = (w: string) => CONVERSATIONAL_FOOD_STOPWORDS.has(w) || /^i(?:n)?g(?:r|ren)?d(?:i|ien)?t[ei]?$/i.test(w);
 
   for (const clause of clauses) {
     const words = clause.trim().split(/\s+/).filter(Boolean);
@@ -1014,7 +1018,6 @@ export function formatRecipeMatchResponse(
   return {
     text: out,
     actions,
-    autoAction: actions[0], // Apri direttamente la ricetta migliore
   };
 }
 
@@ -1304,14 +1307,39 @@ export interface ExtractedDoctorResult {
  */
 export function extractDoctorQuery(query: string): ExtractedDoctorResult | null {
   const norm = normalizeItalianText(query);
-  const isMedContext =
-    norm.includes('medic') || norm.includes('dottor') || norm.includes('studio') ||
-    norm.includes('ricetta') || norm.includes('farmac') || norm.includes('medicin') ||
-    norm.includes('prescrizion') || norm.includes('ambulatori') || norm.includes('visita');
 
-  if (!isMedContext) return null;
+  // Se la query riguarda chiaramente cucina, cibo, ricette gastronomiche o pasti, NON è una query medica!
+  const isCulinaryContext =
+    norm.includes('cucin') || norm.includes('mangia') || norm.includes('pranz') ||
+    norm.includes('cena') || norm.includes('colazion') || norm.includes('spuntin') ||
+    norm.includes('piatt') || norm.includes('ingredient') || norm.includes('igredient') ||
+    norm.includes('aliment') || norm.includes('pasta') || norm.includes('second') ||
+    norm.includes('dolce') || norm.includes('forno') || norm.includes('padella') ||
+    norm.includes('frigo') || norm.includes('dispensa') || norm.includes('ricettario') ||
+    norm.includes('torta') || norm.includes('biscott');
+
+  if (isCulinaryContext && !norm.includes('medic') && !norm.includes('dottor') && !norm.includes('farmac')) {
+    return null;
+  }
 
   const doctorState = loadDoctorState();
+  const commonMeds = ['tachipirina', 'oki', 'aspirina', 'aulin', 'brufen', 'paracetamolo', 'ibuprofene', 'cortisone', 'antibiotico', 'cardioaspirina', 'novalgina', 'gentalyn', 'pantoprazolo', 'voltaren'];
+  const hasCommonMed = commonMeds.some(m => norm.includes(m));
+  const hasDoctorProfileMed = doctorState.medicines.some(m => norm.includes(normalizeItalianText(m.name)));
+
+  // Contesto medico verificato
+  const hasMedicalKeywords =
+    norm.includes('medic') || norm.includes('dottor') || norm.includes('studio') ||
+    norm.includes('farmac') || norm.includes('medicin') || norm.includes('prescrizion') ||
+    norm.includes('ambulatori') || norm.includes('visita') || norm.includes('asl') ||
+    norm.includes('mutua') || norm.includes('terapia') || hasCommonMed || hasDoctorProfileMed;
+
+  // "ricetta" da sola è culinaria al 99% a meno che non sia specificata "ricetta medica" o sia in un contesto medico
+  const hasMedicalRecipe =
+    norm.includes('ricetta medic') || norm.includes('ricetta del medic') ||
+    norm.includes('ricetta del dottor') || (norm.includes('ricetta') && hasMedicalKeywords);
+
+  if (!hasMedicalKeywords && !hasMedicalRecipe) return null;
 
   // Intento 1: Stato orari / apertura
   if (norm.includes('orari') || norm.includes('apert') || norm.includes('chius') || norm.includes('quando apre') || norm.includes('a che ora') || norm.includes('oggi apre')) {
@@ -1323,9 +1351,9 @@ export function extractDoctorQuery(query: string): ExtractedDoctorResult | null 
     return { intent: 'contact', doctorState };
   }
 
-  // Intento 3: Richiesta ricetta o prescrizione farmaco
-  if (norm.includes('ricetta') || norm.includes('prescriz') || norm.includes('farmac') || norm.includes('medicin')) {
-    // Cerca se ha nominato un farmaco specifico
+  // Intento 3: Richiesta ricetta medica o prescrizione farmaco
+  if (hasMedicalRecipe || norm.includes('prescriz') || norm.includes('farmac') || norm.includes('medicin')) {
+    // Cerca se ha nominato un farmaco specifico del profilo medico
     let medicineName: string | undefined;
     for (const m of doctorState.medicines) {
       if (norm.includes(normalizeItalianText(m.name))) {
@@ -1333,10 +1361,25 @@ export function extractDoctorQuery(query: string): ExtractedDoctorResult | null 
         break;
       }
     }
+    // Farmaci noti da banco comuni
+    const commonMeds = ['tachipirina', 'oki', 'aspirina', 'aulin', 'brufen', 'paracetamolo', 'ibuprofene', 'cortisone', 'antibiotico', 'cardioaspirina', 'novalgina', 'gentalyn', 'pantoprazolo', 'voltaren'];
     if (!medicineName) {
+      for (const cm of commonMeds) {
+        if (norm.includes(cm)) {
+          medicineName = cm.charAt(0).toUpperCase() + cm.slice(1);
+          break;
+        }
+      }
+    }
+    if (!medicineName && (hasMedicalRecipe || norm.includes('prescriz'))) {
       const match = query.match(/(?:per|del|di)\s+([a-zA-Z0-9\s]{3,25})/i);
       if (match && !norm.includes('dottor') && !norm.includes('medic')) {
-        medicineName = match[1].trim();
+        const candidate = match[1].trim().toLowerCase();
+        // Assicurati che non sia una parola comune o culinaria
+        const nonMedWords = ['pranzo', 'cena', 'domani', 'cucinare', 'mangiare', 'fare', 'preparare', 'favore', 'cortesia'];
+        if (!nonMedWords.some(w => candidate.includes(w))) {
+          medicineName = match[1].trim();
+        }
       }
     }
     return { intent: 'prescription', medicineName, doctorState };

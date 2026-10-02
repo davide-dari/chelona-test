@@ -116,14 +116,16 @@ class Gemma2ModelManager {
     setTimeout(attemptDownload, 2000);
 
     // Listen for network changes to retry when WiFi is connected
-    try {
-      Network.addListener('networkStatusChange', (status) => {
-        if (status.connected && status.connectionType === 'wifi') {
-          attemptDownload();
-        }
-      });
-    } catch (e) {
-      console.warn('Failed to add network listener', e);
+    if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+      try {
+        Network.addListener('networkStatusChange', (status) => {
+          if (status.connected && status.connectionType === 'wifi') {
+            attemptDownload();
+          }
+        });
+      } catch (e) {
+        console.warn('Failed to add network listener', e);
+      }
     }
   }
 
@@ -211,11 +213,12 @@ class Gemma2ModelManager {
   }
 
   async isOnWifi(): Promise<boolean> {
+    if (typeof window === 'undefined' || typeof window.addEventListener !== 'function') return true;
     try {
       const status = await Network.getStatus();
       return status.connected && status.connectionType === 'wifi';
     } catch {
-      const nav = navigator as any;
+      const nav = (typeof navigator !== 'undefined' ? navigator : {}) as any;
       if (nav.connection) {
         return nav.connection.effectiveType === '4g' || nav.connection.type === 'wifi';
       }
