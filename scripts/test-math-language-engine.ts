@@ -218,10 +218,72 @@ async function main() {
     throw new Error('queryChelonaAi did not return Sky recesso info!');
   }
 
+  // Test 10: Specific verification of the prompt task
+  console.log('\n10. Test Recipe Advice with typos & clean search bar:');
+  const lunchAdviceQuery = "consigliami ricette a base di un ingrediente per il pranzo di domani";
+  const lunchAdviceRes = await queryChelonaAi(lunchAdviceQuery, mockModules, 'Davide');
+  console.log('  lunchAdviceRes text preview:\n  ', lunchAdviceRes.text.split('\n')[0]);
+  if (!lunchAdviceRes.text.includes('pranzo') || !lunchAdviceRes.actions || lunchAdviceRes.actions.length === 0) {
+    throw new Error('Lunch advice query did not return expected curated recipes');
+  }
+  if (lunchAdviceRes.autoAction) {
+    throw new Error('Lunch advice query must NEVER have autoAction (must not kick user out of chat)!');
+  }
+  // Check that no action has search property
+  for (const act of lunchAdviceRes.actions) {
+    if ((act as any).search) {
+      throw new Error(`Action has forbidden search property: ${(act as any).search}`);
+    }
+  }
+  // Check that recipe actions have recipe objects
+  const recipeActs = lunchAdviceRes.actions.filter(a => a.type === 'recipes' && (a as any).recipe);
+  if (recipeActs.length < 3) {
+    throw new Error(`Expected at least 3 recipe actions with recipe objects, found ${recipeActs.length}`);
+  }
+  // Check that preparation, calories, ingredients are included in the text
+  if (!lunchAdviceRes.text.includes('Preparazione') && !lunchAdviceRes.text.includes('preparazione')) {
+    throw new Error('Lunch advice text missing preparation steps!');
+  }
+  if (!lunchAdviceRes.text.includes('kcal')) {
+    throw new Error('Lunch advice text missing calories!');
+  }
+  if (!lunchAdviceRes.text.includes('Ingredienti') && !lunchAdviceRes.text.includes('ingredienti')) {
+    throw new Error('Lunch advice text missing ingredients!');
+  }
+
+  // Test typo "ingrandienti" with meal query
+  const typoMealQuery = "quando chiedo gli ingrandienti consigliami ricette a base di un ingrediente per il pranzo di domani";
+  const typoMealRes = await queryChelonaAi(typoMealQuery, mockModules, 'Davide');
+  if (typoMealRes.autoAction) {
+    throw new Error('Typo query must not have autoAction!');
+  }
+  for (const act of typoMealRes.actions || []) {
+    if ((act as any).search) {
+      throw new Error(`Typo query action has forbidden search property: ${(act as any).search}`);
+    }
+  }
+
+  // Test ingredient matching with typo "ingrandienti: zucchine e pollo"
+  const typoIngrQuery = "consigliami ricette per pranzo con gli ingrandienti: zucchine e pollo";
+  const typoIngrRes = await queryChelonaAi(typoIngrQuery, mockModules, 'Davide');
+  if (typoIngrRes.autoAction) {
+    throw new Error('Ingredient matching query must not have autoAction!');
+  }
+  for (const act of typoIngrRes.actions || []) {
+    if ((act as any).search) {
+      throw new Error(`Ingredient matching action has forbidden search property: ${(act as any).search}`);
+    }
+  }
+  if (!typoIngrRes.text.includes('zucchine') && !typoIngrRes.text.includes('pollo')) {
+    throw new Error('Ingredient matching query text missing matched ingredients!');
+  }
+
   console.log('\n✨ === TUTTI I TEST DE "IL MATEMATICO" COMPLETATI CON SUCCESSO! === ✨');
 }
 
-main().catch(err => {
+main().then(() => {
+  process.exit(0);
+}).catch(err => {
   console.error('\n❌ TEST RUNNER FAILED:', err);
   process.exit(1);
 });

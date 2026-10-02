@@ -1330,16 +1330,29 @@ export async function queryChelonaAi(
     lower.trim() === 'impostazioni' ||
     lower.trim() === 'offerte';
 
-  // Se l'autoAction per le ricette ha un search testuale con parole conversazionali (es. "per il pranzo di domani"), bloccalo sempre!
-  const hasJunkRecipeSearch = 
-    result.autoAction?.type === 'recipes' && 
-    result.autoAction?.search && 
-    (result.autoAction.search.includes('per il') || result.autoAction.search.includes('di domani') || result.autoAction.search.includes('che de') || result.autoAction.search.includes('pranzo') || result.autoAction.search.includes('cena'));
-
-  if (hasJunkRecipeSearch) {
-    delete result.autoAction;
+  // Le ricette NON devono MAI avere il parametro search nella barra di ricerca
+  // né attivare navigazione automatica salvo richiesta esplicita dell'utente ("apri ricette", "vai al ricettario")
+  if (result.autoAction && (result.autoAction.type === 'recipes' || result.autoAction.category === 'recipes')) {
+    delete (result.autoAction as any).search;
+    const isExplicitRecipeNav = 
+      lower.includes('apri') || 
+      lower.includes('vai') || 
+      lower.trim() === 'ricette' || 
+      lower.trim() === 'ricettario';
+    if (!isExplicitRecipeNav) {
+      delete result.autoAction;
+    }
   } else if (!isExplicitNavigation && result.autoAction) {
     delete result.autoAction;
+  }
+
+  // Pulizia globale preventiva di qualsiasi parametro search su type: 'recipes' dentro result.actions
+  if (result.actions) {
+    result.actions.forEach(a => {
+      if (a.type === 'recipes' || a.category === 'recipes') {
+        delete (a as any).search;
+      }
+    });
   }
 
   return result;
@@ -1664,7 +1677,7 @@ async function _queryChelonaAiInner(
       lower.includes('consigli') || lower.includes('idee') || lower.includes('ho del') ||
       lower.includes('ho dei') || lower.includes('ho un po') || lower.includes('avanzat') ||
       lower.includes('in frigo') || lower.includes('in dispensa') || lower.includes('trova') || lower.includes('cerca') ||
-      lower.includes('ingredien') || lower.includes('ingrendien') || lower.includes('ingrendin') || lower.includes('ingredin')
+      lower.includes('ingred') || lower.includes('ingrand') || lower.includes('ingrend') || lower.includes('igred')
     ))
   ) && !lower.includes('compra') && !lower.includes('lista della spesa') && !lower.includes('aggiungi alla spesa') && !lower.includes('metti nella spesa') && !lower.startsWith('togli');
 
@@ -1699,84 +1712,89 @@ async function _queryChelonaAiInner(
     lower.includes('consigli') || lower.includes('idee') || lower.includes('cosa cucin') ||
     lower.includes('cosa prepar') || lower.includes('cosa faccio da mangiar') || lower.includes('cosa mangi') ||
     lower.includes('per il pranzo') || lower.includes('per la cena') || lower.includes('per pranzo') || lower.includes('per cena') ||
-    lower.includes('a base di un ingrediente') || lower.includes('a base di un igrediente') || lower.includes('a base di ingredienti') ||
-    lower.includes('a base di igredienti') || lower.includes('ricetta per il pranzo') || lower.includes('ricetta per la cena') ||
+    lower.includes('pranzo di domani') || lower.includes('cena di domani') ||
+    lower.includes('a base di') || lower.includes('un ingrediente') || lower.includes('un ingrandiente') ||
+    lower.includes('un igrediente') || lower.includes('degli ingredienti') || lower.includes('degli ingrandienti') ||
+    lower.includes('ricetta per il pranzo') || lower.includes('ricetta per la cena') ||
     lower.includes('ricette per il pranzo') || lower.includes('ricette per la cena')
   ) && (
-    lower.includes('ricett') || lower.includes('pranz') || lower.includes('cena') || lower.includes('cucin') || lower.includes('mangiar') || lower.includes('prepar') || lower.includes('piatt') || lower.includes('pasto')
+    lower.includes('ricett') || lower.includes('pranz') || lower.includes('cena') || lower.includes('cucin') || lower.includes('mangiar') || lower.includes('prepar') || lower.includes('piatt') || lower.includes('pasto') || lower.includes('ingred') || lower.includes('ingrand') || lower.includes('igred')
   );
 
   if (isMealAdvice) {
     const catalog = await getOrLoadAllRecipes();
     const isPranzo = lower.includes('pranz');
     const isCena = lower.includes('cena');
-    const mentionsGenericIngredient = lower.includes('un ingrediente') || lower.includes('un igrediente') || lower.includes('degli ingredienti') || lower.includes('a base di');
 
-    // Se l'utente ha chiesto genericamente "a base di un ingrediente" senza specificare quale
-    if (mentionsGenericIngredient && foodEntities.length === 0) {
-      const suggested = [
-        catalog.find(r => r.title.includes('Carbonara')) || catalog[0],
-        catalog.find(r => r.title.includes('Petto di Pollo') && r.category.includes('Fitness')) || catalog.find(r => r.category === 'Secondi') || catalog[1],
-        catalog.find(r => r.title.includes('Risotto ai funghi')) || catalog[2]
-      ].filter(Boolean);
-
-      let text = `🧑‍🍳 **Certamente! Posso consigliarti ricette perfette con qualsiasi ingrediente.**\n\n`;
-      text += `Dimmi pure: **quali ingredienti hai a disposizione?**\n*(Ad esempio: "ho pollo e zucchine", "pasta e tonno", "pomodorini e mozzarella"...)*\n\n`;
-      text += `💡 **Nel frattempo, ecco alcune ottime idee per ${isPranzo ? 'il tuo pranzo' : isCena ? 'la tua cena' : 'il tuo menù'}:**\n\n`;
-
-      const actions: any[] = [];
-      suggested.forEach((r, idx) => {
-        const medal = ['🥇', '🥈', '🥉'][idx] || '•';
-        text += `${medal} **${r.title}** (${r.category})\n`;
-        if (r.ingredients && r.ingredients.length > 0) {
-          text += `   • 🛒 *Ingredienti*: ${r.ingredients.slice(0, 4).map(i => typeof i === 'string' ? i : (i as any).name).join(', ')}\n`;
-        }
-        if (r.calories) text += `   • 🔥 *${r.calories} kcal*\n`;
-        text += `\n`;
-        actions.push({
-          label: `🍴 Dettagli: ${r.title.slice(0, 22)}...`,
-          type: 'recipes',
-          search: r.title,
-          recipe: r,
-        });
-      });
-
-      actions.push({ label: '📖 Sfoglia Tutte le Ricette', type: 'recipes' });
-
-      return {
-        text,
-        actions,
-        engineUsed: 'chelona-engine',
-      };
+    // Se sono stati estratti ingredienti specifici (es. "a base di zucchine per pranzo")
+    if (foodEntities.length > 0) {
+      const matches = matchRecipesByIngredients(foodEntities, catalog);
+      if (matches.length > 0) {
+        const formatted = formatRecipeMatchResponse(foodEntities, matches);
+        return {
+          ...formatted,
+          engineUsed: 'chelona-engine',
+        };
+      }
     }
 
-    // Idee per pranzo o cena in generale
-    const pool = isPranzo
-      ? catalog.filter(r => r.category === 'Primi' || r.category === 'Fitness & Dieta')
-      : catalog.filter(r => r.category === 'Secondi' || r.category === 'Primi');
+    // Se l'utente chiede genericamente "a base di un ingrediente", consigli per pranzo/cena
+    const pantryCombined = [...(k.recipes.fridgeIngredients || []), ...(k.recipes.pantryIngredients || [])];
+    const pantryEntities = pantryCombined.length > 0 ? extractFoodEntities(pantryCombined.join(', ')) : [];
+    
+    let suggested: RecipeCatalogItem[] = [];
+    if (pantryEntities.length > 0) {
+      const pantryMatches = matchRecipesByIngredients(pantryEntities, catalog);
+      if (pantryMatches.length >= 3) {
+        suggested = pantryMatches.slice(0, 3).map(m => m.recipe);
+      }
+    }
 
-    const selected = pool.slice(0, 3);
-    let text = `🧑‍🍳 **Ecco delle ottime idee per ${isPranzo ? 'il tuo pranzo' : isCena ? 'la tua cena' : 'il tuo pasto'}!**\n\n`;
+    if (suggested.length === 0) {
+      if (isCena) {
+        suggested = [
+          catalog.find(r => r.title.includes('Salmone') && r.category.includes('Secondi')) || catalog.find(r => r.category === 'Secondi') || catalog[1],
+          catalog.find(r => r.title.includes('Petto di Pollo') || r.category === 'Secondi') || catalog[0],
+          catalog.find(r => r.category === 'Contorni' || r.category === 'Primi') || catalog[2]
+        ].filter(Boolean) as RecipeCatalogItem[];
+      } else {
+        // Pranzo o generico
+        suggested = [
+          catalog.find(r => r.title.includes('Carbonara')) || catalog.find(r => r.category === 'Primi') || catalog[0],
+          catalog.find(r => r.title.includes('Petto di Pollo') && r.category.includes('Fitness')) || catalog.find(r => r.category === 'Secondi') || catalog[1],
+          catalog.find(r => r.title.includes('Risotto ai funghi') || r.title.includes('Risotto')) || catalog.find(r => r.category === 'Primi') || catalog[2]
+        ].filter(Boolean) as RecipeCatalogItem[];
+      }
+    }
+
+    const mealLabel = isPranzo ? 'il tuo pranzo di domani' : isCena ? 'la tua cena di domani' : 'il tuo pasto';
+    let text = `🧑‍🍳 **Certamente! Ho selezionato per te le migliori ricette per ${mealLabel} dal catalogo di oltre 600 piatti:**\n\n`;
+
     const actions: any[] = [];
-
-    selected.forEach((r, idx) => {
+    suggested.forEach((r, idx) => {
       const medal = ['🥇', '🥈', '🥉'][idx] || '•';
       text += `${medal} **${r.title}** (${r.category})\n`;
       if (r.ingredients && r.ingredients.length > 0) {
-        text += `   • 🛒 *Ingredienti*: ${r.ingredients.slice(0, 4).map(i => typeof i === 'string' ? i : (i as any).name).join(', ')}\n`;
+        const ings = r.ingredients.slice(0, 4).map(i => typeof i === 'string' ? i : (i as any).name || (i as any).nome || '');
+        text += `   • 🛒 *Ingredienti*: ${ings.join(', ')}\n`;
       }
-      if (r.calories) text += `   • 🔥 *${r.calories} kcal*\n`;
+      if (r.calories) text += `   • 🔥 *${r.calories} kcal${r.protein ? ` • ${r.protein}g proteine` : ''}*\n`;
+      if (r.steps && r.steps.length > 0) {
+        const prep = r.steps.slice(0, 2).map((s, i) => `${i + 1}. ${s}`).join(' ');
+        text += `   • ⏱️ *Preparazione*: ${prep}${r.steps.length > 2 ? ' ...' : ''}\n`;
+      }
       text += `\n`;
+
+      // Bottone per aprire direttamente la ricetta nel modal, senza toccare la barra di ricerca
       actions.push({
-        label: `🍴 Apri: ${r.title.slice(0, 22)}...`,
+        label: `🍴 Dettagli: ${r.title.slice(0, 24)}...`,
         type: 'recipes',
-        search: r.title,
         recipe: r,
       });
     });
 
-    text += `Dimmi pure se hai degli ingredienti specifici (es. *pollo*, *zucchine*, *salmone*) così cerco la ricetta perfetta per te! 🐢`;
-    actions.push({ label: '📖 Tutte le Ricette', type: 'recipes' });
+    text += `💡 *Dimmi pure se hai degli ingredienti specifici (anche con refusi o termini simili: pollo, zucchine, salmone, uova, pomodori...): "Il Matematico" calcolerà subito le ricette ideali leggendo tutto il catalogo!* 🐢`;
+    actions.push({ label: '📖 Sfoglia Tutte le Ricette', type: 'recipes' });
 
     return {
       text,
@@ -2810,7 +2828,12 @@ async function _queryChelonaAiInner(
 
     // Ricerca ricetta specifica
     const searchMatch = query.match(/(?:cerca|trova|come fare|ricetta\s+di|ricetta\s+del|ricetta)\s+([a-zA-Zàèéìòù\s]{3,30})/i);
-    const hasConversationalJunk = lower.includes('per il pranzo') || lower.includes('per la cena') || lower.includes('di domani') || lower.includes('consigli') || lower.includes('idee') || lower.includes('un ingrediente') || lower.includes('un igrediente') || lower.includes('che devo') || lower.includes('cosa fare');
+    const hasConversationalJunk = 
+      lower.includes('per il pranzo') || lower.includes('per la cena') || lower.includes('di domani') ||
+      lower.includes('consigli') || lower.includes('idee') || lower.includes('a base di') ||
+      lower.includes('un ingrediente') || lower.includes('un igrediente') || lower.includes('un ingrandiente') ||
+      lower.includes('ingrand') || lower.includes('ingred') || lower.includes('igred') ||
+      lower.includes('che devo') || lower.includes('cosa fare');
     if (searchMatch && !lower.includes('cosa cucino') && !lower.includes('cosa ho') && !hasConversationalJunk) {
       const q = searchMatch[1].trim();
       const catalog = await getOrLoadAllRecipes();
@@ -2844,7 +2867,6 @@ async function _queryChelonaAiInner(
             return {
               text: `❄️ **Con ciò che hai registrato nel Frigo e nella Dispensa (${combined.join(', ')}):**\n\n${formatted.text}`,
               actions: formatted.actions,
-              autoAction: formatted.autoAction,
               engineUsed: 'chelona-engine',
             };
           }

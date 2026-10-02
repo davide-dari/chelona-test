@@ -418,32 +418,6 @@ export async function queryGemma2(
   activeSection?: string
 ): Promise<Gemma2Response> {
 
-  // ⚡ STEP 0: CONTROLLO ISTANTANEO CACHE SEMANTICA IN RAM (Latenza 0ms)
-  // Ignora totalmente llama.rn, caricamenti, controlli batteria e RAG se c'è un hit!
-  const semanticHit = semanticCache.findMatch(userQuery);
-  if (semanticHit) {
-    console.log(`[SemanticCache] ⚡ HIT ISTANTANEO IN RAM (${semanticHit.exactMatch ? '100% esatto' : `similarità ${Math.round(semanticHit.similarity * 100)}%`}): "${userQuery}" -> "${semanticHit.entry.query}"`);
-    
-    // Se c'è un listener di streaming, emetti i token progressivamente per effetto typing fluido
-    if (onToken) {
-      const chunks = semanticHit.entry.response.text.split(/(\s+)/);
-      for (const chunk of chunks) {
-        onToken(chunk);
-      }
-    }
-
-    return {
-      text: semanticHit.entry.response.text,
-      actions: semanticHit.entry.response.actions as AiAction[] | undefined,
-      learnedFact: semanticHit.entry.response.learnedFact,
-      autoAction: semanticHit.entry.response.autoAction as AiAction | undefined,
-      engineUsed: 'gemma2-local',
-      cached: true,
-      semanticMatch: true,
-      similarityScore: semanticHit.similarity,
-    };
-  }
-
   // ⚡ Sincronizzazione continua del Database Personale (RAG) solo quando necessario
   const currentModulesHash = computeModulesHash(modules);
 
@@ -469,13 +443,26 @@ export async function queryGemma2(
     }
 
     if (result && result.text) {
+      // Pulizia prima di salvare in cache per evitare persistenza di search per ricette
+      const cleanActions = result.actions?.map(a => {
+        if (a.type === 'recipes' || a.category === 'recipes') {
+          const { search, ...rest } = a as any;
+          return rest;
+        }
+        return a;
+      });
+      let cleanAutoAction = result.autoAction;
+      if (cleanAutoAction && (cleanAutoAction.type === 'recipes' || cleanAutoAction.category === 'recipes')) {
+        delete (cleanAutoAction as any).search;
+      }
+
       semanticCache.set(userQuery, currentModulesHash, {
         text: result.text,
-        actions: result.actions,
+        actions: cleanActions,
         learnedFact: result.learnedFact,
-        autoAction: result.autoAction,
+        autoAction: cleanAutoAction,
       });
-      promptCache.set(userQuery, '', { text: result.text, actions: result.actions });
+      promptCache.set(userQuery, '', { text: result.text, actions: cleanActions });
     }
 
     return {
@@ -484,9 +471,67 @@ export async function queryGemma2(
     };
   };
 
+  const lowerQ = userQuery.toLowerCase().trim();
+  const isRecipeOrCookingQuery = 
+    lowerQ.includes('ricett') || lowerQ.includes('cucin') || lowerQ.includes('mangiar') ||
+    lowerQ.includes('prepar') || lowerQ.includes('piatt') || lowerQ.includes('ingred') ||
+    lowerQ.includes('ingrand') || lowerQ.includes('ingrend') || lowerQ.includes('igred') ||
+    lowerQ.includes('pranzo') || lowerQ.includes('cena');
+
+  // Per le ricette e consigli gastronomici, esegui SEMPRE la lettura dinamica aggiornata dal catalogo 617+ ricette
+  if (isRecipeOrCookingQuery) {
+    const directMatch = await queryChelonaAi(userQuery, modules, username, activeSection);
+    if (directMatch && (directMatch.actions?.length || directMatch.autoAction || directMatch.createdModule || directMatch.learnedFact)) {
+      console.log(`[FastPath] ⚡ RISOLUZIONE SPECULATIVA RICETTE (< 2ms): "${userQuery}"`);
+      return await executeFallback({ immediate: false });
+    }
+  }
+
+  // ⚡ STEP 0: CONTROLLO ISTANTANEO CACHE SEMANTICA IN RAM (Latenza 0ms)
+  // Ignora totalmente llama.rn, caricamenti, controlli batteria e RAG se c'è un hit!
+  const semanticHit = semanticCache.findMatch(userQuery);
+  if (semanticHit) {
+    console.log(`[SemanticCache] ⚡ HIT ISTANTANEO IN RAM (${semanticHit.exactMatch ? '100% esatto' : `similarità ${Math.round(semanticHit.similarity * 100)}%`}): "${userQuery}" -> "${semanticHit.entry.query}"`);
+    
+    // Se c'è un listener di streaming, emetti i token progressivamente per effetto typing fluido
+    if (onToken) {
+      const chunks = semanticHit.entry.response.text.split(/(\s+)/);
+      for (const chunk of chunks) {
+        onToken(chunk);
+      }
+    }
+
+    // Pulisci rigorosamente qualsiasi azione ricette da parametri search o autoAction improprie
+    let safeAutoAction = semanticHit.entry.response.autoAction as AiAction | undefined;
+    if (safeAutoAction && (safeAutoAction.type === 'recipes' || safeAutoAction.category === 'recipes')) {
+      delete (safeAutoAction as any).search;
+      const lower = userQuery.toLowerCase().trim();
+      const isExplicit = lower.includes('apri') || lower.includes('vai') || lower === 'ricette' || lower === 'ricettario';
+      if (!isExplicit) safeAutoAction = undefined;
+    }
+    const safeActions = (semanticHit.entry.response.actions as AiAction[] | undefined)?.map(a => {
+      if (a.type === 'recipes' || a.category === 'recipes') {
+        const { search, ...rest } = a as any;
+        return rest;
+      }
+      return a;
+    });
+
+    return {
+      text: semanticHit.entry.response.text,
+      actions: safeActions,
+      learnedFact: semanticHit.entry.response.learnedFact,
+      autoAction: safeAutoAction,
+      engineUsed: 'gemma2-local',
+      cached: true,
+      semanticMatch: true,
+      similarityScore: semanticHit.similarity,
+    };
+  }
+
   // ⚡ FAST-PATH SPECULATIVO DETERMINISTICO (< 2ms):
   // Se la richiesta è un comando operativo o una domanda specifica sui dati di Chelona
-  // (auto, scadenze, lista spesa, parcheggio, volantini, spese, ricette, utility),
+  // (auto, scadenze, lista spesa, parcheggio, volantini, spese, utility),
   // risolvila immediatamente con accuratezza 100% in 2ms a costo zero!
   const directMatch = await queryChelonaAi(userQuery, modules, username, activeSection);
   if (directMatch && (directMatch.actions?.length || directMatch.autoAction || directMatch.createdModule || directMatch.learnedFact)) {

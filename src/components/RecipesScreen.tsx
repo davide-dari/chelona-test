@@ -159,6 +159,7 @@ export function RecipesScreen({
 
   useEffect(() => {
     if (initialRecipe) {
+      setSearchQuery('');
       if (initialRecipe.titolo) {
         setSelectedMeal({
           id: `initial_${Date.now()}`,

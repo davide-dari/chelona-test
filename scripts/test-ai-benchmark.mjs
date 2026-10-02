@@ -104,3 +104,4 @@ for (const a of flyerActions) {
 console.log('✅ Best offers -> Confronta Prezzi with exact flyer pages test passed');
 
 console.log('🎉 ALL AI LATENCY AND TIMING TESTS PASSED PERFECTLY!');
+process.exit(0);

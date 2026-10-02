@@ -80,12 +80,8 @@ const SYNONYMS: Record<string, string> = {
 
   // Ricette & Cucina
   'ricette': 'ricetta',
-  'cucinare': 'ricetta',
-  'cucina': 'ricetta',
-  'piatto': 'ricetta',
-  'piatti': 'ricetta',
-  'ingredienti': 'ricetta',
-  'cibo': 'ricetta',
+  'ricettario': 'ricetta',
+  'cucinare': 'cucina',
 
   // Fitness
   'allenamento': 'fitness',
@@ -369,6 +365,9 @@ export class SemanticCache {
     this.saveTimeout = setTimeout(() => {
       localDb.saveSemanticCache(this.ramEntries);
     }, 1200);
+    if (this.saveTimeout && typeof this.saveTimeout.unref === 'function') {
+      this.saveTimeout.unref();
+    }
   }
 
   /**

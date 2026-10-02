@@ -2075,8 +2075,8 @@ export default function App() {
     }
 
     if (act.type === 'recipes' || act.category === 'recipes') {
-      if (act.search) setInitialRecipesSearch(act.search);
-      else setInitialRecipesSearch('');
+      // La barra di ricerca delle ricette non deve MAI essere sporcata dall'AI
+      setInitialRecipesSearch('');
       if (act.recipeCategory) setInitialRecipesCategory(act.recipeCategory);
       else setInitialRecipesCategory(null);
       if ((act as any).recipe) setInitialRecipeToOpen((act as any).recipe);
@@ -2239,8 +2239,11 @@ export default function App() {
       }
 
       if (cat === 'recipes') {
-        setInitialRecipesSearch(act.search || '');
-        setInitialRecipesCategory(act.recipeCategory || null);
+        setInitialRecipesSearch('');
+        if (act.recipeCategory) setInitialRecipesCategory(act.recipeCategory);
+        else setInitialRecipesCategory(null);
+        if ((act as any).recipe) setInitialRecipeToOpen((act as any).recipe);
+        else setInitialRecipeToOpen(null);
         setIsRecipesOpen(true);
         return;
       }

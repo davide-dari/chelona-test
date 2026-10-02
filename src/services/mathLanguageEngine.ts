@@ -486,6 +486,7 @@ const CONVERSATIONAL_FOOD_STOPWORDS = new Set([
   'stasera', 'oggi', 'domani', 'pranzo', 'cena', 'colazione', 'merenda',
   'ricetta', 'ricette', 'col', 'colla', 'coi', 'e', 'ed', 'anche',
   'ingrediente', 'ingredienti', 'ingrendiente', 'ingrendienti', 'ingrendinte', 'ingrendinti', 'ingredinte', 'ingredinti', 'igrediente', 'igredienti', 'ingr', 'ingred', 'ingrend',
+  'ingrandiente', 'ingrandienti', 'ingrandinte', 'ingrandinti', 'ingridiente', 'ingridienti', 'ingridinte', 'ingridinti', 'ingradiente', 'ingradienti', 'ingreediente', 'ingreedienti', 'ingridenti', 'ingridente', 'ingredineti', 'ingredineto', 'ingredieti',
   'base', 'a base di', 'devo', 'devo fare', 'devo preparare',
   'cibo', 'cibi', 'alimento', 'alimenti', 'roba',
   'vorrei', 'dimmi', 'trovami', 'suggerisci', 'idee', 'piatto', 'piatti',
@@ -514,7 +515,12 @@ export interface ExtractedFoodEntity {
 export function resolveCanonicalFood(token: string): string | null {
   const norm = normalizeItalianText(token);
   if (!norm || norm.length < 3) return null;
-  if (/^i(?:n)?g(?:r|ren)?d(?:i|ien)?t[ei]?$/i.test(norm) || CONVERSATIONAL_FOOD_STOPWORDS.has(norm)) return null;
+  if (
+    CONVERSATIONAL_FOOD_STOPWORDS.has(norm) || 
+    /^i(?:n)?g(?:r|ren|ran|rid|reed|rad)?d(?:i|ien|in)?t[ei]?$/i.test(norm) ||
+    (norm.startsWith('ingr') && (norm.includes('dien') || norm.includes('dian') || norm.includes('dint'))) ||
+    norm.startsWith('igred')
+  ) return null;
   const stem = italianStem(norm);
 
   // 1. Corrispondenza diretta con chiave canonica o radice
@@ -579,7 +585,13 @@ export function extractFoodEntities(sentence: string): ExtractedFoodEntity[] {
   const clauses = clean.split(/(?:,|\be\b|\bed\b|\bcon\b|\bpiu\b|\bpiù\b|\bo\b|\binoltre\b)/g);
   const candidates: string[] = [];
 
-  const isStopWord = (w: string) => CONVERSATIONAL_FOOD_STOPWORDS.has(w) || /^i(?:n)?g(?:r|ren)?d(?:i|ien)?t[ei]?$/i.test(w);
+  const isStopWord = (w: string) => {
+    const nw = normalizeItalianText(w);
+    return CONVERSATIONAL_FOOD_STOPWORDS.has(nw) || 
+      /^i(?:n)?g(?:r|ren|ran|rid|reed|rad)?d(?:i|ien|in)?t[ei]?$/i.test(nw) ||
+      (nw.startsWith('ingr') && (nw.includes('dien') || nw.includes('dian') || nw.includes('dint'))) ||
+      nw.startsWith('igred');
+  };
 
   for (const clause of clauses) {
     const words = clause.trim().split(/\s+/).filter(Boolean);
@@ -948,7 +960,7 @@ export function formatRecipeMatchResponse(
     return {
       text: `🧑‍🍳 Ho cercato nel tuo ricettario e nel database di Chelona (oltre 600 ricette), ma non ho trovato una ricetta specifica che combini esattamente **${userIngredientsList}**.\n\n💡 Vuoi aprire il Ricettario per creare la tua ricetta personale o consultare i piatti per categoria?`,
       actions: [
-        { label: '🍴 Apri Ricettario', type: 'recipes', search: userEntities[0]?.canonical || '' },
+        { label: '🍴 Apri Ricettario', type: 'recipes' },
       ],
     };
   }
@@ -980,13 +992,17 @@ export function formatRecipeMatchResponse(
     if (r.calories) {
       out += `   • 🔥 *${r.calories} kcal${r.protein ? ` • ${r.protein}g proteine` : ''}*\n`;
     }
+
+    if (r.steps && r.steps.length > 0) {
+      const prepSummary = r.steps.slice(0, 2).map((s, i) => `${i + 1}. ${s}`).join(' ');
+      out += `   • ⏱️ **Preparazione**: ${prepSummary}${r.steps.length > 2 ? ' ...' : ''}\n`;
+    }
     out += `\n`;
 
-    // Bottone azione per aprire la ricetta
+    // Bottone azione per aprire la ricetta specifica (senza sporcare la barra di ricerca)
     actions.push({
       label: `🍴 Apri: ${r.title.slice(0, 24)}...`,
       type: 'recipes',
-      search: r.title,
       recipe: r,
     });
   });
@@ -1114,7 +1130,7 @@ export function formatSingleRecipeResponse(recipe: RecipeCatalogItem): { text: s
   }).filter(i => i.name.length > 0);
 
   const actions: any[] = [
-    { label: `🍴 Dettagli Ricetta`, type: 'recipes', search: recipe.title, recipe: recipe },
+    { label: `🍴 Dettagli Ricetta`, type: 'recipes', recipe: recipe },
   ];
 
   if (itemsToAdd.length > 0) {
@@ -1130,7 +1146,6 @@ export function formatSingleRecipeResponse(recipe: RecipeCatalogItem): { text: s
   return {
     text: out,
     actions,
-    autoAction: actions[0], // Apri direttamente la ricetta
   };
 }
 
