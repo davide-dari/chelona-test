@@ -104,15 +104,27 @@ class Gemma2ModelManager {
     this._info.activeModelId = this._activeModelId;
     this.loadPersistedStatusForActiveModel();
     
+    const attemptDownload = async () => {
+      const exists = await this.checkLocalFile();
+      // Try to download only if not exists, not already downloading, and not successfully verified as ready
+      if (!exists && this._info.status !== 'downloading' && this._info.status !== 'ready') {
+        this.downloadModel(undefined, false).catch(() => {});
+      }
+    };
+
     // Auto-download silently in the background if not present
-    setTimeout(() => {
-      this.checkLocalFile().then(exists => {
-        if (!exists && this._info.status !== 'downloading') {
-          // Pass true for allowCellular so it doesn't prompt the user
-          this.downloadModel(undefined, true).catch(() => {});
+    setTimeout(attemptDownload, 2000);
+
+    // Listen for network changes to retry when WiFi is connected
+    try {
+      Network.addListener('networkStatusChange', (status) => {
+        if (status.connected && status.connectionType === 'wifi') {
+          attemptDownload();
         }
       });
-    }, 2000);
+    } catch (e) {
+      console.warn('Failed to add network listener', e);
+    }
   }
 
   get activeModel(): ModelPreset {
@@ -303,8 +315,8 @@ class Gemma2ModelManager {
     // 1. Verifica Connettività
     const wifi = await this.isOnWifi();
     if (!wifi && !allowCellular) {
-      this._info.status = 'error';
-      this._info.errorMessage = 'Download su WiFi consigliato per risparmio dati. Se desideri procedere comunque, seleziona "Consenti con dati cellulare".';
+      this._info.status = 'not_downloaded';
+      // Silently fail without error message since UI is gone and we wait for background auto-resume
       this.notify();
       return false;
     }
@@ -312,8 +324,8 @@ class Gemma2ModelManager {
     // 2. Verifica batteria (blocco solo se critica < 10%)
     const battery = await this.getBatteryLevel();
     if (battery < 10) {
-      this._info.status = 'error';
-      this._info.errorMessage = `Batteria critica (${battery}%). Collega il dispositivo al caricatore prima di scaricare il modello.`;
+      this._info.status = 'not_downloaded';
+      // Silently fail without error message since UI is gone and we wait for background auto-resume
       this.notify();
       return false;
     }
