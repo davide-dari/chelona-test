@@ -1013,6 +1013,7 @@ export function formatRecipeMatchResponse(
   return {
     text: out,
     actions,
+    autoAction: actions[0], // Apri direttamente la ricetta migliore
   };
 }
 
@@ -1125,6 +1126,7 @@ export function formatSingleRecipeResponse(recipe: RecipeCatalogItem): { text: s
   return {
     text: out,
     actions,
+    autoAction: actions[0], // Apri direttamente la ricetta
   };
 }
 

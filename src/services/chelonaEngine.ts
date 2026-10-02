@@ -1323,7 +1323,12 @@ export async function queryChelonaAi(
     lower.trim() === 'impostazioni' ||
     lower.trim() === 'offerte';
 
-  if (!isExplicitNavigation && result.autoAction) {
+  const isRecipeSearchWithIngredients = 
+    result.autoAction?.type === 'recipes' && 
+    result.autoAction?.search !== undefined && 
+    (lower.includes('ricetta') || lower.includes('ricette') || lower.includes('cucin') || lower.includes('prepar') || lower.includes('mangiar'));
+
+  if (!isExplicitNavigation && !isRecipeSearchWithIngredients && result.autoAction) {
     delete result.autoAction;
   }
 
@@ -1430,11 +1435,12 @@ async function _queryChelonaAiInner(
     out += `• **Fonetica Italiana** (\`italianPhoneticKey\`): riconosce le parole scritte a orecchio (es. k/ch, doppie consonanti, s/z).\n\n`;
     out += `### 3. 🚀 Sfruttare Chelona al 1000% come un vero utente\n`;
     out += `Il Matematico governa l'intera applicazione in modo trasversale e proattivo:\n`;
-    out += `• 🍲 **Ricette & Cucina**: Scrivi ad esempio *"ho tonno, pomodori e melanzane"* (anche scrivendo *"con questi ingrendienti..."*): analizza 617 ricette, calcola la percentuale esatta di copertura, ti dice cosa hai già e ti permette di aggiungere gli ingredienti mancanti alla **Lista Spesa con 1 solo tocco**!\n`;
+    out += `• 🍲 **Ricette & Cucina**: Scrivi ad esempio *"ho tonno, pomodori e melanzane"* (anche scrivendo *"con questi ingrendienti..."*): trova la ricetta perfetta tra le 617 disponibili e te la apre direttamente!\n`;
     out += `• 🛒 **Spesa & Volantini**: Categorizza automaticamente gli alimenti nei corretti reparti del supermercato e confronta i prezzi tra volantini (Lidl, Conad, Coop, Esselunga...).\n`;
     out += `• 🩺 **Studio Medico & Ricette**: Calcola se l'ambulatorio del tuo medico curante è attualmente aperto o chiuso in tempo reale, orari della settimana e prepara richieste di prescrizione farmaco per WhatsApp o email.\n`;
     out += `• 📄 **Disdette & Recessi PEC**: Database di oltre 50 gestori (telefonia, energia, pay-tv), calcolo termini legali (ripensamento 14gg vs preavviso 30gg) e generazione PEC pronta con firma digitale.\n`;
     out += `• 🚗 **Auto, Documenti, Finanze (Split & Rate), Fitness, Viaggi 3D, Parcheggio radar GPS, Scanner e Note**: Tutto coordinato al 100% offline con zero latenza e massima privacy!\n\n`;
+
     out += `💡 *Scrivimi pure cosa hai in casa o cosa vuoi fare: ci penso io a sfruttare Chelona al massimo per te!*`;
 
     return {
@@ -2719,7 +2725,8 @@ async function _queryChelonaAiInner(
     }
 
     // Ingredienti in frigo / dispensa
-    if (lower.includes('frigo') || lower.includes('dispensa') || lower.includes('cosa ho') || lower.includes('ingredienti')) {
+    const askingForFridge = lower.includes('frigo') || lower.includes('dispensa') || lower.includes('cosa ho') || (lower.includes('ingredienti') && !lower.includes('ricett') && !lower.includes('cucin'));
+    if (askingForFridge) {
       const fridge = k.recipes.fridgeIngredients;
       const pantry = k.recipes.pantryIngredients;
       const combined = [...fridge, ...pantry];
