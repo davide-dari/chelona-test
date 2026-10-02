@@ -2855,7 +2855,7 @@ async function _queryChelonaAiInner(
           if (matches.length > 0) {
             const formatted = formatRecipeMatchResponse(foodEntities, matches);
             return {
-              text: formatted.text,
+              text: `❄️ **Nel Frigo (${fridge.join(', ')}):**\n\n${formatted.text}`,
               actions: formatted.actions,
               engineUsed: 'chelona-engine',
             };

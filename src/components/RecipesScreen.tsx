@@ -167,6 +167,12 @@ export function RecipesScreen({
     }
   }, [initialRecipe, initialSearchQuery]);
 
+  useEffect(() => {
+    if (initialCategory) {
+      setSelectedCategory(initialCategory);
+    }
+  }, [initialCategory]);
+
   const handleBack = useCallback(() => {
     if (isScanningMenuQr) {
       setIsScanningMenuQr(false);

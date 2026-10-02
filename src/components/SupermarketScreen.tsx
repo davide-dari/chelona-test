@@ -265,7 +265,13 @@ export const SupermarketScreen = ({ module, onSave, onClose, onShare }: Supermar
     const nameStr = item.name.trim();
     const nameNorm = normalize(nameStr);
     
-    setFridgeIngredients(prev => prev.some(f => normalize(f) === nameNorm) ? prev : [...prev, nameStr]);
+    setFridgeIngredients(prev => {
+      const next = prev.some(f => normalize(f) === nameNorm) ? prev : [...prev, nameStr];
+      try {
+        localStorage.setItem(FRIDGE_STORAGE_KEY, JSON.stringify(next));
+      } catch {}
+      return next;
+    });
     window.dispatchEvent(new CustomEvent('chelona_fridge_updated'));
     
     update({ ...data, items: data.items.filter(i => i.id !== id) });
