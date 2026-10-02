@@ -103,8 +103,6 @@ export const DoctorScreen: React.FC<DoctorScreenProps> = ({
 
   // Backup
   const [backupCode, setBackupCode] = useState('');
-  const [importCode, setImportCode] = useState('');
-  const [copiedBackup, setCopiedBackup] = useState(false);
 
   // Timer per aggiornamento live dello stato orari (ogni 30 secondi)
   const [currentTime, setCurrentTime] = useState(() => new Date());
@@ -441,31 +439,7 @@ export const DoctorScreen: React.FC<DoctorScreenProps> = ({
   // Backup
   const handleOpenBackup = () => {
     setBackupCode(JSON.stringify(state, null, 2));
-    setImportCode('');
-    setCopiedBackup(false);
     setIsBackupOpen(true);
-  };
-
-  const handleCopyBackup = () => {
-    navigator.clipboard.writeText(backupCode);
-    setCopiedBackup(true);
-    showToast?.('Backup copiato negli appunti', 'success');
-  };
-
-  const handleImportBackup = () => {
-    try {
-      const parsed = JSON.parse(importCode);
-      if (parsed && typeof parsed === 'object') {
-        saveDoctorState(parsed);
-        setState(parsed);
-        setIsBackupOpen(false);
-        showToast?.('Dati studio ripristinati con successo', 'success');
-      } else {
-        showToast?.('File di backup non valido', 'error');
-      }
-    } catch {
-      showToast?.('Codice non valido o malformato', 'error');
-    }
   };
 
   // Riconfigura guidata (torna alla procedura iniziale di configurazione)
@@ -1166,8 +1140,8 @@ export const DoctorScreen: React.FC<DoctorScreenProps> = ({
               <Stethoscope className="w-5 h-5" />
             </div>
             <div className="min-w-0">
-              <h2 className="font-black text-base lg:text-lg leading-tight flex items-center gap-2 truncate">
-                <span className="truncate">Studio Medico</span>
+              <h2 className="font-black text-base lg:text-lg leading-tight truncate">
+                Studio Medico & Ricette
               </h2>
               <p className="text-[11px] text-[var(--text-muted)] truncate">
                 {state.doctor.lastName ? doctorFullName : 'Configura il tuo medico di base'}
@@ -1260,7 +1234,7 @@ export const DoctorScreen: React.FC<DoctorScreenProps> = ({
             <div className="bg-[var(--surface-variant)] rounded-3xl p-5 border border-[var(--border)] min-w-[240px] flex flex-col justify-between gap-3">
               <div className="flex items-center justify-between gap-3">
                 <span className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)]">
-                  Stato Studio Live
+                  Stato Studio
                 </span>
                 <span className={`px-2.5 py-0.5 rounded-full text-xs font-black uppercase tracking-wider ${
                   studioStatus.isOpen
@@ -1708,21 +1682,35 @@ export const DoctorScreen: React.FC<DoctorScreenProps> = ({
                 </div>
               </div>
 
-              <div className="flex items-center justify-end gap-2 pt-3 border-t border-[var(--border)]">
+              <div className="flex items-center justify-between pt-3 border-t border-[var(--border)]">
                 <button
                   type="button"
-                  onClick={() => setIsEditDoctorOpen(false)}
-                  className="px-4 py-2.5 rounded-xl text-xs font-bold text-[var(--text-muted)] hover:bg-[var(--surface-variant)] cursor-pointer"
+                  onClick={() => {
+                    setIsEditDoctorOpen(false);
+                    handleRestartIntroWizard();
+                  }}
+                  className="px-4 py-2.5 rounded-xl text-xs font-bold text-teal-600 hover:bg-teal-50 flex items-center gap-1.5 cursor-pointer"
                 >
-                  Annulla
+                  <Wand2 className="w-4 h-4" />
+                  <span className="hidden sm:inline">Riavvia Configurazione</span>
+                  <span className="sm:hidden">Modifica</span>
                 </button>
-                <button
-                  type="button"
-                  onClick={handleSaveDoctor}
-                  className="px-5 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-black text-xs shadow-md cursor-pointer"
-                >
-                  Salva Modifiche
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsEditDoctorOpen(false)}
+                    className="px-4 py-2.5 rounded-xl text-xs font-bold text-[var(--text-muted)] hover:bg-[var(--surface-variant)] cursor-pointer"
+                  >
+                    Annulla
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSaveDoctor}
+                    className="px-5 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-black text-xs shadow-md cursor-pointer"
+                  >
+                    Salva Modifiche
+                  </button>
+                </div>
               </div>
             </motion.div>
           </div>
