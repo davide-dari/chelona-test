@@ -983,6 +983,7 @@ export function formatRecipeMatchResponse(
       label: `🍴 Apri: ${r.title.slice(0, 24)}...`,
       type: 'recipes',
       search: r.title,
+      recipe: r,
     });
   });
 
@@ -1110,7 +1111,7 @@ export function formatSingleRecipeResponse(recipe: RecipeCatalogItem): { text: s
   }).filter(i => i.name.length > 0);
 
   const actions: any[] = [
-    { label: `🍴 Dettagli Ricetta`, type: 'recipes', search: recipe.title },
+    { label: `🍴 Dettagli Ricetta`, type: 'recipes', search: recipe.title, recipe: recipe },
   ];
 
   if (itemsToAdd.length > 0) {

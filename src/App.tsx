@@ -2079,6 +2079,8 @@ export default function App() {
       else setInitialRecipesSearch('');
       if (act.recipeCategory) setInitialRecipesCategory(act.recipeCategory);
       else setInitialRecipesCategory(null);
+      if ((act as any).recipe) setInitialRecipeToOpen((act as any).recipe);
+      else setInitialRecipeToOpen(null);
       setIsRecipesOpen(true);
       return;
     }
