@@ -836,123 +836,102 @@ export const AddressAndParkingScreen: React.FC<AddressAndParkingScreenProps> = (
           /* ============================================================ */
           <div className="space-y-6">
             {isAcquiringGpsParking ? (
-              /* ANIMAZIONE CARICAMENTO GPS RILEVAMENTO POSIZIONE - SLEEK & MINIMAL */
+              /* ANIMAZIONE CARICAMENTO GPS RILEVAMENTO POSIZIONE - SLEEK, REFINED & TRULY MINIMAL */
               <motion.div
-                initial={{ opacity: 0, scale: 0.97 }}
+                initial={{ opacity: 0, scale: 0.98 }}
                 animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.97 }}
-                className="p-7 sm:p-9 rounded-[2.5rem] bg-[var(--surface)] border border-indigo-500/25 dark:border-indigo-400/20 shadow-2xl relative overflow-hidden text-center space-y-6 my-2"
+                exit={{ opacity: 0, scale: 0.98 }}
+                className="p-8 sm:p-10 rounded-[2.5rem] bg-[var(--surface)] border border-indigo-500/20 dark:border-indigo-400/20 shadow-2xl relative overflow-hidden text-center space-y-6 my-2"
               >
                 {/* Glow di sfondo radiale soft */}
-                <div className="absolute inset-0 bg-radial from-indigo-500/10 via-cyan-500/5 to-transparent pointer-events-none" />
+                <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_rgba(99,102,241,0.1)_0%,_transparent_70%)] pointer-events-none" />
 
                 {/* Status chip minimale */}
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-500 dark:text-indigo-400 text-xs font-semibold">
-                  <span className={`w-2 h-2 rounded-full ${gpsAcquisitionStep === 'error' ? 'bg-rose-500' : gpsAcquisitionStep === 'success' ? 'bg-emerald-500' : 'bg-indigo-500 animate-ping'}`} />
+                <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-500 dark:text-indigo-400 text-xs font-semibold">
+                  <span className={`w-2 h-2 rounded-full ${
+                    gpsAcquisitionStep === 'error' 
+                      ? 'bg-rose-500' 
+                      : gpsAcquisitionStep === 'success' 
+                      ? 'bg-emerald-500' 
+                      : 'bg-indigo-500 animate-pulse'
+                  }`} />
                   <span className="font-medium tracking-wide">
                     {gpsAcquisitionStep === 'success' 
                       ? 'Posizione Acquisita' 
                       : gpsAcquisitionStep === 'error' 
-                      ? 'Errore Rilevamento' 
-                      : 'Sintonizzazione GPS Live'}
+                      ? 'Errore Geolocalizzazione' 
+                      : 'Acquisizione GPS in Corso'}
                   </span>
                 </div>
 
                 {/* Minimalist Radar Viewport */}
-                <div className="relative w-52 h-52 mx-auto flex items-center justify-center my-3 select-none">
-                  {/* Concentric rings: Outer, Mid, Inner */}
-                  <div className="absolute w-48 h-48 rounded-full border border-indigo-500/20 dark:border-indigo-400/20 pointer-events-none" />
-                  <div className="absolute w-32 h-32 rounded-full border border-dashed border-indigo-500/30 dark:border-indigo-400/25 pointer-events-none" />
-                  <div className="absolute w-20 h-20 rounded-full border border-indigo-500/35 dark:border-indigo-400/30 pointer-events-none" />
+                <div className="relative w-56 h-56 mx-auto flex items-center justify-center my-4 select-none">
+                  {/* Concentric rings: Outer hairline, Mid subtle dashed, Inner guide */}
+                  <div className="absolute w-52 h-52 rounded-full border border-indigo-500/15 dark:border-indigo-400/15 pointer-events-none" />
+                  <div className="absolute w-36 h-36 rounded-full border border-dashed border-indigo-500/25 dark:border-indigo-400/20 pointer-events-none" />
+                  <div className="absolute w-24 h-24 rounded-full border border-indigo-500/30 dark:border-indigo-400/25 pointer-events-none" />
 
-                  {/* Cardinal Hairline Notches (North, South, East, West) */}
-                  <div className="absolute top-0.5 left-1/2 -translate-x-1/2 w-0.5 h-2.5 bg-indigo-400/60 rounded-full pointer-events-none" />
-                  <div className="absolute bottom-0.5 left-1/2 -translate-x-1/2 w-0.5 h-2.5 bg-indigo-400/60 rounded-full pointer-events-none" />
-                  <div className="absolute left-0.5 top-1/2 -translate-y-1/2 h-0.5 w-2.5 bg-indigo-400/60 rounded-full pointer-events-none" />
-                  <div className="absolute right-0.5 top-1/2 -translate-y-1/2 h-0.5 w-2.5 bg-indigo-400/60 rounded-full pointer-events-none" />
+                  {/* Cardinal Precision Hairline Ticks (North, South, East, West) */}
+                  <div className="absolute top-1 left-1/2 -translate-x-1/2 w-0.5 h-2 bg-indigo-400/50 rounded-full pointer-events-none" />
+                  <div className="absolute bottom-1 left-1/2 -translate-x-1/2 w-0.5 h-2 bg-indigo-400/50 rounded-full pointer-events-none" />
+                  <div className="absolute left-1 top-1/2 -translate-y-1/2 h-0.5 w-2 bg-indigo-400/50 rounded-full pointer-events-none" />
+                  <div className="absolute right-1 top-1/2 -translate-y-1/2 h-0.5 w-2 bg-indigo-400/50 rounded-full pointer-events-none" />
 
-                  {/* Pulsing acoustic ripple waves */}
+                  {/* Smooth, elegant sonar pulse wave */}
                   {gpsAcquisitionStep !== 'error' && (
-                    <>
-                      <motion.div
-                        animate={{
-                          scale: [0.85, 2.15],
-                          opacity: [0.55, 0],
-                        }}
-                        transition={{
-                          repeat: Infinity,
-                          duration: 2.6,
-                          ease: [0.215, 0.61, 0.355, 1],
-                        }}
-                        className="absolute w-24 h-24 rounded-full border border-indigo-500/40 bg-indigo-500/5 pointer-events-none"
-                      />
-                      <motion.div
-                        animate={{
-                          scale: [0.85, 2.15],
-                          opacity: [0.45, 0],
-                        }}
-                        transition={{
-                          repeat: Infinity,
-                          duration: 2.6,
-                          delay: 1.3,
-                          ease: [0.215, 0.61, 0.355, 1],
-                        }}
-                        className="absolute w-24 h-24 rounded-full border border-cyan-400/40 bg-cyan-500/5 pointer-events-none"
-                      />
-                    </>
+                    <motion.div
+                      animate={{
+                        scale: [0.9, 2.2],
+                        opacity: [0.4, 0],
+                      }}
+                      transition={{
+                        repeat: Infinity,
+                        duration: 2.2,
+                        ease: [0.16, 1, 0.3, 1],
+                      }}
+                      className="absolute w-24 h-24 rounded-full border border-indigo-500/40 bg-indigo-500/5 pointer-events-none"
+                    />
                   )}
 
-                  {/* Rotating radar sweep */}
+                  {/* Soft subtle radar scan sweep */}
                   {gpsAcquisitionStep !== 'error' && gpsAcquisitionStep !== 'success' && (
                     <motion.div
                       animate={{ rotate: 360 }}
-                      transition={{ repeat: Infinity, duration: 3, ease: 'linear' }}
-                      className="absolute w-48 h-48 rounded-full pointer-events-none"
+                      transition={{ repeat: Infinity, duration: 3.5, ease: 'linear' }}
+                      className="absolute w-52 h-52 rounded-full pointer-events-none"
                       style={{
-                        background: 'conic-gradient(from 0deg, transparent 0deg, transparent 270deg, rgba(99, 102, 241, 0.03) 300deg, rgba(99, 102, 241, 0.28) 360deg)',
+                        background: 'conic-gradient(from 0deg, transparent 0deg, transparent 280deg, rgba(99, 102, 241, 0.02) 310deg, rgba(99, 102, 241, 0.22) 360deg)',
                       }}
                     />
                   )}
 
-                  {/* Orbiting satellite beacon on mid ring */}
-                  {gpsAcquisitionStep !== 'error' && gpsAcquisitionStep !== 'success' && (
-                    <motion.div
-                      animate={{ rotate: 360 }}
-                      transition={{ repeat: Infinity, duration: 4.5, ease: 'linear' }}
-                      className="absolute w-32 h-32 rounded-full pointer-events-none"
-                    >
-                      <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_8px_#38bdf8]" />
-                    </motion.div>
-                  )}
-
-                  {/* Central GPS Locator Reticle Core */}
-                  <div className={`relative z-10 w-20 h-20 rounded-3xl flex items-center justify-center transition-all duration-300 border ${
+                  {/* Central Glassmorphic Circular Reticle Core */}
+                  <div className={`relative z-10 w-20 h-20 rounded-full flex items-center justify-center transition-all duration-500 border backdrop-blur-md ${
                     gpsAcquisitionStep === 'success'
-                      ? 'bg-gradient-to-tr from-emerald-600 to-teal-500 text-white shadow-xl shadow-emerald-500/35 border-emerald-400/40'
+                      ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/30 border-emerald-400/50 scale-105'
                       : gpsAcquisitionStep === 'error'
-                      ? 'bg-gradient-to-tr from-rose-600 to-red-500 text-white shadow-xl shadow-rose-500/35 border-rose-400/40'
-                      : 'bg-gradient-to-tr from-indigo-600 via-indigo-500 to-indigo-600 text-white shadow-xl shadow-indigo-500/35 border-white/20'
+                      ? 'bg-rose-500 text-white shadow-lg shadow-rose-500/30 border-rose-400/50'
+                      : 'bg-indigo-600/90 dark:bg-indigo-500/90 text-white shadow-xl shadow-indigo-500/30 border-white/25'
                   }`}>
                     {gpsAcquisitionStep === 'success' ? (
                       <motion.div
-                        initial={{ scale: 0, rotate: -25 }}
+                        initial={{ scale: 0, rotate: -20 }}
                         animate={{ scale: 1, rotate: 0 }}
-                        transition={{ type: 'spring', stiffness: 350, damping: 18 }}
+                        transition={{ type: 'spring', stiffness: 350, damping: 20 }}
                       >
                         <Check className="w-10 h-10 text-white stroke-[2.75]" />
                       </motion.div>
                     ) : gpsAcquisitionStep === 'error' ? (
                       <motion.div initial={{ scale: 0.8 }} animate={{ scale: 1 }}>
-                        <AlertTriangle className="w-9 h-9 text-white" />
+                        <AlertTriangle className="w-9 h-9 text-white stroke-[2.2]" />
                       </motion.div>
                     ) : (
                       <motion.div
-                        animate={{ scale: [0.94, 1.04, 0.94] }}
+                        animate={{ scale: [1, 1.08, 1] }}
                         transition={{ repeat: Infinity, duration: 2, ease: 'easeInOut' }}
-                        className="relative flex items-center justify-center"
+                        className="flex items-center justify-center"
                       >
                         <LocateFixed className="w-9 h-9 text-white stroke-[2.2]" />
-                        <span className="absolute w-2 h-2 rounded-full bg-cyan-300 animate-ping opacity-75" />
                       </motion.div>
                     )}
                   </div>
@@ -962,20 +941,17 @@ export const AddressAndParkingScreen: React.FC<AddressAndParkingScreenProps> = (
                 <div className="space-y-2 max-w-md mx-auto">
                   <h3 className="text-xl font-black text-[var(--text-main)] tracking-tight">
                     {gpsAcquisitionStep === 'success' ? (
-                      <span className="text-emerald-500">Parcheggio Registrato! 🎉</span>
+                      <span className="text-emerald-500">Posizione Salvata! 🎉</span>
                     ) : gpsAcquisitionStep === 'error' ? (
                       <span className="text-rose-500">Geolocalizzazione non riuscita</span>
                     ) : (
-                      <span className="flex items-center justify-center gap-2">
-                        <Crosshair className="w-5 h-5 text-indigo-500 animate-spin" style={{ animationDuration: '8s' }} />
-                        <span>Rilevamento Posizione GPS...</span>
-                      </span>
+                      <span>Rilevamento Posizione GPS...</span>
                     )}
                   </h3>
 
                   <p className="text-xs sm:text-sm text-[var(--text-muted)] font-medium leading-relaxed">
-                    {gpsAcquisitionStep === 'locating' && 'Connessione ai satelliti GPS e sincronizzazione coordinate in corso...'}
-                    {gpsAcquisitionStep === 'geocoding' && 'Riconoscimento indirizzo civico e toponomastica OpenStreetMap...'}
+                    {gpsAcquisitionStep === 'locating' && 'Sincronizzazione satelliti GPS ad alta precisione in corso...'}
+                    {gpsAcquisitionStep === 'geocoding' && 'Riconoscimento indirizzo civico OpenStreetMap in corso...'}
                     {gpsAcquisitionStep === 'saving' && 'Memorizzazione sicura della posizione in Chelona...'}
                     {gpsAcquisitionStep === 'success' && (acquiredAddress ? `Posizione memorizzata: ${acquiredAddress}` : 'Coordinate GPS salvate con successo')}
                     {gpsAcquisitionStep === 'error' && (gpsErrorMsg || 'Assicurati che i permessi di geolocalizzazione siano concessi.')}
@@ -1003,57 +979,57 @@ export const AddressAndParkingScreen: React.FC<AddressAndParkingScreenProps> = (
 
                 {/* 3-Step Minimal Progression Dots */}
                 {gpsAcquisitionStep !== 'error' && (
-                  <div className="flex items-center justify-center gap-1.5 pt-1 max-w-xs mx-auto">
+                  <div className="flex items-center justify-center gap-2 pt-1 max-w-xs mx-auto">
                     {/* Step 1 */}
-                    <div className={`flex items-center gap-1 px-2.5 py-1 rounded-xl text-[11px] font-bold border transition-all ${
+                    <div className={`flex items-center gap-1.5 px-3 py-1 rounded-xl text-[11px] font-bold border transition-all ${
                       gpsAcquisitionStep === 'locating'
-                        ? 'bg-indigo-500/10 text-indigo-500 border-indigo-500/30 shadow-xs'
+                        ? 'bg-indigo-500/10 text-indigo-500 border-indigo-500/30'
                         : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
                     }`}>
                       {gpsAcquisitionStep === 'locating' ? (
-                        <RefreshCw className="w-3 h-3 animate-spin text-indigo-500" />
+                        <span className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />
                       ) : (
-                        <Check className="w-3 h-3 text-emerald-500" />
+                        <Check className="w-3 h-3 text-emerald-500 stroke-[2.5]" />
                       )}
                       <span>Satelliti</span>
                     </div>
 
-                    <div className="w-2.5 h-[1px] bg-[var(--border)]" />
+                    <div className="w-2 h-[1px] bg-[var(--border)]" />
 
                     {/* Step 2 */}
-                    <div className={`flex items-center gap-1 px-2.5 py-1 rounded-xl text-[11px] font-bold border transition-all ${
+                    <div className={`flex items-center gap-1.5 px-3 py-1 rounded-xl text-[11px] font-bold border transition-all ${
                       gpsAcquisitionStep === 'geocoding'
-                        ? 'bg-indigo-500/10 text-indigo-500 border-indigo-500/30 shadow-xs'
+                        ? 'bg-indigo-500/10 text-indigo-500 border-indigo-500/30'
                         : gpsAcquisitionStep === 'saving' || gpsAcquisitionStep === 'success'
                         ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
-                        : 'bg-[var(--surface-variant)] text-[var(--text-muted)] opacity-60 border-[var(--border)]'
+                        : 'bg-[var(--surface-variant)] text-[var(--text-muted)] opacity-50 border-[var(--border)]'
                     }`}>
                       {gpsAcquisitionStep === 'geocoding' ? (
-                        <RefreshCw className="w-3 h-3 animate-spin text-indigo-500" />
+                        <span className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />
                       ) : gpsAcquisitionStep === 'saving' || gpsAcquisitionStep === 'success' ? (
-                        <Check className="w-3 h-3 text-emerald-500" />
+                        <Check className="w-3 h-3 text-emerald-500 stroke-[2.5]" />
                       ) : (
-                        <MapPin className="w-3 h-3" />
+                        <span className="w-1.5 h-1.5 rounded-full bg-[var(--text-muted)]" />
                       )}
                       <span>Indirizzo</span>
                     </div>
 
-                    <div className="w-2.5 h-[1px] bg-[var(--border)]" />
+                    <div className="w-2 h-[1px] bg-[var(--border)]" />
 
                     {/* Step 3 */}
-                    <div className={`flex items-center gap-1 px-2.5 py-1 rounded-xl text-[11px] font-bold border transition-all ${
+                    <div className={`flex items-center gap-1.5 px-3 py-1 rounded-xl text-[11px] font-bold border transition-all ${
                       gpsAcquisitionStep === 'saving'
-                        ? 'bg-indigo-500/10 text-indigo-500 border-indigo-500/30 shadow-xs'
+                        ? 'bg-indigo-500/10 text-indigo-500 border-indigo-500/30'
                         : gpsAcquisitionStep === 'success'
                         ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
-                        : 'bg-[var(--surface-variant)] text-[var(--text-muted)] opacity-60 border-[var(--border)]'
+                        : 'bg-[var(--surface-variant)] text-[var(--text-muted)] opacity-50 border-[var(--border)]'
                     }`}>
                       {gpsAcquisitionStep === 'saving' ? (
-                        <RefreshCw className="w-3 h-3 animate-spin text-indigo-500" />
+                        <span className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />
                       ) : gpsAcquisitionStep === 'success' ? (
-                        <Check className="w-3 h-3 text-emerald-500" />
+                        <Check className="w-3 h-3 text-emerald-500 stroke-[2.5]" />
                       ) : (
-                        <ShieldCheck className="w-3 h-3" />
+                        <span className="w-1.5 h-1.5 rounded-full bg-[var(--text-muted)]" />
                       )}
                       <span>Salva</span>
                     </div>
@@ -1384,9 +1360,9 @@ export const AddressAndParkingScreen: React.FC<AddressAndParkingScreenProps> = (
                   {/* Pulsante rapido per aggiornare / registrare nuova posizione GPS */}
                   <button
                     onClick={triggerGpsAutoSave}
-                    className="w-full py-3.5 px-4 rounded-2xl bg-[var(--surface-variant)] hover:bg-[var(--border)] active:scale-98 text-[var(--text-main)] border border-[var(--border)] font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-xs"
+                    className="w-full py-3.5 px-4 rounded-2xl bg-indigo-500/5 hover:bg-indigo-500/10 active:scale-98 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-xs"
                   >
-                    <LocateFixed className="w-4 h-4 text-indigo-500" />
+                    <Crosshair className="w-4 h-4 text-indigo-500" />
                     <span>Registra Nuova Posizione GPS</span>
                   </button>
                 </div>
@@ -1398,7 +1374,11 @@ export const AddressAndParkingScreen: React.FC<AddressAndParkingScreenProps> = (
                   {/* Intestazione Sezione */}
                   <div className="flex items-center gap-3">
                     <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-500 flex items-center justify-center shrink-0">
-                      <Car className="w-7 h-7" />
+                      {locationMode === 'gps' ? (
+                        <LocateFixed className="w-6 h-6" />
+                      ) : (
+                        <Car className="w-6 h-6" />
+                      )}
                     </div>
                     <div>
                       <h3 className="text-lg font-black text-[var(--text-main)]">Nuova Sosta Auto</h3>
@@ -1462,9 +1442,26 @@ export const AddressAndParkingScreen: React.FC<AddressAndParkingScreenProps> = (
                         </div>
                       </div>
                     ) : (
-                      <div className="flex items-center gap-2.5 text-xs text-[var(--text-muted)] bg-[var(--surface-variant)] p-3 rounded-2xl border border-[var(--border)] animate-fade-in">
-                        <LocateFixed className="w-4 h-4 text-indigo-500 shrink-0" />
-                        <span>Coordinate GPS istantanee ad alta precisione e risoluzione civica automatica.</span>
+                      <div className="p-4 rounded-2xl bg-gradient-to-br from-[var(--surface-variant)] to-[var(--surface)] border border-indigo-500/25 flex flex-col sm:flex-row items-center justify-between gap-3 animate-fade-in shadow-xs">
+                        <div className="flex items-center gap-3">
+                          <div className="relative flex items-center justify-center w-11 h-11 rounded-2xl bg-indigo-500/10 text-indigo-500 border border-indigo-500/20 shrink-0">
+                            <LocateFixed className="w-5 h-5" />
+                            <span className="absolute w-2.5 h-2.5 rounded-full bg-indigo-500 animate-ping opacity-60" />
+                          </div>
+                          <div>
+                            <p className="text-xs font-bold text-[var(--text-main)]">Rilevamento GPS Satellitare</p>
+                            <p className="text-[11px] text-[var(--text-muted)]">Coordinate live ad alta precisione & civico automatico</p>
+                          </div>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={triggerGpsAutoSave}
+                          className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-indigo-500 hover:bg-indigo-600 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md shadow-indigo-500/25 active:scale-95 transition-all"
+                        >
+                          <Crosshair className="w-4 h-4" />
+                          <span>Acquisisci Posizione Ora</span>
+                        </button>
                       </div>
                     )}
                   </div>
@@ -1743,7 +1740,11 @@ export const AddressAndParkingScreen: React.FC<AddressAndParkingScreenProps> = (
                       disabled={isGettingAddrGps}
                       className="text-xs font-bold text-indigo-500 hover:underline flex items-center gap-1.5 transition-all"
                     >
-                      <LocateFixed className={`w-3.5 h-3.5 ${isGettingAddrGps ? 'animate-spin' : ''}`} />
+                      {isGettingAddrGps ? (
+                        <RefreshCw className="w-3.5 h-3.5 animate-spin text-indigo-500" />
+                      ) : (
+                        <LocateFixed className="w-3.5 h-3.5" />
+                      )}
                       <span>{isGettingAddrGps ? 'Rilevamento GPS...' : 'Usa Posizione GPS'}</span>
                     </button>
                   </div>
