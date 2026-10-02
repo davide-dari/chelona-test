@@ -462,8 +462,8 @@ export const FOOD_SYNONYMS: Record<string, string[]> = {
   lievito: ['lievito di birra', 'lievito per dolci', 'lievito istantaneo'],
 };
 
-// Cibi base sempre presenti in dispensa (non penalizzano severamente se mancano)
-export const PANTRY_STAPLES = new Set([
+// Condimenti ed elementi base di cucina (non penalizzano severamente se mancano)
+export const BASIC_STAPLES = new Set([
   'olio', 'sale', 'pepe', 'acqua', 'aglio', 'farina', 'zucchero', 'aceto', 'rosmarino', 'basilico', 'origano'
 ]);
 
@@ -480,7 +480,7 @@ const CONVERSATIONAL_FOOD_STOPWORDS = new Set([
   'avanzato', 'avanzata', 'avanzati', 'avanzate',
   'rimasto', 'rimasta', 'rimasti', 'rimaste',
   'vecchio', 'vecchia', 'vecchi', 'vecchie',
-  'frigo', 'frigorifero', 'dispensa', 'freezer', 'congelatore',
+  'frigo', 'frigorifero',
   'casa', 'disposizione', 'fresco', 'fresca', 'freschi', 'fresche',
   'cosa', 'posso', 'preparare', 'cucinare', 'fare', 'trovare', 'mi', 'consigli', 'consigliami',
   'stasera', 'oggi', 'domani', 'pranzo', 'cena', 'colazione', 'merenda',
@@ -536,8 +536,8 @@ export function resolveCanonicalFood(token: string): string | null {
     if (syns.some(s => new RegExp(`(?:^|\\s)${s}(?:\\s|$)`).test(norm))) return key;
   }
 
-  // 3. Controlla dispense e staples
-  if (PANTRY_STAPLES.has(norm) || PANTRY_STAPLES.has(stem)) return norm;
+  // 3. Controlla condimenti base
+  if (BASIC_STAPLES.has(norm) || BASIC_STAPLES.has(stem)) return norm;
 
   // 4. Fuzzy similarity ad alta soglia (>= 0.85) per correzione refusi (es: 'tonoo' -> 'tonno', 'poloo' -> 'pollo')
   let bestKey: string | null = null;
@@ -904,11 +904,11 @@ export function matchRecipesByIngredients(
     // Se nessun ingrediente dell'utente è presente, scarta
     if (matchedUserIngs.size === 0) continue;
 
-    // Calcolo ingredienti mancanti (escludendo condimenti elementari di dispensa)
+    // Calcolo ingredienti mancanti (escludendo condimenti elementari di base)
     const missingIngredients: string[] = [];
     for (const rIng of parsedRecipeIngs) {
       if (!matchedRecipeIngs.has(rIng.original)) {
-        const isStaple = Array.from(PANTRY_STAPLES).some(s => rIng.clean.includes(s));
+        const isStaple = Array.from(BASIC_STAPLES).some(s => rIng.clean.includes(s));
         if (!isStaple) {
           missingIngredients.push(rIng.original);
         }
@@ -916,7 +916,7 @@ export function matchRecipesByIngredients(
     }
 
     const userCoverage = matchedUserIngs.size / userEntities.length;
-    const totalMeaningfulIngs = Math.max(1, parsedRecipeIngs.filter(r => !Array.from(PANTRY_STAPLES).some(s => r.clean.includes(s))).length);
+    const totalMeaningfulIngs = Math.max(1, parsedRecipeIngs.filter(r => !Array.from(BASIC_STAPLES).some(s => r.clean.includes(s))).length);
     const recipeCoverage = matchedRecipeIngs.size / totalMeaningfulIngs;
 
     // Bonus se il titolo della ricetta contiene uno degli ingredienti cercati
@@ -1339,7 +1339,7 @@ export function extractDoctorQuery(query: string): ExtractedDoctorResult | null 
     norm.includes('piatt') || norm.includes('ingredient') || norm.includes('igredient') ||
     norm.includes('aliment') || norm.includes('pasta') || norm.includes('second') ||
     norm.includes('dolce') || norm.includes('forno') || norm.includes('padella') ||
-    norm.includes('frigo') || norm.includes('dispensa') || norm.includes('ricettario') ||
+    norm.includes('frigo') || norm.includes('ricettario') ||
     norm.includes('torta') || norm.includes('biscott');
 
   if (isCulinaryContext && !norm.includes('medic') && !norm.includes('dottor') && !norm.includes('farmac')) {

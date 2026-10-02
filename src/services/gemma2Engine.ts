@@ -477,7 +477,7 @@ export async function queryGemma2(
     lowerQ.includes('prepar') || lowerQ.includes('piatt') || lowerQ.includes('ingred') ||
     lowerQ.includes('ingrand') || lowerQ.includes('ingrend') || lowerQ.includes('igred') ||
     lowerQ.includes('ingrid') || lowerQ.includes('pranzo') || lowerQ.includes('cena') ||
-    lowerQ.includes('a base di') || lowerQ.includes('cosa cucino') || lowerQ.includes('frigo') || lowerQ.includes('dispensa') ||
+    lowerQ.includes('a base di') || lowerQ.includes('cosa cucino') || lowerQ.includes('frigo') ||
     lowerQ.includes('chiedo gli');
 
   // Per le ricette e consigli gastronomici, esegui SEMPRE la lettura dinamica aggiornata dal catalogo 617+ ricette

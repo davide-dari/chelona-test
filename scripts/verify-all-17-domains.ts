@@ -130,8 +130,7 @@ async function runTests() {
       recipes: [
         { id: 'r1', title: 'Pasta alla Carbonara', category: 'Primi', isFavorite: true }
       ],
-      fridgeItems: [{ id: 'f1', name: 'Uova' }, { id: 'f2', name: 'Guanciale' }],
-      pantryItems: [{ id: 'p1', name: 'Spaghetti' }, { id: 'p2', name: 'Pecorino' }],
+      fridgeItems: [{ id: 'f1', name: 'Uova' }, { id: 'f2', name: 'Guanciale' }, { id: 'f3', name: 'Spaghetti' }, { id: 'f4', name: 'Pecorino' }],
       x: 0, y: 0, w: 3, h: 3
     } as any,
 
