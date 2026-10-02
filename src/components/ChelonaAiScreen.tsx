@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   Send, Mic, MicOff, Volume2, VolumeX, Trash2, Menu, Trash, ArrowLeft, 
-  Brain, ExternalLink, Check, Copy, Plus, X, Zap,
-  Radio, Car, FileText, CreditCard, StickyNote, Activity, Sparkles,
+  ExternalLink, Check, Copy, Plus, X, Zap,
+  Radio, Car, FileText, CreditCard, StickyNote, Activity,
   Settings2, Sliders, Play, Utensils, Plane, Home, Navigation, BookUser, Wrench
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -914,15 +914,6 @@ export const ChelonaAiScreen
 
   const knowledge = buildKnowledgeBase(modules, username);
 
-  // Nodi del Diagramma Neurale
-  const neuralNodes = [
-    { id: 'vehicles', label: 'Veicoli', count: knowledge.vehicles.length, icon: Car, color: '#f59e0b', angle: 30 },
-    { id: 'documents', label: 'Documenti', count: knowledge.documents.length, icon: FileText, color: '#3b82f6', angle: 90 },
-    { id: 'finances', label: 'Finanze', count: knowledge.installments.modules.length + knowledge.expenses.count, icon: CreditCard, color: '#10b981', angle: 150 },
-    { id: 'notes', label: 'Appunti', count: knowledge.notes.length, icon: StickyNote, color: '#8b5cf6', angle: 210 },
-    { id: 'fitness', label: 'Fitness', count: knowledge.fitness ? 1 : 0, icon: Activity, color: '#ec4899', angle: 270 },
-    { id: 'memories', label: 'Memorie', count: memories.length, icon: Brain, color: '#f97316', angle: 330 },
-  ];
 
   const quickPrompts = [
     { label: '🚗 La mia auto', query: 'Fammi un riepilogo della mia auto, scadenze e km' },
@@ -1763,12 +1754,32 @@ export const ChelonaAiScreen
                   })
                 )}
               </div>
+
+              {/* Elimina tutte le conversazioni */}
+              {conversations.length > 0 && (
+                <div className="p-3 border-t border-[var(--border)] shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (confirm('Vuoi eliminare tutte le conversazioni?')) {
+                        setConversations([]);
+                        handleNewConversation();
+                        showToast('Tutte le conversazioni eliminate.', 'success');
+                      }
+                    }}
+                    className="w-full py-2.5 px-3 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 text-xs font-bold border border-rose-500/20 flex items-center justify-center gap-2 transition-all active:scale-95"
+                  >
+                    <Trash className="w-4 h-4" />
+                    <span>Elimina tutte le chat</span>
+                  </button>
+                </div>
+              )}
             </motion.div>
           </div>
         )}
       </AnimatePresence>
 
-      {/* CASSETTO MEMORIA CON DIAGRAMMA NEURALE MIGLIORATO */}
+      {/* CASSETTO MEMORIA */}
       <AnimatePresence>
         {showMemoryDrawer && (
           <div className="fixed inset-0 z-[150] flex justify-end">
@@ -1794,8 +1805,8 @@ export const ChelonaAiScreen
                     <img src="/chelona_logo.png" alt="Chelona" className="w-full h-full object-contain" />
                   </div>
                   <div>
-                    <h3 className="text-base font-bold text-[var(--text-main)]">Rete Neurale Chelona</h3>
-                    <p className="text-xs text-[var(--text-muted)]">Sinapsi e conoscenze apprese</p>
+                    <h3 className="text-base font-bold text-[var(--text-main)]">Memoria Chelona</h3>
+                    <p className="text-xs text-[var(--text-muted)]">Conoscenze e fatti appresi</p>
                   </div>
                 </div>
                 <button
@@ -1807,139 +1818,6 @@ export const ChelonaAiScreen
               </div>
 
               <div className="flex-1 overflow-y-auto p-5 space-y-6 custom-scrollbar">
-
-                {/* 🌌 DIAGRAMMA NEURALE INTERATTIVO MIGLIORATO */}
-                <div className="relative rounded-3xl bg-gradient-to-b from-slate-900 to-slate-800 border border-slate-700/50 p-4 shadow-xl overflow-hidden">
-                  {/* Pattern punti griglia */}
-                  <div className="absolute inset-0 opacity-40" style={{ backgroundImage: 'radial-gradient(circle at 1px 1px, rgba(255,255,255,0.1) 1px, transparent 0)', backgroundSize: '16px 16px' }}></div>
-                  
-                  <div className="relative z-10 flex items-center justify-between mb-2">
-                    <span className="text-[11px] font-black uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
-                      <Sparkles className="w-3.5 h-3.5" />
-                      Mappa Sinaptica
-                    </span>
-                    <span className="text-[11px] text-slate-400 font-medium">Tocca un nodo</span>
-                  </div>
-
-                  {/* SVG Grafico Neurale (h-72 = 288px) */}
-                  <div className="relative w-full h-72 flex items-center justify-center my-2 max-w-[320px] mx-auto">
-                    <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 320 288">
-                      <defs>
-                        {neuralNodes.map((node) => (
-                          <linearGradient id={`grad-${node.id}`} key={node.id} x1="0%" y1="0%" x2="100%" y2="100%">
-                            <stop offset="0%" stopColor="#475569" />
-                            <stop offset="100%" stopColor={node.color} />
-                          </linearGradient>
-                        ))}
-                      </defs>
-                      {neuralNodes.map((node, i) => {
-                        const rad = (node.angle * Math.PI) / 180;
-                        const cx = 160; const cy = 144;
-                        const x = cx + Math.cos(rad) * 115;
-                        const y = cy + Math.sin(rad) * 105;
-                        const isSelected = activeNeuralCategory === node.id;
-                        return (
-                          <g key={i}>
-                            <line
-                              x1={cx}
-                              y1={cy}
-                              x2={x}
-                              y2={y}
-                              stroke={`url(#grad-${node.id})`}
-                              strokeWidth={isSelected ? '3' : '1.5'}
-                              strokeDasharray={isSelected ? 'none' : '3 3'}
-                              className="transition-all duration-300"
-                            />
-                            {/* Animated Particles on Synapse Lines */}
-                            <circle r="2" fill={node.color} filter="blur(1px)">
-                              <animate 
-                                attributeName="cx" 
-                                values={`${cx};${x}`} 
-                                dur={`${1.5 + i * 0.2}s`} 
-                                repeatCount="indefinite" 
-                              />
-                              <animate 
-                                attributeName="cy" 
-                                values={`${cy};${y}`} 
-                                dur={`${1.5 + i * 0.2}s`} 
-                                repeatCount="indefinite" 
-                              />
-                              <animate
-                                attributeName="opacity"
-                                values="0;1;0"
-                                dur={`${1.5 + i * 0.2}s`}
-                                repeatCount="indefinite"
-                              />
-                            </circle>
-                          </g>
-                        );
-                      })}
-                    </svg>
-
-                    {/* Nodo Centrale: Chelona Core (Ingrandito w-20 h-20) */}
-                    <button
-                      onClick={() => setActiveNeuralCategory('all')}
-                      className={`absolute z-10 w-20 h-20 rounded-full p-2 flex items-center justify-center transition-all active:scale-95 shadow-xl border-2 ${
-                        activeNeuralCategory === 'all'
-                          ? 'border-amber-400 bg-amber-500/20 shadow-amber-500/40'
-                          : 'border-slate-600 bg-slate-800'
-                      }`}
-                      style={{ left: '50%', top: '50%', transform: 'translate(-50%, -50%)' }}
-                      title="Visualizza tutto"
-                    >
-                      {activeNeuralCategory === 'all' && (
-                        <div className="absolute inset-0 rounded-full border-2 border-amber-400 animate-ping opacity-30"></div>
-                      )}
-                      <img src="/chelona_logo.png" alt="Chelona Core" className="w-12 h-12 object-contain drop-shadow-md" />
-                    </button>
-
-                    {/* Nodi Satellitari Orbitanti */}
-                    {neuralNodes.map((node) => {
-                      const rad = (node.angle * Math.PI) / 180;
-                      const cx = 160; const cy = 144;
-                      const x = cx + Math.cos(rad) * 115;
-                      const y = cy + Math.sin(rad) * 105;
-                      const isSelected = activeNeuralCategory === node.id;
-                      const Icon = node.icon;
-
-                      return (
-                        <button
-                          key={node.id}
-                          onClick={() => setActiveNeuralCategory(isSelected ? 'all' : (node.id as NeuralCategory))}
-                          style={{
-                            left: `${(x / 320) * 100}%`,
-                            top: `${(y / 288) * 100}%`,
-                            transform: 'translate(-50%, -50%)',
-                            boxShadow: isSelected ? `0 0 20px ${node.color}80` : undefined
-                          }}
-                          className={`absolute z-20 w-11 h-11 rounded-2xl flex flex-col items-center justify-center transition-all active:scale-90 border ${
-                            isSelected
-                              ? 'scale-110 border-white/20'
-                              : 'bg-slate-800 border-slate-700 hover:scale-105 shadow-md'
-                          }`}
-                          title={node.label}
-                        >
-                          <div
-                            className="w-full h-full rounded-2xl flex items-center justify-center text-white relative"
-                            style={{ backgroundColor: isSelected ? node.color : 'transparent', color: isSelected ? '#fff' : node.color }}
-                          >
-                            <Icon className="w-5 h-5" />
-                            {/* Badge count */}
-                            <span className="absolute -top-2 -right-2 w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold text-white shadow-sm border border-slate-800" style={{ backgroundColor: node.color }}>
-                              {node.count}
-                            </span>
-                          </div>
-                          <span
-                            className="absolute -bottom-4 text-[9px] font-bold whitespace-nowrap drop-shadow-md"
-                            style={{ color: isSelected ? node.color : '#94a3b8' }}
-                          >
-                            {node.label}
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
 
                 {/* Selettore rapido categorie (Pill bar orizzontale scrollabile) */}
                 <div className="flex items-center gap-1.5 overflow-x-auto pb-2 scrollbar-none my-2">

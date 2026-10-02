@@ -389,6 +389,34 @@ export class SemanticCache {
       cacheHits: this.cacheHits,
     };
   }
+
+  /**
+   * Restituisce tutte le voci della cache per la UI di gestione
+   */
+  public getCacheEntries(): Array<{ query: string; responsePreview: string; timestamp: number; hits: number }> {
+    return this.ramEntries.map(e => ({
+      query: e.query,
+      responsePreview: (e.response.text || '').slice(0, 120),
+      timestamp: e.timestamp,
+      hits: e.hits,
+    }));
+  }
+
+  /**
+   * Elimina una singola voce dalla cache (per query normalizzata)
+   */
+  public deleteCacheEntry(query: string): void {
+    const normQuery = this.normalize(query);
+    this.ramEntries = this.ramEntries.filter(e => e.normalizedQuery !== normQuery);
+    this.schedulePersist();
+  }
+
+  /**
+   * Svuota completamente la cache in RAM e nel DB locale
+   */
+  public clearAllCache(): void {
+    this.clear();
+  }
 }
 
 export const semanticCache = new SemanticCache();

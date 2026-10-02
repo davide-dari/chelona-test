@@ -7,7 +7,7 @@ import {
   Sliders, Layers, Folder as FolderIcon, Trash2, CheckCircle2, 
   AlertTriangle, Sparkles, Key, FileText, CheckCheck,
   Car, Users, Receipt, Globe, BookOpen, Activity, Home,
-  Percent, Scan, Shirt, ImageIcon, HardDrive, Edit2, Brain, Cpu, ChevronRight
+  Percent, Scan, Shirt, ImageIcon, HardDrive, Edit2, Cpu, ChevronRight
 } from 'lucide-react';
 import { storage } from '../services/storage';
 import { encryption } from '../services/encryption';
@@ -23,6 +23,8 @@ import { lzw } from '../utils/lzw';
 import { Filesystem, Directory } from '@capacitor/filesystem';
 import { Capacitor } from '@capacitor/core';
 import CryptoJS from 'crypto-js';
+import { semanticCache } from '../services/semanticCache';
+
 
 export interface ProfileScreenProps {
   onClose: () => void;
@@ -171,6 +173,11 @@ export function ProfileScreen({
 
   // Updates
   const [isCheckingUpdate, setIsCheckingUpdate] = useState(false);
+
+  // Cache management
+  type CacheEntry = { query: string; responsePreview: string; timestamp: number; hits: number };
+  const [cacheEntries, setCacheEntries] = useState<CacheEntry[]>(() => semanticCache.getCacheEntries());
+  const [selectedCacheKeys, setSelectedCacheKeys] = useState<Set<string>>(new Set());
 
   // Restore input ref
   const restoreZipInputRef = useRef<HTMLInputElement>(null);
@@ -925,33 +932,7 @@ export function ProfileScreen({
                 </motion.button>
               </div>
 
-              {/* Rete Neurale / Memoria AI Card */}
-              <div className="bg-[var(--card-bg)] rounded-[var(--radius-lg)] p-5 sm:p-6 border border-[var(--border)] shadow-sm space-y-4">
-                <div className="flex items-center justify-between gap-4 pb-3 border-b border-[var(--border)]">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-2xl bg-amber-500/10 flex items-center justify-center text-amber-500 shadow-inner">
-                      <Brain className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <h3 className="text-base font-bold text-[var(--text-main)]">Rete Neurale Chelona</h3>
-                      <p className="text-xs text-[var(--text-muted)]">Gestisci la memoria e l'apprendimento dell'AI</p>
-                    </div>
-                  </div>
-                </div>
-                <p className="text-xs text-[var(--text-muted)] leading-relaxed">
-                  Visualizza cosa Chelona ha imparato sulle tue abitudini, veicoli e spese. Puoi modificare o eliminare singole memorie per migliorare l'assistenza personalizzata.
-                </p>
-                <div className="pt-2">
-                  <button
-                    type="button"
-                    onClick={onOpenAiMemory}
-                    className="w-full py-3.5 bg-[var(--surface-variant)] hover:bg-[var(--border)] text-[var(--text-main)] rounded-xl font-bold text-xs uppercase tracking-wider transition-all border border-[var(--border)] shadow-sm flex items-center justify-center gap-2 active:scale-95 cursor-pointer"
-                  >
-                    <Sparkles className="w-4 h-4 text-amber-500" />
-                    <span>Apri Rete Neurale</span>
-                  </button>
-                </div>
-              </div>
+
 
               {/* Invio Automatico da Microfono */}
               <div className="bg-[var(--card-bg)] rounded-[var(--radius-lg)] p-5 sm:p-6 border border-[var(--border)] shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -1489,6 +1470,106 @@ export function ProfileScreen({
                       <Download className="w-4 h-4" />
                     )}
                     <span>{isCheckingUpdate ? 'Controllo in corso...' : 'Controlla Aggiornamenti'}</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Cache Risposte AI */}
+              <div className="bg-[var(--card-bg)] rounded-[var(--radius-lg)] p-5 sm:p-6 border border-[var(--border)] shadow-sm space-y-4">
+                <div className="flex items-center justify-between gap-4 pb-3 border-b border-[var(--border)]">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-2xl bg-amber-500/10 flex items-center justify-center text-amber-500">
+                      <Database className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h3 className="text-base font-bold text-[var(--text-main)]">Cache Risposte AI</h3>
+                      <p className="text-xs text-[var(--text-muted)]">
+                        {cacheEntries.length} {cacheEntries.length === 1 ? 'risposta salvata' : 'risposte salvate'} in memoria
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setCacheEntries(semanticCache.getCacheEntries())}
+                    className="p-2 hover:bg-[var(--surface-variant)] rounded-xl text-[var(--text-muted)] transition-colors"
+                    title="Aggiorna lista"
+                  >
+                    <RefreshCw className="w-4 h-4" />
+                  </button>
+                </div>
+
+                {cacheEntries.length === 0 ? (
+                  <p className="text-xs text-[var(--text-muted)] text-center py-4">Nessuna risposta salvata nella cache.</p>
+                ) : (
+                  <div className="space-y-2 max-h-64 overflow-y-auto custom-scrollbar pr-1">
+                    {cacheEntries.map((entry) => {
+                      const isSelected = selectedCacheKeys.has(entry.query);
+                      return (
+                        <div
+                          key={entry.query}
+                          onClick={() => {
+                            setSelectedCacheKeys(prev => {
+                              const next = new Set(prev);
+                              if (next.has(entry.query)) next.delete(entry.query);
+                              else next.add(entry.query);
+                              return next;
+                            });
+                          }}
+                          className={`p-3 rounded-xl border text-xs cursor-pointer transition-all flex items-start gap-2.5 ${
+                            isSelected
+                              ? 'bg-rose-500/10 border-rose-500/30'
+                              : 'bg-[var(--surface-variant)] border-[var(--border)] hover:border-amber-500/40'
+                          }`}
+                        >
+                          <div className={`mt-0.5 w-4 h-4 rounded-md border-2 shrink-0 flex items-center justify-center transition-all ${
+                            isSelected ? 'border-rose-500 bg-rose-500' : 'border-[var(--border)]'
+                          }`}>
+                            {isSelected && <Check className="w-2.5 h-2.5 text-white" />}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-semibold text-[var(--text-main)] truncate">{entry.query}</p>
+                            <p className="text-[var(--text-muted)] mt-0.5 line-clamp-2">{entry.responsePreview}{entry.responsePreview.length >= 120 ? '…' : ''}</p>
+                            <p className="text-[10px] text-[var(--text-muted)] mt-1">
+                              {entry.hits} {entry.hits === 1 ? 'richiesta' : 'richieste'} • {new Date(entry.timestamp).toLocaleDateString('it-IT', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                <div className="flex gap-2 pt-1">
+                  {selectedCacheKeys.size > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        selectedCacheKeys.forEach(q => semanticCache.deleteCacheEntry(q));
+                        setSelectedCacheKeys(new Set());
+                        setCacheEntries(semanticCache.getCacheEntries());
+                        showToast(`${selectedCacheKeys.size} voc${selectedCacheKeys.size === 1 ? 'e' : 'i'} rimoss${selectedCacheKeys.size === 1 ? 'a' : 'e'} dalla cache.`);
+                      }}
+                      className="flex-1 py-2.5 bg-rose-500 hover:bg-rose-600 text-white rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-1.5 active:scale-95"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      Elimina selezionate ({selectedCacheKeys.size})
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (confirm('Vuoi svuotare completamente la cache delle risposte AI?')) {
+                        semanticCache.clearAllCache();
+                        setCacheEntries([]);
+                        setSelectedCacheKeys(new Set());
+                        showToast('Cache AI svuotata.', 'success');
+                      }
+                    }}
+                    disabled={cacheEntries.length === 0}
+                    className="flex-1 py-2.5 bg-[var(--surface-variant)] hover:bg-[var(--border)] text-[var(--text-main)] border border-[var(--border)] rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-1.5 active:scale-95 disabled:opacity-40"
+                  >
+                    <Trash2 className="w-3.5 h-3.5 text-rose-500" />
+                    Svuota Cache Completa
                   </button>
                 </div>
               </div>
