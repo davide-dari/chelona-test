@@ -436,6 +436,42 @@ async function main() {
   }
   console.log('  Formatted Japan response action count:', formattedJapan.actions.length);
 
+  // Test dishes explicitly mentioned in requirements
+  const testDishes = [
+    { query: 'moussaka', expectedCountry: 'Grecia', flag: '🇬🇷' },
+    { query: 'guacamole', expectedCountry: 'Messico', flag: '🇲🇽' },
+    { query: 'tajine', expectedCountry: 'Marocco', flag: '🇲🇦' },
+    { query: 'curry', expectedCountry: 'India', flag: '🇮🇳' },
+    { query: 'falafel', expectedCountry: 'Libano', flag: '🇱🇧' },
+    { query: 'gazpacho', expectedCountry: 'Spagna', flag: '🇪🇸' },
+    { query: 'bibimbap', expectedCountry: 'Corea del Sud', flag: '🇰🇷' },
+    { query: 'kebab', expectedCountry: 'Turchia', flag: '🇹🇷' },
+    { query: 'pho', expectedCountry: 'Vietnam', flag: '🇻🇳' }
+  ];
+
+  for (const item of testDishes) {
+    const match = searchRecipesByCountryOrCuisine(item.query, catalog);
+    if (!match || match.country !== item.expectedCountry || match.flag !== item.flag) {
+      throw new Error(`Country cuisine matching failed for "${item.query}": expected ${item.expectedCountry} (${item.flag}), got ${JSON.stringify(match)}`);
+    }
+    const aiRes = await queryChelonaAi(item.query, mockModules, 'Davide');
+    if (!aiRes.text.includes(item.expectedCountry) && !aiRes.text.includes(item.flag)) {
+      throw new Error(`queryChelonaAi failed to resolve "${item.query}" to ${item.expectedCountry}: ${aiRes.text.slice(0, 100)}`);
+    }
+  }
+  console.log(`  Successfully verified ${testDishes.length} authentic international dishes across 9 countries with Il Matematico!`);
+
+  // Verify explicit required recipes in catalog
+  const gazpachoInDb = catalog.find(r => r.title.toLowerCase().includes('gazpacho'));
+  if (!gazpachoInDb || gazpachoInDb.country !== 'Spagna') {
+    throw new Error('Gazpacho Andaluso missing or incorrectly tagged in catalog');
+  }
+  const curryVerdureInDb = catalog.find(r => r.title.toLowerCase().includes('curry di verdure'));
+  if (!curryVerdureInDb || curryVerdureInDb.country !== 'India') {
+    throw new Error('Curry di Verdure missing or incorrectly tagged in catalog');
+  }
+  console.log('  Verified Gazpacho Andaluso (Spagna) and Curry di Verdure (India) in database!');
+
   // End-to-end AI query for world recipes
   const aiWorldQuery = await queryChelonaAi('vorrei cucinare qualcosa di giapponese', mockModules, 'Davide');
   if (!aiWorldQuery.text.includes('Giappone') || !aiWorldQuery.text.includes('🇯🇵') || !aiWorldQuery.actions || aiWorldQuery.actions.length === 0) {

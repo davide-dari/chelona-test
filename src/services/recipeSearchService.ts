@@ -383,11 +383,14 @@ export interface RecipeResult {
   flag?: string;
 }
 
-// ── 1. Local Database (643 ricette verificate con foto Unsplash & Cucine dal Mondo) ──
+// ── 1. Local Database (667 ricette verificate con foto Unsplash & Cucine dal Mondo) ──
 async function searchLocalDB(mealName: string): Promise<RecipeResult | null> {
   try {
-    const res = await fetch('/ricette_mondo.json');
-    if (!res.ok) return null;
+    let res = await fetch('ricette_mondo.json').catch(() => null);
+    if (!res || !res.ok) {
+      res = await fetch('/ricette_mondo.json').catch(() => null);
+    }
+    if (!res || !res.ok) return null;
     const db: any[] = await res.json();
     if (!Array.isArray(db)) return null;
 

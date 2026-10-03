@@ -633,6 +633,9 @@ export function RecipesScreen({
     { name: 'Marocco', code: 'MA', flag: '🇲🇦' },
     { name: 'Cina', code: 'CN', flag: '🇨🇳' },
     { name: 'Libano', code: 'LB', flag: '🇱🇧' },
+    { name: 'Corea del Sud', code: 'KR', flag: '🇰🇷' },
+    { name: 'Turchia', code: 'TR', flag: '🇹🇷' },
+    { name: 'Vietnam', code: 'VN', flag: '🇻🇳' },
     { name: 'Regno Unito', code: 'GB', flag: '🇬🇧' },
     { name: 'Brasile', code: 'BR', flag: '🇧🇷' },
     { name: 'Argentina', code: 'AR', flag: '🇦🇷' },
@@ -654,7 +657,9 @@ export function RecipesScreen({
       if (selectedCategory === 'favorites') {
         matchCat = true;
       } else if (selectedCategory === 'Cucine dal Mondo') {
-        matchCat = Boolean((meal.country && meal.country !== 'Italia') || meal.category === 'Cucine dal Mondo');
+        // Se un paese specifico è selezionato, mostra le ricette di quel paese
+        // Altrimenti mostra tutte le ricette dal mondo (non Italia o con categoria Cucine dal Mondo)
+        matchCat = selectedCountry ? true : Boolean((meal.country && meal.country !== 'Italia') || meal.category === 'Cucine dal Mondo');
       } else if (selectedCategory) {
         matchCat = meal.category === selectedCategory;
       }
@@ -717,17 +722,49 @@ export function RecipesScreen({
       </header>
 
       <main className="flex-1 overflow-y-auto p-4 md:p-8 custom-scrollbar">
-        {!selectedCategory && !searchQuery ? (
+        {!selectedCategory && !searchQuery && !selectedCountry ? (
           <div className="max-w-6xl mx-auto space-y-8">
             <div className="relative">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--text-muted)] w-5 h-5" />
               <input
                 type="text"
-                placeholder="Cerca una ricetta italiana..."
+                placeholder="Cerca una ricetta o ingrediente (es. Carbonara, Sushi, Tacos, Paella)..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full bg-[var(--surface-variant)] border border-[var(--border)] rounded-2xl py-4 pl-12 pr-4 text-[var(--text-main)] outline-none focus:ring-2 focus:ring-[var(--accent)] transition-all shadow-sm"
               />
+            </div>
+
+            {/* ── SELETTORE RAPIDO CUCINE DAL MONDO PER PAESE ── */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-extrabold text-[var(--text-main)] flex items-center gap-2">
+                  <span>🌍</span>
+                  <span>Esplora Cucine dal Mondo per Paese</span>
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => setSelectedCategory('Cucine dal Mondo')}
+                  className="text-xs font-bold text-orange-600 dark:text-orange-400 hover:underline cursor-pointer"
+                >
+                  Vedi tutte
+                </button>
+              </div>
+              <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1">
+                {COUNTRIES_LIST.filter(c => c.code !== 'ALL').map(c => (
+                  <button
+                    key={c.code}
+                    type="button"
+                    onClick={() => {
+                      setSelectedCountry(c.name);
+                    }}
+                    className="px-3.5 py-2 rounded-2xl text-xs font-bold whitespace-nowrap flex items-center gap-2 bg-[var(--card-bg)] border border-[var(--border)] hover:border-orange-500 hover:bg-orange-50/10 text-[var(--text-main)] transition-all cursor-pointer shadow-xs active:scale-95 shrink-0"
+                  >
+                    <span className="text-base">{c.flag}</span>
+                    <span>{c.name}</span>
+                  </button>
+                ))}
+              </div>
             </div>
 
             {/* ── BANNER HERO: COSA MANGIARE OGGI? ── */}
@@ -857,6 +894,8 @@ export function RecipesScreen({
                     <>⭐ Preferiti</>
                   ) : selectedCategory === 'Cucine dal Mondo' ? (
                     <>🌍 Cucine dal Mondo {selectedCountry ? `· ${selectedCountry}` : ''}</>
+                  ) : selectedCountry && !selectedCategory ? (
+                    <>🌍 Cucine dal Mondo · <span className="text-orange-500">{selectedCountry}</span></>
                   ) : searchQuery && !selectedCategory ? (
                     <>Ricerca: <span className="text-orange-500">{searchQuery}</span></>
                   ) : (
@@ -938,10 +977,18 @@ export function RecipesScreen({
                       <div className="flex items-center justify-between mb-1 gap-2">
                         <span className="text-xs font-bold text-orange-500 uppercase tracking-wider truncate">{meal.category}</span>
                         {meal.country && (
-                          <span className="text-[11px] px-2 py-0.5 rounded-full bg-[var(--surface-variant)] border border-[var(--border)] font-semibold text-[var(--text-muted)] flex items-center gap-1 shrink-0">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedCountry(meal.country);
+                            }}
+                            className="text-[11px] px-2 py-0.5 rounded-full bg-[var(--surface-variant)] hover:bg-[var(--border)] border border-[var(--border)] font-semibold text-[var(--text-muted)] hover:text-[var(--text-main)] flex items-center gap-1 shrink-0 transition-colors cursor-pointer"
+                            title={`Filtra ricette: ${meal.country}`}
+                          >
                             <span>{meal.flag || '🌍'}</span>
                             <span>{meal.country}</span>
-                          </span>
+                          </button>
                         )}
                       </div>
                       <h3 className="font-bold text-[var(--text-main)] text-lg line-clamp-2 leading-tight group-hover:text-orange-500 transition-colors">{meal.title}</h3>
@@ -1947,10 +1994,18 @@ export function RecipesScreen({
                         {selectedMeal.category}
                       </span>
                       {selectedMeal.country && (
-                        <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-blue-100 dark:bg-blue-950/40 text-blue-700 dark:text-blue-400 rounded-full text-xs font-bold uppercase tracking-wider">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedCountry(selectedMeal.country);
+                            setSelectedMeal(null);
+                          }}
+                          className="inline-flex items-center gap-1.5 px-3 py-1 bg-blue-100 dark:bg-blue-950/40 hover:bg-blue-200 dark:hover:bg-blue-900/60 text-blue-700 dark:text-blue-400 rounded-full text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer"
+                          title={`Vedi tutte le ricette: ${selectedMeal.country}`}
+                        >
                           <span>{selectedMeal.flag || '🌍'}</span>
                           <span>{selectedMeal.country}</span>
-                        </span>
+                        </button>
                       )}
                     </div>
                     <h2 className="text-2xl md:text-3xl font-extrabold text-[var(--text-main)] leading-tight">

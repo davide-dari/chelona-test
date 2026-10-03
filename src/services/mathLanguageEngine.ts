@@ -1208,7 +1208,7 @@ export function searchRecipesByCountryOrCuisine(query: string, catalog: RecipeCa
       country: 'Spagna',
       flag: '🇪🇸',
       code: 'ES',
-      patterns: [/spagn/i, /paella/i, /tortilla de patatas/i, /gazpacho/i, /patatas bravas/i, /crema catalana/i, /tapas/i]
+      patterns: [/spagn/i, /paella/i, /tortilla de patatas/i, /gazpacho/i, /patatas bravas/i, /crema catalana/i, /churros/i, /tapas/i]
     },
     {
       country: 'USA',
@@ -1226,25 +1226,25 @@ export function searchRecipesByCountryOrCuisine(query: string, catalog: RecipeCa
       country: 'Thailandia',
       flag: '🇹🇭',
       code: 'TH',
-      patterns: [/thailand/i, /thai/i, /pad thai/i, /curry verde/i, /tom yum/i]
+      patterns: [/thailand/i, /thai/i, /pad thai/i, /curry verde/i, /tom yum/i, /som tam/i, /mango sticky rice/i]
     },
     {
       country: 'Marocco',
       flag: '🇲🇦',
       code: 'MA',
-      patterns: [/marocch/i, /couscous/i, /tajine/i, /harira/i, /pastilla/i]
+      patterns: [/marocch/i, /couscous/i, /tajine/i, /harira/i, /pastilla/i, /shakshuka/i]
     },
     {
       country: 'Cina',
       flag: '🇨🇳',
       code: 'CN',
-      patterns: [/cines/i, /cantonese/i, /jiaozi/i, /involtini primavera/i, /pollo alle mandorle/i]
+      patterns: [/cines/i, /cantonese/i, /jiaozi/i, /involtini primavera/i, /pollo alle mandorle/i, /maiale in agrodolce/i, /wonton/i]
     },
     {
       country: 'Libano',
       flag: '🇱🇧',
       code: 'LB',
-      patterns: [/liban/i, /hummus/i, /falafel/i, /tabboul/i, /shish taouk/i, /babaganoush/i]
+      patterns: [/liban/i, /hummus/i, /falafel/i, /tabboul/i, /shish taouk/i, /baba\s*ganoush/i, /babaganoush/i]
     },
     {
       country: 'Regno Unito',
@@ -1265,10 +1265,28 @@ export function searchRecipesByCountryOrCuisine(query: string, catalog: RecipeCa
       patterns: [/argentin/i, /empanada/i, /chimichurri/i]
     },
     {
+      country: 'Corea del Sud',
+      flag: '🇰🇷',
+      code: 'KR',
+      patterns: [/corean/i, /kimchi/i, /bibimbap/i, /bulgogi/i]
+    },
+    {
+      country: 'Turchia',
+      flag: '🇹🇷',
+      code: 'TR',
+      patterns: [/turch/i, /kebab/i, /baklava/i, /pide/i]
+    },
+    {
+      country: 'Vietnam',
+      flag: '🇻🇳',
+      code: 'VN',
+      patterns: [/vietnam/i, /pho/i, /nem ran/i]
+    },
+    {
       country: 'Germania',
       flag: '🇩🇪',
       code: 'DE',
-      patterns: [/tedesc/i, /germani/i, /strudel/i]
+      patterns: [/tedesc/i, /germani/i, /bratwurst/i, /schnitzel/i, /bretzel/i, /strudel/i]
     },
     {
       country: 'Italia',

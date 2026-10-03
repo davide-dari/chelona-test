@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ArrowLeft, Check, Trash2, Calendar, Target, RefreshCw, CheckCircle2, Circle, Type, Pencil, X } from 'lucide-react';
+import { ArrowLeft, Check, Trash2, Calendar, Target, RefreshCw, CheckCircle2, Circle, Type, Pencil, X, Receipt } from 'lucide-react';
 import { InstallmentsModule, InstallmentPayment } from '../types';
 import { generateUUID } from '../utils/uuid';
 
@@ -221,6 +221,11 @@ export const InstallmentsScreen = ({ module, onClose, onSave, onDelete }: Instal
 
       {/* Main Content */}
       <div className="flex-1 overflow-y-auto w-full max-w-2xl mx-auto p-6 space-y-8 custom-scrollbar">
+        {/* Avviso Finanziario Legale */}
+        <div className="p-3 bg-purple-500/10 border border-purple-500/20 rounded-2xl flex items-center gap-2.5 text-xs text-purple-900 dark:text-purple-200">
+          <Receipt className="w-4 h-4 text-purple-600 shrink-0" />
+          <span><strong>Avviso Finanziario:</strong> Strumento di calcolo rate e budgeting a scopo informativo, non costituisce consulenza finanziaria ai sensi del D.Lgs. 58/1998 (TUF).</span>
+        </div>
         
         {!isEditing ? (
           // VIEW MODE (Default for configured installments)

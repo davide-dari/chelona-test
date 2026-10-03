@@ -1941,14 +1941,56 @@ export function ProfileScreen({
                 </div>
               </div>
 
+              {/* Disclaimer Legale, Marchi & Proprietà Intellettuale */}
+              <div className="bg-[var(--surface-variant)]/60 rounded-[var(--radius-lg)] p-5 border border-[var(--border)] space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-[var(--text-main)]">
+                    <Scale className="w-4 h-4 text-orange-500" />
+                    <span>Disclaimer Legale & Proprietà Intellettuale</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setLegalModalTab('disclaimer')}
+                    className="text-[11px] font-bold text-[var(--accent)] hover:underline flex items-center gap-1 cursor-pointer"
+                  >
+                    <span>Leggi Note Complete</span>
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+                <p className="text-[11px] text-[var(--text-muted)] leading-relaxed">
+                  Tutti i marchi d'impresa, loghi, insegne e denominazioni sociali citati (GDO come Conad, Coop, Lidl; operatori come Vodafone, Sky; brand automobilistici) appartengono ai rispettivi legittimi proprietari e sono menzionati ai sensi del <strong>Nominative Fair Use (Art. 21 D.Lgs. 30/2005 - CPI e Art. 14 Dir. UE 2015/2436)</strong> unicamente per finalità descrittive e di organizzazione personale dell'utente.
+                </p>
+                <div className="grid grid-cols-1 gap-2 pt-1 text-[11px]">
+                  <div className="p-2.5 rounded-xl bg-teal-500/10 border border-teal-500/20 text-teal-900 dark:text-teal-200">
+                    <strong>🩺 Medico/Salute:</strong> Non costituisce consulenza medica né sostituisce il parere di un medico professionista o del SSN. In emergenza chiama il 112.
+                  </div>
+                  <div className="p-2.5 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-900 dark:text-purple-200">
+                    <strong>💰 Finanze:</strong> Strumento di budgeting personale a scopo informativo, non costituisce consulenza finanziaria ai sensi del D.Lgs. 58/1998 (TUF).
+                  </div>
+                  <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-900 dark:text-amber-200">
+                    <strong>📄 Recessi/Legale:</strong> I modelli di disdetta sono formulari orientativi; verificare sempre i termini contrattuali aggiornati del fornitore prima dell'invio.
+                  </div>
+                </div>
+              </div>
+
               {/* Offline & Privacy Manifesto Card */}
               <div className="bg-[var(--surface-variant)]/50 rounded-[var(--radius-lg)] p-5 border border-[var(--border)] space-y-2">
-                <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-[var(--text-muted)]">
-                  <ShieldCheck className="w-4 h-4 text-emerald-500" />
-                  <span>Garanzia di Riservatezza Chelona</span>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-[var(--text-muted)]">
+                    <ShieldCheck className="w-4 h-4 text-emerald-500" />
+                    <span>Garanzia di Riservatezza & GDPR 100% Offline</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setLegalModalTab('privacy')}
+                    className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1 cursor-pointer"
+                  >
+                    <span>Privacy Policy</span>
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </button>
                 </div>
                 <p className="text-xs text-[var(--text-muted)] leading-relaxed">
-                  Chelona è un'applicazione concepita per funzionare al 100% offline. I tuoi documenti, tessere, spese e note non vengono mai inviati a server esterni o terze parti. Sei tu l'unico proprietario delle tue chiavi di crittografia.
+                  Chelona è un'applicazione concepita per funzionare al 100% offline secondo il Regolamento UE 2016/679 (GDPR). I tuoi documenti, tessere, spese e note non vengono mai inviati a server esterni o terze parti. Tutti i dati sono protetti localmente con crittografia simmetrica AES-256.
                 </p>
               </div>
             </motion.div>

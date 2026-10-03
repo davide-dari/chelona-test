@@ -3996,8 +3996,9 @@ export default function App() {
                   {/* Sub-menu Spese */}
                   {!editingModuleId && !formData.template && spesaSubMenu && (
                     <div className="bg-[var(--card-bg)]/80 backdrop-blur-3xl rounded-[2.5rem] border border-[var(--border)] p-6 lg:p-10 shadow-[0_8px_40px_rgba(0,0,0,0.06)]">
-                      <div className="flex items-center gap-3 mb-8">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-6">
                         <h3 className="text-lg font-bold text-[var(--text-main)] uppercase tracking-widest">Finanze & Spese</h3>
+                        <span className="text-[11px] text-[var(--text-muted)] font-medium">Uso personale a scopo informativo (non costituisce consulenza finanziaria)</span>
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
 
