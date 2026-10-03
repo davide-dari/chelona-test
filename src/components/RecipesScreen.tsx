@@ -37,6 +37,7 @@ export function RecipesScreen({
   const [loading, setLoading] = useState(true);
   
   const [selectedCategory, setSelectedCategory] = useState<string | null>(initialCategory && initialCategory !== 'fridge' ? initialCategory : null);
+  const [selectedCountry, setSelectedCountry] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState(initialSearchQuery || '');
   
   const [selectedMeal, setSelectedMeal] = useState<any | null>(null);
@@ -191,11 +192,16 @@ export function RecipesScreen({
       setIsSavedMenusOpen(false);
       return;
     }
+    if (selectedCountry) {
+      setSelectedCountry(null);
+      return;
+    }
     if (selectedCategory || searchQuery) {
       if (initialSearchQuery || initialCategory) {
         onClose();
       } else {
         setSelectedCategory(null);
+        setSelectedCountry(null);
         setSearchQuery('');
       }
     } else {
@@ -211,6 +217,7 @@ export function RecipesScreen({
     selectedMeal, 
     isMenuPlannerOpen, 
     isSavedMenusOpen,
+    selectedCountry,
     selectedCategory, 
     searchQuery, 
     onClose, 
@@ -257,7 +264,7 @@ export function RecipesScreen({
               }
 
               return {
-                id: m.id || `gz_${i}`,
+                id: m.id || `rec_${i}`,
                 title: m.title || m.nome,
                 image: m.image,
                 category: cat,
@@ -267,7 +274,9 @@ export function RecipesScreen({
                 protein: m.protein,
                 carbs: m.carbs,
                 fat: m.fat,
-                tags: m.tags
+                tags: m.tags,
+                country: m.country || 'Italia',
+                flag: m.flag || '🇮🇹'
               };
             });
           combined = [...formatted];
@@ -608,24 +617,53 @@ export function RecipesScreen({
     setTimeout(() => setMealAddedToCart(false), 3000);
   };
 
-  const FIXED_CATEGORIES = ['Fitness & Dieta', 'Antipasti', 'Primi', 'Secondi', 'Dolci', 'Colazione'];
+  const FIXED_CATEGORIES = ['Cucine dal Mondo', 'Fitness & Dieta', 'Antipasti', 'Primi', 'Secondi', 'Dolci', 'Colazione'];
+
+  const COUNTRIES_LIST = useMemo(() => [
+    { name: 'Tutti i Paesi', code: 'ALL', flag: '🌍' },
+    { name: 'Italia', code: 'IT', flag: '🇮🇹' },
+    { name: 'Giappone', code: 'JP', flag: '🇯🇵' },
+    { name: 'Messico', code: 'MX', flag: '🇲🇽' },
+    { name: 'India', code: 'IN', flag: '🇮🇳' },
+    { name: 'Grecia', code: 'GR', flag: '🇬🇷' },
+    { name: 'Spagna', code: 'ES', flag: '🇪🇸' },
+    { name: 'USA', code: 'US', flag: '🇺🇸' },
+    { name: 'Francia', code: 'FR', flag: '🇫🇷' },
+    { name: 'Thailandia', code: 'TH', flag: '🇹🇭' },
+    { name: 'Marocco', code: 'MA', flag: '🇲🇦' },
+    { name: 'Cina', code: 'CN', flag: '🇨🇳' },
+    { name: 'Libano', code: 'LB', flag: '🇱🇧' },
+    { name: 'Regno Unito', code: 'GB', flag: '🇬🇧' },
+    { name: 'Brasile', code: 'BR', flag: '🇧🇷' },
+    { name: 'Argentina', code: 'AR', flag: '🇦🇷' },
+    { name: 'Germania', code: 'DE', flag: '🇩🇪' },
+  ], []);
 
   const categories = useMemo(() => {
     return FIXED_CATEGORIES;
   }, []);
 
   const filteredMeals = useMemo(() => {
+    let list = allMeals;
     if (selectedCategory === 'favorites') {
-      if (!searchQuery) return favorites;
-      return favorites.filter(m => m.title.toLowerCase().includes(searchQuery.toLowerCase()));
+      list = favorites;
     }
 
-    return allMeals.filter(meal => {
-      const matchCat = selectedCategory ? meal.category === selectedCategory : true;
+    return list.filter(meal => {
+      let matchCat = true;
+      if (selectedCategory === 'favorites') {
+        matchCat = true;
+      } else if (selectedCategory === 'Cucine dal Mondo') {
+        matchCat = Boolean((meal.country && meal.country !== 'Italia') || meal.category === 'Cucine dal Mondo');
+      } else if (selectedCategory) {
+        matchCat = meal.category === selectedCategory;
+      }
+
+      const matchCountry = selectedCountry ? meal.country === selectedCountry : true;
       const matchSearch = searchQuery ? meal.title.toLowerCase().includes(searchQuery.toLowerCase()) : true;
-      return matchCat && matchSearch;
+      return matchCat && matchCountry && matchSearch;
     });
-  }, [allMeals, selectedCategory, searchQuery, favorites]);
+  }, [allMeals, selectedCategory, selectedCountry, searchQuery, favorites]);
 
   const toggleFavorite = (meal: any, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
@@ -781,6 +819,7 @@ export function RecipesScreen({
                   
                   {categories.map((cat) => {
                     const emojiMap: Record<string, string> = {
+                      'Cucine dal Mondo': '🌍',
                       'Fitness & Dieta': '💪',
                       'Antipasti': '🥗',
                       'Primi': '🍝',
@@ -810,16 +849,18 @@ export function RecipesScreen({
             </div>
           </div>
         ) : (
-          <div className="max-w-6xl mx-auto space-y-6">
+          <div className="max-w-6xl mx-auto space-y-4 sm:space-y-6">
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
               <div className="flex items-center gap-3 w-full sm:w-auto">
                 <h2 className="text-xl sm:text-2xl font-black text-[var(--text-main)] flex items-center gap-2">
                   {selectedCategory === 'favorites' ? (
                     <>⭐ Preferiti</>
+                  ) : selectedCategory === 'Cucine dal Mondo' ? (
+                    <>🌍 Cucine dal Mondo {selectedCountry ? `· ${selectedCountry}` : ''}</>
                   ) : searchQuery && !selectedCategory ? (
                     <>Ricerca: <span className="text-orange-500">{searchQuery}</span></>
                   ) : (
-                    <>Categoria <span className="text-orange-500 capitalize">{selectedCategory}</span></>
+                    <>Categoria <span className="text-orange-500 capitalize">{selectedCategory}</span> {selectedCountry ? `· ${selectedCountry}` : ''}</>
                   )}
                 </h2>
               </div>
@@ -834,6 +875,28 @@ export function RecipesScreen({
                   className="w-full bg-[var(--surface-variant)] border border-[var(--border)] rounded-xl py-2 pl-9 pr-4 text-[var(--text-main)] outline-none text-sm"
                 />
               </div>
+            </div>
+
+            {/* Selettore Paesi / Cucine dal Mondo (Pills a scorrimento orizzontale) */}
+            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1">
+              {COUNTRIES_LIST.map(c => {
+                const isSelected = (c.code === 'ALL' && !selectedCountry) || selectedCountry === c.name;
+                return (
+                  <button
+                    key={c.code}
+                    type="button"
+                    onClick={() => setSelectedCountry(c.code === 'ALL' ? null : c.name)}
+                    className={`px-3.5 py-1.5 rounded-full text-xs font-bold whitespace-nowrap flex items-center gap-1.5 transition-all cursor-pointer ${
+                      isSelected
+                        ? 'bg-orange-500 text-white shadow-sm shadow-orange-500/20 scale-105'
+                        : 'bg-[var(--surface-variant)] text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--border)]'
+                    }`}
+                  >
+                    <span>{c.flag}</span>
+                    <span>{c.name}</span>
+                  </button>
+                );
+              })}
             </div>
 
             {loading ? (
@@ -874,6 +937,12 @@ export function RecipesScreen({
                     <div className="p-4 flex-1 flex flex-col justify-center">
                       <div className="flex items-center justify-between mb-1 gap-2">
                         <span className="text-xs font-bold text-orange-500 uppercase tracking-wider truncate">{meal.category}</span>
+                        {meal.country && (
+                          <span className="text-[11px] px-2 py-0.5 rounded-full bg-[var(--surface-variant)] border border-[var(--border)] font-semibold text-[var(--text-muted)] flex items-center gap-1 shrink-0">
+                            <span>{meal.flag || '🌍'}</span>
+                            <span>{meal.country}</span>
+                          </span>
+                        )}
                       </div>
                       <h3 className="font-bold text-[var(--text-main)] text-lg line-clamp-2 leading-tight group-hover:text-orange-500 transition-colors">{meal.title}</h3>
                     </div>
@@ -1873,9 +1942,17 @@ export function RecipesScreen({
               <div className="w-full md:w-3/5 p-6 md:p-8 flex flex-col overflow-y-auto custom-scrollbar">
                 <div className="flex items-start justify-between gap-4 mb-6">
                   <div>
-                    <span className="inline-block px-3 py-1 bg-orange-100 dark:bg-orange-950/40 text-orange-700 dark:text-orange-400 rounded-full text-xs font-bold uppercase tracking-wider mb-2">
-                      {selectedMeal.category}
-                    </span>
+                    <div className="flex flex-wrap items-center gap-2 mb-2">
+                      <span className="inline-block px-3 py-1 bg-orange-100 dark:bg-orange-950/40 text-orange-700 dark:text-orange-400 rounded-full text-xs font-bold uppercase tracking-wider">
+                        {selectedMeal.category}
+                      </span>
+                      {selectedMeal.country && (
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-blue-100 dark:bg-blue-950/40 text-blue-700 dark:text-blue-400 rounded-full text-xs font-bold uppercase tracking-wider">
+                          <span>{selectedMeal.flag || '🌍'}</span>
+                          <span>{selectedMeal.country}</span>
+                        </span>
+                      )}
+                    </div>
                     <h2 className="text-2xl md:text-3xl font-extrabold text-[var(--text-main)] leading-tight">
                       {selectedMeal.title}
                     </h2>

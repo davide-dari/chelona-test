@@ -30,6 +30,8 @@ import {
   getOrLoadAllRecipes,
   searchRecipeByDishTitle,
   formatSingleRecipeResponse,
+  searchRecipesByCountryOrCuisine,
+  formatCountryRecipesResponse,
   detectSupermarketCategory,
   extractExpenseQuery,
   extractVehicleQuery,
@@ -1646,7 +1648,48 @@ async function _queryChelonaAiInner(
   // 2b. MOTORE MATEMATICO GASTRONOMICO (Ingredienti, Ricette, Fuzzy Matching)
   // =========================================================================
   const foodEntities = extractFoodEntities(query);
-  // 1. Cerca ricetta specifica per nome piatto o ingredienti del piatto (es: "ricetta carbonara", "come fare tiramisù", "ingredienti della carbonara", "dimmi gli ingrandienti della carbonara", "quando chiedo gli ingrandienti della carbonara")
+  // 1a. Cerca ricette per cucina nazionale / per paese (es: "ricette giapponesi", "cosa cucino di messicano", "cucina greca", "ricette dal mondo")
+  const isCountryCuisineCandidate = (
+    lower.includes('cucin') || lower.includes('ricett') || lower.includes('cosa cucin') ||
+    lower.includes('cosa mangi') || lower.includes('dal mondo') || lower.includes('internazional') ||
+    lower.includes('giappon') || lower.includes('messic') || lower.includes('indi') ||
+    lower.includes('grec') || lower.includes('spagn') || lower.includes('american') ||
+    lower.includes('frances') || lower.includes('thai') || lower.includes('marocch') ||
+    lower.includes('cines') || lower.includes('liban') || lower.includes('sushi') ||
+    lower.includes('ramen') || lower.includes('tacos') || lower.includes('paella')
+  ) && !lower.includes('compra') && !lower.includes('lista della spesa');
+
+  if (isCountryCuisineCandidate) {
+    const catalog = await getOrLoadAllRecipes();
+    // Se è una richiesta esplicita di preparazione di un piatto specifico ("come fare la paella", "ingredienti della carbonara")
+    const specificDish = searchRecipeByDishTitle(query, catalog);
+    if (specificDish && (lower.includes('come fare') || lower.includes('come si fa') || lower.includes('ingredienti della') || lower.includes('preparare la'))) {
+      const formatted = formatSingleRecipeResponse(specificDish);
+      return {
+        ...formatted,
+        engineUsed: 'chelona-engine',
+      };
+    }
+
+    const countryMatch = searchRecipesByCountryOrCuisine(query, catalog);
+    if (countryMatch) {
+      const formatted = formatCountryRecipesResponse(countryMatch);
+      return {
+        ...formatted,
+        engineUsed: 'chelona-engine',
+      };
+    }
+
+    if (specificDish && !lower.includes('cosa cucino per il')) {
+      const formatted = formatSingleRecipeResponse(specificDish);
+      return {
+        ...formatted,
+        engineUsed: 'chelona-engine',
+      };
+    }
+  }
+
+  // 1b. Cerca ricetta specifica per nome piatto o ingredienti del piatto (es: "ricetta carbonara", "come fare tiramisù", "ingredienti della carbonara", "dimmi gli ingrandienti della carbonara", "quando chiedo gli ingrandienti della carbonara")
   const isDishSearchCandidate = (
     lower.includes('ricett') || lower.includes('cucin') || lower.includes('prepar') ||
     lower.includes('come fare') || lower.includes('come si fa') || lower.includes('cerca') ||

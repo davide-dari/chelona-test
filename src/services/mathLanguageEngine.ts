@@ -665,6 +665,8 @@ export interface RecipeCatalogItem {
   carbs?: number;
   fat?: number;
   tags?: string[];
+  country?: string;
+  flag?: string;
 }
 
 let cachedRecipeCatalog: RecipeCatalogItem[] | null = null;
@@ -732,6 +734,8 @@ export async function getOrLoadAllRecipes(): Promise<RecipeCatalogItem[]> {
               carbs: r.carbs,
               fat: r.fat,
               tags: r.tags,
+              country: r.country || 'Italia',
+              flag: r.flag || '🇮🇹',
             });
           }
         }
@@ -762,6 +766,8 @@ export async function getOrLoadAllRecipes(): Promise<RecipeCatalogItem[]> {
               carbs: r.carbs,
               fat: r.fat,
               tags: r.tags,
+              country: r.country || 'Italia',
+              flag: r.flag || '🇮🇹',
             });
           }
         }
@@ -1158,6 +1164,170 @@ export function formatSingleRecipeResponse(recipe: RecipeCatalogItem): { text: s
     text: out,
     actions,
   };
+}
+
+export interface CountryMatchResult {
+  country: string;
+  countryCode: string;
+  flag: string;
+  recipes: RecipeCatalogItem[];
+}
+
+/**
+ * Riconosce query legate a una cucina nazionale o internazionale specifica (es. "ricette giapponesi", "cosa cucino di messicano", "cucina greca")
+ */
+export function searchRecipesByCountryOrCuisine(query: string, catalog: RecipeCatalogItem[]): CountryMatchResult | null {
+  const norm = normalizeItalianText(query);
+
+  const CUISINE_RULES: { country: string; flag: string; code: string; patterns: RegExp[] }[] = [
+    {
+      country: 'Giappone',
+      flag: '🇯🇵',
+      code: 'JP',
+      patterns: [/giappon/i, /sushi/i, /ramen/i, /teriyaki/i, /gyoza/i, /dorayaki/i, /okonomiyaki/i, /miso/i]
+    },
+    {
+      country: 'Messico',
+      flag: '🇲🇽',
+      code: 'MX',
+      patterns: [/messic/i, /taco/i, /guacamole/i, /quesadilla/i, /enchilada/i, /fajita/i, /chili con carne/i]
+    },
+    {
+      country: 'India',
+      flag: '🇮🇳',
+      code: 'IN',
+      patterns: [/indi/i, /curry/i, /tikka masala/i, /dahl/i, /biryani/i, /samosa/i, /tandoori/i]
+    },
+    {
+      country: 'Grecia',
+      flag: '🇬🇷',
+      code: 'GR',
+      patterns: [/grec/i, /moussaka/i, /souvlaki/i, /tzatziki/i, /spanakopita/i]
+    },
+    {
+      country: 'Spagna',
+      flag: '🇪🇸',
+      code: 'ES',
+      patterns: [/spagn/i, /paella/i, /tortilla de patatas/i, /gazpacho/i, /patatas bravas/i, /crema catalana/i, /tapas/i]
+    },
+    {
+      country: 'USA',
+      flag: '🇺🇸',
+      code: 'US',
+      patterns: [/american/i, /usa/i, /stati uniti/i, /smash burger/i, /cheesecake/i, /pancake/i, /mac (?:&|and) cheese/i, /pulled pork/i, /brownie/i]
+    },
+    {
+      country: 'Francia',
+      flag: '🇫🇷',
+      code: 'FR',
+      patterns: [/frances/i, /quiche/i, /ratatouille/i, /cr[eè]pe/i, /soupe (?:à|a) l'oignon/i, /bourguignon/i]
+    },
+    {
+      country: 'Thailandia',
+      flag: '🇹🇭',
+      code: 'TH',
+      patterns: [/thailand/i, /thai/i, /pad thai/i, /curry verde/i, /tom yum/i]
+    },
+    {
+      country: 'Marocco',
+      flag: '🇲🇦',
+      code: 'MA',
+      patterns: [/marocch/i, /couscous/i, /tajine/i, /harira/i, /pastilla/i]
+    },
+    {
+      country: 'Cina',
+      flag: '🇨🇳',
+      code: 'CN',
+      patterns: [/cines/i, /cantonese/i, /jiaozi/i, /involtini primavera/i, /pollo alle mandorle/i]
+    },
+    {
+      country: 'Libano',
+      flag: '🇱🇧',
+      code: 'LB',
+      patterns: [/liban/i, /hummus/i, /falafel/i, /tabboul/i, /shish taouk/i, /babaganoush/i]
+    },
+    {
+      country: 'Regno Unito',
+      flag: '🇬🇧',
+      code: 'GB',
+      patterns: [/britannic/i, /ingles/i, /fish and chips/i, /shepherd's pie/i]
+    },
+    {
+      country: 'Brasile',
+      flag: '🇧🇷',
+      code: 'BR',
+      patterns: [/brasil/i, /feijoada/i, /p[aã]o de queijo/i]
+    },
+    {
+      country: 'Argentina',
+      flag: '🇦🇷',
+      code: 'AR',
+      patterns: [/argentin/i, /empanada/i, /chimichurri/i]
+    },
+    {
+      country: 'Germania',
+      flag: '🇩🇪',
+      code: 'DE',
+      patterns: [/tedesc/i, /germani/i, /strudel/i]
+    },
+    {
+      country: 'Italia',
+      flag: '🇮🇹',
+      code: 'IT',
+      patterns: [/italian/i, /tradizione italiana/i]
+    }
+  ];
+
+  // Caso speciale "cucine dal mondo" / "ricette dal mondo" / "internazionale"
+  if (/cucin[ae] dal mondo|ricett[ae] dal mondo|cucin[ae] internazional|dal mondo/i.test(norm)) {
+    const internationalDishes = catalog.filter(r => r.country && r.country !== 'Italia');
+    return {
+      country: 'Cucine dal Mondo',
+      countryCode: 'WORLD',
+      flag: '🌍',
+      recipes: internationalDishes.length > 0 ? internationalDishes : catalog.slice(0, 6)
+    };
+  }
+
+  for (const rule of CUISINE_RULES) {
+    if (rule.patterns.some(p => p.test(norm))) {
+      const matched = catalog.filter(r => r.country === rule.country || (r.tags && r.tags.includes(rule.country)));
+      if (matched.length > 0) {
+        return {
+          country: rule.country,
+          countryCode: rule.code,
+          flag: rule.flag,
+          recipes: matched
+        };
+      }
+    }
+  }
+
+  return null;
+}
+
+export function formatCountryRecipesResponse(match: CountryMatchResult): { text: string; actions: any[] } {
+  let out = `${match.flag} **Cucina ${match.country === 'Cucine dal Mondo' ? 'dal Mondo' : match.country}**:\n`;
+  out += `Ecco una selezione delle migliori ricette autentiche disponibili su Chelona:\n`;
+
+  const topRecipes = match.recipes.slice(0, 4);
+  for (const r of topRecipes) {
+    out += `\n• **${r.title}** (${r.category})${r.calories ? ` — ~${r.calories} kcal` : ''}`;
+  }
+
+  const actions: any[] = topRecipes.map(r => ({
+    label: `${r.flag || match.flag} ${r.title}`,
+    type: 'recipes',
+    recipe: r
+  }));
+
+  actions.push({
+    label: `🌍 Mostra tutte le Cucine dal Mondo`,
+    type: 'recipes',
+    category: 'Cucine dal Mondo'
+  });
+
+  return { text: out, actions };
 }
 
 // ============================================================================

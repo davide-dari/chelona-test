@@ -1504,6 +1504,17 @@ export const DoctorScreen: React.FC<DoctorScreenProps> = ({
             </div>
           )}
         </div>
+
+        {/* Disclaimer Medico & Sanitario Legale */}
+        <div className="p-4 sm:p-5 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-start gap-3 text-xs text-amber-700 dark:text-amber-300">
+          <AlertCircle className="w-5 h-5 shrink-0 text-amber-500 mt-0.5" />
+          <div className="space-y-1">
+            <p className="font-bold">Avviso Medico Legale:</p>
+            <p className="leading-relaxed text-[11.5px] opacity-90">
+              Chelona è uno strumento di organizzazione e archiviazione personale. <strong>Non costituisce consulenza medica né sostituisce il parere, la diagnosi o le prescrizioni di un medico professionista o del Servizio Sanitario Nazionale</strong>. In caso di emergenza o pericolo imminente, contattare immediatamente il 112 o il servizio di Continuità Assistenziale.
+            </p>
+          </div>
+        </div>
       </main>
 
       {/* Floating Action Bar per Generare la Richiesta Ricetta */}

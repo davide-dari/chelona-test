@@ -8,8 +8,9 @@ import {
   AlertTriangle, Sparkles, Key, FileText, CheckCheck,
   Car, Users, Receipt, Globe, BookOpen, Activity, Home,
   Percent, Scan, Shirt, ImageIcon, HardDrive, Edit2, Cpu, ChevronRight,
-  Search, Brain, Settings, FlaskConical
+  Search, Brain, Settings, FlaskConical, Scale
 } from 'lucide-react';
+import { LegalNoticesModal, type LegalTabType } from './LegalNoticesModal';
 import { storage } from '../services/storage';
 import { encryption } from '../services/encryption';
 import { updateService } from '../services/updateService';
@@ -192,6 +193,9 @@ export function ProfileScreen({
 
   // Updates
   const [isCheckingUpdate, setIsCheckingUpdate] = useState(false);
+
+  // Legal Notices
+  const [legalModalTab, setLegalModalTab] = useState<LegalTabType | null>(null);
 
   // Cache management
   type CacheEntry = { query: string; responsePreview: string; responseText: string; timestamp: number; hits: number };
@@ -1859,6 +1863,84 @@ export function ProfileScreen({
                 )}
               </div>
 
+              {/* Note Legali, Marchi, Privacy & Licenze OSS */}
+              <div className="bg-[var(--card-bg)] rounded-[var(--radius-lg)] p-5 sm:p-6 border border-[var(--border)] shadow-sm space-y-4">
+                <div className="flex items-center gap-3 pb-3 border-b border-[var(--border)]">
+                  <div className="w-10 h-10 rounded-2xl bg-indigo-500/10 flex items-center justify-center text-indigo-500">
+                    <Scale className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold text-[var(--text-main)]">Note Legali, Privacy & Trasparenza</h3>
+                    <p className="text-xs text-[var(--text-muted)]">Conformità normativa, marchi registrati e licenze</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 gap-2.5 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setLegalModalTab('disclaimer')}
+                    className="p-3.5 rounded-2xl bg-[var(--surface-variant)]/60 hover:bg-[var(--surface-variant)] border border-[var(--border)] flex items-center justify-between text-left transition-all group cursor-pointer"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-xl bg-indigo-500/10 text-indigo-500 flex items-center justify-center shrink-0">
+                        <Scale className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <div className="text-xs font-bold text-[var(--text-main)] group-hover:text-indigo-500 transition-colors">
+                          Disclaimer Legali & Uso Nominativo Marchi
+                        </div>
+                        <div className="text-[11px] text-[var(--text-muted)]">
+                          Fair Use Art. 21 CPI, esclusioni responsabilità medica, finanziaria e contratti
+                        </div>
+                      </div>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-[var(--text-muted)] group-hover:translate-x-0.5 transition-transform shrink-0" />
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setLegalModalTab('privacy')}
+                    className="p-3.5 rounded-2xl bg-[var(--surface-variant)]/60 hover:bg-[var(--surface-variant)] border border-[var(--border)] flex items-center justify-between text-left transition-all group cursor-pointer"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center shrink-0">
+                        <ShieldCheck className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <div className="text-xs font-bold text-[var(--text-main)] group-hover:text-emerald-500 transition-colors">
+                          Privacy Policy & GDPR (100% Offline)
+                        </div>
+                        <div className="text-[11px] text-[var(--text-muted)]">
+                          Regolamento UE 2016/679, crittografia client-side AES-256, zero telemetria
+                        </div>
+                      </div>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-[var(--text-muted)] group-hover:translate-x-0.5 transition-transform shrink-0" />
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setLegalModalTab('oss')}
+                    className="p-3.5 rounded-2xl bg-[var(--surface-variant)]/60 hover:bg-[var(--surface-variant)] border border-[var(--border)] flex items-center justify-between text-left transition-all group cursor-pointer"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center shrink-0">
+                        <FileText className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <div className="text-xs font-bold text-[var(--text-main)] group-hover:text-amber-500 transition-colors">
+                          Licenze Software Open Source
+                        </div>
+                        <div className="text-[11px] text-[var(--text-muted)]">
+                          Attribuzione componenti open source (React, Tailwind, Capacitor, Lucide, etc.)
+                        </div>
+                      </div>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-[var(--text-muted)] group-hover:translate-x-0.5 transition-transform shrink-0" />
+                  </button>
+                </div>
+              </div>
+
               {/* Offline & Privacy Manifesto Card */}
               <div className="bg-[var(--surface-variant)]/50 rounded-[var(--radius-lg)] p-5 border border-[var(--border)] space-y-2">
                 <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-[var(--text-muted)]">
@@ -2074,6 +2156,13 @@ export function ProfileScreen({
           </div>
         )}
       </AnimatePresence>
+
+      {/* ── MODAL: Note Legali, Marchi, Privacy & Licenze OSS ── */}
+      <LegalNoticesModal
+        isOpen={Boolean(legalModalTab)}
+        onClose={() => setLegalModalTab(null)}
+        initialTab={legalModalTab || 'disclaimer'}
+      />
     </div>
   );
 }

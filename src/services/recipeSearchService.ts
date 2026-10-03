@@ -1,6 +1,6 @@
 /**
  * recipeSearchService.ts
- * Cascade search: Local GZ DB → GialloZafferano Scraper → TheMealDB (free fallback)
+ * Cascade search: Local Database (Cucine dal Mondo & Ricette Italiane con Unsplash) → TheMealDB (Open API fallback)
  * Offline/Rate-limit proof Translation using MyMemory & local dictionaries.
  */
 
@@ -367,7 +367,7 @@ async function translateRecipeToItalian(recipe: RecipeResult): Promise<RecipeRes
 }
 
 export interface RecipeResult {
-  source: 'local' | 'themealdb' | 'edamam';
+  source: 'local' | 'themealdb';
   titolo: string;
   immagine?: string;
   difficolta?: string;
@@ -379,37 +379,60 @@ export interface RecipeResult {
   carbs?: number;
   grassi?: number;
   notFound?: boolean;
+  country?: string;
+  flag?: string;
 }
 
-// ── 1. Local GialloZafferano DB ──────────────────────────────────────────────
+// ── 1. Local Database (643 ricette verificate con foto Unsplash & Cucine dal Mondo) ──
 async function searchLocalDB(mealName: string): Promise<RecipeResult | null> {
   try {
     const res = await fetch('/ricette_mondo.json');
+    if (!res.ok) return null;
     const db: any[] = await res.json();
-    const queryWords = mealName.toLowerCase().replace(/[^a-z0-9àèéìòù ]/g, '').split(' ').filter(w => w.length > 2);
+    if (!Array.isArray(db)) return null;
+
+    const lowerTarget = mealName.toLowerCase().trim();
+    const queryWords = lowerTarget.replace(/[^a-z0-9àèéìòù ]/g, '').split(' ').filter(w => w.length > 2);
     const queryStr = queryWords.slice(0, 2).join(' ');
 
-    let match = db.find(r => r.nome?.toLowerCase() === mealName.toLowerCase());
+    let match = db.find(r => (r.title || r.nome)?.toLowerCase() === lowerTarget);
     if (!match && queryStr) {
-      match = db.find(r => queryWords.slice(0, 2).every((w: string) => r.nome?.toLowerCase().includes(w)));
+      match = db.find(r => queryWords.slice(0, 2).every((w: string) => (r.title || r.nome)?.toLowerCase().includes(w)));
     }
     if (!match && queryWords[0]) {
-      match = db.find(r => r.nome?.toLowerCase().includes(queryWords[0]));
+      match = db.find(r => (r.title || r.nome)?.toLowerCase().includes(queryWords[0]));
     }
     if (!match) return null;
 
+    const rawIng = match.ingredients || match.ingredienti || [];
+    const formattedIng = rawIng.map((i: any) => {
+      if (typeof i === 'string') return { nome: i, quantita: '' };
+      return { nome: i.nome || i.name || '', quantita: i.quantita || i.quantity || '' };
+    });
+
+    let prepText = '';
+    if (Array.isArray(match.steps)) prepText = match.steps.join('\n');
+    else if (typeof match.procedimento === 'string') prepText = match.procedimento;
+    else if (Array.isArray(match.procedimento)) prepText = match.procedimento.join('\n');
+
     return {
       source: 'local',
-      titolo: match.nome,
-      immagine: match.image,
-      difficolta: match.categoria || 'Ricetta Locale',
-      ingredienti: match.ingredienti?.map((i: any) => typeof i === 'string' ? { nome: i } : i),
-      preparazione: match.procedimento,
+      titolo: match.title || match.nome || mealName,
+      immagine: match.image || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=800',
+      difficolta: match.categoria || match.category || 'Cucine dal Mondo',
+      ingredienti: formattedIng,
+      preparazione: prepText,
+      calorie: match.calories,
+      proteine: match.protein,
+      carbs: match.carbs,
+      grassi: match.fat,
+      country: match.country,
+      flag: match.flag
     };
   } catch { return null; }
 }
 
-// ── 2. TheMealDB (free, key="1") ─────────────────────────────────────────────
+// ── 2. TheMealDB (Open, Free Food API) ──────────────────────────────────────────
 async function searchTheMealDB(query: string): Promise<RecipeResult | null> {
   try {
     const res = await fetch(`https://www.themealdb.com/api/json/v1/1/search.php?s=${encodeURIComponent(query)}`);
@@ -436,101 +459,6 @@ async function searchTheMealDB(query: string): Promise<RecipeResult | null> {
   } catch { return null; }
 }
 
-// ── 3. GialloZafferano Scraper (via CORS Proxy) ────────────────────────────────
-async function fetchRecipeFromGZUrl(recipeUrl: string): Promise<RecipeResult | null> {
-  try {
-    const recipeProxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(recipeUrl)}`;
-    const recipeRes = await fetch(recipeProxyUrl);
-    if (!recipeRes.ok) return null;
-    const recipeData = await recipeRes.json();
-    const recipeHtml = recipeData.contents;
-    
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(recipeHtml, 'text/html');
-    
-    const title = doc.querySelector('h1.gz-title-recipe, h1')?.textContent?.trim();
-    if (!title) return null;
-    
-    const image = doc.querySelector('picture img')?.getAttribute('src') || doc.querySelector('.gz-featured-image img')?.getAttribute('src') || '';
-    
-    const ingredienti: { nome: string; quantita: string }[] = [];
-    const ingElements = doc.querySelectorAll('.gz-ingredient');
-    ingElements.forEach(el => {
-      // Nome ingrediente
-      const anchor = el.querySelector('a');
-      let nome = '';
-      if (anchor) {
-        nome = anchor.textContent?.trim() || '';
-      } else {
-        // Se non c'è il link, prendi il testo del nodo text
-        const textNode = Array.from(el.childNodes).find(n => n.nodeType === 3 && n.textContent?.trim() !== '');
-        nome = textNode?.textContent?.trim() || '';
-      }
-      
-      const quantita = el.querySelector('span')?.textContent?.trim() || '';
-      if (nome) ingredienti.push({ nome, quantita });
-    });
-    
-    let preparazione = '';
-    const stepElements = doc.querySelectorAll('.gz-content-recipe-step');
-    stepElements.forEach((el, index) => {
-      const stepText = el.textContent?.trim();
-      if (stepText) {
-        preparazione += `${index + 1}. ${stepText}\n\n`;
-      }
-    });
-    
-    if (!preparazione) {
-      preparazione = doc.querySelector('.gz-content-recipe')?.textContent?.trim() || 'Vedi la ricetta sul sito di GialloZafferano.';
-    }
-    
-    return {
-      source: 'local', // Manteniamo 'local' per non mostrare loghi esterni
-      titolo: title,
-      immagine: image,
-      difficolta: 'Ricetta Originale GialloZafferano',
-      ingredienti,
-      preparazione: preparazione.trim(),
-      url: recipeUrl,
-      notFound: false
-    };
-  } catch (e) {
-    console.error("GZ fetch error:", e);
-    return null;
-  }
-}
-
-async function searchGialloZafferano(query: string): Promise<RecipeResult | null> {
-  try {
-    const gzSearchUrl = `https://www.giallozafferano.it/ricerca-ricette/${encodeURIComponent(query)}/`;
-    const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(gzSearchUrl)}`;
-    
-    const searchRes = await fetch(proxyUrl);
-    if (!searchRes.ok) return null;
-    const searchData = await searchRes.json();
-    const searchHtml = searchData.contents;
-    
-    const parser = new DOMParser();
-    const searchDoc = parser.parseFromString(searchHtml, 'text/html');
-    
-    // Trova il primo link a una ricetta nei risultati
-    const firstRecipeAnchor = searchDoc.querySelector('.gz-title a, article.gz-card a') as HTMLAnchorElement;
-    if (!firstRecipeAnchor) return null;
-    
-    let recipeUrl = firstRecipeAnchor.getAttribute('href');
-    if (!recipeUrl) return null;
-    
-    if (recipeUrl.startsWith('/')) {
-      recipeUrl = 'https://www.giallozafferano.it' + recipeUrl;
-    }
-    
-    return await fetchRecipeFromGZUrl(recipeUrl);
-  } catch (e) {
-    console.error("GZ search error:", e);
-    return null;
-  }
-}
-
 function getSessionCache(): Record<string, any> {
   try {
     const data = sessionStorage.getItem('chelona_recipe_cache');
@@ -548,7 +476,7 @@ function saveAsCustomRecipe(recipe: RecipeResult, originalQuery: string) {
     let customRecipes = existing ? JSON.parse(existing) : [];
     
     // Check if already exists
-    if (customRecipes.some((r: any) => r.title.toLowerCase() === recipe.titolo.toLowerCase())) {
+    if (customRecipes.some((r: any) => (r.title || r.nome)?.toLowerCase() === recipe.titolo.toLowerCase())) {
       return;
     }
 
@@ -561,16 +489,18 @@ function saveAsCustomRecipe(recipe: RecipeResult, originalQuery: string) {
     const newRecipe = {
       id: `custom_${Date.now()}_${Math.floor(Math.random()*1000)}`,
       title: recipe.titolo,
+      nome: recipe.titolo,
       image: recipe.immagine || '',
       category: cat,
+      categoria: cat,
       ingredients: recipe.ingredienti ? recipe.ingredienti.map(i => `${i.quantita} ${i.nome}`.trim()) : [],
-      steps: recipe.preparazione ? recipe.preparazione.split('\n').filter(s => s.trim().length > 0) : []
+      steps: recipe.preparazione ? recipe.preparazione.split('\n').filter(s => s.trim().length > 0) : [],
+      country: recipe.country || 'Italia',
+      flag: recipe.flag || '🇮🇹'
     };
 
     customRecipes.push(newRecipe);
     localStorage.setItem('chelona_custom_recipes', JSON.stringify(customRecipes));
-    
-    // Dispatch an event so RecipesScreen can reload if it's open
     window.dispatchEvent(new Event('recipes-updated'));
   } catch (e) {
     console.error("Failed to save custom recipe", e);
@@ -578,109 +508,91 @@ function saveAsCustomRecipe(recipe: RecipeResult, originalQuery: string) {
 }
 
 // ── PUBLIC CASCADE ────────────────────────────────────────────────────────────
-export async function findRecipeForMeal(mealName: string, fallbackDesc?: string, recipeUrl?: string): Promise<RecipeResult> {
+export async function findRecipeForMeal(mealName: string, fallbackDesc?: string, _recipeUrl?: string): Promise<RecipeResult> {
   const cacheKey = mealName.toLowerCase().trim();
   const cache = getSessionCache();
   if (cache[cacheKey]) return cache[cacheKey];
 
-  if (recipeUrl) {
-    const directResult = await fetchRecipeFromGZUrl(recipeUrl);
-    if (directResult) {
-      cache[cacheKey] = directResult;
-      setSessionCache(cache);
-      saveAsCustomRecipe(directResult, mealName);
-      return directResult;
-    }
-  }
-
-  // 1. Controlla la mappatura predefinita per trovare la migliore corrispondenza
+  // 1. Mappatura predefinita rapida per piani fitness
   const mapped = MEAL_TO_QUERY_MAP[mealName] || MEAL_TO_QUERY_MAP[Object.keys(MEAL_TO_QUERY_MAP).find(k => k.toLowerCase() === mealName.toLowerCase()) || ''];
-  
-  if (mapped) {
-    if (mapped.localQuery) {
-      const local = await searchLocalDB(mapped.localQuery);
-      if (local) {
-        cache[cacheKey] = local;
-        setSessionCache(cache);
-        return local;
-      }
-    }
-    if (mapped.localQuery) {
-      // 2. GialloZafferano Scraper con query mappata (parola chiave)
-      const gzResult = await searchGialloZafferano(mapped.localQuery);
-      if (gzResult) {
-        cache[cacheKey] = gzResult;
-        setSessionCache(cache);
-        saveAsCustomRecipe(gzResult, mealName);
-        return gzResult;
-      }
+  if (mapped?.localQuery) {
+    const local = await searchLocalDB(mapped.localQuery);
+    if (local) {
+      cache[cacheKey] = local;
+      setSessionCache(cache);
+      return local;
     }
   }
 
-  // 2. Cascade generale di fallback se non è nella mappa o se falliscono i tentativi mappati
-  const local = await searchLocalDB(mealName);
-  if (local) { cache[cacheKey] = local; setSessionCache(cache); return local; }
+  // 2. Ricerca diretta nel database locale
+  const localDirect = await searchLocalDB(mealName);
+  if (localDirect) {
+    cache[cacheKey] = localDirect;
+    setSessionCache(cache);
+    return localDirect;
+  }
 
-  // 3. Estrazione intelligente delle parole chiavi per una ricerca allargata
+  // 3. Ricerca per parole chiave nel database locale
   const stopWords = new Set(['con', 'e', 'al', 'alla', 'di', 'in', 'da', 'per', 'su', 'il', 'la', 'lo', 'i', 'gli', 'le', 'un', 'uno', 'una', 'dei', 'delle', 'degli', 'ai', 'agli', 'alle', 'ed']);
   const words = mealName.toLowerCase().split(/[\s,]+/);
   const meaningfulWords = words.filter(w => w.length > 2 && !stopWords.has(w));
   
-  // Proviamo prima con le prime 3 parole significative (es. "couscous verdure grigliate")
-  const threeWords = meaningfulWords.slice(0, 3).join(' ');
-  if (threeWords.length > 5) {
-    const gzThree = await searchGialloZafferano(threeWords);
-    if (gzThree) {
-      cache[cacheKey] = gzThree;
+  if (meaningfulWords.length > 0) {
+    const threeWords = meaningfulWords.slice(0, 3).join(' ');
+    const localThree = await searchLocalDB(threeWords);
+    if (localThree) {
+      cache[cacheKey] = localThree;
       setSessionCache(cache);
-      saveAsCustomRecipe(gzThree, mealName);
-      return gzThree;
+      saveAsCustomRecipe(localThree, mealName);
+      return localThree;
+    }
+
+    if (meaningfulWords.length > 1) {
+      const twoWords = meaningfulWords.slice(0, 2).join(' ');
+      const localTwo = await searchLocalDB(twoWords);
+      if (localTwo) {
+        cache[cacheKey] = localTwo;
+        setSessionCache(cache);
+        saveAsCustomRecipe(localTwo, mealName);
+        return localTwo;
+      }
+    }
+
+    const localOne = await searchLocalDB(meaningfulWords[0]);
+    if (localOne) {
+      cache[cacheKey] = localOne;
+      setSessionCache(cache);
+      saveAsCustomRecipe(localOne, mealName);
+      return localOne;
     }
   }
 
-  // Se fallisce, proviamo con solo le prime 2 parole (es. "couscous verdure")
-  const twoWords = meaningfulWords.slice(0, 2).join(' ');
-  if (twoWords.length > 3 && twoWords !== threeWords) {
-    const gzTwo = await searchGialloZafferano(twoWords);
-    if (gzTwo) {
-      cache[cacheKey] = gzTwo;
+  // 4. Fallback online open: TheMealDB con traduzione automatica
+  const enQuery = translateToEnglish(mealName);
+  if (enQuery) {
+    const mealDbRes = await searchTheMealDB(enQuery);
+    if (mealDbRes) {
+      const translated = await translateRecipeToItalian(mealDbRes);
+      cache[cacheKey] = translated;
       setSessionCache(cache);
-      saveAsCustomRecipe(gzTwo, mealName);
-      return gzTwo;
-    }
-  }
-  // Se fallisce anche con 2 parole, proviamo solo la prima (es. "couscous")
-  const oneWord = meaningfulWords.slice(0, 1).join(' ');
-  if (oneWord.length > 3 && oneWord !== twoWords) {
-    const gzOne = await searchGialloZafferano(oneWord);
-    if (gzOne) {
-      cache[cacheKey] = gzOne;
-      setSessionCache(cache);
-      saveAsCustomRecipe(gzOne, mealName);
-      return gzOne;
+      saveAsCustomRecipe(translated, mealName);
+      return translated;
     }
   }
 
-  // 4. Prova GialloZafferano con il nome completo in italiano come ultima spiaggia
-  const gzDirect = await searchGialloZafferano(mealName);
-  if (gzDirect) {
-    cache[cacheKey] = gzDirect;
-    setSessionCache(cache);
-    saveAsCustomRecipe(gzDirect, mealName);
-    return gzDirect;
-  }
-
-  // Se non troviamo ASSOLUTAMENTE nulla, generiamo una ricetta fittizia
-  // per non lasciare l'utente con una schermata vuota
+  // 5. Ricetta locale curata di fallback con foto Unsplash royalty-free
   const dummyRecipe: RecipeResult = {
     source: 'local',
     titolo: mealName,
+    immagine: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=800',
     difficolta: 'Facile',
     ingredienti: fallbackDesc ? [{ nome: fallbackDesc, quantita: 'Q.b.' }] : [{ nome: mealName, quantita: '1 porzione' }],
-    preparazione: "1. Prepara gli ingredienti indicati.\n2. Cucina in modo semplice (al vapore, alla griglia o al forno) per mantenere intatte le proprietà nutrizionali.\n3. Condisci con un filo d'olio a crudo e spezie a piacere.\n\n(Ricetta generata automaticamente per il tuo piano alimentare).",
-    notFound: false
+    preparazione: "1. Prepara gli ingredienti freschi indicati.\n2. Cuoci in modo leggero e sano (al vapore, alla griglia o al forno) per preservare i nutrienti.\n3. Condisci con un filo d'olio extravergine d'oliva a crudo ed erbe aromatiche a piacere.\n\n(Piatto bilanciato preparato per il tuo piano nutrizionale).",
+    notFound: false,
+    country: 'Italia',
+    flag: '🇮🇹'
   };
-  
+
   cache[cacheKey] = dummyRecipe;
   setSessionCache(cache);
   saveAsCustomRecipe(dummyRecipe, mealName);

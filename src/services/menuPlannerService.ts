@@ -12,6 +12,8 @@ export interface RecipeItem {
   carbs?: number;
   fat?: number;
   tags?: string[];
+  country?: string;
+  flag?: string;
 }
 
 export type DietTheme = 'carne' | 'pesce' | 'vegetariano' | 'sorprendimi';

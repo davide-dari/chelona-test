@@ -13,7 +13,9 @@ import {
   extractVehicleQuery, 
   extractDocumentQuery, 
   extractDoctorQuery, 
-  extractRecessoQuery 
+  extractRecessoQuery,
+  searchRecipesByCountryOrCuisine,
+  formatCountryRecipesResponse
 } from '../src/services/mathLanguageEngine';
 import { queryChelonaAi } from '../src/services/chelonaEngine';
 import { 
@@ -402,6 +404,44 @@ async function main() {
     throw new Error('clearAllLearnedMemories failed to reset memories');
   }
   console.log('  Learned memories add, query, delete single, and clear all passed!');
+
+  // 16. International Cuisines & Countries (Cucine dal Mondo)
+  console.log('\n16. Test International Cuisines & Countries (Cucine dal Mondo):');
+  const japanMatch = searchRecipesByCountryOrCuisine('ricette giapponesi', catalog);
+  if (!japanMatch || japanMatch.country !== 'Giappone' || japanMatch.flag !== '🇯🇵' || japanMatch.recipes.length === 0) {
+    throw new Error(`Japan cuisine matching failed: ${JSON.stringify(japanMatch)}`);
+  }
+  console.log(`  Matched Japanese recipes (${japanMatch.recipes.length}):`, japanMatch.recipes.map(r => r.title));
+
+  const mexicoMatch = searchRecipesByCountryOrCuisine('cucina messicana', catalog);
+  if (!mexicoMatch || mexicoMatch.country !== 'Messico' || mexicoMatch.flag !== '🇲🇽' || mexicoMatch.recipes.length === 0) {
+    throw new Error(`Mexico cuisine matching failed: ${JSON.stringify(mexicoMatch)}`);
+  }
+  console.log(`  Matched Mexican recipes (${mexicoMatch.recipes.length}):`, mexicoMatch.recipes.map(r => r.title));
+
+  const greeceMatch = searchRecipesByCountryOrCuisine('piatti tipici greci', catalog);
+  if (!greeceMatch || greeceMatch.country !== 'Grecia' || greeceMatch.flag !== '🇬🇷' || greeceMatch.recipes.length === 0) {
+    throw new Error(`Greece cuisine matching failed: ${JSON.stringify(greeceMatch)}`);
+  }
+  console.log(`  Matched Greek recipes (${greeceMatch.recipes.length}):`, greeceMatch.recipes.map(r => r.title));
+
+  const nonCountryMatch = searchRecipesByCountryOrCuisine('pasta al pomodoro fresco', catalog);
+  if (nonCountryMatch !== null) {
+    throw new Error('Standard recipe query should not match country cuisine search');
+  }
+
+  const formattedJapan = formatCountryRecipesResponse(japanMatch);
+  if (!formattedJapan.text.includes('🇯🇵') || !formattedJapan.text.includes('Giappone') || !formattedJapan.actions || formattedJapan.actions.length === 0) {
+    throw new Error('Formatted country recipes response missing flag or action buttons');
+  }
+  console.log('  Formatted Japan response action count:', formattedJapan.actions.length);
+
+  // End-to-end AI query for world recipes
+  const aiWorldQuery = await queryChelonaAi('vorrei cucinare qualcosa di giapponese', mockModules, 'Davide');
+  if (!aiWorldQuery.text.includes('Giappone') || !aiWorldQuery.text.includes('🇯🇵') || !aiWorldQuery.actions || aiWorldQuery.actions.length === 0) {
+    throw new Error(`queryChelonaAi world cuisine intent failed: ${JSON.stringify(aiWorldQuery)}`);
+  }
+  console.log('  queryChelonaAi correctly answered with Japanese recipes and actions!');
 
   console.log('\n✨ === TUTTI I TEST DE "IL MATEMATICO" COMPLETATI CON SUCCESSO! === ✨');
 }

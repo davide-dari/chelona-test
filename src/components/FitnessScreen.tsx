@@ -276,8 +276,7 @@ const MEAL_LIBRARY: MealTemplate[] = [
       { name: 'Banana fresca', baseAmount: 100, unit: 'g' },
       { name: 'Miele millefiori', baseAmount: 15, unit: 'g' }
     ],
-    isSimple: false,
-    recipeUrl: 'https://ricette.giallozafferano.it/Porridge.html'
+    isSimple: false
   },
   {
     name: 'Yogurt Greco con Frutta Secca e Mirtilli',
@@ -431,8 +430,7 @@ const MEAL_LIBRARY: MealTemplate[] = [
       { name: 'Zucchine o verdure grigliate', baseAmount: 150, unit: 'g' },
       { name: 'Olio extravergine d\'oliva', baseAmount: 10, unit: 'g' }
     ],
-    isSimple: false,
-    recipeUrl: 'https://ricette.giallozafferano.it/Petto-di-pollo-in-padella.html'
+    isSimple: false
   },
   {
     name: 'Pasta Integrale al Tonno',
@@ -449,8 +447,7 @@ const MEAL_LIBRARY: MealTemplate[] = [
       { name: 'Pomodorini ciliegino freschi', baseAmount: 120, unit: 'g' },
       { name: 'Olio extravergine d\'oliva', baseAmount: 12, unit: 'g' }
     ],
-    isSimple: false,
-    recipeUrl: 'https://ricette.giallozafferano.it/Spaghetti-al-tonno.html'
+    isSimple: false
   },
   {
     name: 'Insalatona con Quinoa e Feta',
@@ -468,8 +465,7 @@ const MEAL_LIBRARY: MealTemplate[] = [
       { name: 'Olive nere snocciolate', baseAmount: 20, unit: 'g' },
       { name: 'Olio extravergine d\'oliva', baseAmount: 10, unit: 'g' }
     ],
-    isSimple: false,
-    recipeUrl: 'https://ricette.giallozafferano.it/Insalata-di-quinoa.html'
+    isSimple: false
   },
   {
     name: 'Bowl di Riso con Salmone e Avocado',
@@ -522,8 +518,7 @@ const MEAL_LIBRARY: MealTemplate[] = [
       { name: 'Passata di pomodoro e carote', baseAmount: 100, unit: 'g' },
       { name: 'Olio extravergine d\'oliva', baseAmount: 10, unit: 'g' }
     ],
-    isSimple: false,
-    recipeUrl: 'https://ricette.giallozafferano.it/Ragu-di-lenticchie.html'
+    isSimple: false
   },
   {
     name: 'Poke Bowl con Riso e Edamame',
@@ -558,8 +553,7 @@ const MEAL_LIBRARY: MealTemplate[] = [
       { name: 'Parmigiano Reggiano grattugiato', baseAmount: 20, unit: 'g' },
       { name: 'Olio extravergine d\'oliva', baseAmount: 12, unit: 'g' }
     ],
-    isSimple: false,
-    recipeUrl: 'https://ricette.giallozafferano.it/Risotto-ai-funghi.html'
+    isSimple: false
   },
   {
     name: 'Couscous con Verdure Grigliate e Ceci',
@@ -576,8 +570,7 @@ const MEAL_LIBRARY: MealTemplate[] = [
       { name: 'Zucchine e peperoni grigliati', baseAmount: 150, unit: 'g' },
       { name: 'Olio extravergine d\'oliva', baseAmount: 10, unit: 'g' }
     ],
-    isSimple: false,
-    recipeUrl: 'https://ricette.giallozafferano.it/Couscous-alle-verdure.html'
+    isSimple: false
   },
 
   // Dinner
@@ -595,8 +588,7 @@ const MEAL_LIBRARY: MealTemplate[] = [
       { name: 'Patate dolci tagliate a tocchetti (a crudo)', baseAmount: 220, unit: 'g' },
       { name: 'Olio extravergine d\'oliva', baseAmount: 10, unit: 'g' }
     ],
-    isSimple: false,
-    recipeUrl: 'https://ricette.giallozafferano.it/Salmone-al-forno.html'
+    isSimple: false
   },
   {
     name: 'Petto di Tacchino con Verdure al Vapore',
@@ -664,8 +656,7 @@ const MEAL_LIBRARY: MealTemplate[] = [
       { name: 'Latte di cocco leggero da cucina', baseAmount: 60, unit: 'ml' },
       { name: 'Olio extravergine d\'oliva', baseAmount: 10, unit: 'g' }
     ],
-    isSimple: false,
-    recipeUrl: 'https://ricette.giallozafferano.it/Pollo-al-curry.html'
+    isSimple: false
   },
   {
     name: 'Hamburger di Tacchino con Insalata',
@@ -682,8 +673,7 @@ const MEAL_LIBRARY: MealTemplate[] = [
       { name: 'Insalata verde e pomodoro a fette', baseAmount: 100, unit: 'g' },
       { name: 'Olio extravergine d\'oliva', baseAmount: 10, unit: 'g' }
     ],
-    isSimple: false,
-    recipeUrl: 'https://ricette.giallozafferano.it/Hamburger-di-tacchino.html'
+    isSimple: false
   },
   {
     name: 'Zuppa di Legumi',
@@ -700,8 +690,7 @@ const MEAL_LIBRARY: MealTemplate[] = [
       { name: 'Pane integrale tostato a dadini', baseAmount: 40, unit: 'g' },
       { name: 'Olio extravergine d\'oliva', baseAmount: 10, unit: 'g' }
     ],
-    isSimple: false,
-    recipeUrl: 'https://ricette.giallozafferano.it/Zuppa-di-legumi-e-cereali.html'
+    isSimple: false
   },
   {
     name: 'Filetto di Orata con Ratatouille',
@@ -717,8 +706,7 @@ const MEAL_LIBRARY: MealTemplate[] = [
       { name: 'Ratatouille di verdure miste', baseAmount: 220, unit: 'g' },
       { name: 'Olio extravergine d\'oliva', baseAmount: 15, unit: 'g' }
     ],
-    isSimple: false,
-    recipeUrl: 'https://ricette.giallozafferano.it/Orata-al-forno.html'
+    isSimple: false
   },
   {
     name: 'Tofu Saltato con Verdure e Riso',

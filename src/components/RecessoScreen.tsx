@@ -852,6 +852,17 @@ export const RecessoScreen: React.FC<RecessoScreenProps> = ({
             />
           </div>
         </div>
+
+        {/* Disclaimer Legale Recessi */}
+        <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-start gap-3 text-xs text-amber-700 dark:text-amber-300">
+          <ShieldCheck size={18} className="text-amber-500 shrink-0 mt-0.5" />
+          <div className="space-y-1">
+            <p className="font-bold">Disclaimer Legale & Avvertenza Contrattuale:</p>
+            <p className="leading-relaxed text-[11px] opacity-90">
+              I modelli di disdetta generati sono formulari orientativi standardizzati secondo il Codice del Consumo (D.Lgs. 206/2005) e la L. 40/2007. <strong>Verificare sempre i termini contrattuali specifici aggiornati e l'indirizzo PEC formale del fornitore prima dell'invio</strong>. Chelona non costituisce consulenza legale professionale.
+            </p>
+          </div>
+        </div>
       </div>
 
       {/* Action Bar Fissa in Basso */}
