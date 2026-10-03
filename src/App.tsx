@@ -328,7 +328,7 @@ export default function App() {
   const [editingFitnessModule, setEditingFitnessModule] = useState<import('./types').FitnessModule | null>(null);
   const [editingSupermarketModule, setEditingSupermarketModule] = useState<import('./types').SupermarketModule | null>(null);
   const [editingVolantinoModule, setEditingVolantinoModule] = useState<import('./types').VolantinoModule | null>(null);
-  const [flyerInitialOffer, setFlyerInitialOffer] = useState<{ fid: string; pg: number } | null>(null);
+  const [flyerInitialOffer, setFlyerInitialOffer] = useState<{ fid: string; pg: number; store?: string } | null>(null);
   const [volantinoInitialChain, setVolantinoInitialChain] = useState<string | null>(null);
   const [activeNavTab, setActiveNavTab] = useState<'home' | 'deadlines' | 'ai' | 'tools' | 'profile'>('home');
   const [isAiOpen, setIsAiOpen] = useState(false);
@@ -568,7 +568,7 @@ export default function App() {
         setIsAiOpen(false);
       }
       setVolantinoInitialChain(store);
-      setFlyerInitialOffer({ fid: String(fid), pg });
+      setFlyerInitialOffer({ fid: String(fid), pg, store: store || undefined });
       const existingVolantino = modules.find(m => m.type === 'volantino') as import('./types').VolantinoModule | undefined;
       if (existingVolantino) {
         setEditingVolantinoModule(existingVolantino);
@@ -3997,7 +3997,7 @@ export default function App() {
                   {!editingModuleId && !formData.template && spesaSubMenu && (
                     <div className="bg-[var(--card-bg)]/80 backdrop-blur-3xl rounded-[2.5rem] border border-[var(--border)] p-6 lg:p-10 shadow-[0_8px_40px_rgba(0,0,0,0.06)]">
                       <div className="flex items-center gap-3 mb-8">
-                        <h3 className="text-lg font-bold text-[var(--text-main)] uppercase tracking-widest">Spese</h3>
+                        <h3 className="text-lg font-bold text-[var(--text-main)] uppercase tracking-widest">Finanze & Spese</h3>
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
 

@@ -218,7 +218,7 @@ export function getExpirationCountdown(expiryDateStr?: string): ExpirationCountd
  * - Passaporto e Documenti Generici
  */
 export function parseDocumentText(rawText: string): ParsedDocumentData {
-  const cleanText = rawText.replace(/\r\n/g, '\n');
+  const cleanText = (rawText || '').replace(/\r\n/g, '\n');
   const upper = cleanText.toUpperCase();
   const lines = cleanText.split('\n').map(l => l.trim()).filter(Boolean);
 

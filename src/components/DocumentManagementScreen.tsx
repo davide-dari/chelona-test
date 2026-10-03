@@ -5,7 +5,8 @@ import {
   ArrowLeft, FileText, Calendar, Shield, Trash2, Edit2, Save, Download, 
   Eye, QrCode, Share2, MoreVertical, X, Clock, MapPin, Building2, Hash, 
   Copy, CheckCheck, FileSignature, Camera, Sparkles, AlertTriangle, 
-  CheckCircle2, RefreshCw, Upload, Smartphone, ExternalLink, ChevronRight
+  CheckCircle2, RefreshCw, Upload, Smartphone, ExternalLink, ChevronRight,
+  Scan, Image as ImageIcon
 } from 'lucide-react';
 import { ConfirmDialog } from './ConfirmDialog';
 import { 
@@ -65,6 +66,8 @@ export const DocumentManagementScreen: React.FC<DocumentManagementScreenProps> =
 
   // Stati OCR & Fotocamera
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const galleryInputRef = useRef<HTMLInputElement>(null);
+  const [showOcrActionModal, setShowOcrActionModal] = useState<boolean>(false);
   const [isOcrProcessing, setIsOcrProcessing] = useState(false);
   const [ocrStep, setOcrStep] = useState<string>('');
   const [ocrProgress, setOcrProgress] = useState<number>(0);
@@ -169,10 +172,7 @@ export const DocumentManagementScreen: React.FC<DocumentManagementScreenProps> =
   // GESTIONE CAMERA / OCR CON TEXT PARSING CLIENT-SIDE
   // ---------------------------------------------------------------------------
   const triggerCameraOcr = () => {
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-      fileInputRef.current.click();
-    }
+    setShowOcrActionModal(true);
   };
 
   const handleImageFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -351,6 +351,14 @@ export const DocumentManagementScreen: React.FC<DocumentManagementScreenProps> =
         type="file"
         accept="image/*"
         capture="environment"
+        onChange={handleImageFileSelected}
+        className="hidden"
+      />
+      {/* Hidden file input per selezione da galleria o file */}
+      <input
+        ref={galleryInputRef}
+        type="file"
+        accept="image/*"
         onChange={handleImageFileSelected}
         className="hidden"
       />
@@ -1235,6 +1243,86 @@ export const DocumentManagementScreen: React.FC<DocumentManagementScreenProps> =
                 >
                   <CheckCircle2 className="w-4 h-4" />
                   <span>Conferma e Compila</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Modal di scelta Scansione OCR (Fotocamera vs Galleria vs Testo) */}
+      <AnimatePresence>
+        {showOcrActionModal && (
+          <div className="fixed inset-0 z-[220] bg-black/70 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 animate-fade-in" onClick={() => setShowOcrActionModal(false)}>
+            <div className="bg-[var(--card-bg)] border border-[var(--border)] rounded-t-[2.5rem] sm:rounded-3xl p-6 max-w-sm w-full space-y-4 shadow-2xl" onClick={e => e.stopPropagation()}>
+              <div className="flex items-center justify-between border-b border-[var(--border)] pb-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-9 h-9 rounded-xl bg-indigo-500/10 text-indigo-500 flex items-center justify-center">
+                    <Scan className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-black text-sm text-[var(--text-main)] uppercase tracking-tight">Riconoscimento OCR</h3>
+                    <p className="text-[10px] text-[var(--text-muted)]">Autocompilazione dati documento</p>
+                  </div>
+                </div>
+                <button onClick={() => setShowOcrActionModal(false)} className="p-1 rounded-lg hover:bg-[var(--surface-variant)] text-[var(--text-muted)]">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="space-y-2 pt-1">
+                <button
+                  onClick={() => {
+                    setShowOcrActionModal(false);
+                    if (fileInputRef.current) {
+                      fileInputRef.current.value = '';
+                      fileInputRef.current.click();
+                    }
+                  }}
+                  className="w-full p-3.5 rounded-2xl bg-gradient-to-r from-indigo-500/10 to-purple-500/10 hover:from-indigo-500 hover:to-purple-500 hover:text-white border border-indigo-500/25 text-left flex items-center gap-3 transition-all group cursor-pointer text-[var(--text-main)]"
+                >
+                  <div className="w-10 h-10 rounded-xl bg-indigo-500/20 group-hover:bg-white/20 text-indigo-500 group-hover:text-white flex items-center justify-center shrink-0">
+                    <Camera className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <span className="font-bold text-xs block">Scatta con Fotocamera</span>
+                    <span className="text-[10px] text-[var(--text-muted)] group-hover:text-white/80 block">Inquadra fronte/retro del documento</span>
+                  </div>
+                </button>
+
+                <button
+                  onClick={() => {
+                    setShowOcrActionModal(false);
+                    if (galleryInputRef.current) {
+                      galleryInputRef.current.value = '';
+                      galleryInputRef.current.click();
+                    }
+                  }}
+                  className="w-full p-3.5 rounded-2xl bg-[var(--surface-variant)] hover:bg-indigo-500 hover:text-white border border-[var(--border)] text-left flex items-center gap-3 transition-all group cursor-pointer text-[var(--text-main)]"
+                >
+                  <div className="w-10 h-10 rounded-xl bg-[var(--border)] group-hover:bg-white/20 text-[var(--text-muted)] group-hover:text-white flex items-center justify-center shrink-0">
+                    <ImageIcon className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <span className="font-bold text-xs block">Scegli dalla Galleria</span>
+                    <span className="text-[10px] text-[var(--text-muted)] group-hover:text-white/80 block">Carica una foto già salvata</span>
+                  </div>
+                </button>
+
+                <button
+                  onClick={() => {
+                    setShowOcrActionModal(false);
+                    setShowManualOcrFallback(true);
+                  }}
+                  className="w-full p-3.5 rounded-2xl bg-[var(--surface-variant)] hover:bg-[var(--border)] border border-[var(--border)] text-left flex items-center gap-3 transition-all group cursor-pointer text-[var(--text-main)]"
+                >
+                  <div className="w-10 h-10 rounded-xl bg-[var(--border)] text-[var(--text-muted)] flex items-center justify-center shrink-0">
+                    <FileText className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <span className="font-bold text-xs block">Incolla Testo Manuale</span>
+                    <span className="text-[10px] text-[var(--text-muted)] block">Inserisci testo copiato da email o file</span>
+                  </div>
                 </button>
               </div>
             </div>

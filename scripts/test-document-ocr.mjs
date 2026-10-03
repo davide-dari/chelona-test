@@ -145,4 +145,26 @@ console.log('🧪 Starting Document OCR & Parser Verification Tests...');
   console.log('✅ Passaporto OCR parsing passed');
 }
 
+// 7. Edge Cases: Empty, Null, Undefined, and Junk Strings
+{
+  const emptyRes = parseDocumentText('');
+  assert.strictEqual(emptyRes.documentType, 'generic');
+  assert.strictEqual(emptyRes.rawText, '');
+
+  const nullRes = parseDocumentText(null);
+  assert.strictEqual(nullRes.documentType, 'generic');
+
+  const undefRes = parseDocumentText(undefined);
+  assert.strictEqual(undefRes.documentType, 'generic');
+
+  const junkRes = parseDocumentText('   \n  \t   ');
+  assert.strictEqual(junkRes.documentType, 'generic');
+
+  const randomRes = parseDocumentText('Qualche testo a caso senza riferimenti a documenti');
+  assert.strictEqual(randomRes.documentType, 'generic');
+  assert.strictEqual(randomRes.number, undefined);
+
+  console.log('✅ Edge case null/empty/junk parsing passed');
+}
+
 console.log('🎉 ALL DOCUMENT OCR TESTS PASSED SUCCESSFULLY!');

@@ -260,9 +260,8 @@ export const SupermarketScreen = ({ module, onSave, onClose, onShare }: Supermar
     return map;
   }, [data.items]);
 
-  const openOfferFlyer = (fid: string, pg: number) => {
-    
-    window.dispatchEvent(new CustomEvent('open-flyer-offer', { detail: { fid, pg } }));
+  const openOfferFlyer = (fid: string, pg: number, store?: string) => {
+    window.dispatchEvent(new CustomEvent('open-flyer-offer', { detail: { fid, pg, store, chain: store } }));
   };
 
   const catCounts = useMemo(() => {
@@ -660,7 +659,7 @@ export const SupermarketScreen = ({ module, onSave, onClose, onShare }: Supermar
                                 {/* Dove costa meno — offre dai volantini */}
                                 {bestOffers.get(item.id) && (
                                   <button
-                                    onClick={() => { const o = bestOffers.get(item.id); if (o) openOfferFlyer(o.fid, o.pg); }}
+                                    onClick={() => { const o = bestOffers.get(item.id); if (o) openOfferFlyer(o.fid, o.pg, o.store); }}
                                     title={`Dove costa meno: ${bestOffers.get(item.id)!.store} · ${bestOffers.get(item.id)!.price} € · apri il volantino alla pagina dell'offerta`}
                                     className="mt-1 inline-flex items-center gap-1 text-[10px] font-bold text-emerald-600 bg-emerald-500/10 border border-emerald-500/20 rounded-full px-2 py-0.5 hover:bg-emerald-500/20 transition-colors"
                                   >

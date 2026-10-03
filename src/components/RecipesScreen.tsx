@@ -889,7 +889,7 @@ export function RecipesScreen({
           MODAL SCHERMATA: "COSA MANGIARE OGGI?" (ASSISTENTE MENU)
           ═══════════════════════════════════════════════════════════════════ */}
       <AnimatePresence>
-        {isMenuPlannerOpen && currentMenu && (
+        {isMenuPlannerOpen && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -914,24 +914,28 @@ export function RecipesScreen({
                 </p>
               </div>
               <div className="flex items-center gap-1 -mr-2">
-                <button
-                  onClick={handleSaveCurrentMenu}
-                  className={`p-2 rounded-full transition-all cursor-pointer ${
-                    menuSaveSuccess
-                      ? 'bg-emerald-500/20 text-emerald-600'
-                      : 'hover:bg-orange-500/10 text-[var(--text-muted)] hover:text-orange-500'
-                  }`}
-                  title="Salva nei miei menu"
-                >
-                  {menuSaveSuccess ? <Check className="w-5 h-5 text-emerald-500 stroke-[3]" /> : <Bookmark className="w-5 h-5" />}
-                </button>
-                <button
-                  onClick={() => handleOpenShareModal(currentMenu)}
-                  className="p-2 hover:bg-orange-500/10 text-[var(--text-muted)] hover:text-orange-500 rounded-full transition-colors cursor-pointer"
-                  title="Condividi Menu con Amici"
-                >
-                  <Share2 className="w-5 h-5" />
-                </button>
+                {currentMenu && (
+                  <>
+                    <button
+                      onClick={handleSaveCurrentMenu}
+                      className={`p-2 rounded-full transition-all cursor-pointer ${
+                        menuSaveSuccess
+                          ? 'bg-emerald-500/20 text-emerald-600'
+                          : 'hover:bg-orange-500/10 text-[var(--text-muted)] hover:text-orange-500'
+                      }`}
+                      title="Salva nei miei menu"
+                    >
+                      {menuSaveSuccess ? <Check className="w-5 h-5 text-emerald-500 stroke-[3]" /> : <Bookmark className="w-5 h-5" />}
+                    </button>
+                    <button
+                      onClick={() => handleOpenShareModal(currentMenu)}
+                      className="p-2 hover:bg-orange-500/10 text-[var(--text-muted)] hover:text-orange-500 rounded-full transition-colors cursor-pointer"
+                      title="Condividi Menu con Amici"
+                    >
+                      <Share2 className="w-5 h-5" />
+                    </button>
+                  </>
+                )}
                 <button
                   onClick={() => handleRegenerateMenu()}
                   className="p-2 hover:bg-orange-500/10 text-orange-500 rounded-full transition-colors cursor-pointer"
@@ -942,7 +946,14 @@ export function RecipesScreen({
               </div>
             </header>
 
-            {/* Contenuto scrollabile del Menu Planner */}
+            {!currentMenu ? (
+              <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
+                <div className="w-12 h-12 border-4 border-orange-500 border-t-transparent rounded-full animate-spin mb-4" />
+                <p className="font-bold text-[var(--text-main)]">Composizione del menu coordinato...</p>
+                <p className="text-xs text-[var(--text-muted)] mt-1">Abbinamento antipasto, primo e secondo</p>
+              </div>
+            ) : (
+            /* Contenuto scrollabile del Menu Planner */
             <div className="flex-1 overflow-y-auto p-4 md:p-6 custom-scrollbar max-w-3xl mx-auto w-full space-y-4 pb-28">
               
               {/* ── SELETTORE RAPIDO PASTO E TEMA ── */}
@@ -1236,6 +1247,7 @@ export function RecipesScreen({
               </div>
 
             </div>
+            )}
           </motion.div>
         )}
       </AnimatePresence>
