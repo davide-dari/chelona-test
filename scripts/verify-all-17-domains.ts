@@ -130,7 +130,6 @@ async function runTests() {
       recipes: [
         { id: 'r1', title: 'Pasta alla Carbonara', category: 'Primi', isFavorite: true }
       ],
-      fridgeItems: [{ id: 'f1', name: 'Uova' }, { id: 'f2', name: 'Guanciale' }, { id: 'f3', name: 'Spaghetti' }, { id: 'f4', name: 'Pecorino' }],
       x: 0, y: 0, w: 3, h: 3
     } as any,
 
@@ -211,7 +210,7 @@ async function runTests() {
     { domain: 'Rate - Mensili', query: 'Quanto pago al mese di rate?', expect: '/ mese' },
     { domain: 'Volantini - Catena', query: 'Apri volantino Lidl', expect: 'Lidl' },
     { domain: 'Spesa - Già comprato', query: 'Cosa ho già comprato nella spesa?', expect: 'già acquistati' },
-    { domain: 'Ricette - Frigo', query: 'Cosa ho nel frigo?', expect: 'Frigo' },
+    { domain: 'Ricette - Ricettario', query: 'Quali sono le mie ricette?', expect: 'Ricette' },
     { domain: 'Fitness - Pasti', query: 'Cosa devo mangiare lunedì?', expect: 'Riso e Pollo' },
     { domain: 'Viaggi - Checklist', query: 'Checklist per la valigia', expect: 'Valigia' },
     { domain: 'Casa - Arredo', query: 'Riepilogo mobili salone e arredo', expect: 'Salone' },

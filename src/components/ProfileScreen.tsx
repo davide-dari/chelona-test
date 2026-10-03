@@ -8,14 +8,13 @@ import {
   AlertTriangle, Sparkles, Key, FileText, CheckCheck,
   Car, Users, Receipt, Globe, BookOpen, Activity, Home,
   Percent, Scan, Shirt, ImageIcon, HardDrive, Edit2, Cpu, ChevronRight,
-  Search, Brain
+  Search, Brain, Settings, FlaskConical
 } from 'lucide-react';
 import { storage } from '../services/storage';
 import { encryption } from '../services/encryption';
 import { updateService } from '../services/updateService';
 import { notificationService } from '../services/notificationService';
 import { wakeWordService } from '../services/wakeWordService';
-import { getVoiceAutoSendEnabled, setVoiceAutoSendEnabled } from '../services/voiceService';
 import { Module, Folder } from '../types';
 import { QRCodeSVG } from 'qrcode.react';
 import { APP_VERSION } from '../constants/version';
@@ -59,7 +58,8 @@ export interface ProfileScreenProps {
   theme: 'light' | 'dark';
   onToggleTheme: () => void;
   onOpenGemma2Setup?: () => void;
-
+  mode?: 'profile' | 'settings';
+  initialTab?: 'profile' | 'security' | 'backup' | 'system';
 }
 
 type TabType = 'profile' | 'security' | 'backup' | 'system';
@@ -105,12 +105,12 @@ const AVAILABLE_PINNED_CATEGORIES = [
   { id: 'travel', label: 'Viaggi', icon: Globe, color: 'text-indigo-400' },
   { id: 'recipes', label: 'Ricette', icon: BookOpen, color: 'text-orange-500' },
   { id: 'fitness', label: 'Fitness & Dieta', icon: Activity, color: 'text-emerald-500' },
-  { id: 'home', label: 'Casa & Arredo', icon: Home, color: 'text-teal-500' },
+  { id: 'home', label: 'Casa & Spesa', icon: Home, color: 'text-teal-500' },
+  { id: 'testing', label: 'Testing', icon: FlaskConical, color: 'text-indigo-500' },
 ];
 
 // Strumenti sincronizzati al 100% con TOOLS_UTILITY in src/constants/tools.ts
 const AVAILABLE_PINNED_TOOLS = [
-  { id: 'chelona-ai', label: 'Chelona AI', icon: Sparkles, color: 'text-amber-500' },
   { id: 'vinted', label: 'Aiuto Vinted', icon: Shirt, color: 'text-teal-500' },
   { id: 'scanner', label: 'Scanner Documenti', icon: Scan, color: 'text-emerald-500' },
   { id: 'percent', label: 'Calcolo Percentuale', icon: Percent, color: 'text-indigo-500' },
@@ -139,10 +139,15 @@ export function ProfileScreen({
   onUpdateWidgets,
   onOpenGemma2Setup,
   theme,
-  onToggleTheme
+  onToggleTheme,
+  mode = 'profile',
+  initialTab
 }: ProfileScreenProps) {
   // Navigation tabs
-  const [activeTab, setActiveTab] = useState<TabType>('profile');
+  const [activeTab, setActiveTab] = useState<TabType>(() => {
+    if (initialTab) return initialTab;
+    return mode === 'settings' ? 'system' : 'profile';
+  });
 
   // Username edit
   const [editName, setEditName] = useState(username);
@@ -175,9 +180,6 @@ export function ProfileScreen({
 
   // Wake word
   const [isWakeWordEnabled, setIsWakeWordEnabled] = useState(() => wakeWordService.getEnabled());
-
-  // Invio automatico microfono AI
-  const [isVoiceAutoSendEnabled, setIsVoiceAutoSendEnabled] = useState(() => getVoiceAutoSendEnabled());
 
   // Updates
   const [isCheckingUpdate, setIsCheckingUpdate] = useState(false);
@@ -216,16 +218,7 @@ export function ProfileScreen({
     return wakeWordService.subscribe(st => setIsWakeWordEnabled(st.isEnabled));
   }, []);
 
-  // Sync invio automatico vocale
-  useEffect(() => {
-    const handleVoiceAutoSendChange = (e: any) => {
-      if (typeof e.detail?.enabled === 'boolean') {
-        setIsVoiceAutoSendEnabled(e.detail.enabled);
-      }
-    };
-    window.addEventListener('chelona_voice_auto_send_changed', handleVoiceAutoSendChange);
-    return () => window.removeEventListener('chelona_voice_auto_send_changed', handleVoiceAutoSendChange);
-  }, []);
+
 
   // Update internal name when prop changes
   useEffect(() => {
@@ -286,19 +279,6 @@ export function ProfileScreen({
     } else {
       showToast('Permesso microfono necessario per attivare il comando vocale.', 'error');
     }
-  };
-
-  // Toggle invio automatico al microfono AI
-  const handleToggleVoiceAutoSend = () => {
-    const next = !isVoiceAutoSendEnabled;
-    setVoiceAutoSendEnabled(next);
-    setIsVoiceAutoSendEnabled(next);
-    showToast(
-      next
-        ? 'Invio automatico microfono attivato!'
-        : 'Invio automatico disattivato (dovrai premere Invia).',
-      next ? 'success' : 'info'
-    );
   };
 
   // ZIP Backup creation (includes profiles, state files, address book, and notifications)
@@ -692,194 +672,232 @@ export function ProfileScreen({
       {/* ── Outer Responsive Container ── */}
       <div className="w-full max-w-4xl mx-auto flex-1 flex flex-col px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
 
-        {/* ── Hero Profile Card (Material 3 Surface Elevation) ── */}
-        <div className="relative overflow-hidden rounded-[var(--radius-lg)] p-6 lg:p-8 bg-gradient-to-br from-[var(--surface-variant)]/80 via-[var(--card-bg)] to-[var(--surface-variant)]/40 border border-[var(--border)] shadow-sm mb-6">
-          <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6">
-            
-            {/* Avatar with Camera badge */}
-            <div className="relative shrink-0 group">
-              <div 
-                onClick={handleAvatarClick}
-                className="w-24 h-24 sm:w-28 sm:h-28 rounded-full overflow-hidden border-4 border-[var(--card-bg)] shadow-xl cursor-pointer transition-transform duration-300 group-hover:scale-105 relative bg-[var(--surface-variant)] ring-2 ring-[var(--accent)]/30"
-                title="Tocca per caricare una foto"
-              >
-                {avatar ? (
-                  <img src={avatar} alt="Avatar Profilo" className="w-full h-full object-cover" />
-                ) : (
-                  <div className={`w-full h-full flex items-center justify-center ${currentGradient.class} text-white text-4xl sm:text-5xl font-black shadow-inner`}>
-                    {username ? username.charAt(0).toUpperCase() : 'U'}
-                  </div>
-                )}
-                
-                {/* Hover overlay on desktop */}
-                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                  <Camera className="w-8 h-8 text-white drop-shadow-md" />
-                </div>
+        {mode === 'settings' ? (
+          <div className="flex items-center justify-between p-6 lg:p-8 rounded-[var(--radius-lg)] bg-[var(--card-bg)] border border-[var(--border)] shadow-sm mb-6">
+            <div className="flex items-center gap-4">
+              <div className="w-14 h-14 rounded-2xl bg-indigo-500/10 text-indigo-500 flex items-center justify-center border border-indigo-500/20 shadow-inner">
+                <Settings className="w-7 h-7" />
               </div>
-
-              {/* Action badge (Camera upload) */}
+              <div>
+                <h1 className="text-2xl font-black text-[var(--text-main)] tracking-tight">Impostazioni App</h1>
+                <p className="text-xs text-[var(--text-muted)] font-medium mt-0.5">
+                  Aspetto, Memorie AI, Cache Semantica e Backup dei dati
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              className="p-2.5 rounded-full bg-[var(--surface-variant)] hover:bg-[var(--border)] text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors cursor-pointer"
+              title="Chiudi impostazioni"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+        ) : (
+          <>
+            {/* ── Hero Profile Card (Material 3 Surface Elevation) ── */}
+            <div className="relative overflow-hidden rounded-[var(--radius-lg)] p-6 lg:p-8 bg-gradient-to-br from-[var(--surface-variant)]/80 via-[var(--card-bg)] to-[var(--surface-variant)]/40 border border-[var(--border)] shadow-sm mb-6">
               <button
                 type="button"
-                onClick={handleAvatarClick}
-                className="absolute bottom-0 right-0 w-9 h-9 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white rounded-full border-2 border-[var(--card-bg)] flex items-center justify-center shadow-lg transition-transform active:scale-90 cursor-pointer"
-                title="Carica nuova foto"
+                onClick={onClose}
+                className="absolute top-4 right-4 p-2 rounded-full bg-[var(--surface-variant)] hover:bg-[var(--border)] text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors cursor-pointer"
+                title="Chiudi profilo"
               >
-                <Camera className="w-4 h-4" />
+                <X className="w-5 h-5" />
               </button>
-
-              {/* Remove photo button if custom uploaded photo is present */}
-              {isCustomPhoto && (
-                <button
-                  type="button"
-                  onClick={handleRemovePhoto}
-                  className="absolute -top-1 -right-1 w-7 h-7 bg-rose-500 hover:bg-rose-600 text-white rounded-full border-2 border-[var(--card-bg)] flex items-center justify-center shadow-md transition-transform active:scale-90 cursor-pointer"
-                  title="Rimuovi foto personalizzata"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
-              )}
-
-              <input 
-                type="file" 
-                ref={fileInputRef} 
-                onChange={handleFileChange} 
-                className="hidden" 
-                accept="image/png, image/jpeg, image/webp" 
-              />
-            </div>
-
-            {/* Profile Info Details */}
-            <div className="flex-1 text-center sm:text-left space-y-3">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                <div>
-                  {isEditingName ? (
-                    <form 
-                      onSubmit={(e) => { 
-                        e.preventDefault(); 
-                        handleSaveName(); 
-                      }} 
-                      className="flex items-center gap-2 justify-center sm:justify-start flex-wrap my-1"
-                    >
-                      <input
-                        type="text"
-                        autoFocus
-                        value={editName}
-                        maxLength={30}
-                        onChange={(e) => setEditName(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Escape') {
-                            setEditName(username);
-                            setIsEditingName(false);
-                          }
-                        }}
-                        placeholder="Inserisci nome..."
-                        className="px-3 py-1.5 bg-[var(--bg)] border-2 border-[var(--accent)] rounded-xl outline-none text-xl sm:text-2xl font-black text-[var(--text-main)] shadow-inner w-48 sm:w-60"
-                      />
-                      <button
-                        type="submit"
-                        disabled={isNameSaving || !editName.trim()}
-                        className="p-2 rounded-xl bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white font-bold transition-all disabled:opacity-50 cursor-pointer shadow-sm active:scale-95 flex items-center gap-1 text-xs"
-                        title="Salva nome"
-                      >
-                        {isNameSaving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-                        <span className="hidden sm:inline">Salva</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setEditName(username);
-                          setIsEditingName(false);
-                        }}
-                        className="p-2 rounded-xl bg-[var(--surface-variant)] hover:bg-[var(--border)] text-[var(--text-muted)] font-bold transition-all cursor-pointer active:scale-95 text-xs flex items-center gap-1"
-                        title="Annulla"
-                      >
-                        <X className="w-4 h-4" />
-                        <span className="hidden sm:inline">Annulla</span>
-                      </button>
-                    </form>
-                  ) : (
-                    <div className="flex items-center gap-2.5 justify-center sm:justify-start">
-                      <h1 className="text-2xl sm:text-3xl font-black text-[var(--text-main)] tracking-tight">
-                        {username}
-                      </h1>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setEditName(username);
-                          setIsEditingName(true);
-                        }}
-                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-[var(--surface-variant)] hover:bg-[var(--border)] text-[var(--text-muted)] hover:text-[var(--accent)] text-xs font-bold transition-all active:scale-95 cursor-pointer border border-[var(--border)]"
-                        title="Modifica nome utente"
-                      >
-                        <Edit2 className="w-3.5 h-3.5 text-[var(--accent)]" />
-                        <span>Modifica</span>
-                      </button>
+              <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6">
+                
+                {/* Avatar with Camera badge */}
+                <div className="relative shrink-0 group">
+                  <div 
+                    onClick={handleAvatarClick}
+                    className="w-24 h-24 sm:w-28 sm:h-28 rounded-full overflow-hidden border-4 border-[var(--card-bg)] shadow-xl cursor-pointer transition-transform duration-300 group-hover:scale-105 relative bg-[var(--surface-variant)] ring-2 ring-[var(--accent)]/30"
+                    title="Tocca per caricare una foto"
+                  >
+                    {avatar ? (
+                      <img src={avatar} alt="Avatar Profilo" className="w-full h-full object-cover" />
+                    ) : (
+                      <div className={`w-full h-full flex items-center justify-center ${currentGradient.class} text-white text-4xl sm:text-5xl font-black shadow-inner`}>
+                        {username ? username.charAt(0).toUpperCase() : 'U'}
+                      </div>
+                    )}
+                    
+                    {/* Hover overlay on desktop */}
+                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                      <Camera className="w-8 h-8 text-white drop-shadow-md" />
                     </div>
+                  </div>
+
+                  {/* Action badge (Camera upload) */}
+                  <button
+                    type="button"
+                    onClick={handleAvatarClick}
+                    className="absolute bottom-0 right-0 w-9 h-9 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white rounded-full border-2 border-[var(--card-bg)] flex items-center justify-center shadow-lg transition-transform active:scale-90 cursor-pointer"
+                    title="Carica nuova foto"
+                  >
+                    <Camera className="w-4 h-4" />
+                  </button>
+
+                  {/* Remove photo button if custom uploaded photo is present */}
+                  {isCustomPhoto && (
+                    <button
+                      type="button"
+                      onClick={handleRemovePhoto}
+                      className="absolute -top-1 -right-1 w-7 h-7 bg-rose-500 hover:bg-rose-600 text-white rounded-full border-2 border-[var(--card-bg)] flex items-center justify-center shadow-md transition-transform active:scale-90 cursor-pointer"
+                      title="Rimuovi foto personalizzata"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
                   )}
-                  <p className="text-xs text-[var(--text-muted)] font-medium mt-0.5">
-                    Account Principale Chelona • Crittografia Hardware Locale
-                  </p>
+
+                  <input 
+                    type="file" 
+                    ref={fileInputRef} 
+                    onChange={handleFileChange} 
+                    className="hidden" 
+                    accept="image/png, image/jpeg, image/webp" 
+                  />
+                </div>
+
+                {/* Profile Info Details */}
+                <div className="flex-1 text-center sm:text-left space-y-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div>
+                      {isEditingName ? (
+                        <form 
+                          onSubmit={(e) => { 
+                            e.preventDefault(); 
+                            handleSaveName(); 
+                          }} 
+                          className="flex items-center gap-2 justify-center sm:justify-start flex-wrap my-1"
+                        >
+                          <input
+                            type="text"
+                            autoFocus
+                            value={editName}
+                            maxLength={30}
+                            onChange={(e) => setEditName(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Escape') {
+                                setEditName(username);
+                                setIsEditingName(false);
+                              }
+                            }}
+                            placeholder="Inserisci nome..."
+                            className="px-3 py-1.5 bg-[var(--bg)] border-2 border-[var(--accent)] rounded-xl outline-none text-xl sm:text-2xl font-black text-[var(--text-main)] shadow-inner w-48 sm:w-60"
+                          />
+                          <button
+                            type="submit"
+                            disabled={isNameSaving || !editName.trim()}
+                            className="p-2 rounded-xl bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white font-bold transition-all disabled:opacity-50 cursor-pointer shadow-sm active:scale-95 flex items-center gap-1 text-xs"
+                            title="Salva nome"
+                          >
+                            {isNameSaving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                            <span className="hidden sm:inline">Salva</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditName(username);
+                              setIsEditingName(false);
+                            }}
+                            className="p-2 rounded-xl bg-[var(--surface-variant)] hover:bg-[var(--border)] text-[var(--text-muted)] font-bold transition-all cursor-pointer active:scale-95 text-xs flex items-center gap-1"
+                            title="Annulla"
+                          >
+                            <X className="w-4 h-4" />
+                            <span className="hidden sm:inline">Annulla</span>
+                          </button>
+                        </form>
+                      ) : (
+                        <div className="flex items-center gap-2.5 justify-center sm:justify-start">
+                          <h1 className="text-2xl sm:text-3xl font-black text-[var(--text-main)] tracking-tight">
+                            {username}
+                          </h1>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditName(username);
+                              setIsEditingName(true);
+                            }}
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-[var(--surface-variant)] hover:bg-[var(--border)] text-[var(--text-muted)] hover:text-[var(--accent)] text-xs font-bold transition-all active:scale-95 cursor-pointer border border-[var(--border)]"
+                            title="Modifica nome utente"
+                          >
+                            <Edit2 className="w-3.5 h-3.5 text-[var(--accent)]" />
+                            <span>Modifica</span>
+                          </button>
+                        </div>
+                      )}
+                      <p className="text-xs text-[var(--text-muted)] font-medium mt-0.5">
+                        Account Principale Chelona • Crittografia Hardware Locale
+                      </p>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-        </div>
 
-        {/* ── Vault & Activity Summary Cards ── */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mb-6">
-          <div className="bg-[var(--card-bg)] p-4 rounded-2xl border border-[var(--border)] shadow-2xs flex flex-col justify-between">
-            <div className="flex items-center justify-between text-[var(--text-muted)] mb-2">
-              <span className="text-[11px] font-bold uppercase tracking-wider">Moduli Totali</span>
-              <Layers className="w-4 h-4 text-[var(--accent)]" />
-            </div>
-            <div>
-              <span className="text-2xl font-black text-[var(--text-main)]">{stats.totalModules}</span>
-              <p className="text-[10px] text-[var(--text-muted)] mt-0.5">elementi archiviati</p>
-            </div>
-          </div>
+            {/* ── Vault & Activity Summary Cards ── */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mb-6">
+              <div className="bg-[var(--card-bg)] p-4 rounded-2xl border border-[var(--border)] shadow-2xs flex flex-col justify-between">
+                <div className="flex items-center justify-between text-[var(--text-muted)] mb-2">
+                  <span className="text-[11px] font-bold uppercase tracking-wider">Moduli Totali</span>
+                  <Layers className="w-4 h-4 text-[var(--accent)]" />
+                </div>
+                <div>
+                  <span className="text-2xl font-black text-[var(--text-main)]">{stats.totalModules}</span>
+                  <p className="text-[10px] text-[var(--text-muted)] mt-0.5">elementi archiviati</p>
+                </div>
+              </div>
 
-          <div className="bg-[var(--card-bg)] p-4 rounded-2xl border border-[var(--border)] shadow-2xs flex flex-col justify-between">
-            <div className="flex items-center justify-between text-[var(--text-muted)] mb-2">
-              <span className="text-[11px] font-bold uppercase tracking-wider">Gruppi & Cartelle</span>
-              <FolderIcon className="w-4 h-4 text-indigo-500" />
-            </div>
-            <div>
-              <span className="text-2xl font-black text-[var(--text-main)]">{stats.totalFolders}</span>
-              <p className="text-[10px] text-[var(--text-muted)] mt-0.5">cartelle attive</p>
-            </div>
-          </div>
+              <div className="bg-[var(--card-bg)] p-4 rounded-2xl border border-[var(--border)] shadow-2xs flex flex-col justify-between">
+                <div className="flex items-center justify-between text-[var(--text-muted)] mb-2">
+                  <span className="text-[11px] font-bold uppercase tracking-wider">Gruppi & Cartelle</span>
+                  <FolderIcon className="w-4 h-4 text-indigo-500" />
+                </div>
+                <div>
+                  <span className="text-2xl font-black text-[var(--text-main)]">{stats.totalFolders}</span>
+                  <p className="text-[10px] text-[var(--text-muted)] mt-0.5">cartelle attive</p>
+                </div>
+              </div>
 
-          <div className="bg-[var(--card-bg)] p-4 rounded-2xl border border-[var(--border)] shadow-2xs flex flex-col justify-between">
-            <div className="flex items-center justify-between text-[var(--text-muted)] mb-2">
-              <span className="text-[11px] font-bold uppercase tracking-wider">Dati Riservati</span>
-              <Shield className="w-4 h-4 text-amber-500" />
-            </div>
-            <div>
-              <span className="text-2xl font-black text-[var(--text-main)]">{stats.sensitiveCount}</span>
-              <p className="text-[10px] text-[var(--text-muted)] mt-0.5">con blocco riservato</p>
-            </div>
-          </div>
+              <div className="bg-[var(--card-bg)] p-4 rounded-2xl border border-[var(--border)] shadow-2xs flex flex-col justify-between">
+                <div className="flex items-center justify-between text-[var(--text-muted)] mb-2">
+                  <span className="text-[11px] font-bold uppercase tracking-wider">Dati Riservati</span>
+                  <Shield className="w-4 h-4 text-amber-500" />
+                </div>
+                <div>
+                  <span className="text-2xl font-black text-[var(--text-main)]">{stats.sensitiveCount}</span>
+                  <p className="text-[10px] text-[var(--text-muted)] mt-0.5">con blocco riservato</p>
+                </div>
+              </div>
 
-          <div className="bg-[var(--card-bg)] p-4 rounded-2xl border border-[var(--border)] shadow-2xs flex flex-col justify-between">
-            <div className="flex items-center justify-between text-[var(--text-muted)] mb-2">
-              <span className="text-[11px] font-bold uppercase tracking-wider">Protezione</span>
-              <Lock className="w-4 h-4 text-emerald-500" />
+              <div className="bg-[var(--card-bg)] p-4 rounded-2xl border border-[var(--border)] shadow-2xs flex flex-col justify-between">
+                <div className="flex items-center justify-between text-[var(--text-muted)] mb-2">
+                  <span className="text-[11px] font-bold uppercase tracking-wider">Protezione</span>
+                  <Lock className="w-4 h-4 text-emerald-500" />
+                </div>
+                <div>
+                  <span className="text-xs sm:text-sm font-black text-[var(--text-main)] block truncate">AES-GCM 256</span>
+                  <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold mt-0.5">Hardware zero-leak</p>
+                </div>
+              </div>
             </div>
-            <div>
-              <span className="text-xs sm:text-sm font-black text-[var(--text-main)] block truncate">AES-GCM 256</span>
-              <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold mt-0.5">Hardware zero-leak</p>
-            </div>
-          </div>
-        </div>
+          </>
+        )}
 
         {/* ── Material 3 Segmented Navigation Tabs ── */}
         <div className="flex items-center p-1 bg-[var(--surface-variant)] rounded-2xl border border-[var(--border)] mb-6">
-          {([
-            { id: 'profile', label: 'Profilo', icon: User },
-            { id: 'security', label: 'Sicurezza', icon: ShieldCheck },
-            { id: 'backup', label: 'Backup', icon: Database },
-            { id: 'system', label: 'Sistema', icon: Sliders },
-          ] as const).map(tab => {
+          {(mode === 'settings'
+            ? [
+                { id: 'system' as const, label: 'Aspetto & Sistema', icon: Sliders },
+                { id: 'backup' as const, label: 'Backup & Dati', icon: Database },
+              ]
+            : [
+                { id: 'profile' as const, label: 'Profilo & Widget', icon: User },
+                { id: 'security' as const, label: 'Sicurezza & PIN', icon: ShieldCheck },
+              ]
+          ).map(tab => {
             const isActive = activeTab === tab.id;
             const Icon = tab.icon;
             return (
@@ -959,33 +977,6 @@ export function ProfileScreen({
                     )}
                   </AnimatePresence>
                 </motion.button>
-              </div>
-
-
-
-              {/* Invio Automatico da Microfono */}
-              <div className="bg-[var(--card-bg)] rounded-[var(--radius-lg)] p-5 sm:p-6 border border-[var(--border)] shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-10 h-10 rounded-2xl bg-amber-500/10 flex items-center justify-center text-amber-500 shrink-0">
-                    <Mic className="w-5 h-5" />
-                  </div>
-                  <div className="min-w-0">
-                    <h3 className="text-base font-bold text-[var(--text-main)] leading-tight">Invio Automatico da Microfono</h3>
-                    <p className="text-xs text-[var(--text-muted)] font-medium mt-0.5">Invia subito il messaggio in chat appena smetti di parlare al microfono</p>
-                  </div>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={handleToggleVoiceAutoSend}
-                  className={`px-5 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider transition-all shrink-0 active:scale-95 cursor-pointer ${
-                    isVoiceAutoSendEnabled
-                      ? 'bg-amber-500 text-white shadow-md shadow-amber-500/20'
-                      : 'bg-[var(--surface-variant)] text-[var(--text-muted)] border border-[var(--border)] hover:text-[var(--text-main)]'
-                  }`}
-                >
-                  {isVoiceAutoSendEnabled ? 'Attivo' : 'Disattivo'}
-                </button>
               </div>
             </motion.div>
           )}
@@ -1400,31 +1391,6 @@ export function ProfileScreen({
                   }`}
                 >
                   {isWakeWordEnabled ? 'Disattiva' : 'Attiva'}
-                </button>
-              </div>
-
-              {/* Invio Vocale Automatico Microfono */}
-              <div className="bg-[var(--card-bg)] rounded-[var(--radius-lg)] p-5 sm:p-6 border border-[var(--border)] shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-10 h-10 rounded-2xl bg-amber-500/10 flex items-center justify-center text-amber-500 shrink-0">
-                    <Mic className="w-5 h-5" />
-                  </div>
-                  <div className="min-w-0">
-                    <h3 className="text-base font-bold text-[var(--text-main)] leading-tight">Invio Automatico da Microfono</h3>
-                    <p className="text-xs text-[var(--text-muted)] font-medium mt-0.5">Invia subito il messaggio in chat appena smetti di parlare al microfono</p>
-                  </div>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={handleToggleVoiceAutoSend}
-                  className={`px-5 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider transition-all shrink-0 active:scale-95 cursor-pointer ${
-                    isVoiceAutoSendEnabled
-                      ? 'bg-amber-500 text-white shadow-md shadow-amber-500/20'
-                      : 'bg-[var(--surface-variant)] text-[var(--text-muted)] border border-[var(--border)] hover:text-[var(--text-main)]'
-                  }`}
-                >
-                  {isVoiceAutoSendEnabled ? 'Attivo' : 'Disattivo'}
                 </button>
               </div>
 

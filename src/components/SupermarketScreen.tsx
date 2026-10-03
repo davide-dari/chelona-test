@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { SupermarketModule, SupermarketItem, SupermarketCategory } from '../types';
 import {
-  ArrowLeft, Plus, Trash2, CheckCircle2, Refrigerator,
+  ArrowLeft, Plus, Trash2, CheckCircle2,
   Apple, Milk, Drumstick, Croissant, PackageCheck, GlassWater, SprayCan,
   ShowerHead, ShoppingBasket, Share2, Search, AlertTriangle, X, Scale,
   Store, Info
@@ -23,8 +23,6 @@ interface SupermarketScreenProps {
   onClose: () => void;
   onShare: (m: SupermarketModule) => void;
 }
-
-const FRIDGE_STORAGE_KEY = 'chelona_fridge_ingredients';
 
 const UNIT_OPTIONS = ['kg', 'g', 'lt', 'ml', 'pz', 'etto', 'busta', 'lattina', 'barattolo', 'bottiglia', 'confezione', 'mazzo', 'fetta', 'scatola', 'pacco', 'vasetto'] as const;
 
@@ -109,15 +107,6 @@ const fallbackClassify = (name: string): SupermarketCategory => {
 
 const normalize = (s: string) => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
 
-const loadFridge = (): string[] => {
-  try {
-    const saved = localStorage.getItem(FRIDGE_STORAGE_KEY);
-    return saved ? JSON.parse(saved) : [];
-  } catch {
-    return [];
-  }
-};
-
 function ProductThumb({ name, emoji, size = 44 }: { name: string; emoji?: string; size?: number }) {
   const e = emoji || guessEmoji(name);
   return (
@@ -130,16 +119,11 @@ function ProductThumb({ name, emoji, size = 44 }: { name: string; emoji?: string
   );
 }
 
-const openStorage = (category: string) => {
-  window.dispatchEvent(new CustomEvent('open-recipes', { detail: { category } }));
-};
-
 export const SupermarketScreen = ({ module, onSave, onClose, onShare }: SupermarketScreenProps) => {
   const [data, setData] = useState<SupermarketModule>(module);
   const [itemName, setItemName] = useState('');
   const [itemQty, setItemQty] = useState('');
   const [itemUnit, setItemUnit] = useState('');
-  const [fridgeIngredients, setFridgeIngredients] = useState<string[]>(loadFridge);
   const [suggestions, setSuggestions] = useState<CatalogProduct[]>([]);
   const [highlighted, setHighlighted] = useState(0);
   const [selectedSuggestion, setSelectedSuggestion] = useState<CatalogProduct | null>(null);
@@ -171,18 +155,6 @@ export const SupermarketScreen = ({ module, onSave, onClose, onShare }: Supermar
   
 
   useEffect(() => {
-    const handleFridge = () => setFridgeIngredients(loadFridge());
-    window.addEventListener('chelona_fridge_updated', handleFridge);
-    return () => {
-      window.removeEventListener('chelona_fridge_updated', handleFridge);
-    };
-  }, []);
-
-  useEffect(() => {
-    localStorage.setItem(FRIDGE_STORAGE_KEY, JSON.stringify(fridgeIngredients));
-  }, [fridgeIngredients]);
-
-  useEffect(() => {
     setDupeMsg(null);
     const q = itemName.trim().length >= 2;
     setSuggestions(q && !selectedSuggestion ? findProductMatches(itemName, 7) : []);
@@ -193,17 +165,6 @@ export const SupermarketScreen = ({ module, onSave, onClose, onShare }: Supermar
     setData(updated);
     onSave(updated);
   };
-
-  const inStorage = (name: string, arr: string[]): boolean => {
-    const n = normalize(name);
-    if (n.length < 3) return false;
-    return arr.some(f => {
-      const fn = normalize(f);
-      return fn === n || (n.length >= 4 && (fn.includes(n) || n.includes(fn)));
-    });
-  };
-
-  const inFridge = (name: string) => inStorage(name, fridgeIngredients);
 
   const applySuggestion = (p: CatalogProduct) => {
     setItemName(p.n);
@@ -259,24 +220,6 @@ export const SupermarketScreen = ({ module, onSave, onClose, onShare }: Supermar
     update({ ...data, items: data.items.filter(i => i.id !== id) });
   };
 
-  const moveToStorage = (id: string) => {
-    const item = data.items.find(i => i.id === id);
-    if (!item) return;
-    const nameStr = item.name.trim();
-    const nameNorm = normalize(nameStr);
-    
-    setFridgeIngredients(prev => {
-      const next = prev.some(f => normalize(f) === nameNorm) ? prev : [...prev, nameStr];
-      try {
-        localStorage.setItem(FRIDGE_STORAGE_KEY, JSON.stringify(next));
-      } catch {}
-      return next;
-    });
-    window.dispatchEvent(new CustomEvent('chelona_fridge_updated'));
-    
-    update({ ...data, items: data.items.filter(i => i.id !== id) });
-  };
-
   const confirmDeleteList = () => {
     update({ ...data, items: [] });
     setShowDeleteConfirm(false);
@@ -284,7 +227,6 @@ export const SupermarketScreen = ({ module, onSave, onClose, onShare }: Supermar
 
   const total = data.items.length;
   const done = data.items.filter(i => i.checked).length;
-  const alreadyInFridge = data.items.filter(i => !i.checked && inFridge(i.name)).length;
   const pending = total - done;
   const progress = total > 0 ? Math.round((done / total) * 100) : 0;
 
@@ -406,18 +348,6 @@ export const SupermarketScreen = ({ module, onSave, onClose, onShare }: Supermar
           </p>
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
-          <button
-            onClick={() => openStorage('fridge')}
-            title={`Frigorifero (${fridgeIngredients.length})`}
-            className="relative p-2.5 rounded-2xl bg-[var(--surface-variant)] border border-[var(--border)] text-sky-500 hover:bg-sky-500/10 transition-colors"
-          >
-            <Refrigerator className="w-5 h-5" />
-            {fridgeIngredients.length > 0 && (
-              <span className="absolute -top-1 -right-1 min-w-[16px] h-[16px] px-1 rounded-full bg-sky-500 text-white text-[8px] font-black flex items-center justify-center shadow">
-                {fridgeIngredients.length}
-              </span>
-            )}
-          </button>
           <button
             onClick={() => onShare(data)}
             title="Condividi lista"
@@ -601,9 +531,6 @@ export const SupermarketScreen = ({ module, onSave, onClose, onShare }: Supermar
                   {done > 0 && (
                     <span className="text-[10px] font-bold text-emerald-600 bg-emerald-500/10 border border-emerald-500/20 rounded-full px-2 py-0.5">✓ {done}</span>
                   )}
-                  {alreadyInFridge > 0 && (
-                    <span className="text-[10px] font-bold text-sky-600 bg-sky-500/10 border border-sky-500/20 rounded-full px-2 py-0.5">in frigo</span>
-                  )}
                 </div>
                 <button
                   onClick={() => setShowDeleteConfirm(true)}
@@ -683,7 +610,6 @@ export const SupermarketScreen = ({ module, onSave, onClose, onShare }: Supermar
                     <ul className="divide-y divide-[var(--border)]">
                       <AnimatePresence initial={false}>
                         {cat.items.map(item => {
-                          const inFridgeFlag = !item.checked && inFridge(item.name);
                           return (
                             <motion.li
                               key={item.id}
@@ -744,20 +670,6 @@ export const SupermarketScreen = ({ module, onSave, onClose, onShare }: Supermar
                                   </button>
                                 )}
                               </div>
-                              {/* Badges */}
-                              {inFridgeFlag && (
-                                <span className="text-[9px] font-bold text-sky-600 bg-sky-500/10 border border-sky-500/20 rounded-full px-1.5 py-0.5 shrink-0 flex items-center gap-0.5">
-                                  <Refrigerator className="w-2.5 h-2.5" /> Frigo
-                                </span>
-                              )}
-                              <button
-                                onClick={() => moveToStorage(item.id)}
-                                title="Sposta nel frigo"
-                                className="shrink-0 flex items-center gap-1 px-3 py-1.5 text-xs font-bold rounded-xl transition-all shadow-sm bg-sky-500 text-white shadow-sky-500/25 hover:bg-sky-600 cursor-pointer"
-                              >
-                                <Refrigerator className="w-3.5 h-3.5" />
-                                <span className="hidden sm:inline">Frigo</span>
-                              </button>
                               {/* Delete single item */}
                               <button
                                 onClick={() => removeItem(item.id)}

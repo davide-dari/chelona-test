@@ -403,15 +403,7 @@ export const STORAGE_KEY_VOICE_AUTO_SEND = 'chelona_voice_auto_send';
 /**
  * Restituisce se l'invio automatico vocale da microfono è abilitato (default: true).
  */
-export const getVoiceAutoSendEnabled = (): boolean => {
-  if (typeof window === 'undefined') return true;
-  try {
-    const val = localStorage.getItem(STORAGE_KEY_VOICE_AUTO_SEND);
-    return val === null ? true : val === 'true';
-  } catch {
-    return true;
-  }
-};
+export const getVoiceAutoSendEnabled = (): boolean => true;
 
 /**
  * Imposta la preferenza di invio automatico vocale e notifica l'app via evento.

@@ -20,7 +20,7 @@ import {
 } from '../utils/naturalSpeech';
 import { getSavedParking, getNavigationUrl } from '../services/parkingService';
 import { wakeWordService } from '../services/wakeWordService';
-import { voiceRecognitionService, getVoiceAutoSendEnabled, setVoiceAutoSendEnabled } from '../services/voiceService';
+import { voiceRecognitionService } from '../services/voiceService';
 
 interface ChelonaAiScreenProps {
   modules: Module[];
@@ -253,19 +253,6 @@ export const ChelonaAiScreen
   });
   const [showVoiceSettings, setShowVoiceSettings] = useState(false);
   const [previewingVoiceUri, setPreviewingVoiceUri] = useState<string | null>(null);
-
-  // Invio automatico vocale al termine della dettatura con microfono
-  const [isVoiceAutoSend, setIsVoiceAutoSend] = useState<boolean>(() => getVoiceAutoSendEnabled());
-
-  useEffect(() => {
-    const handleVoiceAutoSendChange = (e: any) => {
-      if (typeof e.detail?.enabled === 'boolean') {
-        setIsVoiceAutoSend(e.detail.enabled);
-      }
-    };
-    window.addEventListener('chelona_voice_auto_send_changed', handleVoiceAutoSendChange);
-    return () => window.removeEventListener('chelona_voice_auto_send_changed', handleVoiceAutoSendChange);
-  }, []);
 
   const cancelSpeechRef = useRef(false);
   const speechSessionIdRef = useRef(0);
@@ -705,15 +692,7 @@ export const ChelonaAiScreen
         setLiveVoiceTranscript(finalText);
         const trimmed = (finalText || '').trim();
         if (trimmed.length > 0) {
-          if (isVoiceSession) {
-            handleSend(trimmed, true, true);
-          } else {
-            if (isVoiceAutoSend) {
-              handleSend(trimmed, false, true);
-            } else {
-              setInputText(trimmed);
-            }
-          }
+          handleSend(trimmed, isVoiceSession, true);
         } else if (isVoiceSession) {
           setVoiceStatus('idle');
         }
@@ -760,11 +739,7 @@ export const ChelonaAiScreen
     setIsListening(false);
     setLiveAudioVolume(0);
     if (textToSend.length > 0) {
-      if (isVoiceAutoSend || isVoiceModeOpen) {
-        handleSend(textToSend, isVoiceModeOpen, true);
-      } else {
-        setInputText(textToSend);
-      }
+      handleSend(textToSend, isVoiceModeOpen, true);
     }
   };
 
@@ -1226,7 +1201,7 @@ export const ChelonaAiScreen
               <div className="flex items-center gap-2 min-w-0">
                 <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-ping shrink-0" />
                 <span className="truncate">
-                  {isVoiceAutoSend ? "In ascolto... Invio automatico a fine frase" : "In ascolto... Parla pure"}
+                  In ascolto... Invio automatico appena finisci di parlare
                 </span>
               </div>
               <div className="flex items-center gap-2 shrink-0">
@@ -1282,7 +1257,7 @@ export const ChelonaAiScreen
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder={isListening ? (isVoiceAutoSend ? "In ascolto... Parla pure (invio auto)..." : "In ascolto... Parla pure...") : "Scrivi a Chelona o insegna qualcosa..."}
+                placeholder={isListening ? "In ascolto... Parla pure (invio auto)..." : "Scrivi a Chelona o insegna qualcosa..."}
                 className="w-full bg-transparent border-0 focus:outline-none focus:ring-0 text-sm text-[var(--text-main)] placeholder-[var(--text-muted)] resize-none py-1.5 px-2 max-h-28"
               />
             </div>
@@ -1533,40 +1508,6 @@ export const ChelonaAiScreen
                   </div>
                   <p className="text-[10.5px] text-[var(--text-muted)] leading-relaxed">
                     Pronuncia <strong className="text-amber-500 font-semibold">"Ciao Chelona!"</strong>, <strong className="text-amber-500 font-semibold">"Ehi Chelona!"</strong> o <strong className="text-amber-500 font-semibold">"Chelona"</strong> con l'app aperta per avviare subito la conversazione vocale. 100% on-device.
-                  </p>
-                </div>
-
-                {/* Sezione Invio Automatico da Microfono */}
-                <div className="bg-[var(--surface-variant)]/70 border border-[var(--border)] rounded-2xl p-3.5 space-y-2">
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <div className="w-8 h-8 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center shrink-0">
-                        <Zap className="w-4 h-4" />
-                      </div>
-                      <div className="min-w-0">
-                        <h5 className="text-xs font-bold text-[var(--text-main)] truncate">Invio Vocale Automatico</h5>
-                        <p className="text-[10px] text-[var(--text-muted)] truncate">Invia appena smetti di parlare al microfono</p>
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const next = !isVoiceAutoSend;
-                        setVoiceAutoSendEnabled(next);
-                        setIsVoiceAutoSend(next);
-                        showToast(next ? 'Invio automatico vocale attivo!' : 'Invio automatico vocale disattivato.', 'info');
-                      }}
-                      className={`px-3 py-1.5 rounded-xl font-bold text-xs transition-all active:scale-95 shrink-0 ${
-                        isVoiceAutoSend
-                          ? 'bg-amber-500 text-white shadow-md shadow-amber-500/20'
-                          : 'bg-[var(--surface)] text-[var(--text-muted)] border border-[var(--border)] hover:text-[var(--text-main)]'
-                      }`}
-                    >
-                      {isVoiceAutoSend ? 'Attivo' : 'Disattivo'}
-                    </button>
-                  </div>
-                  <p className="text-[10.5px] text-[var(--text-muted)] leading-relaxed">
-                    Quando detti un messaggio tramite microfono in chat, invia automaticamente la richiesta senza dover premere il pulsante Invia.
                   </p>
                 </div>
 

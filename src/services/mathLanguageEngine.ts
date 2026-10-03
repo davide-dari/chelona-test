@@ -493,6 +493,8 @@ const CONVERSATIONAL_FOOD_STOPWORDS = new Set([
   'due', 'tre', 'quattro', 'cinque', 'chilo', 'chili', 'kg', 'etto', 'etti', 'g', 'grammi',
   'barattolo', 'scatoletta', 'bustina', 'scatola', 'confezione', 'pacchetto', 'fetta', 'fette',
   'questo', 'questa', 'questi', 'queste', 'quello', 'quella', 'quelli', 'quelle',
+  'mio', 'mia', 'miei', 'mie', 'tuo', 'tua', 'tuoi', 'tue', 'suo', 'sua', 'suoi', 'sue', 'nostro', 'nostra', 'nostri', 'nostre',
+  'sono', 'sei', 'e', 'ed', 'sia',
   'alcun', 'alcuno', 'alcuna', 'alcuni', 'alcune', 'tutto', 'tutta', 'tutti', 'tutte',
   'trova', 'cerca', 'cercami', 'mostra', 'mostrami', 'apri', 'vai',
   'corrispondente', 'corrispondenti', 'simile', 'simili', 'affinita', 'affine', 'affini', 'tipo', 'come', 'quali', 'quale'

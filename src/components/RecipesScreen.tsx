@@ -36,7 +36,7 @@ export function RecipesScreen({
   const [allMeals, setAllMeals] = useState<RecipeItem[]>([]);
   const [loading, setLoading] = useState(true);
   
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(initialCategory || null);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(initialCategory && initialCategory !== 'fridge' ? initialCategory : null);
   const [searchQuery, setSearchQuery] = useState(initialSearchQuery || '');
   
   const [selectedMeal, setSelectedMeal] = useState<any | null>(null);
@@ -95,33 +95,6 @@ export function RecipesScreen({
     return () => window.removeEventListener('chelona_saved_menus_updated', handleMenusUpdated);
   }, []);
 
-  // Inventory state (Frigorifero)
-  const [fridgeIngredients, setFridgeIngredients] = useState<string[]>(() => {
-    try {
-      const saved = localStorage.getItem('chelona_fridge_ingredients');
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  });
-
-  const [inventoryInput, setInventoryInput] = useState('');
-
-  // Sincronizza verso il LocalStorage
-  useEffect(() => {
-    localStorage.setItem('chelona_fridge_ingredients', JSON.stringify(fridgeIngredients));
-  }, [fridgeIngredients]);
-
-  // Sincronizza dal LocalStorage/Eventi
-  useEffect(() => {
-    const handleFridge = () => { try { setFridgeIngredients(JSON.parse(localStorage.getItem('chelona_fridge_ingredients') || '[]')); } catch {} };
-    
-    window.addEventListener('chelona_fridge_updated', handleFridge);
-    return () => {
-      window.removeEventListener('chelona_fridge_updated', handleFridge);
-    };
-  }, []);
-
   useEffect(() => {
     const savedFavs = localStorage.getItem('chelona_gz_favorites');
     if (savedFavs) {
@@ -169,7 +142,11 @@ export function RecipesScreen({
 
   useEffect(() => {
     if (initialCategory) {
-      setSelectedCategory(initialCategory);
+      if (initialCategory === 'fridge') {
+        setSelectedCategory(null);
+      } else {
+        setSelectedCategory(initialCategory);
+      }
     }
   }, [initialCategory]);
 
@@ -643,43 +620,12 @@ export function RecipesScreen({
       return favorites.filter(m => m.title.toLowerCase().includes(searchQuery.toLowerCase()));
     }
 
-    const isInventoryCategory = selectedCategory === 'fridge';
-
-    if (isInventoryCategory) {
-      const allInventoryIngredients = fridgeIngredients;
-      if (allInventoryIngredients.length === 0) return [];
-      
-      const scored = allMeals.map(meal => {
-        let score = 0;
-        const recipeIngsText = meal.ingredients && meal.ingredients.length > 0 ? meal.ingredients.join(' ').toLowerCase() : meal.steps.join(' ').toLowerCase();
-        
-        allInventoryIngredients.forEach(ing => {
-          if (recipeIngsText.includes(ing.toLowerCase())) {
-            score += 1;
-          }
-        });
-
-        const missingIngredients = (meal.ingredients || []).filter((ing: string) => {
-          return !allInventoryIngredients.some(f => ing.toLowerCase().includes(f.toLowerCase()));
-        });
-
-        return { ...meal, fridgeScore: score, missingIngredients };
-      }).filter(m => (m as any).fridgeScore > 0);
-      
-      return scored.sort((a, b) => {
-        if ((b as any).fridgeScore !== (a as any).fridgeScore) {
-          return (b as any).fridgeScore - (a as any).fridgeScore; // Most matched ingredients first
-        }
-        return (a as any).missingIngredients.length - (b as any).missingIngredients.length; // Least missing ingredients first
-      });
-    }
-
     return allMeals.filter(meal => {
       const matchCat = selectedCategory ? meal.category === selectedCategory : true;
       const matchSearch = searchQuery ? meal.title.toLowerCase().includes(searchQuery.toLowerCase()) : true;
       return matchCat && matchSearch;
     });
-  }, [allMeals, selectedCategory, searchQuery, favorites, fridgeIngredients]);
+  }, [allMeals, selectedCategory, searchQuery, favorites]);
 
   const toggleFavorite = (meal: any, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
@@ -822,19 +768,6 @@ export function RecipesScreen({
                   <motion.button
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
-                    onClick={() => setSelectedCategory('fridge')}
-                    className="flex flex-col items-center justify-center p-4 bg-gradient-to-br from-cyan-100 to-blue-200 border border-cyan-300 rounded-2xl transition-all shadow-sm group hover:shadow-md cursor-pointer"
-                  >
-                    <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap bg-[var(--surface-variant)] text-[var(--text-muted)] mb-1">
-                      🧊 Frigorifero
-                    </span>
-                    <div className="text-3xl mb-1">🧊</div>
-                    <span className="font-bold text-blue-800 text-sm text-center">Il mio Frigo</span>
-                  </motion.button>
-
-                  <motion.button
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
                     onClick={() => setIsSavedMenusOpen(true)}
                     className="flex flex-col items-center justify-center p-4 bg-gradient-to-br from-indigo-500/15 via-purple-500/10 to-pink-500/15 border border-indigo-500/30 rounded-2xl transition-all shadow-sm group hover:shadow-md cursor-pointer"
                   >
@@ -883,8 +816,6 @@ export function RecipesScreen({
                 <h2 className="text-xl sm:text-2xl font-black text-[var(--text-main)] flex items-center gap-2">
                   {selectedCategory === 'favorites' ? (
                     <>⭐ Preferiti</>
-                  ) : selectedCategory === 'fridge' ? (
-                    <>🧊 Il mio Frigo</>
                   ) : searchQuery && !selectedCategory ? (
                     <>Ricerca: <span className="text-orange-500">{searchQuery}</span></>
                   ) : (
@@ -893,109 +824,17 @@ export function RecipesScreen({
                 </h2>
               </div>
               
-              {selectedCategory !== 'fridge' && (
-                <div className="relative w-full sm:w-64">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] w-4 h-4" />
-                  <input
-                    type="text"
-                    placeholder="Cerca tra queste..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full bg-[var(--surface-variant)] border border-[var(--border)] rounded-xl py-2 pl-9 pr-4 text-[var(--text-main)] outline-none text-sm"
-                  />
-                </div>
-              )}
-            </div>
-
-            {/* Inventory Controls */}
-            {selectedCategory === 'fridge' && (() => {
-              const allInventoryCount = fridgeIngredients.length;
-              const activeList = fridgeIngredients;
-              const setActiveList = setFridgeIngredients;
-
-              return (
-              <div className="bg-[var(--card-bg)] p-6 rounded-[2.5rem] border border-[var(--border)] shadow-xl space-y-6">
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-[var(--border)]">
-                  <div>
-                    <h3 className="text-xl font-black text-[var(--text-main)] flex items-center gap-2">
-                      <span className="text-2xl">🧊</span> Il mio Frigorifero
-                    </h3>
-                    <p className="text-xs font-semibold text-[var(--text-muted)] mt-1">
-                      {allInventoryCount === 0 
-                        ? 'Seleziona gli ingredienti che hai in frigo per trovare ricette su misura' 
-                        : `Hai ${allInventoryCount} ingredienti salvati in frigo • ${filteredMeals.length} ricette abbinabili trovate!`}
-                    </p>
-                  </div>
-                  {allInventoryCount > 0 && (
-                    <button 
-                      onClick={() => {
-                        setFridgeIngredients([]);
-                        localStorage.removeItem('chelona_fridge_ingredients');
-                      }}
-                      className="text-xs font-bold text-red-500 hover:text-red-600 px-3 py-1.5 rounded-xl border border-red-500/20 hover:bg-red-500/10 transition-colors cursor-pointer"
-                    >
-                      Svuota frigo
-                    </button>
-                  )}
-                </div>
-
-                {/* Manual Add Input */}
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    placeholder="Aggiungi al Frigo..."
-                    value={inventoryInput}
-                    onChange={(e) => setInventoryInput(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && inventoryInput.trim()) {
-                        const val = inventoryInput.trim().toLowerCase();
-                        if (!activeList.includes(val)) {
-                          setActiveList(prev => [...prev, val]);
-                        }
-                        setInventoryInput('');
-                      }
-                    }}
-                    className="flex-1 bg-[var(--surface-variant)] border border-[var(--border)] rounded-2xl px-4 py-3 text-sm text-[var(--text-main)] outline-none focus:ring-2 focus:ring-sky-500"
-                  />
-                  <button
-                    onClick={() => {
-                      if (inventoryInput.trim()) {
-                        const val = inventoryInput.trim().toLowerCase();
-                        if (!activeList.includes(val)) {
-                          setActiveList(prev => [...prev, val]);
-                        }
-                        setInventoryInput('');
-                      }
-                    }}
-                    className="px-6 py-3.5 bg-sky-500 hover:bg-sky-600 text-white rounded-2xl font-bold text-sm transition-all shadow-lg shadow-sky-500/20 active:scale-95 shrink-0 cursor-pointer"
-                  >
-                    + Aggiungi
-                  </button>
-                </div>
-
-                {/* Active Stock Chips */}
-                {activeList.length > 0 && (
-                  <div className="bg-[var(--bg)] p-4 rounded-2xl border border-[var(--border)]">
-                    <p className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest mb-3">Ingredienti in Frigo ({activeList.length})</p>
-                    <div className="flex flex-wrap gap-2">
-                      {activeList.map(ing => (
-                        <span key={ing} className="inline-flex items-center gap-1.5 bg-sky-500/10 text-sky-500 border border-sky-500/20 px-3.5 py-1.5 rounded-xl text-xs font-extrabold capitalize shadow-xs">
-                          <span>🧊 {ing}</span>
-                          <button 
-                            onClick={() => setActiveList(prev => prev.filter(i => i !== ing))} 
-                            className="w-4 h-4 rounded-full bg-sky-500/20 text-sky-600 hover:bg-red-500/30 hover:text-red-500 flex items-center justify-center text-xs transition-colors ml-1 cursor-pointer"
-                            title="Rimuovi"
-                          >
-                            ×
-                          </button>
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
+              <div className="relative w-full sm:w-64">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] w-4 h-4" />
+                <input
+                  type="text"
+                  placeholder="Cerca tra queste..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full bg-[var(--surface-variant)] border border-[var(--border)] rounded-xl py-2 pl-9 pr-4 text-[var(--text-main)] outline-none text-sm"
+                />
               </div>
-              );
-            })()}
+            </div>
 
             {loading ? (
               <div className="flex items-center justify-center py-20">
@@ -1035,17 +874,6 @@ export function RecipesScreen({
                     <div className="p-4 flex-1 flex flex-col justify-center">
                       <div className="flex items-center justify-between mb-1 gap-2">
                         <span className="text-xs font-bold text-orange-500 uppercase tracking-wider truncate">{meal.category}</span>
-                        {selectedCategory === 'fridge' && (meal as any).missingIngredients !== undefined && (
-                          (meal as any).missingIngredients.length === 0 ? (
-                            <span className="text-[10px] font-bold text-green-400 bg-green-900/30 px-2 py-0.5 rounded-full whitespace-nowrap">
-                              ✅ Hai tutto!
-                            </span>
-                          ) : (
-                            <span className="text-[10px] font-bold text-red-400 bg-red-900/30 px-2 py-0.5 rounded-full whitespace-nowrap">
-                              ❌ Mancano {(meal as any).missingIngredients.length}
-                            </span>
-                          )
-                        )}
                       </div>
                       <h3 className="font-bold text-[var(--text-main)] text-lg line-clamp-2 leading-tight group-hover:text-orange-500 transition-colors">{meal.title}</h3>
                     </div>
@@ -2364,7 +2192,6 @@ export function RecipesScreen({
                         {selectedMeal.ingredients.map((ing: string, i: number) => {
                           const isChecked = selectedMealIngredients.has(ing);
                           const parsed = parseIngredient(ing);
-                          const isMissing = selectedCategory === 'fridge' && selectedMeal.missingIngredients?.includes(ing);
 
                           return (
                             <li
@@ -2381,7 +2208,7 @@ export function RecipesScreen({
                                 isChecked
                                   ? 'bg-orange-500/10 border-orange-500/30 text-[var(--text-main)] shadow-xs'
                                   : 'bg-[var(--surface-variant)]/40 border-[var(--border)] text-[var(--text-muted)] hover:border-orange-500/20'
-                              } ${isMissing ? 'ring-1 ring-red-500/40' : ''}`}
+                              }`}
                             >
                               <div className={`w-5 h-5 rounded-lg flex items-center justify-center transition-colors shrink-0 ${
                                 isChecked ? 'bg-orange-500 text-white' : 'border border-[var(--border)] bg-[var(--card-bg)] text-transparent'
@@ -2400,12 +2227,6 @@ export function RecipesScreen({
                                     : 'bg-[var(--surface-variant)] text-[var(--text-muted)] border-transparent'
                                 }`}>
                                   {parsed.quantity}
-                                </span>
-                              )}
-
-                              {isMissing && (
-                                <span className="text-[10px] font-black bg-red-900/30 text-red-400 px-1.5 py-0.5 rounded ml-1 shrink-0">
-                                  Manca
                                 </span>
                               )}
                             </li>

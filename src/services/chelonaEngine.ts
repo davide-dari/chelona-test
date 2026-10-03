@@ -447,7 +447,6 @@ export { detectSupermarketCategory };
 function loadRecipesKnowledge(): ChelonaKnowledge['recipes'] {
   let customList: { id: string; title: string; category: string; ingredients: string[] }[] = [];
   let favoritesList: string[] = [];
-  let fridgeIngredients: string[] = [];
 
   if (typeof window !== 'undefined' && typeof localStorage !== 'undefined' && localStorage?.getItem) {
     try {
@@ -462,14 +461,7 @@ function loadRecipesKnowledge(): ChelonaKnowledge['recipes'] {
         favoritesList = parsed.map((f: any) => typeof f === 'string' ? f : f.title || f.titolo || '');
       }
     } catch {}
-
-    try {
-      const rawFridge = localStorage.getItem('chelona_fridge_ingredients');
-      if (rawFridge) fridgeIngredients = JSON.parse(rawFridge);
-    } catch {}
   }
-
-  const allIngredients = fridgeIngredients;
 
   return {
     count: customList.length,
@@ -478,8 +470,6 @@ function loadRecipesKnowledge(): ChelonaKnowledge['recipes'] {
     customList,
     favoritesCount: favoritesList.length,
     favoritesList,
-    fridgeIngredients,
-    allIngredients,
   };
 }
 
@@ -646,8 +636,6 @@ export interface ChelonaKnowledge {
     customList: { id: string; title: string; category: string; ingredients: string[] }[];
     favoritesCount: number;
     favoritesList: string[];
-    fridgeIngredients: string[];
-    allIngredients: string[];
   };
   travel: {
     module?: TravelModule;
@@ -1119,11 +1107,6 @@ export function buildKnowledgeBase(modules: Module[], username: string): Chelona
         k.recipes.customCount = k.recipes.customList.length;
         k.recipes.favoritesCount = k.recipes.favoritesList.length;
       }
-      if (Array.isArray(rec.fridgeItems)) {
-        const items = rec.fridgeItems.map((fi: any) => typeof fi === 'string' ? fi : fi.name || '').filter(Boolean);
-        k.recipes.fridgeIngredients = Array.from(new Set([...k.recipes.fridgeIngredients, ...items]));
-      }
-      k.recipes.allIngredients = Array.from(new Set(k.recipes.fridgeIngredients));
     }
 
     // 11. CASA & ARREDO
@@ -1671,7 +1654,7 @@ async function _queryChelonaAiInner(
     lower.includes('ingrend') || lower.includes('igred') || lower.includes('piatt') ||
     lower.includes('dimmi') || lower.includes('quali sono') || lower.includes('quando chiedo') ||
     lower.includes('chiedo')
-  ) && !lower.includes('compra') && !lower.includes('lista della spesa') && !lower.includes('cosa cucino') && !lower.includes('cosa ho in frigo');
+  ) && !lower.includes('compra') && !lower.includes('lista della spesa') && !lower.includes('cosa cucino');
 
   if (isDishSearchCandidate) {
     const catalog = await getOrLoadAllRecipes();
@@ -1695,7 +1678,7 @@ async function _queryChelonaAiInner(
       lower.includes('cosa fare') || lower.includes('cosa faccio') || lower.includes('cosa posso') ||
       lower.includes('consigli') || lower.includes('idee') || lower.includes('ho del') ||
       lower.includes('ho dei') || lower.includes('ho un po') || lower.includes('avanzat') ||
-      lower.includes('in frigo') || lower.includes('trova') || lower.includes('cerca') ||
+      lower.includes('trova') || lower.includes('cerca') ||
       lower.includes('ingred') || lower.includes('ingrand') || lower.includes('ingrend') || lower.includes('igred') ||
       lower.includes('a base di') || lower.includes('con') || lower.includes('simil') || lower.includes('corrispond')
     ))
@@ -1746,17 +1729,7 @@ async function _queryChelonaAiInner(
       }
     }
 
-    // Se l'utente chiede genericamente "a base di un ingrediente", consigli per pranzo/cena
-    const fridgeCombined = k.recipes.fridgeIngredients || [];
-    const fridgeEntities = fridgeCombined.length > 0 ? extractFoodEntities(fridgeCombined.join(', ')) : [];
-    
     let suggested: RecipeCatalogItem[] = [];
-    if (fridgeEntities.length > 0) {
-      const fridgeMatches = matchRecipesByIngredients(fridgeEntities, catalog);
-      if (fridgeMatches.length >= 3) {
-        suggested = fridgeMatches.slice(0, 3).map(m => m.recipe);
-      }
-    }
 
     if (suggested.length === 0) {
       if (isCena) {
@@ -2808,7 +2781,6 @@ async function _queryChelonaAiInner(
     lower.includes('cucinare') ||
     lower.includes('cosa cucino') ||
     lower.includes('cosa preparo') ||
-    lower.includes('frigo') ||
     lower.includes('ricettario') ||
     (lower.includes('piatt') && (lower.includes('primo') || lower.includes('secondo') || lower.includes('preparare')))
   ) {
@@ -2827,7 +2799,8 @@ async function _queryChelonaAiInner(
       lower.includes('un ingrediente') || lower.includes('un igrediente') || lower.includes('un ingrandiente') ||
       lower.includes('ingrand') || lower.includes('ingred') || lower.includes('igred') ||
       lower.includes('che devo') || lower.includes('cosa fare');
-    if (!lower.includes('cosa cucino') && !lower.includes('cosa ho') && !hasConversationalJunk && (lower.includes('ricett') || lower.includes('come fare') || lower.includes('cerca') || lower.includes('trova'))) {
+    const isOverviewQuery = lower.includes('mie ricette') || lower.includes('le ricette') || lower.includes('miei piatti') || lower.includes('elenco ricette') || lower.includes('quali ricette') || lower.includes('quali sono') || lower.includes('salvate') || lower.includes('preferit');
+    if (!isOverviewQuery && !lower.includes('cosa cucino') && !lower.includes('cosa ho') && !hasConversationalJunk && (lower.includes('ricett') || lower.includes('come fare') || lower.includes('cerca') || lower.includes('trova'))) {
       const catalog = await getOrLoadAllRecipes();
       const specificDish = searchRecipeByDishTitle(query, catalog);
       if (specificDish) {
@@ -2842,47 +2815,10 @@ async function _queryChelonaAiInner(
       };
     }
 
-    // Ingredienti in frigo
-    const askingForFridge = lower.includes('frigo') || lower.includes('cosa ho') || (lower.includes('ingredienti') && !lower.includes('ricett') && !lower.includes('cucin'));
-    if (askingForFridge) {
-      const fridge = k.recipes.fridgeIngredients;
-
-      if (fridge.length > 0) {
-        const foodEntities = extractFoodEntities(fridge.join(', '));
-        if (foodEntities.length > 0) {
-          const catalog = await getOrLoadAllRecipes();
-          const matches = matchRecipesByIngredients(foodEntities, catalog);
-          if (matches.length > 0) {
-            const formatted = formatRecipeMatchResponse(foodEntities, matches);
-            return {
-              text: `❄️ **Nel Frigo (${fridge.join(', ')}):**\n\n${formatted.text}`,
-              actions: formatted.actions,
-              engineUsed: 'chelona-engine',
-            };
-          }
-        }
-      }
-
-      let out = `🧑‍🍳 **Ingredienti disponibili registrati:**\n\n`;
-      if (fridge.length > 0) out += `❄️ **Nel Frigo**: ${fridge.join(', ')}\n`;
-
-      if (fridge.length === 0) {
-        out += `Non hai ancora segnato ingredienti in frigo. Puoi farlo dalla sezione Ricette!\n`;
-      } else {
-        out += `\n💡 Con questi ingredienti puoi cucinare un primo veloce o personalizzare il menù settimanale!`;
-      }
-
-      return {
-        text: out,
-        actions: [{ label: 'Apri Ricette & Frigo', type: 'recipes' }],
-      };
-    }
-
     // Panoramica ricettario
     let out = `🍲 **Ricettario & Pianificatore Menù:**\n\n`;
     out += `- 📖 Ricette salvate e create: **${k.recipes.customCount}**\n`;
-    out += `- ⭐ Piatti preferiti: **${k.recipes.favoritesCount}**\n`;
-    out += `- 🥗 Ingredienti censiti (frigo): **${k.recipes.allIngredients.length}**\n\n`;
+    out += `- ⭐ Piatti preferiti: **${k.recipes.favoritesCount}**\n\n`;
 
     if (k.recipes.customList.length > 0) {
       out += `**Alcune delle tue ricette:**\n`;
@@ -2892,7 +2828,7 @@ async function _queryChelonaAiInner(
       out += `\n`;
     }
 
-    out += `Puoi chiedermi ad esempio *"Cosa ho nel frigo?"* o *"Cerca ricetta carbonara"*!`;
+    out += `Puoi chiedermi ad esempio *"Cerca ricetta carbonara"* o *"Cosa cucino per pranzo?"*!`;
 
     return {
       text: out,
@@ -2917,7 +2853,7 @@ async function _queryChelonaAiInner(
     lower.includes('fabbisogno calorico') ||
     lower.includes('piano alimentare') ||
     lower.includes('partner fitness') ||
-    ((lower.includes('mangiare') || lower.includes('pasto') || lower.includes('pasti')) && !lower.includes('cucin') && !lower.includes('ricett') && !lower.includes('frigo'))
+    ((lower.includes('mangiare') || lower.includes('pasto') || lower.includes('pasti')) && !lower.includes('cucin') && !lower.includes('ricett'))
   ) {
     if (!k.fitness) {
       return {
@@ -3574,7 +3510,7 @@ async function _queryChelonaAiInner(
     out += `5. 🗓️ **Rate & Finanziamenti**: Piani rateali, importo residuo e data prossima rata\n`;
     out += `6. 🛒 **Volantini & Sconti**: Tutte le catene (Lidl, Conad, Coop, Esselunga...) e confronto prezzi\n`;
     out += `7. 📝 **Lista della Spesa**: Articoli da comprare e aggiunta rapida ("Aggiungi pane alla spesa")\n`;
-    out += `8. 🍲 **Ricette & Cucina**: Ricettario, ingredienti in frigo e consigli piatti\n`;
+    out += `8. 🍲 **Ricette & Cucina**: Ricettario, sfoglia piatti e consigli culinari\n`;
     out += `9. 🏋️ **Fitness & Allenamento**: Schede palestra, esercizi, serie/ripetizioni e calorie giornaliere\n`;
     out += `10. ✈️ **Viaggi & Itinerari**: Mete sul Globo 3D, tappe itinerario e checklist valigia\n`;
     out += `11. 🏠 **Casa & Arredo**: Misure stanze, mobili e calcolo preventivi arredo\n`;
@@ -3633,9 +3569,6 @@ async function _queryChelonaAiInner(
     }
     if (k.supermarket) {
       out += `• ${k.supermarket.itemsToBuy.length} articoli da comprare nella lista spesa\n`;
-    }
-    if (k.recipes.allIngredients.length > 0) {
-      out += `• ${k.recipes.allIngredients.length} ingredienti censiti nel frigo\n`;
     }
     if (k.travel.destinationsCount > 0) {
       out += `• ${k.travel.destinationsCount} tappe di viaggio in ${k.travel.nations.length} nazioni\n`;

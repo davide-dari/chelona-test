@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { Sun, Moon, Wrench, Plus, LayoutDashboard, Settings, User, LogOut, Search, Mic, MicOff, Loader2, Bell, CreditCard, Fingerprint, ShieldCheck, Lock, Menu, X, StickyNote, FileText, Grid2X2, Car, QrCode, Folder as FolderIcon, Check, Edit2, Trash2, BookOpen, ArrowLeft, ArrowRight, Camera, FileDown, Hourglass, Users, Download, Receipt, MapPin, SquareParking, Image as ImageIcon, Lightbulb, Globe, ChevronLeft, Bus, Home, Armchair, Activity, ShoppingBasket, BadgePercent, Sparkles, CalendarClock, Calendar, AlertCircle, CheckCircle2, Battery, Wallet, Flame, ArrowUpRight, Smartphone, Stethoscope, FileSignature } from 'lucide-react';
+import { Sun, Moon, Wrench, Plus, LayoutDashboard, Settings, User, LogOut, Search, Mic, MicOff, Loader2, Bell, CreditCard, Fingerprint, ShieldCheck, Lock, Menu, X, StickyNote, FileText, Grid2X2, Car, QrCode, Folder as FolderIcon, Check, Edit2, Trash2, BookOpen, ArrowLeft, ArrowRight, Camera, FileDown, Hourglass, Users, Download, Receipt, MapPin, SquareParking, Image as ImageIcon, Lightbulb, Globe, ChevronLeft, Bus, Home, Armchair, Activity, ShoppingBasket, BadgePercent, Sparkles, CalendarClock, Calendar, AlertCircle, CheckCircle2, Battery, Wallet, Flame, ArrowUpRight, Smartphone, Stethoscope, FileSignature, FlaskConical } from 'lucide-react';
 
 import { Module, ModuleType, Folder, DocumentModule } from './types';
 import { isModuleSensitive } from './utils/security';
@@ -261,6 +261,12 @@ const TEMPLATES = {
     content: '',
     icon: Home,
     color: 'text-teal-500'
+  },
+  testing: {
+    title: 'Testing',
+    content: '',
+    icon: FlaskConical,
+    color: 'text-indigo-500'
   }
 };
 
@@ -313,7 +319,7 @@ export default function App() {
   const [sharingModule, setSharingModule] = useState<Module | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [voiceResponse, setVoiceResponse] = useState<{ query: string; answer: string } | null>(null);
-  const [selectedType, setSelectedType] = useState<ModuleType | 'home' | null>(null);
+  const [selectedType, setSelectedType] = useState<ModuleType | 'home' | 'testing' | null>(null);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
   const [isSplashScreenActive, setIsSplashScreenActive] = useState(true);
   const [homeSubMenu, setHomeSubMenu] = useState(false);
@@ -797,6 +803,7 @@ export default function App() {
       }
       if (showGemma2Setup) { setShowGemma2Setup(false); return; }
       if (isProfileOpen) { setIsProfileOpen(false); return; }
+      if (isSettingsOpen) { setIsSettingsOpen(false); return; }
       if (isAiOpen) { setIsAiOpen(false); if (activeNavTab === 'ai') setActiveNavTab('home'); return; }
 
       if (activeToolId) { setActiveToolId(null); return; }
@@ -826,7 +833,7 @@ export default function App() {
     moduleToDelete, showGalleryViewer, gallerySelectedImage,
     editingAutoModule, editingSplitModule, editingSingleExpenseModule,
     editingTravelModule, editingStudyModule, editingFitnessModule, editingDocumentModule,
-    editingGenericModule, editingFurnitureModule, editingInstallmentsModule, editingSupermarketModule, editingVolantinoModule, editingModuleId, isAdding, isProfileOpen,
+    editingGenericModule, editingFurnitureModule, editingInstallmentsModule, editingSupermarketModule, editingVolantinoModule, editingModuleId, isAdding, isProfileOpen, isSettingsOpen,
     activeToolId, isToolsOpen, isArchiveOpen, isAddressAndParkingOpen, isAddressBookOpen, isParkingOpen, isRecipesOpen, isDoctorOpen, isRecessoOpen,
     isSidebarOpen, selectedFolderId, selectedType, spesaSubMenu
   ]);
@@ -1677,25 +1684,6 @@ export default function App() {
           showToast(`Profilo "${profile.username}" importato!`);
           window.dispatchEvent(new Event('chelona_profiles_updated'));
         }
-        return;
-      }
-
-      // 2. Gestione Condivisione Frigo (globale, non cifrata, permessa sempre)
-      if (typeof parsedData.type === 'string' && parsedData.type === 'shared_fridge') {
-        const ingredients = Array.isArray(parsedData.data) ? parsedData.data.filter((i: any) => typeof i === 'string' && i.trim().length > 0) as string[] : [];
-        if (ingredients.length === 0) {
-          showToast('QR frigorifero non valido', 'error');
-          return;
-        }
-        let current: string[] = [];
-        try {
-          const saved = localStorage.getItem('chelona_fridge_ingredients');
-          current = saved ? JSON.parse(saved) : [];
-        } catch {}
-        const merged = [...new Set([...current, ...ingredients])];
-        localStorage.setItem('chelona_fridge_ingredients', JSON.stringify(merged));
-        window.dispatchEvent(new Event('chelona_fridge_updated'));
-        showToast(`Frigorifero aggiornato: ${ingredients.length} ingredienti aggiunti!`);
         return;
       }
 
@@ -3561,13 +3549,14 @@ export default function App() {
               <header className="h-16 lg:h-20 bg-[var(--bg)] px-3 sm:px-5 lg:px-12 flex items-center justify-between shrink-0 z-10 safe-area-header transition-all">
                 {/* Left side: Contextual Title or Logo */}
                 <div className="flex items-center gap-3 sm:gap-4">
-                  {(activeNavTab !== 'home' || isToolsOpen || isProfileOpen || isAiOpen || selectedType || selectedFolderId) && (
+                  {(activeNavTab !== 'home' || isToolsOpen || isProfileOpen || isSettingsOpen || isAiOpen || selectedType || selectedFolderId) && (
                     <button 
                       onClick={() => { 
                         closeAllEditingModals();
                         setActiveNavTab('home'); 
                         setIsToolsOpen(false); 
                         setIsProfileOpen(false); 
+                        setIsSettingsOpen(false);
                         setIsAiOpen(false);
                         setSelectedType(null); 
                         setSelectedFolderId(null); 
@@ -3582,7 +3571,7 @@ export default function App() {
                     </button>
                   )}
 
-                  {!selectedType && !isToolsOpen && !isProfileOpen && !isAiOpen && !selectedFolderId && activeNavTab === 'home' ? (
+                  {!selectedType && !isToolsOpen && !isProfileOpen && !isSettingsOpen && !isAiOpen && !selectedFolderId && activeNavTab === 'home' ? (
                     <div 
                       className="flex items-center gap-2.5 sm:gap-3 cursor-pointer select-none group"
                       onClick={() => {
@@ -3611,8 +3600,10 @@ export default function App() {
                          activeNavTab === 'deadlines' ? 'Scadenze & Promemoria' :
                          isToolsOpen ? 'Strumenti' : 
                          isProfileOpen ? 'Profilo' :
+                         isSettingsOpen ? 'Impostazioni' :
                          selectedFolderId ? (folders.find(f => f.id === selectedFolderId)?.name || 'Cartella') : 
                          selectedType === 'home' ? 'Casa, Offerte & Spesa' :
+                         selectedType === 'testing' ? 'Testing & Nuove Funzioni' :
                          selectedType === 'split' ? 'Spese & Conti' :
                          selectedType ? (TEMPLATES[selectedType as keyof typeof TEMPLATES]?.title || 'Sandbox') : 'Chelona'}
                       </h1>
@@ -3623,7 +3614,7 @@ export default function App() {
                 {/* Right side: Action buttons */}
                 <div className="flex items-center gap-1.5 sm:gap-2">
                   <button 
-                    onClick={() => { setIsToolsOpen(true); setIsProfileOpen(false); setIsAiOpen(false); setSelectedType(null); }} 
+                    onClick={() => { setIsToolsOpen(true); setIsProfileOpen(false); setIsSettingsOpen(false); setIsAiOpen(false); setSelectedType(null); }} 
                     className="p-2 sm:p-2.5 bg-[var(--surface-variant)] hover:bg-[var(--border)] rounded-full text-[var(--accent)] transition-all hidden md:flex items-center justify-center shadow-sm cursor-pointer"
                     title="Strumenti"
                   >
@@ -3640,7 +3631,15 @@ export default function App() {
                   </button>
 
                   <button 
-                    onClick={() => { setIsProfileOpen(true); setIsAiOpen(false); }} 
+                    onClick={() => { setIsSettingsOpen(true); setIsProfileOpen(false); setIsAiOpen(false); }} 
+                    className="p-2 sm:p-2.5 bg-[var(--surface-variant)] hover:bg-[var(--border)] rounded-full text-[var(--text-main)] hover:text-[var(--accent)] transition-all flex items-center justify-center shadow-sm cursor-pointer ml-1"
+                    title="Impostazioni"
+                  >
+                    <Settings className="w-5 h-5" />
+                  </button>
+
+                  <button 
+                    onClick={() => { setIsProfileOpen(true); setIsSettingsOpen(false); setIsAiOpen(false); }} 
                     className="w-11 h-11 sm:w-12 sm:h-12 lg:w-14 lg:h-14 rounded-full overflow-hidden border-2 border-[var(--accent)]/40 focus:outline-none hover:opacity-85 hover:border-[var(--accent)] transition-all bg-[var(--surface-variant)] shadow-md cursor-pointer ml-1"
                     title="Profilo utente"
                   >
@@ -3652,10 +3651,14 @@ export default function App() {
 
 
               <div className="flex-1 overflow-y-auto w-full custom-scrollbar">
-                {isProfileOpen ? (
+                {isProfileOpen || isSettingsOpen ? (
               <React.Suspense fallback={<div className="flex items-center justify-center p-20"><div className="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div></div>}>
                 <ProfileScreen
-                  onClose={() => setIsProfileOpen(false)}
+                  mode={isSettingsOpen ? 'settings' : 'profile'}
+                  onClose={() => {
+                    setIsProfileOpen(false);
+                    setIsSettingsOpen(false);
+                  }}
                   username={username}
                   avatar={avatar}
                   currentProfileId={currentProfileId!}
@@ -3678,6 +3681,7 @@ export default function App() {
                   onToggleTheme={toggleTheme}
                   onOpenGemma2Setup={() => {
                     setIsProfileOpen(false);
+                    setIsSettingsOpen(false);
                     setShowGemma2Setup(true);
                   }}
                 />
@@ -4957,7 +4961,7 @@ export default function App() {
                                 </div>
                               </div>
                               <p className="text-xs text-[var(--text-muted)] line-clamp-2 leading-relaxed">
-                                Volantini sconti supermercati, lista della spesa, ricettario e arredo
+                                Volantini sconti supermercati, lista della spesa e ricettario
                               </p>
                             </div>
                           </button>
@@ -5124,32 +5128,32 @@ export default function App() {
                             </div>
                           </button>
 
-                          {/* 9. Disdette & Recessi */}
+                          {/* 9. Testing & Sperimentale */}
                           <button
-                            onClick={() => handleCardClick(() => setIsRecessoOpen(true))}
-                            onTouchStart={(e) => handleSectionPressStart({ id: 'recesso', title: 'Disdette & Recessi', icon: FileSignature, color: 'rose' }, e)}
+                            onClick={() => handleCardClick(() => setSelectedType('testing'))}
+                            onTouchStart={(e) => handleSectionPressStart({ id: 'testing', title: 'Testing & Nuove Funzioni', icon: FlaskConical, color: 'indigo' }, e)}
                             onTouchEnd={handleSectionPressEnd}
                             onTouchMove={handleSectionTouchMove}
-                            onMouseDown={(e) => handleSectionPressStart({ id: 'recesso', title: 'Disdette & Recessi', icon: FileSignature, color: 'rose' }, e)}
+                            onMouseDown={(e) => handleSectionPressStart({ id: 'testing', title: 'Testing & Nuove Funzioni', icon: FlaskConical, color: 'indigo' }, e)}
                             onMouseUp={handleSectionPressEnd}
                             onMouseLeave={handleSectionPressEnd}
                             onContextMenu={(e) => e.preventDefault()}
-                            className="bg-[var(--card-bg)] p-6 lg:p-7 rounded-[2.5rem] border border-[var(--border)] hover:border-rose-500/50 shadow-sm hover:shadow-lg transition-all text-left flex items-start gap-4 group active:scale-[0.99] relative overflow-hidden select-none cursor-pointer"
+                            className="bg-[var(--card-bg)] p-6 lg:p-7 rounded-[2.5rem] border border-[var(--border)] hover:border-indigo-500/50 shadow-sm hover:shadow-lg transition-all text-left flex items-start gap-4 group active:scale-[0.99] relative overflow-hidden select-none cursor-pointer"
                           >
-                            <div className="w-14 h-14 rounded-3xl bg-rose-500/10 text-rose-500 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform shadow-inner">
-                              <FileSignature className="w-7 h-7" />
+                            <div className="w-14 h-14 rounded-3xl bg-indigo-500/10 text-indigo-500 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform shadow-inner">
+                              <FlaskConical className="w-7 h-7" />
                             </div>
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center justify-between gap-2 mb-1">
-                                <h4 className="font-black text-base lg:text-lg text-[var(--text-main)]">Disdette & Recessi</h4>
+                                <h4 className="font-black text-base lg:text-lg text-[var(--text-main)]">Testing</h4>
                                 <div className="flex items-center gap-1.5">
-                                  <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-rose-500/10 text-rose-500 border border-rose-500/20">
-                                    PEC Legale
+                                  <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-indigo-500/10 text-indigo-500 border border-indigo-500/20">
+                                    LAB
                                   </span>
                                 </div>
                               </div>
                               <p className="text-xs text-[var(--text-muted)] line-clamp-2 leading-relaxed">
-                                Disdetta contratti telefonia, energia, streaming e palestre con firma
+                                Arredamento stanze, disdette & recessi contrattuali e funzioni in test
                               </p>
                             </div>
                           </button>
@@ -5164,7 +5168,7 @@ export default function App() {
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                           <button
                             onClick={() => { setInitialRecipesCategory(null); setIsRecipesOpen(true); }}
-                            className="bg-[var(--card-bg)] p-6 lg:p-8 rounded-[2.5rem] border border-[var(--border)] shadow-sm hover:border-orange-500/50 hover:bg-orange-500/5 transition-all group flex flex-col items-center text-center gap-4"
+                            className="bg-[var(--card-bg)] p-6 lg:p-8 rounded-[2.5rem] border border-[var(--border)] shadow-sm hover:border-orange-500/50 hover:bg-orange-500/5 transition-all group flex flex-col items-center text-center gap-4 cursor-pointer"
                           >
                             <div className="w-16 h-16 bg-orange-500/10 text-orange-500 rounded-3xl flex items-center justify-center group-hover:scale-110 transition-transform shadow-inner">
                               <BookOpen className="w-8 h-8" />
@@ -5172,47 +5176,6 @@ export default function App() {
                             <div>
                               <p className="font-black text-[var(--text-main)] text-lg">Ricette</p>
                               <p className="text-sm text-[var(--text-muted)] mt-1">Il tuo ricettario personale</p>
-                            </div>
-                          </button>
-
-                          <button
-                            onClick={() => {
-                              const existingFurniture = modules.find(m => m.type === 'furniture') as import('./types').FurnitureModule;
-                              if (existingFurniture) {
-                                setEditingFurnitureModule(existingFurniture);
-                              } else {
-                                const newFurniture: import('./types').FurnitureModule = {
-                                  id: generateUUID(),
-                                  type: 'furniture',
-                                  title: 'Arredamento',
-                                  rooms: [
-                                    { id: generateUUID(), name: 'Cucina', items: [] },
-                                    { id: generateUUID(), name: 'Salone', items: [] },
-                                    { id: generateUUID(), name: 'Camera da letto', items: [] },
-                                    { id: generateUUID(), name: 'Bagno', items: [] }
-                                  ],
-                                  x: (modules.length * 2) % 12,
-                                  y: Infinity,
-                                  w: 3,
-                                  h: 3,
-                                  folderId: selectedFolderId || undefined
-                                };
-                                setModules(prev => {
-                                  const updated = [newFurniture, ...prev];
-                                  saveAppState(updated, folders).catch(console.error);
-                                  return updated;
-                                });
-                                setEditingFurnitureModule(newFurniture);
-                              }
-                            }}
-                            className="bg-[var(--card-bg)] p-6 lg:p-8 rounded-[2.5rem] border border-[var(--border)] shadow-sm hover:border-teal-500/50 hover:bg-teal-500/5 transition-all group flex flex-col items-center text-center gap-4"
-                          >
-                            <div className="w-16 h-16 bg-teal-500/10 text-teal-500 rounded-3xl flex items-center justify-center group-hover:scale-110 transition-transform shadow-inner">
-                              <Armchair className="w-8 h-8" />
-                            </div>
-                            <div>
-                              <p className="font-black text-[var(--text-main)] text-lg">Arredamento</p>
-                              <p className="text-sm text-[var(--text-muted)] mt-1">Idee e acquisti per stanze</p>
                             </div>
                           </button>
 
@@ -5241,7 +5204,7 @@ export default function App() {
                                 setEditingSupermarketModule(newSupermarket);
                               }
                             }}
-                            className="bg-[var(--card-bg)] p-6 lg:p-8 rounded-[2.5rem] border border-[var(--border)] shadow-sm hover:border-emerald-500/50 hover:bg-emerald-500/5 transition-all group flex flex-col items-center text-center gap-4"
+                            className="bg-[var(--card-bg)] p-6 lg:p-8 rounded-[2.5rem] border border-[var(--border)] shadow-sm hover:border-emerald-500/50 hover:bg-emerald-500/5 transition-all group flex flex-col items-center text-center gap-4 cursor-pointer"
                           >
                             <div className="w-16 h-16 bg-emerald-500/10 text-emerald-500 rounded-3xl flex items-center justify-center group-hover:scale-110 transition-transform shadow-inner">
                               <ShoppingBasket className="w-8 h-8" />
@@ -5278,7 +5241,7 @@ export default function App() {
                                 setEditingVolantinoModule(newVolantino);
                               }
                             }}
-                            className="bg-[var(--card-bg)] p-6 lg:p-8 rounded-[2.5rem] border border-[var(--border)] shadow-sm hover:border-amber-500/50 hover:bg-amber-500/5 transition-all group flex flex-col items-center text-center gap-4"
+                            className="bg-[var(--card-bg)] p-6 lg:p-8 rounded-[2.5rem] border border-[var(--border)] shadow-sm hover:border-amber-500/50 hover:bg-amber-500/5 transition-all group flex flex-col items-center text-center gap-4 cursor-pointer"
                           >
                             <div className="w-16 h-16 bg-amber-500/10 text-amber-500 rounded-3xl flex items-center justify-center group-hover:scale-110 transition-transform shadow-inner">
                               <BadgePercent className="w-8 h-8" />
@@ -5286,6 +5249,68 @@ export default function App() {
                             <div>
                               <p className="font-black text-[var(--text-main)] text-lg">Volantino</p>
                               <p className="text-sm text-[var(--text-muted)] mt-1">Confronta le offerte</p>
+                            </div>
+                          </button>
+                        </div>
+                      </div>
+                    ) : selectedType === 'testing' ? (
+                      <div className="px-4 lg:px-8 pb-32">
+                        <h3 className="text-xl font-bold text-[var(--text-main)] mb-6 flex items-center gap-2">
+                          <FlaskConical className="w-6 h-6 text-indigo-500" />
+                          Testing & Funzioni Sperimentali
+                        </h3>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <button
+                            onClick={() => {
+                              const existingFurniture = modules.find(m => m.type === 'furniture') as import('./types').FurnitureModule;
+                              if (existingFurniture) {
+                                setEditingFurnitureModule(existingFurniture);
+                              } else {
+                                const newFurniture: import('./types').FurnitureModule = {
+                                  id: generateUUID(),
+                                  type: 'furniture',
+                                  title: 'Arredamento',
+                                  rooms: [
+                                    { id: generateUUID(), name: 'Cucina', items: [] },
+                                    { id: generateUUID(), name: 'Salone', items: [] },
+                                    { id: generateUUID(), name: 'Camera da letto', items: [] },
+                                    { id: generateUUID(), name: 'Bagno', items: [] }
+                                  ],
+                                  x: (modules.length * 2) % 12,
+                                  y: Infinity,
+                                  w: 3,
+                                  h: 3,
+                                  folderId: selectedFolderId || undefined
+                                };
+                                setModules(prev => {
+                                  const updated = [newFurniture, ...prev];
+                                  saveAppState(updated, folders).catch(console.error);
+                                  return updated;
+                                });
+                                setEditingFurnitureModule(newFurniture);
+                              }
+                            }}
+                            className="bg-[var(--card-bg)] p-6 lg:p-8 rounded-[2.5rem] border border-[var(--border)] shadow-sm hover:border-teal-500/50 hover:bg-teal-500/5 transition-all group flex flex-col items-center text-center gap-4 cursor-pointer"
+                          >
+                            <div className="w-16 h-16 bg-teal-500/10 text-teal-500 rounded-3xl flex items-center justify-center group-hover:scale-110 transition-transform shadow-inner">
+                              <Armchair className="w-8 h-8" />
+                            </div>
+                            <div>
+                              <p className="font-black text-[var(--text-main)] text-lg">Arredamento</p>
+                              <p className="text-sm text-[var(--text-muted)] mt-1">Idee e acquisti per stanze</p>
+                            </div>
+                          </button>
+
+                          <button
+                            onClick={() => setIsRecessoOpen(true)}
+                            className="bg-[var(--card-bg)] p-6 lg:p-8 rounded-[2.5rem] border border-[var(--border)] shadow-sm hover:border-rose-500/50 hover:bg-rose-500/5 transition-all group flex flex-col items-center text-center gap-4 cursor-pointer"
+                          >
+                            <div className="w-16 h-16 bg-rose-500/10 text-rose-500 rounded-3xl flex items-center justify-center group-hover:scale-110 transition-transform shadow-inner">
+                              <FileSignature className="w-8 h-8" />
+                            </div>
+                            <div>
+                              <p className="font-black text-[var(--text-main)] text-lg">Disdette & Recessi</p>
+                              <p className="text-sm text-[var(--text-muted)] mt-1">Generatore disdette PEC legali</p>
                             </div>
                           </button>
                         </div>
@@ -5361,7 +5386,7 @@ export default function App() {
           {(selectedType !== 'gallery') && !editingTravelModule && !editingStudyModule && !editingFitnessModule && !isAdding && !editingModuleId && !isArchiveOpen && !isToolsOpen && !editingAutoModule && !editingSplitModule && !editingSingleExpenseModule && !editingDocumentModule && !editingGenericModule && !editingFurnitureModule && !editingInstallmentsModule && !editingSupermarketModule && !editingVolantinoModule && (
             <>
               {/* Scan QR Button: solo nelle categorie come tasto discreto e non invasivo */}
-              {selectedType && (
+              {selectedType && selectedType !== 'home' && selectedType !== 'testing' && (
                 <motion.button
                   initial={{ scale: 0, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
@@ -5376,7 +5401,7 @@ export default function App() {
               )}
 
               {/* Tasto + solo nelle categorie (NON nella homepage) */}
-              {selectedType && (
+              {selectedType && selectedType !== 'home' && selectedType !== 'testing' && (
                 <motion.button
                   initial={{ scale: 0, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
@@ -5533,6 +5558,7 @@ export default function App() {
                     closeAllEditingModals();
                     setActiveNavTab('profile'); 
                     setIsProfileOpen(true); 
+                    setIsSettingsOpen(false);
                     setIsAiOpen(false);
                     setAiInitialVoiceMode(false);
                     setIsToolsOpen(false); 
@@ -5542,14 +5568,14 @@ export default function App() {
               ].map(item => {
                 const isAiItem = item.id === 'ai';
                 const isActive = item.id === 'home' 
-                  ? (activeNavTab === 'home' && !isToolsOpen && !isProfileOpen && !isAiOpen && !selectedType) 
+                  ? (activeNavTab === 'home' && !isToolsOpen && !isProfileOpen && !isSettingsOpen && !isAiOpen && !selectedType) 
                   : item.id === 'deadlines'
-                  ? (activeNavTab === 'deadlines' && !isToolsOpen && !isProfileOpen && !isAiOpen)
+                  ? (activeNavTab === 'deadlines' && !isToolsOpen && !isProfileOpen && !isSettingsOpen && !isAiOpen)
                   : isAiItem
                   ? (isAiOpen || activeNavTab === 'ai')
                   : item.id === 'tools' 
                   ? (isToolsOpen && !isAiOpen)
-                  : (isProfileOpen && !isAiOpen);
+                  : ((isProfileOpen || isSettingsOpen) && !isAiOpen);
 
                 const pillClasses = isActive
                   ? isAiItem
