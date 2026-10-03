@@ -2263,7 +2263,7 @@ async function _queryChelonaAiInner(
   ) {
     if (k.splits.length === 0) {
       return {
-        text: `👥 Non hai gruppi di **Spese Condivise (Split)** attivi.\n\nPuoi creare un gruppo con amici o coinquilini per dividere automaticamente uscite e calcolare "chi deve dare a chi" toccando **"+"** → **Spese & Conti**!`,
+        text: `👥 Non hai gruppi di **Spese Condivise (Split)** attivi.\n\nPuoi creare un gruppo con amici o coinquilini per dividere automaticamente uscite e calcolare "chi deve dare a chi" toccando **"+"** → **Finanze & Spese**!`,
         actions: [{ label: 'Nuovo Gruppo Split', type: 'category', category: 'split' }],
       };
     }

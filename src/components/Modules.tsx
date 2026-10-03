@@ -8,6 +8,7 @@ import { CAR_BRANDS } from '../utils/carBrands';
 import { getAutoDeadlineTargetDate, isDeadlineFeminine } from '../utils/autoDeadlines';
 import { notificationService } from '../services/notificationService';
 import { DocumentViewer } from './DocumentViewer';
+import { getExpirationCountdown } from '../utils/documentOcrParser';
 
 interface ModuleWrapperProps {
   module: Module;
@@ -154,8 +155,7 @@ export const DocumentCard = ({ module, onDelete, onEdit, onShare, onToggleSensit
     }
   };
 
-  const isExpired = module.expiryDate && new Date(module.expiryDate) < new Date();
-  const expiresSoon = module.expiryDate && !isExpired && (new Date(module.expiryDate).getTime() - new Date().getTime()) < (30 * 24 * 60 * 60 * 1000);
+  const countdown = getExpirationCountdown(module.expiryDate);
 
   return (
     <ModuleWrapper module={module} onDelete={onDelete} onEdit={onEdit} onToggleSensitivity={onToggleSensitivity}>
@@ -191,13 +191,10 @@ export const DocumentCard = ({ module, onDelete, onEdit, onShare, onToggleSensit
               <div className="text-[5px] font-bold text-white/60">
                 SCAD: <span className="text-white font-black">{module.expiryDate ? new Date(module.expiryDate).toLocaleDateString('it-IT') : '---'}</span>
               </div>
-              {isExpired ? (
-                <div className="bg-red-500 text-white px-1 py-0.5 rounded text-[5px] font-black uppercase">SCADUTO</div>
-              ) : expiresSoon ? (
-                <div className="bg-amber-400 text-black px-1 py-0.5 rounded text-[5px] font-black uppercase">IN SCADENZA</div>
-              ) : (
-                <div className="bg-emerald-400 text-black px-1 py-0.5 rounded text-[5px] font-black uppercase">VALIDO</div>
-              )}
+              <div className={`px-1.5 py-0.5 rounded-full border text-[5.5px] font-black uppercase leading-none flex items-center gap-0.5 ${countdown.badgeClass}`}>
+                <span className={`w-1 h-1 rounded-full ${countdown.dotClass}`} />
+                <span>{countdown.label}</span>
+              </div>
             </div>
           </div>
         )}
@@ -242,13 +239,10 @@ export const DocumentCard = ({ module, onDelete, onEdit, onShare, onToggleSensit
 
               <div className="flex items-center justify-between border-t border-white/10 pt-1">
                 <span className="text-[5px] text-white/50 font-bold leading-none">SCAD: <span className="text-white">{module.expiryDate ? new Date(module.expiryDate).toLocaleDateString('it-IT') : '---'}</span></span>
-                {isExpired ? (
-                  <div className="bg-red-500 text-white px-1 py-0.5 rounded text-[5px] font-black uppercase leading-none">SCADUTO</div>
-                ) : expiresSoon ? (
-                  <div className="bg-amber-400 text-black px-1 py-0.5 rounded text-[5px] font-black uppercase leading-none">IN SCADENZA</div>
-                ) : (
-                  <div className="bg-emerald-400 text-black px-1 py-0.5 rounded text-[5px] font-black uppercase leading-none">VALIDA</div>
-                )}
+                <div className={`px-1.5 py-0.5 rounded-full border text-[5.5px] font-black uppercase leading-none flex items-center gap-0.5 ${countdown.badgeClass}`}>
+                  <span className={`w-1 h-1 rounded-full ${countdown.dotClass}`} />
+                  <span>{countdown.label}</span>
+                </div>
               </div>
             </div>
           </div>
@@ -285,13 +279,10 @@ export const DocumentCard = ({ module, onDelete, onEdit, onShare, onToggleSensit
               <div className="text-[5px] font-bold text-white/50 leading-none">
                 SCAD: <span className="text-white font-black">{module.expiryDate ? new Date(module.expiryDate).toLocaleDateString('it-IT') : '---'}</span>
               </div>
-              {isExpired ? (
-                <div className="bg-red-500 text-white px-1 py-0.5 rounded text-[5px] font-black uppercase leading-none">SCADUTA</div>
-              ) : expiresSoon ? (
-                <div className="bg-amber-400 text-black px-1 py-0.5 rounded text-[5px] font-black uppercase leading-none">IN SCADENZA</div>
-              ) : (
-                <div className="bg-purple-300 text-purple-900 px-1 py-0.5 rounded text-[5px] font-black uppercase leading-none">VALIDA</div>
-              )}
+              <div className={`px-1.5 py-0.5 rounded-full border text-[5.5px] font-black uppercase leading-none flex items-center gap-0.5 ${countdown.badgeClass}`}>
+                <span className={`w-1 h-1 rounded-full ${countdown.dotClass}`} />
+                <span>{countdown.label}</span>
+              </div>
             </div>
           </div>
         )}
@@ -311,13 +302,10 @@ export const DocumentCard = ({ module, onDelete, onEdit, onShare, onToggleSensit
                   </h4>
                 </div>
               </div>
-              {isExpired ? (
-                <div className="bg-red-500 text-white px-1 py-0.5 rounded text-[5px] font-black uppercase leading-none">SCADUTO</div>
-              ) : expiresSoon ? (
-                <div className="bg-amber-500 text-white px-1 py-0.5 rounded text-[5px] font-black uppercase leading-none">IN SCADENZA</div>
-              ) : (
-                <div className="bg-emerald-500 text-white px-1 py-0.5 rounded text-[5px] font-black uppercase leading-none">VALIDO</div>
-              )}
+              <div className={`px-1.5 py-0.5 rounded-full border text-[5.5px] font-black uppercase leading-none flex items-center gap-0.5 ${countdown.badgeClass}`}>
+                <span className={`w-1 h-1 rounded-full ${countdown.dotClass}`} />
+                <span>{countdown.label}</span>
+              </div>
             </div>
 
             <div className="my-auto flex flex-col">

@@ -221,7 +221,7 @@ const TEMPLATES = {
     color: 'text-rose-500'
   },
   split: {
-    title: 'Spese',
+    title: 'Finanze & Spese',
     content: '',
     icon: Users,
     color: 'text-purple-500'
@@ -509,7 +509,7 @@ export default function App() {
   const [isAddressAndParkingOpen, setIsAddressAndParkingOpen] = useState(false);
   const [isDoctorOpen, setIsDoctorOpen] = useState(false);
   const [isRecessoOpen, setIsRecessoOpen] = useState(false);
-  const [addressParkingTab, setAddressParkingTab] = useState<'addresses' | 'parking'>('addresses');
+  const [addressParkingTab, setAddressParkingTab] = useState<'addresses' | 'parking'>('parking');
   const [addressParkingAutoSave, setAddressParkingAutoSave] = useState(false);
   const [hasActiveParking, setHasActiveParking] = useState<boolean>(() => {
     try {
@@ -559,13 +559,16 @@ export default function App() {
   useEffect(() => {
     const handleOpenFlyerOffer = (e: Event) => {
       const d = (e as CustomEvent).detail;
-      if (!d || !d.fid || typeof d.pg !== 'number') return;
+      if (!d) return;
+      const fid = d.fid || d.flyerId || '';
+      const pg = typeof d.pg === 'number' ? d.pg : (typeof d.page === 'number' ? Math.max(0, d.page - 1) : 0);
+      const store = d.store || d.chain || null;
       if (isAiOpen || activeNavTab === 'ai') {
         setReturnToAiOnClose(true);
         setIsAiOpen(false);
       }
-      setVolantinoInitialChain(null);
-      setFlyerInitialOffer({ fid: String(d.fid), pg: d.pg });
+      setVolantinoInitialChain(store);
+      setFlyerInitialOffer({ fid: String(fid), pg });
       const existingVolantino = modules.find(m => m.type === 'volantino') as import('./types').VolantinoModule | undefined;
       if (existingVolantino) {
         setEditingVolantinoModule(existingVolantino);
@@ -603,6 +606,11 @@ export default function App() {
         setReturnToAiOnClose(true);
       }
       setVolantinoInitialChain(chain);
+      if (d?.fid || d?.flyerId || typeof d?.page === 'number' || typeof d?.pg === 'number') {
+        const fid = String(d.fid || d.flyerId || '');
+        const pg = typeof d.pg === 'number' ? d.pg : (typeof d.page === 'number' ? Math.max(0, d.page - 1) : 0);
+        setFlyerInitialOffer({ fid, pg });
+      }
       setIsAiOpen(false);
       setAiInitialVoiceMode(false);
       setIsToolsOpen(false);
@@ -687,6 +695,7 @@ export default function App() {
   const [availableUpdate, setAvailableUpdate] = useState<UpdateInfo | null>(null);
   const [updateProgress, setUpdateProgress] = useState<number | null>(null);
   const [spesaSubMenu, setSpesaSubMenu] = useState(false);
+  const [financeActiveTab, setFinanceActiveTab] = useState<'all' | 'single' | 'split' | 'installments'>('all');
   const [isArchiveOpen, setIsArchiveOpen] = useState(false);
 
   // Modal creazione gruppo spese
@@ -2713,7 +2722,15 @@ export default function App() {
       // Type (Category) filter - Disabled when a folder/group is selected
       if (!selectedFolderId && selectedType) {
         if (selectedType === 'split') {
-          if (m.type !== 'split' && m.type !== 'single-expense' && m.type !== 'installments') return false;
+          if (financeActiveTab === 'single') {
+            if (m.type !== 'single-expense') return false;
+          } else if (financeActiveTab === 'split') {
+            if (m.type !== 'split') return false;
+          } else if (financeActiveTab === 'installments') {
+            if (m.type !== 'installments') return false;
+          } else {
+            if (m.type !== 'split' && m.type !== 'single-expense' && m.type !== 'installments') return false;
+          }
         } else if (m.type !== selectedType) {
           return false;
         }
@@ -2733,7 +2750,7 @@ export default function App() {
 
       return true;
     });
-  }, [modules, selectedFolderId, selectedType, searchQuery]);
+  }, [modules, selectedFolderId, selectedType, searchQuery, financeActiveTab]);
 
 
 
@@ -3610,7 +3627,7 @@ export default function App() {
                          selectedFolderId ? (folders.find(f => f.id === selectedFolderId)?.name || 'Cartella') : 
                          selectedType === 'home' ? 'Casa, Offerte & Spesa' :
                          selectedType === 'testing' ? 'Testing & Nuove Funzioni' :
-                         selectedType === 'split' ? 'Spese & Conti' :
+                         selectedType === 'split' ? 'Finanze & Spese' :
                          selectedType ? (TEMPLATES[selectedType as keyof typeof TEMPLATES]?.title || 'Sandbox') : 'Chelona'}
                       </h1>
                     </div>
@@ -4161,8 +4178,8 @@ export default function App() {
                        >
 <ShoppingBasket className="w-8 h-8 text-emerald-500 group-hover:scale-110 transition-transform" />
                            <div className="text-center">
-                             <span className="font-bold text-xs uppercase tracking-wider block">Supermercato</span>
-                             <span className="text-[10px] text-[var(--text-muted)] mt-1 block">Lista della spesa intelligente</span>
+                             <span className="font-bold text-xs uppercase tracking-wider block">Lista della Spesa</span>
+                             <span className="text-[10px] text-[var(--text-muted)] mt-1 block">Prodotti da acquistare e carrello</span>
                            </div>
                          </button>
                         <button
@@ -4936,13 +4953,13 @@ export default function App() {
                             </div>
                           </button>
 
-                          {/* 3. Spese & Conti */}
+                          {/* 3. Finanze & Spese */}
                           <button
                             onClick={() => handleCardClick(() => handleSelectCategoryWithSecurity('split'))}
-                            onTouchStart={(e) => handleSectionPressStart({ id: 'split', title: 'Spese & Conti', icon: Wallet, color: 'purple' }, e)}
+                            onTouchStart={(e) => handleSectionPressStart({ id: 'split', title: 'Finanze & Spese', icon: Wallet, color: 'purple' }, e)}
                             onTouchEnd={handleSectionPressEnd}
                             onTouchMove={handleSectionTouchMove}
-                            onMouseDown={(e) => handleSectionPressStart({ id: 'split', title: 'Spese & Conti', icon: Wallet, color: 'purple' }, e)}
+                            onMouseDown={(e) => handleSectionPressStart({ id: 'split', title: 'Finanze & Spese', icon: Wallet, color: 'purple' }, e)}
                             onMouseUp={handleSectionPressEnd}
                             onMouseLeave={handleSectionPressEnd}
                             onContextMenu={(e) => e.preventDefault()}
@@ -4953,7 +4970,7 @@ export default function App() {
                             </div>
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center justify-between gap-2 mb-1">
-                                <h4 className="font-black text-base lg:text-lg text-[var(--text-main)]">Spese & Conti</h4>
+                                <h4 className="font-black text-base lg:text-lg text-[var(--text-main)]">Finanze & Spese</h4>
                                 <div className="flex items-center gap-1.5">
                                   <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-purple-500/10 text-purple-500 border border-purple-500/20">
                                     Finanze
@@ -5095,16 +5112,16 @@ export default function App() {
                             </div>
                           </button>
 
-                          {/* 7. Indirizzi & Parcheggio */}
+                          {/* 7. Mobilità & Posizioni */}
                           <button
                             onClick={() => handleCardClick(() => {
-                              setAddressParkingTab(hasActiveParking ? 'parking' : 'addresses');
+                              setAddressParkingTab('parking');
                               setIsAddressAndParkingOpen(true);
                             })}
-                            onTouchStart={(e) => handleSectionPressStart({ id: 'parking', title: 'Indirizzi & Parcheggio', icon: MapPin, color: 'amber' }, e)}
+                            onTouchStart={(e) => handleSectionPressStart({ id: 'parking', title: 'Mobilità & Posizioni', icon: MapPin, color: 'amber' }, e)}
                             onTouchEnd={handleSectionPressEnd}
                             onTouchMove={handleSectionTouchMove}
-                            onMouseDown={(e) => handleSectionPressStart({ id: 'parking', title: 'Indirizzi & Parcheggio', icon: MapPin, color: 'amber' }, e)}
+                            onMouseDown={(e) => handleSectionPressStart({ id: 'parking', title: 'Mobilità & Posizioni', icon: MapPin, color: 'amber' }, e)}
                             onMouseUp={handleSectionPressEnd}
                             onMouseLeave={handleSectionPressEnd}
                             onContextMenu={(e) => e.preventDefault()}
@@ -5115,7 +5132,7 @@ export default function App() {
                             </div>
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center justify-between gap-2 mb-1">
-                                <h4 className="font-black text-base lg:text-lg text-[var(--text-main)]">Indirizzi & Parcheggio</h4>
+                                <h4 className="font-black text-base lg:text-lg text-[var(--text-main)]">Mobilità & Posizioni</h4>
                                 <div className="flex items-center gap-1.5">
                                   <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
                                     {hasActiveParking ? 'P Attivo' : 'Posizione'}
@@ -5123,7 +5140,7 @@ export default function App() {
                                 </div>
                               </div>
                               <p className="text-xs text-[var(--text-muted)] line-clamp-2 leading-relaxed">
-                                Dov'è l'auto, navigatore radar, parchimetro e rubrica indirizzi salvati
+                                GPS parcheggio auto, i miei luoghi e navigazione posizioni
                               </p>
                             </div>
                           </button>
@@ -5240,8 +5257,8 @@ export default function App() {
                               <ShoppingBasket className="w-8 h-8" />
                             </div>
                             <div>
-                              <p className="font-black text-[var(--text-main)] text-lg">Supermercato</p>
-                              <p className="text-sm text-[var(--text-muted)] mt-1">Lista della spesa intelligente</p>
+                              <p className="font-black text-[var(--text-main)] text-lg">Lista della Spesa</p>
+                              <p className="text-sm text-[var(--text-muted)] mt-1">Prodotti da acquistare e carrello</p>
                             </div>
                           </button>
 
@@ -5345,37 +5362,252 @@ export default function App() {
                           </button>
                         </div>
                       </div>
-                    ) : filteredModules.length === 0 ? (
-                      selectedType === 'gallery' ? (
-                        <div className="py-20 flex flex-col items-center justify-center text-center px-4">
-                          <div className="w-20 h-20 bg-indigo-500/10 rounded-full flex items-center justify-center mb-6">
-                            <ImageIcon className="w-10 h-10 text-indigo-500 opacity-70" />
-                          </div>
-                          <h3 className="text-2xl font-bold text-[var(--text-main)] mb-2">Nessuna foto in galleria</h3>
-                          <p className="text-[var(--text-muted)] mb-8 max-w-sm mx-auto">Usa lo strumento Filtri Immagine per salvare le tue foto qui.</p>
-                          <button
-                            onClick={() => { setSelectedType(null); setIsToolsOpen(true); setActiveToolId('image-filter'); }}
-                            className="flex items-center justify-center gap-3 bg-indigo-500 hover:bg-indigo-600 text-white px-8 py-4 rounded-2xl font-bold transition-all shadow-lg shadow-indigo-500/20 active:scale-95"
-                          >
-                            <ImageIcon className="w-6 h-6" />
-                            <span>Apri Filtri Immagine</span>
-                          </button>
-                        </div>
-                      ) : (
-                        <div className="py-20 flex flex-col items-center justify-center text-center px-4">
-                          <div className="w-20 h-20 bg-[var(--bg)] border border-[var(--border)] rounded-full flex items-center justify-center mb-6">
-                            <LayoutDashboard className="w-10 h-10 text-[var(--text-muted)] opacity-50" />
-                          </div>
-                          <h3 className="text-2xl font-bold text-[var(--text-main)] mb-2">
-                            {modules.length === 0 ? 'Nessun contenuto' : 'Nessun risultato trovato'}
-                          </h3>
-                          <p className="text-[var(--text-muted)] mb-8 max-w-sm mx-auto">
-                          {modules.length === 0 ? 'Inizia ad organizzare i tuoi dati aggiungendo la prima voce.' : 'Prova a cercare un termine diverso o cambiare filtro di categoria.'}
-                          </p>
-                        </div>
-                      )
                     ) : (
                       <>
+                        {selectedType === 'split' && (
+                          <div className="px-4 lg:px-8 mb-6">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-[var(--card-bg)]/80 backdrop-blur-xl border border-[var(--border)] p-3.5 sm:p-4 rounded-3xl shadow-xs">
+                              {/* 3 visible category sub-tabs (+ Tutte) */}
+                              <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
+                                <button
+                                  onClick={() => setFinanceActiveTab('all')}
+                                  className={`px-3.5 py-2 rounded-2xl text-xs font-bold transition-all shrink-0 flex items-center gap-2 border cursor-pointer ${
+                                    financeActiveTab === 'all'
+                                      ? 'bg-purple-600 border-purple-600 text-white shadow-md shadow-purple-500/20'
+                                      : 'bg-[var(--surface-variant)] border-[var(--border)] text-[var(--text-muted)] hover:text-[var(--text-main)]'
+                                  }`}
+                                >
+                                  <span>📊 Tutte</span>
+                                  <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${
+                                    financeActiveTab === 'all' ? 'bg-white/20 text-white' : 'bg-[var(--border)] text-[var(--text-muted)]'
+                                  }`}>
+                                    {modules.filter(m => (m.type === 'split' || m.type === 'single-expense' || m.type === 'installments') && (!selectedFolderId || m.folderId === selectedFolderId)).length}
+                                  </span>
+                                </button>
+
+                                <button
+                                  onClick={() => setFinanceActiveTab('single')}
+                                  className={`px-3.5 py-2 rounded-2xl text-xs font-bold transition-all shrink-0 flex items-center gap-2 border cursor-pointer ${
+                                    financeActiveTab === 'single'
+                                      ? 'bg-emerald-600 border-emerald-600 text-white shadow-md shadow-emerald-500/20'
+                                      : 'bg-[var(--surface-variant)] border-[var(--border)] text-[var(--text-muted)] hover:text-[var(--text-main)]'
+                                  }`}
+                                >
+                                  <span>💳 Spesa Singola</span>
+                                  <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${
+                                    financeActiveTab === 'single' ? 'bg-white/20 text-white' : 'bg-[var(--border)] text-[var(--text-muted)]'
+                                  }`}>
+                                    {modules.filter(m => m.type === 'single-expense' && (!selectedFolderId || m.folderId === selectedFolderId)).length}
+                                  </span>
+                                </button>
+
+                                <button
+                                  onClick={() => setFinanceActiveTab('split')}
+                                  className={`px-3.5 py-2 rounded-2xl text-xs font-bold transition-all shrink-0 flex items-center gap-2 border cursor-pointer ${
+                                    financeActiveTab === 'split'
+                                      ? 'bg-indigo-600 border-indigo-600 text-white shadow-md shadow-indigo-500/20'
+                                      : 'bg-[var(--surface-variant)] border-[var(--border)] text-[var(--text-muted)] hover:text-[var(--text-main)]'
+                                  }`}
+                                >
+                                  <span>👥 Gruppo Spese</span>
+                                  <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${
+                                    financeActiveTab === 'split' ? 'bg-white/20 text-white' : 'bg-[var(--border)] text-[var(--text-muted)]'
+                                  }`}>
+                                    {modules.filter(m => m.type === 'split' && (!selectedFolderId || m.folderId === selectedFolderId)).length}
+                                  </span>
+                                </button>
+
+                                <button
+                                  onClick={() => setFinanceActiveTab('installments')}
+                                  className={`px-3.5 py-2 rounded-2xl text-xs font-bold transition-all shrink-0 flex items-center gap-2 border cursor-pointer ${
+                                    financeActiveTab === 'installments'
+                                      ? 'bg-amber-600 border-amber-600 text-white shadow-md shadow-amber-500/20'
+                                      : 'bg-[var(--surface-variant)] border-[var(--border)] text-[var(--text-muted)] hover:text-[var(--text-main)]'
+                                  }`}
+                                >
+                                  <span>⏳ Rate</span>
+                                  <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${
+                                    financeActiveTab === 'installments' ? 'bg-white/20 text-white' : 'bg-[var(--border)] text-[var(--text-muted)]'
+                                  }`}>
+                                    {modules.filter(m => m.type === 'installments' && (!selectedFolderId || m.folderId === selectedFolderId)).length}
+                                  </span>
+                                </button>
+                              </div>
+
+                              {/* Quick-Action Creation Buttons */}
+                              <div className="flex items-center gap-2 shrink-0">
+                                {(financeActiveTab === 'all' || financeActiveTab === 'single') && (
+                                  <button
+                                    onClick={() => {
+                                      const doOpen = () => {
+                                        setSelectedType('split');
+                                        setFormData({ template: 'single-expense', title: 'Spesa Singola', content: '' });
+                                        setAutoFormStep(0);
+                                        setIsAdding(true);
+                                      };
+                                      if (!isSensitiveUnlocked) unlockAndProceed(doOpen); else doOpen();
+                                    }}
+                                    className="px-3 py-1.5 bg-emerald-500/10 hover:bg-emerald-500 hover:text-white text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shadow-xs active:scale-95 cursor-pointer"
+                                  >
+                                    <Plus className="w-3.5 h-3.5" />
+                                    <span>Spesa Singola</span>
+                                  </button>
+                                )}
+
+                                {(financeActiveTab === 'all' || financeActiveTab === 'split') && (
+                                  <button
+                                    onClick={() => {
+                                      const doOpen = () => {
+                                        setSelectedType('split');
+                                        setSplitModalTitle('Gruppo Spese');
+                                        setSplitModalCurrency('EUR');
+                                        setSplitModalBudget('');
+                                        setSplitModalParticipants(['', '']);
+                                        setShowSplitModal(true);
+                                      };
+                                      if (!isSensitiveUnlocked) unlockAndProceed(doOpen); else doOpen();
+                                    }}
+                                    className="px-3 py-1.5 bg-indigo-500/10 hover:bg-indigo-500 hover:text-white text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shadow-xs active:scale-95 cursor-pointer"
+                                  >
+                                    <Plus className="w-3.5 h-3.5" />
+                                    <span>Gruppo Spese</span>
+                                  </button>
+                                )}
+
+                                {(financeActiveTab === 'all' || financeActiveTab === 'installments') && (
+                                  <button
+                                    onClick={() => {
+                                      const doOpen = () => {
+                                        setSelectedType('split');
+                                        setIsAdding(false);
+                                        const newInstallments: import('./types').InstallmentsModule = {
+                                          id: generateUUID(),
+                                          type: 'installments',
+                                          title: 'Rate',
+                                          targetAmount: 0,
+                                          finalDueDate: new Date().toISOString().substring(0, 10),
+                                          payments: [],
+                                          x: (modules.length * 2) % 12,
+                                          y: Infinity,
+                                          w: 3,
+                                          h: 3,
+                                          folderId: selectedFolderId || undefined
+                                        };
+                                        setModules(prev => {
+                                          const updated = [newInstallments, ...prev];
+                                          saveAppState(updated, folders).catch(console.error);
+                                          return updated;
+                                        });
+                                        setEditingInstallmentsModule(newInstallments);
+                                      };
+                                      if (!isSensitiveUnlocked) unlockAndProceed(doOpen); else doOpen();
+                                    }}
+                                    className="px-3 py-1.5 bg-amber-500/10 hover:bg-amber-500 hover:text-white text-amber-600 dark:text-amber-400 border border-amber-500/20 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shadow-xs active:scale-95 cursor-pointer"
+                                  >
+                                    <Plus className="w-3.5 h-3.5" />
+                                    <span>Nuova Rata</span>
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {filteredModules.length === 0 ? (
+                          selectedType === 'gallery' ? (
+                            <div className="py-20 flex flex-col items-center justify-center text-center px-4">
+                              <div className="w-20 h-20 bg-indigo-500/10 rounded-full flex items-center justify-center mb-6">
+                                <ImageIcon className="w-10 h-10 text-indigo-500 opacity-70" />
+                              </div>
+                              <h3 className="text-2xl font-bold text-[var(--text-main)] mb-2">Nessuna foto in galleria</h3>
+                              <p className="text-[var(--text-muted)] mb-8 max-w-sm mx-auto">Usa lo strumento Filtri Immagine per salvare le tue foto qui.</p>
+                              <button
+                                onClick={() => { setSelectedType(null); setIsToolsOpen(true); setActiveToolId('image-filter'); }}
+                                className="flex items-center justify-center gap-3 bg-indigo-500 hover:bg-indigo-600 text-white px-8 py-4 rounded-2xl font-bold transition-all shadow-lg shadow-indigo-500/20 active:scale-95 cursor-pointer"
+                              >
+                                <ImageIcon className="w-6 h-6" />
+                                <span>Apri Filtri Immagine</span>
+                              </button>
+                            </div>
+                          ) : selectedType === 'split' ? (
+                            <div className="py-16 flex flex-col items-center justify-center text-center px-4">
+                              <div className="w-16 h-16 bg-purple-500/10 text-purple-500 rounded-3xl flex items-center justify-center mb-4">
+                                <Wallet className="w-8 h-8" />
+                              </div>
+                              <h3 className="text-xl font-bold text-[var(--text-main)] mb-1">
+                                {financeActiveTab === 'single' ? 'Nessuna spesa singola registrata' :
+                                 financeActiveTab === 'split' ? 'Nessun gruppo spese condivise' :
+                                 financeActiveTab === 'installments' ? 'Nessun piano rate attivo' :
+                                 'Nessuna spesa o conto'}
+                              </h3>
+                              <p className="text-xs text-[var(--text-muted)] max-w-sm mb-6">
+                                {financeActiveTab === 'single' ? 'Traccia subito un acquisto o ricevuta con importo e categoria.' :
+                                 financeActiveTab === 'split' ? 'Crea un gruppo con amici o coinquilini per dividere automaticamente le spese.' :
+                                 financeActiveTab === 'installments' ? 'Pianifica rate e mutui con date di scadenza e importi.' :
+                                 'Inizia a gestire le tue finanze registrando una spesa singola, un gruppo o un piano rate.'}
+                              </p>
+                              <button
+                                onClick={() => {
+                                  const doOpen = () => {
+                                    if (financeActiveTab === 'split') {
+                                      setSplitModalTitle('Gruppo Spese');
+                                      setSplitModalCurrency('EUR');
+                                      setSplitModalBudget('');
+                                      setSplitModalParticipants(['', '']);
+                                      setShowSplitModal(true);
+                                    } else if (financeActiveTab === 'installments') {
+                                      const newInstallments: import('./types').InstallmentsModule = {
+                                        id: generateUUID(),
+                                        type: 'installments',
+                                        title: 'Rate',
+                                        targetAmount: 0,
+                                        finalDueDate: new Date().toISOString().substring(0, 10),
+                                        payments: [],
+                                        x: (modules.length * 2) % 12,
+                                        y: Infinity,
+                                        w: 3,
+                                        h: 3,
+                                        folderId: selectedFolderId || undefined
+                                      };
+                                      setModules(prev => {
+                                        const updated = [newInstallments, ...prev];
+                                        saveAppState(updated, folders).catch(console.error);
+                                        return updated;
+                                      });
+                                      setEditingInstallmentsModule(newInstallments);
+                                    } else {
+                                      setFormData({ template: 'single-expense', title: 'Spesa Singola', content: '' });
+                                      setAutoFormStep(0);
+                                      setIsAdding(true);
+                                    }
+                                  };
+                                  if (!isSensitiveUnlocked) unlockAndProceed(doOpen); else doOpen();
+                                }}
+                                className="px-5 py-3 rounded-2xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs uppercase tracking-wider flex items-center gap-2 shadow-lg shadow-purple-500/20 active:scale-95 cursor-pointer"
+                              >
+                                <Plus className="w-4 h-4" />
+                                <span>
+                                  {financeActiveTab === 'split' ? 'Crea Gruppo Spese' :
+                                   financeActiveTab === 'installments' ? 'Nuovo Piano Rate' :
+                                   'Nuova Spesa Singola'}
+                                </span>
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="py-20 flex flex-col items-center justify-center text-center px-4">
+                              <div className="w-20 h-20 bg-[var(--bg)] border border-[var(--border)] rounded-full flex items-center justify-center mb-6">
+                                <LayoutDashboard className="w-10 h-10 text-[var(--text-muted)] opacity-50" />
+                              </div>
+                              <h3 className="text-2xl font-bold text-[var(--text-main)] mb-2">
+                                {modules.length === 0 ? 'Nessun contenuto' : 'Nessun risultato trovato'}
+                              </h3>
+                              <p className="text-[var(--text-muted)] mb-8 max-w-sm mx-auto">
+                              {modules.length === 0 ? 'Inizia ad organizzare i tuoi dati aggiungendo la prima voce.' : 'Prova a cercare un termine diverso o cambiare filtro di categoria.'}
+                              </p>
+                            </div>
+                          )
+                        ) : (
+                          <>
 
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6 3xl:grid-cols-8 gap-6 stagger-fade-in px-4 lg:px-8 pb-32 md:pb-8">
@@ -5408,9 +5640,11 @@ export default function App() {
                       </>
                     )}
                   </>
-              </div>
-            )}
-          </div>
+                )}
+              </>
+            </div>
+          )}
+        </div>
           
           {/* Global FAB (Only on main dashboard and specific categories except gallery/travel) */}
           {(selectedType !== 'gallery') && !editingTravelModule && !editingStudyModule && !editingFitnessModule && !isAdding && !editingModuleId && !isArchiveOpen && !isToolsOpen && !editingAutoModule && !editingSplitModule && !editingSingleExpenseModule && !editingDocumentModule && !editingGenericModule && !editingFurnitureModule && !editingInstallmentsModule && !editingSupermarketModule && !editingVolantinoModule && (
@@ -5500,8 +5734,49 @@ export default function App() {
                       });
                       setEditingVolantinoModule(newVolantino);
                     } else if (selectedType === 'split' || selectedType === 'single-expense') {
-                      setSpesaSubMenu(true);
-                      setIsAdding(true);
+                      if (financeActiveTab === 'single') {
+                        const doOpen = () => {
+                          setFormData({ template: 'single-expense', title: 'Spesa Singola', content: '' });
+                          setAutoFormStep(0);
+                          setIsAdding(true);
+                        };
+                        if (!isSensitiveUnlocked) unlockAndProceed(doOpen); else doOpen();
+                      } else if (financeActiveTab === 'split') {
+                        const doOpen = () => {
+                          setSplitModalTitle('Gruppo Spese');
+                          setSplitModalCurrency('EUR');
+                          setSplitModalBudget('');
+                          setSplitModalParticipants(['', '']);
+                          setShowSplitModal(true);
+                        };
+                        if (!isSensitiveUnlocked) unlockAndProceed(doOpen); else doOpen();
+                      } else if (financeActiveTab === 'installments') {
+                        const doOpen = () => {
+                          const newInstallments: import('./types').InstallmentsModule = {
+                            id: generateUUID(),
+                            type: 'installments',
+                            title: 'Rate',
+                            targetAmount: 0,
+                            finalDueDate: new Date().toISOString().substring(0, 10),
+                            payments: [],
+                            x: (modules.length * 2) % 12,
+                            y: Infinity,
+                            w: 3,
+                            h: 3,
+                            folderId: selectedFolderId || undefined
+                          };
+                          setModules(prev => {
+                            const updated = [newInstallments, ...prev];
+                            saveAppState(updated, folders).catch(console.error);
+                            return updated;
+                          });
+                          setEditingInstallmentsModule(newInstallments);
+                        };
+                        if (!isSensitiveUnlocked) unlockAndProceed(doOpen); else doOpen();
+                      } else {
+                        setSpesaSubMenu(true);
+                        setIsAdding(true);
+                      }
                     } else {
                       setFormData(selectedType ? { template: selectedType } : {});
                       setAutoFormStep(0);
@@ -6206,6 +6481,7 @@ export default function App() {
             }}
             onDelete={deleteModule}
             onShare={setSharingModule as any}
+            showToast={showToast}
           />
         )}
       </AnimatePresence>

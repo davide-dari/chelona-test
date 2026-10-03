@@ -2,7 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { 
   Send, Mic, MicOff, Volume2, VolumeX, Trash2, Menu, Trash, ArrowLeft, 
   ExternalLink, Check, Copy, Plus, X, Zap, ChevronRight, UtensilsCrossed, Flame,
-  Settings2, Sliders, Play
+  Settings2, Sliders, Play, Store, Tag, Calendar, Car, FileText, ShoppingBasket,
+  MapPin, Clock, FileSignature, Wallet, CheckSquare, Sparkles, Navigation, Globe, BookOpen
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Module } from '../types';
@@ -982,7 +983,25 @@ export const ChelonaAiScreen
 
                     {msg.actions && msg.actions.length > 0 && (() => {
                       const recipeActions = msg.actions.filter(a => a.type === 'recipes' && a.recipe);
-                      const otherActions = msg.actions.filter(a => !(a.type === 'recipes' && a.recipe));
+                      const volantinoActions = msg.actions.filter(a => a.type === 'volantino');
+                      const moduleActions = msg.actions.filter(a => a.type === 'module' && a.module);
+                      const categoryActions = msg.actions.filter(a => a.type === 'category' && a.category);
+                      const parkingActions = msg.actions.filter(a => a.type === 'parking' || a.type === 'save_parking' || a.type === 'navigate_parking');
+                      const doctorActions = msg.actions.filter(a => a.type === 'doctor');
+                      const recessoActions = msg.actions.filter(a => a.type === 'recesso');
+                      const deadlinesActions = msg.actions.filter(a => a.type === 'deadlines');
+                      const shoppingActions = msg.actions.filter(a => a.type === 'add_shopping_items');
+                      const otherActions = msg.actions.filter(a => 
+                        !(a.type === 'recipes' && a.recipe) &&
+                        a.type !== 'volantino' &&
+                        !(a.type === 'module' && a.module) &&
+                        !(a.type === 'category' && a.category) &&
+                        a.type !== 'parking' && a.type !== 'save_parking' && a.type !== 'navigate_parking' &&
+                        a.type !== 'doctor' &&
+                        a.type !== 'recesso' &&
+                        a.type !== 'deadlines' &&
+                        a.type !== 'add_shopping_items'
+                      );
 
                       const handleActionClick = (act: AiAction) => {
                         if (act.type === 'save_parking') {
@@ -998,6 +1017,42 @@ export const ChelonaAiScreen
                           }
                           return;
                         }
+                        if (act.type === 'doctor') {
+                          window.dispatchEvent(new CustomEvent('notificationRouteReceived', { detail: { route: 'doctor' } }));
+                          if (!isEmbedded) onClose();
+                          return;
+                        }
+                        if (act.type === 'recesso') {
+                          window.dispatchEvent(new CustomEvent('notificationRouteReceived', { detail: { route: 'recesso' } }));
+                          if (!isEmbedded) onClose();
+                          return;
+                        }
+                        if (act.type === 'deadlines') {
+                          window.dispatchEvent(new CustomEvent('notificationRouteReceived', { detail: { route: 'deadlines' } }));
+                          if (!isEmbedded) onClose();
+                          return;
+                        }
+                        if (act.type === 'add_shopping_items' && act.items && act.items.length > 0) {
+                          const existingSupermarket = modules.find(m => m.type === 'supermarket') as any;
+                          if (existingSupermarket && onAddModule) {
+                            const newItems = act.items.map(it => ({
+                              id: Math.random().toString(36).substr(2, 9),
+                              name: it.name,
+                              checked: false,
+                              quantity: it.quantity || '1',
+                              category: it.category || 'Altro'
+                            }));
+                            const updated = {
+                              ...existingSupermarket,
+                              items: [...(existingSupermarket.items || []), ...newItems]
+                            };
+                            onAddModule(updated);
+                            showToast(`Aggiunti ${newItems.length} prodotti alla Lista della Spesa!`, 'success');
+                          } else {
+                            showToast('Aggiunto alla Lista della Spesa!', 'success');
+                          }
+                          return;
+                        }
                         if (onNavigate) {
                           onNavigate(act);
                           return;
@@ -1006,13 +1061,24 @@ export const ChelonaAiScreen
                           onOpenParking();
                           if (!isEmbedded) onClose();
                         } else if (act.type === 'volantino') {
-                          window.dispatchEvent(new CustomEvent('open-volantino', { 
-                            detail: { 
-                              chain: act.chainSlug || act.storeName,
-                              slug: act.chainSlug,
-                              store: act.storeName 
-                            } 
-                          }));
+                          if (act.page || act.flyerId) {
+                            window.dispatchEvent(new CustomEvent('open-flyer-offer', {
+                              detail: {
+                                fid: act.flyerId,
+                                page: act.page,
+                                pg: typeof act.page === 'number' ? act.page - 1 : 0,
+                                store: act.storeName || act.chainSlug
+                              }
+                            }));
+                          } else {
+                            window.dispatchEvent(new CustomEvent('open-volantino', { 
+                              detail: { 
+                                chain: act.chainSlug || act.storeName,
+                                slug: act.chainSlug,
+                                store: act.storeName 
+                              } 
+                            }));
+                          }
                           if (!isEmbedded) onClose();
                         } else if (act.type === 'module' && act.module) {
                           onOpenModule(act.module);
@@ -1024,61 +1090,299 @@ export const ChelonaAiScreen
                       };
 
                       return (
-                        <div className="mt-3 pt-2.5 border-t border-[var(--border)]/40 space-y-2">
-                          {/* Schede ricette interattive con layout visivo moderno e pulito */}
-                          {recipeActions.length > 0 && (
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                              {recipeActions.map((act, i) => {
-                                const r = act.recipe;
-                                return (
+                        <div className="mt-3.5 pt-3 border-t border-[var(--border)]/50 space-y-3">
+                          {/* 1. Volantini & Offerte Card Widget */}
+                          {volantinoActions.length > 0 && (
+                            <div className="space-y-2">
+                              <div className="flex items-center gap-1.5 text-[11px] font-bold text-amber-500 uppercase tracking-wider">
+                                <Store className="w-3.5 h-3.5" />
+                                <span>Volantini & Offerte</span>
+                              </div>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                {volantinoActions.map((act, i) => (
                                   <button
-                                    key={`recipe-${i}`}
+                                    key={`volantino-${i}`}
                                     onClick={() => handleActionClick(act)}
-                                    className="w-full text-left p-2.5 rounded-2xl bg-[var(--surface-variant)]/70 hover:bg-[var(--surface-variant)] border border-[var(--border)] hover:border-amber-500/40 shadow-xs hover:shadow-md transition-all active:scale-[0.98] flex items-center gap-3 group cursor-pointer"
+                                    className="w-full text-left p-3 rounded-2xl bg-gradient-to-br from-[var(--surface-variant)] to-[var(--card-bg)] border border-amber-500/30 hover:border-amber-500 shadow-xs hover:shadow-md transition-all active:scale-[0.98] flex items-center justify-between gap-3 group cursor-pointer"
                                   >
-                                    <div className="w-12 h-12 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center shrink-0 border border-amber-500/20 overflow-hidden relative">
-                                      <UtensilsCrossed className="w-5 h-5 absolute" />
-                                      {r?.image && (
-                                        <img
-                                          src={r.image}
-                                          alt={r.title || act.label}
-                                          className="w-full h-full object-cover relative z-10"
-                                          onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
-                                        />
-                                      )}
-                                    </div>
-
-                                    <div className="flex-1 min-w-0">
-                                      <div className="flex items-center gap-1.5 flex-wrap mb-0.5">
-                                        {r?.category && (
-                                          <span className="text-[9.5px] font-bold uppercase tracking-wider px-1.5 py-0.2 rounded-md bg-amber-500/10 text-amber-600 dark:text-amber-400">
-                                            {r.category}
-                                          </span>
-                                        )}
-                                        {r?.calories && (
-                                          <span className="text-[10px] font-semibold text-[var(--text-muted)] flex items-center gap-0.5">
-                                            <Flame className="w-3 h-3 text-orange-500" />
-                                            {r.calories} kcal
-                                          </span>
-                                        )}
+                                    <div className="flex items-center gap-2.5 min-w-0">
+                                      <div className="w-10 h-10 rounded-xl bg-amber-500/15 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0 border border-amber-500/20 shadow-inner">
+                                        <Store className="w-5 h-5" />
                                       </div>
-                                      <h4 className="text-xs font-bold text-[var(--text-main)] group-hover:text-amber-500 transition-colors truncate">
-                                        {r?.title || act.label}
-                                      </h4>
+                                      <div className="min-w-0">
+                                        <div className="flex items-center gap-1.5 mb-0.5">
+                                          <span className="text-[9px] font-black uppercase tracking-wider px-1.5 py-0.2 rounded-md bg-amber-500/15 text-amber-600 dark:text-amber-400">
+                                            {act.storeName || act.chainSlug || 'Volantino'}
+                                          </span>
+                                          {act.page && (
+                                            <span className="text-[9px] font-bold px-1.5 py-0.2 rounded-md bg-blue-500/15 text-blue-600 dark:text-blue-400">
+                                              📄 Pag. {act.page}
+                                            </span>
+                                          )}
+                                        </div>
+                                        <h4 className="text-xs font-bold text-[var(--text-main)] group-hover:text-amber-500 transition-colors truncate">
+                                          {act.label}
+                                        </h4>
+                                      </div>
                                     </div>
-
-                                    <div className="p-1.5 rounded-xl bg-[var(--card-bg)] text-[var(--text-muted)] group-hover:text-amber-500 group-hover:bg-amber-500/10 transition-colors shrink-0">
+                                    <div className="p-2 rounded-xl bg-amber-500/10 text-amber-500 group-hover:bg-amber-500 group-hover:text-white transition-all shrink-0">
                                       <ChevronRight className="w-4 h-4" />
                                     </div>
                                   </button>
-                                );
-                              })}
+                                ))}
+                              </div>
                             </div>
                           )}
 
-                          {/* Altre azioni secondarie (es. Aggiungi alla spesa, Ricettario) */}
+                          {/* 2. Schede ricette interattive */}
+                          {recipeActions.length > 0 && (
+                            <div className="space-y-2">
+                              <div className="flex items-center gap-1.5 text-[11px] font-bold text-orange-500 uppercase tracking-wider">
+                                <UtensilsCrossed className="w-3.5 h-3.5" />
+                                <span>Ricette Consigliate</span>
+                              </div>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                {recipeActions.map((act, i) => {
+                                  const r = act.recipe;
+                                  return (
+                                    <button
+                                      key={`recipe-${i}`}
+                                      onClick={() => handleActionClick(act)}
+                                      className="w-full text-left p-2.5 rounded-2xl bg-[var(--surface-variant)]/70 hover:bg-[var(--surface-variant)] border border-[var(--border)] hover:border-amber-500/40 shadow-xs hover:shadow-md transition-all active:scale-[0.98] flex items-center gap-3 group cursor-pointer"
+                                    >
+                                      <div className="w-12 h-12 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center shrink-0 border border-amber-500/20 overflow-hidden relative">
+                                        <UtensilsCrossed className="w-5 h-5 absolute" />
+                                        {r?.image && (
+                                          <img
+                                            src={r.image}
+                                            alt={r.title || act.label}
+                                            className="w-full h-full object-cover relative z-10"
+                                            onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
+                                          />
+                                        )}
+                                      </div>
+
+                                      <div className="flex-1 min-w-0">
+                                        <div className="flex items-center gap-1.5 flex-wrap mb-0.5">
+                                          {r?.category && (
+                                            <span className="text-[9.5px] font-bold uppercase tracking-wider px-1.5 py-0.2 rounded-md bg-amber-500/10 text-amber-600 dark:text-amber-400">
+                                              {r.category}
+                                            </span>
+                                          )}
+                                          {r?.calories && (
+                                            <span className="text-[10px] font-semibold text-[var(--text-muted)] flex items-center gap-0.5">
+                                              <Flame className="w-3 h-3 text-orange-500" />
+                                              {r.calories} kcal
+                                            </span>
+                                          )}
+                                        </div>
+                                        <h4 className="text-xs font-bold text-[var(--text-main)] group-hover:text-amber-500 transition-colors truncate">
+                                          {r?.title || act.label}
+                                        </h4>
+                                      </div>
+
+                                      <div className="p-1.5 rounded-xl bg-[var(--card-bg)] text-[var(--text-muted)] group-hover:text-amber-500 group-hover:bg-amber-500/10 transition-colors shrink-0">
+                                        <ChevronRight className="w-4 h-4" />
+                                      </div>
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* 3. Schede Modulo Personale Preview */}
+                          {moduleActions.length > 0 && (
+                            <div className="space-y-2">
+                              <div className="flex items-center gap-1.5 text-[11px] font-bold text-indigo-500 uppercase tracking-wider">
+                                <Sparkles className="w-3.5 h-3.5" />
+                                <span>I Tuoi Contenuti Chelona</span>
+                              </div>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                {moduleActions.map((act, i) => {
+                                  const m = act.module;
+                                  const isAuto = m?.type === 'auto';
+                                  const isDoc = m?.type === 'document';
+                                  const isSplit = m?.type === 'split' || m?.type === 'single-expense' || m?.type === 'installments';
+                                  const IconComponent = isAuto ? Car : isDoc ? FileText : isSplit ? Wallet : Sparkles;
+                                  const colorClass = isAuto ? 'text-rose-500 bg-rose-500/10 border-rose-500/20' : isDoc ? 'text-blue-500 bg-blue-500/10 border-blue-500/20' : isSplit ? 'text-purple-500 bg-purple-500/10 border-purple-500/20' : 'text-indigo-500 bg-indigo-500/10 border-indigo-500/20';
+
+                                  return (
+                                    <button
+                                      key={`mod-${i}`}
+                                      onClick={() => handleActionClick(act)}
+                                      className="w-full text-left p-3 rounded-2xl bg-[var(--card-bg)] hover:bg-[var(--surface-variant)] border border-[var(--border)] hover:border-indigo-500/40 shadow-xs hover:shadow-md transition-all active:scale-[0.98] flex items-center justify-between gap-3 group cursor-pointer"
+                                    >
+                                      <div className="flex items-center gap-2.5 min-w-0">
+                                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border ${colorClass}`}>
+                                          <IconComponent className="w-5 h-5" />
+                                        </div>
+                                        <div className="min-w-0">
+                                          <div className="text-[9px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
+                                            {m?.type === 'auto' ? 'Veicolo' : m?.type === 'document' ? 'Documento' : m?.type === 'split' ? 'Finanze' : 'Scheda'}
+                                          </div>
+                                          <h4 className="text-xs font-bold text-[var(--text-main)] group-hover:text-indigo-500 transition-colors truncate">
+                                            {m?.title || act.label}
+                                          </h4>
+                                        </div>
+                                      </div>
+                                      <div className="p-1.5 rounded-xl bg-[var(--surface-variant)] text-[var(--text-muted)] group-hover:text-indigo-500 transition-colors shrink-0">
+                                        <ChevronRight className="w-4 h-4" />
+                                      </div>
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* 4. Categorie Navigabili */}
+                          {categoryActions.length > 0 && (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                              {categoryActions.map((act, i) => (
+                                <button
+                                  key={`cat-${i}`}
+                                  onClick={() => handleActionClick(act)}
+                                  className="w-full text-left p-3 rounded-2xl bg-[var(--surface-variant)]/60 hover:bg-[var(--surface-variant)] border border-[var(--border)] hover:border-indigo-500/40 transition-all flex items-center justify-between gap-3 group cursor-pointer shadow-xs active:scale-[0.98]"
+                                >
+                                  <div className="flex items-center gap-2.5">
+                                    <div className="w-8 h-8 rounded-xl bg-indigo-500/10 text-indigo-500 flex items-center justify-center shrink-0">
+                                      <Globe className="w-4 h-4" />
+                                    </div>
+                                    <span className="text-xs font-bold text-[var(--text-main)] group-hover:text-indigo-500 transition-colors">
+                                      {act.label}
+                                    </span>
+                                  </div>
+                                  <ChevronRight className="w-4 h-4 text-[var(--text-muted)] group-hover:text-indigo-500 transition-colors" />
+                                </button>
+                              ))}
+                            </div>
+                          )}
+
+                          {/* 5. Studio Medico Widget */}
+                          {doctorActions.length > 0 && (
+                            <div className="p-3.5 rounded-2xl bg-teal-500/10 border border-teal-500/20 text-[var(--text-main)] space-y-2.5">
+                              <div className="flex items-center gap-2">
+                                <div className="w-8 h-8 rounded-xl bg-teal-500/20 text-teal-600 dark:text-teal-400 flex items-center justify-center font-bold">
+                                  🩺
+                                </div>
+                                <div>
+                                  <h4 className="text-xs font-black uppercase tracking-wider text-teal-700 dark:text-teal-300">Studio Medico Curante</h4>
+                                  <p className="text-[10px] text-[var(--text-muted)]">Orari di ricevimento e prescrizioni ricette</p>
+                                </div>
+                              </div>
+                              <div className="flex gap-2">
+                                {doctorActions.map((act, i) => (
+                                  <button
+                                    key={`doc-${i}`}
+                                    onClick={() => handleActionClick(act)}
+                                    className="flex-1 py-2 px-3 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-all cursor-pointer"
+                                  >
+                                    <ExternalLink className="w-3.5 h-3.5" />
+                                    <span>{act.label}</span>
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* 6. Disdetta PEC Widget */}
+                          {recessoActions.length > 0 && (
+                            <div className="p-3.5 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-[var(--text-main)] space-y-2.5">
+                              <div className="flex items-center gap-2">
+                                <div className="w-8 h-8 rounded-xl bg-rose-500/20 text-rose-600 dark:text-rose-400 flex items-center justify-center">
+                                  <FileSignature className="w-4 h-4" />
+                                </div>
+                                <div>
+                                  <h4 className="text-xs font-black uppercase tracking-wider text-rose-700 dark:text-rose-300">Disdetta Legale PEC</h4>
+                                  <p className="text-[10px] text-[var(--text-muted)]">Modello pronto e certificato per recesso contrattuale</p>
+                                </div>
+                              </div>
+                              <div className="flex gap-2">
+                                {recessoActions.map((act, i) => (
+                                  <button
+                                    key={`rec-${i}`}
+                                    onClick={() => handleActionClick(act)}
+                                    className="flex-1 py-2 px-3 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-all cursor-pointer"
+                                  >
+                                    <FileSignature className="w-3.5 h-3.5" />
+                                    <span>{act.label}</span>
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* 7. Mobilità & Parcheggio Widget */}
+                          {parkingActions.length > 0 && (
+                            <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-[var(--text-main)] space-y-2.5">
+                              <div className="flex items-center gap-2">
+                                <div className="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center">
+                                  <Car className="w-4 h-4" />
+                                </div>
+                                <div>
+                                  <h4 className="text-xs font-black uppercase tracking-wider text-amber-700 dark:text-amber-300">Mobilità & Posizioni</h4>
+                                  <p className="text-[10px] text-[var(--text-muted)]">Navigazione GPS e posizione auto salvata</p>
+                                </div>
+                              </div>
+                              <div className="flex flex-wrap gap-2">
+                                {parkingActions.map((act, i) => (
+                                  <button
+                                    key={`park-${i}`}
+                                    onClick={() => handleActionClick(act)}
+                                    className="flex-1 min-w-[130px] py-2 px-3 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-all cursor-pointer"
+                                  >
+                                    <Navigation className="w-3.5 h-3.5" />
+                                    <span>{act.label}</span>
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* 8. Scadenze Promemoria Widget */}
+                          {deadlinesActions.length > 0 && (
+                            <div className="p-3.5 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-[var(--text-main)] space-y-2">
+                              <div className="flex items-center gap-2">
+                                <Calendar className="w-4 h-4 text-indigo-500" />
+                                <h4 className="text-xs font-black uppercase tracking-wider text-indigo-700 dark:text-indigo-300">Scadenze & Promemoria</h4>
+                              </div>
+                              {deadlinesActions.map((act, i) => (
+                                <button
+                                  key={`dead-${i}`}
+                                  onClick={() => handleActionClick(act)}
+                                  className="w-full py-2 px-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-all cursor-pointer"
+                                >
+                                  <Calendar className="w-3.5 h-3.5" />
+                                  <span>{act.label}</span>
+                                </button>
+                              ))}
+                            </div>
+                          )}
+
+                          {/* 9. Aggiungi a Lista della Spesa Widget */}
+                          {shoppingActions.length > 0 && (
+                            <div className="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-[var(--text-main)] space-y-2">
+                              <div className="flex items-center gap-2">
+                                <ShoppingBasket className="w-4 h-4 text-emerald-500" />
+                                <h4 className="text-xs font-black uppercase tracking-wider text-emerald-700 dark:text-emerald-300">Lista della Spesa</h4>
+                              </div>
+                              {shoppingActions.map((act, i) => (
+                                <button
+                                  key={`shop-${i}`}
+                                  onClick={() => handleActionClick(act)}
+                                  className="w-full py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-all cursor-pointer"
+                                >
+                                  <Plus className="w-3.5 h-3.5" />
+                                  <span>{act.label}</span>
+                                </button>
+                              ))}
+                            </div>
+                          )}
+
+                          {/* 10. Altre azioni secondarie discrete */}
                           {otherActions.length > 0 && (
-                            <div className="flex flex-wrap gap-1.5 pt-0.5">
+                            <div className="flex flex-wrap gap-1.5 pt-1">
                               {otherActions.map((act, i) => (
                                 <button
                                   key={`other-${i}`}

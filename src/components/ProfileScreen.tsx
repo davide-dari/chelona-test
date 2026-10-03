@@ -100,7 +100,7 @@ function generateGradientAvatarSvg(letter: string, fromColor: string, toColor: s
 const AVAILABLE_PINNED_CATEGORIES = [
   { id: 'auto', label: 'Veicoli & Auto', icon: Car, color: 'text-rose-500' },
   { id: 'document', label: 'Documenti', icon: FileText, color: 'text-blue-500' },
-  { id: 'split', label: 'Spese & Conti', icon: Users, color: 'text-purple-500' },
+  { id: 'split', label: 'Finanze & Spese', icon: Users, color: 'text-purple-500' },
   { id: 'single-expense', label: 'Spesa Singola', icon: Receipt, color: 'text-amber-500' },
   { id: 'travel', label: 'Viaggi', icon: Globe, color: 'text-indigo-400' },
   { id: 'recipes', label: 'Ricette', icon: BookOpen, color: 'text-orange-500' },

@@ -35,7 +35,7 @@ export interface AddressAndParkingScreenProps {
 
 export const AddressAndParkingScreen: React.FC<AddressAndParkingScreenProps> = ({ 
   onClose, 
-  initialTab = 'addresses',
+  initialTab = 'parking',
   showToast,
   initialAutoSave = false
 }) => {
@@ -592,19 +592,19 @@ export const AddressAndParkingScreen: React.FC<AddressAndParkingScreenProps> = (
           </button>
 
           <div className="w-10 h-10 lg:w-11 lg:h-11 rounded-2xl bg-gradient-to-tr from-indigo-500/15 via-rose-500/10 to-amber-500/15 border border-indigo-500/20 p-2 flex items-center justify-center shrink-0 shadow-sm text-indigo-500">
-            {activeTab === 'addresses' ? (
-              <MapPin className="w-6 h-6" />
+            {activeTab === 'parking' ? (
+              <Car className="w-6 h-6 text-amber-500" />
             ) : (
-              <Car className="w-6 h-6" />
+              <MapPin className="w-6 h-6 text-indigo-500" />
             )}
           </div>
 
           <div>
             <h2 className="text-base lg:text-lg font-black text-[var(--text-main)] tracking-tight">
-              Indirizzi & Parcheggio
+              Mobilità & Posizioni
             </h2>
             <p className="text-xs text-[var(--text-muted)] font-medium">
-              {activeTab === 'addresses' ? 'Rubrica rapida delle tue posizioni' : 'Salva auto & parchimetro digitale'}
+              {activeTab === 'parking' ? 'Trova auto, GPS parcheggio & parchimetro' : 'I miei luoghi, indirizzi e posizioni preferite'}
             </p>
           </div>
         </div>
@@ -661,23 +661,6 @@ export const AddressAndParkingScreen: React.FC<AddressAndParkingScreenProps> = (
       <div className="px-4 pt-3 pb-1 shrink-0 bg-[var(--bg)] border-b border-[var(--border)]/60">
         <div className="flex bg-[var(--surface-variant)] p-1 rounded-2xl border border-[var(--border)] max-w-lg mx-auto w-full relative">
           <button
-            onClick={() => setActiveTab('addresses')}
-            className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs sm:text-sm font-bold transition-all relative z-10 ${
-              activeTab === 'addresses'
-                ? 'bg-[var(--surface)] text-[var(--text-main)] shadow-sm'
-                : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
-            }`}
-          >
-            <MapPin className="w-4 h-4 text-indigo-500" />
-            <span>Rubrica Indirizzi</span>
-            {addresses.length > 0 && (
-              <span className="px-1.5 py-0.5 bg-[var(--surface-variant)] text-[10px] font-black rounded-full border border-[var(--border)]">
-                {addresses.length}
-              </span>
-            )}
-          </button>
-
-          <button
             onClick={() => {
               setActiveTab('parking');
               if (!parking) setIsMeterEnabled(false);
@@ -689,11 +672,28 @@ export const AddressAndParkingScreen: React.FC<AddressAndParkingScreenProps> = (
             }`}
           >
             <Car className="w-4 h-4" />
-            <span>Salva Parcheggio</span>
+            <span>🚗 Trova & Salva Auto</span>
             {parking && (
               <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 text-[10px] font-black border border-emerald-500/20">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                 {meterLiveStatus ? meterLiveStatus.endFormatted : 'Attivo'}
+              </span>
+            )}
+          </button>
+
+          <button
+            onClick={() => setActiveTab('addresses')}
+            className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs sm:text-sm font-bold transition-all relative z-10 ${
+              activeTab === 'addresses'
+                ? 'bg-[var(--surface)] text-[var(--text-main)] shadow-sm'
+                : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
+            }`}
+          >
+            <MapPin className="w-4 h-4 text-indigo-500" />
+            <span>📍 I Miei Luoghi & Indirizzi</span>
+            {addresses.length > 0 && (
+              <span className="px-1.5 py-0.5 bg-[var(--surface-variant)] text-[10px] font-black rounded-full border border-[var(--border)]">
+                {addresses.length}
               </span>
             )}
           </button>

@@ -217,6 +217,8 @@ export interface TravelModule extends BaseModule {
   nations?: TravelNation[];
   countryGroups?: TravelCountryGroup[];
   destinations: TravelDestination[];
+  packingList?: { id: string; name: string; category: string; checked: boolean }[];
+  travelBudget?: { total: number; currency: string; expenses: { id: string; desc: string; amount: number; category: string; date: string }[] };
 }
 
 export interface InstallmentPayment {

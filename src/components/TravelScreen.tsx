@@ -1,6 +1,11 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ArrowLeft, Plus, X, MapPin, Globe, Compass, Navigation, Trash2, Check, Loader2, Pencil, Search } from 'lucide-react';
+import { 
+  ArrowLeft, Plus, X, MapPin, Globe, Compass, Navigation, Trash2, Check, 
+  Loader2, Pencil, Search, CloudSun, Briefcase, DollarSign, PhoneCall, 
+  AlertTriangle, Shield, CheckCircle2, ChevronRight, Calculator, RefreshCw, 
+  Luggage, Umbrella, Thermometer, Wind, Droplets, ExternalLink, PlusCircle
+} from 'lucide-react';
 import ReactGlobe from 'react-globe.gl';
 import { TravelModule, TravelDestination, TravelCountryGroup, TravelNation } from '../types';
 import { FAMOUS_PLACES_DB } from '../constants/famousPlaces';
@@ -855,6 +860,230 @@ export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onCl
   const [deletingGroupId, setDeletingGroupId] = useState<string | null>(null);
   const [expandedDestId, setExpandedDestId] = useState<string | null>(null);
 
+  // --- Sub-tabs Strumenti Viaggio ---
+  const [travelActiveTab, setTravelActiveTab] = useState<'destinations' | 'weather' | 'packing' | 'budget' | 'emergency'>('destinations');
+
+  // --- Checklist Valigia ---
+  const defaultPackingItems = [
+    { id: '1', name: "Passaporto / Carta d'Identità", category: 'Documenti', checked: false },
+    { id: '2', name: "Biglietti di viaggio / Carte d'imbarco", category: 'Documenti', checked: false },
+    { id: '3', name: 'Assicurazione viaggio & Tessera sanitaria', category: 'Documenti', checked: false },
+    { id: '4', name: 'Smartphone & Caricabatterie', category: 'Elettronica', checked: false },
+    { id: '5', name: 'Powerbank portatile', category: 'Elettronica', checked: false },
+    { id: '6', name: 'Adattatore prese universale', category: 'Elettronica', checked: false },
+    { id: '7', name: 'Cuffie / Auricolari', category: 'Elettronica', checked: false },
+    { id: '8', name: 'Abbigliamento & Intimo', category: 'Abbigliamento', checked: false },
+    { id: '9', name: 'Giacca antivento / K-way', category: 'Abbigliamento', checked: false },
+    { id: '10', name: 'Scarpe comode da cammino', category: 'Abbigliamento', checked: false },
+    { id: '11', name: 'Spazzolino, dentifricio e beauty case', category: 'Toilette', checked: false },
+    { id: '12', name: 'Kit medicinali base e cerotti', category: 'Salute', checked: false },
+    { id: '13', name: 'Occhiali da sole & crema solare', category: 'Accessori', checked: false },
+    { id: '14', name: 'Ombrello tascabile', category: 'Accessori', checked: false },
+  ];
+
+  const [packingItems, setPackingItems] = useState<{ id: string; name: string; category: string; checked: boolean }[]>(
+    () => (module.packingList && module.packingList.length > 0 ? module.packingList : defaultPackingItems)
+  );
+  const [newPackingText, setNewPackingText] = useState('');
+  const [newPackingCat, setNewPackingCat] = useState('Abbigliamento');
+  const [packingCatFilter, setPackingCatFilter] = useState('Tutte');
+
+  const handleTogglePacking = (id: string) => {
+    const updated = packingItems.map(it => it.id === id ? { ...it, checked: !it.checked } : it);
+    setPackingItems(updated);
+    onSave({ ...module, destinations, packingList: updated });
+  };
+
+  const handleAddPackingItem = () => {
+    if (!newPackingText.trim()) return;
+    const newItem = {
+      id: Math.random().toString(36).substr(2, 9),
+      name: newPackingText.trim(),
+      category: newPackingCat,
+      checked: false
+    };
+    const updated = [...packingItems, newItem];
+    setPackingItems(updated);
+    setNewPackingText('');
+    onSave({ ...module, destinations, packingList: updated });
+  };
+
+  const handleDeletePackingItem = (id: string) => {
+    const updated = packingItems.filter(it => it.id !== id);
+    setPackingItems(updated);
+    onSave({ ...module, destinations, packingList: updated });
+  };
+
+  const packingCompletedCount = packingItems.filter(it => it.checked).length;
+  const packingProgressPercent = packingItems.length > 0 ? Math.round((packingCompletedCount / packingItems.length) * 100) : 0;
+
+  // --- Weather Widget State ---
+  const [selectedWeatherCity, setSelectedWeatherCity] = useState<string>(() => {
+    if (destinations.length > 0 && destinations[0].city) return destinations[0].city;
+    if (destinations.length > 0) return destinations[0].name;
+    return 'Roma';
+  });
+
+  const cityWeatherMap: Record<string, { temp: number; cond: string; icon: string; humidity: number; wind: number; uv: number; forecast: { day: string; min: number; max: number; cond: string; icon: string }[] }> = {
+    'Roma': { temp: 22, cond: 'Soleggiato', icon: '☀️', humidity: 55, wind: 12, uv: 5, forecast: [{ day: 'Dom', min: 14, max: 23, cond: 'Sole', icon: '☀️' }, { day: 'Lun', min: 15, max: 24, cond: 'Sereno', icon: '🌤️' }, { day: 'Mar', min: 13, max: 20, cond: 'Rovesci', icon: '🌦️' }] },
+    'Parigi': { temp: 17, cond: 'Parzialmente nuvoloso', icon: '🌤️', humidity: 68, wind: 18, uv: 4, forecast: [{ day: 'Dom', min: 11, max: 18, cond: 'Nubi', icon: '⛅' }, { day: 'Lun', min: 10, max: 16, cond: 'Pioggia', icon: '🌧️' }, { day: 'Mar', min: 9, max: 15, cond: 'Variabile', icon: '🌦️' }] },
+    'Londra': { temp: 15, cond: 'Pioggia leggera', icon: '🌧️', humidity: 78, wind: 22, uv: 3, forecast: [{ day: 'Dom', min: 9, max: 16, cond: 'Pioggia', icon: '🌧️' }, { day: 'Lun', min: 8, max: 15, cond: 'Nubi', icon: '☁️' }, { day: 'Mar', min: 10, max: 17, cond: 'Sereno', icon: '🌤️' }] },
+    'Tokyo': { temp: 20, cond: 'Limpido', icon: '☀️', humidity: 50, wind: 10, uv: 6, forecast: [{ day: 'Dom', min: 13, max: 21, cond: 'Sole', icon: '☀️' }, { day: 'Lun', min: 14, max: 22, cond: 'Sole', icon: '☀️' }, { day: 'Mar', min: 15, max: 23, cond: 'Nubi', icon: '⛅' }] },
+    'New York': { temp: 19, cond: 'Ventoso', icon: '🌤️', humidity: 60, wind: 25, uv: 5, forecast: [{ day: 'Dom', min: 12, max: 20, cond: 'Sereno', icon: '🌤️' }, { day: 'Lun', min: 14, max: 22, cond: 'Temporali', icon: '⛈️' }, { day: 'Mar', min: 11, max: 18, cond: 'Vento', icon: '💨' }] },
+    'Madrid': { temp: 24, cond: 'Soleggiato', icon: '☀️', humidity: 40, wind: 14, uv: 7, forecast: [{ day: 'Dom', min: 15, max: 26, cond: 'Caldo', icon: '☀️' }, { day: 'Lun', min: 16, max: 27, cond: 'Sole', icon: '☀️' }, { day: 'Mar', min: 14, max: 23, cond: 'Nubi', icon: '⛅' }] }
+  };
+
+  const currentWeather = cityWeatherMap[selectedWeatherCity] || {
+    temp: 21,
+    cond: 'Sereno',
+    icon: '🌤️',
+    humidity: 58,
+    wind: 14,
+    uv: 5,
+    forecast: [
+      { day: 'Dom', min: 13, max: 22, cond: 'Sereno', icon: '🌤️' },
+      { day: 'Lun', min: 14, max: 23, cond: 'Sole', icon: '☀️' },
+      { day: 'Mar', min: 12, max: 19, cond: 'Nubi', icon: '⛅' }
+    ]
+  };
+
+  // --- Currency & Budget State ---
+  const [currencyAmount, setCurrencyAmount] = useState<number>(100);
+  const [currencyFrom, setCurrencyFrom] = useState<string>('EUR');
+  const [currencyTo, setCurrencyTo] = useState<string>('USD');
+  const EXCHANGE_RATES: Record<string, number> = {
+    EUR: 1.0,
+    USD: 1.085,
+    GBP: 0.855,
+    JPY: 163.5,
+    CHF: 0.958,
+    CAD: 1.485,
+    AUD: 1.662,
+    AED: 3.985
+  };
+
+  const convertedAmount = useMemo(() => {
+    const rateFrom = EXCHANGE_RATES[currencyFrom] || 1;
+    const rateTo = EXCHANGE_RATES[currencyTo] || 1;
+    const inEur = (currencyAmount || 0) / rateFrom;
+    return (inEur * rateTo).toFixed(2);
+  }, [currencyAmount, currencyFrom, currencyTo]);
+
+  // Travel Budget
+  const [totalTripBudget, setTotalTripBudget] = useState<number>(() => module.travelBudget?.total || 1500);
+  const [expenses, setExpenses] = useState<{ id: string; desc: string; amount: number; category: string; date: string }[]>(
+    () => module.travelBudget?.expenses || [
+      { id: '1', desc: 'Volo A/R', amount: 350, category: 'Trasporti', date: new Date().toISOString().substring(0, 10) },
+      { id: '2', desc: 'Hotel / Soggiorno', amount: 480, category: 'Alloggio', date: new Date().toISOString().substring(0, 10) },
+      { id: '3', desc: 'Pranzo Tipico', amount: 45, category: 'Cibo', date: new Date().toISOString().substring(0, 10) }
+    ]
+  );
+  const [newExpenseDesc, setNewExpenseDesc] = useState('');
+  const [newExpenseAmount, setNewExpenseAmount] = useState('');
+  const [newExpenseCat, setNewExpenseCat] = useState('Cibo');
+
+  const totalSpent = useMemo(() => expenses.reduce((s, e) => s + e.amount, 0), [expenses]);
+  const budgetRemaining = totalTripBudget - totalSpent;
+  const budgetPercent = Math.min(100, Math.round((totalSpent / (totalTripBudget || 1)) * 100));
+
+  const handleAddExpense = () => {
+    const amt = parseFloat(newExpenseAmount);
+    if (!newExpenseDesc.trim() || isNaN(amt) || amt <= 0) return;
+    const newExp = {
+      id: Math.random().toString(36).substr(2, 9),
+      desc: newExpenseDesc.trim(),
+      amount: amt,
+      category: newExpenseCat,
+      date: new Date().toISOString().substring(0, 10)
+    };
+    const updated = [newExp, ...expenses];
+    setExpenses(updated);
+    setNewExpenseDesc('');
+    setNewExpenseAmount('');
+    onSave({
+      ...module,
+      destinations,
+      travelBudget: { total: totalTripBudget, currency: 'EUR', expenses: updated }
+    });
+  };
+
+  const handleDeleteExpense = (id: string) => {
+    const updated = expenses.filter(e => e.id !== id);
+    setExpenses(updated);
+    onSave({
+      ...module,
+      destinations,
+      travelBudget: { total: totalTripBudget, currency: 'EUR', expenses: updated }
+    });
+  };
+
+  // --- Emergency Numbers Database ---
+  const EMERGENCY_DB = [
+    {
+      country: 'Italia & Unione Europea',
+      flag: '🇪🇺',
+      code: 'IT',
+      numbers: [
+        { label: 'Numero Unico Europeo Emergenze', num: '112', desc: 'Carabinieri, Polizia, Vigili del Fuoco, Sanità' },
+        { label: 'Soccorso Sanitario / Ambulanza', num: '118', desc: 'Pronto Soccorso Medico' },
+        { label: 'Vigili del Fuoco', num: '115', desc: 'Incendi, soccorso tecnico urgente' },
+        { label: 'Polizia di Stato', num: '113', desc: 'Sicurezza e pronto intervento' },
+        { label: 'Soccorso Stradale ACI', num: '803116', desc: 'Guasti auto e traino' }
+      ]
+    },
+    {
+      country: 'Stati Uniti & Canada',
+      flag: '🇺🇸',
+      code: 'US',
+      numbers: [
+        { label: 'Emergency Services (911)', num: '911', desc: 'Polizia, Ambulanza, Pompieri unificato' },
+        { label: 'Non-Emergency Services', num: '311', desc: 'Assistenza cittadina non urgente' }
+      ]
+    },
+    {
+      country: 'Regno Unito',
+      flag: '🇬🇧',
+      code: 'GB',
+      numbers: [
+        { label: 'Emergency Number', num: '999', desc: 'Police, Ambulance, Fire' },
+        { label: 'EU Emergency Call', num: '112', desc: 'Standard Europeo da cellulare' },
+        { label: 'NHS Non-Emergency Health', num: '111', desc: 'Consulenza medica urgente' }
+      ]
+    },
+    {
+      country: 'Giappone',
+      flag: '🇯🇵',
+      code: 'JP',
+      numbers: [
+        { label: 'Polizia (Keisatsu)', num: '110', desc: 'Incidenti e emergenze' },
+        { label: 'Ambulanza & Pompieri (Shobo)', num: '119', desc: 'Pronto soccorso e incendi' },
+        { label: 'Guardia Costiera', num: '118', desc: 'Soccorso marittimo' }
+      ]
+    },
+    {
+      country: 'Svizzera',
+      flag: '🇨🇭',
+      code: 'CH',
+      numbers: [
+        { label: 'Numero Emergenze Generale', num: '112', desc: 'Numero Unico Europeo' },
+        { label: 'Soccorso Sanitario Ambulanza', num: '144', desc: 'Emergenza Medica' },
+        { label: 'Polizia Cantonale', num: '117', desc: 'Polizia' },
+        { label: 'Pompieri', num: '118', desc: 'Vigili del Fuoco' },
+        { label: 'Soccorso Aereo REGA', num: '1414', desc: 'Soccorso alpino ed elicotteri' }
+      ]
+    },
+    {
+      country: 'Australia',
+      flag: '🇦🇺',
+      code: 'AU',
+      numbers: [
+        { label: 'Emergency Triple Zero', num: '000', desc: 'Police, Ambulance, Fire' },
+        { label: 'Mobile Secondary Emergency', num: '112', desc: 'Numero da cellulari internazionali' }
+      ]
+    }
+  ];
+  const [selectedEmergencyCode, setSelectedEmergencyCode] = useState<string>('IT');
+
   const handleTouchEnd = () => {
     if (longPressTimeout.current) {
       clearTimeout(longPressTimeout.current);
@@ -1057,187 +1286,631 @@ export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onCl
           </div>
         </div>
 
-        {/* Destinations list panel */}
-        <div className="flex-1 relative z-20 overflow-y-auto custom-scrollbar bg-[var(--bg)] pb-28 lg:pb-8 lg:max-w-sm lg:border-l border-[var(--border)] shadow-2xl">
+        {/* Travel Tools & Destinations Panel */}
+        <div className="flex-1 relative z-20 overflow-y-auto custom-scrollbar bg-[var(--bg)] pb-28 lg:pb-8 lg:max-w-md lg:border-l border-[var(--border)] shadow-2xl">
           <div className="p-4 space-y-4">
-            
-            {/* Country Folders Horizontal Bar */}
-            <div className="px-1 pt-1">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)]">Nazioni</span>
-              </div>
-              <div className="flex gap-2 overflow-x-auto pb-2 custom-scrollbar snap-x">
-                <button
-                  onClick={() => {
-                    setSelectedNation(null);
-                    setFocusedDestId(null);
-                  }}
-                  className={`px-4 py-2.5 rounded-2xl font-bold text-xs shrink-0 transition-all snap-start flex items-center gap-2 border ${selectedNation === null ? 'bg-blue-600 border-blue-600 text-white shadow-md' : 'bg-[var(--card-bg)] border-[var(--border)] text-[var(--text-muted)] hover:bg-[var(--surface-variant)]'}`}
-                >
-                  <span>🌐</span> Tutte le mete ({destinations.length})
-                </button>
-                
-                {activeNations.map(natName => {
-                  const count = destinations.filter(d => getDestNation(d, countryGroups) === natName).length;
-                  const isSelected = selectedNation === natName;
-                  return (
+
+            {/* Travel Tools Sub-tabs Bar */}
+            <div className="flex bg-[var(--surface-variant)] p-1 rounded-2xl border border-[var(--border)] overflow-x-auto no-scrollbar">
+              <button
+                onClick={() => setTravelActiveTab('destinations')}
+                className={`flex-1 py-2 px-1 text-[11px] font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer shrink-0 ${
+                  travelActiveTab === 'destinations' ? 'bg-[var(--card-bg)] text-blue-500 shadow-sm' : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
+                }`}
+              >
+                <MapPin className="w-3.5 h-3.5" />
+                <span>Mete</span>
+              </button>
+
+              <button
+                onClick={() => setTravelActiveTab('weather')}
+                className={`flex-1 py-2 px-1 text-[11px] font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer shrink-0 ${
+                  travelActiveTab === 'weather' ? 'bg-[var(--card-bg)] text-amber-500 shadow-sm' : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
+                }`}
+              >
+                <CloudSun className="w-3.5 h-3.5" />
+                <span>Meteo</span>
+              </button>
+
+              <button
+                onClick={() => setTravelActiveTab('packing')}
+                className={`flex-1 py-2 px-1 text-[11px] font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer shrink-0 ${
+                  travelActiveTab === 'packing' ? 'bg-[var(--card-bg)] text-emerald-500 shadow-sm' : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
+                }`}
+              >
+                <Luggage className="w-3.5 h-3.5" />
+                <span>Valigia</span>
+              </button>
+
+              <button
+                onClick={() => setTravelActiveTab('budget')}
+                className={`flex-1 py-2 px-1 text-[11px] font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer shrink-0 ${
+                  travelActiveTab === 'budget' ? 'bg-[var(--card-bg)] text-purple-500 shadow-sm' : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
+                }`}
+              >
+                <DollarSign className="w-3.5 h-3.5" />
+                <span>Budget</span>
+              </button>
+
+              <button
+                onClick={() => setTravelActiveTab('emergency')}
+                className={`flex-1 py-2 px-1 text-[11px] font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer shrink-0 ${
+                  travelActiveTab === 'emergency' ? 'bg-[var(--card-bg)] text-rose-500 shadow-sm' : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
+                }`}
+              >
+                <PhoneCall className="w-3.5 h-3.5" />
+                <span>Emergenze</span>
+              </button>
+            </div>
+
+            {/* TAB 1: METE & NAZIONI */}
+            {travelActiveTab === 'destinations' && (
+              <div className="space-y-4">
+                {/* Country Folders Horizontal Bar */}
+                <div className="px-1 pt-1">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)]">Nazioni</span>
+                  </div>
+                  <div className="flex gap-2 overflow-x-auto pb-2 custom-scrollbar snap-x">
                     <button
-                      key={natName}
                       onClick={() => {
-                        setSelectedNation(natName);
+                        setSelectedNation(null);
                         setFocusedDestId(null);
                       }}
-                      className={`px-4 py-2.5 rounded-2xl font-bold text-xs shrink-0 transition-all snap-start flex items-center gap-2 border ${isSelected ? 'bg-blue-600 border-blue-600 text-white shadow-md' : 'bg-[var(--card-bg)] border-[var(--border)] text-[var(--text-muted)] hover:bg-[var(--surface-variant)]'}`}
+                      className={`px-4 py-2.5 rounded-2xl font-bold text-xs shrink-0 transition-all snap-start flex items-center gap-2 border cursor-pointer ${selectedNation === null ? 'bg-blue-600 border-blue-600 text-white shadow-md' : 'bg-[var(--card-bg)] border-[var(--border)] text-[var(--text-muted)] hover:bg-[var(--surface-variant)]'}`}
                     >
-                      <span>{getCountryEmoji(natName)}</span> {natName} ({count})
+                      <span>🌐</span> Tutte le mete ({destinations.length})
                     </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            <div className="h-px bg-[var(--border)]" />
-
-            <div>
-              <h3 className="text-xs font-black uppercase tracking-widest text-[var(--text-muted)] mb-3 px-1">
-                {selectedNation 
-                  ? `${getCountryEmoji(selectedNation)} ${selectedNation}`
-                  : 'Tutte le Destinazioni'
-                }
-              </h3>
-
-              {filteredDestinations.length === 0 ? (
-                <div className="flex flex-col items-center py-12 text-center">
-                  <div className="w-16 h-16 bg-blue-500/10 rounded-full flex items-center justify-center mb-4">
-                    <Navigation className="w-8 h-8 text-blue-400 opacity-60" />
+                    
+                    {activeNations.map(natName => {
+                      const count = destinations.filter(d => getDestNation(d, countryGroups) === natName).length;
+                      const isSelected = selectedNation === natName;
+                      return (
+                        <button
+                          key={natName}
+                          onClick={() => {
+                            setSelectedNation(natName);
+                            setFocusedDestId(null);
+                          }}
+                          className={`px-4 py-2.5 rounded-2xl font-bold text-xs shrink-0 transition-all snap-start flex items-center gap-2 border cursor-pointer ${isSelected ? 'bg-blue-600 border-blue-600 text-white shadow-md' : 'bg-[var(--card-bg)] border-[var(--border)] text-[var(--text-muted)] hover:bg-[var(--surface-variant)]'}`}
+                        >
+                          <span>{getCountryEmoji(natName)}</span> {natName} ({count})
+                        </button>
+                      );
+                    })}
                   </div>
-                  <p className="text-sm font-bold text-[var(--text-muted)]">Nessuna meta</p>
-                  <p className="text-xs text-[var(--text-muted)] mt-1 opacity-70">
-                    Premi 'Aggiungi Meta' in alto per aggiungere un luogo {selectedGroupId && 'in questa cartella'}
-                  </p>
                 </div>
-              ) : (
-                <div className="space-y-4">
-                  {Object.entries(destinationsByCity).map(([cityName, cityDests]) => (
-                    <div key={cityName} className="space-y-2">
-                      {/* City Section Header */}
-                      <h4 className="text-[10px] font-black uppercase tracking-widest text-blue-500 bg-blue-500/5 px-2.5 py-1.5 rounded-xl inline-flex items-center gap-1.5 ml-1 select-none">
-                        🏙️ {cityName}
-                      </h4>
-                      
-                      <div className="space-y-2 pl-2.5 border-l border-[var(--border)] ml-2">
-                        <AnimatePresence>
-                          {cityDests.map(dest => (
-                            <motion.div
-                              key={dest.id}
-                              initial={{ opacity: 0, y: 10 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              exit={{ opacity: 0, x: -20 }}
-                              className="bg-[var(--card-bg)] border border-[var(--border)] rounded-2xl overflow-hidden group cursor-pointer transition-all hover:border-blue-500/20"
-                              onClick={(e) => {
-                                 if ((e.target as HTMLElement).closest('button')) return;
-                                 setExpandedDestId(prev => prev === dest.id ? null : dest.id);
-                                 setFocusedDestId(dest.id);
-                              }}
-                            >
-                              <div className="p-4 flex items-start gap-3 hover:bg-[var(--surface-variant)] transition-colors">
-                                <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border bg-blue-500/10 border-blue-500/20 text-blue-400">
-                                  📍
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                  <p className="text-sm font-bold text-[var(--text-main)] truncate">{dest.name}</p>
-                                  <div className="flex items-center gap-1.5 mt-0.5">
-                                    <p className="text-[10px] font-bold text-[var(--text-muted)]">
-                                      {dest.lat.toFixed(2)}, {dest.lng.toFixed(2)}
-                                    </p>
-                                    {(() => {
-                                      const nationVal = getDestNation(dest, countryGroups);
-                                      const cityVal = dest.city;
-                                      if (!nationVal && !cityVal) return null;
-                                      return (
-                                        <>
-                                          <span className="text-[8px] opacity-40">•</span>
-                                          <span className="text-[9px] font-black text-blue-500 bg-blue-500/5 px-1.5 py-0.5 rounded-md">
-                                            {getCountryEmoji(nationVal)} {nationVal}{cityVal ? ` · ${cityVal}` : ''}
-                                          </span>
-                                        </>
-                                      );
-                                    })()}
-                                  </div>
-                                  {dest.notes && (
-                                    <p className="text-xs text-[var(--text-muted)] mt-1 line-clamp-2">{dest.notes}</p>
-                                  )}
-                                </div>
-                                <div className="flex items-center gap-1 shrink-0">
-                                  <button
-                                    onClick={(e) => { e.stopPropagation(); setEditingDest(dest); }}
-                                    className="p-1.5 text-[var(--text-muted)] hover:text-blue-400 hover:bg-blue-500/10 rounded-lg transition-all"
-                                  >
-                                    <Pencil className="w-4 h-4" />
-                                  </button>
-                                  <button
-                                    onClick={(e) => { e.stopPropagation(); setDeletingId(dest.id); }}
-                                    className="p-1.5 text-[var(--text-muted)] hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all"
-                                  >
-                                    <Trash2 className="w-4 h-4" />
-                                  </button>
-                                </div>
-                              </div>
 
-                              <AnimatePresence>
-                                {expandedDestId === dest.id && (
-                                   <motion.div
-                                     initial={{ height: 0, opacity: 0 }}
-                                     animate={{ height: 'auto', opacity: 1 }}
-                                     exit={{ height: 0, opacity: 0 }}
-                                     className="overflow-hidden bg-[var(--surface-variant)]"
-                                   >
-                                      <div className="p-4 pt-0">
-                                         <div 
-                                            className="w-full h-32 rounded-xl overflow-hidden relative cursor-pointer border border-[var(--border)] shadow-inner group/map"
-                                            onClick={(e) => {
-                                              e.stopPropagation();
-                                              const countryObj = countryGroups.find(g => g.id === dest.countryGroupId);
-                                              const queryParts = [dest.name];
-                                              if (countryObj) {
-                                                queryParts.push(countryObj.countryName);
-                                              }
-                                              const mapsQuery = encodeURIComponent(queryParts.join(', '));
-                                              window.open(`https://maps.google.com/?q=${mapsQuery}`, '_system');
-                                            }}
-                                         >
-                                            <iframe
-                                              width="100%"
-                                              height="100%"
-                                              style={{ border: 0, pointerEvents: 'none' }}
-                                              loading="lazy"
-                                              src={`https://maps.google.com/maps?q=${dest.lat},${dest.lng}&z=14&output=embed`}
-                                            />
-                                            <div className="absolute inset-0 bg-black/5 hover:bg-transparent transition-colors flex items-center justify-center group-hover/map:bg-black/10">
-                                               <div className="w-10 h-10 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center opacity-0 group-hover/map:opacity-100 transition-opacity shadow-lg">
-                                                  <MapPin className="w-5 h-5 text-blue-500" />
-                                               </div>
-                                            </div>
-                                         </div>
-                                         {dest.notes && (
-                                           <div className="mt-3 text-xs text-[var(--text-muted)]">
-                                             <span className="font-bold block mb-1 text-[var(--text-main)] text-[10px] uppercase tracking-wider">Note</span>
-                                             <p className="leading-relaxed whitespace-pre-wrap">{dest.notes}</p>
-                                           </div>
-                                         )}
-                                      </div>
-                                   </motion.div>
-                                )}
-                              </AnimatePresence>
-                            </motion.div>
-                          ))}
-                        </AnimatePresence>
+                <div className="h-px bg-[var(--border)]" />
+
+                <div>
+                  <h3 className="text-xs font-black uppercase tracking-widest text-[var(--text-muted)] mb-3 px-1">
+                    {selectedNation 
+                      ? `${getCountryEmoji(selectedNation)} ${selectedNation}`
+                      : 'Tutte le Destinazioni'
+                    }
+                  </h3>
+
+                  {filteredDestinations.length === 0 ? (
+                    <div className="flex flex-col items-center py-12 text-center">
+                      <div className="w-16 h-16 bg-blue-500/10 rounded-full flex items-center justify-center mb-4">
+                        <Navigation className="w-8 h-8 text-blue-400 opacity-60" />
                       </div>
+                      <p className="text-sm font-bold text-[var(--text-muted)]">Nessuna meta</p>
+                      <p className="text-xs text-[var(--text-muted)] mt-1 opacity-70">
+                        Premi 'Aggiungi Meta' in alto per aggiungere un luogo {selectedGroupId && 'in questa cartella'}
+                      </p>
                     </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {Object.entries(destinationsByCity).map(([cityName, cityDests]) => (
+                        <div key={cityName} className="space-y-2">
+                          <h4 className="text-[10px] font-black uppercase tracking-widest text-blue-500 bg-blue-500/10 px-2.5 py-1.5 rounded-xl inline-flex items-center gap-1.5 ml-1 select-none">
+                            🏙️ {cityName}
+                          </h4>
+                          
+                          <div className="space-y-2 pl-2 border-l-2 border-blue-500/20 ml-2">
+                            <AnimatePresence>
+                              {cityDests.map(dest => (
+                                <motion.div
+                                  key={dest.id}
+                                  initial={{ opacity: 0, y: 10 }}
+                                  animate={{ opacity: 1, y: 0 }}
+                                  exit={{ opacity: 0, x: -20 }}
+                                  className="bg-[var(--card-bg)] border border-[var(--border)] rounded-2xl overflow-hidden group cursor-pointer transition-all hover:border-blue-500/40 shadow-xs hover:shadow-md"
+                                  onClick={(e) => {
+                                     if ((e.target as HTMLElement).closest('button')) return;
+                                     setExpandedDestId(prev => prev === dest.id ? null : dest.id);
+                                     setFocusedDestId(dest.id);
+                                  }}
+                                >
+                                  <div className="p-3.5 flex items-start gap-3 hover:bg-[var(--surface-variant)] transition-colors">
+                                    <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border bg-blue-500/10 border-blue-500/20 text-blue-500 shadow-inner">
+                                      📍
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                      <p className="text-sm font-bold text-[var(--text-main)] truncate">{dest.name}</p>
+                                      <div className="flex items-center gap-1.5 mt-0.5">
+                                        <p className="text-[10px] font-bold text-[var(--text-muted)]">
+                                          {dest.lat.toFixed(2)}, {dest.lng.toFixed(2)}
+                                        </p>
+                                        {(() => {
+                                          const nationVal = getDestNation(dest, countryGroups);
+                                          const cityVal = dest.city;
+                                          if (!nationVal && !cityVal) return null;
+                                          return (
+                                            <>
+                                              <span className="text-[8px] opacity-40">•</span>
+                                              <span className="text-[9px] font-black text-blue-500 bg-blue-500/10 px-1.5 py-0.5 rounded-md">
+                                                {getCountryEmoji(nationVal)} {nationVal}{cityVal ? ` · ${cityVal}` : ''}
+                                              </span>
+                                            </>
+                                          );
+                                        })()}
+                                      </div>
+                                      {dest.notes && (
+                                        <p className="text-xs text-[var(--text-muted)] mt-1 line-clamp-2">{dest.notes}</p>
+                                      )}
+                                    </div>
+                                    <div className="flex items-center gap-1 shrink-0">
+                                      <button
+                                        onClick={(e) => { e.stopPropagation(); setEditingDest(dest); }}
+                                        className="p-1.5 text-[var(--text-muted)] hover:text-blue-500 hover:bg-blue-500/10 rounded-lg transition-all cursor-pointer"
+                                        title="Modifica"
+                                      >
+                                        <Pencil className="w-4 h-4" />
+                                      </button>
+                                      <button
+                                        onClick={(e) => { e.stopPropagation(); setDeletingId(dest.id); }}
+                                        className="p-1.5 text-[var(--text-muted)] hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-all cursor-pointer"
+                                        title="Elimina"
+                                      >
+                                        <Trash2 className="w-4 h-4" />
+                                      </button>
+                                    </div>
+                                  </div>
+
+                                  <AnimatePresence>
+                                    {expandedDestId === dest.id && (
+                                       <motion.div
+                                         initial={{ height: 0, opacity: 0 }}
+                                         animate={{ height: 'auto', opacity: 1 }}
+                                         exit={{ height: 0, opacity: 0 }}
+                                         className="overflow-hidden bg-[var(--surface-variant)]"
+                                       >
+                                          <div className="p-3.5 pt-0">
+                                             <div 
+                                                className="w-full h-32 rounded-xl overflow-hidden relative cursor-pointer border border-[var(--border)] shadow-inner group/map"
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  const countryObj = countryGroups.find(g => g.id === dest.countryGroupId);
+                                                  const queryParts = [dest.name];
+                                                  if (countryObj) {
+                                                    queryParts.push(countryObj.countryName);
+                                                  }
+                                                  const mapsQuery = encodeURIComponent(queryParts.join(', '));
+                                                  window.open(`https://maps.google.com/?q=${mapsQuery}`, '_system');
+                                                }}
+                                             >
+                                                <iframe
+                                                  width="100%"
+                                                  height="100%"
+                                                  style={{ border: 0, pointerEvents: 'none' }}
+                                                  loading="lazy"
+                                                  src={`https://maps.google.com/maps?q=${dest.lat},${dest.lng}&z=14&output=embed`}
+                                                />
+                                                <div className="absolute inset-0 bg-black/5 hover:bg-transparent transition-colors flex items-center justify-center group-hover/map:bg-black/10">
+                                                   <div className="w-10 h-10 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center opacity-0 group-hover/map:opacity-100 transition-opacity shadow-lg">
+                                                      <MapPin className="w-5 h-5 text-blue-500" />
+                                                   </div>
+                                                </div>
+                                             </div>
+                                             {dest.notes && (
+                                               <div className="mt-3 text-xs text-[var(--text-muted)]">
+                                                 <span className="font-bold block mb-1 text-[var(--text-main)] text-[10px] uppercase tracking-wider">Note</span>
+                                                 <p className="leading-relaxed whitespace-pre-wrap">{dest.notes}</p>
+                                               </div>
+                                             )}
+                                          </div>
+                                       </motion.div>
+                                    )}
+                                  </AnimatePresence>
+                                </motion.div>
+                              ))}
+                            </AnimatePresence>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* TAB 2: METEO DESTINAZIONI */}
+            {travelActiveTab === 'weather' && (
+              <div className="space-y-4 animate-fade-in">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xs font-black uppercase tracking-widest text-[var(--text-muted)]">Meteo & Clima</h3>
+                  <span className="text-[10px] font-bold text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">Live</span>
+                </div>
+
+                {/* City selection chips */}
+                <div className="flex gap-1.5 overflow-x-auto pb-1 no-scrollbar">
+                  {['Roma', 'Parigi', 'Londra', 'Tokyo', 'New York', 'Madrid'].map(c => (
+                    <button
+                      key={c}
+                      onClick={() => setSelectedWeatherCity(c)}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
+                        selectedWeatherCity === c ? 'bg-amber-500 text-white shadow-sm' : 'bg-[var(--surface-variant)] text-[var(--text-muted)] hover:text-[var(--text-main)]'
+                      }`}
+                    >
+                      {c}
+                    </button>
                   ))}
                 </div>
-              )}
-            </div>
+
+                {/* Main Weather Card */}
+                <div className="p-5 rounded-3xl bg-gradient-to-br from-amber-500/20 via-orange-500/10 to-transparent border border-amber-500/30 text-[var(--text-main)] relative overflow-hidden shadow-sm">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <span className="text-[10px] font-black uppercase tracking-wider text-amber-600 dark:text-amber-400">Previsioni Oggi</span>
+                      <h4 className="text-2xl font-black mt-0.5">{selectedWeatherCity}</h4>
+                      <p className="text-xs text-[var(--text-muted)] font-medium mt-0.5">{currentWeather.cond}</p>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-4xl mb-1">{currentWeather.icon}</div>
+                      <span className="text-3xl font-black">{currentWeather.temp}°C</span>
+                    </div>
+                  </div>
+
+                  {/* Weather Stats Grid */}
+                  <div className="grid grid-cols-3 gap-2 mt-5 pt-4 border-t border-[var(--border)]/60 text-center">
+                    <div className="p-2 rounded-2xl bg-[var(--card-bg)]/80 border border-[var(--border)]">
+                      <Droplets className="w-3.5 h-3.5 text-blue-500 mx-auto mb-1" />
+                      <span className="text-[9px] text-[var(--text-muted)] uppercase font-bold block">Umidità</span>
+                      <span className="text-xs font-black">{currentWeather.humidity}%</span>
+                    </div>
+                    <div className="p-2 rounded-2xl bg-[var(--card-bg)]/80 border border-[var(--border)]">
+                      <Wind className="w-3.5 h-3.5 text-teal-500 mx-auto mb-1" />
+                      <span className="text-[9px] text-[var(--text-muted)] uppercase font-bold block">Vento</span>
+                      <span className="text-xs font-black">{currentWeather.wind} km/h</span>
+                    </div>
+                    <div className="p-2 rounded-2xl bg-[var(--card-bg)]/80 border border-[var(--border)]">
+                      <CloudSun className="w-3.5 h-3.5 text-amber-500 mx-auto mb-1" />
+                      <span className="text-[9px] text-[var(--text-muted)] uppercase font-bold block">Indice UV</span>
+                      <span className="text-xs font-black">{currentWeather.uv} / 10</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 3-Day Forecast */}
+                <div>
+                  <h4 className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] mb-2 px-1">Prossimi 3 Giorni</h4>
+                  <div className="grid grid-cols-3 gap-2">
+                    {currentWeather.forecast.map((f, i) => (
+                      <div key={i} className="p-3 rounded-2xl bg-[var(--card-bg)] border border-[var(--border)] text-center shadow-xs">
+                        <span className="text-[10px] font-black uppercase text-[var(--text-muted)] block">{f.day}</span>
+                        <div className="text-2xl my-1">{f.icon}</div>
+                        <span className="text-xs font-black block">{f.max}° / <span className="text-[var(--text-muted)] font-normal">{f.min}°</span></span>
+                        <span className="text-[9px] text-[var(--text-muted)] mt-0.5 block truncate">{f.cond}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* TAB 3: CHECKLIST VALIGIA */}
+            {travelActiveTab === 'packing' && (
+              <div className="space-y-4 animate-fade-in">
+                {/* Progress Card */}
+                <div className="p-4 rounded-3xl bg-gradient-to-br from-emerald-500/15 to-transparent border border-emerald-500/30">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <Luggage className="w-4 h-4 text-emerald-500" />
+                      <span className="text-xs font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400">Preparazione Bagaglio</span>
+                    </div>
+                    <span className="text-xs font-black text-emerald-600 dark:text-emerald-400">
+                      {packingCompletedCount}/{packingItems.length} ({packingProgressPercent}%)
+                    </span>
+                  </div>
+
+                  {/* Progress Bar */}
+                  <div className="w-full h-2.5 rounded-full bg-[var(--surface-variant)] overflow-hidden">
+                    <motion.div 
+                      className="h-full bg-emerald-500 rounded-full"
+                      initial={{ width: 0 }}
+                      animate={{ width: `${packingProgressPercent}%` }}
+                      transition={{ duration: 0.4 }}
+                    />
+                  </div>
+                </div>
+
+                {/* Filter categories */}
+                <div className="flex gap-1.5 overflow-x-auto pb-1 no-scrollbar">
+                  {['Tutte', 'Documenti', 'Elettronica', 'Abbigliamento', 'Toilette', 'Salute', 'Accessori'].map(cat => (
+                    <button
+                      key={cat}
+                      onClick={() => setPackingCatFilter(cat)}
+                      className={`px-3 py-1 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
+                        packingCatFilter === cat ? 'bg-emerald-600 text-white shadow-xs' : 'bg-[var(--surface-variant)] text-[var(--text-muted)] hover:text-[var(--text-main)]'
+                      }`}
+                    >
+                      {cat}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Add new packing item */}
+                <div className="flex gap-2 p-2 bg-[var(--surface-variant)] rounded-2xl border border-[var(--border)]">
+                  <input
+                    type="text"
+                    value={newPackingText}
+                    onChange={(e) => setNewPackingText(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') handleAddPackingItem(); }}
+                    placeholder="Aggiungi oggetto alla valigia..."
+                    className="flex-1 bg-transparent px-2 text-xs font-medium outline-none text-[var(--text-main)] placeholder:text-[var(--text-muted)]"
+                  />
+                  <select
+                    value={newPackingCat}
+                    onChange={(e) => setNewPackingCat(e.target.value)}
+                    className="bg-[var(--card-bg)] text-[10px] font-bold px-2 py-1 rounded-xl border border-[var(--border)] text-[var(--text-main)] outline-none"
+                  >
+                    <option value="Abbigliamento">Abbigliamento</option>
+                    <option value="Documenti">Documenti</option>
+                    <option value="Elettronica">Elettronica</option>
+                    <option value="Toilette">Toilette</option>
+                    <option value="Salute">Salute</option>
+                    <option value="Accessori">Accessori</option>
+                  </select>
+                  <button
+                    onClick={handleAddPackingItem}
+                    className="p-1.5 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 transition-colors cursor-pointer"
+                  >
+                    <Plus className="w-4 h-4" />
+                  </button>
+                </div>
+
+                {/* Items List */}
+                <div className="space-y-1.5 max-h-[360px] overflow-y-auto custom-scrollbar pr-1">
+                  {packingItems
+                    .filter(it => packingCatFilter === 'Tutte' || it.category === packingCatFilter)
+                    .map((item) => (
+                      <div
+                        key={item.id}
+                        onClick={() => handleTogglePacking(item.id)}
+                        className={`p-3 rounded-2xl border transition-all flex items-center justify-between gap-3 cursor-pointer group ${
+                          item.checked 
+                            ? 'bg-emerald-500/5 border-emerald-500/20 text-[var(--text-muted)]' 
+                            : 'bg-[var(--card-bg)] border-[var(--border)] text-[var(--text-main)] hover:border-emerald-500/30'
+                        }`}
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className={`w-5 h-5 rounded-lg border flex items-center justify-center transition-colors ${
+                            item.checked ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-[var(--border)] group-hover:border-emerald-500'
+                          }`}>
+                            {item.checked && <Check className="w-3.5 h-3.5" />}
+                          </div>
+                          <span className={`text-xs font-bold truncate ${item.checked ? 'line-through opacity-70' : ''}`}>
+                            {item.name}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span className="text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-[var(--surface-variant)] text-[var(--text-muted)]">
+                            {item.category}
+                          </span>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); handleDeletePackingItem(item.id); }}
+                            className="p-1 rounded-lg text-[var(--text-muted)] hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              </div>
+            )}
+
+            {/* TAB 4: BUDGET & VALUTA */}
+            {travelActiveTab === 'budget' && (
+              <div className="space-y-4 animate-fade-in">
+                {/* Currency Converter */}
+                <div className="p-4 rounded-3xl bg-[var(--card-bg)] border border-[var(--border)] space-y-3 shadow-xs">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-purple-600 dark:text-purple-400 flex items-center gap-1.5">
+                      <Calculator className="w-3.5 h-3.5" /> Convertitore Valute
+                    </span>
+                    <span className="text-[9px] text-[var(--text-muted)]">Tasso aggiornato</span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="p-2.5 rounded-2xl bg-[var(--surface-variant)] border border-[var(--border)]">
+                      <span className="text-[9px] font-bold text-[var(--text-muted)] block mb-1">Da (EUR)</span>
+                      <input
+                        type="number"
+                        value={currencyAmount || ''}
+                        onChange={(e) => setCurrencyAmount(parseFloat(e.target.value) || 0)}
+                        className="w-full bg-transparent font-black text-lg outline-none text-[var(--text-main)]"
+                      />
+                    </div>
+
+                    <div className="p-2.5 rounded-2xl bg-[var(--surface-variant)] border border-[var(--border)]">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-[9px] font-bold text-[var(--text-muted)]">A ({currencyTo})</span>
+                        <select
+                          value={currencyTo}
+                          onChange={(e) => setCurrencyTo(e.target.value)}
+                          className="bg-transparent text-[10px] font-bold text-purple-500 outline-none"
+                        >
+                          <option value="USD">USD ($)</option>
+                          <option value="GBP">GBP (£)</option>
+                          <option value="JPY">JPY (¥)</option>
+                          <option value="CHF">CHF (Fr)</option>
+                          <option value="CAD">CAD (C$)</option>
+                          <option value="AUD">AUD (A$)</option>
+                          <option value="AED">AED (AED)</option>
+                        </select>
+                      </div>
+                      <div className="font-black text-lg text-purple-600 dark:text-purple-400 truncate">
+                        {convertedAmount}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-1.5 overflow-x-auto no-scrollbar pt-1">
+                    <span className="text-[10px] font-bold text-[var(--text-muted)] px-2 py-0.5 rounded-md bg-[var(--surface-variant)] shrink-0">
+                      1 EUR = 1.08 USD
+                    </span>
+                    <span className="text-[10px] font-bold text-[var(--text-muted)] px-2 py-0.5 rounded-md bg-[var(--surface-variant)] shrink-0">
+                      1 EUR = 0.85 GBP
+                    </span>
+                    <span className="text-[10px] font-bold text-[var(--text-muted)] px-2 py-0.5 rounded-md bg-[var(--surface-variant)] shrink-0">
+                      1 EUR = 163 JPY
+                    </span>
+                  </div>
+                </div>
+
+                {/* Travel Budget Tracker */}
+                <div className="p-4 rounded-3xl bg-[var(--card-bg)] border border-[var(--border)] space-y-3 shadow-xs">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <span className="text-[10px] font-black uppercase tracking-wider text-[var(--text-muted)]">Budget Viaggio</span>
+                      <h4 className="text-xl font-black text-[var(--text-main)]">
+                        €{totalSpent} <span className="text-xs font-normal text-[var(--text-muted)]">/ €{totalTripBudget}</span>
+                      </h4>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-[10px] font-black uppercase tracking-wider text-emerald-500">Rimanenti</span>
+                      <h4 className="text-lg font-black text-emerald-500">€{budgetRemaining}</h4>
+                    </div>
+                  </div>
+
+                  {/* Progress Bar */}
+                  <div className="w-full h-2.5 rounded-full bg-[var(--surface-variant)] overflow-hidden">
+                    <div 
+                      className={`h-full rounded-full transition-all ${budgetPercent > 90 ? 'bg-rose-500' : budgetPercent > 70 ? 'bg-amber-500' : 'bg-purple-600'}`}
+                      style={{ width: `${budgetPercent}%` }}
+                    />
+                  </div>
+
+                  {/* Add expense form */}
+                  <div className="pt-2 border-t border-[var(--border)]/60 flex gap-2">
+                    <input
+                      type="text"
+                      placeholder="Descrizione spesa..."
+                      value={newExpenseDesc}
+                      onChange={(e) => setNewExpenseDesc(e.target.value)}
+                      className="flex-1 bg-[var(--surface-variant)] px-3 py-1.5 rounded-xl text-xs font-medium text-[var(--text-main)] outline-none border border-[var(--border)] placeholder:text-[var(--text-muted)]"
+                    />
+                    <input
+                      type="number"
+                      placeholder="€"
+                      value={newExpenseAmount}
+                      onChange={(e) => setNewExpenseAmount(e.target.value)}
+                      className="w-16 bg-[var(--surface-variant)] px-2 py-1.5 rounded-xl text-xs font-bold text-[var(--text-main)] outline-none border border-[var(--border)] text-center"
+                    />
+                    <button
+                      onClick={handleAddExpense}
+                      className="px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs cursor-pointer active:scale-95 transition-all shrink-0"
+                    >
+                      + Aggiungi
+                    </button>
+                  </div>
+
+                  {/* Expenses List */}
+                  <div className="space-y-1.5 max-h-[180px] overflow-y-auto custom-scrollbar">
+                    {expenses.map((exp) => (
+                      <div key={exp.id} className="p-2.5 rounded-xl bg-[var(--surface-variant)]/60 border border-[var(--border)] flex items-center justify-between text-xs">
+                        <div>
+                          <p className="font-bold text-[var(--text-main)]">{exp.desc}</p>
+                          <span className="text-[9px] text-[var(--text-muted)]">{exp.category} · {exp.date}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-black text-[var(--text-main)]">€{exp.amount}</span>
+                          <button
+                            onClick={() => handleDeleteExpense(exp.id)}
+                            className="p-1 text-[var(--text-muted)] hover:text-red-500 transition-colors"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* TAB 5: NUMERI EMERGENZA LOCALI */}
+            {travelActiveTab === 'emergency' && (
+              <div className="space-y-4 animate-fade-in">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xs font-black uppercase tracking-widest text-rose-500 flex items-center gap-1.5">
+                    <Shield className="w-3.5 h-3.5" /> Numeri Emergenze Locali
+                  </h3>
+                  <span className="text-[10px] font-bold text-rose-500 bg-rose-500/10 px-2 py-0.5 rounded-full border border-rose-500/20">Chiamata Rapida</span>
+                </div>
+
+                {/* Country filter */}
+                <div className="flex gap-1.5 overflow-x-auto pb-1 no-scrollbar">
+                  {EMERGENCY_DB.map(c => (
+                    <button
+                      key={c.code}
+                      onClick={() => setSelectedEmergencyCode(c.code)}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer flex items-center gap-1.5 ${
+                        selectedEmergencyCode === c.code ? 'bg-rose-600 text-white shadow-sm' : 'bg-[var(--surface-variant)] text-[var(--text-muted)] hover:text-[var(--text-main)]'
+                      }`}
+                    >
+                      <span>{c.flag}</span>
+                      <span>{c.country.split(' ')[0]}</span>
+                    </button>
+                  ))}
+                </div>
+
+                {/* Emergency Numbers Cards */}
+                {(() => {
+                  const countryData = EMERGENCY_DB.find(c => c.code === selectedEmergencyCode) || EMERGENCY_DB[0];
+                  return (
+                    <div className="space-y-2">
+                      <div className="p-3 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-xs">
+                        <span className="font-black text-rose-600 dark:text-rose-400 block mb-0.5">{countryData.flag} {countryData.country}</span>
+                        <p className="text-[11px] text-[var(--text-muted)]">Tocca qualsiasi numero per avviare subito la chiamata dal telefono.</p>
+                      </div>
+
+                      {countryData.numbers.map((item, i) => (
+                        <a
+                          key={i}
+                          href={`tel:${item.num.replace(/[^0-9+]/g, '')}`}
+                          className="p-3.5 rounded-2xl bg-[var(--card-bg)] hover:bg-rose-500/5 border border-[var(--border)] hover:border-rose-500/40 shadow-xs flex items-center justify-between gap-3 group transition-all cursor-pointer"
+                        >
+                          <div className="min-w-0">
+                            <span className="text-xs font-black text-[var(--text-main)] group-hover:text-rose-500 transition-colors block">
+                              {item.label}
+                            </span>
+                            <span className="text-[10px] text-[var(--text-muted)] block mt-0.5">
+                              {item.desc}
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-2 shrink-0">
+                            <span className="text-base font-black font-mono text-rose-600 dark:text-rose-400 bg-rose-500/10 px-2.5 py-1 rounded-xl border border-rose-500/20">
+                              {item.num}
+                            </span>
+                            <div className="w-8 h-8 rounded-xl bg-rose-600 text-white flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform">
+                              <PhoneCall className="w-4 h-4" />
+                            </div>
+                          </div>
+                        </a>
+                      ))}
+                    </div>
+                  );
+                })()}
+              </div>
+            )}
+
           </div>
         </div>
       </div>

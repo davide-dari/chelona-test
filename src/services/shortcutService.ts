@@ -356,8 +356,8 @@ export const SECTION_SHORTCUTS: SectionShortcutDef[] = [
   {
     id: 'finance',
     route: 'split',
-    shortLabel: 'Spese & Conti',
-    longLabel: 'Chelona Spese & Finanze',
+    shortLabel: 'Finanze & Spese',
+    longLabel: 'Chelona Finanze & Spese',
     description: 'Spese quotidiane, spese condivise in gruppo, rate e mutui.',
     category: 'finanze',
     colorHex: '#8B5CF6',
@@ -540,11 +540,11 @@ export async function createSectionShortcut(shortcutIdOrRoute: string): Promise<
   ) || (
     cleanId === 'documenti' || cleanId === 'documenti & scadenze' || cleanId === 'documenti e scadenze' ? SECTION_SHORTCUTS.find(s => s.id === 'document') :
     cleanId === 'auto & mobilità' || cleanId === 'auto e mobilità' || cleanId === 'veicoli' ? SECTION_SHORTCUTS.find(s => s.id === 'auto') :
-    cleanId === 'spese' || cleanId === 'conti' || cleanId === 'spese e conti' || cleanId === 'spese & conti' ? SECTION_SHORTCUTS.find(s => s.id === 'finance' || s.id === 'split') :
+    cleanId === 'spese' || cleanId === 'conti' || cleanId === 'finanze' || cleanId === 'finanze & spese' || cleanId === 'finanze e spese' || cleanId === 'spese e conti' || cleanId === 'spese & conti' ? SECTION_SHORTCUTS.find(s => s.id === 'finance' || s.id === 'split') :
     cleanId === 'casa' || cleanId === 'casa offerte e spesa' || cleanId === 'casa, offerte & spesa' || cleanId === 'casa, offerte e spesa' ? SECTION_SHORTCUTS.find(s => s.id === 'home') :
     cleanId === 'salute' || cleanId === 'salute e fitness e dieta' || cleanId === 'salute, fitness & dieta' || cleanId === 'salute, fitness e dieta' || cleanId === 'dieta' ? SECTION_SHORTCUTS.find(s => s.id === 'fitness') :
     cleanId === 'viaggi' || cleanId === 'viaggi e mete' || cleanId === 'viaggi & mete' || cleanId === 'mete' ? SECTION_SHORTCUTS.find(s => s.id === 'travel') :
-    cleanId === 'indirizzi' || cleanId === 'parcheggio' || cleanId === 'indirizzi & parcheggio' || cleanId === 'indirizzi e parcheggio' ? SECTION_SHORTCUTS.find(s => s.id === 'parking' || s.id === 'addresses') :
+    cleanId === 'indirizzi' || cleanId === 'parcheggio' || cleanId === 'mobilita' || cleanId === 'mobilità' || cleanId === 'mobilita & posizioni' || cleanId === 'mobilità & posizioni' || cleanId === 'posizioni' || cleanId === 'indirizzi & parcheggio' || cleanId === 'indirizzi e parcheggio' ? SECTION_SHORTCUTS.find(s => s.id === 'parking' || s.id === 'addresses') :
     cleanId === 'doctor' || cleanId === 'medico' || cleanId === 'ricette' || cleanId === 'studio medico' || cleanId === 'prescriptions' ? SECTION_SHORTCUTS.find(s => s.id === 'doctor') :
     cleanId === 'recesso' || cleanId === 'disdette' || cleanId === 'disdetta' || cleanId === 'recessi' || cleanId === 'pec' ? SECTION_SHORTCUTS.find(s => s.id === 'recesso') :
     cleanId === 'testing' || cleanId === 'test' || cleanId === 'lab' || cleanId === 'funzioni sperimentali' ? SECTION_SHORTCUTS.find(s => s.id === 'testing') :

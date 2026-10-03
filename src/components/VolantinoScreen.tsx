@@ -1190,10 +1190,33 @@ export default function VolantinoScreen({ module, onClose, initialOffer, initial
           }
         }
 
+        // Fallback per insegna se fid non è nel db
+        if (!targetFlyer && (initialChain || (initialOffer as any).store)) {
+          const storeName = String(initialChain || (initialOffer as any).store);
+          const cleanStore = storeName.trim().toLowerCase();
+          const slug = STORE_SLUG_MAP[storeName] || 
+            STORE_SLUG_MAP[Object.keys(STORE_SLUG_MAP).find(k => k.toLowerCase() === cleanStore) || ''] || 
+            cleanStore;
+          const chain = db.chains.find(c => 
+            c.slug === slug || 
+            c.slug.toLowerCase() === cleanStore || 
+            c.name.toLowerCase() === cleanStore ||
+            c.name.toLowerCase().includes(cleanStore) ||
+            cleanStore.includes(c.name.toLowerCase())
+          );
+          if (chain && chain.flyers.length > 0) {
+            targetChain = chain;
+            const active = chain.flyers.filter(f => !f.to || new Date(f.to) >= new Date());
+            targetFlyer = (active.length ? active : chain.flyers)[0];
+          }
+        }
+
         if (targetFlyer) {
           if (targetChain) setCentroChain(targetChain);
           setCalameoFlyer(targetFlyer);
-          const targetPage = typeof initialOffer.pg === 'number' ? Math.max(1, initialOffer.pg + 1) : 1;
+          const targetPage = typeof initialOffer.pg === 'number' 
+            ? Math.max(1, initialOffer.pg + 1) 
+            : (typeof (initialOffer as any).page === 'number' ? Math.max(1, (initialOffer as any).page) : 1);
           setCalameoPage(targetPage);
           setPreviousView('stats');
           setView('calameo');
@@ -1206,28 +1229,43 @@ export default function VolantinoScreen({ module, onClose, initialOffer, initial
   useEffect(() => {
     const handleFlyerOffer = (e: any) => {
       const d = e.detail;
-      if (!d || !d.fid) return;
-      const fidStr = String(d.fid);
-      const pageNum = typeof d.pg === 'number' ? d.pg + 1 : (typeof d.page === 'number' ? d.page : 1);
+      if (!d) return;
+      const fidStr = String(d.fid || d.flyerId || '');
+      const pageNum = typeof d.page === 'number' 
+        ? Math.max(1, d.page) 
+        : (typeof d.pg === 'number' ? Math.max(1, d.pg + 1) : 1);
       
       let targetChain: VolantinoChain | undefined;
       let targetFlyer: VolantinoFlyer | undefined;
 
-      for (const c of db.chains) {
-        const found = c.flyers.find(f => String(f.id) === fidStr || f.bkcode === fidStr);
-        if (found) {
-          targetChain = c;
-          targetFlyer = found;
-          break;
+      if (fidStr) {
+        for (const c of db.chains) {
+          const found = c.flyers.find(f => String(f.id) === fidStr || f.bkcode === fidStr);
+          if (found) {
+            targetChain = c;
+            targetFlyer = found;
+            break;
+          }
         }
       }
 
-      if (!targetFlyer && d.store) {
-        const slug = STORE_SLUG_MAP[d.store];
-        const chain = db.chains.find(c => c.slug === slug || c.name.toLowerCase() === String(d.store).toLowerCase());
+      if (!targetFlyer && (d.store || d.chain)) {
+        const storeName = String(d.store || d.chain);
+        const cleanStore = storeName.trim().toLowerCase();
+        const slug = STORE_SLUG_MAP[storeName] || 
+          STORE_SLUG_MAP[Object.keys(STORE_SLUG_MAP).find(k => k.toLowerCase() === cleanStore) || ''] || 
+          cleanStore;
+        const chain = db.chains.find(c => 
+          c.slug === slug || 
+          c.slug.toLowerCase() === cleanStore || 
+          c.name.toLowerCase() === cleanStore ||
+          c.name.toLowerCase().includes(cleanStore) ||
+          cleanStore.includes(c.name.toLowerCase())
+        );
         if (chain && chain.flyers.length > 0) {
           targetChain = chain;
-          targetFlyer = chain.flyers[0];
+          const active = chain.flyers.filter(f => !f.to || new Date(f.to) >= new Date());
+          targetFlyer = (active.length ? active : chain.flyers)[0];
         }
       }
 
@@ -1243,14 +1281,74 @@ export default function VolantinoScreen({ module, onClose, initialOffer, initial
     return () => window.removeEventListener('open-flyer-offer', handleFlyerOffer);
   }, [db]);
 
+  // Apri il volantino di una catena con supporto a numero pagina e flyerId
+  const onOpenFlyer = useCallback((storeName: string, page?: number, flyerId?: string | number) => {
+    const cleanStore = storeName.trim().toLowerCase();
+    const slug = STORE_SLUG_MAP[storeName] || 
+      STORE_SLUG_MAP[Object.keys(STORE_SLUG_MAP).find(k => k.toLowerCase() === cleanStore) || ''] || 
+      cleanStore;
+
+    let chain = db.chains.find(c => 
+      c.slug === slug || 
+      c.slug.toLowerCase() === cleanStore || 
+      c.name.toLowerCase() === cleanStore ||
+      c.name.toLowerCase().includes(cleanStore) ||
+      cleanStore.includes(c.name.toLowerCase())
+    );
+
+    let targetFlyer: VolantinoFlyer | undefined;
+
+    // 1. Cerca per flyerId specifico
+    if (flyerId) {
+      const fidStr = String(flyerId);
+      if (chain) {
+        targetFlyer = chain.flyers.find(f => String(f.id) === fidStr || f.bkcode === fidStr);
+      }
+      if (!targetFlyer) {
+        for (const c of db.chains) {
+          const f = c.flyers.find(x => String(x.id) === fidStr || x.bkcode === fidStr);
+          if (f) {
+            targetFlyer = f;
+            if (!chain) chain = c;
+            break;
+          }
+        }
+      }
+    }
+
+    // 2. Fallback sul primo volantino attivo della catena
+    if (!targetFlyer && chain && chain.flyers.length > 0) {
+      const active = chain.flyers.filter(f => !f.to || new Date(f.to) >= new Date());
+      targetFlyer = (active.length ? active : chain.flyers)[0];
+    }
+
+    if (!targetFlyer) return;
+
+    if (chain) setCentroChain(chain);
+    setCalameoFlyer(targetFlyer);
+    const targetPage = typeof page === 'number' && page >= 1 ? page : 1;
+    setCalameoPage(targetPage);
+    setPreviousView(viewRef.current);
+    setView('calameo');
+  }, [db]);
+
   useEffect(() => {
     const handleOpenEvent = (e: any) => {
-      const target = e.detail?.chain || e.detail?.store || e.detail?.slug;
+      const d = e.detail;
+      const target = d?.chain || d?.store || d?.slug;
+      if (d?.fid || d?.flyerId || typeof d?.page === 'number' || typeof d?.pg === 'number') {
+        const fidStr = String(d.fid || d.flyerId || '');
+        const pageNum = typeof d.page === 'number'
+          ? Math.max(1, d.page)
+          : (typeof d.pg === 'number' ? Math.max(1, d.pg + 1) : 1);
+        onOpenFlyer(target || d?.store || '', pageNum, fidStr);
+        return;
+      }
       if (target) openDirectTarget(target);
     };
     window.addEventListener('open-volantino', handleOpenEvent);
     return () => window.removeEventListener('open-volantino', handleOpenEvent);
-  }, [openDirectTarget]);
+  }, [openDirectTarget, onOpenFlyer]);
 
   // Reset alert di scadenza quando cambia volantino
   useEffect(() => {
@@ -1349,56 +1447,6 @@ export default function VolantinoScreen({ module, onClose, initialOffer, initial
     return () => window.removeEventListener('volantino-back', handler);
   }, [goBack]);
 
-  // Apri il volantino di una catena con supporto a numero pagina e flyerId
-  const onOpenFlyer = useCallback((storeName: string, page?: number, flyerId?: string | number) => {
-    const cleanStore = storeName.trim().toLowerCase();
-    const slug = STORE_SLUG_MAP[storeName] || 
-      STORE_SLUG_MAP[Object.keys(STORE_SLUG_MAP).find(k => k.toLowerCase() === cleanStore) || ''] || 
-      cleanStore;
-
-    let chain = db.chains.find(c => 
-      c.slug === slug || 
-      c.slug.toLowerCase() === cleanStore || 
-      c.name.toLowerCase() === cleanStore ||
-      c.name.toLowerCase().includes(cleanStore) ||
-      cleanStore.includes(c.name.toLowerCase())
-    );
-
-    let targetFlyer: VolantinoFlyer | undefined;
-
-    // 1. Cerca per flyerId specifico
-    if (flyerId) {
-      const fidStr = String(flyerId);
-      if (chain) {
-        targetFlyer = chain.flyers.find(f => String(f.id) === fidStr || f.bkcode === fidStr);
-      }
-      if (!targetFlyer) {
-        for (const c of db.chains) {
-          const f = c.flyers.find(x => String(x.id) === fidStr || x.bkcode === fidStr);
-          if (f) {
-            targetFlyer = f;
-            if (!chain) chain = c;
-            break;
-          }
-        }
-      }
-    }
-
-    // 2. Fallback sul primo volantino attivo della catena
-    if (!targetFlyer && chain && chain.flyers.length > 0) {
-      const active = chain.flyers.filter(f => !f.to || new Date(f.to) >= new Date());
-      targetFlyer = (active.length ? active : chain.flyers)[0];
-    }
-
-    if (!targetFlyer) return;
-
-    if (chain) setCentroChain(chain);
-    setCalameoFlyer(targetFlyer);
-    const targetPage = typeof page === 'number' && page >= 1 ? page : 1;
-    setCalameoPage(targetPage);
-    setPreviousView(viewRef.current);
-    setView('calameo');
-  }, [db]);
 
   const headerSubtitle = () => {
     if (view === 'calameo' && calameoFlyer) {
@@ -1628,12 +1676,34 @@ export default function VolantinoScreen({ module, onClose, initialOffer, initial
           <div className="flex-1 min-h-0 relative">
             {calameoPage > 1 && (
               <div className="absolute top-3 left-1/2 -translate-x-1/2 z-20 pointer-events-none">
-                <span className="px-3.5 py-1.5 rounded-full bg-black/80 backdrop-blur-md text-white text-xs font-black shadow-lg border border-white/20 flex items-center gap-1.5 animate-in fade-in zoom-in duration-300">
+                <span className="px-3.5 py-1.5 rounded-full bg-black/85 backdrop-blur-md text-white text-xs font-black shadow-lg border border-white/20 flex items-center gap-1.5 animate-in fade-in zoom-in duration-300">
                   <span>📖</span>
-                  <span>Aperto a Pagina {calameoPage}</span>
+                  <span>Offerta aperta a Pagina {calameoPage}</span>
                 </span>
               </div>
             )}
+            <div className="absolute bottom-4 right-4 z-20 flex items-center gap-1.5 bg-black/85 backdrop-blur-md border border-white/20 p-1.5 rounded-2xl shadow-2xl">
+              <button
+                type="button"
+                onClick={() => setCalameoPage(p => Math.max(1, p - 1))}
+                className="px-2.5 py-1 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold transition-all disabled:opacity-30 cursor-pointer"
+                disabled={calameoPage <= 1}
+                title="Pagina precedente"
+              >
+                ◀
+              </button>
+              <span className="px-2 text-xs font-black text-white">
+                Pag. {calameoPage}
+              </span>
+              <button
+                type="button"
+                onClick={() => setCalameoPage(p => p + 1)}
+                className="px-2.5 py-1 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold transition-all cursor-pointer"
+                title="Pagina successiva"
+              >
+                ▶
+              </button>
+            </div>
             <iframe
               key={`flyer-frame-${calameoFlyer.id}-${calameoFlyer.bkcode || ''}-p${calameoPage}`}
               src={getFlyerUrl(calameoFlyer, calameoPage)}
