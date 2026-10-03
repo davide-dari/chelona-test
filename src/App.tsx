@@ -1269,6 +1269,12 @@ export default function App() {
       setIsRecessoOpen(true);
       return;
     }
+
+    if (route === 'testing' || route === 'test') {
+      setActiveNavTab('home');
+      setSelectedType('testing');
+      return;
+    }
   }, [modules, folders, selectedFolderId, isSensitiveUnlocked, handleCheckUpdate]);
 
   useEffect(() => {
@@ -3631,16 +3637,40 @@ export default function App() {
                   </button>
 
                   <button 
-                    onClick={() => { setIsSettingsOpen(true); setIsProfileOpen(false); setIsAiOpen(false); }} 
-                    className="p-2 sm:p-2.5 bg-[var(--surface-variant)] hover:bg-[var(--border)] rounded-full text-[var(--text-main)] hover:text-[var(--accent)] transition-all flex items-center justify-center shadow-sm cursor-pointer ml-1"
+                    onClick={() => {
+                      if (isSettingsOpen) {
+                        setIsSettingsOpen(false);
+                      } else {
+                        setIsSettingsOpen(true);
+                        setIsProfileOpen(false);
+                        setIsAiOpen(false);
+                      }
+                    }} 
+                    className={`p-2 sm:p-2.5 rounded-full transition-all flex items-center justify-center shadow-sm cursor-pointer ml-1 ${
+                      isSettingsOpen 
+                        ? 'bg-[var(--accent)] text-white shadow-md' 
+                        : 'bg-[var(--surface-variant)] hover:bg-[var(--border)] text-[var(--text-main)] hover:text-[var(--accent)]'
+                    }`}
                     title="Impostazioni"
                   >
                     <Settings className="w-5 h-5" />
                   </button>
 
                   <button 
-                    onClick={() => { setIsProfileOpen(true); setIsSettingsOpen(false); setIsAiOpen(false); }} 
-                    className="w-11 h-11 sm:w-12 sm:h-12 lg:w-14 lg:h-14 rounded-full overflow-hidden border-2 border-[var(--accent)]/40 focus:outline-none hover:opacity-85 hover:border-[var(--accent)] transition-all bg-[var(--surface-variant)] shadow-md cursor-pointer ml-1"
+                    onClick={() => {
+                      if (isProfileOpen) {
+                        setIsProfileOpen(false);
+                      } else {
+                        setIsProfileOpen(true);
+                        setIsSettingsOpen(false);
+                        setIsAiOpen(false);
+                      }
+                    }} 
+                    className={`w-11 h-11 sm:w-12 sm:h-12 lg:w-14 lg:h-14 rounded-full overflow-hidden border-2 transition-all bg-[var(--surface-variant)] shadow-md cursor-pointer ml-1 ${
+                      isProfileOpen
+                        ? 'border-[var(--accent)] ring-2 ring-[var(--accent)]/40 shadow-lg'
+                        : 'border-[var(--accent)]/40 hover:opacity-85 hover:border-[var(--accent)]'
+                    }`}
                     title="Profilo utente"
                   >
                     <img src={avatar || `https://ui-avatars.com/api/?name=${username}&background=E3E3E3&color=5E5E5E`} alt="Profile" className="w-full h-full object-cover" />

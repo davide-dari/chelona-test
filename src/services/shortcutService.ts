@@ -402,6 +402,23 @@ export const SECTION_SHORTCUTS: SectionShortcutDef[] = [
       <polyline points="14 2 14 8 20 8" />
       <path d="M10.4 12.6a2 2 0 1 1 3 3L8 21l-4 1 1-4Z" />
     `
+  },
+  {
+    id: 'testing',
+    route: 'testing',
+    shortLabel: 'Testing',
+    longLabel: 'Chelona Testing & Lab',
+    description: 'Arredamento stanze, disdette contrattuali e funzioni sperimentali in test.',
+    category: 'utility',
+    colorHex: '#6366F1',
+    gradientFrom: '#4F46E5',
+    gradientTo: '#818CF8',
+    emoji: '🧪',
+    svgInner: `
+      <path d="M10 2v7.527a2 2 0 0 1-.211.896L4.72 20.55a1 1 0 0 0 .9 1.45h12.76a1 1 0 0 0 .9-1.45l-5.069-10.127A2 2 0 0 1 14 9.527V2" />
+      <path d="M8.5 2h7" />
+      <path d="M7 16h10" />
+    `
   }
 ];
 
@@ -530,6 +547,7 @@ export async function createSectionShortcut(shortcutIdOrRoute: string): Promise<
     cleanId === 'indirizzi' || cleanId === 'parcheggio' || cleanId === 'indirizzi & parcheggio' || cleanId === 'indirizzi e parcheggio' ? SECTION_SHORTCUTS.find(s => s.id === 'parking' || s.id === 'addresses') :
     cleanId === 'doctor' || cleanId === 'medico' || cleanId === 'ricette' || cleanId === 'studio medico' || cleanId === 'prescriptions' ? SECTION_SHORTCUTS.find(s => s.id === 'doctor') :
     cleanId === 'recesso' || cleanId === 'disdette' || cleanId === 'disdetta' || cleanId === 'recessi' || cleanId === 'pec' ? SECTION_SHORTCUTS.find(s => s.id === 'recesso') :
+    cleanId === 'testing' || cleanId === 'test' || cleanId === 'lab' || cleanId === 'funzioni sperimentali' ? SECTION_SHORTCUTS.find(s => s.id === 'testing') :
     cleanId === 'strumenti' || cleanId === 'utility' ? SECTION_SHORTCUTS.find(s => s.id === 'tools') :
     undefined
   );

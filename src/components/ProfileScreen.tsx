@@ -149,6 +149,15 @@ export function ProfileScreen({
     return mode === 'settings' ? 'system' : 'profile';
   });
 
+  // Keep activeTab consistent when mode switches between profile and settings
+  useEffect(() => {
+    if (mode === 'settings' && (activeTab === 'profile' || activeTab === 'security')) {
+      setActiveTab('system');
+    } else if (mode === 'profile' && (activeTab === 'system' || activeTab === 'backup')) {
+      setActiveTab('profile');
+    }
+  }, [mode]);
+
   // Username edit
   const [editName, setEditName] = useState(username);
   const [isEditingName, setIsEditingName] = useState(false);
@@ -894,7 +903,7 @@ export function ProfileScreen({
                 { id: 'backup' as const, label: 'Backup & Dati', icon: Database },
               ]
             : [
-                { id: 'profile' as const, label: 'Profilo & Widget', icon: User },
+                { id: 'profile' as const, label: 'Profilo', icon: User },
                 { id: 'security' as const, label: 'Sicurezza & PIN', icon: ShieldCheck },
               ]
           ).map(tab => {
@@ -928,7 +937,47 @@ export function ProfileScreen({
               transition={{ duration: 0.2 }}
               className="space-y-6"
             >
-              {/* Theme Toggle — solo icona piccola, niente card grande */}
+              {/* Scheda Dettagli Account & Identità Vault */}
+              <div className="bg-[var(--card-bg)] rounded-[var(--radius-lg)] p-5 sm:p-6 border border-[var(--border)] shadow-sm space-y-4">
+                <div className="flex items-center gap-3 pb-3 border-b border-[var(--border)]">
+                  <div className="w-10 h-10 rounded-2xl bg-[var(--accent-bg)] flex items-center justify-center text-[var(--accent)]">
+                    <User className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold text-[var(--text-main)]">Informazioni Profilo</h3>
+                    <p className="text-xs text-[var(--text-muted)]">Dati account locale e parametri di crittografia</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                  <div className="p-3.5 rounded-xl bg-[var(--surface-variant)]/60 border border-[var(--border)]">
+                    <span className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider block mb-1">Nome Utente</span>
+                    <span className="text-sm font-black text-[var(--text-main)] truncate block">{username || 'Utente Chelona'}</span>
+                  </div>
+
+                  <div className="p-3.5 rounded-xl bg-[var(--surface-variant)]/60 border border-[var(--border)]">
+                    <span className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider block mb-1">ID Profilo Locale</span>
+                    <span className="text-xs font-mono font-bold text-[var(--accent)] truncate block">{currentProfileId}</span>
+                  </div>
+
+                  <div className="p-3.5 rounded-xl bg-[var(--surface-variant)]/60 border border-[var(--border)]">
+                    <span className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider block mb-1">Protezione Hardware</span>
+                    <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
+                      <ShieldCheck className="w-3.5 h-3.5" />
+                      <span>AES-GCM 256 Zero-Leak</span>
+                    </span>
+                  </div>
+
+                  <div className="p-3.5 rounded-xl bg-[var(--surface-variant)]/60 border border-[var(--border)]">
+                    <span className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider block mb-1">Biometria Dispositivo</span>
+                    <span className="text-xs font-bold text-[var(--text-main)]">
+                      {isBioSupported ? (isBioEnabled ? 'Attiva (Impronta / Volto)' : 'Disponibile (Non attiva)') : 'Non supportata su questo dispositivo'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Theme Toggle */}
               <div className="flex items-center justify-between bg-[var(--card-bg)] rounded-2xl px-5 py-4 border border-[var(--border)] shadow-sm">
                 <div className="flex items-center gap-3">
                   <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${
@@ -1369,6 +1418,41 @@ export function ProfileScreen({
               transition={{ duration: 0.2 }}
               className="space-y-6"
             >
+              {/* Tema & Aspetto Applicazione */}
+              <div className="bg-[var(--card-bg)] rounded-[var(--radius-lg)] p-5 sm:p-6 border border-[var(--border)] shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className={`w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 ${
+                    theme === 'dark' ? 'bg-indigo-500/15 text-indigo-400' : 'bg-amber-500/15 text-amber-500'
+                  }`}>
+                    {theme === 'dark' ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
+                  </div>
+                  <div className="min-w-0">
+                    <h3 className="text-base font-bold text-[var(--text-main)] leading-tight">
+                      {theme === 'dark' ? 'Modalità Scura' : 'Modalità Chiara'}
+                    </h3>
+                    <p className="text-xs text-[var(--text-muted)] font-medium mt-0.5">
+                      {theme === 'dark' ? 'Tema notturno attivo per comfort visivo' : 'Tema luminoso ad alto contrasto'}
+                    </p>
+                  </div>
+                </div>
+
+                <motion.button
+                  type="button"
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.92 }}
+                  onClick={onToggleTheme}
+                  className={`px-5 py-2.5 rounded-xl border flex items-center justify-center gap-2 transition-all shadow-sm cursor-pointer shrink-0 font-bold text-xs uppercase tracking-wider ${
+                    theme === 'dark'
+                      ? 'bg-amber-500/15 border-amber-500/30 text-amber-300 hover:bg-amber-500/25'
+                      : 'bg-indigo-500/15 border-indigo-500/30 text-indigo-500 hover:bg-indigo-500/25'
+                  }`}
+                  title={theme === 'dark' ? 'Attiva tema chiaro' : 'Attiva tema scuro'}
+                >
+                  {theme === 'dark' ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-indigo-500" />}
+                  <span>{theme === 'dark' ? 'Passa a Chiara' : 'Passa a Scura'}</span>
+                </motion.button>
+              </div>
+
               {/* Assistente Vocale "Ciao Chelona!" */}
               <div className="bg-[var(--card-bg)] rounded-[var(--radius-lg)] p-5 sm:p-6 border border-[var(--border)] shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div className="flex items-center gap-3 min-w-0">
@@ -1789,16 +1873,20 @@ export function ProfileScreen({
           )}
         </AnimatePresence>
 
-        {/* ── Logout / Cambia Profilo Button (con spaziatura pb-32 anti-sovrapposizione barra) ── */}
-        <div className="pt-8 pb-32 flex justify-center">
-          <button
-            onClick={onLogout}
-            className="w-full max-w-md py-4 px-6 bg-[var(--card-bg)] hover:bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20 rounded-2xl font-bold transition-all flex items-center justify-center gap-3 shadow-xs active:scale-95 text-sm cursor-pointer group"
-          >
-            <LogOut className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
-            <span>Esci / Cambia Profilo</span>
-          </button>
-        </div>
+        {/* ── Logout / Cambia Profilo Button (solo in modalità Profilo) ── */}
+        {mode === 'profile' ? (
+          <div className="pt-8 pb-32 flex justify-center">
+            <button
+              onClick={onLogout}
+              className="w-full max-w-md py-4 px-6 bg-[var(--card-bg)] hover:bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20 rounded-2xl font-bold transition-all flex items-center justify-center gap-3 shadow-xs active:scale-95 text-sm cursor-pointer group"
+            >
+              <LogOut className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
+              <span>Esci / Cambia Profilo</span>
+            </button>
+          </div>
+        ) : (
+          <div className="pb-32" />
+        )}
       </div>
 
       {/* ── MODAL: QR Code Backup (z-[200] per coprire la barra di navigazione inferiore z-[130]) ── */}

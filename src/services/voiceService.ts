@@ -118,7 +118,12 @@ class VoiceRecognitionService {
     this.clearSilenceTimer();
     const timeout = this.currentOptions?.autoStopSilenceMs || 1800;
     this.silenceTimer = setTimeout(() => {
-      if (this.isListening && this.currentTranscript.trim().length > 1) {
+      if (this.isListening && this.currentTranscript.trim().length > 0) {
+        const text = this.currentTranscript.trim();
+        if (!this.resultFired && this.currentOptions?.onResult) {
+          this.resultFired = true;
+          this.currentOptions.onResult(text);
+        }
         this.stop();
       }
     }, timeout);
@@ -251,6 +256,11 @@ class VoiceRecognitionService {
         rec.onend = () => {
           this.stopWebAudioAnalyser();
           this.isListening = false;
+          const text = this.currentTranscript.trim();
+          if (!this.resultFired && text.length > 0 && options.onResult) {
+            this.resultFired = true;
+            options.onResult(text);
+          }
           options.onEnd?.();
         };
 
