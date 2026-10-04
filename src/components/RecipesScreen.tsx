@@ -4,7 +4,8 @@ import {
   ArrowLeft, Search, X, BookOpen, Star, ChefHat, Sparkles, 
   ShoppingCart, Check, Utensils, CheckCircle2, Eye,
   BookmarkCheck, Trash2, Plus, Link2, Edit3, ExternalLink, Users,
-  Timer, Play, Pause, RotateCcw, ChevronLeft, Clock, Flame, ListOrdered
+  Timer, Play, Pause, RotateCcw, ChevronLeft, Clock, Flame, ListOrdered,
+  Globe
 } from 'lucide-react';
 
 export const FALLBACK_RECIPE_IMAGE = 'https://images.unsplash.com/photo-1498837167922-ddd27525d352?w=800';
@@ -16,6 +17,7 @@ import {
 } from '../services/menuPlannerService';
 import { RecipeCreateModal } from './RecipeCreateModal';
 import { RecipeImportModal } from './RecipeImportModal';
+import { RecipeWebSearchModal } from './RecipeWebSearchModal';
 import { 
   loadUserRecipes, 
   deleteUserRecipe, 
@@ -84,6 +86,7 @@ export function RecipesScreen({
   const [userRecipes, setUserRecipes] = useState<UserRecipeItem[]>(loadUserRecipes);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [isWebSearchOpen, setIsWebSearchOpen] = useState(false);
   const [recipeToEdit, setRecipeToEdit] = useState<UserRecipeItem | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
@@ -340,6 +343,10 @@ export function RecipesScreen({
   }, [initialCategory]);
 
   const handleBack = useCallback(() => {
+    if (isWebSearchOpen) {
+      setIsWebSearchOpen(false);
+      return;
+    }
     if (isCreateModalOpen) {
       setIsCreateModalOpen(false);
       setRecipeToEdit(null);
@@ -381,6 +388,7 @@ export function RecipesScreen({
       onClose();
     }
   }, [
+    isWebSearchOpen,
     isCreateModalOpen,
     isImportModalOpen,
     showShoppingReviewModal,
@@ -638,6 +646,17 @@ export function RecipesScreen({
         </div>
 
         <div className="flex items-center gap-2">
+          {/* Pulsante Cerca Online (GialloZafferano & Web Catalog) */}
+          <button
+            onClick={() => setIsWebSearchOpen(true)}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-full bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-extrabold text-xs shadow-sm transition-all cursor-pointer active:scale-95 shrink-0"
+            title="Cerca tra migliaia di ricette online (GialloZafferano)"
+          >
+            <Globe className="w-4 h-4" />
+            <span className="hidden sm:inline">Cerca Online</span>
+            <span className="sm:hidden">Online</span>
+          </button>
+
           {/* Pulsante Crea Nuova Ricetta */}
           <button
             onClick={() => {
@@ -691,6 +710,36 @@ export function RecipesScreen({
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full bg-[var(--surface-variant)] border border-[var(--border)] rounded-2xl py-4 pl-12 pr-4 text-[var(--text-main)] outline-none focus:ring-2 focus:ring-[var(--accent)] transition-all shadow-sm"
               />
+            </div>
+
+            {/* Banner Cerca Online / Catalogo GialloZafferano */}
+            <div 
+              onClick={() => setIsWebSearchOpen(true)}
+              className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-emerald-500/10 via-teal-500/10 to-transparent border border-emerald-500/25 flex items-center justify-between gap-4 cursor-pointer hover:border-emerald-500/50 transition-all shadow-xs group"
+            >
+              <div className="flex items-center gap-3.5">
+                <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white flex items-center justify-center shrink-0 shadow-sm group-hover:scale-105 transition-transform">
+                  <Globe className="w-5 h-5 sm:w-6 sm:h-6" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-sm sm:text-base text-[var(--text-main)] flex items-center gap-2">
+                    <span>Esplora Ricette Online</span>
+                    <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-600">
+                      GialloZafferano
+                    </span>
+                  </h3>
+                  <p className="text-xs text-[var(--text-muted)] line-clamp-1">
+                    Cerca tra decine di migliaia di ricette con ingredienti, passaggi e timer di cottura
+                  </p>
+                </div>
+              </div>
+              <button 
+                type="button"
+                className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs shrink-0 shadow-xs flex items-center gap-1.5 transition-all cursor-pointer"
+              >
+                <span>Cerca</span>
+                <span className="hidden sm:inline">Online</span>
+              </button>
             </div>
 
             {/* Selettore rapido Cucine dal Mondo per Paese */}
@@ -1942,6 +1991,16 @@ export function RecipesScreen({
           setIsImportModalOpen(false);
           setRecipeToEdit(recipe);
           setIsCreateModalOpen(true);
+        }}
+      />
+
+      {/* Modal Ricerca Web Integrata (GialloZafferano) */}
+      <RecipeWebSearchModal
+        isOpen={isWebSearchOpen}
+        onClose={() => setIsWebSearchOpen(false)}
+        onAddToShoppingList={onAddToShoppingList}
+        onRecipeSaved={(r) => {
+          showToast(`"${r.title}" salvata nel tuo Ricettario!`);
         }}
       />
 

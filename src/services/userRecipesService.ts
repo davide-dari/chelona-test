@@ -16,9 +16,16 @@ export interface UserRecipeItem extends RecipeItem {
   cookTimeMinutes?: number;
   sourceUrl?: string;
   sourceName?: string;
+  difficulty?: string;
   isCustom?: boolean;
   createdAt?: number;
   updatedAt?: number;
+}
+
+export interface WebSearchRecipesResult {
+  recipes: UserRecipeItem[];
+  hasNextPage: boolean;
+  currentPage: number;
 }
 
 export type UserRecipeInput = Partial<UserRecipeItem> & { title: string; category?: string };
@@ -994,6 +1001,15 @@ export function extractAllRecipesFromHtml(html: string, originalUrl: string): Us
         calories = parseCalories(cleanText(calMatch[1]));
       }
 
+      // Difficoltà
+      let difficulty: string | undefined;
+      const diffMatch = cardHtml.match(/#difficolta-[^"']*["'][\s\S]*?<\/svg>\s*<\/span>\s*([^<\n\r]+)/i) ||
+                        cardHtml.match(/difficolt[àa][^<:]*[:\s]+<strong>([^<]+)<\/strong>/i) ||
+                        cardHtml.match(/difficolt[àa][^<:]*[:\s]+([a-zA-Z\s]+)/i);
+      if (diffMatch) {
+        difficulty = cleanText(diffMatch[1]);
+      }
+
       // Se la ricetta era già stata parzialmente inserita da ItemList, aggiornane i dettagli
       const normCardTitle = cardTitle.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '');
       const existing = recipes.find(r => (cardUrl && r.sourceUrl === cardUrl) || 
@@ -1002,6 +1018,7 @@ export function extractAllRecipesFromHtml(html: string, originalUrl: string): Us
       if (existing) {
         if (!existing.image || existing.image.includes('photo-1498837167922')) existing.image = cardImage;
         if (!existing.prepTimeMinutes && prepTimeMinutes) existing.prepTimeMinutes = prepTimeMinutes;
+        if (!existing.difficulty && difficulty) existing.difficulty = difficulty;
         if (!existing.calories && calories) existing.calories = calories;
         if (existing.category === 'Primi' && category !== 'Primi') existing.category = category;
         if (!existing.sourceUrl && cardUrl) existing.sourceUrl = cardUrl;
@@ -1015,6 +1032,7 @@ export function extractAllRecipesFromHtml(html: string, originalUrl: string): Us
           image: cardImage,
           servings: 4,
           prepTimeMinutes,
+          difficulty,
           calories,
           country: 'Italia',
           sourceUrl: cardUrl,
@@ -1213,6 +1231,7 @@ export async function enrichRecipeDetail(
         cookTimeMinutes: full.cookTimeMinutes ?? recipe.cookTimeMinutes,
         calories: full.calories ?? recipe.calories,
         category: full.category || recipe.category,
+        difficulty: full.difficulty || recipe.difficulty,
         image: full.image && !full.image.includes('placeholder') && !full.image.includes('unsplash.com/photo-1498837167922') 
           ? full.image 
           : recipe.image,
@@ -1278,44 +1297,45 @@ export async function enrichRecipesWithProgress(
 }
 
 /**
- * Scarica una pagina web ed estrae TUTTE le ricette presenti.
- * Usa CapacitorHttp in ambiente nativo (zero CORS) e fallback proxy in browser.
+ * Scarica l'HTML di una pagina web tramite CapacitorHttp nativo (zero CORS su Android/iOS),
+ * con fallback a fetch diretto e proxy CORS multipli per browser web.
  */
-export async function fetchAndExtractRecipesFromUrl(rawUrl: string): Promise<UserRecipeItem[]> {
-  const url = normalizeGialloZafferanoUrl(rawUrl.trim());
-  if (!url.startsWith('http://') && !url.startsWith('https://')) {
-    throw new Error('Inserisci un link URL valido che inizia con https:// o http://');
-  }
-
+export async function fetchHtmlFromUrl(url: string, timeoutMs = 8000): Promise<string> {
   let html = '';
 
-  // 1. Prova prima con CapacitorHttp nativo (zero CORS su Android/iOS)
-  try {
-    const res = await CapacitorHttp.get({
-      url,
-      responseType: 'text',
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-        'Accept-Language': 'it-IT,it;q=0.9,en-US;q=0.8,en;q=0.7',
-      },
-    });
-    if (res && res.data && (res.status === undefined || (res.status >= 200 && res.status < 400))) {
-      html = typeof res.data === 'string' ? res.data : JSON.stringify(res.data);
+  // 1. Prova prima con CapacitorHttp in ambiente nativo (zero CORS su Android/iOS)
+  if (typeof Capacitor !== 'undefined' && Capacitor.isNativePlatform()) {
+    try {
+      const res = await CapacitorHttp.get({
+        url,
+        responseType: 'text',
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+          'Accept-Language': 'it-IT,it;q=0.9,en-US;q=0.8,en;q=0.7',
+        },
+      });
+      if (res && res.data && (res.status === undefined || (res.status >= 200 && res.status < 400))) {
+        html = typeof res.data === 'string' ? res.data : JSON.stringify(res.data);
+      }
+    } catch (nativeErr) {
+      console.warn('[UserRecipesService] CapacitorHttp direct failed, trying web fallbacks:', nativeErr);
     }
-  } catch (nativeErr) {
-    console.warn('[UserRecipesService] CapacitorHttp direct failed, trying web fallbacks:', nativeErr);
   }
 
   // 2. Se non ha funzionato o siamo nel browser in dev, prova fetch diretto
   if (!html) {
     try {
+      const controller = new AbortController();
+      const id = setTimeout(() => controller.abort(), timeoutMs);
       const res = await fetch(url, {
         headers: {
           'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
           'Accept-Language': 'it-IT,it;q=0.9,en;q=0.8',
-        }
+        },
+        signal: controller.signal,
       });
+      clearTimeout(id);
       if (res.ok) {
         html = await res.text();
       }
@@ -1334,7 +1354,10 @@ export async function fetchAndExtractRecipesFromUrl(rawUrl: string): Promise<Use
 
     for (const proxyUrl of proxies) {
       try {
-        const res = await fetch(proxyUrl);
+        const controller = new AbortController();
+        const id = setTimeout(() => controller.abort(), timeoutMs);
+        const res = await fetch(proxyUrl, { signal: controller.signal });
+        clearTimeout(id);
         if (res.ok) {
           const text = await res.text();
           if (text && text.length > 500) {
@@ -1348,6 +1371,21 @@ export async function fetchAndExtractRecipesFromUrl(rawUrl: string): Promise<Use
     }
   }
 
+  return html;
+}
+
+/**
+ * Scarica una pagina web ed estrae TUTTE le ricette presenti.
+ * Usa CapacitorHttp in ambiente nativo (zero CORS) e fallback proxy in browser.
+ */
+export async function fetchAndExtractRecipesFromUrl(rawUrl: string): Promise<UserRecipeItem[]> {
+  const url = normalizeGialloZafferanoUrl(rawUrl.trim());
+  if (!url.startsWith('http://') && !url.startsWith('https://')) {
+    throw new Error('Inserisci un link URL valido che inizia con https:// o http://');
+  }
+
+  const html = await fetchHtmlFromUrl(url);
+
   if (!html || html.trim().length === 0) {
     throw new Error('Impossibile scaricare la pagina. Verifica la connessione internet o che il link sia accessibile.');
   }
@@ -1358,6 +1396,97 @@ export async function fetchAndExtractRecipesFromUrl(rawUrl: string): Promise<Use
   }
 
   return recipes;
+}
+
+/**
+ * Rileva la presenza di una pagina successiva nei risultati di ricerca GialloZafferano.
+ */
+export function detectHasNextPage(html: string, currentPage: number, recipesCount: number): boolean {
+  if (!html || recipesCount === 0) return false;
+
+  // 1. Frecce o testo "Pagina successiva"
+  if (
+    /title=["']Pagina successiva["']/i.test(html) ||
+    /class=["'][^"']*gz-icon-arrow-right[^"']*["']/i.test(html) ||
+    /<span[^>]*class=["'][^"']*gz-text[^"']*["'][^>]*>\s*Pagina successiva\s*<\/span>/i.test(html)
+  ) {
+    return true;
+  }
+
+  // 2. Link esplicito alla pagina successiva
+  const nextPage = currentPage + 1;
+  const nextPagePattern = new RegExp(`(?:/page${nextPage}/|[?&]page=${nextPage}\\b)`, 'i');
+  if (nextPagePattern.test(html)) {
+    return true;
+  }
+
+  // 3. Numeri di pagina presenti nei controlli di paginazione superiori alla pagina corrente
+  const pageMatches = [...html.matchAll(/<a\b[^>]*class=["'][^"']*\bpage\b[^"']*["'][^>]*>\s*(\d+)\s*<\/a>/gi)];
+  for (const m of pageMatches) {
+    const num = parseInt(m[1], 10);
+    if (!isNaN(num) && num > currentPage) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+/**
+ * Cerca ricette online su GialloZafferano (o catalogo web) con supporto alla paginazione
+ * e parsing completo di card (immagine, titolo, categoria, difficoltà, tempo, sorgente).
+ */
+export async function searchWebRecipes(
+  query: string,
+  page: number = 1
+): Promise<WebSearchRecipesResult> {
+  const cleanQ = query.trim().replace(/\s+/g, ' ');
+  if (!cleanQ) {
+    return { recipes: [], hasNextPage: false, currentPage: 1 };
+  }
+
+  const encodedQuery = encodeURIComponent(cleanQ.toLowerCase()).replace(/%20/g, '+');
+
+  // URL primario per la pagina specificata
+  const primaryUrl = page <= 1
+    ? `https://www.giallozafferano.it/ricerca-ricette/${encodedQuery}/`
+    : `https://www.giallozafferano.it/ricerca-ricette/page${page}/${encodedQuery}/`;
+
+  let html = await fetchHtmlFromUrl(primaryUrl).catch(() => '');
+
+  // Fallback se primaryUrl non restituisce nulla per pagine > 1
+  if ((!html || html.length < 500) && page > 1) {
+    const fallbackUrl = `https://www.giallozafferano.it/ricerca-ricette/${encodedQuery}/page${page}/`;
+    const fallbackHtml = await fetchHtmlFromUrl(fallbackUrl).catch(() => '');
+    if (fallbackHtml && fallbackHtml.length > 500) {
+      html = fallbackHtml;
+    }
+  }
+
+  if (!html || html.trim().length === 0) {
+    throw new Error('Impossibile contattare il catalogo online. Verifica la connessione internet.');
+  }
+
+  const recipes = extractAllRecipesFromHtml(html, primaryUrl);
+  const hasNextPage = detectHasNextPage(html, page, recipes.length);
+
+  return {
+    recipes,
+    hasNextPage,
+    currentPage: page,
+  };
+}
+
+/**
+ * Metodo di arricchimento istantaneo per una singola ricetta selezionata online.
+ * Scarica la pagina originale ed estrae immediatamente ingredienti con dosi,
+ * passaggi passo-passo (con timer), porzioni e calorie.
+ */
+export async function fetchAndEnrichSingleRecipe(
+  recipe: UserRecipeItem,
+  timeoutMs = 8000
+): Promise<UserRecipeItem> {
+  return enrichRecipeDetail(recipe, timeoutMs);
 }
 
 /**

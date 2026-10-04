@@ -16,6 +16,7 @@ export interface RecipeItem {
   country?: string;
   countryCode?: string;
   flag?: string;
+  difficulty?: string;
   servings?: number;
   prepTimeMinutes?: number;
   cookTimeMinutes?: number;

@@ -17,6 +17,9 @@ import {
   extractCardImage,
   enrichRecipesWithProgress,
   fetchRecipeFromUrl,
+  searchWebRecipes,
+  detectHasNextPage,
+  fetchAndEnrichSingleRecipe,
   USER_RECIPES_STORAGE_KEY,
   CULINARY_PRESETS,
   type UserRecipeItem
@@ -996,7 +999,188 @@ assert.strictEqual(gzSingleExtracted[0].prepTimeMinutes, 15);
 assert.strictEqual(gzSingleExtracted[0].cookTimeMinutes, 10);
 console.log('✓ GialloZafferano Single Recipe HTML extraction passed');
 
-console.log('🎉 ALL 29 USER RECIPES SERVICE TESTS PASSED PERFECTLY!');
+// 30. Test detectHasNextPage Pagination Detection
+console.log('30. Testing detectHasNextPage Pagination Detection...');
+const htmlWithArrow = `
+<div class="gz-pagination">
+  <a class="gz-arrow" href="/ricerca-ricette/page2/carbonara/" title="Pagina successiva">
+    <span class="gz-text">Pagina successiva</span>
+  </a>
+</div>
+`;
+assert.strictEqual(detectHasNextPage(htmlWithArrow, 1, 10), true);
+
+const htmlWithNumberedPages = `
+<div class="gz-pagination">
+  <div class="gz-pages">
+    <a href="/ricerca-ricette/carbonara/" class="page cur">1</a>
+    <a href="/ricerca-ricette/page2/carbonara/" class="page">2</a>
+    <a href="/ricerca-ricette/page3/carbonara/" class="page">3</a>
+  </div>
+</div>
+`;
+assert.strictEqual(detectHasNextPage(htmlWithNumberedPages, 1, 15), true);
+assert.strictEqual(detectHasNextPage(htmlWithNumberedPages, 2, 15), true);
+assert.strictEqual(detectHasNextPage(htmlWithNumberedPages, 3, 15), false);
+
+const htmlSinglePage = `
+<div class="gz-pagination">
+  <div class="gz-pages">
+    <a href="/ricerca-ricette/carbonara/" class="page cur">1</a>
+  </div>
+</div>
+`;
+assert.strictEqual(detectHasNextPage(htmlSinglePage, 1, 5), false);
+assert.strictEqual(detectHasNextPage('', 1, 0), false);
+console.log('✓ detectHasNextPage pagination detection passed');
+
+// 31. Test searchWebRecipes Parsing and Pagination with Mock HTML
+console.log('31. Testing searchWebRecipes Parsing and Pagination...');
+const emptySearchResult = await searchWebRecipes('');
+assert.strictEqual(emptySearchResult.recipes.length, 0);
+assert.strictEqual(emptySearchResult.hasNextPage, false);
+assert.strictEqual(emptySearchResult.currentPage, 1);
+
+const mockWebSearchHtml = `
+<!DOCTYPE html>
+<html>
+<body>
+  <article class="gz-card gz-card-horizontal">
+    <div class="gz-card-image">
+      <a href="https://ricette.giallozafferano.it/Carbonara-Tradizionale.html" title="Carbonara Tradizionale">
+        <picture>
+          <img src="https://www.giallozafferano.it/images/carbonara.jpg" alt="Carbonara Tradizionale" />
+        </picture>
+      </a>
+    </div>
+    <div class="gz-card-content">
+      <div class="gz-category">Primi piatti</div>
+      <h2 class="gz-title">
+        <a href="https://ricette.giallozafferano.it/Carbonara-Tradizionale.html" title="Carbonara Tradizionale">
+          Carbonara Tradizionale
+        </a>
+      </h2>
+      <ul class="gz-card-data bottom">
+        <li class="gz-single-data-recipe">
+          <span class="gz-icon"><svg><use xlink:href="/icons.svg#difficolta-grey" /></svg></span>
+          Facile
+        </li>
+        <li class="gz-single-data-recipe">
+          <span class="gz-icon"><svg><use xlink:href="/icons.svg#tempo-grey" /></svg></span>
+          25 min
+        </li>
+        <li class="gz-single-data-recipe">
+          <span class="gz-icon"><svg><use xlink:href="/icons.svg#kcal-grey" /></svg></span>
+          Kcal 550
+        </li>
+      </ul>
+    </div>
+  </article>
+
+  <article class="gz-card gz-card-horizontal">
+    <div class="gz-card-image">
+      <a href="https://ricette.giallozafferano.it/Risotto-alla-Milanese.html" title="Risotto alla Milanese">
+        <picture>
+          <img src="https://www.giallozafferano.it/images/risotto.jpg" alt="Risotto alla Milanese" />
+        </picture>
+      </a>
+    </div>
+    <div class="gz-card-content">
+      <div class="gz-category">Primi piatti</div>
+      <h2 class="gz-title">
+        <a href="https://ricette.giallozafferano.it/Risotto-alla-Milanese.html" title="Risotto alla Milanese">
+          Risotto alla Milanese
+        </a>
+      </h2>
+      <ul class="gz-card-data bottom">
+        <li class="gz-single-data-recipe">
+          <span class="gz-icon"><svg><use xlink:href="/icons.svg#difficolta-grey" /></svg></span>
+          Media
+        </li>
+        <li class="gz-single-data-recipe">
+          <span class="gz-icon"><svg><use xlink:href="/icons.svg#tempo-grey" /></svg></span>
+          40 min
+        </li>
+      </ul>
+    </div>
+  </article>
+
+  <div class="gz-pagination">
+    <a class="gz-arrow" href="/ricerca-ricette/page2/carbonara/" title="Pagina successiva">
+      <span class="gz-text">Pagina successiva</span>
+    </a>
+  </div>
+</body>
+</html>
+`;
+
+// Temporarily mock global.fetch for searchWebRecipes test
+const originalFetch = global.fetch;
+(global as any).fetch = async (url: string | URL | Request) => {
+  return {
+    ok: true,
+    status: 200,
+    text: async () => mockWebSearchHtml
+  } as any;
+};
+
+const searchRes = await searchWebRecipes('carbonara', 1);
+assert.strictEqual(searchRes.recipes.length, 2);
+assert.strictEqual(searchRes.currentPage, 1);
+assert.strictEqual(searchRes.hasNextPage, true);
+
+const rec1 = searchRes.recipes[0];
+assert.strictEqual(rec1.title, 'Carbonara Tradizionale');
+assert.strictEqual(rec1.category, 'Primi');
+assert.strictEqual(rec1.difficulty, 'Facile');
+assert.strictEqual(rec1.prepTimeMinutes, 25);
+assert.strictEqual(rec1.calories, 550);
+assert.strictEqual(rec1.image, 'https://www.giallozafferano.it/images/carbonara.jpg');
+assert.strictEqual(rec1.sourceUrl, 'https://ricette.giallozafferano.it/Carbonara-Tradizionale.html');
+assert.strictEqual(rec1.sourceName, 'Giallozafferano');
+
+const rec2 = searchRes.recipes[1];
+assert.strictEqual(rec2.title, 'Risotto alla Milanese');
+assert.strictEqual(rec2.difficulty, 'Media');
+assert.strictEqual(rec2.prepTimeMinutes, 40);
+
+console.log('✓ searchWebRecipes parsing and pagination passed');
+
+// 32. Test fetchAndEnrichSingleRecipe
+console.log('32. Testing fetchAndEnrichSingleRecipe...');
+(global as any).fetch = async (url: string | URL | Request) => {
+  return {
+    ok: true,
+    status: 200,
+    text: async () => mockGzSingleRecipeHtml
+  } as any;
+};
+
+const partialCard: UserRecipeItem = {
+  id: 'test_card_1',
+  title: 'Spaghetti alla Carbonara',
+  category: 'Primi',
+  image: 'https://gz.it/thumb.jpg',
+  ingredients: [],
+  steps: [],
+  sourceUrl: 'https://ricette.giallozafferano.it/Spaghetti-alla-Carbonara.html',
+  sourceName: 'Giallozafferano'
+};
+
+const enrichedSingle = await fetchAndEnrichSingleRecipe(partialCard, 1000);
+assert.strictEqual(enrichedSingle.title, 'Spaghetti alla Carbonara');
+assert.strictEqual(enrichedSingle.ingredients.length, 5);
+assert.strictEqual(enrichedSingle.steps.length, 4);
+assert.strictEqual(enrichedSingle.prepTimeMinutes, 15);
+assert.strictEqual(enrichedSingle.cookTimeMinutes, 10);
+assert(enrichedSingle.image.includes('Spaghetti-alla-Carbonara.jpg'));
+
+// Restore original fetch
+(global as any).fetch = originalFetch;
+
+console.log('✓ fetchAndEnrichSingleRecipe passed');
+
+console.log('🎉 ALL 32 USER RECIPES SERVICE TESTS PASSED PERFECTLY!');
 process.exit(0);
 
 
