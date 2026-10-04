@@ -1,11 +1,31 @@
 import fs from 'fs';
 import path from 'path';
 
-const UNSPLASH_BASE = 'https://images.unsplash.com/';
+export const UNSPLASH_BASE = 'https://images.unsplash.com/';
 
-// Exact verified Unsplash photo mappings (100% verified 200 HTTP OK)
+// Exact verified photo mappings (100% verified 200 HTTP OK)
 export const SPECIFIC_DISH_IMAGES = [
-  // 1. Cucine internazionali e piatti iconici mondiali
+  // 1. Eccezioni specifiche e piatti ad alto rischio di mismatch
+  { regex: /zuppa inglese/i, img: 'photo-1551024601-bec78aea704b?w=800' },
+  { regex: /pasta di mandorle|pizzicotti|amarett/i, img: 'photo-1582293041079-7814c2f12063?w=800' },
+  { regex: /pasta choux|bign[eè]|profiterol/i, img: 'photo-1587314168485-3236d6710814?w=800' },
+  { regex: /bastoncini di pasta sfoglia|sfogliatine/i, img: 'photo-1509440159596-0249088772ff?w=800' },
+  { regex: /pasta sfoglia|pasta bris[eè]|pasta frolla|impasto/i, img: 'photo-1509440159596-0249088772ff?w=800' },
+  { regex: /canederli|kn[öo]del/i, img: 'photo-1589301760014-d929f3979dbc?w=800' },
+  { regex: /baba['’]?\s*al\s*rum|savarin/i, img: 'photo-1587314168485-3236d6710814?w=800' },
+  { regex: /vin brul[eè]|mulled wine/i, img: 'photo-1543362906-acfc16c67564?w=800' },
+  { regex: /golden milk|latte d['’]oro/i, img: 'photo-1544787219-7f47ccb76574?w=800' },
+  { regex: /acqua aromatizzata|detox/i, img: 'photo-1556881286-fc6915169721?w=800' },
+  { regex: /limonata|cedrata|citronette/i, img: 'photo-1513558161293-cdaf765ed2fd?w=800' },
+  { regex: /insalata di mare|insalata.*polpo|polpo.*patate/i, img: 'photo-1559742811-822873691df8?w=800' },
+  { regex: /moussaka|mousakas/i, img: 'photo-1574894709920-11b28e7367e3?w=800' },
+  { regex: /giardiniera|sott['’]aceto|sottaceti/i, img: 'photo-1590080875515-8a3a8dc5735e?w=800' },
+  { regex: /crescione|cassone/i, img: 'photo-1509440159596-0249088772ff?w=800' },
+  { regex: /torta di patate|gateau|frico/i, img: 'photo-1565299624946-b28f40a0ae38?w=800' },
+  { regex: /fish and chips/i, img: 'photo-1579208575657-c595a05383b7?w=800' },
+  { regex: /besciamella|tzatziki|maionese|salsa verde|crema al parmigiano/i, img: 'photo-1577906096429-f73c2c312435?w=800' },
+
+  // 2. Cucine internazionali e piatti iconici mondiali
   { regex: /sushi|onigiri|maki|sashimi|uramaki/i, img: 'photo-1579871494447-9811cf80d66c?w=800' },
   { regex: /ramen|pho|noodles/i, img: 'photo-1569718212165-3a8278d5f624?w=800' },
   { regex: /gyoza|jiaozi|baozi|dumpling|ravioli cin|ravioli gia/i, img: 'photo-1496116218417-1a781b1c416c?w=800' },
@@ -26,10 +46,9 @@ export const SPECIFIC_DISH_IMAGES = [
   { regex: /ceviche/i, img: 'photo-1519708227418-c8fd9a32b7a2?w=800' },
   { regex: /baba ganoush|hummus|falafel|tabboul/i, img: 'photo-1577906096429-f73c2c312435?w=800' },
   { regex: /guacamole/i, img: 'photo-1541544741938-0af808871cc0?w=800' },
-  { regex: /fish and chips/i, img: 'photo-1519708227418-c8fd9a32b7a2?w=800' },
   { regex: /baklava/i, img: 'photo-1519869325930-281384150729?w=800' },
 
-  // 2. Piatti della tradizione italiana e ricette storiche
+  // 3. Piatti della tradizione italiana e ricette storiche
   { regex: /carbonara/i, img: 'photo-1612874742237-6526221588e3?w=800' },
   { regex: /vongole|cozze|pescatora|frutti di mare|scoglio|marinara|tiella/i, img: 'photo-1563379091339-03b21ab4a4f8?w=800' },
   { regex: /ostrich|capesant/i, img: 'photo-1534422298391-e4f8c172dddb?w=800' },
@@ -47,19 +66,19 @@ export const SPECIFIC_DISH_IMAGES = [
   { regex: /arrosticini|bratwurst/i, img: 'photo-1529193591184-b1d58069ecdd?w=800' },
   { regex: /caponata|ratatouille|peperonata/i, img: 'photo-1572449043416-55f4685c9bb7?w=800' },
 
-  // 3. Pizza, Pane, Lievitati & Rustici
+  // 4. Pizza, Pane, Lievitati & Rustici
   { regex: /pizza|pinsa/i, img: 'photo-1513104890138-7c749659a591?w=800' },
   { regex: /focaccia|schiacciata/i, img: 'photo-1509440159596-0249088772ff?w=800' },
   { regex: /bretzel|pretzel/i, img: 'photo-1589367920969-ab8e050bbb04?w=800' },
   { regex: /bruschett|crostin/i, img: 'photo-1572656631137-7935297eff55?w=800' },
   { regex: /arancin|panzerott|gnocco fritto/i, img: 'photo-1565299585323-38d6b0865b47?w=800' },
-  { regex: /torta.*salat|quiche|plumcake salato|strudel salato|torta pasqualina|torta rustica|frico/i, img: 'photo-1565299624946-b28f40a0ae38?w=800' },
+  { regex: /torta.*salat|quiche|plumcake salato|strudel salato|torta pasqualina|torta rustica/i, img: 'photo-1565299624946-b28f40a0ae38?w=800' },
   { regex: /pane|panini|bagel|parigina|danubio|casatiello|tortano|grissini|crackers/i, img: 'photo-1509440159596-0249088772ff?w=800' },
   { regex: /burger|hamburger/i, img: 'photo-1568901346375-23c9450c58cd?w=800' },
   { regex: /sandwich|toast|croque/i, img: 'photo-1528735602780-2552fd46c7af?w=800' },
   { regex: /frittata|omelette/i, img: 'photo-1525351484163-7529414344d8?w=800' },
 
-  // 4. Dolci & Dessert specifici
+  // 5. Dolci & Dessert specifici
   { regex: /tiramis[uù]/i, img: 'photo-1571877227200-a0d98ea607e9?w=800' },
   { regex: /cheesecake/i, img: 'photo-1533134242443-d4fd215305ad?w=800' },
   { regex: /cioccolat|brownie|sacher|tenerina|caprese.*cioccolat|tortino.*cioccolato|nutella|nutellotti/i, img: 'photo-1578985545062-69928b1d9587?w=800' },
@@ -80,7 +99,7 @@ export const SPECIFIC_DISH_IMAGES = [
   { regex: /marmellat|confettur|composta/i, img: 'photo-1584308666744-24d5c474f2ae?w=800' },
   { regex: /torta/i, img: 'photo-1565958011703-44f9829ba187?w=800' },
 
-  // 5. Bevande & Colazione
+  // 6. Bevande & Colazione
   { regex: /spritz|hugo/i, img: 'photo-1560512823-829485b8bf24?w=800' },
   { regex: /mojito/i, img: 'photo-1551538827-9c037cb4f32a?w=800' },
   { regex: /sangria/i, img: 'photo-1510812431401-41d2bd2722f3?w=800' },
@@ -93,7 +112,7 @@ export const SPECIFIC_DISH_IMAGES = [
   { regex: /porridge|avena|m[uü]sli/i, img: 'photo-1517673400267-0251440c45dc?w=800' },
   { regex: /french toast/i, img: 'photo-1484723091739-30a097e8f929?w=800' },
 
-  // 6. Proteine principali (Pesce & Carne)
+  // 7. Proteine principali (Pesce & Carne)
   { regex: /salmon/i, img: 'photo-1467003909585-2f8a72700288?w=800' },
   { regex: /tonno/i, img: 'photo-1501595091296-3aa970afb3ff?w=800' },
   { regex: /polpo|calamar|seppi/i, img: 'photo-1559742811-822873691df8?w=800' },
@@ -105,9 +124,9 @@ export const SPECIFIC_DISH_IMAGES = [
   { regex: /polpett/i, img: 'photo-1529042410759-befb1204b468?w=800' },
   { regex: /cotolett|schnitzel|katsu|saltimbocca|scaloppin/i, img: 'photo-1532550907401-a500c9a57435?w=800' },
 
-  // 7. Contorni, Verdure & Insalate
+  // 8. Contorni, Verdure & Insalate
   { regex: /patate fritte|chips|francesine/i, img: 'photo-1573080496219-bb080dd4f877?w=800' },
-  { regex: /patat.*forno|patate arrosto|patatas bravas|rosti|gateau|pure|pur[eè]|patate/i, img: 'photo-1568584711271-6c929fb49b60?w=800' },
+  { regex: /patat.*forno|patate arrosto|patatas bravas|rosti|pure|pur[eè]|patate/i, img: 'photo-1568584711271-6c929fb49b60?w=800' },
   { regex: /caesar salad/i, img: 'photo-1546793665-c74683f339c1?w=800' },
   { regex: /insalat/i, img: 'photo-1540420773420-3366772f4999?w=800' },
   { regex: /spaghetti|pasta|penne|rigatoni|fusilli|tagliatelle|vermicelli|tagliolini|orecchiette|malloreddus|pizzoccheri|spätzle/i, img: 'photo-1546549032-9571cd6b27df?w=800' },

@@ -14,6 +14,7 @@ import {
 } from '../data/supermarketProducts';
 import { findOffersForName } from '../data/offerStats';
 import { IngredientModal } from './IngredientModal';
+import { detectSupermarketCategory } from '../services/mathLanguageEngine';
 
 
 
@@ -104,59 +105,37 @@ export const SUPERMARKET_AISLES: SupermarketAisle[] = [
 ];
 
 export const mapToAisle = (category?: string, name?: string): SupermarketCategory => {
-  const n = (name || '').toLowerCase();
-  
-  // 1. Surgelati (verificati per primi per intercettare gelati e surgelati)
-  if (/\b(?:surgelat[oi]|gelat[oi]|ghiacciol[oi]|bastoncini\s+di\s+pesce|pizza\s+surgelat[ae]|sofficini|fagiolini\s+surgelati|piselli\s+surgelati|spinaci\s+surgelati|verdure\s+surgelate)\b/i.test(n)) {
-    return 'surgelati';
+  const n = (name || '').trim();
+
+  // 1. Rilevamento intelligente prioritario dal nome del prodotto
+  if (n) {
+    const detected = detectSupermarketCategory(n);
+    if (detected !== 'dispensa') {
+      return detected;
+    }
   }
 
-  // 2. Pescheria
-  if (category === 'pescheria' || /\b(?:pesc[ei]|tonno\s+fresco|salmon[ei]|merluzzo?|orata|spigola|gamber[oi]|calamar[oi]|seppi[ae]|polpo?|cozz[ae]|vongol[ae]|acciugh?e?|alici?|trot[ae]|branzino?|sogliol[ae]|pesce\s+spada|platessa)\b/i.test(n)) {
-    return 'pescheria';
+  // 2. Se è presente una categoria esplicita valida tra i 10 reparti universali
+  if (category === 'ortofrutta' || category === 'macelleria' || category === 'pescheria' ||
+      category === 'latticini-uova' || category === 'panetteria' || category === 'dispensa' ||
+      category === 'colazione-snack' || category === 'surgelati' || category === 'bevande' ||
+      category === 'igiene-cura') {
+    return category;
   }
 
-  // 3. Macelleria & Salumi
-  if (category === 'macelleria' || (category === 'carne-pesce' && !/\b(?:pesc|tonno|salmone|merluzzo|orata|spigola|gamber|calamar|seppi|polpo|cozze|vongol)/i.test(n)) || /\b(?:carn[ei]|poll[oi]|manzo?|maial[ei]|vitello?|agnello?|tacchino?|salsicci[ae]|wurstel|prosciutt[oi]|salame?|affettat[oi]|bresaol[ae]|pancetta|guanciale|mortadella|speck|bistecc[ae]|filett[oi]|macinato|hamburger|fesa|lonza|arista|costine)\b/i.test(n)) {
-    return 'macelleria';
+  // 3. Compatibilità categorie legacy
+  if (category === 'frutta-verdura') return 'ortofrutta';
+  if (category === 'pane-pasticceria') return 'panetteria';
+  if (category === 'pulizia' || category === 'igiene') return 'igiene-cura';
+  if (category === 'carne-pesce') {
+    return n && detectSupermarketCategory(n) === 'pescheria' ? 'pescheria' : 'macelleria';
   }
 
-  // 4. Latticini & Uova
-  if (category === 'latticini-uova' || /\b(?:latt[ei]|formagg[oi]|yogurt|burro?|mozzarell[ae]|parmigiano?|grana|uov[ao]|ricott[ae]|panna|stracchino?|gorgonzola|mascarpone?|pecorino?|provol[ae]|scamorz[ae]|fontina|caciocavallo|crescenza|brie|feta|mascarpone|sottilette)\b/i.test(n)) {
-    return 'latticini-uova';
+  if (n) {
+    return detectSupermarketCategory(n);
   }
 
-  // 5. Ortofrutta
-  if (category === 'ortofrutta' || category === 'frutta-verdura' || /\b(?:mela|mele|banana|banane|arancia|arance|limon[ei]|frutt[ae]|verdur[ae]|pomodor[oi]|pomodorin[oi]|insalat[ae]|carot[ae]|zocchin[ae]|zucchine?|cipoll[ae]|patat[ae]|aglio|basilico|spinac[ie]|pesc[ae]|fragol[ae]|melanzan[ae]|peperon[ei]|fungh?i?|broccol[oi]|cavol[oi]|zucc[ahie]|asparag[oi]|carciof[oi]|sedano?|porr[oi]|finocchi?o?|cetriol[oi]|rucola|radicchio|pisell[oi]|fagiolin[oi]|albicocc[ae]|cilieg[ie]|kiwi|ananas|uva|mirtill[oi]|lampon[ei]|more|avocado)\b/i.test(n)) {
-    return 'ortofrutta';
-  }
-
-  // 6. Panetteria & Pasticceria
-  if (category === 'panetteria' || (category === 'pane-pasticceria' && !/\b(?:biscott|merendin|fette\s+biscottate)/i.test(n)) || /\b(?:pan[ei]|focacci[ae]|cornett[oi]|croissant|brioche|tort[ae]|crostat[ae]|ciambell[ae]|lievito?|pangrattato|crostin[oi]|piadin[ae]|pagnott[ae]|panin[oi])\b/i.test(n)) {
-    return 'panetteria';
-  }
-
-  // 7. Colazione & Snack
-  if (category === 'colazione-snack' || /\b(?:caff[eè]?|espress[oi]|ciald[ae]|capsul[ae]|tè|the|tisan[ae]|orz[oi]|biscott[oi]|cereali|corn\s*flakes|muesli|fett[ae]\s+biscottat[ae]|marmellat[ae]|confettur[ae]|nutella|miele|cioccolat[oi]|cacao|merendin[ae]|snack|patatin[ae]|barrett[ae])\b/i.test(n)) {
-    return 'colazione-snack';
-  }
-
-  // 8. Dispensa & Secco
-  if (category === 'dispensa' || /\b(?:past[aeo]?|spaghett[ie]|penn[ei]|fusill[ie]|ris[oi]|risott[oi]|farin[ae]|oli[oi]|aceto|sal[ei]|zuccher[oi]|pepe|passat[ae]|pelat[ie]|sug[oi]|legum[ie]|ceci|fagiol[ie]|lenticchi[ae]|tonno\s+in\s+scatola|spezie|origano|rosmarino|timo|noc[ie]|mandorl[ae]|nocciol[ae]|pinol[ie]|pistacch[ie]|arachid[ie]|gnocch[ie]|mais|avena|couscous|dado|brodo)\b/i.test(n)) {
-    return 'dispensa';
-  }
-
-  // 9. Bevande
-  if (category === 'bevande' || /\b(?:acqu[ae]|vin[oi]|birr[ae]|succ[ohi]|coc[ae]|col[ae]|aranciat[ae]|bibit[ae]|fanta|sprite|bevand[ae]|spumant[ei]|prosecco|champagne|aperitiv[oi]|amaro|liquor[ei]|spremut[ae])\b/i.test(n)) {
-    return 'bevande';
-  }
-
-  // 10. Igiene Casa & Persona
-  if (category === 'igiene-cura' || category === 'pulizia' || category === 'igiene' || /\b(?:detersiv[oi]|sgrassator[ei]|candeggin[ae]|ammorbident[ei]|piatti|lavatric[ei]|lavastovigli[ae]|spugn[ae]|scottex|carta\s+igienic[ae]|sacchett[oi]|panni|shampoo|bagnoschiuma|doccia|sapon[ei]|dentifrici[oi]|spazzolin[oi]|deodorant[ei]|balsamo|crema|rasoi|assorbent[ei]|fazzolett[oi])\b/i.test(n)) {
-    return 'igiene-cura';
-  }
-
-  return 'altro';
+  return 'dispensa';
 };
 
 const normalize = (s: string) => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();

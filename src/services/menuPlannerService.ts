@@ -1,4 +1,5 @@
 import { SupermarketCategory } from '../types';
+import { detectSupermarketCategory } from './mathLanguageEngine';
 
 export interface RecipeItem {
   id: string;
@@ -80,23 +81,8 @@ export function parseIngredient(raw: string): ParsedIngredient {
   // Pulisci prefissi ed eventuali note tra parentesi
   name = name.replace(/^[-•*]\s*/, '').replace(/\s*\([^)]*\)/g, '').trim();
 
-  // Determina categoria supermercato
-  let category: SupermarketCategory = 'dispensa';
-  const t = name.toLowerCase();
-
-  if (/(mela|banana|arancia|limone|pomodor|insalata|patat|cipoll|aglio|carot|zucchin|peperon|melanzan|broccol|spinac|fung|fragol|uva|pera|pesca|albicocc|cilieg|anguria|melone|kiwi|ananas|mango|avocado|asparag|porro|sedano|finocchi|rucola|lattuga|radicchio|verdur|frutt|basilic|prezzemol|rosmarin|timo|salvia|menta|origano|alloro)/i.test(t)) {
-    category = 'frutta-verdura';
-  } else if (/(latte|panna|burro|yogurt|mozzarella|parmigiano|grana|pecorino|ricotta|stracchino|mascarpone|formagg|gorgonzola|fontina|provola|scamorza|uov|uovo)/i.test(t)) {
-    category = 'latticini-uova';
-  } else if (/(carne|manzo|vitello|pollo|tacchino|maiale|salsiccia|pancetta|guanciale|ragù|bistecca|arrosto|macinato|spezzatino|agnello|prosciutto|salame|mortadella|speck|lardo|pesce|salmone|tonno|spigola|orata|merluzzo|calamar|vongol|cozz|gamber|alici|sard|polp|crostac|frutti di mare|baccal|pesce spada|seppia)/i.test(t)) {
-    category = 'carne-pesce';
-  } else if (/(pane|focaccia|pizza|panini|croissant|brioche|lievito|farina|biscott|grissini|crackers|fette biscottate)/i.test(t)) {
-    category = 'pane-pasticceria';
-  } else if (/(acqua|vino|birra|succo|bevanda|aranciata|coca|tè|caffè|liquore|prosecco|spumante)/i.test(t)) {
-    category = 'bevande';
-  } else if (/(pasta|riso|spaghetti|penne|fusilli|rigatoni|olio|aceto|sale|pepe|spezie|zucchero|miele|marmellata|passata|pelati|ceci|lenticchie|fagioli|tonno in scatola|mais|dado|brodo)/i.test(t)) {
-    category = 'dispensa';
-  }
+  // Determina reparto supermercato universale
+  const category: SupermarketCategory = detectSupermarketCategory(name);
 
   return { raw, name, quantity, category };
 }

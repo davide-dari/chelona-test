@@ -13,16 +13,38 @@ import type { SupermarketCategory } from '../types';
  */
 export function detectSupermarketCategory(name: string): SupermarketCategory {
   const n = name.toLowerCase().trim();
-  if (/\b(?:surgelat[oi]|gelat[oi]|ghiacciol[oi]|bastoncini\s+di\s+pesce|pizza\s+surgelat[ae]|sofficini)\b/i.test(n)) return 'surgelati';
-  if (/\b(?:pesc[ei]|tonno\s+fresco|salmon[ei]|merluzzo?|orata|spigola|gamber[oi]|calamar[oi]|seppi[ae]|polpo?|cozz[ae]|vongol[ae]|acciugh?e?|alici?|trot[ae]|branzino?|sogliol[ae]|pesce\s+spada|platessa)\b/i.test(n)) return 'pescheria';
-  if (/\b(?:carn[ei]|poll[oi]|manzo?|maial[ei]|vitello?|agnello?|tacchino?|salsicci[ae]|wurstel|prosciutt[oi]|salame?|affettat[oi]|bresaol[ae]|pancetta|guanciale|mortadella|speck|bistecc[ae]|filett[oi]|tranci[oi]|macinato|hamburger|fesa|lonza|arista|costine)\b/i.test(n)) return 'macelleria';
-  if (/\b(?:latt[ei]|formagg[oi]|yogurt|burro?|mozzarell[ae]|parmigiano?|grana|uov[ao]|ricott[ae]|panna|stracchino?|gorgonzola|mascarpone?|pecorino?|provol[ae]|scamorz[ae]|fontina|caciocavallo|crescenza|brie|feta)\b/i.test(n)) return 'latticini-uova';
-  if (/\b(?:mela|mele|banana|banane|arancia|arance|limon[ei]|frutt[ae]|verdur[ae]|pomodor[oi]|pomodorin[oi]|insalat[ae]|carot[ae]|zocchin[ae]|zucchine?|cipoll[ae]|patat[ae]|aglio|basilico|spinac[ie]|pesc[ae]|fragol[ae]|melanzan[ae]|peperon[ei]|fungh?i?|broccol[oi]|cavol[oi]|zucc[ahie]|asparag[oi]|carciof[oi]|sedano?|porr[oi]|finocchi?o?|cetriol[oi]|rucola|radicchio|pisell[oi]|fagiolin[oi]|albicocc[ae]|cilieg[ie]|kiwi|ananas|uva|mirtill[oi]|lampon[ei]|more|avocado)\b/i.test(n)) return 'ortofrutta';
-  if (/\b(?:pan[ei]|focacci[ae]|cornett[oi]|croissant|brioche|tort[ae]|crostat[ae]|ciambell[ae]|dolc[ei]|lievito?|pangrattato|crostin[oi]|piadin[ae]|pagnott[ae]|panin[oi])\b/i.test(n)) return 'panetteria';
-  if (/\b(?:caff[eè]?|espress[oi]|ciald[ae]|capsul[ae]|tè|the|tisan[ae]|orz[oi]|biscott[oi]|cereali|corn\s*flakes|muesli|fett[ae]\s+biscottat[ae]|marmellat[ae]|confettur[ae]|nutella|miele|cioccolat[oi]|cacao|merendin[ae]|snack|patatin[ae]|barrett[ae])\b/i.test(n)) return 'colazione-snack';
-  if (/\b(?:past[aeo]?|spaghett[ie]|penn[ei]|fusill[ie]|ris[oi]|risott[oi]|farin[ae]|oli[oi]|aceto|sal[ei]|zuccher[oi]|pepe|passat[ae]|pelat[ie]|sug[oi]|legum[ie]|ceci|fagiol[ie]|lenticchi[ae]|tonno|tonno\s+in\s+scatola|spezie|origano|rosmarino|timo|noc[ie]|mandorl[ae]|nocciol[ae]|pinol[ie]|pistacch[ie]|arachid[ie]|gnocch[ie]|mais|avena|couscous|dado|brodo)\b/i.test(n)) return 'dispensa';
-  if (/\b(?:acqu[ae]|vin[oi]|birr[ae]|succ[ohi]|coc[ae]|col[ae]|aranciat[ae]|bibit[ae]|fanta|sprite|bevand[ae]|spumant[ei]|prosecco|champagne|aperitiv[oi]|amaro|liquor[ei]|spremut[ae])\b/i.test(n)) return 'bevande';
-  if (/\b(?:detersiv[oi]|sgrassator[ei]|candeggin[ae]|ammorbident[ei]|piatti|lavatric[ei]|lavastovigli[ae]|spugn[ae]|scottex|carta\s+igienic[ae]|sacchett[oi]|panni|shampoo|bagnoschiuma|doccia|sapon[ei]|dentifrici[oi]|spazzolin[oi]|deodorant[ei]|balsamo|crema|rasoi|assorbent[ei]|fazzolett[oi])\b/i.test(n)) return 'igiene-cura';
+  if (!n) return 'altro';
+
+  // 1. Surgelati (massima priorità per gelati, pizze e verdure surgelate)
+  if (/\b(?:surgelat[oi]|gelat[oi]|ghiacciol[oi]|bastoncini\s+di\s+pesce|pizza\s+surgelat[ae]|sofficini|verdure?\s+surgelat[ae]|minestrone\s+surgelato|fagiolini\s+surgelati|piselli\s+surgelati|spinaci\s+surgelati)\b/i.test(n)) return 'surgelati';
+
+  // 2. Pescheria (pesce fresco e crostacei)
+  if (/\b(?:pesc[ei]|tonno(?:\s+fresco)?|salmon[ei]|merluzz[oi]|orata|orate|spigol[ae]|gamber[oi]|gamberett[oi]|gamberon[ie]|calamar[oi]|calamarett[oi]|seppi[ae]|polp[oi]|polpett[oi]|cozz[ae]|vongol[ae]|acciugh[ae]|alici|trot[ae]|branzin[oi]|sogliol[ae]|pesce\s+spada|platessa|astice|astici|aragost[ae]|crostace[io]|frutti\s+di\s+mare|baccal[aà]|stoccafisso|moscardin[oi])\b/i.test(n)) return 'pescheria';
+
+  // 3. Macelleria & Salumi
+  if (/\b(?:carn[ei]|poll[oi]|manz[oi]|maial[ei]|vitell[oi]|agnell[oi]|tacchin[oi]|salsicci[ae]|wurstel|prosciutt[oi]|salam[ei]|affettat[oi]|bresaol[ae]|pancetta|guanciale|mortadella|speck|bistecc[ae]|filett[oi]|tranci[oi]|macinato|hamburger|fesa|lonza|arista|costin[ae]|carpaccio|stinco|coniglio)\b/i.test(n)) return 'macelleria';
+
+  // 4. Latticini & Uova
+  if (/\b(?:latt[ei]|formagg[oi]|yogurt|burro|mozzarell[ae]|parmigiano|grana|uov[ao]|ricott[ae]|panna|stracchino|gorgonzola|mascarpone|pecorino|provol[ae]|scamorz[ae]|fontina|caciocavallo|crescenza|brie|feta|sottilett[ae]|burrata|robiola|caprino|kefir)\b/i.test(n)) return 'latticini-uova';
+
+  // 5. Ortofrutta
+  if (/\b(?:mel[ae]|banan[ae]|aranci[ae]|limon[ei]|frutt[ae]|verdur[ae]|pomodor[oi]|pomodorin[oi]|insalat[ae]|carot[ae]|zocchin[ae]|zucchin[ae]|cipoll[ae]|patat[ae]|agli[oi]|basilico|spinac[ie]|pesc[ae]|fragol[ae]|melanzan[ae]|peperon[ei]|fungh[oi]|broccol[oi]|cavol[oi]|zucc[ahie]|asparag[oi]|carciof[oi]|sedano|porr[oi]|finocchi[oi]|cetriol[oi]|rucola|radicchio|pisell[oi]|fagiolin[oi]|albicocc[ae]|cilieg[ie]|kiwi|ananas|uva|mirtill[oi]|lampon[ei]|more|avocado|prezzemolo|salvia|rosmarino|menta|zenzero|mandarin[oi]|pompelm[oi]|anguri[ae]|melon[ei]|fichi?|pere?|coste|bietol[ae]|lattuga)\b/i.test(n)) return 'ortofrutta';
+
+  // 6. Panetteria & Pasticceria
+  if (/\b(?:pan[ei]|focacci[ae]|cornett[oi]|croissant|brioche|tort[ae]|crostat[ae]|ciambell[ae]|dolc[ei]|lievito|pangrattato|crostin[oi]|piadin[ae]|pagnott[ae]|panin[oi]|baguette|schiacciat[ae]|froll[ae]|sfogli[ae]|pan\s*bauletto)\b/i.test(n)) return 'panetteria';
+
+  // 7. Bevande
+  if (/\b(?:acqu[ae]|vin[oi]|birr[ae]|succ[ohi]|coc[ae]|col[ae]|aranciat[ae]|bibit[ae]|fanta|sprite|bevand[ae]|spumant[ei]|prosecco|champagne|aperitiv[oi]|amaro|liquor[ei]|spremut[ae]|gassosa|chinotto|tonica)\b/i.test(n)) return 'bevande';
+
+  // 8. Igiene Casa & Persona
+  if (/\b(?:detersiv[oi]|sgrassator[ei]|candeggin[ae]|ammorbident[ei]|piatti|lavatric[ei]|lavastovigli[ae]|spugn[ae]|scottex|carta\s+igienic[ae]|sacchett[oi]|sacchi|panni|shampoo|bagnoschiuma|doccia|sapon[ei]|dentifrici[oi]|spazzolin[oi]|deodorant[ei]|balsamo|crema|rasoi|assorbent[ei]|fazzolett[oi]|pannolin[oi]|cotone|disinfettant[ei])\b/i.test(n)) return 'igiene-cura';
+
+  // 9. Colazione & Snack
+  if (/\b(?:caff[eè]?|espress[oi]|ciald[ae]|capsul[ae]|tè|the|tisan[ae]|orz[oi]|biscott[oi]|cereali|corn\s*flakes|muesli|fett[ae]\s+biscottat[ae]|marmellat[ae]|confettur[ae]|nutella|miele|cioccolat[oi]|cacao|merendin[ae]|snack|patatin[ae]|barrett[ae]|wafer|frollin[oi])\b/i.test(n)) return 'colazione-snack';
+
+  // 10. Dispensa & Secco (pasta, riso, conserve, oli, spezie)
+  if (/\b(?:past[aeo]?|spaghett[ie]|penn[ei]|fusill[ie]|rigaton[ie]|linguine|tortiglioni|tagliatelle|ris[oi]|risott[oi]|farin[ae]|oli[oi]|aceto|sal[ei]|zuccher[oi]|pepe|passat[ae]|pelat[ie]|sug[oi]|legum[ie]|ceci|fagiol[ie]|lenticchi[ae]|tonno\s+in\s+scatola|spezie|origano|timo|noc[ie]|mandorl[ae]|nocciol[ae]|pinol[ie]|pistacch[ie]|arachid[ie]|gnocch[ie]|mais|avena|couscous|dado|brodo|scatolam[ei]|maionese|ketchup|senape)\b/i.test(n)) return 'dispensa';
+
   return 'altro';
 }
 
@@ -566,7 +588,7 @@ export function resolveCanonicalFood(token: string): string | null {
 
   // 5. Se la parola appartiene a una categoria alimentare del supermercato
   const cat = detectSupermarketCategory(norm);
-  if (cat === 'frutta-verdura' || cat === 'carne-pesce' || cat === 'latticini-uova' || cat === 'pane-pasticceria' || cat === 'dispensa') {
+  if (cat !== 'altro' && cat !== 'igiene-cura') {
     return norm;
   }
 

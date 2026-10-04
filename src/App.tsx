@@ -37,6 +37,7 @@ import { Device } from '@capacitor/device';
 
 import { QrScanner } from './components/QrScanner';
 import { decodeMenuPayload, saveSavedMenu } from './services/menuPlannerService';
+import { detectSupermarketCategory } from './services/mathLanguageEngine';
 
 // Lazy loaded components for code-splitting & download size optimization
 const DocumentScanner = React.lazy(() => import('./components/DocumentScanner').then(m => ({ default: m.DocumentScanner })));
@@ -1970,7 +1971,7 @@ export default function App() {
       id: generateUUID(),
       name: item.name,
       quantity: item.quantity,
-      category: (item.category as any) || 'dispensa',
+      category: ((item.category && item.category !== 'altro' ? item.category : detectSupermarketCategory(item.name)) as any),
       checked: false
     }));
 
