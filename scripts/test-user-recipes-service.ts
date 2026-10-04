@@ -5,6 +5,8 @@ import {
   parseCalories, 
   parseInstructions, 
   parseIngredients, 
+  parseDifficulty,
+  extractDifficultyFromHtml,
   extractRecipeFromHtml, 
   extractAllRecipesFromHtml,
   extractSourceName,
@@ -24,6 +26,7 @@ import {
   CULINARY_PRESETS,
   type UserRecipeItem
 } from '../src/services/userRecipesService.ts';
+import { formatScaledIngredient } from '../src/components/RecipeWebSearchModal.tsx';
 
 console.log('🧪 === TEST USER RECIPES SERVICE & WEB IMPORTER ===');
 
@@ -974,6 +977,11 @@ const mockGzSingleRecipeHtml = `
 </head>
 <body>
   <h1>Spaghetti alla Carbonara</h1>
+  <ul class="gz-featured-data-cnt">
+    <li>
+      <span class="gz-name-featured-data">Difficoltà: <strong>Facile</strong></span>
+    </li>
+  </ul>
   <div class="gz-related-recipes">
     <article class="gz-card gz-card-horizontal">
       <h2 class="gz-title"><a href="https://ricette.giallozafferano.it/Carbonara-alla-romana-cremosa.html">Carbonara alla romana cremosa</a></h2>
@@ -997,6 +1005,7 @@ assert.strictEqual(gzSingleExtracted[0].steps.length, 4);
 assert.strictEqual(gzSingleExtracted[0].category, 'Primi');
 assert.strictEqual(gzSingleExtracted[0].prepTimeMinutes, 15);
 assert.strictEqual(gzSingleExtracted[0].cookTimeMinutes, 10);
+assert.strictEqual(gzSingleExtracted[0].difficulty, 'Facile');
 console.log('✓ GialloZafferano Single Recipe HTML extraction passed');
 
 // 30. Test detectHasNextPage Pagination Detection
@@ -1173,6 +1182,7 @@ assert.strictEqual(enrichedSingle.ingredients.length, 5);
 assert.strictEqual(enrichedSingle.steps.length, 4);
 assert.strictEqual(enrichedSingle.prepTimeMinutes, 15);
 assert.strictEqual(enrichedSingle.cookTimeMinutes, 10);
+assert.strictEqual(enrichedSingle.difficulty, 'Facile');
 assert(enrichedSingle.image.includes('Spaghetti-alla-Carbonara.jpg'));
 
 // Restore original fetch
@@ -1180,7 +1190,47 @@ assert(enrichedSingle.image.includes('Spaghetti-alla-Carbonara.jpg'));
 
 console.log('✓ fetchAndEnrichSingleRecipe passed');
 
-console.log('🎉 ALL 32 USER RECIPES SERVICE TESTS PASSED PERFECTLY!');
+// 33. Test parseDifficulty and saveUserRecipe preserving difficulty
+console.log('33. Testing parseDifficulty and saveUserRecipe preserving difficulty...');
+assert.strictEqual(parseDifficulty('1'), 'Molto facile');
+assert.strictEqual(parseDifficulty('2'), 'Facile');
+assert.strictEqual(parseDifficulty('3'), 'Media');
+assert.strictEqual(parseDifficulty('4'), 'Difficile');
+assert.strictEqual(parseDifficulty('5'), 'Molto difficile');
+assert.strictEqual(parseDifficulty('facile'), 'Facile');
+assert.strictEqual(parseDifficulty('media'), 'Media');
+assert.strictEqual(parseDifficulty(undefined), undefined);
+
+const savedWithDiff = saveUserRecipe({
+  title: 'Risotto ai Funghi Porcini',
+  category: 'Primi',
+  difficulty: 'Media',
+  prepTimeMinutes: 20,
+  cookTimeMinutes: 25,
+  sourceUrl: 'https://ricette.giallozafferano.it/Risotto-ai-funghi-porcini.html'
+});
+assert.strictEqual(savedWithDiff.difficulty, 'Media');
+assert(savedWithDiff.tags?.includes('Link Web'));
+
+const reloadedUserRecipes = loadUserRecipes();
+const foundSaved = reloadedUserRecipes.find(r => r.title === 'Risotto ai Funghi Porcini');
+assert(foundSaved !== undefined);
+assert.strictEqual(foundSaved.difficulty, 'Media');
+console.log('✓ parseDifficulty and saveUserRecipe preserving difficulty passed');
+
+// 34. Test formatScaledIngredient for Italian Recipe Formats
+console.log('34. Testing formatScaledIngredient for Italian Recipe Formats...');
+assert.strictEqual(formatScaledIngredient('Spaghetti 320 g', 2), 'Spaghetti 640 g');
+assert.strictEqual(formatScaledIngredient('Guanciale 150 g', 2), 'Guanciale 300 g');
+assert.strictEqual(formatScaledIngredient('Tuorli (di uova medie) 6', 2), 'Tuorli (di uova medie) 12');
+assert.strictEqual(formatScaledIngredient('320 g Spaghetti', 2), '640 g Spaghetti');
+assert.strictEqual(formatScaledIngredient('4 uova', 2), '8 uova');
+assert.strictEqual(formatScaledIngredient('Pepe nero q.b.', 2), 'Pepe nero q.b.');
+assert.strictEqual(formatScaledIngredient('Spaghetti 320 g', 0.5), 'Spaghetti 160 g');
+assert.strictEqual(formatScaledIngredient('Spaghetti 320 g', 1), 'Spaghetti 320 g');
+console.log('✓ formatScaledIngredient Italian recipe portion scaling passed');
+
+console.log('🎉 ALL 34 USER RECIPES SERVICE TESTS PASSED PERFECTLY!');
 process.exit(0);
 
 

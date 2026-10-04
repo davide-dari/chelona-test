@@ -262,6 +262,80 @@ export function parseCalories(caloriesData: any): number | undefined {
   return undefined;
 }
 
+/**
+ * Normalizza il livello di difficoltà in formato testuale italiano leggibile
+ * (Molto facile, Facile, Media, Difficile, Molto difficile).
+ */
+export function parseDifficulty(difficultyData: any): string | undefined {
+  if (difficultyData == null) return undefined;
+  const str = cleanText(String(difficultyData));
+  if (!str) return undefined;
+
+  // Se è numerico 1-5 (es. gz-icon o scale 1-5)
+  if (/^[1-5]$/.test(str)) {
+    const num = parseInt(str, 10);
+    switch (num) {
+      case 1: return 'Molto facile';
+      case 2: return 'Facile';
+      case 3: return 'Media';
+      case 4: return 'Difficile';
+      case 5: return 'Molto difficile';
+    }
+  }
+
+  // Corrispondenze con parole chiave note
+  if (/molto\s+facile/i.test(str) || /facilissim[oa]/i.test(str) || /super\s*easy/i.test(str)) return 'Molto facile';
+  if (/molto\s+difficile/i.test(str) || /difficilissim[oa]/i.test(str) || /expert/i.test(str)) return 'Molto difficile';
+  if (/difficile/i.test(str) || /hard/i.test(str)) return 'Difficile';
+  if (/media/i.test(str) || /medio/i.test(str) || /medium/i.test(str) || /intermedia/i.test(str)) return 'Media';
+  if (/facile/i.test(str) || /easy/i.test(str) || /semplice/i.test(str)) return 'Facile';
+
+  // Stringa breve descrittiva generica
+  if (str.length <= 25) {
+    return str.charAt(0).toUpperCase() + str.slice(1);
+  }
+
+  return undefined;
+}
+
+/**
+ * Estrae il livello di difficoltà da una pagina HTML (GialloZafferano, Cookist, blog, microdata).
+ */
+export function extractDifficultyFromHtml(html: string): string | undefined {
+  if (!html) return undefined;
+
+  // 1. GialloZafferano featured data su singola ricetta
+  const gzFeaturedMatch = html.match(/class=["'][^"']*gz-name-featured-data[^"']*["'][^>]*>Difficolt[àa]:\s*<strong>([^<]+)<\/strong>/i) ||
+                          html.match(/Difficolt[àa]:\s*<strong>([^<]+)<\/strong>/i);
+  if (gzFeaturedMatch) {
+    const parsed = parseDifficulty(gzFeaturedMatch[1]);
+    if (parsed) return parsed;
+  }
+
+  // 2. Icona difficoltà GZ (es. #difficolta-grey)
+  const iconMatch = html.match(/#difficolta-[^"']*["'][\s\S]*?<\/svg>\s*<\/span>\s*([^<\n\r]+)/i);
+  if (iconMatch) {
+    const parsed = parseDifficulty(iconMatch[1]);
+    if (parsed) return parsed;
+  }
+
+  // 3. Tag HTML specifici per difficoltà o classi CSS
+  const classMatch = html.match(/<(?:span|div|p|li)\b[^>]*class=["'][^"']*(?:difficolta|difficulty|recipe-difficulty)[^"']*["'][^>]*>([\s\S]*?)<\/(?:span|div|p|li)>/i);
+  if (classMatch) {
+    const parsed = parseDifficulty(cleanText(classMatch[1].replace(/<[^>]+>/g, ' ')));
+    if (parsed) return parsed;
+  }
+
+  // 4. Testo generico "Difficoltà: ..."
+  const textMatch = html.match(/difficolt[àa][^<:]*[:\s]+([a-zA-Z\s]{3,20})/i);
+  if (textMatch) {
+    const parsed = parseDifficulty(textMatch[1]);
+    if (parsed) return parsed;
+  }
+
+  return undefined;
+}
+
 /** Estrae la migliore URL immagine da vari formati Schema.org / OpenGraph */
 export function parseImageUrl(imageData: any): string | undefined {
   if (!imageData) return undefined;
@@ -495,6 +569,7 @@ export function convertJsonLdRecipeToItem(
   const prepTimeMinutes = parseDurationISO(recipeLd.prepTime);
   const cookTimeMinutes = parseDurationISO(recipeLd.cookTime || recipeLd.totalTime);
   const calories = parseCalories(recipeLd.nutrition?.calories);
+  const difficulty = parseDifficulty(recipeLd.difficulty || recipeLd.recipeDifficulty);
 
   const rawCat = Array.isArray(recipeLd.recipeCategory) ? recipeLd.recipeCategory[0] : recipeLd.recipeCategory;
   const rawCuisine = Array.isArray(recipeLd.recipeCuisine) ? recipeLd.recipeCuisine[0] : recipeLd.recipeCuisine;
@@ -521,6 +596,7 @@ export function convertJsonLdRecipeToItem(
     prepTimeMinutes,
     cookTimeMinutes,
     calories,
+    difficulty,
     country,
     sourceUrl: recipeUrl,
     sourceName,
@@ -649,6 +725,10 @@ function parseMicrodataBlock(block: string, originalUrl: string, index: number):
                       block.match(/<[^>]+itemprop=["']cookTime["'][^>]*>([^<]+)<\/[^>]+>/i);
     const cookTimeMinutes = parseDurationISO(cookMatch ? cleanText(cookMatch[1]) : undefined);
 
+    const diffMicroMatch = block.match(/<[^>]+itemprop=["'](?:difficulty|recipeDifficulty)["'][^>]+content=["']([^"']*)["']/i) ||
+                           block.match(/<[^>]+itemprop=["'](?:difficulty|recipeDifficulty)["'][^>]*>([^<]+)<\/[^>]+>/i);
+    const difficulty = parseDifficulty(diffMicroMatch ? cleanText(diffMicroMatch[1]) : undefined);
+
     const catMatch = block.match(/<[^>]+itemprop=["']recipeCategory["'][^>]+content=["']([^"']*)["']/i) ||
                      block.match(/<[^>]+itemprop=["']recipeCategory["'][^>]*>([\s\S]*?)<\/[^>]+>/i);
     const microdataCategory = catMatch ? cleanText(catMatch[1]) : '';
@@ -674,6 +754,7 @@ function parseMicrodataBlock(block: string, originalUrl: string, index: number):
       servings: servings || 4,
       prepTimeMinutes,
       cookTimeMinutes,
+      difficulty,
       country,
       sourceUrl: originalUrl,
       sourceName: extractSourceName(originalUrl),
@@ -949,6 +1030,16 @@ export function extractAllRecipesFromHtml(html: string, originalUrl: string): Us
     }
   }
 
+  // Se le ricette strutturate non hanno difficulty (es. Schema.org senza campo difficulty), assegna quello rilevato nella pagina HTML
+  const pageDifficulty = extractDifficultyFromHtml(html);
+  if (pageDifficulty) {
+    for (const r of recipes) {
+      if (!r.difficulty) {
+        r.difficulty = pageDifficulty;
+      }
+    }
+  }
+
   // 3. Estrazione Schede Ricetta HTML per pagine di archivio, categoria, ricerca o raccolta
   // Si attiva SOLO se non ci sono ancora ricette strutturate complete (con ingredienti o passaggi)
   const hasFullStructuredRecipes = recipes.some(r => (Array.isArray(r.ingredients) && r.ingredients.length > 0) || (Array.isArray(r.steps) && r.steps.length > 0));
@@ -1007,7 +1098,7 @@ export function extractAllRecipesFromHtml(html: string, originalUrl: string): Us
                         cardHtml.match(/difficolt[àa][^<:]*[:\s]+<strong>([^<]+)<\/strong>/i) ||
                         cardHtml.match(/difficolt[àa][^<:]*[:\s]+([a-zA-Z\s]+)/i);
       if (diffMatch) {
-        difficulty = cleanText(diffMatch[1]);
+        difficulty = parseDifficulty(diffMatch[1]);
       }
 
       // Se la ricetta era già stata parzialmente inserita da ItemList, aggiornane i dettagli
@@ -1445,18 +1536,19 @@ export async function searchWebRecipes(
     return { recipes: [], hasNextPage: false, currentPage: 1 };
   }
 
+  const safePage = Math.max(1, Math.floor(page || 1));
   const encodedQuery = encodeURIComponent(cleanQ.toLowerCase()).replace(/%20/g, '+');
 
   // URL primario per la pagina specificata
-  const primaryUrl = page <= 1
+  const primaryUrl = safePage <= 1
     ? `https://www.giallozafferano.it/ricerca-ricette/${encodedQuery}/`
-    : `https://www.giallozafferano.it/ricerca-ricette/page${page}/${encodedQuery}/`;
+    : `https://www.giallozafferano.it/ricerca-ricette/page${safePage}/${encodedQuery}/`;
 
   let html = await fetchHtmlFromUrl(primaryUrl).catch(() => '');
 
   // Fallback se primaryUrl non restituisce nulla per pagine > 1
-  if ((!html || html.length < 500) && page > 1) {
-    const fallbackUrl = `https://www.giallozafferano.it/ricerca-ricette/${encodedQuery}/page${page}/`;
+  if ((!html || html.length < 500) && safePage > 1) {
+    const fallbackUrl = `https://www.giallozafferano.it/ricerca-ricette/${encodedQuery}/page${safePage}/`;
     const fallbackHtml = await fetchHtmlFromUrl(fallbackUrl).catch(() => '');
     if (fallbackHtml && fallbackHtml.length > 500) {
       html = fallbackHtml;
@@ -1468,12 +1560,12 @@ export async function searchWebRecipes(
   }
 
   const recipes = extractAllRecipesFromHtml(html, primaryUrl);
-  const hasNextPage = detectHasNextPage(html, page, recipes.length);
+  const hasNextPage = detectHasNextPage(html, safePage, recipes.length);
 
   return {
     recipes,
     hasNextPage,
-    currentPage: page,
+    currentPage: safePage,
   };
 }
 
@@ -1582,9 +1674,16 @@ export function saveUserRecipes(
       prepTimeMinutes: recipeData.prepTimeMinutes ? Number(recipeData.prepTimeMinutes) : undefined,
       cookTimeMinutes: recipeData.cookTimeMinutes ? Number(recipeData.cookTimeMinutes) : undefined,
       calories: recipeData.calories ? Number(recipeData.calories) : undefined,
+      difficulty: recipeData.difficulty?.trim() || undefined,
+      protein: recipeData.protein ? Number(recipeData.protein) : undefined,
+      carbs: recipeData.carbs ? Number(recipeData.carbs) : undefined,
+      fat: recipeData.fat ? Number(recipeData.fat) : undefined,
       country: recipeData.country?.trim() || 'Italia',
+      countryCode: recipeData.countryCode?.trim() || undefined,
       flag: recipeData.flag || (recipeData.country === 'Italia' ? '🇮🇹' : '🌍'),
-      tags: recipeData.tags || ['Personalizzata', 'La mia ricetta'],
+      tags: recipeData.tags && recipeData.tags.length > 0 
+        ? recipeData.tags 
+        : (recipeData.sourceUrl ? ['Link Web', recipeData.sourceName || 'GialloZafferano'] : ['Personalizzata', 'La mia ricetta']),
       sourceUrl: recipeData.sourceUrl,
       sourceName: recipeData.sourceName || (recipeData.sourceUrl ? extractSourceName(recipeData.sourceUrl) : undefined),
       isCustom: true,

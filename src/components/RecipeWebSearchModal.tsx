@@ -34,13 +34,46 @@ const POPULAR_SUGGESTIONS = [
 interface RecipeWebSearchModalProps {
   isOpen: boolean;
   onClose: () => void;
+  initialQuery?: string;
   onRecipeSaved?: (recipe: UserRecipeItem) => void;
   onAddToShoppingList?: (items: { name: string; quantity?: string; category?: string }[]) => void;
+}
+
+/**
+ * Scala le dosi di un ingrediente mantenendo formattazione sia con quantità iniziale ("320 g pasta")
+ * che con quantità finale ("Spaghetti 320 g", "Guanciale 150 g", "Uova (medie) 6").
+ */
+export function formatScaledIngredient(raw: string, ratio: number): string {
+  if (ratio === 1 || !raw) return raw;
+
+  const scaleNum = (n: number) => {
+    const val = Math.round(n * ratio * 10) / 10;
+    return val % 1 === 0 ? String(val) : val.toFixed(1).replace('.0', '');
+  };
+
+  // Formato 1: Numero all'inizio (es. "320 g di pasta", "2 cucchiai", "4 uova")
+  const leadingMatch = raw.match(/^([\d.,]+)(\s*(?:g|kg|ml|cl|l|cucchiai[o]?|cucchiain[io]?|pizzic[ohi]|bustin[ae]|fogl?i[ae]|fett[ae]|spicchi[o]?|gocce)?\b.*)$/i);
+  if (leadingMatch && !isNaN(parseFloat(leadingMatch[1].replace(',', '.')))) {
+    const orig = parseFloat(leadingMatch[1].replace(',', '.'));
+    return `${scaleNum(orig)}${leadingMatch[2]}`;
+  }
+
+  // Formato 2: Nome/testo prima, poi numero e unità opzionale alla fine (es. "Spaghetti 320 g", "Guanciale 150 g")
+  const trailingMatch = raw.match(/^(.*?\b)\s*([\d.,]+)\s*([a-zA-Z%]+)?$/);
+  if (trailingMatch && !isNaN(parseFloat(trailingMatch[2].replace(',', '.')))) {
+    const prefix = trailingMatch[1].trim();
+    const orig = parseFloat(trailingMatch[2].replace(',', '.'));
+    const unit = trailingMatch[3] ? ` ${trailingMatch[3]}` : '';
+    return `${prefix} ${scaleNum(orig)}${unit}`.trim();
+  }
+
+  return raw;
 }
 
 export function RecipeWebSearchModal({
   isOpen,
   onClose,
+  initialQuery,
   onRecipeSaved,
   onAddToShoppingList,
 }: RecipeWebSearchModalProps) {
@@ -59,10 +92,20 @@ export function RecipeWebSearchModal({
   const [isBatchImporting, setIsBatchImporting] = useState(false);
   const [batchProgress, setBatchProgress] = useState<{ current: number; total: number; title: string } | null>(null);
 
-  // Tracciamento ricette già salvate nel Ricettario
+  // Tracciamento ricette già salvate nel Ricettario (URL normalizzati e titoli)
   const [savedUrls, setSavedUrls] = useState<Set<string>>(() => {
     const list = loadUserRecipes();
-    return new Set(list.map(r => r.sourceUrl || r.title.toLowerCase().trim()).filter(Boolean));
+    const set = new Set<string>();
+    for (const r of list) {
+      if (r.sourceUrl) {
+        set.add(r.sourceUrl);
+        set.add(r.sourceUrl.replace(/\/+$/, ''));
+      }
+      if (r.title) {
+        set.add(r.title.toLowerCase().trim());
+      }
+    }
+    return set;
   });
 
   // Modal anteprima interattiva
@@ -92,7 +135,17 @@ export function RecipeWebSearchModal({
   // Aggiorna stato ricette salvate all'apertura o su eventi globali
   const refreshSavedStatus = useCallback(() => {
     const list = loadUserRecipes();
-    setSavedUrls(new Set(list.map(r => r.sourceUrl || r.title.toLowerCase().trim()).filter(Boolean)));
+    const set = new Set<string>();
+    for (const r of list) {
+      if (r.sourceUrl) {
+        set.add(r.sourceUrl);
+        set.add(r.sourceUrl.replace(/\/+$/, ''));
+      }
+      if (r.title) {
+        set.add(r.title.toLowerCase().trim());
+      }
+    }
+    setSavedUrls(set);
   }, []);
 
   useEffect(() => {
@@ -107,12 +160,46 @@ export function RecipeWebSearchModal({
     return () => window.removeEventListener('chelona_user_recipes_updated', handleSync);
   }, [refreshSavedStatus]);
 
+  // Gestione tasto ESC e Android hardware back button
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (previewRecipe) {
+          setPreviewRecipe(null);
+        } else {
+          onClose();
+        }
+      }
+    };
+
+    const handleRecipesBack = (e: Event) => {
+      if (previewRecipe) {
+        // Intercetta e chiudi solo l'anteprima senza chiudere tutta la ricerca web
+        e.stopImmediatePropagation();
+        setPreviewRecipe(null);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('recipes-back', handleRecipesBack, true);
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('recipes-back', handleRecipesBack, true);
+    };
+  }, [isOpen, previewRecipe, onClose]);
+
   // Audio Chime per fine timer
   const playTimerChime = useCallback(() => {
     try {
       const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
       if (!AudioCtx) return;
       const ctx = new AudioCtx();
+      if (ctx.state === 'suspended') {
+        ctx.resume();
+      }
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
       osc.connect(gain);
@@ -277,6 +364,14 @@ export function RecipeWebSearchModal({
     }
   };
 
+  useEffect(() => {
+    if (isOpen && initialQuery && initialQuery.trim() && !activeQuery) {
+      const q = initialQuery.trim();
+      setSearchInput(q);
+      executeSearch(q, 1);
+    }
+  }, [isOpen, initialQuery]);
+
   const handleSearchSubmit = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!searchInput.trim()) return;
@@ -315,6 +410,8 @@ export function RecipeWebSearchModal({
         setPreviewRecipe(enriched);
         setPreviewServings(enriched.servings || 4);
         setSelectedPreviewIngredients(new Set(enriched.ingredients || []));
+        // Aggiorna anche la scheda nella griglia dei risultati per evitare ri-arricchimenti
+        setRecipes(prev => prev.map(r => (r.sourceUrl === enriched.sourceUrl || r.id === enriched.id) ? enriched : r));
       } catch (e) {
         console.warn('Errore arricchimento preview:', e);
       } finally {
@@ -344,7 +441,8 @@ export function RecipeWebSearchModal({
       });
 
       refreshSavedStatus();
-      if (previewRecipe && previewRecipe.id === recipe.id) {
+      setRecipes(prev => prev.map(r => (r.sourceUrl === saved.sourceUrl || r.id === recipe.id) ? saved : r));
+      if (previewRecipe && (previewRecipe.id === recipe.id || previewRecipe.sourceUrl === recipe.sourceUrl)) {
         setPreviewRecipe(saved);
       }
       onRecipeSaved?.(saved);
@@ -391,8 +489,9 @@ export function RecipeWebSearchModal({
         7000
       );
 
-      saveUserRecipes(enrichedList.map(r => ({ ...r, isCustom: true })));
+      const savedBatch = saveUserRecipes(enrichedList.map(r => ({ ...r, isCustom: true })));
       refreshSavedStatus();
+      setRecipes(prev => prev.map(r => savedBatch.find(s => s.sourceUrl === r.sourceUrl) || r));
       setSelectedIndices(new Set());
       showToast(`🎉 ${enrichedList.length} ricette salvate con successo nel tuo Ricettario!`);
     } catch (err: any) {
@@ -412,18 +511,7 @@ export function RecipeWebSearchModal({
     const ratio = previewServings / baseServings;
 
     const itemsToAdd = Array.from(selectedPreviewIngredients).map(raw => {
-      // Scala eventuale quantità numerica iniziale
-      let formatted = raw;
-      if (ratio !== 1) {
-        const numMatch = raw.match(/^([\d.,]+)\s*(.*)$/);
-        if (numMatch) {
-          const origNum = parseFloat(numMatch[1].replace(',', '.'));
-          if (!isNaN(origNum)) {
-            const scaled = Math.round(origNum * ratio * 10) / 10;
-            formatted = `${scaled} ${numMatch[2]}`.trim();
-          }
-        }
-      }
+      const formatted = formatScaledIngredient(raw, ratio);
       return {
         name: formatted,
         category: 'Alimentari',
@@ -769,6 +857,13 @@ export function RecipeWebSearchModal({
                               {recipe.calories} kcal
                             </span>
                           ) : null}
+
+                          {!recipe.prepTimeMinutes && !recipe.difficulty && !recipe.calories && (
+                            <span className="flex items-center gap-1 text-[var(--text-muted)]">
+                              <ChefHat className="w-3.5 h-3.5 text-emerald-500" />
+                              <span>Ricetta web</span>
+                            </span>
+                          )}
                         </div>
 
                         {/* Pulsante 1-tap Salva / Anteprima */}
@@ -1086,6 +1181,10 @@ export function RecipeWebSearchModal({
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                       {previewRecipe.ingredients.map((ing, i) => {
                         const isChecked = selectedPreviewIngredients.has(ing);
+                        const baseServings = previewRecipe.servings || 4;
+                        const ratio = previewServings / baseServings;
+                        const displayIng = formatScaledIngredient(ing, ratio);
+
                         return (
                           <div
                             key={i}
@@ -1108,7 +1207,7 @@ export function RecipeWebSearchModal({
                             }`}>
                               {isChecked && <Check className="w-3 h-3" />}
                             </div>
-                            <span className="line-clamp-2">{ing}</span>
+                            <span className="line-clamp-2">{displayIng}</span>
                           </div>
                         );
                       })}

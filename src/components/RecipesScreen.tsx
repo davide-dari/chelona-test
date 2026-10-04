@@ -452,6 +452,10 @@ export function RecipesScreen({
             ingredients: m.ingredients || m.ingredienti || [],
             steps: parsedSteps,
             calories: m.calories,
+            prepTimeMinutes: m.prepTimeMinutes,
+            cookTimeMinutes: m.cookTimeMinutes,
+            difficulty: m.difficulty,
+            servings: m.servings,
             protein: m.protein,
             carbs: m.carbs,
             fat: m.fat,
@@ -1057,12 +1061,18 @@ export function RecipesScreen({
                     </h2>
 
                     {/* Metriche tempi, porzioni, calorie */}
-                    {(selectedMeal.servings || selectedMeal.prepTimeMinutes || selectedMeal.cookTimeMinutes || selectedMeal.calories) && (
+                    {(selectedMeal.servings || selectedMeal.prepTimeMinutes || selectedMeal.cookTimeMinutes || selectedMeal.calories || selectedMeal.difficulty) && (
                       <div className="flex flex-wrap items-center gap-3 pt-2 text-xs font-bold text-[var(--text-muted)]">
                         {selectedMeal.servings && (
                           <span className="flex items-center gap-1">
                             <Users className="w-4 h-4 text-orange-500" />
                             <span>{selectedMeal.servings} porzioni</span>
+                          </span>
+                        )}
+                        {selectedMeal.difficulty && (
+                          <span className="flex items-center gap-1">
+                            <ChefHat className="w-4 h-4 text-emerald-500" />
+                            <span>{selectedMeal.difficulty}</span>
                           </span>
                         )}
                         {selectedMeal.prepTimeMinutes && (
@@ -1998,10 +2008,8 @@ export function RecipesScreen({
       <RecipeWebSearchModal
         isOpen={isWebSearchOpen}
         onClose={() => setIsWebSearchOpen(false)}
+        initialQuery={searchQuery}
         onAddToShoppingList={onAddToShoppingList}
-        onRecipeSaved={(r) => {
-          showToast(`"${r.title}" salvata nel tuo Ricettario!`);
-        }}
       />
 
       {/* Toast Notifiche */}
