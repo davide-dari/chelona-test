@@ -687,17 +687,35 @@ export function normalizeGialloZafferanoUrl(rawUrl: string): string {
   try {
     const parsed = new URL(url);
     if (parsed.hostname.includes('giallozafferano.it')) {
-      // 1. /ricette o /ricette/ -> /ricette-cat/
-      if (parsed.pathname === '/ricette' || parsed.pathname === '/ricette/') {
+      // 1. Root / homepage su ricette.giallozafferano.it -> www.giallozafferano.it/ricette-cat/
+      if (parsed.hostname === 'ricette.giallozafferano.it' && (parsed.pathname === '' || parsed.pathname === '/')) {
         parsed.hostname = 'www.giallozafferano.it';
         parsed.pathname = '/ricette-cat/';
         return parsed.toString();
       }
-      // 2. /ricette-([a-z0-9-]+)/? (es. /ricette-primi-piatti/) -> /ricerca-ricette/primi+piatti/
-      const matchCat = parsed.pathname.match(/^\/ricette-([a-z0-9-]+)\/?$/i);
-      if (matchCat && matchCat[1]) {
+
+      const cleanPath = parsed.pathname.replace(/\/+$/, '');
+
+      // 2. /ricette o /ricette-cat -> /ricette-cat/
+      if (cleanPath === '/ricette' || cleanPath === '/ricette-cat') {
         parsed.hostname = 'www.giallozafferano.it';
-        parsed.pathname = `/ricerca-ricette/${matchCat[1].replace(/-/g, '+')}/`;
+        parsed.pathname = '/ricette-cat/';
+        return parsed.toString();
+      }
+
+      // 3. /ricette-([a-z0-9-]+) (es. /ricette-primi-piatti) escluso 'cat' -> /ricerca-ricette/primi+piatti/
+      const matchDashCat = cleanPath.match(/^\/ricette-([a-z0-9-]+)$/i);
+      if (matchDashCat && matchDashCat[1] && matchDashCat[1].toLowerCase() !== 'cat') {
+        parsed.hostname = 'www.giallozafferano.it';
+        parsed.pathname = `/ricerca-ricette/${matchDashCat[1].replace(/-/g, '+')}/`;
+        return parsed.toString();
+      }
+
+      // 4. /ricette/([a-z0-9-]+) (es. /ricette/primi-piatti o /ricette/dolci) -> /ricerca-ricette/dolci/
+      const matchSlashCat = cleanPath.match(/^\/ricette\/([a-z0-9-]+)$/i);
+      if (matchSlashCat && matchSlashCat[1] && matchSlashCat[1].toLowerCase() !== 'cat') {
+        parsed.hostname = 'www.giallozafferano.it';
+        parsed.pathname = `/ricerca-ricette/${matchSlashCat[1].replace(/-/g, '+')}/`;
         return parsed.toString();
       }
     }
@@ -925,27 +943,32 @@ export function extractAllRecipesFromHtml(html: string, originalUrl: string): Us
   }
 
   // 3. Estrazione Schede Ricetta HTML per pagine di archivio, categoria, ricerca o raccolta
-  // Si attiva se non ci sono ancora ricette O se le ricette trovate finora non hanno ingredienti/passaggi
-  const hasFullStructuredRecipes = recipes.some(r => (r.ingredients && r.ingredients.length > 0) || (r.steps && r.steps.length > 0));
+  // Si attiva SOLO se non ci sono ancora ricette strutturate complete (con ingredienti o passaggi)
+  const hasFullStructuredRecipes = recipes.some(r => (Array.isArray(r.ingredients) && r.ingredients.length > 0) || (Array.isArray(r.steps) && r.steps.length > 0));
 
-  if (!hasFullStructuredRecipes || recipes.length <= 1) {
+  if (!hasFullStructuredRecipes) {
     // 3a. Estrazione specifica per GialloZafferano (<article class="gz-card ...">)
     const gzArticleRegex = /<article\b[^>]*class=["'][^"']*gz-card[^"']*["'][^>]*>([\s\S]*?)<\/article>/gi;
     let gzMatch: RegExpExecArray | null;
     let gzCount = 0;
 
-    while ((gzMatch = gzArticleRegex.exec(html)) !== null && gzCount < 60) {
+    while ((gzMatch = gzArticleRegex.exec(html)) !== null && gzCount < 100) {
       const cardHtml = gzMatch[1];
       const titleMatch = cardHtml.match(/<[a-z0-9]+\b[^>]*class=["'][^"']*gz-title[^"']*["'][^>]*>([\s\S]*?)<\/[a-z0-9]+>/i) ||
                          cardHtml.match(/<a\b[^>]*title=["']([^"']+)["']/i) ||
                          cardHtml.match(/<h[2-4][^>]*>([\s\S]*?)<\/h[2-4]>/i);
       if (!titleMatch) continue;
       const cardTitle = cleanText(titleMatch[1]);
-      if (!cardTitle || cardTitle.length < 2) continue;
+      if (!cardTitle || cardTitle.length < 3) continue;
 
       // Link ricetta
       const linkMatch = cardHtml.match(/<a\b[^>]*href=["']([^"']+)["']/i);
       const cardUrl = resolveUrl(linkMatch ? linkMatch[1].trim() : undefined, originalUrl);
+
+      // Salta link enciclopedia, pagine speciali o card senza link ricetta valido
+      if (!cardUrl || cardUrl.includes('enciclopediacucina.giallozafferano.it') || cardUrl.includes('/speciali/') || cardTitle.toLowerCase().includes('scopri tutto')) {
+        continue;
+      }
 
       // Immagine con lazy-loading
       const cardImage = extractCardImage(cardHtml, originalUrl);
@@ -1167,10 +1190,17 @@ export async function enrichRecipeDetail(
     return recipe;
   }
 
+  let timer: any;
   try {
     const fetchPromise = fetchAndExtractRecipeFromUrl(recipe.sourceUrl);
-    const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), timeoutMs));
+    const timeoutPromise = new Promise<null>((resolve) => {
+      timer = setTimeout(() => resolve(null), timeoutMs);
+    });
     const full = await Promise.race([fetchPromise, timeoutPromise]);
+    if (timer) {
+      clearTimeout(timer);
+      timer = null;
+    }
 
     if (full) {
       return {
@@ -1193,6 +1223,11 @@ export async function enrichRecipeDetail(
     }
   } catch (e) {
     console.warn(`[UserRecipesService] Impossibile arricchire ricetta "${recipe.title}":`, e);
+  } finally {
+    if (timer) {
+      clearTimeout(timer);
+      timer = null;
+    }
   }
 
   return recipe;
@@ -1204,7 +1239,8 @@ export async function enrichRecipeDetail(
  */
 export async function enrichRecipesWithProgress(
   recipes: UserRecipeItem[],
-  onProgress?: (current: number, total: number, currentTitle: string) => void
+  onProgress?: (current: number, total: number, currentTitle: string) => void,
+  timeoutMs = 6000
 ): Promise<UserRecipeItem[]> {
   if (!recipes || recipes.length === 0) return [];
   const total = recipes.length;
@@ -1228,7 +1264,7 @@ export async function enrichRecipesWithProgress(
       const item = recipes[idx];
       onProgress?.(completedCount + 1, total, item.title);
 
-      const res = await enrichRecipeDetail(item);
+      const res = await enrichRecipeDetail(item, timeoutMs);
       enriched[idx] = res;
       completedCount++;
       onProgress?.(completedCount, total, item.title);
@@ -1257,14 +1293,15 @@ export async function fetchAndExtractRecipesFromUrl(rawUrl: string): Promise<Use
   try {
     const res = await CapacitorHttp.get({
       url,
+      responseType: 'text',
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
         'Accept-Language': 'it-IT,it;q=0.9,en-US;q=0.8,en;q=0.7',
       },
     });
-    if (res && res.data && typeof res.data === 'string' && (res.status === undefined || (res.status >= 200 && res.status < 400))) {
-      html = res.data;
+    if (res && res.data && (res.status === undefined || (res.status >= 200 && res.status < 400))) {
+      html = typeof res.data === 'string' ? res.data : JSON.stringify(res.data);
     }
   } catch (nativeErr) {
     console.warn('[UserRecipesService] CapacitorHttp direct failed, trying web fallbacks:', nativeErr);

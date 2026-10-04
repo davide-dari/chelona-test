@@ -18,7 +18,8 @@ import {
   enrichRecipesWithProgress,
   fetchRecipeFromUrl,
   USER_RECIPES_STORAGE_KEY,
-  CULINARY_PRESETS
+  CULINARY_PRESETS,
+  type UserRecipeItem
 } from '../src/services/userRecipesService.ts';
 
 console.log('🧪 === TEST USER RECIPES SERVICE & WEB IMPORTER ===');
@@ -858,8 +859,24 @@ assert.strictEqual(
   'https://www.giallozafferano.it/ricette-cat/'
 );
 assert.strictEqual(
+  normalizeGialloZafferanoUrl('https://www.giallozafferano.it/ricette-cat/'),
+  'https://www.giallozafferano.it/ricette-cat/'
+);
+assert.strictEqual(
+  normalizeGialloZafferanoUrl('https://ricette.giallozafferano.it/'),
+  'https://www.giallozafferano.it/ricette-cat/'
+);
+assert.strictEqual(
   normalizeGialloZafferanoUrl('https://ricette.giallozafferano.it/ricette-primi-piatti/'),
   'https://www.giallozafferano.it/ricerca-ricette/primi+piatti/'
+);
+assert.strictEqual(
+  normalizeGialloZafferanoUrl('https://www.giallozafferano.it/ricette/dolci/'),
+  'https://www.giallozafferano.it/ricerca-ricette/dolci/'
+);
+assert.strictEqual(
+  normalizeGialloZafferanoUrl(normalizeGialloZafferanoUrl('https://www.giallozafferano.it/ricette/')),
+  'https://www.giallozafferano.it/ricette-cat/'
 );
 assert.strictEqual(
   normalizeGialloZafferanoUrl('https://ricette.giallozafferano.it/Spaghetti-alla-Carbonara.html'),
@@ -881,7 +898,7 @@ console.log('✓ Lazy Image Extraction passed');
 
 // 28. Test Bulk Recipe Enrichment with progress
 console.log('28. Testing Bulk Recipe Enrichment with progress callback...');
-const mockInitialList = [
+const mockInitialList: UserRecipeItem[] = [
   {
     id: 'test_1',
     title: 'Ricetta Già Completa',
@@ -889,6 +906,11 @@ const mockInitialList = [
     ingredients: ['Pasta', 'Pomodoro'],
     steps: ['Cuocere'],
     servings: 4,
+    image: 'https://example.com/pasta.jpg',
+    country: 'Italia',
+    isCustom: true,
+    createdAt: 1,
+    updatedAt: 1,
     sourceUrl: 'https://example.com/pasta'
   },
   {
@@ -898,18 +920,84 @@ const mockInitialList = [
     ingredients: [],
     steps: [],
     servings: 4,
+    image: 'https://example.com/torta.jpg',
+    country: 'Italia',
+    isCustom: true,
+    createdAt: 2,
+    updatedAt: 2,
     sourceUrl: 'https://example.com/torta'
   }
 ];
 const progressUpdates: string[] = [];
 const enrichedRes = await enrichRecipesWithProgress(mockInitialList, (cur, tot, title) => {
   progressUpdates.push(`${cur}/${tot}: ${title}`);
-});
+}, 150);
 assert.strictEqual(enrichedRes.length, 2);
 assert.strictEqual(enrichedRes[0].title, 'Ricetta Già Completa');
 assert(progressUpdates.length > 0);
 console.log('✓ Bulk Recipe Enrichment with progress callback passed');
 
-console.log('🎉 ALL 28 USER RECIPES SERVICE TESTS PASSED PERFECTLY!');
+// 29. Test Real GialloZafferano Single Recipe HTML with Footer/Related Cards
+console.log('29. Testing GialloZafferano Single Recipe HTML Extraction (ignoring related footer cards)...');
+const mockGzSingleRecipeHtml = `
+<!DOCTYPE html>
+<html>
+<head>
+  <script type="application/ld+json">
+  {
+    "@context": "http://schema.org",
+    "@type": "Recipe",
+    "name": "Spaghetti alla Carbonara",
+    "image": "https://www.giallozafferano.it/images/219-21928/Spaghetti-alla-Carbonara.jpg",
+    "recipeCategory": "Primi piatti",
+    "prepTime": "PT15M",
+    "cookTime": "PT10M",
+    "recipeYield": "4 porzioni",
+    "recipeIngredient": [
+      "320 g Spaghetti",
+      "150 g Guanciale",
+      "6 Tuorli",
+      "50 g Pecorino Romano DOP",
+      "Pepe nero macinato"
+    ],
+    "recipeInstructions": [
+      { "@type": "HowToStep", "text": "Tagliare il guanciale a listarelle." },
+      { "@type": "HowToStep", "text": "Rosolare il guanciale a fuoco dolce senza grassi." },
+      { "@type": "HowToStep", "text": "Sbattere i tuorli con il pecorino e pepe nero." },
+      { "@type": "HowToStep", "text": "Cuocere la pasta e mantecare a fuoco spento con la crema di uova e guanciale." }
+    ]
+  }
+  </script>
+</head>
+<body>
+  <h1>Spaghetti alla Carbonara</h1>
+  <div class="gz-related-recipes">
+    <article class="gz-card gz-card-horizontal">
+      <h2 class="gz-title"><a href="https://ricette.giallozafferano.it/Carbonara-alla-romana-cremosa.html">Carbonara alla romana cremosa</a></h2>
+    </article>
+    <article class="gz-card gz-card-horizontal">
+      <h2 class="gz-title"><a href="https://enciclopediacucina.giallozafferano.it/spaghetti">Spaghetti</a></h2>
+    </article>
+    <article class="gz-card gz-card-horizontal">
+      <h2 class="gz-title"><a href="https://ricette.giallozafferano.it/Risotto-alla-carbonara.html">Risotto alla carbonara</a></h2>
+    </article>
+  </div>
+</body>
+</html>
+`;
+const gzSingleExtracted = extractAllRecipesFromHtml(mockGzSingleRecipeHtml, 'https://ricette.giallozafferano.it/Spaghetti-alla-Carbonara.html');
+// Crucial: Must extract ONLY the 1 single intended recipe and not the related/encyclopedia footer cards!
+assert.strictEqual(gzSingleExtracted.length, 1);
+assert.strictEqual(gzSingleExtracted[0].title, 'Spaghetti alla Carbonara');
+assert.strictEqual(gzSingleExtracted[0].ingredients.length, 5);
+assert.strictEqual(gzSingleExtracted[0].steps.length, 4);
+assert.strictEqual(gzSingleExtracted[0].category, 'Primi');
+assert.strictEqual(gzSingleExtracted[0].prepTimeMinutes, 15);
+assert.strictEqual(gzSingleExtracted[0].cookTimeMinutes, 10);
+console.log('✓ GialloZafferano Single Recipe HTML extraction passed');
+
+console.log('🎉 ALL 29 USER RECIPES SERVICE TESTS PASSED PERFECTLY!');
+process.exit(0);
+
 
 

@@ -96,9 +96,13 @@ export function RecipeImportModal({
       setExtractedRecipes(recipes);
       if (recipes.length === 1) {
         // Singola ricetta: apri subito l'anteprima dettagliata
-        setActiveRecipe(recipes[0]);
+        const single = recipes[0];
+        setActiveRecipe(single);
         setActiveRecipeIndex(0);
         setSelectedIndices(new Set([0]));
+        if (single.sourceUrl && (!single.ingredients?.length || !single.steps?.length)) {
+          handleOpenDetail(single, 0);
+        }
       } else {
         // Multi-ricetta: tutte selezionate di default
         setActiveRecipe(null);
@@ -273,7 +277,8 @@ export function RecipeImportModal({
 
           <button
             onClick={handleCloseModal}
-            className="w-9 h-9 rounded-full bg-[var(--surface-variant)] text-[var(--text-muted)] hover:text-[var(--text-main)] flex items-center justify-center cursor-pointer transition-colors shrink-0"
+            disabled={isImporting}
+            className="w-9 h-9 rounded-full bg-[var(--surface-variant)] text-[var(--text-muted)] hover:text-[var(--text-main)] flex items-center justify-center cursor-pointer transition-colors shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
           >
             <X className="w-5 h-5" />
           </button>
