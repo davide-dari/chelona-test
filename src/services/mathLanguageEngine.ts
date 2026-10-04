@@ -7,6 +7,7 @@
  */
 
 import type { SupermarketCategory } from '../types';
+import { loadUserRecipes } from './userRecipesService';
 
 /**
  * Classifica automatica delle categorie per la lista spesa
@@ -719,28 +720,23 @@ export async function getOrLoadAllRecipes(): Promise<RecipeCatalogItem[]> {
   // 1. Carica ricette create/salvate dall'utente dal localStorage
   if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
     try {
-      const rawUser = localStorage.getItem('chelona_user_recipes') || localStorage.getItem('chelona_custom_recipes');
-      if (rawUser) {
-        const parsed = JSON.parse(rawUser);
-        if (Array.isArray(parsed)) {
-          for (const c of parsed) {
-            items.push({
-              id: c.id || `custom_${Math.random()}`,
-              title: c.title || c.nome || 'Ricetta Personalizzata',
-              category: c.category || c.categoria || 'Secondi',
-              image: c.image || c.immagine || '',
-              ingredients: Array.isArray(c.ingredients) ? c.ingredients : (Array.isArray(c.ingredienti) ? c.ingredienti : []),
-              steps: c.steps || c.procedimento || [],
-              calories: c.calories,
-              protein: c.protein,
-              carbs: c.carbs,
-              fat: c.fat,
-              tags: c.tags || ['Personalizzata'],
-              country: c.country || 'Italia',
-              flag: c.flag || '🇮🇹',
-            });
-          }
-        }
+      const userRecipes = loadUserRecipes();
+      for (const c of userRecipes) {
+        items.push({
+          id: c.id || `custom_${Math.random()}`,
+          title: c.title || 'Ricetta Personalizzata',
+          category: c.category || 'Secondi',
+          image: c.image || '',
+          ingredients: Array.isArray(c.ingredients) ? c.ingredients : [],
+          steps: Array.isArray(c.steps) ? c.steps : [],
+          calories: c.calories,
+          protein: c.protein,
+          carbs: c.carbs,
+          fat: c.fat,
+          tags: c.tags || ['Personalizzata'],
+          country: c.country || 'Italia',
+          flag: c.flag || '🇮🇹',
+        });
       }
     } catch (e) {
       console.warn('[MathEngine] Errore lettura custom recipes:', e);

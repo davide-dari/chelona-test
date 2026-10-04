@@ -182,47 +182,50 @@ export function cleanText(raw: string): string {
 }
 
 /**
- * Converte durate ISO 8601 (es. PT15M, PT1H30M, PT45S, P0DT0H20M) in minuti interi.
+ * Converte durate ISO 8601 (es. PT15M, PT1H30M, PT45S, P0DT0H20M, PT1.5H) in minuti interi.
  */
 export function parseDurationISO(durationStr: any): number | undefined {
   if (!durationStr) return undefined;
-  if (typeof durationStr === 'number') return durationStr > 0 ? durationStr : undefined;
+  if (typeof durationStr === 'number') return durationStr > 0 ? Math.round(durationStr) : undefined;
   if (typeof durationStr !== 'string') return undefined;
 
   const str = durationStr.trim();
   // Se è già un numero
-  const numMatch = str.match(/^(\d+)(?:\s*(?:minuti|minuto|min|m))?$/i);
+  const numMatch = str.match(/^(\d+(?:[.,]\d+)?)(?:\s*(?:minuti|minuto|min|m))?$/i);
   if (numMatch) {
-    const val = parseInt(numMatch[1], 10);
-    return isNaN(val) ? undefined : val;
+    const val = parseFloat(numMatch[1].replace(',', '.'));
+    return isNaN(val) ? undefined : Math.round(val);
   }
 
-  // Regex ISO 8601 Durations (P...T...H...M...S)
-  const isoMatch = str.match(/P(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?)?/i);
+  // Regex ISO 8601 Durations (P...T...H...M...S) con supporto decimali (es. PT1.5H)
+  const isoMatch = str.match(/P(?:(\d+(?:[.,]\d+)?)D)?(?:T(?:(\d+(?:[.,]\d+)?)H)?(?:(\d+(?:[.,]\d+)?)M)?(?:(\d+(?:[.,]\d+)?)S)?)?/i);
   if (isoMatch && (isoMatch[1] || isoMatch[2] || isoMatch[3] || isoMatch[4])) {
-    const days = parseInt(isoMatch[1] || '0', 10);
-    const hours = parseInt(isoMatch[2] || '0', 10);
-    const minutes = parseInt(isoMatch[3] || '0', 10);
-    const seconds = parseInt(isoMatch[4] || '0', 10);
-    const totalMinutes = (days * 24 * 60) + (hours * 60) + minutes + Math.round(seconds / 60);
+    const days = parseFloat((isoMatch[1] || '0').replace(',', '.'));
+    const hours = parseFloat((isoMatch[2] || '0').replace(',', '.'));
+    const minutes = parseFloat((isoMatch[3] || '0').replace(',', '.'));
+    const seconds = parseFloat((isoMatch[4] || '0').replace(',', '.'));
+    const totalMinutes = Math.round((days * 24 * 60) + (hours * 60) + minutes + (seconds / 60));
     return totalMinutes > 0 ? totalMinutes : undefined;
   }
 
-  // Supporto testuale es. "1 ora e 20 minuti"
+  // Supporto testuale es. "1 ora e 20 minuti", "mezz'ora"
   let parsedMin = 0;
-  const hMatch = str.match(/(\d+)\s*(?:ora|ore|h)/i);
-  if (hMatch) parsedMin += parseInt(hMatch[1], 10) * 60;
+  if (/mezz[' ]?ora/i.test(str)) {
+    parsedMin += 30;
+  }
+  const hMatch = str.match(/(\d+(?:[.,]\d+)?)\s*(?:ora|ore|h)/i);
+  if (hMatch) parsedMin += Math.round(parseFloat(hMatch[1].replace(',', '.')) * 60);
   const mMatch = str.match(/(\d+)\s*(?:minuti|minuto|min|m)\b/i);
   if (mMatch) parsedMin += parseInt(mMatch[1], 10);
 
   return parsedMin > 0 ? parsedMin : undefined;
 }
 
-/** Estrae il numero di porzioni da recipeYield (es: "4 porzioni", 4, ["4"]) */
+/** Estrae il numero di porzioni da recipeYield (es: "4 porzioni", 4, [4], ["4 persone"]) */
 export function parseServings(yieldData: any): number | undefined {
   if (yieldData == null) return undefined;
-  if (typeof yieldData === 'number' && yieldData > 0) return yieldData;
   const target = Array.isArray(yieldData) ? yieldData[0] : yieldData;
+  if (typeof target === 'number' && target > 0 && target < 100) return Math.round(target);
   if (typeof target === 'string') {
     const match = target.match(/(\d+)/);
     if (match) {
@@ -233,12 +236,15 @@ export function parseServings(yieldData: any): number | undefined {
   return undefined;
 }
 
-/** Estrae le calorie da nutrition.calories (es. "350 kcal", 350) */
+/** Estrae le calorie da nutrition.calories (es. "350 kcal", 350, [350], { value: 350 }) */
 export function parseCalories(caloriesData: any): number | undefined {
   if (caloriesData == null) return undefined;
-  if (typeof caloriesData === 'number' && caloriesData > 0) return Math.round(caloriesData);
-  if (typeof caloriesData === 'string') {
-    const match = caloriesData.match(/(\d+(?:[.,]\d+)?)/);
+  const target = Array.isArray(caloriesData) 
+    ? caloriesData[0] 
+    : (typeof caloriesData === 'object' && caloriesData !== null && caloriesData.value !== undefined ? caloriesData.value : caloriesData);
+  if (typeof target === 'number' && target > 0) return Math.round(target);
+  if (typeof target === 'string') {
+    const match = target.match(/(\d+(?:[.,]\d+)?)/);
     if (match) {
       const val = parseFloat(match[1].replace(',', '.'));
       if (!isNaN(val) && val > 0) return Math.round(val);
@@ -247,20 +253,32 @@ export function parseCalories(caloriesData: any): number | undefined {
   return undefined;
 }
 
-/** Estrae la migliore URL immagine da vari formati Schema.org */
+/** Estrae la migliore URL immagine da vari formati Schema.org / OpenGraph */
 export function parseImageUrl(imageData: any): string | undefined {
   if (!imageData) return undefined;
-  if (typeof imageData === 'string' && imageData.trim().startsWith('http')) {
-    return imageData.trim();
-  }
+  
+  const normalize = (u: any): string | undefined => {
+    if (typeof u !== 'string') return undefined;
+    const trimmed = u.trim();
+    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) return trimmed;
+    if (trimmed.startsWith('//')) return `https:${trimmed}`;
+    return undefined;
+  };
+
+  const direct = normalize(imageData);
+  if (direct) return direct;
+
   if (Array.isArray(imageData) && imageData.length > 0) {
     const first = imageData[0];
-    if (typeof first === 'string' && first.startsWith('http')) return first;
-    if (typeof first === 'object' && first?.url) return first.url;
+    const fromFirst = normalize(first) || normalize(first?.url) || normalize(first?.contentUrl);
+    if (fromFirst) return fromFirst;
   }
-  if (typeof imageData === 'object' && imageData?.url) {
-    return imageData.url;
+
+  if (typeof imageData === 'object') {
+    const fromObj = normalize(imageData?.url) || normalize(imageData?.contentUrl);
+    if (fromObj) return fromObj;
   }
+
   return undefined;
 }
 
@@ -281,11 +299,13 @@ export function parseInstructions(instructionsData: any): string[] {
     }
     if (typeof item === 'object') {
       const type = item['@type'];
-      if (type === 'HowToSection' && Array.isArray(item.itemListElement)) {
+      const isSection = type === 'HowToSection' || (Array.isArray(type) && type.includes('HowToSection'));
+      if (isSection && item.itemListElement) {
         if (item.name) {
           steps.push(`=== ${cleanText(item.name)} ===`);
         }
-        for (const sub of item.itemListElement) {
+        const subList = Array.isArray(item.itemListElement) ? item.itemListElement : [item.itemListElement];
+        for (const sub of subList) {
           processItem(sub);
         }
       } else if (item.text || item.description || item.name) {
@@ -330,9 +350,14 @@ export function parseIngredients(ingredientsData: any): string[] {
       if (typeof item === 'string') {
         const cleaned = cleanText(item);
         if (cleaned.length > 0) list.push(cleaned);
-      } else if (item && typeof item === 'object' && item.name) {
-        const cleaned = cleanText(`${item.amount || ''} ${item.unit || ''} ${item.name}`);
-        if (cleaned.length > 0) list.push(cleaned);
+      } else if (item && typeof item === 'object') {
+        if (item.text || item.description) {
+          const cleaned = cleanText(item.text || item.description);
+          if (cleaned.length > 0) list.push(cleaned);
+        } else if (item.name) {
+          const cleaned = cleanText(`${item.amount || ''} ${item.unit || ''} ${item.name}`);
+          if (cleaned.length > 0) list.push(cleaned);
+        }
       }
     }
   } else if (typeof ingredientsData === 'string') {
@@ -400,10 +425,22 @@ export function mapToChelonaCategory(cat: string | undefined, cuisine?: string):
 }
 
 /**
- * Parser sicuro ed esaustivo di Schema.org JSON-LD e metadati HTML
+ * Parser sicuro ed esaustivo di Schema.org JSON-LD e metadati HTML (incluso Microdata e OpenGraph)
  */
 export function extractRecipeFromHtml(html: string, originalUrl: string): UserRecipeItem {
   let recipeLd: any = null;
+
+  const isRecipeType = (typeVal: any): boolean => {
+    if (!typeVal) return false;
+    if (typeof typeVal === 'string') {
+      const clean = typeVal.toLowerCase().trim();
+      return clean === 'recipe' || clean.endsWith('/recipe') || clean.endsWith(':recipe');
+    }
+    if (Array.isArray(typeVal)) {
+      return typeVal.some(isRecipeType);
+    }
+    return false;
+  };
 
   // 1. Cerca blocchi script type="application/ld+json"
   const scriptRegex = /<script\b[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi;
@@ -424,14 +461,10 @@ export function extractRecipeFromHtml(html: string, originalUrl: string): UserRe
             if (found) return found;
           }
         } else if (typeof node === 'object') {
-          const type = node['@type'];
-          const isRecipe = 
-            type === 'Recipe' || 
-            (Array.isArray(type) && type.includes('Recipe')) ||
-            (typeof type === 'string' && type.toLowerCase().endsWith('recipe'));
-          
-          if (isRecipe) return node;
-          if (Array.isArray(node['@graph'])) {
+          if (isRecipeType(node['@type'])) {
+            return node;
+          }
+          if (node['@graph']) {
             const found = searchForRecipe(node['@graph']);
             if (found) return found;
           }
@@ -449,7 +482,70 @@ export function extractRecipeFromHtml(html: string, originalUrl: string): UserRe
     }
   }
 
-  // 2. Fallback OpenGraph / Meta tag
+  // 2. Fallback HTML Microdata (itemscope itemtype="http://schema.org/Recipe")
+  let microdataTitle = '';
+  let microdataImage = '';
+  const microdataIngredients: string[] = [];
+  const microdataSteps: string[] = [];
+  let microdataYield = '';
+  let microdataPrep = '';
+  let microdataCook = '';
+  let microdataCategory = '';
+  let microdataCuisine = '';
+
+  if (!recipeLd) {
+    try {
+      // Ingredienti microdata
+      const ingRegex = /<[^>]+itemprop=["'](?:recipeIngredient|ingredients)["'][^>]*>([\s\S]*?)<\/[^>]+>/gi;
+      let ingMatch: RegExpExecArray | null;
+      while ((ingMatch = ingRegex.exec(html)) !== null) {
+        const text = cleanText(ingMatch[1]);
+        if (text) microdataIngredients.push(text);
+      }
+
+      // Istruzioni microdata
+      const stepRegex = /<[^>]+itemprop=["'](?:recipeInstructions|instruction|step)["'][^>]*>([\s\S]*?)<\/[^>]+>/gi;
+      let stepMatch: RegExpExecArray | null;
+      while ((stepMatch = stepRegex.exec(html)) !== null) {
+        const text = cleanText(stepMatch[1]);
+        if (text && text.length > 5) microdataSteps.push(text);
+      }
+
+      // Titolo microdata
+      const nameMatch = html.match(/<[^>]+itemprop=["']name["'][^>]*>([^<]+)<\/[^>]+>/i);
+      if (nameMatch) microdataTitle = cleanText(nameMatch[1]);
+
+      // Immagine microdata
+      const imgMatch = html.match(/<img[^>]+itemprop=["']image["'][^>]+src=["']([^"']*)["']/i) ||
+                       html.match(/<meta[^>]+itemprop=["']image["'][^>]+content=["']([^"']*)["']/i);
+      if (imgMatch) microdataImage = imgMatch[1].trim();
+
+      // Yield / porzioni
+      const yieldMatch = html.match(/<[^>]+itemprop=["']recipeYield["'][^>]+content=["']([^"']*)["']/i) ||
+                         html.match(/<[^>]+itemprop=["']recipeYield["'][^>]*>([^<]+)<\/[^>]+>/i);
+      if (yieldMatch) microdataYield = cleanText(yieldMatch[1]);
+
+      // Prep / Cook time
+      const prepMatch = html.match(/<[^>]+itemprop=["']prepTime["'][^>]+content=["']([^"']*)["']/i) ||
+                        html.match(/<[^>]+itemprop=["']prepTime["'][^>]*>([^<]+)<\/[^>]+>/i);
+      if (prepMatch) microdataPrep = cleanText(prepMatch[1]);
+
+      const cookMatch = html.match(/<[^>]+itemprop=["']cookTime["'][^>]+content=["']([^"']*)["']/i) ||
+                        html.match(/<[^>]+itemprop=["']cookTime["'][^>]*>([^<]+)<\/[^>]+>/i);
+      if (cookMatch) microdataCook = cleanText(cookMatch[1]);
+
+      // Category / Cuisine
+      const catMatch = html.match(/<[^>]+itemprop=["']recipeCategory["'][^>]*>([^<]+)<\/[^>]+>/i);
+      if (catMatch) microdataCategory = cleanText(catMatch[1]);
+
+      const cuisineMatch = html.match(/<[^>]+itemprop=["']recipeCuisine["'][^>]*>([^<]+)<\/[^>]+>/i);
+      if (cuisineMatch) microdataCuisine = cleanText(cuisineMatch[1]);
+    } catch {
+      // Ignora errori di parsing microdata
+    }
+  }
+
+  // 3. Fallback OpenGraph / Meta tag
   const extractMetaContent = (nameOrProp: string): string => {
     const escaped = nameOrProp.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const rgx1 = new RegExp(`<meta[^>]+(?:property|name)=["']${escaped}["'][^>]+content=["']([^"']*)["']`, 'i');
@@ -469,18 +565,18 @@ export function extractRecipeFromHtml(html: string, originalUrl: string): UserRe
   const ogImage = extractMetaContent('og:image') || extractMetaContent('twitter:image');
 
   // Assembla i dati
-  const title = cleanText(recipeLd?.name || recipeLd?.headline || ogTitle || htmlTitle || 'Ricetta Importata');
-  const ingredients = parseIngredients(recipeLd?.recipeIngredient || recipeLd?.ingredients);
-  const steps = parseInstructions(recipeLd?.recipeInstructions);
-  const image = parseImageUrl(recipeLd?.image) || (ogImage ? ogImage.trim() : '') || 'https://images.unsplash.com/photo-1498837167922-ddd27525d352?w=800';
+  const title = cleanText(recipeLd?.name || recipeLd?.headline || microdataTitle || ogTitle || htmlTitle || 'Ricetta Importata');
+  const ingredients = recipeLd ? parseIngredients(recipeLd.recipeIngredient || recipeLd.ingredients) : (microdataIngredients.length > 0 ? microdataIngredients : []);
+  const steps = recipeLd ? parseInstructions(recipeLd.recipeInstructions) : (microdataSteps.length > 0 ? microdataSteps : []);
+  const image = parseImageUrl(recipeLd?.image) || (microdataImage ? microdataImage : '') || (ogImage ? ogImage.trim() : '') || 'https://images.unsplash.com/photo-1498837167922-ddd27525d352?w=800';
   
-  const servings = parseServings(recipeLd?.recipeYield);
-  const prepTimeMinutes = parseDurationISO(recipeLd?.prepTime);
-  const cookTimeMinutes = parseDurationISO(recipeLd?.cookTime);
+  const servings = parseServings(recipeLd?.recipeYield || microdataYield);
+  const prepTimeMinutes = parseDurationISO(recipeLd?.prepTime || microdataPrep);
+  const cookTimeMinutes = parseDurationISO(recipeLd?.cookTime || microdataCook);
   const calories = parseCalories(recipeLd?.nutrition?.calories);
 
-  const rawCat = Array.isArray(recipeLd?.recipeCategory) ? recipeLd.recipeCategory[0] : recipeLd?.recipeCategory;
-  const rawCuisine = Array.isArray(recipeLd?.recipeCuisine) ? recipeLd.recipeCuisine[0] : recipeLd?.recipeCuisine;
+  const rawCat = Array.isArray(recipeLd?.recipeCategory) ? recipeLd.recipeCategory[0] : (recipeLd?.recipeCategory || microdataCategory);
+  const rawCuisine = Array.isArray(recipeLd?.recipeCuisine) ? recipeLd.recipeCuisine[0] : (recipeLd?.recipeCuisine || microdataCuisine);
   const category = mapToChelonaCategory(rawCat, rawCuisine);
 
   let country = rawCuisine ? cleanText(rawCuisine) : 'Italia';

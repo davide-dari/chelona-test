@@ -466,6 +466,11 @@ export function RecipesScreen({
 
   const handleDeleteUserRecipe = (id: string) => {
     deleteUserRecipe(id);
+    setFavorites(prev => {
+      const next = prev.filter(f => f.id !== id);
+      try { localStorage.setItem('chelona_gz_favorites', JSON.stringify(next)); } catch (e) {}
+      return next;
+    });
     setSelectedMeal(null);
     showToast('Ricetta eliminata.');
   };
@@ -563,6 +568,7 @@ export function RecipesScreen({
       list = allMeals.filter(m => m.isCustom);
     }
 
+    const q = searchQuery.toLowerCase().trim();
     return list.filter(meal => {
       let matchCat = true;
       if (selectedCategory === 'favorites') {
@@ -576,7 +582,17 @@ export function RecipesScreen({
       }
 
       const matchCountry = selectedCountry ? meal.country === selectedCountry : true;
-      const matchSearch = searchQuery ? meal.title.toLowerCase().includes(searchQuery.toLowerCase()) : true;
+      
+      let matchSearch = true;
+      if (q) {
+        const titleMatch = (meal.title || '').toLowerCase().includes(q);
+        const ingMatch = Array.isArray(meal.ingredients) && meal.ingredients.some((ing: any) => {
+          const str = typeof ing === 'string' ? ing : (ing?.name || '');
+          return str.toLowerCase().includes(q);
+        });
+        matchSearch = titleMatch || ingMatch;
+      }
+
       return matchCat && matchCountry && matchSearch;
     });
   }, [allMeals, selectedCategory, selectedCountry, searchQuery, favorites]);
@@ -870,7 +886,7 @@ export function RecipesScreen({
                           <span className="text-xs font-bold text-orange-500 uppercase tracking-wider truncate">{meal.category}</span>
                           {meal.isCustom && (
                             <span className="text-[10px] font-black px-1.5 py-0.5 rounded-md bg-amber-500/15 text-amber-700 dark:text-amber-300 shrink-0">
-                              {meal.sourceUrl ? '🔗 Link' : '✨ Mia'}
+                              {meal.sourceUrl ? '🔗 Link Web' : '✨ Personalizzata'}
                             </span>
                           )}
                         </div>
@@ -1917,6 +1933,11 @@ export function RecipesScreen({
         isOpen={isImportModalOpen}
         onClose={() => setIsImportModalOpen(false)}
         onImportSuccess={handleImportRecipeSuccess}
+        onOpenInBuilder={(recipe) => {
+          setIsImportModalOpen(false);
+          setRecipeToEdit(recipe);
+          setIsCreateModalOpen(true);
+        }}
       />
 
       {/* Toast Notifiche */}

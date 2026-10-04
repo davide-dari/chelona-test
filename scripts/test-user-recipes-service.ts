@@ -43,10 +43,13 @@ assert.strictEqual(parseDurationISO('PT20M'), 20);
 assert.strictEqual(parseDurationISO('PT1H'), 60);
 assert.strictEqual(parseDurationISO('PT1H15M'), 75);
 assert.strictEqual(parseDurationISO('PT2H30M'), 150);
+assert.strictEqual(parseDurationISO('PT1.5H'), 90);
 assert.strictEqual(parseDurationISO('PT45S'), 1); // 45s rounded to 1 min
 assert.strictEqual(parseDurationISO('P0DT0H25M'), 25);
 assert.strictEqual(parseDurationISO('30 min'), 30);
 assert.strictEqual(parseDurationISO('1 ora e 10 minuti'), 70);
+assert.strictEqual(parseDurationISO('mezzora'), 30);
+assert.strictEqual(parseDurationISO('mezz\'ora'), 30);
 assert.strictEqual(parseDurationISO(45), 45);
 assert.strictEqual(parseDurationISO(undefined), undefined);
 console.log('✓ Duration parsing passed');
@@ -57,6 +60,7 @@ assert.strictEqual(parseServings(4), 4);
 assert.strictEqual(parseServings('4 porzioni'), 4);
 assert.strictEqual(parseServings('Per 6 persone'), 6);
 assert.strictEqual(parseServings(['8']), 8);
+assert.strictEqual(parseServings([4]), 4); // Array with number
 assert.strictEqual(parseServings(null), undefined);
 console.log('✓ Servings parsing passed');
 
@@ -65,6 +69,8 @@ console.log('3. Testing Calories Parsing...');
 assert.strictEqual(parseCalories('450 kcal'), 450);
 assert.strictEqual(parseCalories('320 calories'), 320);
 assert.strictEqual(parseCalories(500), 500);
+assert.strictEqual(parseCalories(['450 kcal']), 450);
+assert.strictEqual(parseCalories({ value: 520 }), 520);
 assert.strictEqual(parseCalories(undefined), undefined);
 console.log('✓ Calories parsing passed');
 
@@ -220,6 +226,41 @@ assert.strictEqual(extractedOg.title, 'Torta Paradiso Soffice');
 assert(extractedOg.image.includes('photo-1578985545062-69928b1d9587'));
 assert.strictEqual(extractedOg.sourceName, 'Cookist');
 console.log('✓ OpenGraph fallback passed');
+
+// 8b. Test HTML Microdata Fallback Extraction
+console.log('8b. Testing HTML Microdata Fallback Extraction...');
+const mockMicrodataHtml = `
+<!DOCTYPE html>
+<html>
+<head><title>Lasagna Tradizionale</title></head>
+<body>
+  <div itemscope itemtype="http://schema.org/Recipe">
+    <h1 itemprop="name">Lasagne alla Bolognese</h1>
+    <img itemprop="image" src="https://images.unsplash.com/photo-1574894709920-11b28e7367e3?w=800" />
+    <span itemprop="recipeYield">6 porzioni</span>
+    <meta itemprop="prepTime" content="PT30M" />
+    <meta itemprop="cookTime" content="PT45M" />
+    <span itemprop="recipeCategory">Primi</span>
+    <ul>
+      <li itemprop="recipeIngredient">500g pasta all uovo</li>
+      <li itemprop="recipeIngredient">700g ragù bolognese</li>
+      <li itemprop="recipeIngredient">500ml besciamella</li>
+    </ul>
+    <div itemprop="recipeInstructions">Stendere il ragù e la besciamella tra gli strati di pasta.</div>
+    <div itemprop="recipeInstructions">Infornare a 180 gradi per 40 minuti fino a doratura.</div>
+  </div>
+</body>
+</html>
+`;
+const extractedMicro = extractRecipeFromHtml(mockMicrodataHtml, 'https://www.cucinaitaliana.it/lasagne');
+assert.strictEqual(extractedMicro.title, 'Lasagne alla Bolognese');
+assert.strictEqual(extractedMicro.servings, 6);
+assert.strictEqual(extractedMicro.prepTimeMinutes, 30);
+assert.strictEqual(extractedMicro.cookTimeMinutes, 45);
+assert.strictEqual(extractedMicro.ingredients.length, 3);
+assert.strictEqual(extractedMicro.steps.length, 2);
+assert(extractedMicro.image.includes('photo-1574894709920-11b28e7367e3'));
+console.log('✓ HTML Microdata extraction passed');
 
 // 9. Test LocalStorage Persistence (CRUD)
 console.log('9. Testing LocalStorage Persistence (Save, Load, Update, Delete)...');

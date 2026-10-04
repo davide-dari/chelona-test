@@ -95,10 +95,12 @@ export function RecipeCreateModal({
       
       if (Array.isArray(recipeToEdit.steps) && recipeToEdit.steps.length > 0) {
         setSteps(recipeToEdit.steps.map(s => {
-          // Cerca se c'è un timer nel testo
-          const match = s.match(/(?:timer|cuoci|lascia|riposare|inforna)[^.\n]*?(\d+)\s*(?:minuti|minuto|min)\b/i);
-          const timerMin = match ? parseInt(match[1], 10) : undefined;
-          return { text: s, timerMinutes: timerMin };
+          // Cerca se c'è un timer nel testo o tag (⏱️ Tempo: X minuti)
+          const tagMatch = s.match(/\(⏱️\s*(?:Tempo|Timer)?:\s*(\d+)\s*(?:minuti|minuto|min)\)/i);
+          const generalMatch = s.match(/(?:timer|cuoci|lascia|riposare|inforna|tempo)[^.\n]*?(\d+)\s*(?:minuti|minuto|min)\b/i);
+          const timerMin = tagMatch ? parseInt(tagMatch[1], 10) : (generalMatch ? parseInt(generalMatch[1], 10) : undefined);
+          const cleanText = s.replace(/\s*\(⏱️\s*(?:Tempo|Timer)?:\s*\d+\s*(?:minuti|minuto|min)\)/gi, '').trim();
+          return { text: cleanText, timerMinutes: timerMin };
         }));
       } else {
         setSteps([{ text: '' }]);
@@ -150,8 +152,10 @@ export function RecipeCreateModal({
     let row = '';
     if (ingQuantity.trim()) {
       row = `${ingQuantity.trim()}${ingUnit !== 'q.b.' ? ` ${ingUnit}` : ''} ${name}`;
+    } else if (ingUnit === 'q.b.') {
+      row = `${name} q.b.`;
     } else {
-      row = `${name} ${ingUnit}`;
+      row = name;
     }
 
     setIngredients(prev => [...prev, row]);
@@ -218,8 +222,8 @@ export function RecipeCreateModal({
 
     const cleanSteps = steps
       .map(s => {
-        let txt = s.text.trim();
-        if (s.timerMinutes && s.timerMinutes > 0 && !txt.toLowerCase().includes('minut')) {
+        let txt = s.text.replace(/\s*\(⏱️\s*(?:Tempo|Timer)?:\s*\d+\s*(?:minuti|minuto|min)\)/gi, '').trim();
+        if (s.timerMinutes && s.timerMinutes > 0) {
           txt += ` (⏱️ Tempo: ${s.timerMinutes} minuti)`;
         }
         return txt;
