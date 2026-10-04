@@ -1,10 +1,12 @@
-import React, { useState, useRef, useEffect, useMemo } from 'react';
+import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   ArrowLeft, Plus, X, MapPin, Globe, Compass, Navigation, Trash2, Check, 
   Loader2, Pencil, Search, CloudSun, Briefcase, DollarSign, PhoneCall, 
   AlertTriangle, Shield, CheckCircle2, ChevronRight, Calculator, RefreshCw, 
-  Luggage, Umbrella, Thermometer, Wind, Droplets, ExternalLink, PlusCircle
+  Luggage, Umbrella, Thermometer, Wind, Droplets, ExternalLink, PlusCircle,
+  HeartPulse, Syringe, Sparkles, Sun, CloudRain, Snowflake, CloudLightning,
+  ArrowDownUp, CheckCheck, Shirt, FileText, Smartphone, Coffee, AlertCircle, Info
 } from 'lucide-react';
 import ReactGlobe from 'react-globe.gl';
 import { TravelModule, TravelDestination, TravelCountryGroup, TravelNation } from '../types';
@@ -838,6 +840,238 @@ const DestModal: React.FC<{
   );
 };
 
+// --- Global Currencies Database ---
+export interface CurrencyInfo {
+  code: string;
+  name: string;
+  country: string;
+  symbol: string;
+  rateAgainstEur: number;
+}
+
+export const GLOBAL_CURRENCIES: CurrencyInfo[] = [
+  { code: 'EUR', name: 'Euro', country: 'Unione Europea', symbol: '€', rateAgainstEur: 1.0 },
+  { code: 'USD', name: 'Dollaro USA', country: 'Stati Uniti', symbol: '$', rateAgainstEur: 1.085 },
+  { code: 'GBP', name: 'Sterlina britannica', country: 'Regno Unito', symbol: '£', rateAgainstEur: 0.855 },
+  { code: 'JPY', name: 'Yen giapponese', country: 'Giappone', symbol: '¥', rateAgainstEur: 163.5 },
+  { code: 'CHF', name: 'Franco svizzero', country: 'Svizzera', symbol: 'CHF', rateAgainstEur: 0.958 },
+  { code: 'CAD', name: 'Dollaro canadese', country: 'Canada', symbol: 'C$', rateAgainstEur: 1.485 },
+  { code: 'AUD', name: 'Dollaro australiano', country: 'Australia', symbol: 'A$', rateAgainstEur: 1.662 },
+  { code: 'CNY', name: 'Yuan Renminbi', country: 'Cina', symbol: '¥', rateAgainstEur: 7.85 },
+  { code: 'BRL', name: 'Real brasiliano', country: 'Brasile', symbol: 'R$', rateAgainstEur: 5.92 },
+  { code: 'INR', name: 'Rupia indiana', country: 'India', symbol: '₹', rateAgainstEur: 91.2 },
+  { code: 'THB', name: 'Baht thailandese', country: 'Thailandia', symbol: '฿', rateAgainstEur: 39.5 },
+  { code: 'MXN', name: 'Peso messicano', country: 'Messico', symbol: 'Mex$', rateAgainstEur: 21.4 },
+  { code: 'AED', name: 'Dirham degli Emirati', country: 'Emirati Arabi Uniti', symbol: 'AED', rateAgainstEur: 3.985 },
+  { code: 'EGP', name: 'Sterlina egiziana', country: 'Egitto', symbol: 'E£', rateAgainstEur: 52.8 },
+  { code: 'MAD', name: 'Dirham marocchino', country: 'Marocco', symbol: 'DH', rateAgainstEur: 10.85 },
+  { code: 'TRY', name: 'Lira turca', country: 'Turchia', symbol: '₺', rateAgainstEur: 37.2 },
+  { code: 'KRW', name: 'Won sudcoreano', country: 'Corea del Sud', symbol: '₩', rateAgainstEur: 1470.0 },
+  { code: 'SGD', name: 'Dollaro di Singapore', country: 'Singapore', symbol: 'S$', rateAgainstEur: 1.45 },
+  { code: 'HKD', name: 'Dollaro di Hong Kong', country: 'Hong Kong', symbol: 'HK$', rateAgainstEur: 8.48 },
+  { code: 'SEK', name: 'Corona svedese', country: 'Svezia', symbol: 'kr', rateAgainstEur: 11.42 },
+  { code: 'NOK', name: 'Corona norvegese', country: 'Norvegia', symbol: 'kr', rateAgainstEur: 11.65 },
+  { code: 'DKK', name: 'Corona danese', country: 'Danimarca', symbol: 'kr', rateAgainstEur: 7.46 },
+  { code: 'PLN', name: 'Złoty polacco', country: 'Polonia', symbol: 'zł', rateAgainstEur: 4.28 },
+  { code: 'CZK', name: 'Corona ceca', country: 'Repubblica Ceca', symbol: 'Kč', rateAgainstEur: 25.15 },
+  { code: 'HUF', name: 'Fiorino ungherese', country: 'Ungheria', symbol: 'Ft', rateAgainstEur: 405.0 },
+  { code: 'IDR', name: 'Rupia indonesiana', country: 'Indonesia', symbol: 'Rp', rateAgainstEur: 17200.0 },
+  { code: 'VND', name: 'Dong vietnamita', country: 'Vietnam', symbol: '₫', rateAgainstEur: 27150.0 },
+  { code: 'ZAR', name: 'Rand sudafricano', country: 'Sudafrica', symbol: 'R', rateAgainstEur: 19.35 },
+  { code: 'ARS', name: 'Peso argentino', country: 'Argentina', symbol: '$', rateAgainstEur: 1050.0 },
+  { code: 'CLP', name: 'Peso cileno', country: 'Cile', symbol: '$', rateAgainstEur: 1025.0 },
+  { code: 'PEN', name: 'Sol peruviano', country: 'Perù', symbol: 'S/', rateAgainstEur: 4.05 },
+  { code: 'ISK', name: 'Corona islandese', country: 'Islanda', symbol: 'kr', rateAgainstEur: 149.0 },
+  { code: 'NZD', name: 'Dollaro neozelandese', country: 'Nuova Zelanda', symbol: 'NZ$', rateAgainstEur: 1.82 },
+  { code: 'PHP', name: 'Peso filippino', country: 'Filippine', symbol: '₱', rateAgainstEur: 62.5 },
+  { code: 'MYR', name: 'Ringgit malese', country: 'Malesia', symbol: 'RM', rateAgainstEur: 4.75 }
+];
+
+// --- Travel Health & Vaccines Database ---
+export interface CountryHealthInfo {
+  country: string;
+  flag: string;
+  code: string;
+  requiredVaccines: string[];
+  recommendedVaccines: string[];
+  healthRisks: string[];
+  waterSafety: 'safe' | 'bottled_only' | 'boil';
+  malariaRisk: 'none' | 'low' | 'moderate' | 'high';
+  advisoryNote: string;
+  recommendedKit: string[];
+}
+
+export const TRAVEL_HEALTH_DB: CountryHealthInfo[] = [
+  {
+    country: 'Kenya',
+    flag: '🇰🇪',
+    code: 'KE',
+    requiredVaccines: ['Febbre Gialla (obbligatoria se da paesi a rischio o transito > 12h)'],
+    recommendedVaccines: ['Epatite A', 'Epatite B', 'Tetano-Difterite', 'Febbre Tifoide', 'Meningite Meningococcica', 'Rabbia'],
+    healthRisks: ['Malaria (rischio alto nei parchi e zone costiere come Malindi/Watamu)', 'Dengue', 'Diarrea del viaggiatore'],
+    waterSafety: 'bottled_only',
+    malariaRisk: 'high',
+    advisoryNote: 'Profilassi antimalarica (Malarone) vivamente raccomandata per safari e coste. Bere tassativamente acqua minerale sigillata.',
+    recommendedKit: ['Repellente DEET > 30%', 'Malarone / Antimalarico', 'Fermenti lattici', 'Disinfettante intestinale', 'Paracetamolo']
+  },
+  {
+    country: 'Tanzania & Zanzibar',
+    flag: '🇹🇿',
+    code: 'TZ',
+    requiredVaccines: ['Febbre Gialla (richiesto certificato di vaccinazione all\'ingresso a Zanzibar)'],
+    recommendedVaccines: ['Epatite A', 'Epatite B', 'Tetano-Difterite', 'Febbre Tifoide', 'Colera (orale)'],
+    healthRisks: ['Malaria (presente in tutto il paese e nelle aree rurali di Zanzibar)', 'Dengue', 'Batteri intestinali'],
+    waterSafety: 'bottled_only',
+    malariaRisk: 'high',
+    advisoryNote: 'Certificato Febbre Gialla obbligatorio. Dormire sotto zanzariere impregnate e usare spray antizanzare tropicale.',
+    recommendedKit: ['Profilassi antimalarica', 'Zanzariera da viaggio', 'Reidratante orale', 'Crema solare 50+', 'Antibiotico intestinale']
+  },
+  {
+    country: 'Brasile',
+    flag: '🇧🇷',
+    code: 'BR',
+    requiredVaccines: ['Febbre Gialla (raccomandata per tutto il paese e bacino Amazzonico)'],
+    recommendedVaccines: ['Epatite A', 'Epatite B', 'Tetano-Difterite', 'Febbre Tifoide', 'Rabbia'],
+    healthRisks: ['Dengue (frequente in aree urbane e costiere)', 'Zika e Chikungunya', 'Malaria (solo bacino dell\'Amazzonia)'],
+    waterSafety: 'bottled_only',
+    malariaRisk: 'moderate',
+    advisoryNote: 'Vaccinazione contro la febbre gialla raccomandata con almeno 10 giorni d\'anticipo per Iguazù, Manaus e stati centrali.',
+    recommendedKit: ['Repellente antizanzare tropicale', 'Cerotti e disinfettante', 'Antidiarroico', 'Antistaminico']
+  },
+  {
+    country: 'Thailandia',
+    flag: '🇹🇭',
+    code: 'TH',
+    requiredVaccines: ['Febbre Gialla (solo se provenienti da paesi endemici)'],
+    recommendedVaccines: ['Epatite A', 'Epatite B', 'Tetano-Difterite', 'Febbre Tifoide', 'Encefalite Giapponese (se soggiorni rurali)', 'Rabbia'],
+    healthRisks: ['Dengue (diffusa nel sud-est asiatico)', 'Intossicazioni alimentari da street food', 'Rabbia (morsi da scimmie o randagi)'],
+    waterSafety: 'bottled_only',
+    malariaRisk: 'low',
+    advisoryNote: 'Rischio malaria nullo nelle grandi città e isole turistiche (Bangkok, Phuket, Koh Samui, Chiang Mai). Non toccare scimmie.',
+    recommendedKit: ['Repellente DEET', 'Fermenti lattici e carbone vegetale', 'Sali minerali per il caldo umido', 'Cerotti vesciche']
+  },
+  {
+    country: 'India',
+    flag: '🇮🇳',
+    code: 'IN',
+    requiredVaccines: ['Febbre Gialla (obbligatoria se da paesi endemici, con quarantena rigida se sprovvisti)'],
+    recommendedVaccines: ['Epatite A', 'Epatite B', 'Tetano-Difterite', 'Febbre Tifoide', 'Colera', 'Rabbia', 'Encefalite Giapponese'],
+    healthRisks: ['Diarrea del viaggiatore (Delhi Belly)', 'Malaria (rischio variabile a seconda della regione)', 'Dengue'],
+    waterSafety: 'bottled_only',
+    malariaRisk: 'moderate',
+    advisoryNote: 'Non bere mai acqua non sigillata né consumare ghiaccio. Cibi solo cotti caldi e frutta sbucciata al momento.',
+    recommendedKit: ['Gel disinfettante mani', 'Rifaximina / Antibiotico intestinale', 'Fermenti lattici', 'Soluzioni reidratanti']
+  },
+  {
+    country: 'Perù',
+    flag: '🇵🇪',
+    code: 'PE',
+    requiredVaccines: ['Febbre Gialla (raccomandata per aree sotto i 2300m, Amazzonia e Puerto Maldonado)'],
+    recommendedVaccines: ['Epatite A', 'Epatite B', 'Tetano-Difterite', 'Febbre Tifoide'],
+    healthRisks: ['Mal di Montagna / Soroche (Cusco 3400m, Lago Titicaca 3800m)', 'Malaria (solo Amazzonia profonda)'],
+    waterSafety: 'bottled_only',
+    malariaRisk: 'low',
+    advisoryNote: 'Per altitudini oltre 2500m: acclimatarsi 1-2 giorni a Cusco, bere tè di coca, idratarsi molto ed evitare sforzi intensi il primo giorno.',
+    recommendedKit: ['Medicinali per altitudine (Acetazolamide)', 'Gocce occhi e burrocacao', 'Crema solare alta quota', 'Repellente Amazzonia']
+  },
+  {
+    country: 'Egitto',
+    flag: '🇪🇬',
+    code: 'EG',
+    requiredVaccines: ['Febbre Gialla (solo se provenienti da paesi endemici)'],
+    recommendedVaccines: ['Epatite A', 'Epatite B', 'Tetano-Difterite', 'Febbre Tifoide'],
+    healthRisks: ['Infezioni gastrointestinali (sbalzi termici aria condizionata/caldo)', 'Colpi di calore nel deserto'],
+    waterSafety: 'bottled_only',
+    malariaRisk: 'none',
+    advisoryNote: 'Evitare bevande con ghiaccio e verdure crude non sbucciate. Usare acqua in bottiglia anche per lavare i denti. Rischio malaria nullo.',
+    recommendedKit: ['Antidiarroico (Loperamide/Dissenten)', 'Integratori salini e magnesio', 'Protezione solare 50+', 'Cappello protettivo']
+  },
+  {
+    country: 'Madagascar',
+    flag: '🇲🇬',
+    code: 'MG',
+    requiredVaccines: ['Febbre Gialla (se da paesi a rischio)'],
+    recommendedVaccines: ['Epatite A', 'Epatite B', 'Tetano-Difterite', 'Febbre Tifoide', 'Rabbia'],
+    healthRisks: ['Malaria (presente in tutta l\'isola)', 'Dengue', 'Parassitosi delle acque dolci'],
+    waterSafety: 'bottled_only',
+    malariaRisk: 'high',
+    advisoryNote: 'Profilassi antimalarica raccomandata. Evitare bagni in laghi o fiumi di acqua dolce stagnante.',
+    recommendedKit: ['Profilassi antimalarica', 'Repellente tropicale potente', 'Antinfiammatori', 'Kit medicazione sterile']
+  },
+  {
+    country: 'Vietnam',
+    flag: '🇻🇳',
+    code: 'VN',
+    requiredVaccines: ['Febbre Gialla (solo se da paesi endemici)'],
+    recommendedVaccines: ['Epatite A', 'Epatite B', 'Tetano-Difterite', 'Febbre Tifoide', 'Encefalite Giapponese'],
+    healthRisks: ['Dengue', 'Diarrea alimentare', 'Rabbia'],
+    waterSafety: 'bottled_only',
+    malariaRisk: 'low',
+    advisoryNote: 'Rischio malaria limitato a foreste dell\'altopiano centrale. Nelle città (Hanoi, Ho Chi Minh) e baie (Halong) rischio quasi nullo.',
+    recommendedKit: ['Repellente antizanzare', 'Fermenti lattici', 'Disinfettante mani', 'Antistaminico']
+  },
+  {
+    country: 'Indonesia & Bali',
+    flag: '🇮🇩',
+    code: 'ID',
+    requiredVaccines: ['Febbre Gialla (se da paesi a rischio)'],
+    recommendedVaccines: ['Epatite A', 'Epatite B', 'Tetano-Difterite', 'Febbre Tifoide', 'Rabbia'],
+    healthRisks: ['Bali Belly (infezione intestinale)', 'Dengue', 'Rabbia da scimmie/cani'],
+    waterSafety: 'bottled_only',
+    malariaRisk: 'low',
+    advisoryNote: 'A Bali e Giava non c\'è rischio malaria significativo. Attenzione a graffi o morsi di scimmie nelle foreste di Ubud.',
+    recommendedKit: ['Elettroliti e fermenti lattici', 'Carbone vegetale', 'Repellente DEET', 'Spray disinfettante']
+  },
+  {
+    country: 'Messico',
+    flag: '🇲🇽',
+    code: 'MX',
+    requiredVaccines: ['Febbre Gialla (solo se da paesi a rischio)'],
+    recommendedVaccines: ['Epatite A', 'Epatite B', 'Tetano-Difterite', 'Febbre Tifoide'],
+    healthRisks: ['Diarrea del viaggiatore', 'Dengue e Zika nello Yucatan'],
+    waterSafety: 'bottled_only',
+    malariaRisk: 'low',
+    advisoryNote: 'Acqua del rubinetto non potabile. Nei resort turistici dei Caraibi si usa acqua depurata. Usare repellenti biologici per i cenote.',
+    recommendedKit: ['Repellente biodegradabile', 'Antidiarroico', 'Fermenti', 'Paracetamolo']
+  },
+  {
+    country: 'Giappone',
+    flag: '🇯🇵',
+    code: 'JP',
+    requiredVaccines: ['Nessun vaccino obbligatorio'],
+    recommendedVaccines: ['Vaccinazioni di routine (Tetano, Morbillo, Epatite A)'],
+    healthRisks: ['Nessun rischio sanitario particolare', 'Allergie ai pollini di cedro in primavera'],
+    waterSafety: 'safe',
+    malariaRisk: 'none',
+    advisoryNote: 'Standard sanitari d\'eccellenza. Acqua del rubinetto purissima e potabile ovunque.',
+    recommendedKit: ['Antistaminico (se primaverile)', 'Paracetamolo', 'Cerotti vesciche', 'Crema idratante']
+  },
+  {
+    country: 'Stati Uniti & Canada',
+    flag: '🇺🇸',
+    code: 'US',
+    requiredVaccines: ['Nessun vaccino obbligatorio'],
+    recommendedVaccines: ['Vaccinazioni di routine (Tetano, Morbillo)'],
+    healthRisks: ['Nessuno endemico', 'Costi sanitari privatizzati esorbitanti'],
+    waterSafety: 'safe',
+    malariaRisk: 'none',
+    advisoryNote: 'FONDAMENTALE: stipulare un\'assicurazione sanitaria privata con massimale illimitato prima di partire.',
+    recommendedKit: ['Polizza assicurazione sanitaria con contatti', 'Farmaci personali con prescrizione in inglese']
+  },
+  {
+    country: 'Italia & Unione Europea',
+    flag: '🇪🇺',
+    code: 'IT',
+    requiredVaccines: ['Nessun vaccino obbligatorio'],
+    recommendedVaccines: ['Vaccinazioni di routine (Tetano, Morbillo-Parotite-Rosolia)'],
+    healthRisks: ['Nessuno specifico', 'Zecche in aree montane/boschi'],
+    waterSafety: 'safe',
+    malariaRisk: 'none',
+    advisoryNote: 'Copertura sanitaria d\'emergenza garantita dalla Tessera Europea di Assicurazione Malattia (TEAM).',
+    recommendedKit: ['Tessera Sanitaria TEAM valida', 'Farmaci abituali']
+  }
+];
+
 // --- Main TravelScreen ---
 export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onClose }) => {
   const [destinations, setDestinations] = useState<TravelDestination[]>(module.destinations || []);
@@ -861,7 +1095,7 @@ export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onCl
   const [expandedDestId, setExpandedDestId] = useState<string | null>(null);
 
   // --- Sub-tabs Strumenti Viaggio ---
-  const [travelActiveTab, setTravelActiveTab] = useState<'destinations' | 'weather' | 'packing' | 'budget' | 'emergency'>('destinations');
+  const [travelActiveTab, setTravelActiveTab] = useState<'destinations' | 'weather' | 'packing' | 'budget' | 'vaccines' | 'emergency'>('destinations');
 
   // --- Checklist Valigia ---
   const defaultPackingItems = [
@@ -914,60 +1148,220 @@ export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onCl
     onSave({ ...module, destinations, packingList: updated });
   };
 
+  const handleSmartSuggestions = () => {
+    const essentials = [
+      { name: 'Adattatore prese universale', category: 'Elettronica' },
+      { name: 'Powerbank portatile 10000mAh', category: 'Elettronica' },
+      { name: 'Crema solare protettiva 50+', category: 'Accessori' },
+      { name: 'Ombrello pieghevole / K-way', category: 'Abbigliamento' },
+      { name: 'Kit medicinali base e cerotti', category: 'Salute' },
+      { name: 'Repellente antizanzare tropicale', category: 'Salute' },
+      { name: 'Fotocopia passaporto e documenti', category: 'Documenti' },
+      { name: 'Tappi per le orecchie e mascherina', category: 'Accessori' },
+    ];
+    const existingNames = new Set(packingItems.map(p => p.name.toLowerCase()));
+    const toAdd = essentials
+      .filter(e => !existingNames.has(e.name.toLowerCase()))
+      .map(e => ({
+        id: Math.random().toString(36).substr(2, 9),
+        name: e.name,
+        category: e.category,
+        checked: false
+      }));
+    if (toAdd.length > 0) {
+      const updated = [...packingItems, ...toAdd];
+      setPackingItems(updated);
+      onSave({ ...module, destinations, packingList: updated });
+    }
+  };
+
   const packingCompletedCount = packingItems.filter(it => it.checked).length;
   const packingProgressPercent = packingItems.length > 0 ? Math.round((packingCompletedCount / packingItems.length) * 100) : 0;
 
-  // --- Weather Widget State ---
+  // --- Weather Widget State (Smart & Open-Meteo Live) ---
   const [selectedWeatherCity, setSelectedWeatherCity] = useState<string>(() => {
     if (destinations.length > 0 && destinations[0].city) return destinations[0].city;
     if (destinations.length > 0) return destinations[0].name;
     return 'Roma';
   });
 
-  const cityWeatherMap: Record<string, { temp: number; cond: string; icon: string; humidity: number; wind: number; uv: number; forecast: { day: string; min: number; max: number; cond: string; icon: string }[] }> = {
-    'Roma': { temp: 22, cond: 'Soleggiato', icon: '☀️', humidity: 55, wind: 12, uv: 5, forecast: [{ day: 'Dom', min: 14, max: 23, cond: 'Sole', icon: '☀️' }, { day: 'Lun', min: 15, max: 24, cond: 'Sereno', icon: '🌤️' }, { day: 'Mar', min: 13, max: 20, cond: 'Rovesci', icon: '🌦️' }] },
-    'Parigi': { temp: 17, cond: 'Parzialmente nuvoloso', icon: '🌤️', humidity: 68, wind: 18, uv: 4, forecast: [{ day: 'Dom', min: 11, max: 18, cond: 'Nubi', icon: '⛅' }, { day: 'Lun', min: 10, max: 16, cond: 'Pioggia', icon: '🌧️' }, { day: 'Mar', min: 9, max: 15, cond: 'Variabile', icon: '🌦️' }] },
-    'Londra': { temp: 15, cond: 'Pioggia leggera', icon: '🌧️', humidity: 78, wind: 22, uv: 3, forecast: [{ day: 'Dom', min: 9, max: 16, cond: 'Pioggia', icon: '🌧️' }, { day: 'Lun', min: 8, max: 15, cond: 'Nubi', icon: '☁️' }, { day: 'Mar', min: 10, max: 17, cond: 'Sereno', icon: '🌤️' }] },
-    'Tokyo': { temp: 20, cond: 'Limpido', icon: '☀️', humidity: 50, wind: 10, uv: 6, forecast: [{ day: 'Dom', min: 13, max: 21, cond: 'Sole', icon: '☀️' }, { day: 'Lun', min: 14, max: 22, cond: 'Sole', icon: '☀️' }, { day: 'Mar', min: 15, max: 23, cond: 'Nubi', icon: '⛅' }] },
-    'New York': { temp: 19, cond: 'Ventoso', icon: '🌤️', humidity: 60, wind: 25, uv: 5, forecast: [{ day: 'Dom', min: 12, max: 20, cond: 'Sereno', icon: '🌤️' }, { day: 'Lun', min: 14, max: 22, cond: 'Temporali', icon: '⛈️' }, { day: 'Mar', min: 11, max: 18, cond: 'Vento', icon: '💨' }] },
-    'Madrid': { temp: 24, cond: 'Soleggiato', icon: '☀️', humidity: 40, wind: 14, uv: 7, forecast: [{ day: 'Dom', min: 15, max: 26, cond: 'Caldo', icon: '☀️' }, { day: 'Lun', min: 16, max: 27, cond: 'Sole', icon: '☀️' }, { day: 'Mar', min: 14, max: 23, cond: 'Nubi', icon: '⛅' }] }
-  };
-
-  const currentWeather = cityWeatherMap[selectedWeatherCity] || {
-    temp: 21,
-    cond: 'Sereno',
-    icon: '🌤️',
-    humidity: 58,
-    wind: 14,
+  const [liveWeather, setLiveWeather] = useState<{
+    city: string;
+    temp: number;
+    cond: string;
+    icon: string;
+    humidity: number;
+    wind: number;
+    uv: number;
+    forecast: { day: string; min: number; max: number; cond: string; icon: string }[];
+    advice: string;
+  }>({
+    city: 'Roma',
+    temp: 22,
+    cond: 'Soleggiato',
+    icon: '☀️',
+    humidity: 55,
+    wind: 12,
     uv: 5,
     forecast: [
-      { day: 'Dom', min: 13, max: 22, cond: 'Sereno', icon: '🌤️' },
-      { day: 'Lun', min: 14, max: 23, cond: 'Sole', icon: '☀️' },
-      { day: 'Mar', min: 12, max: 19, cond: 'Nubi', icon: '⛅' }
-    ]
+      { day: 'Dom', min: 14, max: 23, cond: 'Sole', icon: '☀️' },
+      { day: 'Lun', min: 15, max: 24, cond: 'Sereno', icon: '🌤️' },
+      { day: 'Mar', min: 13, max: 20, cond: 'Rovesci', icon: '🌦️' },
+      { day: 'Mer', min: 14, max: 22, cond: 'Sole', icon: '☀️' },
+      { day: 'Gio', min: 12, max: 19, cond: 'Variabile', icon: '⛅' }
+    ],
+    advice: '👟 Clima ideale: perfetto per passeggiate ed esplorazioni della città a piedi!'
+  });
+  const [isWeatherLoading, setIsWeatherLoading] = useState(false);
+  const [weatherSearchQuery, setWeatherSearchQuery] = useState('');
+
+  const getWeatherAdvice = (temp: number, code: number) => {
+    if ([51, 53, 55, 61, 63, 65, 80, 81, 82, 95, 96, 99].includes(code)) {
+      return '🌧️ Prevista pioggia: metti un ombrello compatto o k-way antivento nello zaino!';
+    }
+    if ([71, 73, 75, 77].includes(code)) {
+      return '❄️ Neve e clima rigido: indossa scarpe impermeabili e giacca termica a strati.';
+    }
+    if (temp >= 28) {
+      return '☀️ Molto caldo: indossa vestiti leggeri, porta occhiali da sole, cappellino e tanta acqua!';
+    }
+    if (temp <= 10) {
+      return '🧣 Clima freddo: consigliato abbigliamento pesante a strati e sciarpa.';
+    }
+    return '👟 Clima ideale: perfetto per camminare ed esplorare a piedi musei e parchi!';
   };
+
+  const fetchLiveWeather = useCallback(async (cityName: string) => {
+    setIsWeatherLoading(true);
+    try {
+      let lat: number | undefined;
+      let lng: number | undefined;
+
+      const foundDest = destinations.find(d => 
+        (d.city && d.city.toLowerCase() === cityName.toLowerCase()) || 
+        d.name.toLowerCase() === cityName.toLowerCase()
+      );
+      if (foundDest) {
+        lat = foundDest.lat;
+        lng = foundDest.lng;
+      } else {
+        const geoRes = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(cityName)}&count=1&language=it&format=json`);
+        const geoData = await geoRes.json();
+        if (geoData?.results?.[0]) {
+          lat = geoData.results[0].latitude;
+          lng = geoData.results[0].longitude;
+        }
+      }
+
+      if (lat !== undefined && lng !== undefined) {
+        const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m&daily=weather_code,temperature_2m_max,temperature_2m_min&timezone=auto`);
+        const data = await res.json();
+        if (data?.current) {
+          const cur = data.current;
+          const code = cur.weather_code || 0;
+          const parseWmo = (c: number) => {
+            if (c === 0) return { cond: 'Limpido e soleggiato', icon: '☀️' };
+            if (c <= 3) return { cond: 'Parzialmente nuvoloso', icon: '🌤️' };
+            if (c <= 48) return { cond: 'Nebbia o foschia', icon: '🌫️' };
+            if (c <= 57) return { cond: 'Pioviggine', icon: '🌦️' };
+            if (c <= 67) return { cond: 'Pioggia', icon: '🌧️' };
+            if (c <= 77) return { cond: 'Neve', icon: '❄️' };
+            if (c <= 82) return { cond: 'Rovesci intensi', icon: '🌧️' };
+            return { cond: 'Temporali', icon: '⛈️' };
+          };
+
+          const curInfo = parseWmo(code);
+          const daily = data.daily || {};
+          const daysNames = ['Dom', 'Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab'];
+          const forecastList = (daily.time || []).slice(1, 6).map((timeStr: string, idx: number) => {
+            const d = new Date(timeStr);
+            const dayName = daysNames[d.getDay()];
+            const dayCode = daily.weather_code ? daily.weather_code[idx + 1] : 0;
+            const dayInfo = parseWmo(dayCode);
+            return {
+              day: dayName,
+              min: Math.round(daily.temperature_2m_min?.[idx + 1] ?? 12),
+              max: Math.round(daily.temperature_2m_max?.[idx + 1] ?? 22),
+              cond: dayInfo.cond,
+              icon: dayInfo.icon,
+            };
+          });
+
+          setLiveWeather({
+            city: cityName,
+            temp: Math.round(cur.temperature_2m),
+            cond: curInfo.cond,
+            icon: curInfo.icon,
+            humidity: Math.round(cur.relative_humidity_2m || 55),
+            wind: Math.round(cur.wind_speed_10m || 12),
+            uv: 5,
+            forecast: forecastList.length > 0 ? forecastList : [
+              { day: 'Dom', min: 14, max: 23, cond: 'Sole', icon: '☀️' },
+              { day: 'Lun', min: 15, max: 24, cond: 'Sereno', icon: '🌤️' },
+              { day: 'Mar', min: 13, max: 20, cond: 'Nubi', icon: '⛅' },
+            ],
+            advice: getWeatherAdvice(Math.round(cur.temperature_2m), code),
+          });
+          setIsWeatherLoading(false);
+          return;
+        }
+      }
+    } catch (e) {
+      console.warn('Weather fetch error:', e);
+    }
+    setIsWeatherLoading(false);
+  }, [destinations]);
+
+  useEffect(() => {
+    if (selectedWeatherCity) {
+      fetchLiveWeather(selectedWeatherCity);
+    }
+  }, [selectedWeatherCity, fetchLiveWeather]);
 
   // --- Currency & Budget State ---
   const [currencyAmount, setCurrencyAmount] = useState<number>(100);
   const [currencyFrom, setCurrencyFrom] = useState<string>('EUR');
   const [currencyTo, setCurrencyTo] = useState<string>('USD');
-  const EXCHANGE_RATES: Record<string, number> = {
-    EUR: 1.0,
-    USD: 1.085,
-    GBP: 0.855,
-    JPY: 163.5,
-    CHF: 0.958,
-    CAD: 1.485,
-    AUD: 1.662,
-    AED: 3.985
-  };
 
   const convertedAmount = useMemo(() => {
-    const rateFrom = EXCHANGE_RATES[currencyFrom] || 1;
-    const rateTo = EXCHANGE_RATES[currencyTo] || 1;
-    const inEur = (currencyAmount || 0) / rateFrom;
-    return (inEur * rateTo).toFixed(2);
+    const fromInfo = GLOBAL_CURRENCIES.find(c => c.code === currencyFrom) || GLOBAL_CURRENCIES[0];
+    const toInfo = GLOBAL_CURRENCIES.find(c => c.code === currencyTo) || GLOBAL_CURRENCIES[1];
+    const inEur = (currencyAmount || 0) / (fromInfo.rateAgainstEur || 1);
+    const converted = inEur * (toInfo.rateAgainstEur || 1);
+    return converted.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   }, [currencyAmount, currencyFrom, currencyTo]);
+
+  const handleSwapCurrencies = () => {
+    const prevFrom = currencyFrom;
+    setCurrencyFrom(currencyTo);
+    setCurrencyTo(prevFrom);
+  };
+
+  // --- Vaccines & Health State ---
+  const [selectedHealthCountry, setSelectedHealthCountry] = useState<string>(() => {
+    if (destinations.length > 0 && destinations[0].nation) return destinations[0].nation;
+    return 'Kenya';
+  });
+  const [healthSearchQuery, setHealthSearchQuery] = useState('');
+  const [userVaccines, setUserVaccines] = useState<Set<string>>(() => {
+    try {
+      const stored = localStorage.getItem('chelona_travel_user_vaccines');
+      if (stored) return new Set(JSON.parse(stored));
+    } catch (e) {}
+    return new Set(['Tetano-Difterite', 'Epatite A']);
+  });
+
+  const handleToggleUserVaccine = (vacName: string) => {
+    setUserVaccines(prev => {
+      const next = new Set(prev);
+      if (next.has(vacName)) next.delete(vacName);
+      else next.add(vacName);
+      try {
+        localStorage.setItem('chelona_travel_user_vaccines', JSON.stringify(Array.from(next)));
+      } catch (e) {}
+      return next;
+    });
+  };
 
   // Travel Budget
   const [totalTripBudget, setTotalTripBudget] = useState<number>(() => module.travelBudget?.total || 1500);
@@ -1333,6 +1727,16 @@ export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onCl
               </button>
 
               <button
+                onClick={() => setTravelActiveTab('vaccines')}
+                className={`flex-1 py-2 px-1 text-[11px] font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer shrink-0 ${
+                  travelActiveTab === 'vaccines' ? 'bg-[var(--card-bg)] text-rose-500 shadow-sm' : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
+                }`}
+              >
+                <HeartPulse className="w-3.5 h-3.5" />
+                <span>Vaccini</span>
+              </button>
+
+              <button
                 onClick={() => setTravelActiveTab('emergency')}
                 className={`flex-1 py-2 px-1 text-[11px] font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer shrink-0 ${
                   travelActiveTab === 'emergency' ? 'bg-[var(--card-bg)] text-rose-500 shadow-sm' : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
@@ -1527,73 +1931,153 @@ export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onCl
               </div>
             )}
 
-            {/* TAB 2: METEO DESTINAZIONI */}
+            {/* TAB 2: METEO DESTINAZIONI (SMART & OPEN-METEO LIVE) */}
             {travelActiveTab === 'weather' && (
               <div className="space-y-4 animate-fade-in">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-xs font-black uppercase tracking-widest text-[var(--text-muted)]">Meteo & Clima</h3>
-                  <span className="text-[10px] font-bold text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">Live</span>
+                  <div className="flex items-center gap-2">
+                    <CloudSun className="w-4 h-4 text-amber-500" />
+                    <h3 className="text-xs font-black uppercase tracking-widest text-[var(--text-main)]">Meteo & Clima</h3>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-bold text-amber-500 bg-amber-500/10 px-2.5 py-0.5 rounded-full border border-amber-500/20 flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" /> Live Open-Meteo
+                    </span>
+                    <button
+                      onClick={() => fetchLiveWeather(selectedWeatherCity)}
+                      title="Aggiorna meteo"
+                      className="p-1 rounded-lg text-[var(--text-muted)] hover:text-amber-500 hover:bg-[var(--surface-variant)] transition-colors cursor-pointer"
+                    >
+                      <RefreshCw className={`w-3.5 h-3.5 ${isWeatherLoading ? 'animate-spin' : ''}`} />
+                    </button>
+                  </div>
                 </div>
 
-                {/* City selection chips */}
-                <div className="flex gap-1.5 overflow-x-auto pb-1 no-scrollbar">
-                  {['Roma', 'Parigi', 'Londra', 'Tokyo', 'New York', 'Madrid'].map(c => (
-                    <button
-                      key={c}
-                      onClick={() => setSelectedWeatherCity(c)}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
-                        selectedWeatherCity === c ? 'bg-amber-500 text-white shadow-sm' : 'bg-[var(--surface-variant)] text-[var(--text-muted)] hover:text-[var(--text-main)]'
-                      }`}
-                    >
-                      {c}
-                    </button>
-                  ))}
+                {/* City selection chips: user destinations + world hubs */}
+                <div className="space-y-2">
+                  <div className="flex gap-1.5 overflow-x-auto pb-1 no-scrollbar">
+                    {Array.from(new Set([
+                      ...destinations.map(d => d.city?.trim() || d.name.trim()).filter(Boolean),
+                      'Roma', 'Parigi', 'Londra', 'Tokyo', 'New York', 'Bangkok', 'Madrid', 'Il Cairo'
+                    ])).slice(0, 10).map(c => (
+                      <button
+                        key={c}
+                        onClick={() => setSelectedWeatherCity(c)}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
+                          selectedWeatherCity.toLowerCase() === c.toLowerCase()
+                            ? 'bg-amber-500 text-white shadow-sm'
+                            : 'bg-[var(--surface-variant)] text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--border)]'
+                        }`}
+                      >
+                        {c}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Search any city globally */}
+                  <div className="flex gap-2">
+                    <div className="relative flex-1">
+                      <Search className="w-3.5 h-3.5 text-[var(--text-muted)] absolute left-3 top-1/2 -translate-y-1/2" />
+                      <input
+                        type="text"
+                        value={weatherSearchQuery}
+                        onChange={(e) => setWeatherSearchQuery(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && weatherSearchQuery.trim()) {
+                            setSelectedWeatherCity(weatherSearchQuery.trim());
+                            fetchLiveWeather(weatherSearchQuery.trim());
+                            setWeatherSearchQuery('');
+                          }
+                        }}
+                        placeholder="Cerca qualsiasi città nel mondo (es. Kyoto, Sydney, Rio)..."
+                        className="w-full pl-9 pr-3 py-2 bg-[var(--surface-variant)] border border-[var(--border)] rounded-xl text-xs font-medium text-[var(--text-main)] placeholder:text-[var(--text-muted)] outline-none focus:border-amber-400 transition-all"
+                      />
+                    </div>
+                    {weatherSearchQuery.trim() && (
+                      <button
+                        onClick={() => {
+                          setSelectedWeatherCity(weatherSearchQuery.trim());
+                          fetchLiveWeather(weatherSearchQuery.trim());
+                          setWeatherSearchQuery('');
+                        }}
+                        className="px-3 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-bold cursor-pointer transition-colors shrink-0"
+                      >
+                        Cerca
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 {/* Main Weather Card */}
                 <div className="p-5 rounded-3xl bg-gradient-to-br from-amber-500/20 via-orange-500/10 to-transparent border border-amber-500/30 text-[var(--text-main)] relative overflow-hidden shadow-sm">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <span className="text-[10px] font-black uppercase tracking-wider text-amber-600 dark:text-amber-400">Previsioni Oggi</span>
-                      <h4 className="text-2xl font-black mt-0.5">{selectedWeatherCity}</h4>
-                      <p className="text-xs text-[var(--text-muted)] font-medium mt-0.5">{currentWeather.cond}</p>
+                  {isWeatherLoading ? (
+                    <div className="py-12 flex flex-col items-center justify-center gap-2 text-amber-500">
+                      <Loader2 className="w-8 h-8 animate-spin" />
+                      <span className="text-xs font-bold">Rilevamento meteo in tempo reale...</span>
                     </div>
-                    <div className="text-right">
-                      <div className="text-4xl mb-1">{currentWeather.icon}</div>
-                      <span className="text-3xl font-black">{currentWeather.temp}°C</span>
-                    </div>
-                  </div>
+                  ) : (
+                    <>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <span className="text-[10px] font-black uppercase tracking-wider text-amber-600 dark:text-amber-400">
+                            Condizioni Attuali
+                          </span>
+                          <h4 className="text-2xl font-black mt-0.5">{liveWeather.city}</h4>
+                          <p className="text-xs text-[var(--text-muted)] font-medium mt-0.5">{liveWeather.cond}</p>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-4xl mb-1">{liveWeather.icon}</div>
+                          <span className="text-3xl font-black">{liveWeather.temp}°C</span>
+                        </div>
+                      </div>
 
-                  {/* Weather Stats Grid */}
-                  <div className="grid grid-cols-3 gap-2 mt-5 pt-4 border-t border-[var(--border)]/60 text-center">
-                    <div className="p-2 rounded-2xl bg-[var(--card-bg)]/80 border border-[var(--border)]">
-                      <Droplets className="w-3.5 h-3.5 text-blue-500 mx-auto mb-1" />
-                      <span className="text-[9px] text-[var(--text-muted)] uppercase font-bold block">Umidità</span>
-                      <span className="text-xs font-black">{currentWeather.humidity}%</span>
-                    </div>
-                    <div className="p-2 rounded-2xl bg-[var(--card-bg)]/80 border border-[var(--border)]">
-                      <Wind className="w-3.5 h-3.5 text-teal-500 mx-auto mb-1" />
-                      <span className="text-[9px] text-[var(--text-muted)] uppercase font-bold block">Vento</span>
-                      <span className="text-xs font-black">{currentWeather.wind} km/h</span>
-                    </div>
-                    <div className="p-2 rounded-2xl bg-[var(--card-bg)]/80 border border-[var(--border)]">
-                      <CloudSun className="w-3.5 h-3.5 text-amber-500 mx-auto mb-1" />
-                      <span className="text-[9px] text-[var(--text-muted)] uppercase font-bold block">Indice UV</span>
-                      <span className="text-xs font-black">{currentWeather.uv} / 10</span>
-                    </div>
-                  </div>
+                      {/* Smart Advice Box */}
+                      <div className="mt-4 p-3 rounded-2xl bg-[var(--card-bg)]/90 border border-amber-500/30 shadow-xs flex items-start gap-2.5">
+                        <Sparkles className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+                        <div>
+                          <span className="text-[9px] font-black uppercase tracking-wider text-amber-600 dark:text-amber-400 block mb-0.5">
+                            Consiglio Smart per il Viaggiatore
+                          </span>
+                          <p className="text-xs text-[var(--text-main)] font-semibold leading-relaxed">
+                            {liveWeather.advice}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Weather Stats Grid */}
+                      <div className="grid grid-cols-3 gap-2 mt-4 pt-3 border-t border-[var(--border)]/60 text-center">
+                        <div className="p-2 rounded-2xl bg-[var(--card-bg)]/80 border border-[var(--border)]">
+                          <Droplets className="w-3.5 h-3.5 text-blue-500 mx-auto mb-1" />
+                          <span className="text-[9px] text-[var(--text-muted)] uppercase font-bold block">Umidità</span>
+                          <span className="text-xs font-black">{liveWeather.humidity}%</span>
+                        </div>
+                        <div className="p-2 rounded-2xl bg-[var(--card-bg)]/80 border border-[var(--border)]">
+                          <Wind className="w-3.5 h-3.5 text-teal-500 mx-auto mb-1" />
+                          <span className="text-[9px] text-[var(--text-muted)] uppercase font-bold block">Vento</span>
+                          <span className="text-xs font-black">{liveWeather.wind} km/h</span>
+                        </div>
+                        <div className="p-2 rounded-2xl bg-[var(--card-bg)]/80 border border-[var(--border)]">
+                          <CloudSun className="w-3.5 h-3.5 text-amber-500 mx-auto mb-1" />
+                          <span className="text-[9px] text-[var(--text-muted)] uppercase font-bold block">Indice UV</span>
+                          <span className="text-xs font-black">{liveWeather.uv} / 10</span>
+                        </div>
+                      </div>
+                    </>
+                  )}
                 </div>
 
-                {/* 3-Day Forecast */}
+                {/* 5-Day Forecast */}
                 <div>
-                  <h4 className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] mb-2 px-1">Prossimi 3 Giorni</h4>
-                  <div className="grid grid-cols-3 gap-2">
-                    {currentWeather.forecast.map((f, i) => (
-                      <div key={i} className="p-3 rounded-2xl bg-[var(--card-bg)] border border-[var(--border)] text-center shadow-xs">
+                  <h4 className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] mb-2 px-1">
+                    Previsioni Prossimi 5 Giorni
+                  </h4>
+                  <div className="grid grid-cols-5 gap-1.5">
+                    {liveWeather.forecast.map((f, i) => (
+                      <div key={i} className="p-2.5 rounded-2xl bg-[var(--card-bg)] border border-[var(--border)] text-center shadow-xs">
                         <span className="text-[10px] font-black uppercase text-[var(--text-muted)] block">{f.day}</span>
-                        <div className="text-2xl my-1">{f.icon}</div>
-                        <span className="text-xs font-black block">{f.max}° / <span className="text-[var(--text-muted)] font-normal">{f.min}°</span></span>
-                        <span className="text-[9px] text-[var(--text-muted)] mt-0.5 block truncate">{f.cond}</span>
+                        <div className="text-xl my-1">{f.icon}</div>
+                        <span className="text-xs font-black block">{f.max}°</span>
+                        <span className="text-[10px] text-[var(--text-muted)] block">{f.min}°</span>
                       </div>
                     ))}
                   </div>
@@ -1601,79 +2085,132 @@ export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onCl
               </div>
             )}
 
-            {/* TAB 3: CHECKLIST VALIGIA */}
+            {/* TAB 3: CHECKLIST VALIGIA REDESIGN */}
             {travelActiveTab === 'packing' && (
               <div className="space-y-4 animate-fade-in">
                 {/* Progress Card */}
-                <div className="p-4 rounded-3xl bg-gradient-to-br from-emerald-500/15 to-transparent border border-emerald-500/30">
+                <div className="p-4 rounded-3xl bg-gradient-to-br from-emerald-500/15 via-teal-500/5 to-transparent border border-emerald-500/30">
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
-                      <Luggage className="w-4 h-4 text-emerald-500" />
-                      <span className="text-xs font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400">Preparazione Bagaglio</span>
+                      <div className="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-500 flex items-center justify-center">
+                        <Luggage className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <span className="text-xs font-black uppercase tracking-wider text-[var(--text-main)] block">
+                          Preparazione Valigia
+                        </span>
+                        <span className="text-[10px] text-[var(--text-muted)] font-medium">
+                          {packingCompletedCount} di {packingItems.length} oggetti pronti
+                        </span>
+                      </div>
                     </div>
-                    <span className="text-xs font-black text-emerald-600 dark:text-emerald-400">
-                      {packingCompletedCount}/{packingItems.length} ({packingProgressPercent}%)
-                    </span>
+                    <div className="text-right">
+                      <span className="text-lg font-black text-emerald-600 dark:text-emerald-400">
+                        {packingProgressPercent}%
+                      </span>
+                    </div>
                   </div>
 
                   {/* Progress Bar */}
                   <div className="w-full h-2.5 rounded-full bg-[var(--surface-variant)] overflow-hidden">
                     <motion.div 
-                      className="h-full bg-emerald-500 rounded-full"
+                      className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full"
                       initial={{ width: 0 }}
                       animate={{ width: `${packingProgressPercent}%` }}
                       transition={{ duration: 0.4 }}
                     />
                   </div>
-                </div>
 
-                {/* Filter categories */}
-                <div className="flex gap-1.5 overflow-x-auto pb-1 no-scrollbar">
-                  {['Tutte', 'Documenti', 'Elettronica', 'Abbigliamento', 'Toilette', 'Salute', 'Accessori'].map(cat => (
+                  {/* Smart Suggestions Action */}
+                  <div className="mt-3 pt-3 border-t border-[var(--border)]/60 flex items-center justify-between gap-2">
                     <button
-                      key={cat}
-                      onClick={() => setPackingCatFilter(cat)}
-                      className={`px-3 py-1 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
-                        packingCatFilter === cat ? 'bg-emerald-600 text-white shadow-xs' : 'bg-[var(--surface-variant)] text-[var(--text-muted)] hover:text-[var(--text-main)]'
-                      }`}
+                      onClick={handleSmartSuggestions}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs font-bold transition-all cursor-pointer border border-emerald-500/20"
                     >
-                      {cat}
+                      <Sparkles className="w-3.5 h-3.5" />
+                      <span>+ Suggerimenti Essenziali</span>
                     </button>
-                  ))}
+                    <button
+                      onClick={() => {
+                        const allDone = packingItems.every(i => i.checked);
+                        const updated = packingItems.map(i => ({ ...i, checked: !allDone }));
+                        setPackingItems(updated);
+                        onSave({ ...module, destinations, packingList: updated });
+                      }}
+                      className="text-[10px] font-bold text-[var(--text-muted)] hover:text-[var(--text-main)] px-2 py-1 rounded-lg transition-colors cursor-pointer"
+                    >
+                      {packingItems.every(i => i.checked) ? 'Deseleziona tutti' : 'Spunta tutti'}
+                    </button>
+                  </div>
                 </div>
 
-                {/* Add new packing item */}
-                <div className="flex gap-2 p-2 bg-[var(--surface-variant)] rounded-2xl border border-[var(--border)]">
+                {/* Category filter chips with visual icons */}
+                <div className="flex gap-1.5 overflow-x-auto pb-1 no-scrollbar">
+                  {[
+                    { label: 'Tutte', icon: '🧳' },
+                    { label: 'Abbigliamento', icon: '👕' },
+                    { label: 'Documenti', icon: '📄' },
+                    { label: 'Elettronica', icon: '🔌' },
+                    { label: 'Toilette', icon: '🧴' },
+                    { label: 'Salute', icon: '💊' },
+                    { label: 'Accessori', icon: '🎒' }
+                  ].map(cat => {
+                    const isSelected = packingCatFilter === cat.label;
+                    const count = cat.label === 'Tutte' ? packingItems.length : packingItems.filter(i => i.category === cat.label).length;
+                    return (
+                      <button
+                        key={cat.label}
+                        onClick={() => setPackingCatFilter(cat.label)}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer flex items-center gap-1.5 ${
+                          isSelected 
+                            ? 'bg-emerald-600 text-white shadow-xs' 
+                            : 'bg-[var(--surface-variant)] text-[var(--text-muted)] hover:text-[var(--text-main)]'
+                        }`}
+                      >
+                        <span>{cat.icon}</span>
+                        <span>{cat.label}</span>
+                        <span className="text-[10px] opacity-70">({count})</span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Add new packing item form */}
+                <div className="p-3 bg-[var(--surface-variant)] rounded-2xl border border-[var(--border)] space-y-2">
                   <input
                     type="text"
                     value={newPackingText}
                     onChange={(e) => setNewPackingText(e.target.value)}
                     onKeyDown={(e) => { if (e.key === 'Enter') handleAddPackingItem(); }}
-                    placeholder="Aggiungi oggetto alla valigia..."
-                    className="flex-1 bg-transparent px-2 text-xs font-medium outline-none text-[var(--text-main)] placeholder:text-[var(--text-muted)]"
+                    placeholder="Nome oggetto da mettere in valigia..."
+                    className="w-full bg-[var(--card-bg)] px-3 py-2 rounded-xl text-xs font-medium outline-none border border-[var(--border)] text-[var(--text-main)] placeholder:text-[var(--text-muted)] focus:border-emerald-500"
                   />
-                  <select
-                    value={newPackingCat}
-                    onChange={(e) => setNewPackingCat(e.target.value)}
-                    className="bg-[var(--card-bg)] text-[10px] font-bold px-2 py-1 rounded-xl border border-[var(--border)] text-[var(--text-main)] outline-none"
-                  >
-                    <option value="Abbigliamento">Abbigliamento</option>
-                    <option value="Documenti">Documenti</option>
-                    <option value="Elettronica">Elettronica</option>
-                    <option value="Toilette">Toilette</option>
-                    <option value="Salute">Salute</option>
-                    <option value="Accessori">Accessori</option>
-                  </select>
-                  <button
-                    onClick={handleAddPackingItem}
-                    className="p-1.5 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 transition-colors cursor-pointer"
-                  >
-                    <Plus className="w-4 h-4" />
-                  </button>
+                  <div className="flex gap-2">
+                    <select
+                      value={newPackingCat}
+                      onChange={(e) => setNewPackingCat(e.target.value)}
+                      className="flex-1 bg-[var(--card-bg)] text-xs font-bold px-3 py-2 rounded-xl border border-[var(--border)] text-[var(--text-main)] outline-none"
+                    >
+                      <option value="Abbigliamento">👕 Abbigliamento</option>
+                      <option value="Documenti">📄 Documenti</option>
+                      <option value="Elettronica">🔌 Elettronica</option>
+                      <option value="Toilette">🧴 Toilette</option>
+                      <option value="Salute">💊 Salute</option>
+                      <option value="Accessori">🎒 Accessori</option>
+                    </select>
+                    <button
+                      onClick={handleAddPackingItem}
+                      disabled={!newPackingText.trim()}
+                      className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shrink-0 shadow-sm shadow-emerald-500/20"
+                    >
+                      <Plus className="w-4 h-4" />
+                      <span>Aggiungi</span>
+                    </button>
+                  </div>
                 </div>
 
                 {/* Items List */}
-                <div className="space-y-1.5 max-h-[360px] overflow-y-auto custom-scrollbar pr-1">
+                <div className="space-y-1.5 max-h-[380px] overflow-y-auto custom-scrollbar pr-1">
                   {packingItems
                     .filter(it => packingCatFilter === 'Tutte' || it.category === packingCatFilter)
                     .map((item) => (
@@ -1682,17 +2219,17 @@ export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onCl
                         onClick={() => handleTogglePacking(item.id)}
                         className={`p-3 rounded-2xl border transition-all flex items-center justify-between gap-3 cursor-pointer group ${
                           item.checked 
-                            ? 'bg-emerald-500/5 border-emerald-500/20 text-[var(--text-muted)]' 
-                            : 'bg-[var(--card-bg)] border-[var(--border)] text-[var(--text-main)] hover:border-emerald-500/30'
+                            ? 'bg-emerald-500/5 border-emerald-500/20 text-[var(--text-muted)] opacity-80' 
+                            : 'bg-[var(--card-bg)] border-[var(--border)] text-[var(--text-main)] hover:border-emerald-500/40 shadow-xs'
                         }`}
                       >
                         <div className="flex items-center gap-3 min-w-0">
-                          <div className={`w-5 h-5 rounded-lg border flex items-center justify-center transition-colors ${
-                            item.checked ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-[var(--border)] group-hover:border-emerald-500'
+                          <div className={`w-5 h-5 rounded-lg border flex items-center justify-center transition-colors shrink-0 ${
+                            item.checked ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-[var(--border)] group-hover:border-emerald-500 bg-[var(--surface-variant)]'
                           }`}>
-                            {item.checked && <Check className="w-3.5 h-3.5" />}
+                            {item.checked && <Check className="w-3.5 h-3.5 stroke-[3]" />}
                           </div>
-                          <span className={`text-xs font-bold truncate ${item.checked ? 'line-through opacity-70' : ''}`}>
+                          <span className={`text-xs font-bold truncate ${item.checked ? 'line-through text-[var(--text-muted)]' : ''}`}>
                             {item.name}
                           </span>
                         </div>
@@ -1703,7 +2240,7 @@ export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onCl
                           </span>
                           <button
                             onClick={(e) => { e.stopPropagation(); handleDeletePackingItem(item.id); }}
-                            className="p-1 rounded-lg text-[var(--text-muted)] hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
+                            className="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-red-500 hover:bg-red-500/10 transition-colors"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
@@ -1714,62 +2251,99 @@ export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onCl
               </div>
             )}
 
-            {/* TAB 4: BUDGET & VALUTA */}
+            {/* TAB 4: BUDGET & VALUTA (TUTTE LE VALUTE GLOBALI + UI FIX) */}
             {travelActiveTab === 'budget' && (
               <div className="space-y-4 animate-fade-in">
-                {/* Currency Converter */}
+                {/* Global Currency Converter */}
                 <div className="p-4 rounded-3xl bg-[var(--card-bg)] border border-[var(--border)] space-y-3 shadow-xs">
                   <div className="flex items-center justify-between">
                     <span className="text-[10px] font-black uppercase tracking-wider text-purple-600 dark:text-purple-400 flex items-center gap-1.5">
-                      <Calculator className="w-3.5 h-3.5" /> Convertitore Valute
+                      <Calculator className="w-3.5 h-3.5" /> Convertitore Tutte le Valute Mondiali
                     </span>
-                    <span className="text-[9px] text-[var(--text-muted)]">Tasso aggiornato</span>
+                    <button
+                      onClick={handleSwapCurrencies}
+                      className="p-1 rounded-lg text-purple-600 hover:bg-purple-500/10 flex items-center gap-1 text-[10px] font-bold cursor-pointer transition-colors"
+                      title="Inverti valute"
+                    >
+                      <ArrowDownUp className="w-3 h-3" />
+                      <span>Inverti</span>
+                    </button>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className="p-2.5 rounded-2xl bg-[var(--surface-variant)] border border-[var(--border)]">
-                      <span className="text-[9px] font-bold text-[var(--text-muted)] block mb-1">Da (EUR)</span>
-                      <input
-                        type="number"
-                        value={currencyAmount || ''}
-                        onChange={(e) => setCurrencyAmount(parseFloat(e.target.value) || 0)}
-                        className="w-full bg-transparent font-black text-lg outline-none text-[var(--text-main)]"
-                      />
+                  {/* Converter Controls */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    {/* From Currency */}
+                    <div className="p-3 rounded-2xl bg-[var(--surface-variant)] border border-[var(--border)]">
+                      <span className="text-[9px] font-bold text-[var(--text-muted)] block mb-1">Da:</span>
+                      <select
+                        value={currencyFrom}
+                        onChange={(e) => setCurrencyFrom(e.target.value)}
+                        className="w-full bg-[var(--card-bg)] text-xs font-bold text-[var(--text-main)] p-1.5 rounded-xl border border-[var(--border)] outline-none mb-2"
+                      >
+                        {GLOBAL_CURRENCIES.map(c => (
+                          <option key={c.code} value={c.code}>
+                            {c.code} - {c.country} ({c.name})
+                          </option>
+                        ))}
+                      </select>
+                      <div className="relative">
+                        <input
+                          type="number"
+                          value={currencyAmount || ''}
+                          onChange={(e) => setCurrencyAmount(parseFloat(e.target.value) || 0)}
+                          className="w-full bg-transparent font-black text-xl outline-none text-[var(--text-main)]"
+                          placeholder="100"
+                        />
+                        <span className="text-xs font-bold text-[var(--text-muted)] absolute right-1 top-1/2 -translate-y-1/2">
+                          {currencyFrom}
+                        </span>
+                      </div>
                     </div>
 
-                    <div className="p-2.5 rounded-2xl bg-[var(--surface-variant)] border border-[var(--border)]">
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-[9px] font-bold text-[var(--text-muted)]">A ({currencyTo})</span>
-                        <select
-                          value={currencyTo}
-                          onChange={(e) => setCurrencyTo(e.target.value)}
-                          className="bg-transparent text-[10px] font-bold text-purple-500 outline-none"
-                        >
-                          <option value="USD">USD ($)</option>
-                          <option value="GBP">GBP (£)</option>
-                          <option value="JPY">JPY (¥)</option>
-                          <option value="CHF">CHF (Fr)</option>
-                          <option value="CAD">CAD (C$)</option>
-                          <option value="AUD">AUD (A$)</option>
-                          <option value="AED">AED (AED)</option>
-                        </select>
-                      </div>
-                      <div className="font-black text-lg text-purple-600 dark:text-purple-400 truncate">
-                        {convertedAmount}
+                    {/* To Currency */}
+                    <div className="p-3 rounded-2xl bg-[var(--surface-variant)] border border-[var(--border)]">
+                      <span className="text-[9px] font-bold text-[var(--text-muted)] block mb-1">A:</span>
+                      <select
+                        value={currencyTo}
+                        onChange={(e) => setCurrencyTo(e.target.value)}
+                        className="w-full bg-[var(--card-bg)] text-xs font-bold text-purple-600 dark:text-purple-400 p-1.5 rounded-xl border border-[var(--border)] outline-none mb-2"
+                      >
+                        {GLOBAL_CURRENCIES.map(c => (
+                          <option key={c.code} value={c.code}>
+                            {c.code} - {c.country} ({c.name})
+                          </option>
+                        ))}
+                      </select>
+                      <div className="relative">
+                        <div className="font-black text-xl text-purple-600 dark:text-purple-400 truncate">
+                          {convertedAmount}
+                        </div>
+                        <span className="text-xs font-bold text-purple-500 absolute right-1 top-1/2 -translate-y-1/2">
+                          {currencyTo}
+                        </span>
                       </div>
                     </div>
                   </div>
 
+                  {/* Quick Rates Ticker */}
                   <div className="flex gap-1.5 overflow-x-auto no-scrollbar pt-1">
-                    <span className="text-[10px] font-bold text-[var(--text-muted)] px-2 py-0.5 rounded-md bg-[var(--surface-variant)] shrink-0">
-                      1 EUR = 1.08 USD
-                    </span>
-                    <span className="text-[10px] font-bold text-[var(--text-muted)] px-2 py-0.5 rounded-md bg-[var(--surface-variant)] shrink-0">
-                      1 EUR = 0.85 GBP
-                    </span>
-                    <span className="text-[10px] font-bold text-[var(--text-muted)] px-2 py-0.5 rounded-md bg-[var(--surface-variant)] shrink-0">
-                      1 EUR = 163 JPY
-                    </span>
+                    {['USD', 'GBP', 'JPY', 'CHF', 'THB', 'BRL'].map(code => {
+                      const c = GLOBAL_CURRENCIES.find(x => x.code === code);
+                      if (!c) return null;
+                      return (
+                        <button
+                          key={code}
+                          onClick={() => setCurrencyTo(code)}
+                          className={`text-[10px] font-bold px-2 py-1 rounded-lg shrink-0 transition-all cursor-pointer ${
+                            currencyTo === code 
+                              ? 'bg-purple-600 text-white' 
+                              : 'bg-[var(--surface-variant)] text-[var(--text-muted)] hover:text-[var(--text-main)]'
+                          }`}
+                        >
+                          1 EUR = {c.rateAgainstEur} {code}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
 
@@ -1796,32 +2370,51 @@ export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onCl
                     />
                   </div>
 
-                  {/* Add expense form */}
-                  <div className="pt-2 border-t border-[var(--border)]/60 flex gap-2">
+                  {/* Fixed Add Expense Form: Clean Responsive Layout (No Overflow) */}
+                  <div className="pt-3 border-t border-[var(--border)]/60 space-y-2">
                     <input
                       type="text"
-                      placeholder="Descrizione spesa..."
+                      placeholder="Descrizione spesa (es. Volo, Hotel, Pranzo)..."
                       value={newExpenseDesc}
                       onChange={(e) => setNewExpenseDesc(e.target.value)}
-                      className="flex-1 bg-[var(--surface-variant)] px-3 py-1.5 rounded-xl text-xs font-medium text-[var(--text-main)] outline-none border border-[var(--border)] placeholder:text-[var(--text-muted)]"
+                      className="w-full bg-[var(--surface-variant)] px-3 py-2 rounded-xl text-xs font-medium text-[var(--text-main)] outline-none border border-[var(--border)] placeholder:text-[var(--text-muted)] focus:border-purple-500"
                     />
-                    <input
-                      type="number"
-                      placeholder="€"
-                      value={newExpenseAmount}
-                      onChange={(e) => setNewExpenseAmount(e.target.value)}
-                      className="w-16 bg-[var(--surface-variant)] px-2 py-1.5 rounded-xl text-xs font-bold text-[var(--text-main)] outline-none border border-[var(--border)] text-center"
-                    />
-                    <button
-                      onClick={handleAddExpense}
-                      className="px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs cursor-pointer active:scale-95 transition-all shrink-0"
-                    >
-                      + Aggiungi
-                    </button>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                      <select
+                        value={newExpenseCat}
+                        onChange={(e) => setNewExpenseCat(e.target.value)}
+                        className="bg-[var(--surface-variant)] px-2 py-2 rounded-xl text-xs font-bold text-[var(--text-main)] outline-none border border-[var(--border)]"
+                      >
+                        <option value="Cibo">🍽️ Cibo</option>
+                        <option value="Alloggio">🏨 Alloggio</option>
+                        <option value="Trasporti">✈️ Trasporti</option>
+                        <option value="Attività">🎟️ Attività</option>
+                        <option value="Shopping">🛍️ Shopping</option>
+                        <option value="Altro">📦 Altro</option>
+                      </select>
+                      <div className="relative">
+                        <input
+                          type="number"
+                          placeholder="0.00"
+                          value={newExpenseAmount}
+                          onChange={(e) => setNewExpenseAmount(e.target.value)}
+                          className="w-full bg-[var(--surface-variant)] px-2.5 py-2 pr-7 rounded-xl text-xs font-bold text-[var(--text-main)] outline-none border border-[var(--border)]"
+                        />
+                        <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-[var(--text-muted)]">€</span>
+                      </div>
+                      <button
+                        onClick={handleAddExpense}
+                        disabled={!newExpenseDesc.trim() || !newExpenseAmount}
+                        className="col-span-2 sm:col-span-1 w-full py-2 px-3 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 disabled:opacity-50 text-white font-bold text-xs cursor-pointer active:scale-95 transition-all shadow-md shadow-purple-500/20 flex items-center justify-center gap-1"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>Aggiungi</span>
+                      </button>
+                    </div>
                   </div>
 
                   {/* Expenses List */}
-                  <div className="space-y-1.5 max-h-[180px] overflow-y-auto custom-scrollbar">
+                  <div className="space-y-1.5 max-h-[180px] overflow-y-auto custom-scrollbar pt-1">
                     {expenses.map((exp) => (
                       <div key={exp.id} className="p-2.5 rounded-xl bg-[var(--surface-variant)]/60 border border-[var(--border)] flex items-center justify-between text-xs">
                         <div>
@@ -1841,6 +2434,215 @@ export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onCl
                     ))}
                   </div>
                 </div>
+              </div>
+            )}
+
+            {/* TAB 5: VACCINI & REQUISITI SANITARI PAESE */}
+            {travelActiveTab === 'vaccines' && (
+              <div className="space-y-4 animate-fade-in">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <HeartPulse className="w-4 h-4 text-rose-500" />
+                    <h3 className="text-xs font-black uppercase tracking-widest text-[var(--text-main)]">
+                      Vaccini & Sanità
+                    </h3>
+                  </div>
+                  <span className="text-[10px] font-bold text-rose-500 bg-rose-500/10 px-2 py-0.5 rounded-full border border-rose-500/20">
+                    Requisiti Viaggio
+                  </span>
+                </div>
+
+                {/* Country Quick Chips */}
+                <div className="space-y-2">
+                  <div className="flex gap-1.5 overflow-x-auto pb-1 no-scrollbar">
+                    {Array.from(new Set([
+                      ...destinations.map(d => getDestNation(d, countryGroups)).filter(Boolean),
+                      ...TRAVEL_HEALTH_DB.map(h => h.country)
+                    ])).slice(0, 12).map(cName => {
+                      const info = TRAVEL_HEALTH_DB.find(h => h.country.toLowerCase().includes(cName.toLowerCase()) || cName.toLowerCase().includes(h.country.toLowerCase()));
+                      const flag = info ? info.flag : getCountryEmoji(cName);
+                      const isSelected = selectedHealthCountry.toLowerCase() === cName.toLowerCase();
+                      return (
+                        <button
+                          key={cName}
+                          onClick={() => setSelectedHealthCountry(cName)}
+                          className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer flex items-center gap-1.5 ${
+                            isSelected
+                              ? 'bg-rose-600 text-white shadow-sm'
+                              : 'bg-[var(--surface-variant)] text-[var(--text-muted)] hover:text-[var(--text-main)]'
+                          }`}
+                        >
+                          <span>{flag}</span>
+                          <span>{cName.split(' ')[0]}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Search Country Input */}
+                  <div className="relative">
+                    <Search className="w-3.5 h-3.5 text-[var(--text-muted)] absolute left-3 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="text"
+                      value={healthSearchQuery}
+                      onChange={(e) => setHealthSearchQuery(e.target.value)}
+                      placeholder="Cerca paese di destinazione (es. Kenya, Brasile, Thailandia)..."
+                      className="w-full pl-9 pr-3 py-2 bg-[var(--surface-variant)] border border-[var(--border)] rounded-xl text-xs font-medium text-[var(--text-main)] placeholder:text-[var(--text-muted)] outline-none focus:border-rose-500"
+                    />
+                  </div>
+                </div>
+
+                {/* Country Health Details Card */}
+                {(() => {
+                  const filteredList = healthSearchQuery.trim()
+                    ? TRAVEL_HEALTH_DB.filter(h => h.country.toLowerCase().includes(healthSearchQuery.toLowerCase()))
+                    : TRAVEL_HEALTH_DB.filter(h => h.country.toLowerCase().includes(selectedHealthCountry.toLowerCase()) || selectedHealthCountry.toLowerCase().includes(h.country.toLowerCase()));
+                  
+                  const activeCountryData = filteredList.length > 0 ? filteredList[0] : TRAVEL_HEALTH_DB[0];
+
+                  return (
+                    <div className="space-y-3">
+                      {/* Country Header Banner */}
+                      <div className="p-4 rounded-3xl bg-gradient-to-br from-rose-500/15 via-red-500/5 to-transparent border border-rose-500/30 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className="text-2xl">{activeCountryData.flag}</span>
+                            <div>
+                              <h4 className="text-base font-black text-[var(--text-main)]">
+                                {activeCountryData.country}
+                              </h4>
+                              <span className="text-[10px] text-[var(--text-muted)] font-semibold">
+                                Norme igienico-sanitarie di viaggio
+                              </span>
+                            </div>
+                          </div>
+                          <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full border ${
+                            activeCountryData.malariaRisk === 'high' ? 'bg-red-500/15 text-red-500 border-red-500/30' :
+                            activeCountryData.malariaRisk === 'moderate' ? 'bg-amber-500/15 text-amber-500 border-amber-500/30' :
+                            activeCountryData.malariaRisk === 'low' ? 'bg-yellow-500/15 text-yellow-600 border-yellow-500/30' :
+                            'bg-emerald-500/15 text-emerald-500 border-emerald-500/30'
+                          }`}>
+                            Malaria: {activeCountryData.malariaRisk === 'high' ? 'Rischio Alto' : activeCountryData.malariaRisk === 'moderate' ? 'Moderato' : activeCountryData.malariaRisk === 'low' ? 'Basso' : 'Nessuno'}
+                          </span>
+                        </div>
+                        <p className="text-xs text-[var(--text-main)] font-medium leading-relaxed bg-[var(--card-bg)]/80 p-3 rounded-2xl border border-[var(--border)]">
+                          💡 {activeCountryData.advisoryNote}
+                        </p>
+                      </div>
+
+                      {/* Required Vaccines Card */}
+                      <div className="p-4 rounded-3xl bg-[var(--card-bg)] border border-[var(--border)] space-y-2 shadow-xs">
+                        <div className="flex items-center gap-2 text-rose-500">
+                          <AlertTriangle className="w-4 h-4 shrink-0" />
+                          <h5 className="text-xs font-black uppercase tracking-wider">
+                            Vaccinazioni Obbligatorie & Ingresso
+                          </h5>
+                        </div>
+                        <div className="space-y-1.5">
+                          {activeCountryData.requiredVaccines.map((v, i) => (
+                            <div key={i} className="p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-xs font-bold text-rose-600 dark:text-rose-400 flex items-start gap-2">
+                              <Syringe className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                              <span>{v}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Recommended Vaccines Card */}
+                      <div className="p-4 rounded-3xl bg-[var(--card-bg)] border border-[var(--border)] space-y-2.5 shadow-xs">
+                        <div className="flex items-center gap-2 text-amber-500">
+                          <Shield className="w-4 h-4 shrink-0" />
+                          <h5 className="text-xs font-black uppercase tracking-wider">
+                            Vaccinazioni Fortemente Raccomandate
+                          </h5>
+                        </div>
+                        <div className="flex flex-wrap gap-1.5">
+                          {activeCountryData.recommendedVaccines.map((v, i) => (
+                            <span key={i} className="text-xs font-bold px-2.5 py-1 rounded-xl bg-[var(--surface-variant)] text-[var(--text-main)] border border-[var(--border)]">
+                              💉 {v}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Risks & Safe Drinking Water */}
+                      <div className="p-4 rounded-3xl bg-[var(--card-bg)] border border-[var(--border)] space-y-2 shadow-xs">
+                        <h5 className="text-xs font-black uppercase tracking-wider text-[var(--text-muted)]">
+                          Sicurezza Acqua & Rischi Sanitari
+                        </h5>
+                        <div className="grid grid-cols-2 gap-2 text-xs">
+                          <div className={`p-2.5 rounded-2xl border ${activeCountryData.waterSafety === 'safe' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400' : 'bg-red-500/10 border-red-500/20 text-red-600 dark:text-red-400'}`}>
+                            <span className="font-black block text-[10px] uppercase mb-0.5">Acqua del Rubinetto</span>
+                            <span className="font-bold">{activeCountryData.waterSafety === 'safe' ? '💧 Potabile e sicura' : '🚫 Bere solo sigillata'}</span>
+                          </div>
+                          <div className="p-2.5 rounded-2xl bg-[var(--surface-variant)] border border-[var(--border)] text-[var(--text-main)]">
+                            <span className="font-black block text-[10px] uppercase mb-0.5 text-[var(--text-muted)]">Cibo & Street Food</span>
+                            <span className="font-bold">🍽️ Consumare ben cotto</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Destination Kit Checklist */}
+                      <div className="p-4 rounded-3xl bg-[var(--card-bg)] border border-[var(--border)] space-y-2 shadow-xs">
+                        <h5 className="text-xs font-black uppercase tracking-wider text-[var(--text-muted)] flex items-center gap-1.5">
+                          <Briefcase className="w-3.5 h-3.5 text-blue-500" /> Farmacia da Viaggio Consigliata
+                        </h5>
+                        <div className="flex flex-wrap gap-1.5">
+                          {activeCountryData.recommendedKit.map((item, i) => (
+                            <span key={i} className="text-xs font-semibold px-2.5 py-1 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
+                              💊 {item}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Personal Vaccines Passport Checklist */}
+                      <div className="p-4 rounded-3xl bg-[var(--surface-variant)]/60 border border-[var(--border)] space-y-2.5">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-black uppercase tracking-wider text-[var(--text-muted)] flex items-center gap-1.5">
+                            <CheckCheck className="w-3.5 h-3.5 text-emerald-500" /> I Miei Vaccini Effettuati
+                          </span>
+                          <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
+                            {userVaccines.size} registrati
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-1.5">
+                          {[
+                            'Febbre Gialla',
+                            'Epatite A',
+                            'Epatite B',
+                            'Tetano-Difterite',
+                            'Febbre Tifoide',
+                            'Colera',
+                            'Encefalite Giapponese',
+                            'Meningococco'
+                          ].map(vacName => {
+                            const isChecked = userVaccines.has(vacName);
+                            return (
+                              <button
+                                key={vacName}
+                                type="button"
+                                onClick={() => handleToggleUserVaccine(vacName)}
+                                className={`p-2 rounded-xl border text-left text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+                                  isChecked 
+                                    ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-700 dark:text-emerald-300 shadow-xs'
+                                    : 'bg-[var(--card-bg)] border-[var(--border)] text-[var(--text-muted)] hover:border-emerald-500/30'
+                                }`}
+                              >
+                                <div className={`w-4 h-4 rounded-md border flex items-center justify-center shrink-0 ${
+                                  isChecked ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-[var(--border)]'
+                                }`}>
+                                  {isChecked && <Check className="w-3 h-3 stroke-[3]" />}
+                                </div>
+                                <span className="truncate">{vacName}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
             )}
 

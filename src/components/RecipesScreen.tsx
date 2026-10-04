@@ -5,9 +5,12 @@ import {
   ShoppingCart, Check, RefreshCw, Lock, Unlock, Utensils, 
   Wine, ArrowRight, CheckCircle2, ChevronRight, Eye, AlertCircle,
   Share2, QrCode, Copy, Plus, Trash2, Camera, BookmarkCheck,
-  Bookmark, Sliders, CheckCheck, Lightbulb, Users
+  Bookmark, Sliders, CheckCheck, Lightbulb, Users,
+  Timer, Play, Pause, RotateCcw, ChevronLeft, Clock, Circle, Flame, ListOrdered
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
+
+export const FALLBACK_RECIPE_IMAGE = 'https://images.unsplash.com/photo-1498837167922-ddd27525d352?w=800';
 import { Share } from '@capacitor/share';
 import { QrScanner } from './QrScanner';
 import { 
@@ -46,6 +49,17 @@ export function RecipesScreen({
   // Ingredient multi-selection inside recipe view
   const [selectedMealIngredients, setSelectedMealIngredients] = useState<Set<string>>(new Set());
   const [mealAddedToCart, setMealAddedToCart] = useState(false);
+
+  // Recipe Step UX state (Guided Mode, Completion Tracker, Integrated Cooking Timers)
+  const [stepViewMode, setStepViewMode] = useState<'overview' | 'guided'>('overview');
+  const [activeGuidedStep, setActiveGuidedStep] = useState<number>(0);
+  const [completedSteps, setCompletedSteps] = useState<Set<number>>(new Set());
+  const [stepTimers, setStepTimers] = useState<Record<number, {
+    totalSeconds: number;
+    remainingSeconds: number;
+    isRunning: boolean;
+    isFinished: boolean;
+  }>>({});
 
   // "Cosa mangiare oggi?" Menu Planner state
   const [isMenuPlannerOpen, setIsMenuPlannerOpen] = useState(false);
@@ -123,7 +137,7 @@ export function RecipesScreen({
     }
   }, [initialRecipe]);
 
-  // Quando si apre una ricetta, seleziona tutti gli ingredienti di default
+  // Quando si apre una ricetta, seleziona tutti gli ingredienti di default e azzera gli stati dei passaggi
   useEffect(() => {
     if (selectedMeal && Array.isArray(selectedMeal.ingredients)) {
       setSelectedMealIngredients(new Set(selectedMeal.ingredients));
@@ -131,7 +145,174 @@ export function RecipesScreen({
     } else {
       setSelectedMealIngredients(new Set());
     }
+    setCompletedSteps(new Set());
+    setActiveGuidedStep(0);
+    setStepTimers({});
   }, [selectedMeal]);
+
+  const playTimerChime = useCallback(() => {
+    try {
+      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioCtx) return;
+      const ctx = new AudioCtx();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(587.33, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.15);
+      gain.gain.setValueAtTime(0.25, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.8);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.8);
+    } catch (e) {
+      // Audio fallback
+    }
+  }, []);
+
+  // Tick active cooking timers
+  useEffect(() => {
+    const hasRunning = Object.values(stepTimers).some(t => t.isRunning);
+    if (!hasRunning) return;
+
+    const interval = setInterval(() => {
+      setStepTimers(prev => {
+        let changed = false;
+        const next = { ...prev };
+        for (const [stepKey, timer] of Object.entries(prev)) {
+          const stepIdx = Number(stepKey);
+          if (timer.isRunning) {
+            changed = true;
+            if (timer.remainingSeconds <= 1) {
+              next[stepIdx] = {
+                ...timer,
+                remainingSeconds: 0,
+                isRunning: false,
+                isFinished: true,
+              };
+              playTimerChime();
+            } else {
+              next[stepIdx] = {
+                ...timer,
+                remainingSeconds: timer.remainingSeconds - 1,
+              };
+            }
+          }
+        }
+        return changed ? next : prev;
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [stepTimers, playTimerChime]);
+
+  const handleStartTimer = useCallback((stepIdx: number, durationSeconds: number) => {
+    setStepTimers(prev => {
+      const existing = prev[stepIdx];
+      return {
+        ...prev,
+        [stepIdx]: {
+          totalSeconds: durationSeconds,
+          remainingSeconds: existing && existing.remainingSeconds > 0 ? existing.remainingSeconds : durationSeconds,
+          isRunning: true,
+          isFinished: false,
+        }
+      };
+    });
+  }, []);
+
+  const handlePauseTimer = useCallback((stepIdx: number) => {
+    setStepTimers(prev => {
+      const existing = prev[stepIdx];
+      if (!existing) return prev;
+      return {
+        ...prev,
+        [stepIdx]: {
+          ...existing,
+          isRunning: false,
+        }
+      };
+    });
+  }, []);
+
+  const handleResetTimer = useCallback((stepIdx: number, durationSeconds: number) => {
+    setStepTimers(prev => ({
+      ...prev,
+      [stepIdx]: {
+        totalSeconds: durationSeconds,
+        remainingSeconds: durationSeconds,
+        isRunning: false,
+        isFinished: false,
+      }
+    }));
+  }, []);
+
+  const handleAddMinute = useCallback((stepIdx: number) => {
+    setStepTimers(prev => {
+      const existing = prev[stepIdx];
+      if (!existing) return prev;
+      return {
+        ...prev,
+        [stepIdx]: {
+          ...existing,
+          remainingSeconds: existing.remainingSeconds + 60,
+          totalSeconds: Math.max(existing.totalSeconds, existing.remainingSeconds + 60),
+          isFinished: false,
+        }
+      };
+    });
+  }, []);
+
+  const formatTimerClock = useCallback((seconds: number) => {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  }, []);
+
+  const extractStepTimerDuration = useCallback((stepText: string): number | null => {
+    const clean = stepText.replace(/<[^>]+>/g, ' ');
+    const hourMatch = clean.match(/(\d+(?:[.,]\d+)?)\s*(?:ora|ore|h)\b/i);
+    if (hourMatch) {
+      const h = parseFloat(hourMatch[1].replace(',', '.'));
+      if (!isNaN(h) && h > 0) return Math.round(h * 3600);
+    }
+    const minRangeMatch = clean.match(/(\d+)\s*(?:-|a|–)\s*(\d+)\s*(?:minuti|minuto|min)\b/i);
+    if (minRangeMatch) {
+      const m = parseInt(minRangeMatch[2], 10);
+      if (!isNaN(m) && m > 0) return m * 60;
+    }
+    const minMatch = clean.match(/(\d+)\s*(?:minuti|minuto|min)\b/i);
+    if (minMatch) {
+      const m = parseInt(minMatch[1], 10);
+      if (!isNaN(m) && m > 0) return m * 60;
+    }
+    const secMatch = clean.match(/(\d+)\s*(?:secondi|secondo|sec)\b/i);
+    if (secMatch) {
+      const s = parseInt(secMatch[1], 10);
+      if (!isNaN(s) && s > 0) return s;
+    }
+    return null;
+  }, []);
+
+  const getStepIngredients = useCallback((stepText: string, ingredients: string[]): string[] => {
+    if (!ingredients || ingredients.length === 0) return [];
+    const stepLower = stepText.toLowerCase();
+    const matched: string[] = [];
+    const stopWords = new Set(['del', 'della', 'delle', 'dei', 'degli', 'con', 'per', 'senza', 'tipo', 'fresco', 'fresca', 'fresche', 'freschi', 'qb', 'q.b.', 'g', 'ml', 'kg', 'cucchiaio', 'cucchiai', 'pizzico', 'fette']);
+    
+    for (const raw of ingredients) {
+      const parsed = parseIngredient(raw);
+      const name = parsed.name.toLowerCase();
+      const tokens = name
+        .split(/[\s,()]+/)
+        .filter(t => t.length >= 3 && !stopWords.has(t));
+      if (tokens.some(token => stepLower.includes(token))) {
+        matched.push(parsed.name);
+      }
+    }
+    return Array.from(new Set(matched));
+  }, []);
 
   useEffect(() => {
     if (initialRecipe) {
@@ -639,6 +820,7 @@ export function RecipesScreen({
     { name: 'Regno Unito', code: 'GB', flag: '🇬🇧' },
     { name: 'Brasile', code: 'BR', flag: '🇧🇷' },
     { name: 'Argentina', code: 'AR', flag: '🇦🇷' },
+    { name: 'Perù', code: 'PE', flag: '🇵🇪' },
     { name: 'Germania', code: 'DE', flag: '🇩🇪' },
   ], []);
 
@@ -964,6 +1146,11 @@ export function RecipesScreen({
                         alt={meal.title} 
                         className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                         loading="lazy"
+                        onError={(e) => {
+                          const target = e.currentTarget;
+                          target.onerror = null;
+                          target.src = FALLBACK_RECIPE_IMAGE;
+                        }}
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                       <button 
@@ -1224,7 +1411,16 @@ export function RecipesScreen({
                     >
                       <div className="sm:w-36 h-28 sm:h-auto relative bg-[var(--surface-variant)] shrink-0 overflow-hidden">
                         {dish.image ? (
-                          <img src={dish.image} alt={dish.title} className="w-full h-full object-cover" />
+                          <img 
+                            src={dish.image} 
+                            alt={dish.title} 
+                            className="w-full h-full object-cover" 
+                            onError={(e) => {
+                              const target = e.currentTarget;
+                              target.onerror = null;
+                              target.src = FALLBACK_RECIPE_IMAGE;
+                            }}
+                          />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center text-3xl">
                             {emoji}
@@ -1509,6 +1705,11 @@ export function RecipesScreen({
                           src={dish.image}
                           alt={dish.title}
                           className="w-16 h-16 rounded-xl object-cover shrink-0 bg-[var(--surface-variant)]"
+                          onError={(e) => {
+                            const target = e.currentTarget;
+                            target.onerror = null;
+                            target.src = FALLBACK_RECIPE_IMAGE;
+                          }}
                         />
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-1.5 mb-0.5">
@@ -1756,6 +1957,11 @@ export function RecipesScreen({
                                 src={dish.image}
                                 alt={dish.title}
                                 className="w-14 h-14 rounded-xl object-cover shrink-0 bg-[var(--surface-variant)]"
+                                onError={(e) => {
+                                  const target = e.currentTarget;
+                                  target.onerror = null;
+                                  target.src = FALLBACK_RECIPE_IMAGE;
+                                }}
                               />
                               <div className="min-w-0 flex-1">
                                 <div className="flex items-center gap-1.5 flex-wrap mb-1">
@@ -1971,6 +2177,11 @@ export function RecipesScreen({
                   src={selectedMeal.image} 
                   alt={selectedMeal.title} 
                   className="w-full h-full object-cover"
+                  onError={(e) => {
+                    const target = e.currentTarget;
+                    target.onerror = null;
+                    target.src = FALLBACK_RECIPE_IMAGE;
+                  }}
                 />
                 <button 
                   onClick={handleBack}
@@ -2126,22 +2337,502 @@ export function RecipesScreen({
                     </section>
                   )}
 
-                  {/* Preparazione Steps */}
-                  {selectedMeal.steps && selectedMeal.steps.length > 0 && (
-                    <section>
-                      <h3 className="text-lg font-bold text-orange-500 mb-3 border-b border-[var(--border)] pb-2">Preparazione</h3>
-                      <div className="space-y-6 mt-4">
-                        {selectedMeal.steps.map((step: string, i: number) => (
-                          <div key={i} className="flex gap-4 items-start">
-                            <div className="w-8 h-8 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center font-bold shrink-0 mt-1 shadow-xs">
-                              {i + 1}
+                  {/* Preparazione Steps (Redesigned with Guided Mode, Completion Tracker, Cooking Timers & Per-Step Ingredients) */}
+                  {selectedMeal.steps && selectedMeal.steps.length > 0 && (() => {
+                    const totalSteps = selectedMeal.steps.length;
+                    const completedCount = completedSteps.size;
+                    const progressPercent = Math.round((completedCount / totalSteps) * 100);
+                    const isAllDone = completedCount === totalSteps;
+
+                    return (
+                      <section className="space-y-4">
+                        {/* Header con Titolo, Progress Badge & Toggle Modalità */}
+                        <div className="border-b border-[var(--border)] pb-3 space-y-3">
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <div className="flex items-center gap-2">
+                              <ChefHat className="w-5 h-5 text-orange-500" />
+                              <h3 className="text-lg font-bold text-[var(--text-main)]">
+                                Preparazione
+                              </h3>
+                              <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-orange-500/10 text-orange-600 dark:text-orange-400 border border-orange-500/20">
+                                {completedCount} / {totalSteps} completati ({progressPercent}%)
+                              </span>
                             </div>
-                            <p className="text-[var(--text-main)] text-[15px] leading-relaxed flex-1" dangerouslySetInnerHTML={{ __html: step }} />
+
+                            {/* Switch Modalità: Panoramica vs Guidata */}
+                            <div className="flex items-center p-1 bg-[var(--surface-variant)] rounded-xl border border-[var(--border)] text-xs font-semibold">
+                              <button
+                                type="button"
+                                onClick={() => setStepViewMode('overview')}
+                                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+                                  stepViewMode === 'overview'
+                                    ? 'bg-[var(--card-bg)] text-orange-600 dark:text-orange-400 shadow-xs font-bold'
+                                    : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
+                                }`}
+                              >
+                                <ListOrdered className="w-3.5 h-3.5" />
+                                <span>Panoramica</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setStepViewMode('guided')}
+                                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+                                  stepViewMode === 'guided'
+                                    ? 'bg-[var(--card-bg)] text-orange-600 dark:text-orange-400 shadow-xs font-bold'
+                                    : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
+                                }`}
+                              >
+                                <Sparkles className="w-3.5 h-3.5" />
+                                <span>Modalità Guidata</span>
+                              </button>
+                            </div>
                           </div>
-                        ))}
-                      </div>
-                    </section>
-                  )}
+
+                          {/* Barra di Avanzamento Dinamica */}
+                          <div className="space-y-1.5">
+                            <div className="w-full h-2 rounded-full bg-[var(--surface-variant)] overflow-hidden">
+                              <motion.div 
+                                className="h-full bg-gradient-to-r from-orange-500 via-amber-500 to-emerald-500 rounded-full"
+                                initial={false}
+                                animate={{ width: `${progressPercent}%` }}
+                                transition={{ duration: 0.3 }}
+                              />
+                            </div>
+                            <div className="flex items-center justify-between text-[11px] text-[var(--text-muted)]">
+                              <span>Progresso ricetta</span>
+                              <div className="flex items-center gap-3">
+                                {completedCount > 0 && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setCompletedSteps(new Set())}
+                                    className="hover:text-red-500 transition-colors cursor-pointer"
+                                  >
+                                    Azzera progressi
+                                  </button>
+                                )}
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    if (isAllDone) {
+                                      setCompletedSteps(new Set());
+                                    } else {
+                                      setCompletedSteps(new Set(selectedMeal.steps.map((_: any, i: number) => i)));
+                                    }
+                                  }}
+                                  className="font-semibold text-orange-500 hover:text-orange-600 transition-colors cursor-pointer"
+                                >
+                                  {isAllDone ? 'Deseleziona tutti' : 'Segna tutti completati'}
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Banner Celebrativo se completati tutti */}
+                          {isAllDone && (
+                            <motion.div
+                              initial={{ opacity: 0, scale: 0.95 }}
+                              animate={{ opacity: 1, scale: 1 }}
+                              className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-2xl flex items-center gap-2.5 text-emerald-700 dark:text-emerald-300 text-xs font-bold"
+                            >
+                              <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0" />
+                              <span>🎉 Fantastico! Hai completato tutti i passaggi della ricetta. Buon appetito!</span>
+                            </motion.div>
+                          )}
+                        </div>
+
+                        {/* ─────────────────────────────────────────────────────────────
+                            MODALITÀ GUIDATA PASSO-PASSO
+                            ───────────────────────────────────────────────────────────── */}
+                        {stepViewMode === 'guided' ? (
+                          <div className="space-y-4">
+                            {/* Selettore rapido dei passaggi (Mini Stepper) */}
+                            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1">
+                              {selectedMeal.steps.map((_: any, i: number) => {
+                                const isCurrent = i === activeGuidedStep;
+                                const isDone = completedSteps.has(i);
+                                return (
+                                  <button
+                                    key={i}
+                                    type="button"
+                                    onClick={() => setActiveGuidedStep(i)}
+                                    className={`h-8 min-w-[2rem] px-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1 transition-all cursor-pointer ${
+                                      isCurrent
+                                        ? 'bg-orange-500 text-white shadow-sm shadow-orange-500/25 scale-105'
+                                        : isDone
+                                          ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30'
+                                          : 'bg-[var(--surface-variant)] text-[var(--text-muted)] hover:text-[var(--text-main)]'
+                                    }`}
+                                  >
+                                    {isDone && !isCurrent ? (
+                                      <Check className="w-3.5 h-3.5 stroke-[3]" />
+                                    ) : (
+                                      <span>Passo {i + 1}</span>
+                                    )}
+                                  </button>
+                                );
+                              })}
+                            </div>
+
+                            {/* Card Grande del Passo Attivo */}
+                            {(() => {
+                              const step = selectedMeal.steps[activeGuidedStep];
+                              const isStepDone = completedSteps.has(activeGuidedStep);
+                              const stepIngs = getStepIngredients(step, selectedMeal.ingredients || []);
+                              const detectedDuration = extractStepTimerDuration(step);
+                              const timer = stepTimers[activeGuidedStep];
+
+                              return (
+                                <motion.div
+                                  key={activeGuidedStep}
+                                  initial={{ opacity: 0, x: 15 }}
+                                  animate={{ opacity: 1, x: 0 }}
+                                  exit={{ opacity: 0, x: -15 }}
+                                  className={`p-5 md:p-6 rounded-3xl border transition-all ${
+                                    isStepDone
+                                      ? 'bg-emerald-500/[0.04] border-emerald-500/30'
+                                      : 'bg-[var(--surface-variant)]/40 border-[var(--border)]'
+                                  }`}
+                                >
+                                  {/* Intestazione Passo Attivo */}
+                                  <div className="flex items-center justify-between gap-3 mb-4">
+                                    <div className="flex items-center gap-2.5">
+                                      <div className={`w-9 h-9 rounded-2xl flex items-center justify-center font-black text-sm transition-colors ${
+                                        isStepDone
+                                          ? 'bg-emerald-500 text-white shadow-xs shadow-emerald-500/25'
+                                          : 'bg-orange-500 text-white shadow-xs shadow-orange-500/25'
+                                      }`}>
+                                        {activeGuidedStep + 1}
+                                      </div>
+                                      <div>
+                                        <h4 className="font-extrabold text-sm md:text-base text-[var(--text-main)]">
+                                          Passo {activeGuidedStep + 1} di {totalSteps}
+                                        </h4>
+                                        <p className="text-[11px] text-[var(--text-muted)]">
+                                          {isStepDone ? 'Completato con successo' : 'In preparazione'}
+                                        </p>
+                                      </div>
+                                    </div>
+
+                                    {/* Toggle completamento passo attivo */}
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setCompletedSteps(prev => {
+                                          const next = new Set(prev);
+                                          if (next.has(activeGuidedStep)) next.delete(activeGuidedStep);
+                                          else next.add(activeGuidedStep);
+                                          return next;
+                                        });
+                                      }}
+                                      className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+                                        isStepDone
+                                          ? 'bg-emerald-500 text-white shadow-xs'
+                                          : 'bg-[var(--card-bg)] border border-[var(--border)] text-[var(--text-muted)] hover:border-emerald-500 hover:text-emerald-500'
+                                      }`}
+                                    >
+                                      {isStepDone ? (
+                                        <>
+                                          <CheckCircle2 className="w-4 h-4" />
+                                          <span>Fatto!</span>
+                                        </>
+                                      ) : (
+                                        <>
+                                          <Circle className="w-4 h-4" />
+                                          <span>Segna fatto</span>
+                                        </>
+                                      )}
+                                    </button>
+                                  </div>
+
+                                  {/* Testo Passo */}
+                                  <div 
+                                    className={`text-[15px] md:text-base leading-relaxed text-[var(--text-main)] mb-5 font-normal ${
+                                      isStepDone ? 'opacity-80' : ''
+                                    }`}
+                                    dangerouslySetInnerHTML={{ __html: step }}
+                                  />
+
+                                  {/* Ingredienti del Passo Attivo */}
+                                  {stepIngs.length > 0 && (
+                                    <div className="mb-5 p-3 rounded-2xl bg-[var(--card-bg)] border border-[var(--border)]">
+                                      <p className="text-[11px] font-bold text-[var(--text-muted)] uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                                        <Utensils className="w-3.5 h-3.5 text-orange-500" />
+                                        <span>Ingredienti in questo passaggio</span>
+                                      </p>
+                                      <div className="flex flex-wrap gap-1.5">
+                                        {stepIngs.map((name, idx) => (
+                                          <span
+                                            key={idx}
+                                            className="px-2.5 py-1 rounded-xl text-xs font-semibold bg-orange-500/10 text-orange-700 dark:text-orange-300 border border-orange-500/20"
+                                          >
+                                            {name}
+                                          </span>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {/* Timer Integrato per il Passo Attivo */}
+                                  {detectedDuration && (
+                                    <div className="mb-5 p-3.5 rounded-2xl bg-[var(--card-bg)] border border-[var(--border)] flex flex-wrap items-center justify-between gap-3 shadow-xs">
+                                      <div className="flex items-center gap-2.5">
+                                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${
+                                          timer?.isFinished
+                                            ? 'bg-emerald-500 text-white animate-bounce'
+                                            : timer?.isRunning
+                                              ? 'bg-amber-500 text-white animate-pulse'
+                                              : 'bg-orange-500/15 text-orange-600 dark:text-orange-400'
+                                        }`}>
+                                          <Timer className="w-5 h-5" />
+                                        </div>
+                                        <div>
+                                          <div className="flex items-center gap-2">
+                                            <span className="text-xs font-bold text-[var(--text-main)]">Timer Cottura</span>
+                                            {timer?.isFinished && (
+                                              <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-600 dark:text-emerald-400">
+                                                Tempo Scaduto! 🔔
+                                              </span>
+                                            )}
+                                          </div>
+                                          <p className="text-lg font-mono font-black text-[var(--text-main)] leading-none mt-0.5">
+                                            {formatTimerClock(timer ? timer.remainingSeconds : detectedDuration)}
+                                          </p>
+                                        </div>
+                                      </div>
+
+                                      <div className="flex items-center gap-2">
+                                        {(!timer || !timer.isRunning) ? (
+                                          <button
+                                            type="button"
+                                            onClick={() => handleStartTimer(activeGuidedStep, detectedDuration)}
+                                            className="px-3.5 py-2 rounded-xl bg-orange-500 hover:bg-orange-600 text-white text-xs font-black flex items-center gap-1.5 transition-transform active:scale-95 cursor-pointer shadow-sm shadow-orange-500/20"
+                                          >
+                                            <Play className="w-3.5 h-3.5 fill-current" />
+                                            <span>{timer && timer.remainingSeconds < detectedDuration && !timer.isFinished ? 'Riprendi' : 'Avvia'}</span>
+                                          </button>
+                                        ) : (
+                                          <button
+                                            type="button"
+                                            onClick={() => handlePauseTimer(activeGuidedStep)}
+                                            className="px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-black flex items-center gap-1.5 transition-transform active:scale-95 cursor-pointer shadow-sm shadow-amber-500/20"
+                                          >
+                                            <Pause className="w-3.5 h-3.5 fill-current" />
+                                            <span>Pausa</span>
+                                          </button>
+                                        )}
+
+                                        <button
+                                          type="button"
+                                          title="Aggiungi 1 minuto"
+                                          onClick={() => handleAddMinute(activeGuidedStep)}
+                                          className="p-2 rounded-xl bg-[var(--surface-variant)] text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors cursor-pointer text-xs font-bold"
+                                        >
+                                          +1m
+                                        </button>
+
+                                        {timer && (
+                                          <button
+                                            type="button"
+                                            title="Resetta Timer"
+                                            onClick={() => handleResetTimer(activeGuidedStep, detectedDuration)}
+                                            className="p-2 rounded-xl bg-[var(--surface-variant)] text-[var(--text-muted)] hover:text-red-500 transition-colors cursor-pointer"
+                                          >
+                                            <RotateCcw className="w-4 h-4" />
+                                          </button>
+                                        )}
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {/* Navigazione Guidata: Indietro / Avanti */}
+                                  <div className="flex items-center justify-between gap-3 pt-3 border-t border-[var(--border)]">
+                                    <button
+                                      type="button"
+                                      disabled={activeGuidedStep === 0}
+                                      onClick={() => setActiveGuidedStep(prev => Math.max(0, prev - 1))}
+                                      className={`px-4 py-2.5 rounded-2xl font-bold text-xs flex items-center gap-1.5 transition-all ${
+                                        activeGuidedStep === 0
+                                          ? 'opacity-40 cursor-not-allowed bg-[var(--card-bg)] text-[var(--text-muted)]'
+                                          : 'bg-[var(--card-bg)] hover:bg-[var(--border)] text-[var(--text-main)] cursor-pointer shadow-xs'
+                                      }`}
+                                    >
+                                      <ChevronLeft className="w-4 h-4" />
+                                      <span>Precedente</span>
+                                    </button>
+
+                                    {activeGuidedStep < totalSteps - 1 ? (
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          if (!completedSteps.has(activeGuidedStep)) {
+                                            setCompletedSteps(prev => new Set(prev).add(activeGuidedStep));
+                                          }
+                                          setActiveGuidedStep(prev => Math.min(totalSteps - 1, prev + 1));
+                                        }}
+                                        className="px-5 py-2.5 rounded-2xl bg-orange-500 hover:bg-orange-600 text-white font-bold text-xs flex items-center gap-1.5 transition-all shadow-md shadow-orange-500/20 active:scale-98 cursor-pointer"
+                                      >
+                                        <span>Prossimo Passo</span>
+                                        <ChevronRight className="w-4 h-4" />
+                                      </button>
+                                    ) : (
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setCompletedSteps(new Set(selectedMeal.steps.map((_: any, i: number) => i)));
+                                        }}
+                                        className="px-5 py-2.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs flex items-center gap-1.5 transition-all shadow-md shadow-emerald-500/25 active:scale-98 cursor-pointer"
+                                      >
+                                        <CheckCircle2 className="w-4 h-4" />
+                                        <span>Completa Ricetta!</span>
+                                      </button>
+                                    )}
+                                  </div>
+                                </motion.div>
+                              );
+                            })()}
+                          </div>
+                        ) : (
+                          /* ─────────────────────────────────────────────────────────────
+                             MODALITÀ PANORAMICA (LISTA COMPLETA CON TIMER & INGREDIENTI)
+                             ───────────────────────────────────────────────────────────── */
+                          <div className="space-y-4">
+                            {selectedMeal.steps.map((step: string, i: number) => {
+                              const isStepDone = completedSteps.has(i);
+                              const stepIngs = getStepIngredients(step, selectedMeal.ingredients || []);
+                              const detectedDuration = extractStepTimerDuration(step);
+                              const timer = stepTimers[i];
+
+                              return (
+                                <motion.div
+                                  key={i}
+                                  initial={false}
+                                  className={`p-4 rounded-2xl border transition-all ${
+                                    isStepDone
+                                      ? 'bg-emerald-500/[0.04] border-emerald-500/30'
+                                      : 'bg-[var(--surface-variant)]/30 border-[var(--border)] hover:border-orange-500/30'
+                                  }`}
+                                >
+                                  <div className="flex gap-3.5 items-start">
+                                    {/* Toggle completamento circolare */}
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setCompletedSteps(prev => {
+                                          const next = new Set(prev);
+                                          if (next.has(i)) next.delete(i);
+                                          else next.add(i);
+                                          return next;
+                                        });
+                                      }}
+                                      title={isStepDone ? 'Segna come non completato' : 'Segna come completato'}
+                                      className={`w-7 h-7 rounded-xl flex items-center justify-center font-bold text-xs shrink-0 mt-0.5 transition-all cursor-pointer ${
+                                        isStepDone
+                                          ? 'bg-emerald-500 text-white shadow-xs'
+                                          : 'bg-orange-100 text-orange-600 dark:bg-orange-950/60 dark:text-orange-400 hover:bg-orange-200'
+                                      }`}
+                                    >
+                                      {isStepDone ? (
+                                        <Check className="w-4 h-4 stroke-[3]" />
+                                      ) : (
+                                        <span>{i + 1}</span>
+                                      )}
+                                    </button>
+
+                                    <div className="flex-1 min-w-0">
+                                      {/* Descrizione Passo */}
+                                      <p 
+                                        className={`text-[14px] md:text-[15px] leading-relaxed transition-opacity ${
+                                          isStepDone ? 'text-[var(--text-muted)] line-through decoration-emerald-500/50' : 'text-[var(--text-main)]'
+                                        }`}
+                                        dangerouslySetInnerHTML={{ __html: step }} 
+                                      />
+
+                                      {/* Ingredienti del Passo */}
+                                      {stepIngs.length > 0 && (
+                                        <div className="flex flex-wrap items-center gap-1.5 mt-2.5">
+                                          <span className="text-[10px] font-bold text-[var(--text-muted)] flex items-center gap-1">
+                                            <Utensils className="w-3.5 h-3.5 text-orange-500" />
+                                            Ingredienti:
+                                          </span>
+                                          {stepIngs.map((name, idx) => (
+                                            <span
+                                              key={idx}
+                                              className="px-2 py-0.5 rounded-lg text-[11px] font-medium bg-orange-500/10 text-orange-600 dark:text-orange-400 border border-orange-500/20"
+                                            >
+                                              {name}
+                                            </span>
+                                          ))}
+                                        </div>
+                                      )}
+
+                                      {/* Timer Inline se rilevato */}
+                                      {detectedDuration && (
+                                        <div className="mt-3 p-2.5 rounded-xl bg-[var(--card-bg)] border border-[var(--border)] flex flex-wrap items-center justify-between gap-2">
+                                          <div className="flex items-center gap-2">
+                                            <Timer className={`w-4 h-4 ${timer?.isRunning ? 'text-amber-500 animate-pulse' : 'text-orange-500'}`} />
+                                            <span className="text-xs font-bold text-[var(--text-main)] font-mono">
+                                              {formatTimerClock(timer ? timer.remainingSeconds : detectedDuration)}
+                                            </span>
+                                            {timer?.isFinished && (
+                                              <span className="text-[10px] font-black text-emerald-600 dark:text-emerald-400">
+                                                Finito! 🔔
+                                              </span>
+                                            )}
+                                          </div>
+
+                                          <div className="flex items-center gap-1.5">
+                                            {(!timer || !timer.isRunning) ? (
+                                              <button
+                                                type="button"
+                                                onClick={() => handleStartTimer(i, detectedDuration)}
+                                                className="px-2.5 py-1 rounded-lg bg-orange-500 hover:bg-orange-600 text-white text-[11px] font-bold flex items-center gap-1 cursor-pointer"
+                                              >
+                                                <Play className="w-3 h-3 fill-current" />
+                                                <span>Avvia</span>
+                                              </button>
+                                            ) : (
+                                              <button
+                                                type="button"
+                                                onClick={() => handlePauseTimer(i)}
+                                                className="px-2.5 py-1 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-[11px] font-bold flex items-center gap-1 cursor-pointer"
+                                              >
+                                                <Pause className="w-3 h-3 fill-current" />
+                                                <span>Pausa</span>
+                                              </button>
+                                            )}
+
+                                            <button
+                                              type="button"
+                                              onClick={() => handleAddMinute(i)}
+                                              className="px-1.5 py-1 rounded-lg bg-[var(--surface-variant)] text-[10px] font-bold text-[var(--text-muted)] hover:text-[var(--text-main)] cursor-pointer"
+                                              title="+1 minuto"
+                                            >
+                                              +1m
+                                            </button>
+
+                                            {timer && (
+                                              <button
+                                                type="button"
+                                                onClick={() => handleResetTimer(i, detectedDuration)}
+                                                className="p-1 rounded-lg text-[var(--text-muted)] hover:text-red-500 cursor-pointer"
+                                                title="Resetta"
+                                              >
+                                                <RotateCcw className="w-3 h-3" />
+                                              </button>
+                                            )}
+                                          </div>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                </motion.div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </section>
+                    );
+                  })()}
                 </div>
               </div>
             </motion.div>
@@ -2465,7 +3156,16 @@ export function RecipesScreen({
                           {menu.antipasto && (
                             <div className="flex items-center gap-2.5 text-xs">
                               {menu.antipasto.image ? (
-                                <img src={menu.antipasto.image} alt="" className="w-9 h-9 rounded-xl object-cover shrink-0" />
+                                <img 
+                                  src={menu.antipasto.image} 
+                                  alt="" 
+                                  className="w-9 h-9 rounded-xl object-cover shrink-0" 
+                                  onError={(e) => {
+                                    const target = e.currentTarget;
+                                    target.onerror = null;
+                                    target.src = FALLBACK_RECIPE_IMAGE;
+                                  }}
+                                />
                               ) : (
                                 <span className="w-9 h-9 rounded-xl bg-[var(--surface-variant)] flex items-center justify-center text-sm shrink-0">🥗</span>
                               )}
@@ -2479,7 +3179,16 @@ export function RecipesScreen({
                           {menu.primo && (
                             <div className="flex items-center gap-2.5 text-xs">
                               {menu.primo.image ? (
-                                <img src={menu.primo.image} alt="" className="w-9 h-9 rounded-xl object-cover shrink-0" />
+                                <img 
+                                  src={menu.primo.image} 
+                                  alt="" 
+                                  className="w-9 h-9 rounded-xl object-cover shrink-0" 
+                                  onError={(e) => {
+                                    const target = e.currentTarget;
+                                    target.onerror = null;
+                                    target.src = FALLBACK_RECIPE_IMAGE;
+                                  }}
+                                />
                               ) : (
                                 <span className="w-9 h-9 rounded-xl bg-[var(--surface-variant)] flex items-center justify-center text-sm shrink-0">🍝</span>
                               )}
@@ -2493,7 +3202,16 @@ export function RecipesScreen({
                           {menu.secondo && (
                             <div className="flex items-center gap-2.5 text-xs">
                               {menu.secondo.image ? (
-                                <img src={menu.secondo.image} alt="" className="w-9 h-9 rounded-xl object-cover shrink-0" />
+                                <img 
+                                  src={menu.secondo.image} 
+                                  alt="" 
+                                  className="w-9 h-9 rounded-xl object-cover shrink-0" 
+                                  onError={(e) => {
+                                    const target = e.currentTarget;
+                                    target.onerror = null;
+                                    target.src = FALLBACK_RECIPE_IMAGE;
+                                  }}
+                                />
                               ) : (
                                 <span className="w-9 h-9 rounded-xl bg-[var(--surface-variant)] flex items-center justify-center text-sm shrink-0">🥩</span>
                               )}

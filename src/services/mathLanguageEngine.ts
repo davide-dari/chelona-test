@@ -1260,6 +1260,12 @@ export function searchRecipesByCountryOrCuisine(query: string, catalog: RecipeCa
       patterns: [/brasil/i, /feijoada/i, /p[aã]o de queijo/i]
     },
     {
+      country: 'Perù',
+      flag: '🇵🇪',
+      code: 'PE',
+      patterns: [/per[uù]/i, /ceviche/i, /lomo saltado/i, /causa/i]
+    },
+    {
       country: 'Argentina',
       flag: '🇦🇷',
       code: 'AR',

@@ -68,6 +68,8 @@ export interface AutoModule extends BaseModule {
   currentKm?: string;
   lastKmUpdatedAt?: string;
   registrationYear?: string;
+  powerKw?: number | string;
+  euroClass?: 'Euro 0' | 'Euro 1' | 'Euro 2' | 'Euro 3' | 'Euro 4' | 'Euro 5' | 'Euro 6' | string;
 
   lastInsurance?: string;
   lastRevision?: string;

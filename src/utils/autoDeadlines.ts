@@ -5,6 +5,19 @@
 
 import type { AutoModule } from '../types.ts';
 
+export interface TaxCalculationResult {
+  powerKw: number;
+  euroClass: string;
+  amount: number;
+  amount2026: number;
+  amount2027: number;
+  isExempt2027: boolean;
+  rateBase: number;
+  rateExcess: number;
+  badgeText: string;
+  details: string;
+}
+
 export interface AutoDeadlineItem {
   id: string;
   field: string;
@@ -23,6 +36,91 @@ export interface AutoDeadlineItem {
   status: 'valid' | 'urgent' | 'expired' | 'unconfigured';
   statusText: string;
   isFeminine: boolean;
+  taxCalculation?: TaxCalculationResult;
+}
+
+/**
+ * Calcolo del Bollo Auto in Italia (Regole 2026 e Novità Legge 2027 per veicoli <= 80 kW).
+ * - Fino a 53 kW tariffa base, oltre 53 kW tariffa eccedente.
+ * - Novità 2027: veicoli con potenza <= 80 kW sono totalmente esenti (0 €)!
+ */
+export function calculateBolloAuto(
+  powerKw: number,
+  euroClass: string = 'Euro 6',
+  fuelType: string = 'benzina',
+  year: number = 2026
+): TaxCalculationResult {
+  const kw = Math.max(0, powerKw);
+  const normEuro = euroClass ? euroClass.trim() : 'Euro 6';
+
+  let rateBase = 2.58;
+  let rateExcess = 3.87;
+
+  if (normEuro.includes('0')) {
+    rateBase = 3.00;
+    rateExcess = 4.50;
+  } else if (normEuro.includes('1')) {
+    rateBase = 2.90;
+    rateExcess = 4.35;
+  } else if (normEuro.includes('2')) {
+    rateBase = 2.80;
+    rateExcess = 4.20;
+  } else if (normEuro.includes('3')) {
+    rateBase = 2.70;
+    rateExcess = 4.05;
+  } else {
+    // Euro 4, 5, 6
+    rateBase = 2.58;
+    rateExcess = 3.87;
+  }
+
+  let calcAmount = 0;
+  if ((fuelType || '').toLowerCase() === 'elettrica') {
+    // Elettriche: esenzione per 5 anni, poi riduzione al 25% della tariffa Euro 6
+    calcAmount = Math.round((Math.min(kw, 53) * rateBase + Math.max(0, kw - 53) * rateExcess) * 0.25 * 100) / 100;
+  } else {
+    if (kw <= 53) {
+      calcAmount = Math.round(kw * rateBase * 100) / 100;
+    } else {
+      calcAmount = Math.round((53 * rateBase + (kw - 53) * rateExcess) * 100) / 100;
+    }
+  }
+
+  const amount2026 = calcAmount;
+
+  // Nuova legge Bollo 2027: veicoli fino a 80 kW (<= 80 kW) sono esenti dal pagamento!
+  const isExempt2027 = kw <= 80;
+  const amount2027 = isExempt2027 ? 0 : amount2026;
+
+  const currentYearAmount = year >= 2027 ? amount2027 : amount2026;
+
+  let badgeText = '';
+  let details = '';
+
+  if (isExempt2027) {
+    badgeText = 'Esenzione Bollo 2027: veicolo sotto 80 kW';
+    if (year >= 2027) {
+      details = `Esenzione totale applicata (0,00 €) per nuova legge 2027: veicolo con potenza ${kw} kW (<= 80 kW).`;
+    } else {
+      details = `Importo 2026: € ${amount2026.toFixed(2)}. Dal 2027: ESENZIONE TOTALE (0,00 €) per veicoli <= 80 kW!`;
+    }
+  } else {
+    badgeText = `Bollo ordinario (${kw} kW)`;
+    details = `Tariffa ordinaria: € ${amount2026.toFixed(2)} / anno (veicolo con ${kw} kW > 80 kW).`;
+  }
+
+  return {
+    powerKw: kw,
+    euroClass: normEuro,
+    amount: currentYearAmount,
+    amount2026,
+    amount2027,
+    isExempt2027,
+    rateBase,
+    rateExcess,
+    badgeText,
+    details,
+  };
 }
 
 /**
@@ -172,7 +270,26 @@ export function computeVehicleDeadlines(module: AutoModule): AutoDeadlineItem[] 
   }
 
   // 2. Bollo Auto
+  const kwNum = module.powerKw !== undefined && module.powerKw !== '' 
+    ? Number(String(module.powerKw).replace(/[^\d.]/g, '')) 
+    : undefined;
   const taxTarget = getAutoDeadlineTargetDate('lastTax', module.lastTax, module);
+  const taxTargetYear = taxTarget ? taxTarget.getFullYear() : 2026;
+  const taxCalc = (kwNum !== undefined && !isNaN(kwNum))
+    ? calculateBolloAuto(kwNum, module.euroClass || 'Euro 6', module.fuelType || 'benzina', taxTargetYear)
+    : undefined;
+
+  let taxSubtitle = 'Tassa automobilistica regionale';
+  if (taxCalc) {
+    if (taxCalc.isExempt2027) {
+      taxSubtitle = taxTargetYear >= 2027
+        ? `Esenzione Bollo 2027 (< 80 kW) · 0,00 €`
+        : `2026: € ${taxCalc.amount2026.toFixed(2)} · Esenzione 2027: 0 € (< 80 kW)`;
+    } else {
+      taxSubtitle = `Stima: € ${taxCalc.amount2026.toFixed(2)} / anno (${taxCalc.powerKw} kW · ${taxCalc.euroClass})`;
+    }
+  }
+
   if (taxTarget) {
     const daysLeft = Math.round((taxTarget.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
     const countdown = formatDeadlineCountdown(daysLeft, false);
@@ -180,7 +297,7 @@ export function computeVehicleDeadlines(module: AutoModule): AutoDeadlineItem[] 
       id: 'tax',
       field: 'lastTax',
       label: 'Bollo Auto',
-      subtitle: 'Tassa automobilistica regionale',
+      subtitle: taxSubtitle,
       isKmBased: false,
       date: taxTarget.toISOString().split('T')[0],
       originalDate: module.lastTax,
@@ -191,13 +308,14 @@ export function computeVehicleDeadlines(module: AutoModule): AutoDeadlineItem[] 
       status: countdown.status,
       statusText: countdown.text,
       isFeminine: false,
+      taxCalculation: taxCalc,
     });
   } else {
     list.push({
       id: 'tax',
       field: 'lastTax',
       label: 'Bollo Auto',
-      subtitle: 'Tassa automobilistica regionale',
+      subtitle: taxCalc ? taxSubtitle : 'Tassa automobilistica regionale (imposta kW per calcolo)',
       isKmBased: false,
       docKey: 'taxDoc',
       hasDoc: Boolean(module.taxDoc),
@@ -205,6 +323,7 @@ export function computeVehicleDeadlines(module: AutoModule): AutoDeadlineItem[] 
       status: 'unconfigured',
       statusText: 'Da impostare',
       isFeminine: false,
+      taxCalculation: taxCalc,
     });
   }
 

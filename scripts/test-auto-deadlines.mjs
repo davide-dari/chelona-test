@@ -3,7 +3,8 @@ import {
   getAutoDeadlineTargetDate,
   isDeadlineFeminine,
   formatDeadlineCountdown,
-  computeVehicleDeadlines
+  computeVehicleDeadlines,
+  calculateBolloAuto
 } from '../src/utils/autoDeadlines.ts';
 
 console.log('🧪 Starting Auto Deadlines Verification Tests...');
@@ -138,6 +139,72 @@ console.log('🧪 Starting Auto Deadlines Verification Tests...');
   assert(rev.daysLeft > 200, 'Revisione should have >200 days left');
 
   console.log('✅ computeVehicleDeadlines full suite passed');
+}
+
+// 8. Test Bollo Auto 2026 & Nuova Normativa 2027 (< 80 kW)
+{
+  // 8a. Test Euro 6 car with 70 kW (<= 80 kW) in 2026: 53*2.58 + 17*3.87 = 136.74 + 65.79 = 202.53 €
+  const bollo2026 = calculateBolloAuto(70, 'Euro 6', 'benzina', 2026);
+  assert.strictEqual(bollo2026.powerKw, 70);
+  assert.strictEqual(bollo2026.amount2026, 202.53);
+  assert.strictEqual(bollo2026.amount, 202.53);
+  assert.strictEqual(bollo2026.isExempt2027, true);
+  assert(bollo2026.badgeText.includes('Esenzione Bollo 2027: veicolo sotto 80 kW'));
+
+  // 8b. Same vehicle in 2027: should be completely EXEMPT (0 €)!
+  const bollo2027 = calculateBolloAuto(70, 'Euro 6', 'benzina', 2027);
+  assert.strictEqual(bollo2027.amount, 0);
+  assert.strictEqual(bollo2027.amount2027, 0);
+  assert.strictEqual(bollo2027.isExempt2027, true);
+  assert(bollo2027.badgeText.includes('Esenzione Bollo 2027: veicolo sotto 80 kW'));
+  console.log('✅ Bollo 2027 exemption for vehicle <= 80 kW passed');
+
+  // 8c. Boundary test: Exactly 80 kW in 2027 -> should be exempt (0 €)
+  const bollo80kw = calculateBolloAuto(80, 'Euro 6', 'diesel', 2027);
+  assert.strictEqual(bollo80kw.amount, 0);
+  assert.strictEqual(bollo80kw.isExempt2027, true);
+  console.log('✅ Bollo 2027 boundary (exactly 80 kW) exemption passed');
+
+  // 8d. Vehicle > 80 kW (e.g. 90 kW) in 2027 -> NOT exempt, pays standard tariff
+  // 53 * 2.58 + (90 - 53) * 3.87 = 136.74 + 143.19 = 279.93 €
+  const bollo90kw = calculateBolloAuto(90, 'Euro 6', 'benzina', 2027);
+  assert.strictEqual(bollo90kw.isExempt2027, false);
+  assert.strictEqual(bollo90kw.amount, 279.93);
+  assert.strictEqual(bollo90kw.amount2027, 279.93);
+  console.log('✅ Bollo 2027 non-exemption for vehicle > 80 kW passed');
+
+  // 8e. Electric car: reduced tariff
+  const bolloEv = calculateBolloAuto(100, 'Euro 6', 'elettrica', 2026);
+  assert(bolloEv.amount < 100, 'Electric vehicle should have reduced tariff');
+  console.log('✅ Electric car calculation passed');
+}
+
+// 9. Test vehicle with powerKw and euroClass in computeVehicleDeadlines
+{
+  const mockAutoWithKw = {
+    id: 'test_auto_kw',
+    type: 'auto',
+    title: 'Fiat 500',
+    brand: 'Fiat',
+    model: '500',
+    plate: 'EF 456 GH',
+    registrationYear: '2020',
+    fuelType: 'benzina',
+    powerKw: '51',
+    euroClass: 'Euro 6',
+    currentKm: '30000',
+    lastTax: '2027-01-31',
+    x: 0, y: 0, w: 2, h: 2,
+  };
+
+  const deadlines = computeVehicleDeadlines(mockAutoWithKw);
+  const taxItem = deadlines.find(d => d.id === 'tax');
+  assert(taxItem !== undefined, 'Tax deadline should exist');
+  assert(taxItem.taxCalculation !== undefined, 'taxCalculation should be computed');
+  assert.strictEqual(taxItem.taxCalculation.isExempt2027, true);
+  assert.strictEqual(taxItem.taxCalculation.amount, 0); // 2027 deadline -> 0 €!
+  assert(taxItem.subtitle.includes('Esenzione Bollo 2027'));
+  console.log('✅ computeVehicleDeadlines with powerKw and 2027 exemption passed');
 }
 
 console.log('🎉 ALL AUTO DEADLINES TESTS PASSED!');

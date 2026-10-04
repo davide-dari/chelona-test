@@ -9,7 +9,7 @@ import { DocumentScanner } from './DocumentScanner';
 import { DocumentViewer } from './DocumentViewer';
 import { CAR_BRANDS } from '../utils/carBrands';
 import { BrandModelPicker } from './BrandModelPicker';
-import { getAutoDeadlineTargetDate } from '../utils/autoDeadlines';
+import { getAutoDeadlineTargetDate, calculateBolloAuto } from '../utils/autoDeadlines';
 import { motion, AnimatePresence } from 'motion/react';
 
 interface AutoEditScreenProps {
@@ -287,6 +287,44 @@ export const AutoEditScreen = ({ module, onSave, onCancel }: AutoEditScreenProps
               />
             </div>
 
+            <div>
+              <label className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider block mb-1.5">
+                Potenza Motore (kW)
+              </label>
+              <div className="relative">
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={data.powerKw !== undefined ? String(data.powerKw) : ''}
+                  onChange={e => set('powerKw', e.target.value.replace(/[^\d.]/g, ''))}
+                  placeholder="Es. 70"
+                  className={`${inputCls} pr-10 font-bold`}
+                />
+                <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-[var(--text-muted)]">
+                  kW
+                </span>
+              </div>
+            </div>
+
+            <div>
+              <label className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider block mb-1.5">
+                Classe Ambientale Euro
+              </label>
+              <select
+                value={data.euroClass || 'Euro 6'}
+                onChange={e => set('euroClass', e.target.value)}
+                className={inputCls}
+              >
+                <option value="Euro 6">Euro 6 (Recente)</option>
+                <option value="Euro 5">Euro 5</option>
+                <option value="Euro 4">Euro 4</option>
+                <option value="Euro 3">Euro 3</option>
+                <option value="Euro 2">Euro 2</option>
+                <option value="Euro 1">Euro 1</option>
+                <option value="Euro 0">Euro 0</option>
+              </select>
+            </div>
+
             {/* Alimentazione Selector */}
             <div className="sm:col-span-2">
               <label className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider block mb-2">
@@ -539,6 +577,38 @@ export const AutoEditScreen = ({ module, onSave, onCancel }: AutoEditScreenProps
                 onChange={e => set('lastTax', e.target.value)}
                 className={inputCls}
               />
+              {(() => {
+                const kw = data.powerKw ? Number(String(data.powerKw).replace(/[^\d.]/g, '')) : undefined;
+                if (kw !== undefined && !isNaN(kw) && kw > 0) {
+                  const targetYear = data.lastTax ? new Date(data.lastTax).getFullYear() : 2026;
+                  const calc = calculateBolloAuto(kw, data.euroClass || 'Euro 6', data.fuelType || 'benzina', targetYear);
+                  return (
+                    <div className="mt-2 p-2.5 rounded-xl bg-[var(--surface-variant)]/70 border border-[var(--border)] text-xs space-y-1">
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-[var(--text-main)]">Stima Bollo ({targetYear}):</span>
+                        <span className="font-black text-emerald-600 dark:text-emerald-400">
+                          {calc.amount === 0 ? '0,00 € (Esente)' : `€ ${calc.amount.toFixed(2)}`}
+                        </span>
+                      </div>
+                      {calc.isExempt2027 ? (
+                        <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-emerald-500/15 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 text-[10px] font-bold">
+                          <ShieldCheck className="w-3 h-3" />
+                          <span>Esenzione Bollo 2027: veicolo sotto 80 kW ({kw} kW)</span>
+                        </div>
+                      ) : (
+                        <p className="text-[10px] text-[var(--text-muted)]">
+                          Tariffa ordinaria ({kw} kW {data.euroClass || 'Euro 6'}). Soglia di esenzione 2027: 80 kW.
+                        </p>
+                      )}
+                    </div>
+                  );
+                }
+                return (
+                  <p className="text-[10px] text-[var(--text-muted)] mt-1">
+                    Imposta i kW del veicolo sopra per visualizzare il calcolo del bollo e l'esenzione 2027.
+                  </p>
+                );
+              })()}
             </div>
 
             {/* Revisione */}

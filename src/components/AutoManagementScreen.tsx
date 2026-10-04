@@ -17,7 +17,8 @@ import {
   AutoDeadlineItem,
   getAutoDeadlineTargetDate,
   isDeadlineFeminine,
-  formatDeadlineCountdown
+  formatDeadlineCountdown,
+  calculateBolloAuto
 } from '../utils/autoDeadlines';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -826,6 +827,20 @@ export const AutoManagementScreen = ({
                           <p className="text-[11px] text-[var(--text-muted)] font-medium truncate">
                             {d.subtitle}
                           </p>
+                          {d.id === 'tax' && d.taxCalculation && (
+                            <div className="mt-1 flex items-center gap-1.5 flex-wrap">
+                              {d.taxCalculation.isExempt2027 ? (
+                                <span className="inline-flex items-center gap-1 text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
+                                  <Sparkles className="w-2.5 h-2.5 shrink-0" />
+                                  Esenzione Bollo 2027: veicolo sotto 80 kW
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 text-[9px] font-bold px-2 py-0.5 rounded-md bg-[var(--surface-variant)] text-[var(--text-muted)] border border-[var(--border)]">
+                                  Norma 2027: {d.taxCalculation.powerKw} kW &gt; 80 kW · Bollo ordinario
+                                </span>
+                              )}
+                            </div>
+                          )}
                           <p className="text-xs font-mono font-bold text-[var(--text-main)] mt-0.5">
                             {d.isConfigured ? (
                               d.date ? (
@@ -1592,6 +1607,42 @@ export const AutoManagementScreen = ({
                       <p className="text-[10px] text-teal-600 dark:text-teal-400 font-semibold mt-2">
                         💡 Prossima scadenza calcolata: +2 anni ({getAutoDeadlineTargetDate('lastRevision', quickEditDate, data)?.toLocaleDateString('it-IT')})
                       </p>
+                    )}
+
+                    {quickEditDeadline.field === 'lastTax' && (
+                      <div className="mt-2.5 p-2.5 rounded-xl bg-[var(--surface-variant)] border border-[var(--border)] text-xs space-y-1">
+                        {data.powerKw ? (
+                          (() => {
+                            const kw = Number(String(data.powerKw).replace(/[^\d.]/g, ''));
+                            const year = quickEditDate ? new Date(quickEditDate).getFullYear() : 2026;
+                            const calc = calculateBolloAuto(kw, data.euroClass || 'Euro 6', data.fuelType || 'benzina', year);
+                            return (
+                              <>
+                                <div className="flex items-center justify-between">
+                                  <span className="font-bold text-[var(--text-main)]">Stima Bollo ({year}):</span>
+                                  <span className="font-black text-emerald-600 dark:text-emerald-400">
+                                    {calc.amount === 0 ? '0,00 € (Esente)' : `€ ${calc.amount.toFixed(2)}`}
+                                  </span>
+                                </div>
+                                {calc.isExempt2027 ? (
+                                  <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1">
+                                    <Sparkles className="w-3 h-3 shrink-0" />
+                                    Esenzione Bollo 2027: veicolo sotto 80 kW ({kw} kW)
+                                  </p>
+                                ) : (
+                                  <p className="text-[10px] text-[var(--text-muted)]">
+                                    Potenza: {kw} kW (&gt; 80 kW, soggetto a tariffa ordinaria).
+                                  </p>
+                                )}
+                              </>
+                            );
+                          })()
+                        ) : (
+                          <p className="text-[10px] text-[var(--text-muted)]">
+                            💡 Inserisci i kW del veicolo per visualizzare il calcolo del bollo e l'esenzione 2027.
+                          </p>
+                        )}
+                      </div>
                     )}
                   </div>
                 )}

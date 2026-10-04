@@ -426,7 +426,8 @@ async function main() {
     { query: 'gazpacho', expectedCountry: 'Spagna', flag: '🇪🇸' },
     { query: 'bibimbap', expectedCountry: 'Corea del Sud', flag: '🇰🇷' },
     { query: 'kebab', expectedCountry: 'Turchia', flag: '🇹🇷' },
-    { query: 'pho', expectedCountry: 'Vietnam', flag: '🇻🇳' }
+    { query: 'pho', expectedCountry: 'Vietnam', flag: '🇻🇳' },
+    { query: 'ceviche', expectedCountry: 'Perù', flag: '🇵🇪' }
   ];
 
   for (const item of testDishes) {
@@ -439,7 +440,7 @@ async function main() {
       throw new Error(`queryChelonaAi failed to resolve "${item.query}" to ${item.expectedCountry}: ${aiRes.text.slice(0, 100)}`);
     }
   }
-  console.log(`  Successfully verified ${testDishes.length} authentic international dishes across 9 countries with Il Matematico!`);
+  console.log(`  Successfully verified ${testDishes.length} authentic international dishes across ${testDishes.length} countries with Il Matematico!`);
 
   // Verify explicit required recipes in catalog
   const gazpachoInDb = catalog.find(r => r.title.toLowerCase().includes('gazpacho'));
