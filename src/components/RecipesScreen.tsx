@@ -1252,8 +1252,16 @@ export function RecipesScreen({
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                     {allMeals.filter(meal => {
                         if (wizardCategories.length === 0) return true;
-                        const mealStr = JSON.stringify(meal).toLowerCase();
-                        return wizardCategories.some(cat => mealStr.includes(cat.toLowerCase()));
+                        const searchTargets = [
+                          meal.category,
+                          meal.title,
+                          ...(meal.tags || [])
+                        ].map(s => (s || '').toLowerCase());
+                        
+                        return wizardCategories.some(cat => {
+                          const c = cat.toLowerCase();
+                          return searchTargets.some(t => t.includes(c));
+                        });
                     }).map(meal => {
                       const isSelected = wizardSelectedRecipes.some(r => r.id === meal.id);
                       return (
@@ -1298,14 +1306,21 @@ export function RecipesScreen({
                   <div className="flex gap-4 mt-8 w-full max-w-xs">
                     <button onClick={() => setWizardStep(4)} className="px-4 py-3 rounded-2xl bg-[var(--surface-variant)] font-bold flex-1 cursor-pointer">Indietro</button>
                     <button onClick={() => {
+                      const getRecipeForSlot = (recipes: any[], validCategories: string[]) => {
+                        return recipes.find(r => validCategories.includes(r.category?.toLowerCase())) || null;
+                      };
+                      const antipasto = getRecipeForSlot(wizardSelectedRecipes, ['antipasti', 'antipasto', 'insalata']) || wizardSelectedRecipes[0] || null;
+                      const primo = getRecipeForSlot(wizardSelectedRecipes.filter(r => r.id !== antipasto?.id), ['primi', 'primi piatti', 'pasta', 'zuppa']) || wizardSelectedRecipes.find(r => r.id !== antipasto?.id) || null;
+                      const secondo = getRecipeForSlot(wizardSelectedRecipes.filter(r => r.id !== antipasto?.id && r.id !== primo?.id), ['secondi', 'secondi piatti', 'carne', 'pesce']) || wizardSelectedRecipes.find(r => r.id !== antipasto?.id && r.id !== primo?.id) || null;
+
                       const newSaved = {
                         id: `menu_${Date.now()}`,
                         title: wizardMenuName,
                         mealType: wizardMealTime.toLowerCase() as MealType,
                         theme: (wizardCategories.includes('Pesce') ? 'pesce' : wizardCategories.includes('Carne') ? 'carne' : 'vegetariano') as ('pesce' | 'carne' | 'vegetariano'),
-                        antipasto: wizardSelectedRecipes[0] || null,
-                        primo: wizardSelectedRecipes[1] || null,
-                        secondo: wizardSelectedRecipes[2] || null,
+                        antipasto,
+                        primo,
+                        secondo,
                         chefAdvice: '',
                         wineAdvice: '',
                         createdAt: new Date().toISOString(),
