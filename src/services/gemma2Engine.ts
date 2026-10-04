@@ -422,7 +422,6 @@ export async function queryGemma2(
   // ⚡ Sincronizzazione continua del Database Personale (RAG) solo quando necessario
   const currentModulesHash = computeModulesHash(modules);
   const startTime = performance.now();
-  const cacheActive = isCacheEnabled();
 
   const executeFallback = async (options?: { immediate?: boolean }): Promise<Gemma2Response> => {
     const result = await queryChelonaAi(userQuery, modules, username, activeSection);
@@ -446,33 +445,12 @@ export async function queryGemma2(
       }
     }
 
-    if (result && result.text && cacheActive) {
-      // Pulizia prima di salvare in cache per evitare persistenza di search per ricette
-      const cleanActions = result.actions?.map(a => {
-        if (a.type === 'recipes' || a.category === 'recipes') {
-          const { search, ...rest } = a as any;
-          return rest;
-        }
-        return a;
-      });
-      let cleanAutoAction = result.autoAction;
-      if (cleanAutoAction && (cleanAutoAction.type === 'recipes' || cleanAutoAction.category === 'recipes')) {
-        delete (cleanAutoAction as any).search;
-      }
-
-      semanticCache.set(userQuery, currentModulesHash, {
-        text: result.text,
-        actions: cleanActions,
-        learnedFact: result.learnedFact,
-        autoAction: cleanAutoAction,
-      });
-      promptCache.set(userQuery, '', { text: result.text, actions: cleanActions });
-    }
-
     return {
       ...result,
       engineUsed: 'chelona-engine',
       latencyMs: elapsed,
+      cached: false,
+      semanticMatch: false,
     };
   };
 
@@ -492,49 +470,6 @@ export async function queryGemma2(
       console.log(`[FastPath] ⚡ RISOLUZIONE SPECULATIVA RICETTE (< 2ms): "${userQuery}"`);
       return await executeFallback({ immediate: false });
     }
-  }
-
-  // ⚡ STEP 0: CONTROLLO ISTANTANEO CACHE SEMANTICA IN RAM (Latenza 0ms)
-  // Ignora totalmente llama.rn, caricamenti, controlli batteria e RAG se c'è un hit!
-  const semanticHit = cacheActive ? semanticCache.findMatch(userQuery) : null;
-  if (semanticHit) {
-    console.log(`[SemanticCache] ⚡ HIT ISTANTANEO IN RAM (${semanticHit.exactMatch ? '100% esatto' : `similarità ${Math.round(semanticHit.similarity * 100)}%`}): "${userQuery}" -> "${semanticHit.entry.query}"`);
-    
-    // Se c'è un listener di streaming, emetti i token progressivamente per effetto typing fluido
-    if (onToken) {
-      const chunks = semanticHit.entry.response.text.split(/(\s+)/);
-      for (const chunk of chunks) {
-        onToken(chunk);
-      }
-    }
-
-    // Pulisci rigorosamente qualsiasi azione ricette da parametri search o autoAction improprie
-    let safeAutoAction = semanticHit.entry.response.autoAction as AiAction | undefined;
-    if (safeAutoAction && (safeAutoAction.type === 'recipes' || safeAutoAction.category === 'recipes')) {
-      delete (safeAutoAction as any).search;
-      const lower = userQuery.toLowerCase().trim();
-      const isExplicit = lower.includes('apri') || lower.includes('vai') || lower === 'ricette' || lower === 'ricettario';
-      if (!isExplicit) safeAutoAction = undefined;
-    }
-    const safeActions = (semanticHit.entry.response.actions as AiAction[] | undefined)?.map(a => {
-      if (a.type === 'recipes' || a.category === 'recipes') {
-        const { search, ...rest } = a as any;
-        return rest;
-      }
-      return a;
-    });
-
-    return {
-      text: semanticHit.entry.response.text,
-      actions: safeActions,
-      learnedFact: semanticHit.entry.response.learnedFact,
-      autoAction: safeAutoAction,
-      engineUsed: 'gemma2-local',
-      cached: true,
-      semanticMatch: true,
-      similarityScore: semanticHit.similarity,
-      latencyMs: Math.round(performance.now() - startTime),
-    };
   }
 
   // ⚡ FAST-PATH SPECULATIVO DETERMINISTICO (< 2ms):
@@ -587,22 +522,7 @@ export async function queryGemma2(
       const ragDocs = ragEngine.retrieve(userQuery, 1);
       const ragContext = ragDocs.length > 0 ? ragDocs[0].text.slice(0, 350).trim() : '';
 
-      // 4. Controllo Prompt Cache prima di invocare il modello pesante
-      const cachedPrompt = cacheActive ? promptCache.get(userQuery, ragContext) : null;
-      if (cachedPrompt && cachedPrompt.text) {
-        if (onToken) onToken(cachedPrompt.text);
-        return {
-          text: cachedPrompt.text,
-          actions: cachedPrompt.actions as AiAction[] | undefined,
-          engineUsed: `${gemma2ModelManager.activeModel.family}-local` as any,
-          ragDocsUsed: ragDocs.length,
-          cached: true,
-          semanticMatch: false,
-          latencyMs: Math.round(performance.now() - startTime),
-        };
-      }
-
-      // 5. Costruisci il prompt compatto con template del modello attivo (Gemma 4 / Gemma 2 / Qwen 2.5)
+      // 4. Costruisci il prompt compatto con template del modello attivo (Gemma 4 / Gemma 2 / Qwen 2.5)
       const promptObj = buildPrompt(userQuery, ragContext, username);
 
       // 6. Inferenza con Streaming attivo
@@ -633,12 +553,6 @@ export async function queryGemma2(
       // Se la risposta è vuota o insufficiente, delega al motore rule-based di Chelona
       if (!responseText || responseText.trim().length < 5) {
         return await executeFallback({ immediate: true });
-      }
-
-      // 7. Memorizzazione in Cache Semantica in RAM e persistenza locale
-      if (responseText && cacheActive) {
-        promptCache.set(userQuery, ragContext, { text: responseText });
-        semanticCache.set(userQuery, currentModulesHash, { text: responseText });
       }
 
       return {

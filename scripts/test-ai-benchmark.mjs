@@ -55,44 +55,28 @@ assert.strictEqual(resFastPath.engineUsed, 'chelona-engine');
 assert(resFastPath.text.length > 0);
 console.log('✅ queryGemma2 Fast-Path test passed');
 
-// 4. queryGemma2 Semantic Cache Hit (0ms)
-const startCache = performance.now();
-const resCache = await queryGemma2('Che spese ho questo mese?', [], 'Davide');
-const elapsedCache = performance.now() - startCache;
-console.log(`[Test 4] queryGemma2 Semantic Cache Hit latency: ${elapsedCache.toFixed(2)}ms`);
-assert(elapsedCache < 50, `Cache hit must be under 50ms, got ${elapsedCache}ms`);
-assert.strictEqual(resCache.cached, true);
-assert.strictEqual(resCache.semanticMatch, true);
-console.log('✅ Semantic cache 0ms hit test passed');
+// 4. queryGemma2 Live Direct Execution (Cache Completely Eliminated)
+const startDirect = performance.now();
+const resDirect = await queryGemma2('Che spese ho questo mese?', [], 'Davide');
+const elapsedDirect = performance.now() - startDirect;
+console.log(`[Test 4] queryGemma2 Direct Live Execution (No Cache) latency: ${elapsedDirect.toFixed(2)}ms`);
+assert(elapsedDirect < 150, `Live direct execution must be under 150ms, got ${elapsedDirect}ms`);
+assert.strictEqual(resDirect.cached, false, 'cached flag must be false (cache eliminated)');
+assert.strictEqual(resDirect.semanticMatch, false, 'semanticMatch must be false (cache eliminated)');
+assert(resDirect.text && resDirect.text.length > 0, 'Must produce valid response text');
+console.log('✅ AI Cache Elimination & Live Execution test passed');
 
-// 4b. queryGemma2 Cache Toggle Verification (Disable Cache -> Test Real Speed -> Re-enable)
-assert.strictEqual(isCacheEnabled(), true, 'Cache should be enabled by default');
-setCacheEnabled(false);
-assert.strictEqual(isCacheEnabled(), false, 'Cache should now be disabled');
+// 4b. Verify cache lookups and storage are eliminated
+assert.strictEqual(isCacheEnabled(), false, 'isCacheEnabled must return false (cache permanently eliminated)');
+assert.strictEqual(semanticCache.findMatch('Che spese ho questo mese?'), null, 'semanticCache.findMatch must return null');
+assert.strictEqual(promptCache.get('Che spese ho questo mese?', ''), null, 'promptCache.get must return null');
 
-// Verify direct cache lookups are blocked when cache is disabled
-assert.strictEqual(semanticCache.findMatch('Che spese ho questo mese?'), null, 'semanticCache.findMatch must return null when disabled');
-assert.strictEqual(promptCache.get('Che spese ho questo mese?', ''), null, 'promptCache.get must return null when disabled');
-
-const startDisabled = performance.now();
-const resDisabled = await queryGemma2('Che spese ho questo mese?', [], 'Davide');
-const elapsedDisabled = performance.now() - startDisabled;
-console.log(`[Test 4b] queryGemma2 with Cache Disabled (Real Engine Execution): ${elapsedDisabled.toFixed(2)}ms`);
-assert.strictEqual(resDisabled.cached, undefined, 'Cache hit must not be returned when cache is disabled');
-assert.strictEqual(resDisabled.semanticMatch, undefined, 'semanticMatch must not be returned when cache is disabled');
-assert(resDisabled.text && resDisabled.text.length > 0, 'Real engine response must be returned');
-
-// Verify a completely new query executed while cache is disabled is NOT saved to cache
+// Verify a completely new query runs directly without cache
 const newQuery = 'Quali sono le scadenze della patente di guida?';
-await queryGemma2(newQuery, [], 'Davide');
-assert.strictEqual(semanticCache.findMatch(newQuery), null, 'New query must not be saved into cache while disabled');
-
-// Re-enable cache and verify normal caching behavior resumes
-setCacheEnabled(true);
-assert.strictEqual(isCacheEnabled(), true, 'Cache should be re-enabled');
-const resReenabled = await queryGemma2('Che spese ho questo mese?', [], 'Davide');
-assert.strictEqual(resReenabled.cached, true, 'Cache hit should work again once cache is re-enabled');
-console.log('✅ AI Cache Toggle and Real Speed verification passed');
+const resNewQuery = await queryGemma2(newQuery, [], 'Davide');
+assert.strictEqual(resNewQuery.cached, false, 'New query must not be cached');
+assert.strictEqual(semanticCache.findMatch(newQuery), null, 'New query must not be saved into cache');
+console.log('✅ AI Cache Permanent Elimination verified successfully');
 
 // 5. queryGemma2 with onToken streaming
 let streamedText = '';
@@ -131,6 +115,25 @@ for (const a of flyerActions) {
   assert(a.flyerId, 'Must have flyerId');
 }
 console.log('✅ Best offers -> Confronta Prezzi with exact flyer pages test passed');
+
+// 9. Parking Intent Navigation Tests (User requirement 2)
+console.log('\n[Test 9] Parking Intent & Navigation Verification:');
+const parkingQueries = [
+  'segnami un parcheggio',
+  'salva la posizione dell\'auto',
+  'ho parcheggiato qui',
+  'dov\'è la macchina',
+  'ricorda dove ho parcheggiato'
+];
+
+for (const q of parkingQueries) {
+  const res = await queryChelonaAi(q, [], 'Davide');
+  assert(res, `Response must exist for "${q}"`);
+  assert(res.autoAction, `Must have autoAction for "${q}"`);
+  assert.strictEqual(res.autoAction.type, 'parking', `autoAction.type must be parking for "${q}"`);
+  console.log(`  ✓ "${q}" -> autoAction: ${res.autoAction.type} (${res.autoAction.label})`);
+}
+console.log('✅ All parking intent queries return parking autoAction successfully');
 
 console.log('🎉 ALL AI LATENCY AND TIMING TESTS PASSED PERFECTLY!');
 process.exit(0);

@@ -8,7 +8,7 @@ import {
   AlertTriangle, Sparkles, Key, FileText, CheckCheck,
   Car, Users, Receipt, Globe, BookOpen, Activity, Home,
   Percent, Scan, Shirt, ImageIcon, HardDrive, Edit2, Cpu, ChevronRight,
-  Search, Brain, Settings, FlaskConical, Scale
+  Search, Brain, Settings, FlaskConical, Scale, ArrowLeft
 } from 'lucide-react';
 import { LegalNoticesModal, type LegalTabType } from './LegalNoticesModal';
 import { storage } from '../services/storage';
@@ -25,12 +25,6 @@ import { Filesystem, Directory } from '@capacitor/filesystem';
 import { Capacitor } from '@capacitor/core';
 import CryptoJS from 'crypto-js';
 import { 
-  getSemanticCacheEntries, 
-  deleteSemanticCacheEntry, 
-  deleteSemanticCacheEntries, 
-  clearSemanticCache,
-  isCacheEnabled,
-  setCacheEnabled,
   getLearnedMemories,
   deleteLearnedMemory,
   clearAllLearnedMemories,
@@ -199,54 +193,14 @@ export function ProfileScreen({
   // Legal Notices
   const [legalModalTab, setLegalModalTab] = useState<LegalTabType | null>(null);
 
-  // Cache management
-  type CacheEntry = { query: string; responsePreview: string; responseText: string; timestamp: number; hits: number };
-  const [isCacheActive, setIsCacheActive] = useState<boolean>(() => isCacheEnabled());
-  const [cacheEntries, setCacheEntries] = useState<CacheEntry[]>(() => getSemanticCacheEntries());
-  const [selectedCacheKeys, setSelectedCacheKeys] = useState<Set<string>>(new Set());
-  const [expandedCacheKey, setExpandedCacheKey] = useState<string | null>(null);
-  const [cacheSearchFilter, setCacheSearchFilter] = useState('');
-
-  const handleToggleCache = () => {
-    const next = !isCacheActive;
-    setIsCacheActive(next);
-    setCacheEnabled(next);
-    if (!next) {
-      showToast('Cache Disattivata - Test Velocità Reale', 'info');
-    } else {
-      showToast('Cache Semantica AI riattivata', 'success');
-    }
-  };
-
   // Learned memories state
   const [memories, setMemories] = useState<AiMemory[]>(() => getLearnedMemories());
 
   useEffect(() => {
-    const handleSync = () => {
-      setIsCacheActive(isCacheEnabled());
-    };
-    window.addEventListener('chelona_cache_toggle', handleSync);
-    return () => {
-      window.removeEventListener('chelona_cache_toggle', handleSync);
-    };
-  }, []);
-
-  useEffect(() => {
     if (activeTab === 'system') {
-      setIsCacheActive(isCacheEnabled());
-      setCacheEntries(getSemanticCacheEntries());
       setMemories(getLearnedMemories());
     }
   }, [activeTab]);
-
-  const filteredCacheEntries = useMemo(() => {
-    if (!cacheSearchFilter.trim()) return cacheEntries;
-    const q = cacheSearchFilter.toLowerCase();
-    return cacheEntries.filter(e =>
-      e.query.toLowerCase().includes(q) ||
-      (e.responseText || e.responsePreview).toLowerCase().includes(q)
-    );
-  }, [cacheEntries, cacheSearchFilter]);
 
   // Restore input ref
   const restoreZipInputRef = useRef<HTMLInputElement>(null);
@@ -711,23 +665,32 @@ export function ProfileScreen({
       <div className="w-full max-w-4xl mx-auto flex-1 flex flex-col px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
 
         {mode === 'settings' ? (
-          <div className="flex items-center justify-between p-6 lg:p-8 rounded-[var(--radius-lg)] bg-[var(--card-bg)] border border-[var(--border)] shadow-sm mb-6">
-            <div className="flex items-center gap-4">
-              <div className="w-14 h-14 rounded-2xl bg-indigo-500/10 text-indigo-500 flex items-center justify-center border border-indigo-500/20 shadow-inner">
-                <Settings className="w-7 h-7" />
+          <div className="flex items-center justify-between p-4 sm:p-6 lg:p-8 rounded-[var(--radius-lg)] bg-[var(--card-bg)] border border-[var(--border)] shadow-sm mb-6 gap-3">
+            <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-3.5 py-2 bg-[var(--surface-variant)] hover:bg-[var(--border)] rounded-2xl text-[var(--text-main)] font-black text-xs transition-all flex items-center gap-1.5 border border-[var(--border)] shadow-sm active:scale-95 cursor-pointer shrink-0"
+                title="Torna alla Home"
+              >
+                <ArrowLeft className="w-4 h-4 text-[var(--accent)]" />
+                <span>Home</span>
+              </button>
+              <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-indigo-500/10 text-indigo-500 flex items-center justify-center border border-indigo-500/20 shadow-inner shrink-0">
+                <Settings className="w-6 h-6 sm:w-7 sm:h-7" />
               </div>
-              <div>
-                <h1 className="text-2xl font-black text-[var(--text-main)] tracking-tight">Impostazioni App</h1>
-                <p className="text-xs text-[var(--text-muted)] font-medium mt-0.5">
-                  Aspetto, Memorie AI, Cache Semantica e Backup dei dati
+              <div className="min-w-0">
+                <h1 className="text-xl sm:text-2xl font-black text-[var(--text-main)] tracking-tight truncate">Impostazioni App</h1>
+                <p className="text-xs text-[var(--text-muted)] font-medium mt-0.5 truncate">
+                  Aspetto, Memorie AI e Backup dei dati
                 </p>
               </div>
             </div>
             <button
               type="button"
               onClick={onClose}
-              className="p-2.5 rounded-full bg-[var(--surface-variant)] hover:bg-[var(--border)] text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors cursor-pointer"
-              title="Chiudi impostazioni"
+              className="p-2.5 rounded-full bg-[var(--surface-variant)] hover:bg-[var(--border)] text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors cursor-pointer shrink-0"
+              title="Chiudi impostazioni e torna alla Home"
             >
               <X className="w-5 h-5" />
             </button>
@@ -739,8 +702,17 @@ export function ProfileScreen({
               <button
                 type="button"
                 onClick={onClose}
-                className="absolute top-4 right-4 p-2 rounded-full bg-[var(--surface-variant)] hover:bg-[var(--border)] text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors cursor-pointer"
-                title="Chiudi profilo"
+                className="absolute top-4 left-4 px-3 py-1.5 bg-[var(--surface-variant)] hover:bg-[var(--border)] rounded-2xl text-[var(--text-main)] font-black text-xs transition-all flex items-center gap-1.5 border border-[var(--border)] shadow-sm active:scale-95 cursor-pointer z-10"
+                title="Torna alla Home"
+              >
+                <ArrowLeft className="w-4 h-4 text-[var(--accent)]" />
+                <span>Home</span>
+              </button>
+              <button
+                type="button"
+                onClick={onClose}
+                className="absolute top-4 right-4 p-2 rounded-full bg-[var(--surface-variant)] hover:bg-[var(--border)] text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors cursor-pointer z-10"
+                title="Chiudi profilo e torna alla Home"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -1578,279 +1550,6 @@ export function ProfileScreen({
                       <Download className="w-4 h-4" />
                     )}
                     <span>{isCheckingUpdate ? 'Controllo in corso...' : 'Controlla Aggiornamenti'}</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* Cache Risposte AI */}
-              <div className="bg-[var(--card-bg)] rounded-[var(--radius-lg)] p-5 sm:p-6 border border-[var(--border)] shadow-sm space-y-4">
-                <div className="flex items-center justify-between gap-4 pb-3 border-b border-[var(--border)]">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-2xl bg-amber-500/10 flex items-center justify-center text-amber-500">
-                      <Database className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <h3 className="text-base font-bold text-[var(--text-main)]">Cache Risposte AI</h3>
-                      <p className="text-xs text-[var(--text-muted)]">
-                        {cacheEntries.length} {cacheEntries.length === 1 ? 'risposta salvata' : 'risposte salvate'} in memoria
-                        {cacheSearchFilter.trim() ? ` (${filteredCacheEntries.length} visualizzate)` : ''}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    {filteredCacheEntries.length > 0 && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const allFilteredKeys = filteredCacheEntries.map(e => e.query);
-                          const allSelected = allFilteredKeys.every(k => selectedCacheKeys.has(k));
-                          if (allSelected) {
-                            setSelectedCacheKeys(prev => {
-                              const next = new Set(prev);
-                              allFilteredKeys.forEach(k => next.delete(k));
-                              return next;
-                            });
-                          } else {
-                            setSelectedCacheKeys(prev => {
-                              const next = new Set(prev);
-                              allFilteredKeys.forEach(k => next.add(k));
-                              return next;
-                            });
-                          }
-                        }}
-                        className="px-2.5 py-1.5 hover:bg-[var(--surface-variant)] rounded-xl text-xs font-semibold text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors"
-                      >
-                        {filteredCacheEntries.every(e => selectedCacheKeys.has(e.query)) && filteredCacheEntries.length > 0 ? 'Deseleziona' : 'Seleziona tutti'}
-                      </button>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => setCacheEntries(getSemanticCacheEntries())}
-                      className="p-2 hover:bg-[var(--surface-variant)] rounded-xl text-[var(--text-muted)] transition-colors"
-                      title="Aggiorna lista"
-                    >
-                      <RefreshCw className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-
-                {/* Cache Semantica AI Toggle Switch / Pill Card */}
-                <div className={`p-4 rounded-2xl border transition-all ${
-                  isCacheActive
-                    ? 'bg-amber-500/5 border-amber-500/25'
-                    : 'bg-rose-500/5 border-rose-500/30'
-                }`}>
-                  <div className="flex items-center justify-between gap-3 sm:gap-4">
-                    <div className="flex-1 min-w-0 cursor-pointer select-none" onClick={handleToggleCache}>
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <h4 className="text-sm font-bold text-[var(--text-main)]">Cache Semantica AI</h4>
-                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wide uppercase transition-colors ${
-                          isCacheActive
-                            ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
-                            : 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20'
-                        }`}>
-                          {isCacheActive ? 'Attiva' : 'Cache Disattivata - Test Velocità Reale'}
-                        </span>
-                      </div>
-                      <p className="text-xs text-[var(--text-muted)] mt-1.5 leading-relaxed">
-                        Disattiva la cache per testare la velocità di elaborazione reale del motore AI da zero, senza risposte pre-salvate.
-                      </p>
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={handleToggleCache}
-                      className={`relative inline-flex h-7 w-12 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-amber-500/40 ${
-                        isCacheActive ? 'bg-amber-500' : 'bg-slate-300 dark:bg-slate-700'
-                      }`}
-                      role="switch"
-                      aria-checked={isCacheActive}
-                      title={isCacheActive ? 'Disattiva Cache Semantica AI' : 'Attiva Cache Semantica AI'}
-                    >
-                      <span
-                        aria-hidden="true"
-                        className={`pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
-                          isCacheActive ? 'translate-x-5' : 'translate-x-0'
-                        }`}
-                      />
-                    </button>
-                  </div>
-                </div>
-
-                {!isCacheActive && cacheEntries.length > 0 && (
-                  <div className="px-3.5 py-2.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-xs text-rose-600 dark:text-rose-400 flex items-center gap-2">
-                    <span className="font-bold">⚠️ Nota:</span>
-                    <span>Le {cacheEntries.length} risposte salvate sono sospese e non verranno utilizzate finché la cache resta disattivata.</span>
-                  </div>
-                )}
-
-                {cacheEntries.length > 0 && (
-                  <div className="relative">
-                    <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" />
-                    <input
-                      type="text"
-                      value={cacheSearchFilter}
-                      onChange={e => setCacheSearchFilter(e.target.value)}
-                      placeholder="Cerca tra domande e risposte..."
-                      className="w-full pl-9 pr-8 py-2 rounded-xl bg-[var(--surface-variant)] border border-[var(--border)] text-xs text-[var(--text-main)] placeholder-[var(--text-muted)] focus:outline-none focus:border-amber-500"
-                    />
-                    {cacheSearchFilter && (
-                      <button
-                        type="button"
-                        onClick={() => setCacheSearchFilter('')}
-                        className="absolute right-2.5 top-1/2 -translate-y-1/2 p-0.5 text-[var(--text-muted)] hover:text-[var(--text-main)]"
-                      >
-                        <X className="w-3.5 h-3.5" />
-                      </button>
-                    )}
-                  </div>
-                )}
-
-                {cacheEntries.length === 0 ? (
-                  <p className="text-xs text-[var(--text-muted)] text-center py-6 text-[var(--text-muted)]">Nessuna risposta memorizzata nella cache locale.</p>
-                ) : filteredCacheEntries.length === 0 ? (
-                  <p className="text-xs text-[var(--text-muted)] text-center py-6">Nessuna risposta corrisponde alla ricerca "{cacheSearchFilter}".</p>
-                ) : (
-                  <div className="space-y-2.5 max-h-80 overflow-y-auto custom-scrollbar pr-1">
-                    {filteredCacheEntries.map((entry) => {
-                      const isSelected = selectedCacheKeys.has(entry.query);
-                      const isExpanded = expandedCacheKey === entry.query;
-
-                      return (
-                        <div
-                          key={entry.query}
-                          className={`rounded-2xl border text-xs transition-all ${
-                            isSelected
-                              ? 'bg-rose-500/5 border-rose-500/30'
-                              : 'bg-[var(--surface-variant)] border-[var(--border)] hover:border-amber-500/40'
-                          }`}
-                        >
-                          <div className="p-3 flex items-start gap-2.5">
-                            <div 
-                              onClick={() => {
-                                setSelectedCacheKeys(prev => {
-                                  const next = new Set(prev);
-                                  if (next.has(entry.query)) next.delete(entry.query);
-                                  else next.add(entry.query);
-                                  return next;
-                                });
-                              }}
-                              className={`mt-0.5 w-4 h-4 rounded-md border-2 shrink-0 flex items-center justify-center transition-all cursor-pointer ${
-                                isSelected ? 'border-rose-500 bg-rose-500' : 'border-[var(--border)] hover:border-amber-500'
-                              }`}
-                            >
-                              {isSelected && <Check className="w-2.5 h-2.5 text-white" />}
-                            </div>
-
-                            <div 
-                              className="flex-1 min-w-0 cursor-pointer"
-                              onClick={() => setExpandedCacheKey(isExpanded ? null : entry.query)}
-                            >
-                              <div className="flex items-center justify-between gap-2">
-                                <p className="font-bold text-[var(--text-main)] truncate">{entry.query}</p>
-                                <span className="text-[10px] text-amber-500 font-semibold bg-amber-500/10 px-1.5 py-0.2 rounded shrink-0">
-                                  {entry.hits} {entry.hits === 1 ? 'richiesta' : 'richieste'}
-                                </span>
-                              </div>
-                              <p className="text-[var(--text-muted)] mt-1 line-clamp-2 leading-relaxed">
-                                {entry.responsePreview}
-                              </p>
-                              <div className="flex items-center justify-between mt-2 pt-1 border-t border-[var(--border)]/40 text-[10px] text-[var(--text-muted)]">
-                                <span>{new Date(entry.timestamp).toLocaleDateString('it-IT', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
-                                <span className="text-amber-500 font-semibold hover:underline">
-                                  {isExpanded ? 'Nascondi dettagli' : 'Visualizza risposta completa'}
-                                </span>
-                              </div>
-                            </div>
-
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                deleteSemanticCacheEntry(entry.query);
-                                setCacheEntries(getSemanticCacheEntries());
-                                setSelectedCacheKeys(prev => {
-                                  const next = new Set(prev);
-                                  next.delete(entry.query);
-                                  return next;
-                                });
-                                showToast('Elemento rimosso dalla cache.');
-                              }}
-                              className="p-1.5 text-[var(--text-muted)] hover:text-rose-500 hover:bg-rose-500/10 rounded-xl transition-colors shrink-0"
-                              title="Elimina questa risposta dalla cache"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </div>
-
-                          {/* Dettaglio risposta completa espandibile */}
-                          {isExpanded && (
-                            <div className="px-3 pb-3 pt-1 border-t border-[var(--border)]/60 bg-[var(--card-bg)] rounded-b-2xl space-y-2">
-                              <p className="text-[11px] font-bold text-[var(--text-muted)] uppercase tracking-wider">Risposta Memorizzata:</p>
-                              <div className="p-2.5 rounded-xl bg-[var(--surface-variant)] border border-[var(--border)] max-h-48 overflow-y-auto custom-scrollbar whitespace-pre-wrap text-[11.5px] text-[var(--text-main)] leading-relaxed select-text">
-                                {entry.responseText || entry.responsePreview}
-                              </div>
-                              <div className="flex justify-end gap-2 pt-1">
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    deleteSemanticCacheEntry(entry.query);
-                                    setCacheEntries(getSemanticCacheEntries());
-                                    setExpandedCacheKey(null);
-                                    setSelectedCacheKeys(prev => {
-                                      const next = new Set(prev);
-                                      next.delete(entry.query);
-                                      return next;
-                                    });
-                                    showToast('Risposta rimossa dalla cache.');
-                                  }}
-                                  className="px-3 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 border border-rose-500/20 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer"
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                  <span>Rimuovi dettaglio</span>
-                                </button>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-
-                <div className="flex gap-2 pt-1">
-                  {selectedCacheKeys.size > 0 && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const count = selectedCacheKeys.size;
-                        deleteSemanticCacheEntries(Array.from(selectedCacheKeys));
-                        setSelectedCacheKeys(new Set());
-                        setCacheEntries(getSemanticCacheEntries());
-                        showToast(`${count} voc${count === 1 ? 'e' : 'i'} rimoss${count === 1 ? 'a' : 'e'} dalla cache.`);
-                      }}
-                      className="flex-1 py-2.5 bg-rose-500 hover:bg-rose-600 text-white rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-1.5 active:scale-95 shadow-sm cursor-pointer"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                      Elimina selezionate ({selectedCacheKeys.size})
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (confirm('Vuoi svuotare completamente la cache delle risposte AI?')) {
-                        clearSemanticCache();
-                        setCacheEntries([]);
-                        setSelectedCacheKeys(new Set());
-                        setExpandedCacheKey(null);
-                        showToast('Cache AI svuotata.', 'success');
-                      }
-                    }}
-                    disabled={cacheEntries.length === 0}
-                    className="flex-1 py-2.5 bg-[var(--surface-variant)] hover:bg-[var(--border)] text-[var(--text-main)] border border-[var(--border)] rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-1.5 active:scale-95 disabled:opacity-40 cursor-pointer"
-                  >
-                    <Trash2 className="w-3.5 h-3.5 text-rose-500" />
-                    Svuota Cache Completa
                   </button>
                 </div>
               </div>

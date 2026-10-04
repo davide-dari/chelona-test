@@ -1288,18 +1288,35 @@ export async function queryChelonaAi(
   
   const lower = userQuery.toLowerCase();
   
-  // Richiesta esplicita di navigazione a una sezione o volantini
+  // Richiesta esplicita di navigazione a una sezione, volantini o parcheggio
   const isVolantiniNavigation = 
     result.autoAction?.type === 'volantino' && 
     (lower.includes('offert') || lower.includes('volantin'));
 
+  const isParkingNavigation = 
+    result.autoAction?.type === 'parking' ||
+    result.autoAction?.type === 'save_parking' ||
+    result.autoAction?.type === 'navigate_parking' ||
+    result.autoAction?.category === 'mobility';
+
   const isExplicitNavigation = 
     isVolantiniNavigation ||
+    isParkingNavigation ||
     lower.includes('apri') || 
     lower.includes('vai') || 
     lower.includes('mostra') || 
     lower.includes('vedi') ||
     lower.includes('chiudi') ||
+    lower.includes('parchegg') ||
+    lower.includes('segnami') ||
+    lower.includes('segna') ||
+    lower.includes('salva') ||
+    lower.includes('salva parcheggio') ||
+    lower.includes('auto') ||
+    lower.includes('macchina') ||
+    lower.includes('ricorda') ||
+    lower.includes('dov\'è') ||
+    lower.includes('dov\'e') ||
     lower.trim() === 'ricette' ||
     lower.trim() === 'ricettario' ||
     lower.trim() === 'fitness' ||
@@ -1949,15 +1966,25 @@ async function _queryChelonaAiInner(
   const isParkingIntent = (
     lower.includes('parchegg') ||
     lower.includes('dove ho parcheggiato') ||
-    lower.includes('dov\'è la') ||
-    lower.includes('dov\'e la') ||
+    lower.includes('ricorda dove ho parcheggiato') ||
+    lower.includes('dov\'è la macchina') ||
+    lower.includes('dov\'e la macchina') ||
     lower.includes('dov\'è l\'auto') ||
     lower.includes('dov\'e l\'auto') ||
+    lower.includes('dov\'è la') ||
+    lower.includes('dov\'e la') ||
     lower.includes('trova auto') ||
     lower.includes('ritrova auto') ||
+    lower.includes('trova macchina') ||
+    lower.includes('ritrova macchina') ||
     lower.includes('parchimetro') ||
     lower.includes('sosta') ||
-    lower.includes('radar')
+    lower.includes('radar') ||
+    lower.includes('ho parcheggiato') ||
+    (lower.includes('posizione') && (lower.includes('auto') || lower.includes('macchina') || lower.includes('veicol'))) ||
+    (lower.includes('salva') && (lower.includes('auto') || lower.includes('macchina') || lower.includes('veicol') || lower.includes('parchegg'))) ||
+    (lower.includes('segna') && (lower.includes('auto') || lower.includes('macchina') || lower.includes('veicol') || lower.includes('parchegg'))) ||
+    (lower.includes('ricorda') && (lower.includes('auto') || lower.includes('macchina') || lower.includes('veicol') || lower.includes('parchegg')))
   );
 
   if (
@@ -3161,29 +3188,41 @@ async function _queryChelonaAiInner(
 
   // --- SEZIONE 13: PARCHEGGIO & POSIZIONE GPS ---
   if (
+    isParkingIntent ||
     lower.includes('parchegg') ||
     lower.includes('dov\'è la macchina') ||
+    lower.includes('dov\'e la macchina') ||
+    lower.includes('dov\'è l\'auto') ||
+    lower.includes('dov\'e l\'auto') ||
     lower.includes('dove ho parcheggiato') ||
     lower.includes('trova auto') ||
     lower.includes('ritrova auto') ||
+    lower.includes('trova macchina') ||
+    lower.includes('ritrova macchina') ||
     lower.includes('parchimetro') ||
     lower.includes('scadenza sosta') ||
     lower.includes('tempo sosta') ||
-    lower.includes('radar')
+    lower.includes('radar') ||
+    (lower.includes('posizione') && (lower.includes('auto') || lower.includes('macchina')))
   ) {
-    if (lower.includes('apri') || lower.includes('vai') || lower.includes('mappa') || lower.trim() === 'parcheggio') {
+    if (lower.includes('segna') || lower.includes('salva') || lower.includes('memorizza') || lower.includes('qui') || lower.includes('ricorda')) {
       return {
-        text: `Ti porto subito alla schermata del Parcheggio e Radar GPS! 🚗`,
-        autoAction: { label: 'Apri Parcheggio', type: 'parking' },
-        actions: [],
+        text: `Ti porto subito alla sezione Parcheggio per salvare la tua posizione GPS attuale! 🚗📍`,
+        autoAction: { label: 'Apri Parcheggio', type: 'parking', autoSave: true, category: 'mobility' },
+        actions: [
+          { label: 'Salva Posizione Ora', type: 'save_parking', autoSave: true },
+          { label: 'Apri Parcheggio', type: 'parking' },
+        ],
       };
     }
 
-    if (lower.includes('segna') || lower.includes('salva') || lower.includes('memorizza') || lower.includes('qui')) {
+    if (lower.includes('apri') || lower.includes('vai') || lower.includes('mappa') || lower.trim() === 'parcheggio') {
       return {
-        text: `Ti porto alla schermata del parcheggio e salvo subito la tua posizione GPS attuale! 🚗📍`,
-        autoAction: { label: 'Salva Parcheggio', type: 'parking', autoSave: true },
-        actions: [],
+        text: `Ti porto subito alla schermata del Parcheggio e Radar GPS! 🚗`,
+        autoAction: { label: 'Apri Parcheggio', type: 'parking', category: 'mobility' },
+        actions: [
+          { label: 'Apri Parcheggio', type: 'parking' }
+        ],
       };
     }
 
@@ -3195,11 +3234,11 @@ async function _queryChelonaAiInner(
           ? `⏱️ Parchimetro attivo: restano **${k.parking.meterRemainingMinutes} minuti**!\n`
           : `⚠️ **Parchimetro scaduto da ${Math.abs(k.parking.meterRemainingMinutes)} minuti!**\n`;
       }
-      text += `\nTi apro la mappa radar per ritrovarla! 🚗`;
+      text += `\nTi porto alla mappa radar per ritrovarla! 🚗`;
 
       return {
         text,
-        autoAction: { label: 'Apri Parcheggio', type: 'parking' },
+        autoAction: { label: 'Apri Parcheggio', type: 'parking', category: 'mobility' },
         actions: [
           { label: 'Naviga all\'Auto (Maps)', type: 'navigate_parking' },
           { label: 'Apri Radar Parcheggio', type: 'parking' },
@@ -3207,7 +3246,8 @@ async function _queryChelonaAiInner(
       };
     } else {
       return {
-        text: `Non hai ancora registrato nessun parcheggio attivo. Vuoi che memorizzi la tua posizione GPS attuale adesso? 📍`,
+        text: `Non hai ancora registrato nessun parcheggio attivo. Ti porto subito alla sezione Parcheggio per memorizzare la posizione GPS! 📍🚗`,
+        autoAction: { label: 'Apri Parcheggio', type: 'parking', autoSave: true, category: 'mobility' },
         actions: [
           { label: 'Salva Posizione Ora', type: 'save_parking', autoSave: true },
           { label: 'Apri Parcheggio', type: 'parking' },

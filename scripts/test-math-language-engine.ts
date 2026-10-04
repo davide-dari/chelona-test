@@ -343,40 +343,20 @@ async function main() {
     }
   }
 
-  // Test 14: Semantic Cache Inspection and Granular Deletion
-  console.log('\n14. Test Semantic Cache Inspection & Deletion:');
+  // Test 14: Cache Elimination Verification
+  console.log('\n14. Test Cache Elimination & Direct Execution:');
   clearSemanticCache();
   if (getSemanticCacheEntries().length !== 0) {
-    throw new Error('clearSemanticCache failed to empty cache');
+    throw new Error('getSemanticCacheEntries must be empty');
   }
-
   semanticCache.set('come fare la pasta al pomodoro', 'hash1', { text: 'Ecco la ricetta semplice per la pasta al pomodoro fresco.' });
-  semanticCache.set('quanto costa il bollo auto', 'hash2', { text: 'Il bollo auto dipende dai kW e dalla regione.' });
-  semanticCache.set('orario studio medico curante', 'hash3', { text: 'Lo studio apre alle 09:00.' });
-
-  const entries = getSemanticCacheEntries();
-  if (entries.length !== 3) {
-    throw new Error(`Expected 3 cached entries, got ${entries.length}`);
+  if (getSemanticCacheEntries().length !== 0) {
+    throw new Error('Cache entries must not be stored after elimination');
   }
-  const pastaEntry = entries.find(e => e.query.includes('pasta al pomodoro'));
-  if (!pastaEntry || !pastaEntry.responseText.includes('pasta al pomodoro')) {
-    throw new Error('Cached entry responseText missing or incorrect');
+  if (semanticCache.findMatch('come fare la pasta al pomodoro') !== null) {
+    throw new Error('findMatch must return null when cache is eliminated');
   }
-
-  // Selective single delete
-  deleteSemanticCacheEntry('quanto costa il bollo auto');
-  const entriesAfterSingle = getSemanticCacheEntries();
-  if (entriesAfterSingle.length !== 2 || entriesAfterSingle.some(e => e.query.includes('bollo auto'))) {
-    throw new Error('deleteSemanticCacheEntry failed to remove single item');
-  }
-
-  // Batch delete
-  deleteSemanticCacheEntries(['come fare la pasta al pomodoro', 'orario studio medico curante']);
-  const entriesAfterBatch = getSemanticCacheEntries();
-  if (entriesAfterBatch.length !== 0) {
-    throw new Error('deleteSemanticCacheEntries failed to batch remove items');
-  }
-  console.log('  Semantic cache inspection, single deletion, and batch deletion passed!');
+  console.log('  Cache elimination verified: no entries stored, direct live execution enforced.');
 
   // Test 15: Learned Memory Management
   console.log('\n15. Test Learned Memories Functional Management:');

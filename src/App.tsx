@@ -2058,11 +2058,13 @@ export default function App() {
       return;
     }
 
-    if (act.type === 'parking' || act.type === 'save_parking') {
+    if (act.type === 'parking' || act.type === 'save_parking' || act.category === 'mobility' || act.category === 'parking') {
       setActiveNavTab('home');
       setAddressParkingTab('parking');
       setAddressParkingAutoSave(Boolean(act.autoSave || act.type === 'save_parking'));
       setIsAddressAndParkingOpen(true);
+      setIsAiOpen(false);
+      setAiInitialVoiceMode(false);
       return;
     }
 
@@ -3617,8 +3619,23 @@ export default function App() {
                       </div>
                     </div>
                   ) : (
-                    <div className="flex items-center gap-2.5">
-                      <h1 className="text-xl lg:text-2xl font-bold text-[var(--text-main)] tracking-tight">
+                    <div 
+                      className="flex items-center gap-2.5 cursor-pointer select-none group"
+                      onClick={() => {
+                        closeAllEditingModals();
+                        setActiveNavTab('home'); 
+                        setIsToolsOpen(false); 
+                        setIsProfileOpen(false); 
+                        setIsSettingsOpen(false);
+                        setIsAiOpen(false);
+                        setSelectedType(null); 
+                        setSelectedFolderId(null); 
+                        setActiveToolId(null); 
+                        setIsSensitiveUnlocked(false);
+                      }}
+                      title="Torna alla Home"
+                    >
+                      <h1 className="text-xl lg:text-2xl font-bold text-[var(--text-main)] tracking-tight group-hover:text-[var(--accent)] transition-colors">
                         {isAiOpen ? 'Chelona AI' :
                          activeNavTab === 'deadlines' ? 'Scadenze & Promemoria' :
                          isToolsOpen ? 'Strumenti' : 
@@ -3705,6 +3722,7 @@ export default function App() {
                   onClose={() => {
                     setIsProfileOpen(false);
                     setIsSettingsOpen(false);
+                    setActiveNavTab('home');
                   }}
                   username={username}
                   avatar={avatar}
@@ -5810,6 +5828,7 @@ export default function App() {
                     setAiInitialVoiceMode(false);
                     setSelectedType(null); 
                     setIsProfileOpen(false); 
+                    setIsSettingsOpen(false);
                     setIsSensitiveUnlocked(false);
                   } 
                 },
@@ -5817,7 +5836,7 @@ export default function App() {
                   id: 'deadlines', 
                   icon: CalendarClock, 
                   label: 'Scadenze', 
-                  badge: urgentDeadlines.length,
+                  badge: urgentDeadlines.length, 
                   action: () => { 
                     closeAllEditingModals();
                     setActiveNavTab('deadlines'); 
@@ -5826,6 +5845,7 @@ export default function App() {
                     setAiInitialVoiceMode(false);
                     setSelectedType(null); 
                     setIsProfileOpen(false); 
+                    setIsSettingsOpen(false);
                   } 
                 },
                 { 
@@ -5839,6 +5859,7 @@ export default function App() {
                     setAiInitialVoiceMode(false);
                     setIsToolsOpen(false); 
                     setIsProfileOpen(false); 
+                    setIsSettingsOpen(false);
                     setSelectedType(null); 
                   } 
                 },
@@ -5853,6 +5874,7 @@ export default function App() {
                     setIsAiOpen(false);
                     setAiInitialVoiceMode(false);
                     setIsProfileOpen(false); 
+                    setIsSettingsOpen(false);
                     setSelectedType(null); 
                   } 
                 },

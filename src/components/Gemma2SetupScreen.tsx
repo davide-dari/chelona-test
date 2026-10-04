@@ -9,8 +9,6 @@ import {
   gemma2ModelManager, AVAILABLE_MODELS, type ModelInfo, type DownloadProgress, type ModelPreset
 } from '../services/gemma2ModelManager';
 import { ragEngine, indexModulesIntoRAG } from '../services/ragEngine';
-import { promptCache } from '../services/promptCache';
-import { semanticCache } from '../services/semanticCache';
 import type { Module } from '../types';
 
 interface Gemma2SetupScreenProps {
@@ -27,7 +25,6 @@ export const Gemma2SetupScreen: React.FC<Gemma2SetupScreenProps> = ({ onClose, s
   const [isOnWifi, setIsOnWifi] = useState<boolean | null>(null);
   const [batteryLevel, setBatteryLevel] = useState<number>(100);
   const [ragStats, setRagStats] = useState(ragEngine.getStats());
-  const [cacheStats, setCacheStats] = useState(promptCache.getStats());
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [allowCellular, setAllowCellular] = useState(false);
 
@@ -97,18 +94,14 @@ export const Gemma2SetupScreen: React.FC<Gemma2SetupScreenProps> = ({ onClose, s
 
   const handleDeleteModel = useCallback(async () => {
     await gemma2ModelManager.deleteModel();
-    promptCache.invalidate();
     setShowDeleteConfirm(false);
     showToast(`Modello ${activeModel.name} eliminato dal dispositivo`, 'info');
   }, [activeModel.name, showToast]);
 
   const handleClearRAGCache = useCallback(() => {
     ragEngine.clear();
-    promptCache.invalidate();
-    semanticCache.clear();
     setRagStats(ragEngine.getStats());
-    setCacheStats(promptCache.getStats());
-    showToast('Database vettoriale e cache ripuliti', 'info');
+    showToast('Database vettoriale RAG ripulito', 'info');
   }, [showToast]);
 
   const formatSpeed = (bytesPerSec: number): string => {
@@ -158,13 +151,13 @@ export const Gemma2SetupScreen: React.FC<Gemma2SetupScreenProps> = ({ onClose, s
 
       <div className="flex-1 overflow-y-auto px-5 py-5 space-y-4">
 
-        {/* ── BANNER GARANZIA ZERO PERDITA CACHE ── */}
+        {/* ── BANNER GARANZIA ZERO PERDITA DATI ── */}
         <div className="flex items-start gap-3 p-3.5 bg-gradient-to-r from-emerald-500/10 via-teal-500/10 to-indigo-500/10 rounded-2xl border border-emerald-500/20">
           <ShieldCheck className="w-5 h-5 text-emerald-500 shrink-0 mt-0.5" />
           <div className="text-xs">
-            <p className="font-bold text-[var(--text-main)]">Zero Perdita di Dati o Cache</p>
+            <p className="font-bold text-[var(--text-main)]">Zero Perdita di Dati</p>
             <p className="text-[var(--text-muted)] mt-0.5">
-              La <strong>Semantic Cache in RAM</strong>, i <strong>ricordi personali</strong> e il <strong>Database RAG</strong> sono separati dai pesi del modello. Cambiando modello, tutte le risposte memorizzate rimangono intatte al 100%!
+              I <strong>ricordi personali</strong> e il <strong>Database RAG</strong> sono separati dai pesi del modello. Cambiando modello, tutte le informazioni rimangono intatte al 100%!
             </p>
           </div>
         </div>
@@ -470,7 +463,7 @@ export const Gemma2SetupScreen: React.FC<Gemma2SetupScreenProps> = ({ onClose, s
               { label: 'Dimensione su disco', value: activeModel.sizeDisplay },
               { label: 'Velocità di inferenza', value: activeModel.speedRating },
               { label: 'Inferenza hardware', value: 'CPU / NPU nativa Android (ARMv8)' },
-              { label: 'Semantic Cache & RAG', value: 'Condivisi al 100%, zero perdita' },
+              { label: 'Database RAG', value: 'Condiviso al 100%, zero perdita' },
               { label: 'Privacy', value: '100% locale sul dispositivo, zero cloud' },
             ].map(({ label, value }) => (
               <div key={label} className="flex items-center justify-between text-xs">
@@ -481,19 +474,19 @@ export const Gemma2SetupScreen: React.FC<Gemma2SetupScreenProps> = ({ onClose, s
           </div>
         </div>
 
-        {/* RAG & Cache stats */}
+        {/* RAG stats */}
         <div className="bg-[var(--card-bg)] rounded-2xl p-4 border border-[var(--border)] space-y-3">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-black text-[var(--text-main)]">Database Personale (RAG) & Cache</h3>
+            <h3 className="text-sm font-black text-[var(--text-main)]">Database Personale (RAG)</h3>
             <button
               type="button"
               onClick={handleClearRAGCache}
               className="text-xs text-red-500 hover:text-red-400 font-semibold cursor-pointer"
             >
-              Ripulisci cache
+              Ripulisci indice RAG
             </button>
           </div>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 gap-3">
             <div className="text-center p-2 bg-[var(--surface-variant)] rounded-xl">
               <p className="text-base font-black text-[var(--text-main)]">{ragStats.docCount}</p>
               <p className="text-[10px] text-[var(--text-muted)]">Documenti RAG</p>
@@ -501,10 +494,6 @@ export const Gemma2SetupScreen: React.FC<Gemma2SetupScreenProps> = ({ onClose, s
             <div className="text-center p-2 bg-[var(--surface-variant)] rounded-xl">
               <p className="text-base font-black text-[var(--text-main)]">{ragStats.vocabSize}</p>
               <p className="text-[10px] text-[var(--text-muted)]">Vocabolario</p>
-            </div>
-            <div className="text-center p-2 bg-[var(--surface-variant)] rounded-xl">
-              <p className="text-base font-black text-[var(--text-main)]">{cacheStats.size}</p>
-              <p className="text-[10px] text-[var(--text-muted)]">Cache Hit</p>
             </div>
           </div>
         </div>

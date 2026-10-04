@@ -11,7 +11,7 @@ import {
   AiMessage, AiAction, getChatHistory, saveChatHistory, 
   queryChelonaAi
 } from '../services/chelonaEngine';
-import { queryGemma2, preloadEngine, isCacheEnabled, setCacheEnabled } from '../services/gemma2Engine';
+import { queryGemma2, preloadEngine } from '../services/gemma2Engine';
 import {
   prepareNaturalSpeech,
   splitIntoSentences,
@@ -227,23 +227,10 @@ export const ChelonaAiScreen
     }
   };
 
-  // Warm-up e precaricamento background del motore AI per azzerare i tempi della prima risposta senza cache
+  // Warm-up e precaricamento background del motore AI per azzerare i tempi della prima risposta
   useEffect(() => {
     preloadEngine(modules, username);
   }, [modules, username]);
-
-  const [cacheEnabled, setCacheEnabledState] = useState<boolean>(() => isCacheEnabled());
-
-  useEffect(() => {
-    const handleToggle = () => {
-      setCacheEnabledState(isCacheEnabled());
-    };
-    window.addEventListener('chelona_cache_toggle', handleToggle);
-    return () => {
-      window.removeEventListener('chelona_cache_toggle', handleToggle);
-    };
-  }, []);
-
 
   const [inputText, setInputText] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
@@ -925,11 +912,6 @@ export const ChelonaAiScreen
                 <h2 className="text-base lg:text-lg font-black text-[var(--text-main)] tracking-tight">
                   {activeConvId ? conversations.find(c => c.id === activeConvId)?.title || 'Nuova Chat' : 'Nuova Chat'}
                 </h2>
-                {!cacheEnabled && (
-                  <span className="inline-flex items-center gap-1 px-1.5 sm:px-2 py-0.5 rounded-full text-[9px] sm:text-[10px] font-bold bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20 whitespace-nowrap">
-                    Test Velocità Reale (Cache OFF)
-                  </span>
-                )}
               </div>
             </div>
           </div>
@@ -959,26 +941,6 @@ export const ChelonaAiScreen
 
       {/* CHAT MESSAGES BODY */}
       <main className="flex-1 overflow-y-auto px-4 lg:px-8 py-5 space-y-5 max-w-3xl w-full mx-auto custom-scrollbar">
-          {!cacheEnabled && (
-            <div className="mx-auto max-w-md p-2.5 rounded-2xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-between gap-2.5 text-xs text-rose-600 dark:text-rose-400">
-              <div className="flex items-center gap-2">
-                <Zap className="w-4 h-4 shrink-0 text-rose-500" />
-                <span><strong>Cache Semantica Disattivata</strong> • Test velocità reale motore</span>
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  setCacheEnabled(true);
-                  showToast('Cache Semantica AI riattivata', 'success');
-                }}
-                className="px-2 py-1 rounded-lg bg-rose-500/15 hover:bg-rose-500/25 text-rose-600 dark:text-rose-300 font-bold text-[11px] transition-colors shrink-0 active:scale-95 cursor-pointer"
-                title="Riattiva la cache semantica AI"
-              >
-                Riattiva
-              </button>
-            </div>
-          )}
-
           {messages.map((msg) => {
             const isUser = msg.sender === 'user';
             return (
@@ -1002,18 +964,11 @@ export const ChelonaAiScreen
                         : 'bg-[var(--card-bg)] text-[var(--text-main)] border border-[var(--border)] rounded-tl-none shadow-sm'
                     }`}
                   >
-                    {!isUser && msg.isCached && (
-                      <div className="mb-2 inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 shadow-xs">
-                        <Zap className="w-3 h-3 text-amber-500 fill-amber-500" />
-                        <span>Memoria / Cache (0ms)</span>
-                      </div>
-                    )}
-
-                    {!isUser && !msg.isCached && msg.latencyMs !== undefined && (
+                    {!isUser && msg.latencyMs !== undefined && (
                       <div className="mb-2 inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-[var(--surface-variant)] text-[var(--text-muted)] border border-[var(--border)] shadow-xs">
                         <Sparkles className="w-3 h-3 text-emerald-500" />
                         <span>
-                          {!cacheEnabled ? 'Motore Diretto (Cache OFF)' : 'Elaborazione Live'} • {msg.latencyMs}ms
+                          Elaborazione Live • {msg.latencyMs}ms
                         </span>
                       </div>
                     )}
