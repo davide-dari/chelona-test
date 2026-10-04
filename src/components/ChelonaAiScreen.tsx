@@ -964,14 +964,6 @@ export const ChelonaAiScreen
                         : 'bg-[var(--card-bg)] text-[var(--text-main)] border border-[var(--border)] rounded-tl-none shadow-sm'
                     }`}
                   >
-                    {!isUser && msg.latencyMs !== undefined && (
-                      <div className="mb-2 inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-[var(--surface-variant)] text-[var(--text-muted)] border border-[var(--border)] shadow-xs">
-                        <Sparkles className="w-3 h-3 text-emerald-500" />
-                        <span>
-                          Elaborazione Live • {msg.latencyMs}ms
-                        </span>
-                      </div>
-                    )}
 
                     {!msg.text && isProcessing ? (
                       <div className="flex items-center gap-1.5 py-1 text-[var(--text-muted)]">
@@ -1411,36 +1403,52 @@ export const ChelonaAiScreen
                     })()}
 
                     {!isUser && (
-                      <div className="mt-2 pt-1 flex items-center justify-end gap-2 text-[11px] text-[var(--text-muted)]">
+                      <div className="mt-3 pt-2 border-t border-[var(--border)]/60 flex items-center justify-between gap-2 text-xs text-[var(--text-muted)]">
                         <button
+                          type="button"
                           onClick={() => handleSpeak(msg.id, msg.text)}
-                          className="hover:text-amber-500 transition-colors p-1"
-                          title="Ascolta"
+                          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-bold text-xs transition-all cursor-pointer shadow-xs active:scale-95 ${
+                            speakingMessageId === msg.id
+                              ? 'bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30 animate-pulse'
+                              : 'bg-[var(--surface-variant)] hover:bg-amber-500/10 text-[var(--text-main)] hover:text-amber-600 dark:hover:text-amber-400 border border-[var(--border)]'
+                          }`}
+                          title={speakingMessageId === msg.id ? 'Interrompi audio' : 'Ascolta risposta a voce'}
                         >
                           {speakingMessageId === msg.id ? (
-                            <VolumeX className="w-3.5 h-3.5 text-rose-500 animate-pulse" />
+                            <>
+                              <VolumeX className="w-4 h-4 text-rose-500" />
+                              <span>Interrompi</span>
+                            </>
                           ) : (
-                            <Volume2 className="w-3.5 h-3.5" />
+                            <>
+                              <Volume2 className="w-4 h-4 text-amber-500" />
+                              <span>Ascolta</span>
+                            </>
                           )}
                         </button>
-                        <button
-                          onClick={() => handleCopy(msg.id, msg.text)}
-                          className="hover:text-amber-500 transition-colors p-1"
-                          title="Copia"
-                        >
-                          {copiedId === msg.id ? (
-                            <Check className="w-3.5 h-3.5 text-emerald-500" />
-                          ) : (
-                            <Copy className="w-3.5 h-3.5" />
-                          )}
-                        </button>
-                        <button
-                          onClick={() => handleDeleteMessage(msg.id)}
-                          className="hover:text-rose-500 transition-colors p-1"
-                          title="Elimina risposta"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
+
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => handleCopy(msg.id, msg.text)}
+                            className="p-1.5 rounded-lg hover:bg-[var(--surface-variant)] text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors cursor-pointer"
+                            title="Copia risposta"
+                          >
+                            {copiedId === msg.id ? (
+                              <Check className="w-4 h-4 text-emerald-500" />
+                            ) : (
+                              <Copy className="w-4 h-4" />
+                            )}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteMessage(msg.id)}
+                            className="p-1.5 rounded-lg hover:bg-rose-500/10 text-[var(--text-muted)] hover:text-rose-500 transition-colors cursor-pointer"
+                            title="Elimina risposta"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
                       </div>
                     )}
                   </div>

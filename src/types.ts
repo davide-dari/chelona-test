@@ -363,7 +363,23 @@ export interface FurnitureModule extends BaseModule {
   rooms: FurnitureRoom[];
 }
 
-export type SupermarketCategory = 'frutta-verdura' | 'latticini-uova' | 'carne-pesce' | 'pane-pasticceria' | 'dispensa' | 'bevande' | 'pulizia' | 'igiene' | 'altro';
+export type SupermarketCategory = 
+  | 'ortofrutta' 
+  | 'macelleria' 
+  | 'pescheria' 
+  | 'latticini-uova' 
+  | 'panetteria' 
+  | 'dispensa' 
+  | 'colazione-snack' 
+  | 'surgelati' 
+  | 'bevande' 
+  | 'igiene-cura' 
+  | 'frutta-verdura' 
+  | 'carne-pesce' 
+  | 'pane-pasticceria' 
+  | 'pulizia' 
+  | 'igiene' 
+  | 'altro';
 
 export interface SupermarketItem {
   id: string;

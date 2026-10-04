@@ -9,15 +9,22 @@ export interface CatalogProduct {
 }
 
 export const PRODUCT_CATEGORY_LABEL: Record<SupermarketCategory, string> = {
-  'frutta-verdura': 'Frutta & Verdura',
+  'ortofrutta': 'Ortofrutta',
+  'macelleria': 'Macelleria & Salumi',
+  'pescheria': 'Pescheria',
   'latticini-uova': 'Latticini & Uova',
+  'panetteria': 'Panetteria & Pasticceria',
+  'dispensa': 'Dispensa & Secco',
+  'colazione-snack': 'Colazione & Snack',
+  'surgelati': 'Surgelati',
+  'bevande': 'Bevande',
+  'igiene-cura': 'Igiene Casa & Persona',
+  'frutta-verdura': 'Frutta & Verdura',
   'carne-pesce': 'Carne & Pesce',
   'pane-pasticceria': 'Pane & Pasticceria',
-  'dispensa': 'Dispensa',
-  'bevande': 'Bevande',
   'pulizia': 'Pulizia Casa',
   'igiene': 'Igiene Personale',
-  'altro': 'Altro'
+  'altro': 'Altro Reparto'
 };
 
 export const SHOPPING_ICONS: Record<string, string> = {

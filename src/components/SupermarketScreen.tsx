@@ -5,7 +5,7 @@ import {
   ArrowLeft, Plus, Trash2, CheckCircle2,
   Apple, Milk, Drumstick, Croissant, PackageCheck, GlassWater, SprayCan,
   ShowerHead, ShoppingBasket, Share2, Search, AlertTriangle, X, Scale,
-  Store, Info
+  Store, Info, Fish, Snowflake, Coffee, ChevronDown, ChevronUp
 } from 'lucide-react';
 import { generateUUID } from '../utils/uuid';
 import {
@@ -80,28 +80,82 @@ const getDefaultUnit = (name: string, category?: SupermarketCategory, suggestedQ
   return 'g';
 };
 
-const CATEGORY_META: { id: SupermarketCategory; label: string; icon: any; color: string }[] = [
-  { id: 'frutta-verdura', label: 'Frutta & Verdura', icon: Apple, color: 'text-green-500 bg-green-500/10' },
-  { id: 'latticini-uova', label: 'Latticini & Uova', icon: Milk, color: 'text-sky-500 bg-sky-500/10' },
-  { id: 'carne-pesce', label: 'Carne & Pesce', icon: Drumstick, color: 'text-rose-500 bg-rose-500/10' },
-  { id: 'pane-pasticceria', label: 'Pane & Pasticceria', icon: Croissant, color: 'text-amber-500 bg-amber-500/10' },
-  { id: 'dispensa', label: 'Dispensa', icon: PackageCheck, color: 'text-orange-500 bg-orange-500/10' },
-  { id: 'bevande', label: 'Bevande', icon: GlassWater, color: 'text-blue-500 bg-blue-500/10' },
-  { id: 'pulizia', label: 'Pulizia Casa', icon: SprayCan, color: 'text-teal-500 bg-teal-500/10' },
-  { id: 'igiene', label: 'Igiene Personale', icon: ShowerHead, color: 'text-purple-500 bg-purple-500/10' },
-  { id: 'altro', label: 'Altro', icon: ShoppingBasket, color: 'text-slate-500 bg-slate-500/10' }
+export interface SupermarketAisle {
+  id: SupermarketCategory;
+  label: string;
+  emoji: string;
+  icon: any;
+  color: string;
+  badgeColor: string;
+}
+
+export const SUPERMARKET_AISLES: SupermarketAisle[] = [
+  { id: 'ortofrutta', label: 'Ortofrutta', emoji: '🍏', icon: Apple, color: 'text-emerald-500 bg-emerald-500/10', badgeColor: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300' },
+  { id: 'macelleria', label: 'Macelleria & Salumi', emoji: '🥩', icon: Drumstick, color: 'text-rose-500 bg-rose-500/10', badgeColor: 'bg-rose-500/15 text-rose-700 dark:text-rose-300' },
+  { id: 'pescheria', label: 'Pescheria', emoji: '🐟', icon: Fish, color: 'text-cyan-500 bg-cyan-500/10', badgeColor: 'bg-cyan-500/15 text-cyan-700 dark:text-cyan-300' },
+  { id: 'latticini-uova', label: 'Latticini & Uova', emoji: '🧀', icon: Milk, color: 'text-amber-500 bg-amber-500/10', badgeColor: 'bg-amber-500/15 text-amber-700 dark:text-amber-300' },
+  { id: 'panetteria', label: 'Panetteria & Pasticceria', emoji: '🥖', icon: Croissant, color: 'text-orange-500 bg-orange-500/10', badgeColor: 'bg-orange-500/15 text-orange-700 dark:text-orange-400' },
+  { id: 'dispensa', label: 'Dispensa & Secco', emoji: '🍝', icon: PackageCheck, color: 'text-yellow-600 bg-yellow-500/10', badgeColor: 'bg-yellow-500/15 text-yellow-700 dark:text-yellow-300' },
+  { id: 'colazione-snack', label: 'Colazione & Snack', emoji: '☕', icon: Coffee, color: 'text-amber-700 bg-amber-700/10', badgeColor: 'bg-amber-700/15 text-amber-800 dark:text-amber-300' },
+  { id: 'surgelati', label: 'Surgelati', emoji: '❄️', icon: Snowflake, color: 'text-sky-500 bg-sky-500/10', badgeColor: 'bg-sky-500/15 text-sky-700 dark:text-sky-300' },
+  { id: 'bevande', label: 'Bevande', emoji: '🥤', icon: GlassWater, color: 'text-blue-500 bg-blue-500/10', badgeColor: 'bg-blue-500/15 text-blue-700 dark:text-blue-300' },
+  { id: 'igiene-cura', label: 'Igiene Casa & Persona', emoji: '🧼', icon: SprayCan, color: 'text-teal-500 bg-teal-500/10', badgeColor: 'bg-teal-500/15 text-teal-700 dark:text-teal-300' },
+  { id: 'altro', label: 'Altro Reparto', emoji: '🛒', icon: ShoppingBasket, color: 'text-slate-500 bg-slate-500/10', badgeColor: 'bg-slate-500/15 text-slate-700 dark:text-slate-300' }
 ];
 
-const fallbackClassify = (name: string): SupermarketCategory => {
-  const t = name.toLowerCase();
-  if (/(mela|banana|arancia|limone|pomodoro|insalata|patat|cipoll|aglio|carot|zucchin|peperon|melanzan|broccol|spinaci|fung|fragol|uva|pera|pesca|albicocc|cilieg|anguria|melone|kiwi|ananas|mango|avocado|asparag|porro|sedano|finocchi|rucola|lattuga|radicchio|minestrone|verdur|frutt|basilic|prezzemol|rosmarin|timo|salvia|menta|origano|alloro)/i.test(t)) return 'frutta-verdura';
-  if (/(latte|formaggi|mozzarell|parmigian|grana|pecorin|ricott|burro|yogurt|panna|stracchin|gorgonzol|taleggio|provolon|scamorz|uova|uovo|fontina|emmental|brie|feta|mascarpone|sottilette)/i.test(t)) return 'latticini-uova';
-  if (/(pollo|manzo|maiale|tacchin|vitello|agnello|salsiccia|salame|prosciutt|pancetta|bacon|wurstel|bistecca|carne|salmone|tonno|merluzz|orata|branzin|sogliola|gamber|calamar|polpo|mussol|vongol|cozze|pesce|mortadell|speck|hamburger|stinco|coscia|fesa|arrosto|spezzatino)/i.test(t)) return 'carne-pesce';
-  if (/(pane|panino|focaccia|grissin|biscott|crackers|croissant|brioche|merendin|torta|dolc|pandoro|panettone|piadina|pizza)/i.test(t)) return 'pane-pasticceria';
-  if (/(pasta|riso|farina|zucchero|sale|olio|aceto|legum|lenticchi|ceci|fagioli|scatolam|pelati|sugo|passata|caff|te|the|tisana|cioccolato|miele|marmellat|nutella|sottolio|sottaceti|maionese|senape|ketchup|brodo|semi|mandorle|noci|pistacchi|avena|muesli|polenta|gnocchi|dadi|surgelat|gelato|amido|lievito|bicarbonato|vanillina|cacao)/i.test(t)) return 'dispensa';
-  if (/(acqua|vino|birra|succo|aranciate|cola|coca|spumante|prosecco|champagne|aperitiv|amaro|whisky|grappa|frizzante|redbull|smoothie)/i.test(t)) return 'bevande';
-  if (/(detersivo|candeggina|sapone|spugna|carta igienica|scottex|rotoloni|ammorbidente|vetri|lavastovigli|multiuso|panni|sacchetto|sturalavandino|igienizzante|ammoniaca|paglietta|guanti)/i.test(t)) return 'pulizia';
-  if (/(shampoo|balsamo|dentifricio|spazzolino|deodorante|doccia|crema|fazzoletti|pannolini|assorbenti|rasoio|cotone|salviett|collutorio|bagnoschiuma|cerotti|gel)/i.test(t)) return 'igiene';
+export const mapToAisle = (category?: string, name?: string): SupermarketCategory => {
+  const n = (name || '').toLowerCase();
+  
+  // 1. Surgelati (verificati per primi per intercettare gelati e surgelati)
+  if (/\b(?:surgelat[oi]|gelat[oi]|ghiacciol[oi]|bastoncini\s+di\s+pesce|pizza\s+surgelat[ae]|sofficini|fagiolini\s+surgelati|piselli\s+surgelati|spinaci\s+surgelati|verdure\s+surgelate)\b/i.test(n)) {
+    return 'surgelati';
+  }
+
+  // 2. Pescheria
+  if (category === 'pescheria' || /\b(?:pesc[ei]|tonno\s+fresco|salmon[ei]|merluzzo?|orata|spigola|gamber[oi]|calamar[oi]|seppi[ae]|polpo?|cozz[ae]|vongol[ae]|acciugh?e?|alici?|trot[ae]|branzino?|sogliol[ae]|pesce\s+spada|platessa)\b/i.test(n)) {
+    return 'pescheria';
+  }
+
+  // 3. Macelleria & Salumi
+  if (category === 'macelleria' || (category === 'carne-pesce' && !/\b(?:pesc|tonno|salmone|merluzzo|orata|spigola|gamber|calamar|seppi|polpo|cozze|vongol)/i.test(n)) || /\b(?:carn[ei]|poll[oi]|manzo?|maial[ei]|vitello?|agnello?|tacchino?|salsicci[ae]|wurstel|prosciutt[oi]|salame?|affettat[oi]|bresaol[ae]|pancetta|guanciale|mortadella|speck|bistecc[ae]|filett[oi]|macinato|hamburger|fesa|lonza|arista|costine)\b/i.test(n)) {
+    return 'macelleria';
+  }
+
+  // 4. Latticini & Uova
+  if (category === 'latticini-uova' || /\b(?:latt[ei]|formagg[oi]|yogurt|burro?|mozzarell[ae]|parmigiano?|grana|uov[ao]|ricott[ae]|panna|stracchino?|gorgonzola|mascarpone?|pecorino?|provol[ae]|scamorz[ae]|fontina|caciocavallo|crescenza|brie|feta|mascarpone|sottilette)\b/i.test(n)) {
+    return 'latticini-uova';
+  }
+
+  // 5. Ortofrutta
+  if (category === 'ortofrutta' || category === 'frutta-verdura' || /\b(?:mela|mele|banana|banane|arancia|arance|limon[ei]|frutt[ae]|verdur[ae]|pomodor[oi]|pomodorin[oi]|insalat[ae]|carot[ae]|zocchin[ae]|zucchine?|cipoll[ae]|patat[ae]|aglio|basilico|spinac[ie]|pesc[ae]|fragol[ae]|melanzan[ae]|peperon[ei]|fungh?i?|broccol[oi]|cavol[oi]|zucc[ahie]|asparag[oi]|carciof[oi]|sedano?|porr[oi]|finocchi?o?|cetriol[oi]|rucola|radicchio|pisell[oi]|fagiolin[oi]|albicocc[ae]|cilieg[ie]|kiwi|ananas|uva|mirtill[oi]|lampon[ei]|more|avocado)\b/i.test(n)) {
+    return 'ortofrutta';
+  }
+
+  // 6. Panetteria & Pasticceria
+  if (category === 'panetteria' || (category === 'pane-pasticceria' && !/\b(?:biscott|merendin|fette\s+biscottate)/i.test(n)) || /\b(?:pan[ei]|focacci[ae]|cornett[oi]|croissant|brioche|tort[ae]|crostat[ae]|ciambell[ae]|lievito?|pangrattato|crostin[oi]|piadin[ae]|pagnott[ae]|panin[oi])\b/i.test(n)) {
+    return 'panetteria';
+  }
+
+  // 7. Colazione & Snack
+  if (category === 'colazione-snack' || /\b(?:caff[eè]?|espress[oi]|ciald[ae]|capsul[ae]|tè|the|tisan[ae]|orz[oi]|biscott[oi]|cereali|corn\s*flakes|muesli|fett[ae]\s+biscottat[ae]|marmellat[ae]|confettur[ae]|nutella|miele|cioccolat[oi]|cacao|merendin[ae]|snack|patatin[ae]|barrett[ae])\b/i.test(n)) {
+    return 'colazione-snack';
+  }
+
+  // 8. Dispensa & Secco
+  if (category === 'dispensa' || /\b(?:past[aeo]?|spaghett[ie]|penn[ei]|fusill[ie]|ris[oi]|risott[oi]|farin[ae]|oli[oi]|aceto|sal[ei]|zuccher[oi]|pepe|passat[ae]|pelat[ie]|sug[oi]|legum[ie]|ceci|fagiol[ie]|lenticchi[ae]|tonno\s+in\s+scatola|spezie|origano|rosmarino|timo|noc[ie]|mandorl[ae]|nocciol[ae]|pinol[ie]|pistacch[ie]|arachid[ie]|gnocch[ie]|mais|avena|couscous|dado|brodo)\b/i.test(n)) {
+    return 'dispensa';
+  }
+
+  // 9. Bevande
+  if (category === 'bevande' || /\b(?:acqu[ae]|vin[oi]|birr[ae]|succ[ohi]|coc[ae]|col[ae]|aranciat[ae]|bibit[ae]|fanta|sprite|bevand[ae]|spumant[ei]|prosecco|champagne|aperitiv[oi]|amaro|liquor[ei]|spremut[ae])\b/i.test(n)) {
+    return 'bevande';
+  }
+
+  // 10. Igiene Casa & Persona
+  if (category === 'igiene-cura' || category === 'pulizia' || category === 'igiene' || /\b(?:detersiv[oi]|sgrassator[ei]|candeggin[ae]|ammorbident[ei]|piatti|lavatric[ei]|lavastovigli[ae]|spugn[ae]|scottex|carta\s+igienic[ae]|sacchett[oi]|panni|shampoo|bagnoschiuma|doccia|sapon[ei]|dentifrici[oi]|spazzolin[oi]|deodorant[ei]|balsamo|crema|rasoi|assorbent[ei]|fazzolett[oi])\b/i.test(n)) {
+    return 'igiene-cura';
+  }
+
   return 'altro';
 };
 
@@ -129,6 +183,7 @@ export const SupermarketScreen = ({ module, onSave, onClose, onShare }: Supermar
   const [selectedSuggestion, setSelectedSuggestion] = useState<CatalogProduct | null>(null);
   const [dupeMsg, setDupeMsg] = useState<string | null>(null);
   const [catFilter, setCatFilter] = useState<SupermarketCategory | null>(null);
+  const [collapsedAisles, setCollapsedAisles] = useState<Set<string>>(new Set());
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [previewIngredient, setPreviewIngredient] = useState<{ name: string; amount?: number; unit?: string } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -190,8 +245,8 @@ export const SupermarketScreen = ({ module, onSave, onClose, onShare }: Supermar
     }
 
     const cat: SupermarketCategory = selectedSuggestion
-      ? selectedSuggestion.c
-      : fallbackClassify(name);
+      ? mapToAisle(selectedSuggestion.c, name)
+      : mapToAisle(undefined, name);
 
     const quantity = itemQty.trim() ? formatQuantity(itemQty, itemUnit) : selectedSuggestion?.q || undefined;
 
@@ -210,6 +265,15 @@ export const SupermarketScreen = ({ module, onSave, onClose, onShare }: Supermar
     setSelectedSuggestion(null);
     setSuggestions([]);
     inputRef.current?.focus();
+  };
+
+  const toggleCollapseAisle = (aisleId: string) => {
+    setCollapsedAisles(prev => {
+      const next = new Set(prev);
+      if (next.has(aisleId)) next.delete(aisleId);
+      else next.add(aisleId);
+      return next;
+    });
   };
 
   const toggleChecked = (id: string) => {
@@ -232,15 +296,16 @@ export const SupermarketScreen = ({ module, onSave, onClose, onShare }: Supermar
 
   const grouped = useMemo(() => {
     const map = new Map<SupermarketCategory, SupermarketItem[]>();
-    for (const cat of CATEGORY_META) map.set(cat.id, []);
+    for (const aisle of SUPERMARKET_AISLES) map.set(aisle.id, []);
     for (const item of data.items) {
-      if (catFilter && item.category !== catFilter) continue;
-      (map.get(item.category) || map.get('altro')!).push(item);
+      const aisleId = mapToAisle(item.category, item.name);
+      if (catFilter && aisleId !== catFilter) continue;
+      (map.get(aisleId) || map.get('altro')!).push(item);
     }
-    return CATEGORY_META.map(c => ({
-      ...c,
-      items: (map.get(c.id) || []).sort((a, b) => Number(a.checked) - Number(b.checked))
-    })).filter(c => c.items.length > 0);
+    return SUPERMARKET_AISLES.map(aisle => ({
+      ...aisle,
+      items: (map.get(aisle.id) || []).sort((a, b) => Number(a.checked) - Number(b.checked))
+    })).filter(aisle => aisle.items.length > 0);
   }, [data.items, catFilter]);
 
   /* Miglior prezzo per ogni articolo della lista, dalle offerte dei volantini */
@@ -267,7 +332,8 @@ export const SupermarketScreen = ({ module, onSave, onClose, onShare }: Supermar
   const catCounts = useMemo(() => {
     const map = new Map<SupermarketCategory, number>();
     for (const item of data.items) {
-      map.set(item.category, (map.get(item.category) || 0) + 1);
+      const aisleId = mapToAisle(item.category, item.name);
+      map.set(aisleId, (map.get(aisleId) || 0) + 1);
     }
     return map;
   }, [data.items]);
@@ -551,36 +617,36 @@ export const SupermarketScreen = ({ module, onSave, onClose, onShare }: Supermar
           </div>
         )}
 
-        {/* CATEGORY FILTER */}
+        {/* CATEGORY / AISLE FILTER */}
         {total > 0 && (
           <div className="shrink-0 px-4 pt-2 pb-1">
             <div className="max-w-lg mx-auto flex items-center gap-1.5 overflow-x-auto custom-scrollbar pb-1">
               <button
                 onClick={() => setCatFilter(null)}
-                className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-bold border transition-colors ${
+                className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-bold border transition-colors cursor-pointer ${
                   !catFilter
-                    ? 'bg-emerald-500 text-white border-emerald-500'
+                    ? 'bg-emerald-500 text-white border-emerald-500 shadow-xs'
                     : 'bg-[var(--card-bg)] text-[var(--text-muted)] border-[var(--border)] hover:text-[var(--text-main)]'
                 }`}
               >
-                Tutti
+                Tutti i Reparti
               </button>
-              {CATEGORY_META.filter(c => catCounts.get(c.id)).map(c => {
+              {SUPERMARKET_AISLES.filter(c => catCounts.get(c.id)).map(c => {
                 const count = catCounts.get(c.id) || 0;
                 const active = catFilter === c.id;
                 return (
                   <button
                     key={c.id}
                     onClick={() => setCatFilter(active ? null : c.id)}
-                    className={`shrink-0 flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[11px] font-bold border transition-colors ${
+                    className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-bold border transition-colors cursor-pointer ${
                       active
-                        ? 'bg-emerald-500 text-white border-emerald-500'
+                        ? 'bg-emerald-500 text-white border-emerald-500 shadow-xs'
                         : 'bg-[var(--card-bg)] text-[var(--text-muted)] border-[var(--border)] hover:text-[var(--text-main)]'
                     }`}
                   >
-                    <span className={active ? '' : c.color.split(' ')[0]}><c.icon className="w-3.5 h-3.5" /></span>
+                    <span>{c.emoji}</span>
                     <span className="hidden sm:inline">{c.label}</span>
-                    <span className={`${active ? 'text-white/80' : 'text-[var(--text-muted)]/70'}`}>{count}</span>
+                    <span className={`${active ? 'text-white/90' : 'text-[var(--text-muted)]/70'}`}>{count}</span>
                   </button>
                 );
               })}
@@ -588,25 +654,54 @@ export const SupermarketScreen = ({ module, onSave, onClose, onShare }: Supermar
           </div>
         )}
 
-        {/* ═══════ MAIN LIST ═══════ */}
+        {/* ═══════ MAIN LIST BY SUPERMARKET AISLE ═══════ */}
         <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain custom-scrollbar scroll-smooth pb-[max(env(safe-area-inset-bottom),8px)]">
           <div className="px-4 pt-3 pb-6 max-w-lg mx-auto w-full">
             {total > 0 ? (
               <div className="space-y-3">
-                {grouped.map(cat => (
-                  <div key={cat.id} className="bg-[var(--card-bg)] rounded-2xl border border-[var(--border)] overflow-hidden shadow-sm">
-                    {/* Category header */}
-                    <div className="flex items-center gap-2.5 px-4 py-2.5 border-b border-[var(--border)]">
-                      <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${cat.color}`}>
-                        <cat.icon className="w-4 h-4" />
-                      </div>
-                      <h4 className="font-black text-xs uppercase tracking-wider text-[var(--text-main)] flex-1">{cat.label}</h4>
-                      <span className="text-[10px] font-bold text-[var(--text-muted)]">
-                        {cat.items.filter(i => i.checked).length}/{cat.items.length}
-                      </span>
-                    </div>
-                    {/* Items */}
-                    <ul className="divide-y divide-[var(--border)]">
+                {grouped.map(cat => {
+                  const isCollapsed = collapsedAisles.has(cat.id);
+                  const doneInAisle = cat.items.filter(i => i.checked).length;
+                  const totalInAisle = cat.items.length;
+                  const isAisleComplete = doneInAisle === totalInAisle;
+
+                  return (
+                    <div key={cat.id} className="bg-[var(--card-bg)] rounded-2xl border border-[var(--border)] overflow-hidden shadow-sm transition-all">
+                      {/* Reparto Supermercato Header (Collapsible) */}
+                      <button
+                        type="button"
+                        onClick={() => toggleCollapseAisle(cat.id)}
+                        className="w-full flex items-center justify-between gap-2.5 px-4 py-3 border-b border-[var(--border)] bg-[var(--surface-variant)]/20 hover:bg-[var(--surface-variant)]/50 transition-colors text-left cursor-pointer"
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <span className="text-xl shrink-0">{cat.emoji}</span>
+                          <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${cat.color}`}>
+                            <cat.icon className="w-4 h-4" />
+                          </div>
+                          <h4 className="font-black text-xs uppercase tracking-wider text-[var(--text-main)] truncate">
+                            {cat.label}
+                          </h4>
+                        </div>
+                        
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
+                            isAisleComplete
+                              ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400'
+                              : cat.badgeColor
+                          }`}>
+                            {doneInAisle}/{totalInAisle} {isAisleComplete ? '✓' : ''}
+                          </span>
+                          {isCollapsed ? (
+                            <ChevronDown className="w-4 h-4 text-[var(--text-muted)]" />
+                          ) : (
+                            <ChevronUp className="w-4 h-4 text-[var(--text-muted)]" />
+                          )}
+                        </div>
+                      </button>
+
+                      {/* Items */}
+                      {!isCollapsed && (
+                        <ul className="divide-y divide-[var(--border)]">
                       <AnimatePresence initial={false}>
                         {cat.items.map(item => {
                           return (
@@ -682,8 +777,10 @@ export const SupermarketScreen = ({ module, onSave, onClose, onShare }: Supermar
                         })}
                       </AnimatePresence>
                     </ul>
-                  </div>
-                ))}
+                  )}
+                </div>
+              );
+            })}
               </div>
             ) : (
               <motion.div
