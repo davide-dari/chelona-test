@@ -811,8 +811,8 @@ export default function App() {
         return;
       }
       if (showGemma2Setup) { setShowGemma2Setup(false); return; }
-      if (isProfileOpen) { setIsProfileOpen(false); return; }
-      if (isSettingsOpen) { setIsSettingsOpen(false); return; }
+      if (isProfileOpen) { setIsProfileOpen(false); setActiveNavTab('home'); return; }
+      if (isSettingsOpen) { setIsSettingsOpen(false); setActiveNavTab('home'); return; }
       if (isAiOpen) { setIsAiOpen(false); if (activeNavTab === 'ai') setActiveNavTab('home'); return; }
 
       if (activeToolId) { setActiveToolId(null); return; }
@@ -2229,6 +2229,8 @@ export default function App() {
         setAddressParkingTab('parking');
         setAddressParkingAutoSave(Boolean(act.autoSave));
         setIsAddressAndParkingOpen(true);
+        setIsAiOpen(false);
+        setAiInitialVoiceMode(false);
         return;
       }
 
@@ -3620,7 +3622,7 @@ export default function App() {
                     </div>
                   ) : (
                     <div 
-                      className="flex items-center gap-2.5 cursor-pointer select-none group"
+                      className="flex items-center gap-2 sm:gap-2.5 cursor-pointer select-none group"
                       onClick={() => {
                         closeAllEditingModals();
                         setActiveNavTab('home'); 
@@ -3635,6 +3637,9 @@ export default function App() {
                       }}
                       title="Torna alla Home"
                     >
+                      <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-2xl bg-gradient-to-tr from-amber-500/20 via-rose-500/15 to-indigo-500/20 p-1 flex items-center justify-center border border-amber-500/30 shadow-sm shrink-0 group-hover:scale-105 transition-transform">
+                        <img src="/chelona_logo.png" alt="Chelona Logo" className="w-full h-full object-contain filter drop-shadow-sm" />
+                      </div>
                       <h1 className="text-xl lg:text-2xl font-bold text-[var(--text-main)] tracking-tight group-hover:text-[var(--accent)] transition-colors">
                         {isAiOpen ? 'Chelona AI' :
                          activeNavTab === 'deadlines' ? 'Scadenze & Promemoria' :
@@ -3674,6 +3679,7 @@ export default function App() {
                     onClick={() => {
                       if (isSettingsOpen) {
                         setIsSettingsOpen(false);
+                        setActiveNavTab('home');
                       } else {
                         setIsSettingsOpen(true);
                         setIsProfileOpen(false);
@@ -3694,6 +3700,7 @@ export default function App() {
                     onClick={() => {
                       if (isProfileOpen) {
                         setIsProfileOpen(false);
+                        setActiveNavTab('home');
                       } else {
                         setIsProfileOpen(true);
                         setIsSettingsOpen(false);
@@ -3809,70 +3816,6 @@ export default function App() {
                   }}
                 />
               </React.Suspense>
-            ) : isSettingsOpen ? (
-              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="max-w-2xl">
-                <div className="flex items-center gap-4 mb-8">
-                  <button onClick={() => setIsSettingsOpen(false)} className="p-2 hover:bg-[var(--bg)] rounded-xl text-[var(--text-muted)] transition-colors">
-                    <X className="w-6 h-6" />
-                  </button>
-                  <h2 className="text-2xl lg:text-3xl font-bold text-[var(--text-main)]">Impostazioni Sicurezza</h2>
-                </div>
-                <div className="space-y-6">
-                  <div className="bg-[var(--card-bg)] rounded-3xl p-6 border border-[var(--border)] shadow-sm">
-                    <div className="flex items-center justify-between gap-4">
-                      <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 bg-[var(--accent-bg)] rounded-2xl flex items-center justify-center text-[var(--accent)]">
-                          <Fingerprint className="w-6 h-6" />
-                        </div>
-                        <div>
-                          <h3 className="font-bold text-[var(--text-main)]">Accesso Biometrico</h3>
-                          <p className="text-sm text-[var(--text-muted)]">Usa l'impronta digitale per sbloccare la dashboard.</p>
-                        </div>
-                      </div>
-                      {isBioSupported ? (
-                        <button
-                          onClick={isBioEnabled ? undefined : handleEnableBiometrics}
-                          disabled={isBioEnabled}
-                          className={`px-6 py-2.5 rounded-xl font-bold transition-all ${isBioEnabled ? 'bg-[var(--accent-bg)] text-[var(--accent)] cursor-default' : 'bg-[var(--accent)] text-white hover:bg-[var(--accent)]/90 shadow-lg shadow-[var(--accent)]/20'}`}
-                        >
-                          {isBioEnabled ? 'Abilitato' : 'Abilita'}
-                        </button>
-                      ) : (
-                        <span className="text-xs text-[var(--text-muted)] font-medium italic">Non supportato</span>
-                      )}
-                    </div>
-                    {bioError && (
-                      <div className="mt-4 p-4 bg-red-50 text-red-600 text-sm rounded-xl border border-red-100">
-                        {bioError}
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="bg-[var(--card-bg)] rounded-3xl p-6 border border-[var(--border)] shadow-sm">
-                    <div className="flex items-center justify-between gap-4">
-                      <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 bg-amber-500/10 rounded-2xl flex items-center justify-center text-amber-500">
-                          <Mic className="w-6 h-6" />
-                        </div>
-                        <div>
-                          <h3 className="font-bold text-[var(--text-main)]">Comando Vocale "Ciao Chelona!"</h3>
-                          <p className="text-sm text-[var(--text-muted)]">Attiva il dialogo pronunciando "Ciao Chelona!" o "Ehi Chelona". 100% on-device.</p>
-                        </div>
-                      </div>
-                      <button
-                        onClick={handleToggleWakeWord}
-                        className={`px-6 py-2.5 rounded-xl font-bold transition-all shrink-0 ${
-                          isWakeWordEnabled
-                            ? 'bg-amber-500 text-white shadow-lg shadow-amber-500/20'
-                            : 'bg-[var(--surface-variant)] text-[var(--text-muted)] hover:text-[var(--text-main)] border border-[var(--border)]'
-                        }`}
-                      >
-                        {isWakeWordEnabled ? 'Abilitato' : 'Abilita'}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </motion.div>
             ) : editingTravelModule ? (
               <TravelScreen
                 module={editingTravelModule}

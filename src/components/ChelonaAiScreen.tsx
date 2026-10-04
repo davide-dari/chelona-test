@@ -1008,9 +1008,16 @@ export const ChelonaAiScreen
                       );
 
                       const handleActionClick = (act: AiAction) => {
-                        if (act.type === 'save_parking') {
-                          handleSend('Salva il parcheggio qui');
-                          return;
+                        if (act.type === 'save_parking' || act.type === 'parking' || act.category === 'mobility' || act.category === 'parking') {
+                          if (onNavigate) {
+                            onNavigate(act);
+                            return;
+                          }
+                          if (onOpenParking) {
+                            onOpenParking();
+                            if (!isEmbedded) onClose();
+                            return;
+                          }
                         }
                         if (act.type === 'navigate_parking') {
                           if (act.url) {

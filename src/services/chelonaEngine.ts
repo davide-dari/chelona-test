@@ -1297,7 +1297,8 @@ export async function queryChelonaAi(
     result.autoAction?.type === 'parking' ||
     result.autoAction?.type === 'save_parking' ||
     result.autoAction?.type === 'navigate_parking' ||
-    result.autoAction?.category === 'mobility';
+    result.autoAction?.category === 'mobility' ||
+    result.autoAction?.category === 'parking';
 
   const isExplicitNavigation = 
     isVolantiniNavigation ||
@@ -1663,10 +1664,103 @@ async function _queryChelonaAiInner(
   const customMemories = getLearnedMemories();
 
   // =========================================================================
+  // 2a. PARCHEGGIO, RADAR GPS & MOBILITÀ (PRIORITÀ ASSOLUTA OPERATIVA)
+  // =========================================================================
+  const isParkingIntent = (
+    lower.includes('parchegg') ||
+    lower.includes('postegg') ||
+    lower.includes('parchimetro') ||
+    lower.includes('sosta') ||
+    lower.includes('radar auto') ||
+    lower.includes('radar parcheggio') ||
+    lower.includes('radar') ||
+    // "dov'è / dov'e / dove / trova / ritrova" + auto / macchina / veicolo / parcheggio / posteggio / lasciat / mess
+    (
+      (lower.includes('dov') || lower.includes('dove') || lower.includes('trova') || lower.includes('ritrova')) &&
+      (lower.includes('auto') || lower.includes('macchina') || lower.includes('veicol') || lower.includes('parchegg') || lower.includes('postegg') || lower.includes('lasciat') || lower.includes('mess'))
+    ) ||
+    // "ho parcheggiato", "ho posteggiato", "ho lasciato / ho messo"
+    lower.includes('ho parcheggiato') ||
+    lower.includes('ho posteggiato') ||
+    (lower.includes('ho lasciato') && (lower.includes('auto') || lower.includes('macchina') || lower.includes('veicol') || lower.includes('qui') || lower.includes('qua'))) ||
+    (lower.includes('ho messo') && (lower.includes('auto') || lower.includes('macchina') || lower.includes('veicol') || lower.includes('qui') || lower.includes('qua'))) ||
+    // "salva / segna / memorizza / ricorda / registra" + parcheggio / posizione / auto / macchina / gps / coordinate / sosta
+    (
+      (lower.includes('salva') || lower.includes('segna') || lower.includes('memorizza') || lower.includes('ricorda') || lower.includes('registra')) &&
+      (lower.includes('parchegg') || lower.includes('postegg') || lower.includes('posizione') || lower.includes('auto') || lower.includes('macchina') || lower.includes('veicol') || lower.includes('gps') || lower.includes('coordinate') || lower.includes('sosta'))
+    ) ||
+    // "posizione" + "auto / macchina / veicolo / attuale / gps / mia"
+    (
+      lower.includes('posizione') &&
+      (lower.includes('auto') || lower.includes('macchina') || lower.includes('veicol') || lower.includes('gps') || lower.includes('mia') || lower.includes('attuale') || lower.includes('salva') || lower.includes('segna'))
+    ) ||
+    lower.trim() === 'parcheggio' ||
+    lower.trim() === 'posteggio' ||
+    lower.trim() === 'trova auto' ||
+    lower.trim() === 'trova macchina'
+  );
+
+  if (isParkingIntent) {
+    if (lower.includes('segna') || lower.includes('salva') || lower.includes('memorizza') || lower.includes('qui') || lower.includes('qua') || lower.includes('ricorda') || lower.includes('registra')) {
+      return {
+        text: `Ti porto subito alla sezione Parcheggio per salvare la tua posizione GPS attuale! 🚗📍`,
+        autoAction: { label: 'Apri Parcheggio', type: 'parking', autoSave: true, category: 'mobility' },
+        actions: [
+          { label: 'Salva Posizione Ora', type: 'save_parking', autoSave: true },
+          { label: 'Apri Parcheggio', type: 'parking' },
+        ],
+        engineUsed: 'chelona-engine',
+      };
+    }
+
+    if (lower.includes('apri') || lower.includes('vai') || lower.includes('mappa') || lower.trim() === 'parcheggio' || lower.trim() === 'posteggio') {
+      return {
+        text: `Ti porto subito alla schermata del Parcheggio e Radar GPS! 🚗`,
+        autoAction: { label: 'Apri Parcheggio', type: 'parking', category: 'mobility' },
+        actions: [
+          { label: 'Apri Parcheggio', type: 'parking' }
+        ],
+        engineUsed: 'chelona-engine',
+      };
+    }
+
+    if (k.parking.hasParking) {
+      let text = `La tua auto è parcheggiata in **${k.parking.address}** (${k.parking.elapsedTime}).\n`;
+      if (k.parking.notes) text += `Note: *"${k.parking.notes}"*\n`;
+      if (k.parking.meterRemainingMinutes !== undefined) {
+        text += k.parking.meterRemainingMinutes > 0
+          ? `⏱️ Parchimetro attivo: restano **${k.parking.meterRemainingMinutes} minuti**!\n`
+          : `⚠️ **Parchimetro scaduto da ${Math.abs(k.parking.meterRemainingMinutes)} minuti!**\n`;
+      }
+      text += `\nTi porto alla mappa radar per ritrovarla! 🚗`;
+
+      return {
+        text,
+        autoAction: { label: 'Apri Parcheggio', type: 'parking', category: 'mobility' },
+        actions: [
+          { label: 'Naviga all\'Auto (Maps)', type: 'navigate_parking' },
+          { label: 'Apri Radar Parcheggio', type: 'parking' },
+        ],
+        engineUsed: 'chelona-engine',
+      };
+    } else {
+      return {
+        text: `Non hai ancora registrato nessun parcheggio attivo. Ti porto subito alla sezione Parcheggio per memorizzare la posizione GPS! 📍🚗`,
+        autoAction: { label: 'Apri Parcheggio', type: 'parking', autoSave: true, category: 'mobility' },
+        actions: [
+          { label: 'Salva Posizione Ora', type: 'save_parking', autoSave: true },
+          { label: 'Apri Parcheggio', type: 'parking' },
+        ],
+        engineUsed: 'chelona-engine',
+      };
+    }
+  }
+
+  // =========================================================================
   // 2b. MOTORE MATEMATICO GASTRONOMICO (Ingredienti, Ricette, Fuzzy Matching)
   // =========================================================================
   const foodEntities = extractFoodEntities(query);
-  const isNotShoppingQuery = !lower.includes('compra') && !lower.includes('lista della spesa');
+  const isNotShoppingQuery = !lower.includes('compra') && !lower.includes('lista della spesa') && !lower.includes('offert') && !lower.includes('volantin') && !isParkingIntent;
 
   if (isNotShoppingQuery) {
     const catalog = await getOrLoadAllRecipes();
@@ -1702,7 +1796,7 @@ async function _queryChelonaAiInner(
       lower.includes('chiedo')
     ) && !lower.includes('cosa cucino');
 
-    if (specificDish && (isDishSearchCandidate || query.trim().split(/\s+/).length <= 4) && !lower.includes('cosa cucino per il')) {
+    if (specificDish && !isParkingIntent && (isDishSearchCandidate || (foodEntities.length > 0 && query.trim().split(/\s+/).length <= 4)) && !lower.includes('cosa cucino per il')) {
       const formatted = formatSingleRecipeResponse(specificDish);
       return {
         ...formatted,
@@ -1963,30 +2057,6 @@ async function _queryChelonaAiInner(
   }
 
   // --- SEZIONE 1: VEICOLI & AUTO ---
-  const isParkingIntent = (
-    lower.includes('parchegg') ||
-    lower.includes('dove ho parcheggiato') ||
-    lower.includes('ricorda dove ho parcheggiato') ||
-    lower.includes('dov\'è la macchina') ||
-    lower.includes('dov\'e la macchina') ||
-    lower.includes('dov\'è l\'auto') ||
-    lower.includes('dov\'e l\'auto') ||
-    lower.includes('dov\'è la') ||
-    lower.includes('dov\'e la') ||
-    lower.includes('trova auto') ||
-    lower.includes('ritrova auto') ||
-    lower.includes('trova macchina') ||
-    lower.includes('ritrova macchina') ||
-    lower.includes('parchimetro') ||
-    lower.includes('sosta') ||
-    lower.includes('radar') ||
-    lower.includes('ho parcheggiato') ||
-    (lower.includes('posizione') && (lower.includes('auto') || lower.includes('macchina') || lower.includes('veicol'))) ||
-    (lower.includes('salva') && (lower.includes('auto') || lower.includes('macchina') || lower.includes('veicol') || lower.includes('parchegg'))) ||
-    (lower.includes('segna') && (lower.includes('auto') || lower.includes('macchina') || lower.includes('veicol') || lower.includes('parchegg'))) ||
-    (lower.includes('ricorda') && (lower.includes('auto') || lower.includes('macchina') || lower.includes('veicol') || lower.includes('parchegg')))
-  );
-
   if (
     !isParkingIntent &&
     (

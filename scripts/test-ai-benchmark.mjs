@@ -22,6 +22,19 @@ globalThis.localStorage = {
   clear() { this._data = {}; }
 };
 
+import fs from 'node:fs';
+import path from 'node:path';
+const recipesData = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'public', 'ricette_mondo.json'), 'utf-8'));
+globalThis.fetch = async (url) => {
+  if (String(url).includes('ricette_mondo.json')) {
+    return {
+      ok: true,
+      json: async () => recipesData,
+    };
+  }
+  return { ok: false };
+};
+
 console.log('🧪 Starting AI Latency, Cache & Response Time Verification Tests...');
 
 import { queryGemma2, checkNativeLlmAvailability, isCacheEnabled, setCacheEnabled, semanticCache, promptCache } from '../src/services/gemma2Engine.ts';
@@ -123,7 +136,27 @@ const parkingQueries = [
   'salva la posizione dell\'auto',
   'ho parcheggiato qui',
   'dov\'è la macchina',
-  'ricorda dove ho parcheggiato'
+  'ricorda dove ho parcheggiato',
+  'salva la posizione',
+  'salva la mia posizione',
+  'segnami la posizione',
+  'ricordati il parcheggio',
+  'ricordami dove ho parcheggiato',
+  'ho lasciato l\'auto qui',
+  'dove ho lasciato la macchina',
+  'dove ho parcheggiato l\'auto',
+  'dove ho parcheggiato la macchina',
+  'segna il parcheggio',
+  'memorizza la posizione',
+  'salva parcheggio',
+  'segnami il parcheggio',
+  'dov\'è la mia auto',
+  'dov\'è la mia macchina',
+  'parcheggio',
+  'radar parcheggio',
+  'salva la posizione della macchina',
+  'dove sta la macchina',
+  'dove si trova l\'auto'
 ];
 
 for (const q of parkingQueries) {
@@ -131,9 +164,10 @@ for (const q of parkingQueries) {
   assert(res, `Response must exist for "${q}"`);
   assert(res.autoAction, `Must have autoAction for "${q}"`);
   assert.strictEqual(res.autoAction.type, 'parking', `autoAction.type must be parking for "${q}"`);
+  assert(!res.text.includes('ricetta'), `Response for "${q}" must not leak recipe`);
   console.log(`  ✓ "${q}" -> autoAction: ${res.autoAction.type} (${res.autoAction.label})`);
 }
-console.log('✅ All parking intent queries return parking autoAction successfully');
+console.log(`✅ All ${parkingQueries.length} parking intent queries return parking autoAction successfully`);
 
 console.log('🎉 ALL AI LATENCY AND TIMING TESTS PASSED PERFECTLY!');
 process.exit(0);

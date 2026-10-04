@@ -1101,8 +1101,9 @@ export function searchRecipeByDishTitle(query: string, catalog: RecipeCatalogIte
   if (cleanTokens.length > 0) {
     for (const r of catalog) {
       const t = normalizeItalianText(r.title);
-      const titleTokens = t.split(/\s+/);
-      const allFound = cleanTokens.every(ct => titleTokens.some(tt => tt === ct || tt.startsWith(ct) || ct.startsWith(tt)));
+      const titleTokens = t.split(/\s+/).filter(tok => tok.length >= 4 && !CONVERSATIONAL_FOOD_STOPWORDS.has(tok));
+      if (titleTokens.length === 0) continue;
+      const allFound = cleanTokens.every(ct => titleTokens.some(tt => tt === ct || (tt.startsWith(ct) && ct.length >= 4) || (ct.startsWith(tt) && tt.length >= 4)));
       if (allFound) return r;
     }
   }
