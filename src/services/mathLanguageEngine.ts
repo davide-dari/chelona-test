@@ -696,8 +696,18 @@ export interface RecipeCatalogItem {
 let cachedRecipeCatalog: RecipeCatalogItem[] | null = null;
 let isCatalogLoading = false;
 
+if (typeof window !== 'undefined') {
+  window.addEventListener('chelona_user_recipes_updated', () => {
+    cachedRecipeCatalog = null;
+  });
+}
+
+export function invalidateRecipeCatalogCache() {
+  cachedRecipeCatalog = null;
+}
+
 /**
- * Carica e indicizza tutte le 617 ricette dal JSON locale e le ricette personalizzate.
+ * Carica e indicizza tutte le ricette dal JSON locale e le ricette create/salvate dall'utente.
  */
 export async function getOrLoadAllRecipes(): Promise<RecipeCatalogItem[]> {
   if (cachedRecipeCatalog && cachedRecipeCatalog.length > 0) {
@@ -709,9 +719,9 @@ export async function getOrLoadAllRecipes(): Promise<RecipeCatalogItem[]> {
   // 1. Carica ricette create/salvate dall'utente dal localStorage
   if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
     try {
-      const rawCustom = localStorage.getItem('chelona_custom_recipes');
-      if (rawCustom) {
-        const parsed = JSON.parse(rawCustom);
+      const rawUser = localStorage.getItem('chelona_user_recipes') || localStorage.getItem('chelona_custom_recipes');
+      if (rawUser) {
+        const parsed = JSON.parse(rawUser);
         if (Array.isArray(parsed)) {
           for (const c of parsed) {
             items.push({
@@ -725,7 +735,9 @@ export async function getOrLoadAllRecipes(): Promise<RecipeCatalogItem[]> {
               protein: c.protein,
               carbs: c.carbs,
               fat: c.fat,
-              tags: c.tags,
+              tags: c.tags || ['Personalizzata'],
+              country: c.country || 'Italia',
+              flag: c.flag || '🇮🇹',
             });
           }
         }

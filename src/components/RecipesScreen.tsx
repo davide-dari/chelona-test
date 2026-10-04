@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   ArrowLeft, Search, X, BookOpen, Star, ChefHat, Sparkles, 
   ShoppingCart, Check, Utensils, CheckCircle2, Eye,
-  BookmarkCheck, Trash2,
+  BookmarkCheck, Trash2, Plus, Link2, Edit3, ExternalLink, Users,
   Timer, Play, Pause, RotateCcw, ChevronLeft, Clock, Flame, ListOrdered
 } from 'lucide-react';
 
@@ -14,6 +14,13 @@ import {
   type RecipeItem,
   type SavedMenu
 } from '../services/menuPlannerService';
+import { RecipeCreateModal } from './RecipeCreateModal';
+import { RecipeImportModal } from './RecipeImportModal';
+import { 
+  loadUserRecipes, 
+  deleteUserRecipe, 
+  type UserRecipeItem 
+} from '../services/userRecipesService';
 
 interface RecipeScreenProps {
   onClose: () => void;
@@ -72,6 +79,34 @@ export function RecipesScreen({
   const [showShoppingReviewModal, setShowShoppingReviewModal] = useState(false);
   const [shoppingReviewMenu, setShoppingReviewMenu] = useState<SavedMenu | null>(null);
   const [menuShoppingIngredients, setMenuShoppingIngredients] = useState<Set<string>>(new Set());
+
+  // User Recipes state
+  const [userRecipes, setUserRecipes] = useState<UserRecipeItem[]>(loadUserRecipes);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [recipeToEdit, setRecipeToEdit] = useState<UserRecipeItem | null>(null);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  const showToast = useCallback((msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => {
+      setToastMessage(null);
+    }, 3000);
+  }, []);
+
+  // Ascolta aggiornamenti delle ricette create dall'utente
+  useEffect(() => {
+    const handleUserRecipesUpdated = () => {
+      const updated = loadUserRecipes();
+      setUserRecipes(updated);
+      setAllMeals(prev => {
+        const mondos = prev.filter(p => !p.isCustom);
+        return [...updated, ...mondos];
+      });
+    };
+    window.addEventListener('chelona_user_recipes_updated', handleUserRecipesUpdated);
+    return () => window.removeEventListener('chelona_user_recipes_updated', handleUserRecipesUpdated);
+  }, []);
 
   // Ascolta aggiornamenti dei menu salvati
   useEffect(() => {
@@ -305,6 +340,15 @@ export function RecipesScreen({
   }, [initialCategory]);
 
   const handleBack = useCallback(() => {
+    if (isCreateModalOpen) {
+      setIsCreateModalOpen(false);
+      setRecipeToEdit(null);
+      return;
+    }
+    if (isImportModalOpen) {
+      setIsImportModalOpen(false);
+      return;
+    }
     if (showShoppingReviewModal) {
       setShowShoppingReviewModal(false);
       return;
@@ -337,6 +381,8 @@ export function RecipesScreen({
       onClose();
     }
   }, [
+    isCreateModalOpen,
+    isImportModalOpen,
     showShoppingReviewModal,
     selectedMeal, 
     isSavedMenusOpen,
@@ -356,12 +402,15 @@ export function RecipesScreen({
 
   const loadRecipes = useCallback(async () => {
     try {
+      const userList = loadUserRecipes();
+      setUserRecipes(userList);
+
       let res = await fetch('ricette_mondo.json').catch(() => null);
       if (!res || !res.ok) {
         res = await fetch('/ricette_mondo.json').catch(() => null);
       }
       const mondoData = res && res.ok ? await res.json().catch(() => []) : [];
-      let combined: any[] = [];
+      let combined: any[] = [...userList];
       if (Array.isArray(mondoData)) {
         const formatted = mondoData.map((m: any, i: number) => {
           let cat = m.category || m.categoria || 'Primi';
@@ -404,7 +453,7 @@ export function RecipesScreen({
             flag: m.flag
           };
         });
-        combined = [...formatted];
+        combined = [...userList, ...formatted];
       }
 
       setAllMeals(combined);
@@ -414,6 +463,27 @@ export function RecipesScreen({
       setLoading(false);
     }
   }, []);
+
+  const handleDeleteUserRecipe = (id: string) => {
+    deleteUserRecipe(id);
+    setSelectedMeal(null);
+    showToast('Ricetta eliminata.');
+  };
+
+  const handleEditUserRecipe = (meal: any) => {
+    setRecipeToEdit(meal);
+    setIsCreateModalOpen(true);
+  };
+
+  const handleSaveUserRecipeSuccess = (saved: UserRecipeItem) => {
+    showToast(recipeToEdit ? 'Ricetta aggiornata con successo!' : 'Ricetta salvata nel ricettario!');
+    setSelectedMeal(saved);
+  };
+
+  const handleImportRecipeSuccess = (saved: UserRecipeItem) => {
+    showToast(`Ricetta "${saved.title}" importata con successo!`);
+    setSelectedMeal(saved);
+  };
 
   useEffect(() => {
     loadRecipes();
@@ -489,12 +559,16 @@ export function RecipesScreen({
     let list = allMeals;
     if (selectedCategory === 'favorites') {
       list = favorites;
+    } else if (selectedCategory === 'user_recipes') {
+      list = allMeals.filter(m => m.isCustom);
     }
 
     return list.filter(meal => {
       let matchCat = true;
       if (selectedCategory === 'favorites') {
         matchCat = true;
+      } else if (selectedCategory === 'user_recipes') {
+        matchCat = Boolean(meal.isCustom);
       } else if (selectedCategory === 'Cucine dal Mondo') {
         matchCat = selectedCountry ? true : Boolean((meal.country && meal.country !== 'Italia') || meal.category === 'Cucine dal Mondo');
       } else if (selectedCategory) {
@@ -526,8 +600,8 @@ export function RecipesScreen({
 
   return (
     <div className="flex flex-col h-full bg-[var(--bg)] font-sans relative">
-      <header className="h-16 lg:h-20 bg-[var(--bg)] px-6 flex items-center justify-between shrink-0 z-10 border-b border-[var(--border)]">
-        <div className="flex items-center gap-4">
+      <header className="h-16 lg:h-20 bg-[var(--bg)] px-4 sm:px-6 flex items-center justify-between shrink-0 z-10 border-b border-[var(--border)] gap-2">
+        <div className="flex items-center gap-3 sm:gap-4 shrink-0">
           <button 
             onClick={handleBack}
             className="p-2 hover:bg-[var(--surface-variant)] rounded-full text-[var(--text-muted)] transition-all flex items-center justify-center cursor-pointer"
@@ -542,21 +616,46 @@ export function RecipesScreen({
           </div>
         </div>
 
-        {savedMenus.length > 0 && (
-          <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2">
+          {/* Pulsante Crea Nuova Ricetta */}
+          <button
+            onClick={() => {
+              setRecipeToEdit(null);
+              setIsCreateModalOpen(true);
+            }}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-full bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-extrabold text-xs shadow-sm transition-all cursor-pointer active:scale-95 shrink-0"
+            title="Crea una ricetta personalizzata"
+          >
+            <Plus className="w-4 h-4" />
+            <span className="hidden sm:inline">Nuova Ricetta</span>
+            <span className="sm:hidden">Nuova</span>
+          </button>
+
+          {/* Pulsante Importa da Link Web */}
+          <button
+            onClick={() => setIsImportModalOpen(true)}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-full bg-[var(--surface-variant)] hover:bg-orange-500/10 text-[var(--text-main)] hover:text-orange-500 font-bold text-xs border border-[var(--border)] transition-all cursor-pointer shadow-xs active:scale-95 shrink-0"
+            title="Importa ricetta da qualsiasi link web (GialloZafferano, Cookist, blog...)"
+          >
+            <Link2 className="w-4 h-4 text-orange-500" />
+            <span className="hidden sm:inline">Importa da Link</span>
+            <span className="sm:hidden">Importa</span>
+          </button>
+
+          {savedMenus.length > 0 && (
             <button
               onClick={() => setIsSavedMenusOpen(true)}
-              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-[var(--surface-variant)] hover:bg-orange-500/10 text-[var(--text-main)] hover:text-orange-500 font-bold text-xs border border-[var(--border)] transition-all cursor-pointer shadow-xs"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-full bg-[var(--surface-variant)] hover:bg-orange-500/10 text-[var(--text-main)] hover:text-orange-500 font-bold text-xs border border-[var(--border)] transition-all cursor-pointer shadow-xs shrink-0"
               title="I miei Menu"
             >
               <BookmarkCheck className="w-4 h-4 text-orange-500" />
-              <span>I miei Menu</span>
+              <span className="hidden md:inline">I miei Menu</span>
               <span className="w-4 h-4 rounded-full bg-orange-500 text-white text-[9px] font-black flex items-center justify-center">
                 {savedMenus.length}
               </span>
             </button>
-          </div>
-        )}
+          )}
+        </div>
       </header>
 
       <main className="flex-1 overflow-y-auto p-4 md:p-8 custom-scrollbar">
@@ -620,6 +719,18 @@ export function RecipesScreen({
                   <motion.button
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
+                    onClick={() => setSelectedCategory('user_recipes')}
+                    className="flex flex-col items-center justify-center p-4 bg-gradient-to-br from-orange-100 to-amber-200 border border-orange-300 rounded-2xl transition-all shadow-sm group hover:shadow-md cursor-pointer"
+                  >
+                    <ChefHat className="w-8 h-8 text-orange-600 mb-2" />
+                    <span className="font-bold text-orange-950 text-sm text-center">
+                      Le mie Ricette {userRecipes.length > 0 ? `(${userRecipes.length})` : ''}
+                    </span>
+                  </motion.button>
+
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
                     onClick={() => setSelectedCategory('favorites')}
                     className="flex flex-col items-center justify-center p-4 bg-gradient-to-br from-yellow-100 to-amber-200 border border-yellow-300 rounded-2xl transition-all shadow-sm group hover:shadow-md cursor-pointer"
                   >
@@ -665,6 +776,8 @@ export function RecipesScreen({
                 <h2 className="text-xl sm:text-2xl font-black text-[var(--text-main)] flex items-center gap-2">
                   {selectedCategory === 'favorites' ? (
                     <>⭐ Preferiti</>
+                  ) : selectedCategory === 'user_recipes' ? (
+                    <>👨‍🍳 Le mie Ricette Personalizzate</>
                   ) : selectedCategory === 'Cucine dal Mondo' ? (
                     <>🌍 Cucine dal Mondo {selectedCountry ? `· ${selectedCountry}` : ''}</>
                   ) : selectedCountry && !selectedCategory ? (
@@ -753,7 +866,14 @@ export function RecipesScreen({
                     </div>
                     <div className="p-4 flex-1 flex flex-col justify-center">
                       <div className="flex items-center justify-between mb-1 gap-2">
-                        <span className="text-xs font-bold text-orange-500 uppercase tracking-wider truncate">{meal.category}</span>
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <span className="text-xs font-bold text-orange-500 uppercase tracking-wider truncate">{meal.category}</span>
+                          {meal.isCustom && (
+                            <span className="text-[10px] font-black px-1.5 py-0.5 rounded-md bg-amber-500/15 text-amber-700 dark:text-amber-300 shrink-0">
+                              {meal.sourceUrl ? '🔗 Link' : '✨ Mia'}
+                            </span>
+                          )}
+                        </div>
                         {meal.country && (
                           <button
                             type="button"
@@ -830,6 +950,23 @@ export function RecipesScreen({
                       <span className="inline-block px-3 py-1 bg-orange-100 dark:bg-orange-950/40 text-orange-700 dark:text-orange-400 rounded-full text-xs font-bold uppercase tracking-wider">
                         {selectedMeal.category}
                       </span>
+                      {selectedMeal.isCustom && (
+                        <span className="inline-flex items-center gap-1 px-3 py-1 bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 rounded-full text-xs font-bold uppercase tracking-wider">
+                          <Sparkles className="w-3 h-3" />
+                          <span>{selectedMeal.sourceUrl ? 'Importata da Link' : 'La mia ricetta'}</span>
+                        </span>
+                      )}
+                      {selectedMeal.sourceUrl && (
+                        <a
+                          href={selectedMeal.sourceUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 px-3 py-1 bg-[var(--surface-variant)] hover:bg-[var(--border)] text-[var(--text-muted)] hover:text-orange-500 rounded-full text-xs font-bold border border-[var(--border)] transition-colors"
+                        >
+                          <span>Fonte: {selectedMeal.sourceName || 'Web'}</span>
+                          <ExternalLink className="w-3 h-3" />
+                        </a>
+                      )}
                       {selectedMeal.country && (
                         <button
                           type="button"
@@ -848,13 +985,70 @@ export function RecipesScreen({
                     <h2 className="text-2xl md:text-3xl font-extrabold text-[var(--text-main)] leading-tight">
                       {selectedMeal.title}
                     </h2>
+
+                    {/* Metriche tempi, porzioni, calorie */}
+                    {(selectedMeal.servings || selectedMeal.prepTimeMinutes || selectedMeal.cookTimeMinutes || selectedMeal.calories) && (
+                      <div className="flex flex-wrap items-center gap-3 pt-2 text-xs font-bold text-[var(--text-muted)]">
+                        {selectedMeal.servings && (
+                          <span className="flex items-center gap-1">
+                            <Users className="w-4 h-4 text-orange-500" />
+                            <span>{selectedMeal.servings} porzioni</span>
+                          </span>
+                        )}
+                        {selectedMeal.prepTimeMinutes && (
+                          <span className="flex items-center gap-1">
+                            <Clock className="w-4 h-4 text-blue-500" />
+                            <span>Prep: {selectedMeal.prepTimeMinutes}m</span>
+                          </span>
+                        )}
+                        {selectedMeal.cookTimeMinutes && (
+                          <span className="flex items-center gap-1">
+                            <Clock className="w-4 h-4 text-amber-500" />
+                            <span>Cottura: {selectedMeal.cookTimeMinutes}m</span>
+                          </span>
+                        )}
+                        {selectedMeal.calories && (
+                          <span className="flex items-center gap-1">
+                            <Flame className="w-4 h-4 text-rose-500" />
+                            <span>{selectedMeal.calories} kcal</span>
+                          </span>
+                        )}
+                      </div>
+                    )}
                   </div>
-                  <button 
-                    onClick={handleBack}
-                    className="w-10 h-10 bg-[var(--surface-variant)] rounded-full text-[var(--text-muted)] flex items-center justify-center hover:bg-[var(--border)] hidden md:flex shrink-0 cursor-pointer"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
+
+                  <div className="flex items-center gap-2 shrink-0">
+                    {selectedMeal.isCustom && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => handleEditUserRecipe(selectedMeal)}
+                          className="p-2.5 bg-[var(--surface-variant)] hover:bg-orange-500/10 hover:text-orange-500 rounded-full text-[var(--text-muted)] transition-colors cursor-pointer"
+                          title="Modifica ricetta"
+                        >
+                          <Edit3 className="w-4 h-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (confirm(`Eliminare la ricetta "${selectedMeal.title}"?`)) {
+                              handleDeleteUserRecipe(selectedMeal.id);
+                            }
+                          }}
+                          className="p-2.5 bg-[var(--surface-variant)] hover:bg-rose-500/10 hover:text-rose-500 rounded-full text-[var(--text-muted)] transition-colors cursor-pointer"
+                          title="Elimina ricetta"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </>
+                    )}
+                    <button 
+                      onClick={handleBack}
+                      className="w-10 h-10 bg-[var(--surface-variant)] rounded-full text-[var(--text-muted)] flex items-center justify-center hover:bg-[var(--border)] hidden md:flex shrink-0 cursor-pointer"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
                 </div>
 
                 <div className="space-y-8">
@@ -1703,6 +1897,39 @@ export function RecipesScreen({
                 );
               })()}
             </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Modal Creazione e Modifica Ricetta */}
+      <RecipeCreateModal
+        isOpen={isCreateModalOpen}
+        onClose={() => {
+          setIsCreateModalOpen(false);
+          setRecipeToEdit(null);
+        }}
+        onSaveSuccess={handleSaveUserRecipeSuccess}
+        recipeToEdit={recipeToEdit}
+      />
+
+      {/* Modal Importazione Ricetta da Link Web */}
+      <RecipeImportModal
+        isOpen={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+        onImportSuccess={handleImportRecipeSuccess}
+      />
+
+      {/* Toast Notifiche */}
+      <AnimatePresence>
+        {toastMessage && (
+          <motion.div
+            initial={{ opacity: 0, y: 50, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 50, scale: 0.95 }}
+            className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[200] bg-emerald-600 text-white px-5 py-3 rounded-2xl shadow-xl flex items-center gap-2.5 font-bold text-xs sm:text-sm border border-emerald-400/40"
+          >
+            <CheckCircle2 className="w-5 h-5 shrink-0" />
+            <span>{toastMessage}</span>
           </motion.div>
         )}
       </AnimatePresence>

@@ -14,7 +14,14 @@ export interface RecipeItem {
   fat?: number;
   tags?: string[];
   country?: string;
+  countryCode?: string;
   flag?: string;
+  servings?: number;
+  prepTimeMinutes?: number;
+  cookTimeMinutes?: number;
+  sourceUrl?: string;
+  sourceName?: string;
+  isCustom?: boolean;
 }
 
 export type DietTheme = 'carne' | 'pesce' | 'vegetariano' | 'sorprendimi';
