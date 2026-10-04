@@ -524,34 +524,110 @@ export function convertJsonLdRecipeToItem(
 }
 
 /**
+ * Pulisce il testo JSON-LD rimuovendo wrapper CDATA, commenti e decodificando entità HTML.
+ */
+export function cleanJsonLdText(raw: string): string {
+  if (!raw) return '';
+  let cleaned = raw.trim();
+  // Rimuovi wrapper CDATA /* <![CDATA[ */ ... /* ]]> */ o //<![CDATA[ ... //]]> o <![CDATA[ ... ]]>
+  cleaned = cleaned.replace(/^\s*\/\*\s*<!\[CDATA\[\s*\*\/|\/\*\s*\]\]>\s*$/gi, '');
+  cleaned = cleaned.replace(/^\s*\/\/\s*<!\[CDATA\[|\/\/\s*\]\]>\s*$/gi, '');
+  cleaned = cleaned.replace(/^\s*<!\[CDATA\[|\]\]>\s*$/gi, '');
+  // Rimuovi commenti HTML <!-- ... -->
+  cleaned = cleaned.replace(/^\s*<!--|-->\s*$/g, '');
+  // Rimuovi commenti C-style avvolgenti /* ... */
+  cleaned = cleaned.replace(/^\s*\/\*[\s\S]*?\*\//, '').replace(/\/\*[\s\S]*?\*\/\s*$/, '');
+  cleaned = cleaned.trim();
+  if (cleaned.includes('&quot;') || cleaned.includes('&amp;') || cleaned.includes('&#')) {
+    cleaned = decodeHtmlEntities(cleaned);
+  }
+  return cleaned.trim();
+}
+
+/**
  * Parsing di un singolo blocco HTML Microdata (itemscope itemtype="http://schema.org/Recipe")
  */
 function parseMicrodataBlock(block: string, originalUrl: string, index: number): UserRecipeItem | null {
   try {
-    const nameMatch = block.match(/<[^>]+itemprop=["']name["'][^>]*>([^<]+)<\/[^>]+>/i);
-    const titleMatch = nameMatch ? cleanText(nameMatch[1]) : '';
+    // 1. Titolo da meta content o da tag innestato
+    const contentNameMatch = block.match(/<[^>]+itemprop=["']name["'][^>]+content=["']([^"']*)["']/i) ||
+                             block.match(/<[^>]+content=["']([^"']*)["'][^>]+itemprop=["']name["']/i);
+    const tagNameMatch = block.match(/<([a-z0-9]+)\b[^>]*itemprop=["']name["'][^>]*>([\s\S]*?)<\/\1>/i);
+    const rawTitle = contentNameMatch ? contentNameMatch[1] : (tagNameMatch ? tagNameMatch[2] : '');
+    const titleMatch = cleanText(rawTitle);
     if (!titleMatch || titleMatch.length < 2) return null;
 
-    const imgMatch = block.match(/<img[^>]+itemprop=["']image["'][^>]+src=["']([^"']*)["']/i) ||
-                     block.match(/<meta[^>]+itemprop=["']image["'][^>]+content=["']([^"']*)["']/i);
+    // 2. Immagine
+    const imgMatch = block.match(/<img[^>]+itemprop=["']image["'][^>]+(?:src|data-src)=["']([^"']*)["']/i) ||
+                     block.match(/<meta[^>]+itemprop=["']image["'][^>]+content=["']([^"']*)["']/i) ||
+                     block.match(/<img[^>]+(?:src|data-src)=["']([^"']*)["'][^>]+itemprop=["']image["']/i);
     const image = imgMatch && imgMatch[1].trim()
       ? resolveUrl(imgMatch[1].trim(), originalUrl)
       : 'https://images.unsplash.com/photo-1498837167922-ddd27525d352?w=800';
 
+    // 3. Ingredienti
     const microdataIngredients: string[] = [];
-    const ingRegex = /<[^>]+itemprop=["'](?:recipeIngredient|ingredients)["'][^>]*>([\s\S]*?)<\/[^>]+>/gi;
+    const ingTagRegex = /<([a-z0-9]+)\b[^>]*itemprop=["'](?:recipeIngredient|ingredients)["'][^>]*>([\s\S]*?)<\/\1>/gi;
     let ingMatch: RegExpExecArray | null;
-    while ((ingMatch = ingRegex.exec(block)) !== null) {
-      const text = cleanText(ingMatch[1]);
+    while ((ingMatch = ingTagRegex.exec(block)) !== null) {
+      const text = cleanText(ingMatch[2]);
+      if (text) microdataIngredients.push(text);
+    }
+    const ingMetaRegex = /<meta\b[^>]*itemprop=["'](?:recipeIngredient|ingredients)["'][^>]+content=["']([^"']*)["']/gi;
+    let ingMetaM: RegExpExecArray | null;
+    while ((ingMetaM = ingMetaRegex.exec(block)) !== null) {
+      const text = cleanText(ingMetaM[1]);
       if (text) microdataIngredients.push(text);
     }
 
+    // 4. Procedimento / Passaggi
     const microdataSteps: string[] = [];
-    const stepRegex = /<[^>]+itemprop=["'](?:recipeInstructions|instruction|step)["'][^>]*>([\s\S]*?)<\/[^>]+>/gi;
-    let stepMatch: RegExpExecArray | null;
-    while ((stepMatch = stepRegex.exec(block)) !== null) {
-      const text = cleanText(stepMatch[1]);
-      if (text && text.length > 5) microdataSteps.push(text);
+    const containerRegex = /<([a-z0-9]+)\b[^>]*itemprop=["']recipeInstructions["'][^>]*>([\s\S]*?)<\/\1>/gi;
+    let contMatch: RegExpExecArray | null;
+    while ((contMatch = containerRegex.exec(block)) !== null) {
+      const inner = contMatch[2];
+      const liRegex = /<li\b[^>]*>([\s\S]*?)<\/li>/gi;
+      let liM: RegExpExecArray | null;
+      let count = 0;
+      while ((liM = liRegex.exec(inner)) !== null) {
+        const t = cleanText(liM[1]);
+        if (t && t.length > 3) {
+          microdataSteps.push(t);
+          count++;
+        }
+      }
+      if (count === 0) {
+        const pRegex = /<p\b[^>]*>([\s\S]*?)<\/p>/gi;
+        let pM: RegExpExecArray | null;
+        while ((pM = pRegex.exec(inner)) !== null) {
+          const t = cleanText(pM[1]);
+          if (t && t.length > 3) {
+            microdataSteps.push(t);
+            count++;
+          }
+        }
+      }
+      if (count === 0) {
+        const parts = inner.split(/<br\s*\/?>|\r?\n+/).map(cleanText).filter(s => s.length > 3);
+        if (parts.length > 0) {
+          microdataSteps.push(...parts);
+        } else {
+          const raw = cleanText(inner);
+          if (raw.length > 3) microdataSteps.push(raw);
+        }
+      }
+    }
+
+    // Se non ha trovato contenitori di passaggi, cerca singoli elementi step (es. <li itemprop="step">)
+    if (microdataSteps.length === 0) {
+      const stepItemRegex = /<([a-z0-9]+)\b[^>]*itemprop=["'](?:step|instruction|recipeInstructions)["'][^>]*>([\s\S]*?)<\/\1>/gi;
+      let stepMatch: RegExpExecArray | null;
+      while ((stepMatch = stepItemRegex.exec(block)) !== null) {
+        const text = cleanText(stepMatch[2]);
+        if (text && text.length > 3) {
+          microdataSteps.push(text);
+        }
+      }
     }
 
     const yieldMatch = block.match(/<[^>]+itemprop=["']recipeYield["'][^>]+content=["']([^"']*)["']/i) ||
@@ -566,10 +642,12 @@ function parseMicrodataBlock(block: string, originalUrl: string, index: number):
                       block.match(/<[^>]+itemprop=["']cookTime["'][^>]*>([^<]+)<\/[^>]+>/i);
     const cookTimeMinutes = parseDurationISO(cookMatch ? cleanText(cookMatch[1]) : undefined);
 
-    const catMatch = block.match(/<[^>]+itemprop=["']recipeCategory["'][^>]*>([^<]+)<\/[^>]+>/i);
+    const catMatch = block.match(/<[^>]+itemprop=["']recipeCategory["'][^>]+content=["']([^"']*)["']/i) ||
+                     block.match(/<[^>]+itemprop=["']recipeCategory["'][^>]*>([\s\S]*?)<\/[^>]+>/i);
     const microdataCategory = catMatch ? cleanText(catMatch[1]) : '';
 
-    const cuisineMatch = block.match(/<[^>]+itemprop=["']recipeCuisine["'][^>]*>([^<]+)<\/[^>]+>/i);
+    const cuisineMatch = block.match(/<[^>]+itemprop=["']recipeCuisine["'][^>]+content=["']([^"']*)["']/i) ||
+                         block.match(/<[^>]+itemprop=["']recipeCuisine["'][^>]*>([\s\S]*?)<\/[^>]+>/i);
     const microdataCuisine = cuisineMatch ? cleanText(cuisineMatch[1]) : '';
 
     const category = mapToChelonaCategory(microdataCategory || titleMatch, microdataCuisine);
@@ -618,7 +696,11 @@ export function extractAllRecipesFromHtml(html: string, originalUrl: string): Us
 
   const addRecipe = (rec: UserRecipeItem | null) => {
     if (!rec || !rec.title) return;
-    const normKey = rec.title.toLowerCase().replace(/[^a-z0-9]/g, '');
+    const normKey = rec.title
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, '');
     if (!normKey) return;
     if (!seenTitles.has(normKey)) {
       seenTitles.add(normKey);
@@ -626,8 +708,8 @@ export function extractAllRecipesFromHtml(html: string, originalUrl: string): Us
     }
   };
 
-  // 1. Cerca TUTTI i blocchi script type="application/ld+json"
-  const scriptRegex = /<script\b[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi;
+  // 1. Cerca TUTTI i blocchi script type="application/ld+json" (anche con attributi extra, CDATA o spazi)
+  const scriptRegex = /<script\b[^>]*type\s*=\s*["']?application\/ld\+json(?:;[^"'>]*)?["']?[^>]*>([\s\S]*?)<\/script>/gi;
   let match: RegExpExecArray | null;
 
   const traverseJson = (node: any) => {
@@ -654,6 +736,8 @@ export function extractAllRecipesFromHtml(html: string, originalUrl: string): Us
           } else if (el.item && typeof el.item === 'object') {
             if (isRecipeType(el.item['@type'])) {
               collectedRawNodes.push(el.item);
+            } else if (isItemListType(el.item['@type'])) {
+              traverseJson(el.item);
             } else if (el.item.name) {
               collectedRawNodes.push({
                 '@type': 'Recipe',
@@ -673,24 +757,30 @@ export function extractAllRecipesFromHtml(html: string, originalUrl: string): Us
             } else {
               traverseJson(el.item);
             }
-          } else if (el.name && (el.url || el.image || el.description || el.recipeIngredient)) {
-            collectedRawNodes.push({
-              '@type': 'Recipe',
-              name: el.name,
-              description: el.description,
-              image: el.image,
-              url: el.url,
-              recipeIngredient: el.recipeIngredient || el.ingredients,
-              recipeInstructions: el.recipeInstructions,
-              prepTime: el.prepTime,
-              cookTime: el.cookTime,
-              recipeYield: el.recipeYield,
-              recipeCategory: el.recipeCategory,
-              recipeCuisine: el.recipeCuisine,
-              nutrition: el.nutrition,
-            });
           } else {
-            traverseJson(el);
+            const itemUrl = (typeof el.item === 'string' ? el.item : undefined) || el.url;
+            const itemName = el.name;
+            if (isItemListType(el['@type'])) {
+              traverseJson(el);
+            } else if (itemName && (itemUrl || el.image || el.description || el.recipeIngredient)) {
+              collectedRawNodes.push({
+                '@type': 'Recipe',
+                name: itemName,
+                description: el.description,
+                image: el.image,
+                url: itemUrl,
+                recipeIngredient: el.recipeIngredient || el.ingredients,
+                recipeInstructions: el.recipeInstructions,
+                prepTime: el.prepTime,
+                cookTime: el.cookTime,
+                recipeYield: el.recipeYield,
+                recipeCategory: el.recipeCategory,
+                recipeCuisine: el.recipeCuisine,
+                nutrition: el.nutrition,
+              });
+            } else {
+              traverseJson(el);
+            }
           }
         }
       }
@@ -712,7 +802,7 @@ export function extractAllRecipesFromHtml(html: string, originalUrl: string): Us
     if (!rawJson) continue;
 
     try {
-      const cleanJson = rawJson.replace(/^\s*\/\*[\s\S]*?\*\//, '').replace(/^\s*<!--([\s\S]*?)-->/, '$1').trim();
+      const cleanJson = cleanJsonLdText(rawJson);
       const data = JSON.parse(cleanJson);
       traverseJson(data);
     } catch {
@@ -745,16 +835,64 @@ export function extractAllRecipesFromHtml(html: string, originalUrl: string): Us
     }
   }
 
-  // 3. Fallback Schede Ricetta HTML per pagine di raccolta / archivio blog (se nessuna ricetta trovata finora)
+  // 3. Fallback Schede Ricetta HTML per pagine di raccolta / archivio blog (se nessuna ricetta strutturata trovata)
   if (recipes.length === 0) {
-    const cardRegex = /<(?:article|div)\b[^>]*(?:class|id)=["'][^"']*(?:recipe-card|ricetta-card|recipe_item|recipe-item|card-recipe|teaser-recipe|archive-recipe|post-recipe)[^"']*["'][^>]*>([\s\S]*?)<\/(?:article|div)>/gi;
+    // 3a. Cerca titoli di ricette numerate in articoli di raccolta (es. "10 ricette veloci con le zucchine": <h2>1. Titolo</h2>)
+    const headingRegex = /<h([2-4])[^>]*>([\s\S]*?)<\/h\1>/gi;
+    const headings: { title: string; startIndex: number; endIndex: number }[] = [];
+    let hm: RegExpExecArray | null;
+    while ((hm = headingRegex.exec(html)) !== null) {
+      const rawText = cleanText(hm[2]);
+      const numMatch = rawText.match(/^(?:(?:ricetta\s+(?:n\.?\s*)?|#)?\s*\d+[\.\)\-:]\s*|(?:\d+°\s+)?ricetta:\s*)(.+)$/i);
+      if (numMatch && numMatch[1].trim().length >= 3) {
+        headings.push({
+          title: cleanText(numMatch[1]),
+          startIndex: hm.index,
+          endIndex: hm.index + hm[0].length,
+        });
+      }
+    }
+
+    if (headings.length >= 2) {
+      for (let i = 0; i < headings.length; i++) {
+        const h = headings[i];
+        const nextStart = (i + 1 < headings.length) ? headings[i + 1].startIndex : Math.min(h.endIndex + 12000, html.length);
+        const sectionHtml = html.slice(h.endIndex, nextStart);
+
+        const imgM = sectionHtml.match(/<img[^>]+(?:src|data-src)=["']([^"']+)["']/i);
+        const linkM = sectionHtml.match(/<a[^>]+href=["']([^"']+)["']/i);
+        const cardImage = imgM ? resolveUrl(imgM[1].trim(), originalUrl) : 'https://images.unsplash.com/photo-1498837167922-ddd27525d352?w=800';
+        const cardUrl = resolveUrl(linkM ? linkM[1].trim() : undefined, originalUrl);
+        const category = mapToChelonaCategory(h.title);
+
+        addRecipe({
+          id: `user_rec_${Date.now()}_${recipes.length}_${Math.random().toString(36).slice(2, 7)}`,
+          title: h.title,
+          category,
+          ingredients: [],
+          steps: [],
+          image: cardImage,
+          servings: 4,
+          country: 'Italia',
+          sourceUrl: cardUrl,
+          sourceName: extractSourceName(cardUrl),
+          isCustom: true,
+          createdAt: Date.now() + recipes.length,
+          updatedAt: Date.now(),
+        });
+      }
+    }
+
+    // 3b. Schede HTML in <article>, <div>, <li> o <section>
+    const cardRegex = /<(?:article|div|li|section)\b[^>]*(?:class|id)=["'][^"']*(?:recipe-card|ricetta-card|recipe_item|recipe-item|card-recipe|teaser-recipe|archive-recipe|post-recipe|recipe_card|c-recipe|recipe-teaser)[^"']*["'][^>]*>([\s\S]*?)<\/(?:article|div|li|section)>/gi;
     let cardMatch: RegExpExecArray | null;
     let cardCount = 0;
 
     while ((cardMatch = cardRegex.exec(html)) !== null && cardCount < 30) {
       const cardHtml = cardMatch[1];
       const titleM = cardHtml.match(/<h[2-4][^>]*>(?:<a[^>]+>)?([^<]+)(?:<\/a>)?<\/h[2-4]>/i) ||
-                     cardHtml.match(/<a[^>]+title=["']([^"']+)["']/i);
+                     cardHtml.match(/<a[^>]+title=["']([^"']+)["']/i) ||
+                     cardHtml.match(/<a[^>]+class=["'][^"']*(?:title|heading)[^"']*["'][^>]*>([^<]+)<\/a>/i);
       if (titleM) {
         const cardTitle = cleanText(titleM[1]);
         if (cardTitle.length >= 3) {

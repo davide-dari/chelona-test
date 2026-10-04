@@ -486,9 +486,9 @@ export function RecipesScreen({
   };
 
   const handleImportRecipeSuccess = (saved: UserRecipeItem, allRecipes?: UserRecipeItem[]) => {
+    setSelectedCategory('user_recipes');
     if (allRecipes && allRecipes.length > 1) {
       showToast(`${allRecipes.length} ricette importate con successo!`);
-      setSelectedMeal(saved);
     } else {
       showToast(`Ricetta "${saved.title}" importata con successo!`);
       setSelectedMeal(saved);

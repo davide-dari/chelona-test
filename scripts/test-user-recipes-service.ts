@@ -507,4 +507,208 @@ const firstRecipe = extractRecipeFromHtml(mockMultiScriptHtml, 'https://example.
 assert.strictEqual(firstRecipe.title, 'Bruschetta al Pomodoro');
 console.log('✓ extractRecipeFromHtml backward-compatibility passed');
 
-console.log('🎉 ALL USER RECIPES SERVICE TESTS PASSED PERFECTLY!');
+// 17. Test WordPress / Yoast SEO CDATA wrapped JSON-LD
+console.log('17. Testing WordPress / Yoast SEO CDATA wrapped JSON-LD...');
+const mockYoastCdataHtml = `
+<!DOCTYPE html>
+<html>
+<head>
+  <script type="application/ld+json" class="yoast-schema-graph">
+  /* <![CDATA[ */
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "Recipe",
+        "name": "Torta Margherita Soffice",
+        "recipeCategory": "Dolci",
+        "recipeIngredient": ["200g farina", "150g fecola", "4 uova"]
+      }
+    ]
+  }
+  /* ]]> */
+  </script>
+</head>
+</html>
+`;
+const cdataRecipes = extractAllRecipesFromHtml(mockYoastCdataHtml, 'https://blog.giallozafferano.it/torta-margherita');
+assert.strictEqual(cdataRecipes.length, 1);
+assert.strictEqual(cdataRecipes[0].title, 'Torta Margherita Soffice');
+assert.strictEqual(cdataRecipes[0].category, 'Dolci');
+assert.strictEqual(cdataRecipes[0].ingredients.length, 3);
+console.log('✓ WordPress/Yoast CDATA JSON-LD extraction passed');
+
+// 18. Test Schema.org ItemList with string URLs (ListItem.item as URL string)
+console.log('18. Testing Schema.org ItemList with string URLs...');
+const mockItemListStringUrls = `
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "ItemList",
+  "name": "Le migliori paste",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Spaghetti alla Carbonara",
+      "item": "https://example.com/ricette/carbonara"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "Bucatini all'Amatriciana",
+      "url": "https://example.com/ricette/amatriciana"
+    }
+  ]
+}
+</script>
+`;
+const stringUrlRecipes = extractAllRecipesFromHtml(mockItemListStringUrls, 'https://example.com/raccolte/paste');
+assert.strictEqual(stringUrlRecipes.length, 2);
+assert.strictEqual(stringUrlRecipes[0].title, 'Spaghetti alla Carbonara');
+assert.strictEqual(stringUrlRecipes[0].sourceUrl, 'https://example.com/ricette/carbonara');
+assert.strictEqual(stringUrlRecipes[1].title, "Bucatini all'Amatriciana");
+console.log('✓ ItemList string URLs extraction passed');
+
+// 19. Test Nested ItemList (e.g. Menu with course categories)
+console.log('19. Testing Nested ItemList extraction...');
+const mockNestedItemListHtml = `
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "ItemList",
+  "name": "Menu della Domenica",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "item": {
+        "@type": "ItemList",
+        "name": "Primi Piatti",
+        "itemListElement": [
+          { "@type": "Recipe", "name": "Lasagna al Forno Classica" }
+        ]
+      }
+    },
+    {
+      "@type": "ListItem",
+      "item": {
+        "@type": "ItemList",
+        "name": "Secondi Piatti",
+        "itemListElement": [
+          { "@type": "Recipe", "name": "Arrosto di Vitello con Patate" }
+        ]
+      }
+    }
+  ]
+}
+</script>
+`;
+const nestedRecipes = extractAllRecipesFromHtml(mockNestedItemListHtml, 'https://example.com/menu');
+assert.strictEqual(nestedRecipes.length, 2);
+assert.strictEqual(nestedRecipes[0].title, 'Lasagna al Forno Classica');
+assert.strictEqual(nestedRecipes[1].title, 'Arrosto di Vitello con Patate');
+console.log('✓ Nested ItemList extraction passed');
+
+// 20. Test Microdata with <meta itemprop="name" content="..."> and nested heading tags
+console.log('20. Testing Microdata with meta content and nested heading tags...');
+const mockAdvancedMicrodata = `
+<div itemscope itemtype="http://schema.org/Recipe">
+  <meta itemprop="name" content="Torta Salata con Ricotta e Spinaci" />
+  <meta itemprop="recipeCategory" content="Antipasti" />
+  <meta itemprop="recipeYield" content="6 porzioni" />
+  <meta itemprop="recipeIngredient" content="1 rotolo pasta sfoglia" />
+  <meta itemprop="recipeIngredient" content="300g ricotta" />
+  <meta itemprop="recipeIngredient" content="250g spinaci" />
+</div>
+<div itemscope itemtype="http://schema.org/Recipe">
+  <h2 itemprop="name"><a href="/focaccia"><span>Focaccia Pugliese con Pomodorini</span></a></h2>
+  <span itemprop="recipeCategory">Lievitati</span>
+  <ul>
+    <li itemprop="recipeIngredient">500g farina</li>
+    <li itemprop="recipeIngredient">10 pomodorini ciliegino</li>
+  </ul>
+</div>
+`;
+const advancedMicro = extractAllRecipesFromHtml(mockAdvancedMicrodata, 'https://example.com/ricette-forno');
+assert.strictEqual(advancedMicro.length, 2);
+assert.strictEqual(advancedMicro[0].title, 'Torta Salata con Ricotta e Spinaci');
+assert.strictEqual(advancedMicro[0].servings, 6);
+assert.strictEqual(advancedMicro[0].ingredients.length, 3);
+assert.strictEqual(advancedMicro[1].title, 'Focaccia Pugliese con Pomodorini');
+assert.strictEqual(advancedMicro[1].ingredients.length, 2);
+console.log('✓ Advanced Microdata extraction passed');
+
+// 21. Test Microdata Multi-step instructions inside <div itemprop="recipeInstructions">
+console.log('21. Testing Microdata Multi-step instructions...');
+const mockMicroInstructions = `
+<div itemscope itemtype="http://schema.org/Recipe">
+  <h1 itemprop="name">Torta Soffice di Mele</h1>
+  <div itemprop="recipeInstructions">
+    <p>Passo 1: Mescolare le uova con lo zucchero fino a renderle spumose.</p>
+    <p>Passo 2: Aggiungere la farina setacciata, il latte e il lievito.</p>
+    <p>Passo 3: Disporre le fette di mela a raggiera e infornare a 180 gradi per 40 minuti.</p>
+  </div>
+</div>
+`;
+const instructionsRecipe = extractAllRecipesFromHtml(mockMicroInstructions, 'https://example.com/torta-mele');
+assert.strictEqual(instructionsRecipe.length, 1);
+assert.strictEqual(instructionsRecipe[0].steps.length, 3);
+assert(instructionsRecipe[0].steps[0].includes('Passo 1'));
+assert(instructionsRecipe[0].steps[2].includes('Passo 3'));
+console.log('✓ Microdata multi-step instructions passed');
+
+// 22. Test Collection article with numbered headings (e.g. "10 ricette veloci con le zucchine")
+console.log('22. Testing Collection article with numbered headings...');
+const mockCollectionArticleHtml = `
+<!DOCTYPE html>
+<html>
+<head><title>10 Ricette Veloci con le Zucchine - Blog Cucina</title></head>
+<body>
+  <h1>10 Ricette Veloci con le Zucchine</h1>
+  <div class="article-body">
+    <h2>1. Pasta con Crema di Zucchine e Noci</h2>
+    <img src="https://images.unsplash.com/photo-pasta" />
+    <p>Un primo piatto fresco, pronto nel tempo di cottura della pasta.</p>
+
+    <h2>2. Polpette di Zucchine e Ricotta al Forno</h2>
+    <img src="https://images.unsplash.com/photo-polpette" />
+    <p>Morbide e gustose, perfette per i bambini o un aperitivo.</p>
+
+    <h2>3. Zucchine Trifolate in Padella</h2>
+    <img src="https://images.unsplash.com/photo-trifolate" />
+    <p>Il contorno classico che si adatta ad ogni secondo.</p>
+  </div>
+</body>
+</html>
+`;
+const collectionRecipes = extractAllRecipesFromHtml(mockCollectionArticleHtml, 'https://example.com/10-ricette-zucchine');
+assert.strictEqual(collectionRecipes.length, 3);
+assert.strictEqual(collectionRecipes[0].title, 'Pasta con Crema di Zucchine e Noci');
+assert.strictEqual(collectionRecipes[1].title, 'Polpette di Zucchine e Ricotta al Forno');
+assert.strictEqual(collectionRecipes[2].title, 'Zucchine Trifolate in Padella');
+assert(collectionRecipes[0].image.includes('photo-pasta'));
+console.log('✓ Numbered headings collection article passed');
+
+// 23. Test Recipe cards list wrapped in <li> elements
+console.log('23. Testing Recipe cards list wrapped in <li> elements...');
+const mockLiCardsHtml = `
+<ul class="recipe-grid">
+  <li class="recipe-item">
+    <a href="/ricette/risotto-asparagi" class="recipe-title">Risotto Cremoso agli Asparagi</a>
+    <img src="https://images.unsplash.com/photo-risotto" />
+  </li>
+  <li class="recipe-item">
+    <a href="/ricette/vellutata-piselli" class="recipe-title">Vellutata di Piselli e Menta</a>
+    <img src="https://images.unsplash.com/photo-vellutata" />
+  </li>
+</ul>
+`;
+const liCardRecipes = extractAllRecipesFromHtml(mockLiCardsHtml, 'https://example.com/primavera');
+assert.strictEqual(liCardRecipes.length, 2);
+assert.strictEqual(liCardRecipes[0].title, 'Risotto Cremoso agli Asparagi');
+assert.strictEqual(liCardRecipes[0].sourceUrl, 'https://example.com/ricette/risotto-asparagi');
+assert.strictEqual(liCardRecipes[1].title, 'Vellutata di Piselli e Menta');
+console.log('✓ <li> recipe cards list passed');
+
+console.log('🎉 ALL 23 USER RECIPES SERVICE TESTS PASSED PERFECTLY!');
+
