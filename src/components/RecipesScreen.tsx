@@ -1302,7 +1302,7 @@ export function RecipesScreen({
                         id: `menu_${Date.now()}`,
                         title: wizardMenuName,
                         mealType: wizardMealTime.toLowerCase() as MealType,
-                        theme: (wizardCategories.includes('Pesce') ? 'pesce' : wizardCategories.includes('Carne') ? 'carne' : 'vegetariano') as DietTheme,
+                        theme: (wizardCategories.includes('Pesce') ? 'pesce' : wizardCategories.includes('Carne') ? 'carne' : 'vegetariano') as ('pesce' | 'carne' | 'vegetariano'),
                         antipasto: wizardSelectedRecipes[0] || null,
                         primo: wizardSelectedRecipes[1] || null,
                         secondo: wizardSelectedRecipes[2] || null,
