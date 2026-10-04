@@ -11,7 +11,7 @@ import {
   AiMessage, AiAction, getChatHistory, saveChatHistory, 
   queryChelonaAi
 } from '../services/chelonaEngine';
-import { queryGemma2, preloadEngine, isCacheEnabled } from '../services/gemma2Engine';
+import { queryGemma2, preloadEngine, isCacheEnabled, setCacheEnabled } from '../services/gemma2Engine';
 import {
   prepareNaturalSpeech,
   splitIntoSentences,
@@ -921,12 +921,12 @@ export const ChelonaAiScreen
             </button>
 
             <div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <h2 className="text-base lg:text-lg font-black text-[var(--text-main)] tracking-tight">
                   {activeConvId ? conversations.find(c => c.id === activeConvId)?.title || 'Nuova Chat' : 'Nuova Chat'}
                 </h2>
                 {!cacheEnabled && (
-                  <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20">
+                  <span className="inline-flex items-center gap-1 px-1.5 sm:px-2 py-0.5 rounded-full text-[9px] sm:text-[10px] font-bold bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20 whitespace-nowrap">
                     Test Velocità Reale (Cache OFF)
                   </span>
                 )}
@@ -965,6 +965,17 @@ export const ChelonaAiScreen
                 <Zap className="w-4 h-4 shrink-0 text-rose-500" />
                 <span><strong>Cache Semantica Disattivata</strong> • Test velocità reale motore</span>
               </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setCacheEnabled(true);
+                  showToast('Cache Semantica AI riattivata', 'success');
+                }}
+                className="px-2 py-1 rounded-lg bg-rose-500/15 hover:bg-rose-500/25 text-rose-600 dark:text-rose-300 font-bold text-[11px] transition-colors shrink-0 active:scale-95 cursor-pointer"
+                title="Riattiva la cache semantica AI"
+              >
+                Riattiva
+              </button>
             </div>
           )}
 

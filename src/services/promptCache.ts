@@ -4,6 +4,8 @@
  * Max 100 entry • TTL 30 minuti • Persist in sessionStorage
  */
 
+import { isCacheEnabled } from './semanticCache';
+
 const CACHE_KEY = 'chelona_prompt_cache';
 const MAX_ENTRIES = 100;
 const TTL_MS = 30 * 60 * 1000; // 30 minuti
@@ -54,6 +56,7 @@ class PromptCache {
   }
 
   get(prompt: string, ragContext: string): { text: string; actions?: unknown[] } | null {
+    if (!isCacheEnabled()) return null;
     this.load();
     const key = hashKey(prompt, ragContext);
     const entry = this.entries.get(key);
@@ -70,6 +73,7 @@ class PromptCache {
   }
 
   set(prompt: string, ragContext: string, response: { text: string; actions?: unknown[] }): void {
+    if (!isCacheEnabled()) return;
     this.load();
     const key = hashKey(prompt, ragContext);
 

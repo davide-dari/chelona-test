@@ -212,14 +212,24 @@ export function ProfileScreen({
     setIsCacheActive(next);
     setCacheEnabled(next);
     if (!next) {
-      showToast('Cache Disattivata - Test Velocità Reale');
+      showToast('Cache Disattivata - Test Velocità Reale', 'info');
     } else {
-      showToast('Cache Semantica AI riattivata');
+      showToast('Cache Semantica AI riattivata', 'success');
     }
   };
 
   // Learned memories state
   const [memories, setMemories] = useState<AiMemory[]>(() => getLearnedMemories());
+
+  useEffect(() => {
+    const handleSync = () => {
+      setIsCacheActive(isCacheEnabled());
+    };
+    window.addEventListener('chelona_cache_toggle', handleSync);
+    return () => {
+      window.removeEventListener('chelona_cache_toggle', handleSync);
+    };
+  }, []);
 
   useEffect(() => {
     if (activeTab === 'system') {
@@ -1631,7 +1641,7 @@ export function ProfileScreen({
                     : 'bg-rose-500/5 border-rose-500/30'
                 }`}>
                   <div className="flex items-center justify-between gap-3 sm:gap-4">
-                    <div className="flex-1 min-w-0">
+                    <div className="flex-1 min-w-0 cursor-pointer select-none" onClick={handleToggleCache}>
                       <div className="flex items-center gap-2 flex-wrap">
                         <h4 className="text-sm font-bold text-[var(--text-main)]">Cache Semantica AI</h4>
                         <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wide uppercase transition-colors ${
@@ -1666,6 +1676,13 @@ export function ProfileScreen({
                     </button>
                   </div>
                 </div>
+
+                {!isCacheActive && cacheEntries.length > 0 && (
+                  <div className="px-3.5 py-2.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-xs text-rose-600 dark:text-rose-400 flex items-center gap-2">
+                    <span className="font-bold">⚠️ Nota:</span>
+                    <span>Le {cacheEntries.length} risposte salvate sono sospese e non verranno utilizzate finché la cache resta disattivata.</span>
+                  </div>
+                )}
 
                 {cacheEntries.length > 0 && (
                   <div className="relative">

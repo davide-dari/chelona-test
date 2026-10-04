@@ -24,7 +24,7 @@ globalThis.localStorage = {
 
 console.log('🧪 Starting AI Latency, Cache & Response Time Verification Tests...');
 
-import { queryGemma2, checkNativeLlmAvailability, isCacheEnabled, setCacheEnabled } from '../src/services/gemma2Engine.ts';
+import { queryGemma2, checkNativeLlmAvailability, isCacheEnabled, setCacheEnabled, semanticCache, promptCache } from '../src/services/gemma2Engine.ts';
 import { queryChelonaAi } from '../src/services/chelonaEngine.ts';
 
 // 1. Check checkNativeLlmAvailability speed
@@ -70,6 +70,10 @@ assert.strictEqual(isCacheEnabled(), true, 'Cache should be enabled by default')
 setCacheEnabled(false);
 assert.strictEqual(isCacheEnabled(), false, 'Cache should now be disabled');
 
+// Verify direct cache lookups are blocked when cache is disabled
+assert.strictEqual(semanticCache.findMatch('Che spese ho questo mese?'), null, 'semanticCache.findMatch must return null when disabled');
+assert.strictEqual(promptCache.get('Che spese ho questo mese?', ''), null, 'promptCache.get must return null when disabled');
+
 const startDisabled = performance.now();
 const resDisabled = await queryGemma2('Che spese ho questo mese?', [], 'Davide');
 const elapsedDisabled = performance.now() - startDisabled;
@@ -77,6 +81,11 @@ console.log(`[Test 4b] queryGemma2 with Cache Disabled (Real Engine Execution): 
 assert.strictEqual(resDisabled.cached, undefined, 'Cache hit must not be returned when cache is disabled');
 assert.strictEqual(resDisabled.semanticMatch, undefined, 'semanticMatch must not be returned when cache is disabled');
 assert(resDisabled.text && resDisabled.text.length > 0, 'Real engine response must be returned');
+
+// Verify a completely new query executed while cache is disabled is NOT saved to cache
+const newQuery = 'Quali sono le scadenze della patente di guida?';
+await queryGemma2(newQuery, [], 'Davide');
+assert.strictEqual(semanticCache.findMatch(newQuery), null, 'New query must not be saved into cache while disabled');
 
 // Re-enable cache and verify normal caching behavior resumes
 setCacheEnabled(true);

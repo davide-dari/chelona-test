@@ -18,6 +18,8 @@ import { localDb, CachedSemanticItem } from './localDatabase';
 
 export const CACHE_ENABLED_KEY = 'chelona_ai_cache_enabled';
 
+let inMemoryCacheEnabled: boolean | null = null;
+
 export function isCacheEnabled(): boolean {
   try {
     const storage = typeof window !== 'undefined' && window.localStorage
@@ -30,12 +32,16 @@ export function isCacheEnabled(): boolean {
       }
     }
   } catch (e) {
+    if (inMemoryCacheEnabled !== null) {
+      return inMemoryCacheEnabled;
+    }
     console.warn('[SemanticCache] Errore lettura cache enabled flag', e);
   }
-  return true;
+  return inMemoryCacheEnabled !== null ? inMemoryCacheEnabled : true;
 }
 
 export function setCacheEnabled(enabled: boolean): void {
+  inMemoryCacheEnabled = enabled;
   try {
     const storage = typeof window !== 'undefined' && window.localStorage
       ? window.localStorage
@@ -43,11 +49,15 @@ export function setCacheEnabled(enabled: boolean): void {
     if (storage) {
       storage.setItem(CACHE_ENABLED_KEY, String(enabled));
     }
+  } catch (e) {
+    console.warn('[SemanticCache] Errore scrittura cache enabled flag in storage', e);
+  }
+  try {
     if (typeof window !== 'undefined' && window.dispatchEvent) {
       window.dispatchEvent(new CustomEvent('chelona_cache_toggle', { detail: { enabled } }));
     }
   } catch (e) {
-    console.warn('[SemanticCache] Errore scrittura cache enabled flag', e);
+    console.warn('[SemanticCache] Errore dispatch chelona_cache_toggle', e);
   }
 }
 
