@@ -412,74 +412,74 @@ export function RecipesScreen({
     return () => window.removeEventListener('recipes-back', handleBack);
   }, [handleBack]);
 
-  const loadRecipes = useCallback(() => {
-    fetch('ricette_mondo.json')
-      .then(res => res.json().catch(() => []))
-      .then((mondoData) => {
-        let combined: any[] = [];
-        if (Array.isArray(mondoData)) {
-          const formatted = mondoData
-            .filter((m: any) => m.image) // Only recipes with images
-            .map((m: any, i: number) => {
-              let cat = m.category || m.categoria || 'Primi';
-              if (cat === 'Primi Piatti') cat = 'Primi';
-              if (cat === 'Secondi Piatti') cat = 'Secondi';
-              
-              let parsedSteps: string[] = [];
-              if (Array.isArray(m.steps)) parsedSteps = m.steps;
-              else if (Array.isArray(m.procedimento)) parsedSteps = m.procedimento;
-              else if (typeof m.procedimento === 'string') {
-                parsedSteps = m.procedimento
-                  .split(/\n+/)
-                  .map((s: string) => s.trim())
-                  .filter((s: string) => s.length > 0)
-                  .reduce((acc: string[], curr: string) => {
-                    if (curr.length > 200) {
-                      const sentences = curr.replace(/([.!?])\s+([A-Z])/g, '$1|SPLIT|$2').split('|SPLIT|');
-                      acc.push(...sentences);
-                    } else {
-                      acc.push(curr);
-                    }
-                    return acc;
-                  }, []);
-              }
-
-              return {
-                id: m.id || `rec_${i}`,
-                title: m.title || m.nome,
-                image: m.image,
-                category: cat,
-                ingredients: m.ingredients || m.ingredienti || [],
-                steps: parsedSteps,
-                calories: m.calories,
-                protein: m.protein,
-                carbs: m.carbs,
-                fat: m.fat,
-                tags: m.tags,
-                country: m.country || 'Italia',
-                flag: m.flag || '🇮🇹'
-              };
-            });
-          combined = [...formatted];
-        }
-
-        try {
-          const custom = localStorage.getItem('chelona_custom_recipes');
-          if (custom) {
-            const customRecipes = JSON.parse(custom);
-            combined = [...customRecipes, ...combined];
+  const loadRecipes = useCallback(async () => {
+    try {
+      let res = await fetch('ricette_mondo.json').catch(() => null);
+      if (!res || !res.ok) {
+        res = await fetch('/ricette_mondo.json').catch(() => null);
+      }
+      const mondoData = res && res.ok ? await res.json().catch(() => []) : [];
+      let combined: any[] = [];
+      if (Array.isArray(mondoData)) {
+        const formatted = mondoData.map((m: any, i: number) => {
+          let cat = m.category || m.categoria || 'Primi';
+          if (cat === 'Primi Piatti') cat = 'Primi';
+          if (cat === 'Secondi Piatti') cat = 'Secondi';
+          
+          let parsedSteps: string[] = [];
+          if (Array.isArray(m.steps)) parsedSteps = m.steps;
+          else if (Array.isArray(m.procedimento)) parsedSteps = m.procedimento;
+          else if (typeof m.procedimento === 'string') {
+            parsedSteps = m.procedimento
+              .split(/\n+/)
+              .map((s: string) => s.trim())
+              .filter((s: string) => s.length > 0)
+              .reduce((acc: string[], curr: string) => {
+                if (curr.length > 200) {
+                  const sentences = curr.replace(/([.!?])\s+([A-Z])/g, '$1|SPLIT|$2').split('|SPLIT|');
+                  acc.push(...sentences);
+                } else {
+                  acc.push(curr);
+                }
+                return acc;
+              }, []);
           }
-        } catch (e) {
-          console.error('Failed to load custom recipes from localStorage', e);
-        }
 
-        setAllMeals(combined);
-        setLoading(false);
-      })
-      .catch(e => {
-        console.error("Failed to load recipes", e);
-        setLoading(false);
-      });
+          return {
+            id: m.id || `rec_${i}`,
+            title: m.title || m.nome,
+            image: m.image || FALLBACK_RECIPE_IMAGE,
+            category: cat,
+            ingredients: m.ingredients || m.ingredienti || [],
+            steps: parsedSteps,
+            calories: m.calories,
+            protein: m.protein,
+            carbs: m.carbs,
+            fat: m.fat,
+            tags: m.tags,
+            country: m.country || 'Italia',
+            flag: m.flag || '🇮🇹'
+          };
+        });
+        combined = [...formatted];
+      }
+
+      try {
+        const custom = localStorage.getItem('chelona_custom_recipes');
+        if (custom) {
+          const customRecipes = JSON.parse(custom);
+          combined = [...customRecipes, ...combined];
+        }
+      } catch (e) {
+        console.error('Failed to load custom recipes from localStorage', e);
+      }
+
+      setAllMeals(combined);
+      setLoading(false);
+    } catch (e) {
+      console.error("Failed to load recipes", e);
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => {

@@ -846,45 +846,85 @@ export interface CurrencyInfo {
   name: string;
   country: string;
   symbol: string;
+  flag: string;
   rateAgainstEur: number;
 }
 
 export const GLOBAL_CURRENCIES: CurrencyInfo[] = [
-  { code: 'EUR', name: 'Euro', country: 'Unione Europea', symbol: '€', rateAgainstEur: 1.0 },
-  { code: 'USD', name: 'Dollaro USA', country: 'Stati Uniti', symbol: '$', rateAgainstEur: 1.085 },
-  { code: 'GBP', name: 'Sterlina britannica', country: 'Regno Unito', symbol: '£', rateAgainstEur: 0.855 },
-  { code: 'JPY', name: 'Yen giapponese', country: 'Giappone', symbol: '¥', rateAgainstEur: 163.5 },
-  { code: 'CHF', name: 'Franco svizzero', country: 'Svizzera', symbol: 'CHF', rateAgainstEur: 0.958 },
-  { code: 'CAD', name: 'Dollaro canadese', country: 'Canada', symbol: 'C$', rateAgainstEur: 1.485 },
-  { code: 'AUD', name: 'Dollaro australiano', country: 'Australia', symbol: 'A$', rateAgainstEur: 1.662 },
-  { code: 'CNY', name: 'Yuan Renminbi', country: 'Cina', symbol: '¥', rateAgainstEur: 7.85 },
-  { code: 'BRL', name: 'Real brasiliano', country: 'Brasile', symbol: 'R$', rateAgainstEur: 5.92 },
-  { code: 'INR', name: 'Rupia indiana', country: 'India', symbol: '₹', rateAgainstEur: 91.2 },
-  { code: 'THB', name: 'Baht thailandese', country: 'Thailandia', symbol: '฿', rateAgainstEur: 39.5 },
-  { code: 'MXN', name: 'Peso messicano', country: 'Messico', symbol: 'Mex$', rateAgainstEur: 21.4 },
-  { code: 'AED', name: 'Dirham degli Emirati', country: 'Emirati Arabi Uniti', symbol: 'AED', rateAgainstEur: 3.985 },
-  { code: 'EGP', name: 'Sterlina egiziana', country: 'Egitto', symbol: 'E£', rateAgainstEur: 52.8 },
-  { code: 'MAD', name: 'Dirham marocchino', country: 'Marocco', symbol: 'DH', rateAgainstEur: 10.85 },
-  { code: 'TRY', name: 'Lira turca', country: 'Turchia', symbol: '₺', rateAgainstEur: 37.2 },
-  { code: 'KRW', name: 'Won sudcoreano', country: 'Corea del Sud', symbol: '₩', rateAgainstEur: 1470.0 },
-  { code: 'SGD', name: 'Dollaro di Singapore', country: 'Singapore', symbol: 'S$', rateAgainstEur: 1.45 },
-  { code: 'HKD', name: 'Dollaro di Hong Kong', country: 'Hong Kong', symbol: 'HK$', rateAgainstEur: 8.48 },
-  { code: 'SEK', name: 'Corona svedese', country: 'Svezia', symbol: 'kr', rateAgainstEur: 11.42 },
-  { code: 'NOK', name: 'Corona norvegese', country: 'Norvegia', symbol: 'kr', rateAgainstEur: 11.65 },
-  { code: 'DKK', name: 'Corona danese', country: 'Danimarca', symbol: 'kr', rateAgainstEur: 7.46 },
-  { code: 'PLN', name: 'Złoty polacco', country: 'Polonia', symbol: 'zł', rateAgainstEur: 4.28 },
-  { code: 'CZK', name: 'Corona ceca', country: 'Repubblica Ceca', symbol: 'Kč', rateAgainstEur: 25.15 },
-  { code: 'HUF', name: 'Fiorino ungherese', country: 'Ungheria', symbol: 'Ft', rateAgainstEur: 405.0 },
-  { code: 'IDR', name: 'Rupia indonesiana', country: 'Indonesia', symbol: 'Rp', rateAgainstEur: 17200.0 },
-  { code: 'VND', name: 'Dong vietnamita', country: 'Vietnam', symbol: '₫', rateAgainstEur: 27150.0 },
-  { code: 'ZAR', name: 'Rand sudafricano', country: 'Sudafrica', symbol: 'R', rateAgainstEur: 19.35 },
-  { code: 'ARS', name: 'Peso argentino', country: 'Argentina', symbol: '$', rateAgainstEur: 1050.0 },
-  { code: 'CLP', name: 'Peso cileno', country: 'Cile', symbol: '$', rateAgainstEur: 1025.0 },
-  { code: 'PEN', name: 'Sol peruviano', country: 'Perù', symbol: 'S/', rateAgainstEur: 4.05 },
-  { code: 'ISK', name: 'Corona islandese', country: 'Islanda', symbol: 'kr', rateAgainstEur: 149.0 },
-  { code: 'NZD', name: 'Dollaro neozelandese', country: 'Nuova Zelanda', symbol: 'NZ$', rateAgainstEur: 1.82 },
-  { code: 'PHP', name: 'Peso filippino', country: 'Filippine', symbol: '₱', rateAgainstEur: 62.5 },
-  { code: 'MYR', name: 'Ringgit malese', country: 'Malesia', symbol: 'RM', rateAgainstEur: 4.75 }
+  { code: 'EUR', name: 'Euro', country: 'Unione Europea', symbol: '€', flag: '🇪🇺', rateAgainstEur: 1.0 },
+  { code: 'USD', name: 'Dollaro USA', country: 'Stati Uniti', symbol: '$', flag: '🇺🇸', rateAgainstEur: 1.085 },
+  { code: 'GBP', name: 'Sterlina britannica', country: 'Regno Unito', symbol: '£', flag: '🇬🇧', rateAgainstEur: 0.855 },
+  { code: 'JPY', name: 'Yen giapponese', country: 'Giappone', symbol: '¥', flag: '🇯🇵', rateAgainstEur: 163.5 },
+  { code: 'CHF', name: 'Franco svizzero', country: 'Svizzera', symbol: 'CHF', flag: '🇨🇭', rateAgainstEur: 0.958 },
+  { code: 'CAD', name: 'Dollaro canadese', country: 'Canada', symbol: 'C$', flag: '🇨🇦', rateAgainstEur: 1.485 },
+  { code: 'AUD', name: 'Dollaro australiano', country: 'Australia', symbol: 'A$', flag: '🇦🇺', rateAgainstEur: 1.662 },
+  { code: 'NZD', name: 'Dollaro neozelandese', country: 'Nuova Zelanda', symbol: 'NZ$', flag: '🇳🇿', rateAgainstEur: 1.82 },
+  { code: 'CNY', name: 'Yuan Renminbi', country: 'Cina', symbol: '¥', flag: '🇨🇳', rateAgainstEur: 7.85 },
+  { code: 'HKD', name: 'Dollaro di Hong Kong', country: 'Hong Kong', symbol: 'HK$', flag: '🇭🇰', rateAgainstEur: 8.48 },
+  { code: 'TWD', name: 'Nuovo dollaro taiwanese', country: 'Taiwan', symbol: 'NT$', flag: '🇹🇼', rateAgainstEur: 34.8 },
+  { code: 'SGD', name: 'Dollaro di Singapore', country: 'Singapore', symbol: 'S$', flag: '🇸🇬', rateAgainstEur: 1.45 },
+  { code: 'KRW', name: 'Won sudcoreano', country: 'Corea del Sud', symbol: '₩', flag: '🇰🇷', rateAgainstEur: 1470.0 },
+  { code: 'INR', name: 'Rupia indiana', country: 'India', symbol: '₹', flag: '🇮🇳', rateAgainstEur: 91.2 },
+  { code: 'THB', name: 'Baht thailandese', country: 'Thailandia', symbol: '฿', flag: '🇹🇭', rateAgainstEur: 39.5 },
+  { code: 'VND', name: 'Dong vietnamita', country: 'Vietnam', symbol: '₫', flag: '🇻🇳', rateAgainstEur: 27150.0 },
+  { code: 'IDR', name: 'Rupia indonesiana', country: 'Indonesia', symbol: 'Rp', flag: '🇮🇩', rateAgainstEur: 17200.0 },
+  { code: 'MYR', name: 'Ringgit malese', country: 'Malesia', symbol: 'RM', flag: '🇲🇾', rateAgainstEur: 4.75 },
+  { code: 'PHP', name: 'Peso filippino', country: 'Filippine', symbol: '₱', flag: '🇵🇭', rateAgainstEur: 62.5 },
+  { code: 'BRL', name: 'Real brasiliano', country: 'Brasile', symbol: 'R$', flag: '🇧🇷', rateAgainstEur: 5.92 },
+  { code: 'MXN', name: 'Peso messicano', country: 'Messico', symbol: 'Mex$', flag: '🇲🇽', rateAgainstEur: 21.4 },
+  { code: 'ARS', name: 'Peso argentino', country: 'Argentina', symbol: '$', flag: '🇦🇷', rateAgainstEur: 1050.0 },
+  { code: 'CLP', name: 'Peso cileno', country: 'Cile', symbol: '$', flag: '🇨🇱', rateAgainstEur: 1025.0 },
+  { code: 'COP', name: 'Peso colombiano', country: 'Colombia', symbol: 'COL$', flag: '🇨🇴', rateAgainstEur: 4380.0 },
+  { code: 'PEN', name: 'Sol peruviano', country: 'Perù', symbol: 'S/', flag: '🇵🇪', rateAgainstEur: 4.05 },
+  { code: 'UYU', name: 'Peso uruguaiano', country: 'Uruguay', symbol: '$U', flag: '🇺🇾', rateAgainstEur: 42.5 },
+  { code: 'BOB', name: 'Boliviano', country: 'Bolivia', symbol: 'Bs', flag: '🇧🇴', rateAgainstEur: 7.50 },
+  { code: 'CRC', name: 'Colón costaricano', country: 'Costa Rica', symbol: '₡', flag: '🇨🇷', rateAgainstEur: 565.0 },
+  { code: 'DOP', name: 'Peso dominicano', country: 'Repubblica Dominicana', symbol: 'RD$', flag: '🇩🇴', rateAgainstEur: 64.5 },
+  { code: 'AED', name: 'Dirham degli Emirati', country: 'Emirati Arabi Uniti', symbol: 'AED', flag: '🇦🇪', rateAgainstEur: 3.985 },
+  { code: 'SAR', name: 'Riyal saudita', country: 'Arabia Saudita', symbol: 'SR', flag: '🇸🇦', rateAgainstEur: 4.07 },
+  { code: 'QAR', name: 'Riyal qatariota', country: 'Qatar', symbol: 'QR', flag: '🇶🇦', rateAgainstEur: 3.95 },
+  { code: 'KWD', name: 'Dinaro kuwaitiano', country: 'Kuwait', symbol: 'KD', flag: '🇰🇼', rateAgainstEur: 0.33 },
+  { code: 'BHD', name: 'Dinaro del Bahrein', country: 'Bahrein', symbol: 'BD', flag: '🇧🇭', rateAgainstEur: 0.41 },
+  { code: 'OMR', name: 'Rial dell\'Oman', country: 'Oman', symbol: 'OMR', flag: '🇴🇲', rateAgainstEur: 0.42 },
+  { code: 'JOD', name: 'Dinaro giordano', country: 'Giordania', symbol: 'JD', flag: '🇯🇴', rateAgainstEur: 0.77 },
+  { code: 'ILS', name: 'Nuovo siclo', country: 'Israele', symbol: '₪', flag: '🇮🇱', rateAgainstEur: 4.05 },
+  { code: 'TRY', name: 'Lira turca', country: 'Turchia', symbol: '₺', flag: '🇹🇷', rateAgainstEur: 37.2 },
+  { code: 'EGP', name: 'Sterlina egiziana', country: 'Egitto', symbol: 'E£', flag: '🇪🇬', rateAgainstEur: 52.8 },
+  { code: 'MAD', name: 'Dirham marocchino', country: 'Marocco', symbol: 'DH', flag: '🇲🇦', rateAgainstEur: 10.85 },
+  { code: 'TND', name: 'Dinaro tunisino', country: 'Tunisia', symbol: 'DT', flag: '🇹🇳', rateAgainstEur: 3.38 },
+  { code: 'DZD', name: 'Dinaro algerino', country: 'Algeria', symbol: 'DA', flag: '🇩🇿', rateAgainstEur: 146.5 },
+  { code: 'ZAR', name: 'Rand sudafricano', country: 'Sudafrica', symbol: 'R', flag: '🇿🇦', rateAgainstEur: 19.35 },
+  { code: 'KES', name: 'Scellino keniota', country: 'Kenya', symbol: 'KSh', flag: '🇰🇪', rateAgainstEur: 141.0 },
+  { code: 'TZS', name: 'Scellino della Tanzania', country: 'Tanzania', symbol: 'TSh', flag: '🇹🇿', rateAgainstEur: 2850.0 },
+  { code: 'UGX', name: 'Scellino ugandese', country: 'Uganda', symbol: 'USh', flag: '🇺🇬', rateAgainstEur: 4020.0 },
+  { code: 'GHS', name: 'Cedi ghanese', country: 'Ghana', symbol: 'GH₵', flag: '🇬🇭', rateAgainstEur: 16.2 },
+  { code: 'NGN', name: 'Naira nigeriana', country: 'Nigeria', symbol: '₦', flag: '🇳🇬', rateAgainstEur: 1680.0 },
+  { code: 'MUR', name: 'Rupia mauriziana', country: 'Mauritius', symbol: 'Rs', flag: '🇲🇺', rateAgainstEur: 50.5 },
+  { code: 'SCR', name: 'Rupia delle Seychelles', country: 'Seychelles', symbol: 'SR', flag: '🇸🇨', rateAgainstEur: 15.2 },
+  { code: 'MVR', name: 'Rufiyaa delle Maldive', country: 'Maldive', symbol: 'Rf', flag: '🇲🇻', rateAgainstEur: 16.8 },
+  { code: 'LKR', name: 'Rupia dello Sri Lanka', country: 'Sri Lanka', symbol: 'Rs', flag: '🇱🇰', rateAgainstEur: 325.0 },
+  { code: 'NPR', name: 'Rupia nepalese', country: 'Nepal', symbol: 'Rs', flag: '🇳🇵', rateAgainstEur: 145.0 },
+  { code: 'SEK', name: 'Corona svedese', country: 'Svezia', symbol: 'kr', flag: '🇸🇪', rateAgainstEur: 11.42 },
+  { code: 'NOK', name: 'Corona norvegese', country: 'Norvegia', symbol: 'kr', flag: '🇳🇴', rateAgainstEur: 11.65 },
+  { code: 'DKK', name: 'Corona danese', country: 'Danimarca', symbol: 'kr', flag: '🇩🇰', rateAgainstEur: 7.46 },
+  { code: 'ISK', name: 'Corona islandese', country: 'Islanda', symbol: 'kr', flag: '🇮🇸', rateAgainstEur: 149.0 },
+  { code: 'PLN', name: 'Złoty polacco', country: 'Polonia', symbol: 'zł', flag: '🇵🇱', rateAgainstEur: 4.28 },
+  { code: 'CZK', name: 'Corona ceca', country: 'Repubblica Ceca', symbol: 'Kč', flag: '🇨🇿', rateAgainstEur: 25.15 },
+  { code: 'HUF', name: 'Fiorino ungherese', country: 'Ungheria', symbol: 'Ft', flag: '🇭🇺', rateAgainstEur: 405.0 },
+  { code: 'RON', name: 'Leu rumeno', country: 'Romania', symbol: 'lei', flag: '🇷🇴', rateAgainstEur: 4.97 },
+  { code: 'BGN', name: 'Lev bulgaro', country: 'Bulgaria', symbol: 'лв', flag: '🇧🇬', rateAgainstEur: 1.956 },
+  { code: 'RSD', name: 'Dinaro serbo', country: 'Serbia', symbol: 'din', flag: '🇷🇸', rateAgainstEur: 117.2 },
+  { code: 'ALL', name: 'Lek albanese', country: 'Albania', symbol: 'L', flag: '🇦🇱', rateAgainstEur: 101.5 },
+  { code: 'GEL', name: 'Lari georgiano', country: 'Georgia', symbol: '₾', flag: '🇬🇪', rateAgainstEur: 2.95 },
+  { code: 'AMD', name: 'Dram armeno', country: 'Armenia', symbol: '֏', flag: '🇦🇲', rateAgainstEur: 422.0 },
+  { code: 'AZN', name: 'Manat azero', country: 'Azerbaigian', symbol: '₼', flag: '🇦🇿', rateAgainstEur: 1.84 },
+  { code: 'KZT', name: 'Tenge kazako', country: 'Kazakistan', symbol: '₸', flag: '🇰🇿', rateAgainstEur: 535.0 },
+  { code: 'UZS', name: 'Som uzbeko', country: 'Uzbekistan', symbol: 'so\'m', flag: '🇺🇿', rateAgainstEur: 13850.0 },
+  { code: 'MNT', name: 'Tugrik mongolo', country: 'Mongolia', symbol: '₮', flag: '🇲🇳', rateAgainstEur: 3710.0 },
+  { code: 'FJD', name: 'Dollaro delle Figi', country: 'Figi', symbol: 'FJ$', flag: '🇫🇯', rateAgainstEur: 2.42 },
+  { code: 'JMD', name: 'Dollaro giamaicano', country: 'Giamaica', symbol: 'J$', flag: '🇯🇲', rateAgainstEur: 170.0 },
+  { code: 'BSD', name: 'Dollaro delle Bahamas', country: 'Bahamas', symbol: 'B$', flag: '🇧🇸', rateAgainstEur: 1.085 },
+  { code: 'BBD', name: 'Dollaro delle Barbados', country: 'Barbados', symbol: 'Bds$', flag: '🇧🇧', rateAgainstEur: 2.17 }
 ];
 
 // --- Travel Health & Vaccines Database ---
@@ -892,6 +932,7 @@ export interface CountryHealthInfo {
   country: string;
   flag: string;
   code: string;
+  continent: string;
   requiredVaccines: string[];
   recommendedVaccines: string[];
   healthRisks: string[];
@@ -899,6 +940,9 @@ export interface CountryHealthInfo {
   malariaRisk: 'none' | 'low' | 'moderate' | 'high';
   advisoryNote: string;
   recommendedKit: string[];
+  bestSeason: string;
+  avoidSeason: string;
+  climateSummary: string;
 }
 
 export const TRAVEL_HEALTH_DB: CountryHealthInfo[] = [
@@ -906,171 +950,428 @@ export const TRAVEL_HEALTH_DB: CountryHealthInfo[] = [
     country: 'Kenya',
     flag: '🇰🇪',
     code: 'KE',
+    continent: 'Africa',
     requiredVaccines: ['Febbre Gialla (obbligatoria se da paesi a rischio o transito > 12h)'],
     recommendedVaccines: ['Epatite A', 'Epatite B', 'Tetano-Difterite', 'Febbre Tifoide', 'Meningite Meningococcica', 'Rabbia'],
     healthRisks: ['Malaria (rischio alto nei parchi e zone costiere come Malindi/Watamu)', 'Dengue', 'Diarrea del viaggiatore'],
     waterSafety: 'bottled_only',
     malariaRisk: 'high',
     advisoryNote: 'Profilassi antimalarica (Malarone) vivamente raccomandata per safari e coste. Bere tassativamente acqua minerale sigillata.',
-    recommendedKit: ['Repellente DEET > 30%', 'Malarone / Antimalarico', 'Fermenti lattici', 'Disinfettante intestinale', 'Paracetamolo']
+    recommendedKit: ['Repellente DEET > 30%', 'Malarone / Antimalarico', 'Fermenti lattici', 'Disinfettante intestinale', 'Paracetamolo'],
+    bestSeason: 'Luglio - Ottobre (Grande Migrazione) e Gennaio - Febbraio (soleggiato e secco)',
+    avoidSeason: 'Aprile - Maggio (grandi piogge e strade sterrate fangose)',
+    climateSummary: 'Clima equatoriale temperato dall\'altitudine negli altipiani, caldo umido sulla costa.'
   },
   {
     country: 'Tanzania & Zanzibar',
     flag: '🇹🇿',
     code: 'TZ',
-    requiredVaccines: ['Febbre Gialla (richiesto certificato di vaccinazione all\'ingresso a Zanzibar)'],
+    continent: 'Africa',
+    requiredVaccines: ['Febbre Gialla (richiesto certificato di vaccinazione all\'ingresso a Zanzibar se da paesi endemici)'],
     recommendedVaccines: ['Epatite A', 'Epatite B', 'Tetano-Difterite', 'Febbre Tifoide', 'Colera (orale)'],
     healthRisks: ['Malaria (presente in tutto il paese e nelle aree rurali di Zanzibar)', 'Dengue', 'Batteri intestinali'],
     waterSafety: 'bottled_only',
     malariaRisk: 'high',
-    advisoryNote: 'Certificato Febbre Gialla obbligatorio. Dormire sotto zanzariere impregnate e usare spray antizanzare tropicale.',
-    recommendedKit: ['Profilassi antimalarica', 'Zanzariera da viaggio', 'Reidratante orale', 'Crema solare 50+', 'Antibiotico intestinale']
+    advisoryNote: 'Certificato Febbre Gialla raccomandato. Dormire sotto zanzariere impregnate e usare spray antizanzare tropicale.',
+    recommendedKit: ['Profilassi antimalarica', 'Zanzariera da viaggio', 'Reidratante orale', 'Crema solare 50+', 'Antibiotico intestinale'],
+    bestSeason: 'Giugno - Ottobre (stagione secca ideale per safari e mare) e Gennaio - Febbraio',
+    avoidSeason: 'Marzo - Maggio (stagione delle lunghe piogge monsoniche)',
+    climateSummary: 'Clima tropicale caldo tutto l\'anno con brezze marine a Zanzibar (28-32°C).'
   },
   {
     country: 'Brasile',
     flag: '🇧🇷',
     code: 'BR',
-    requiredVaccines: ['Febbre Gialla (raccomandata per tutto il paese e bacino Amazzonico)'],
+    continent: 'Sud America',
+    requiredVaccines: ['Febbre Gialla (raccomandata per tutto il paese e bacino Amazzonico/Iguazù)'],
     recommendedVaccines: ['Epatite A', 'Epatite B', 'Tetano-Difterite', 'Febbre Tifoide', 'Rabbia'],
     healthRisks: ['Dengue (frequente in aree urbane e costiere)', 'Zika e Chikungunya', 'Malaria (solo bacino dell\'Amazzonia)'],
     waterSafety: 'bottled_only',
     malariaRisk: 'moderate',
     advisoryNote: 'Vaccinazione contro la febbre gialla raccomandata con almeno 10 giorni d\'anticipo per Iguazù, Manaus e stati centrali.',
-    recommendedKit: ['Repellente antizanzare tropicale', 'Cerotti e disinfettante', 'Antidiarroico', 'Antistaminico']
+    recommendedKit: ['Repellente antizanzare tropicale', 'Cerotti e disinfettante', 'Antidiarroico', 'Antistaminico'],
+    bestSeason: 'Maggio - Settembre (inverno australe mite e meno piovoso a Rio e al Sud)',
+    avoidSeason: 'Dicembre - Marzo nel nord (caldo umido intenso e frequenti rovesci estivi)',
+    climateSummary: 'Prevalentemente tropicale e subtropicale al sud, equatoriale in Amazzonia.'
   },
   {
     country: 'Thailandia',
     flag: '🇹🇭',
     code: 'TH',
+    continent: 'Asia',
     requiredVaccines: ['Febbre Gialla (solo se provenienti da paesi endemici)'],
     recommendedVaccines: ['Epatite A', 'Epatite B', 'Tetano-Difterite', 'Febbre Tifoide', 'Encefalite Giapponese (se soggiorni rurali)', 'Rabbia'],
     healthRisks: ['Dengue (diffusa nel sud-est asiatico)', 'Intossicazioni alimentari da street food', 'Rabbia (morsi da scimmie o randagi)'],
     waterSafety: 'bottled_only',
     malariaRisk: 'low',
     advisoryNote: 'Rischio malaria nullo nelle grandi città e isole turistiche (Bangkok, Phuket, Koh Samui, Chiang Mai). Non toccare scimmie.',
-    recommendedKit: ['Repellente DEET', 'Fermenti lattici e carbone vegetale', 'Sali minerali per il caldo umido', 'Cerotti vesciche']
+    recommendedKit: ['Repellente DEET', 'Fermenti lattici e carbone vegetale', 'Sali minerali per il caldo umido', 'Cerotti vesciche'],
+    bestSeason: 'Novembre - Febbraio (clima secco, fresco e ventilato, mare calmo)',
+    avoidSeason: 'Maggio - Ottobre (stagione dei monsoni con acquazzoni torrenziali quotidiani)',
+    climateSummary: 'Clima tropicale monsonico caldo tutto l\'anno con temperature medie tra 28°C e 35°C.'
   },
   {
     country: 'India',
     flag: '🇮🇳',
     code: 'IN',
+    continent: 'Asia',
     requiredVaccines: ['Febbre Gialla (obbligatoria se da paesi endemici, con quarantena rigida se sprovvisti)'],
     recommendedVaccines: ['Epatite A', 'Epatite B', 'Tetano-Difterite', 'Febbre Tifoide', 'Colera', 'Rabbia', 'Encefalite Giapponese'],
     healthRisks: ['Diarrea del viaggiatore (Delhi Belly)', 'Malaria (rischio variabile a seconda della regione)', 'Dengue'],
     waterSafety: 'bottled_only',
     malariaRisk: 'moderate',
     advisoryNote: 'Non bere mai acqua non sigillata né consumare ghiaccio. Cibi solo cotti caldi e frutta sbucciata al momento.',
-    recommendedKit: ['Gel disinfettante mani', 'Rifaximina / Antibiotico intestinale', 'Fermenti lattici', 'Soluzioni reidratanti']
+    recommendedKit: ['Gel disinfettante mani', 'Rifaximina / Antibiotico intestinale', 'Fermenti lattici', 'Soluzioni reidratanti'],
+    bestSeason: 'Ottobre - Marzo (temperature gradevoli e clima asciutto nel Triangolo d\'Oro e Rajasthan)',
+    avoidSeason: 'Giugno - Settembre (monsone estivo intenso e caldo asfissiante)',
+    climateSummary: 'Clima tropicale-monsonico, con inverni miti al centro-nord e estati torride.'
   },
   {
     country: 'Perù',
     flag: '🇵🇪',
     code: 'PE',
+    continent: 'Sud America',
     requiredVaccines: ['Febbre Gialla (raccomandata per aree sotto i 2300m, Amazzonia e Puerto Maldonado)'],
     recommendedVaccines: ['Epatite A', 'Epatite B', 'Tetano-Difterite', 'Febbre Tifoide'],
     healthRisks: ['Mal di Montagna / Soroche (Cusco 3400m, Lago Titicaca 3800m)', 'Malaria (solo Amazzonia profonda)'],
     waterSafety: 'bottled_only',
     malariaRisk: 'low',
     advisoryNote: 'Per altitudini oltre 2500m: acclimatarsi 1-2 giorni a Cusco, bere tè di coca, idratarsi molto ed evitare sforzi intensi il primo giorno.',
-    recommendedKit: ['Medicinali per altitudine (Acetazolamide)', 'Gocce occhi e burrocacao', 'Crema solare alta quota', 'Repellente Amazzonia']
+    recommendedKit: ['Medicinali per altitudine (Acetazolamide)', 'Gocce occhi e burrocacao', 'Crema solare alta quota', 'Repellente Amazzonia'],
+    bestSeason: 'Maggio - Settembre (inverno andino secco, cielo limpido ideale per Machu Picchu)',
+    avoidSeason: 'Gennaio - Marzo (piogge sulle Ande, sentieri Inca spesso chiusi)',
+    climateSummary: 'Costiero desertico fresco (Lima), andino temperato/freddo, equatoriale in Amazzonia.'
   },
   {
     country: 'Egitto',
     flag: '🇪🇬',
     code: 'EG',
+    continent: 'Africa / Medio Oriente',
     requiredVaccines: ['Febbre Gialla (solo se provenienti da paesi endemici)'],
     recommendedVaccines: ['Epatite A', 'Epatite B', 'Tetano-Difterite', 'Febbre Tifoide'],
     healthRisks: ['Infezioni gastrointestinali (sbalzi termici aria condizionata/caldo)', 'Colpi di calore nel deserto'],
     waterSafety: 'bottled_only',
     malariaRisk: 'none',
     advisoryNote: 'Evitare bevande con ghiaccio e verdure crude non sbucciate. Usare acqua in bottiglia anche per lavare i denti. Rischio malaria nullo.',
-    recommendedKit: ['Antidiarroico (Loperamide/Dissenten)', 'Integratori salini e magnesio', 'Protezione solare 50+', 'Cappello protettivo']
+    recommendedKit: ['Antidiarroico (Loperamide/Dissenten)', 'Integratori salini e magnesio', 'Protezione solare 50+', 'Cappello protettivo'],
+    bestSeason: 'Ottobre - Aprile (inverno e mezza stagione con temperature miti tra 20°C e 27°C)',
+    avoidSeason: 'Luglio - Agosto (caldo soffocante con picchi oltre i 42°C a Luxor e Cairo)',
+    climateSummary: 'Clima subtropicale desertico, caldissimo d\'estate e mite e soleggiato d\'inverno.'
   },
   {
     country: 'Madagascar',
     flag: '🇲🇬',
     code: 'MG',
+    continent: 'Africa',
     requiredVaccines: ['Febbre Gialla (se da paesi a rischio)'],
     recommendedVaccines: ['Epatite A', 'Epatite B', 'Tetano-Difterite', 'Febbre Tifoide', 'Rabbia'],
     healthRisks: ['Malaria (presente in tutta l\'isola)', 'Dengue', 'Parassitosi delle acque dolci'],
     waterSafety: 'bottled_only',
     malariaRisk: 'high',
     advisoryNote: 'Profilassi antimalarica raccomandata. Evitare bagni in laghi o fiumi di acqua dolce stagnante.',
-    recommendedKit: ['Profilassi antimalarica', 'Repellente tropicale potente', 'Antinfiammatori', 'Kit medicazione sterile']
+    recommendedKit: ['Profilassi antimalarica', 'Repellente tropicale potente', 'Antinfiammatori', 'Kit medicazione sterile'],
+    bestSeason: 'Maggio - Ottobre (inverno australe fresco e secco, ideale per parchi e mare a Nosy Be)',
+    avoidSeason: 'Gennaio - Marzo (stagione dei cicloni tropicali e piogge violente)',
+    climateSummary: 'Tropicale lungo le coste, temperato sugli altipiani centrali, semi-arido a sud.'
   },
   {
     country: 'Vietnam',
     flag: '🇻🇳',
     code: 'VN',
+    continent: 'Asia',
     requiredVaccines: ['Febbre Gialla (solo se da paesi endemici)'],
     recommendedVaccines: ['Epatite A', 'Epatite B', 'Tetano-Difterite', 'Febbre Tifoide', 'Encefalite Giapponese'],
     healthRisks: ['Dengue', 'Diarrea alimentare', 'Rabbia'],
     waterSafety: 'bottled_only',
     malariaRisk: 'low',
     advisoryNote: 'Rischio malaria limitato a foreste dell\'altopiano centrale. Nelle città (Hanoi, Ho Chi Minh) e baie (Halong) rischio quasi nullo.',
-    recommendedKit: ['Repellente antizanzare', 'Fermenti lattici', 'Disinfettante mani', 'Antistaminico']
+    recommendedKit: ['Repellente antizanzare', 'Fermenti lattici', 'Disinfettante mani', 'Antistaminico'],
+    bestSeason: 'Novembre - Aprile (stagione asciutta nel nord e sud, mare calmo)',
+    avoidSeason: 'Maggio - Ottobre (monsone estivo umido e tifoni autunnali al centro)',
+    climateSummary: 'Subtropicale al nord con inverni freschi (15°C), tropicale monsonico al sud tutto l\'anno (30°C).'
   },
   {
     country: 'Indonesia & Bali',
     flag: '🇮🇩',
     code: 'ID',
+    continent: 'Asia',
     requiredVaccines: ['Febbre Gialla (se da paesi a rischio)'],
     recommendedVaccines: ['Epatite A', 'Epatite B', 'Tetano-Difterite', 'Febbre Tifoide', 'Rabbia'],
     healthRisks: ['Bali Belly (infezione intestinale)', 'Dengue', 'Rabbia da scimmie/cani'],
     waterSafety: 'bottled_only',
     malariaRisk: 'low',
     advisoryNote: 'A Bali e Giava non c\'è rischio malaria significativo. Attenzione a graffi o morsi di scimmie nelle foreste di Ubud.',
-    recommendedKit: ['Elettroliti e fermenti lattici', 'Carbone vegetale', 'Repellente DEET', 'Spray disinfettante']
+    recommendedKit: ['Elettroliti e fermenti lattici', 'Carbone vegetale', 'Repellente DEET', 'Spray disinfettante'],
+    bestSeason: 'Maggio - Settembre (stagione secca con cielo terso, bassa umidità e ottime onde per il surf)',
+    avoidSeason: 'Dicembre - Marzo (monsone umido con piogge quotidiane)',
+    climateSummary: 'Clima equatoriale con temperature costanti attorno ai 28-30°C e mare caldo.'
   },
   {
     country: 'Messico',
     flag: '🇲🇽',
     code: 'MX',
+    continent: 'Nord / Centro America',
     requiredVaccines: ['Febbre Gialla (solo se da paesi a rischio)'],
     recommendedVaccines: ['Epatite A', 'Epatite B', 'Tetano-Difterite', 'Febbre Tifoide'],
     healthRisks: ['Diarrea del viaggiatore', 'Dengue e Zika nello Yucatan'],
     waterSafety: 'bottled_only',
     malariaRisk: 'low',
     advisoryNote: 'Acqua del rubinetto non potabile. Nei resort turistici dei Caraibi si usa acqua depurata. Usare repellenti biologici per i cenote.',
-    recommendedKit: ['Repellente biodegradabile', 'Antidiarroico', 'Fermenti', 'Paracetamolo']
+    recommendedKit: ['Repellente biodegradabile', 'Antidiarroico', 'Fermenti', 'Paracetamolo'],
+    bestSeason: 'Dicembre - Aprile (clima soleggiato, mare calmo sulla Riviera Maya, no uragani)',
+    avoidSeason: 'Agosto - Ottobre (stagione degli uragani tropicali sul Golfo e Caraibi)',
+    climateSummary: 'Tropicale sulle coste (Cancun, Riviera Maya, Puerto Vallarta), temperato sugli altopiani.'
+  },
+  {
+    country: 'Colombia',
+    flag: '🇨🇴',
+    code: 'CO',
+    continent: 'Sud America',
+    requiredVaccines: ['Febbre Gialla (obbligatoria per Parchi Nazionali, Amazzonia e Tayrona)'],
+    recommendedVaccines: ['Epatite A', 'Epatite B', 'Tetano-Difterite', 'Febbre Tifoide'],
+    healthRisks: ['Dengue in aree calde', 'Malaria nelle zone forestali periferiche', 'Mal di montagna a Bogotá (2600m)'],
+    waterSafety: 'bottled_only',
+    malariaRisk: 'low',
+    advisoryNote: 'Certificato Febbre Gialla richiesto per l\'ingresso ai parchi naturali (Tayrona, Sierra Nevada). A Cartagena e Medellín standard turistici eccellenti.',
+    recommendedKit: ['Repellente antizanzare tropicale', 'Fermenti lattici', 'Crema solare 50+', 'Antidiarroico'],
+    bestSeason: 'Dicembre - Marzo e Luglio - Agosto (mesi con precipitazioni minime)',
+    avoidSeason: 'Aprile - Maggio e Ottobre - Novembre (picchi di precipitazioni stagionali)',
+    climateSummary: 'Clima varia con l\'altitudine: caldo-tropicale sulla costa (Cartagena 31°C), primavera perenne a Medellín (24°C), fresco a Bogotá (15°C).'
+  },
+  {
+    country: 'Sudafrica',
+    flag: '🇿🇦',
+    code: 'ZA',
+    continent: 'Africa',
+    requiredVaccines: ['Febbre Gialla (solo se provenienti da paesi endemici)'],
+    recommendedVaccines: ['Epatite A', 'Epatite B', 'Tetano-Difterite', 'Febbre Tifoide'],
+    healthRisks: ['Malaria (limitata al Parco Kruger e coste del KwaZulu-Natal)', 'Forte escursione termica giorno/notte durante safari'],
+    waterSafety: 'safe',
+    malariaRisk: 'low',
+    advisoryNote: 'Città del Capo e la Garden Route sono totalmente libere da malaria e l\'acqua è potabile ovunque. Profilassi antimalarica necessaria solo per il Kruger d\'estate.',
+    recommendedKit: ['Profilassi antimalarica (solo se Kruger estivo)', 'Giacca a vento per safari all\'alba', 'Burrocacao e crema solare'],
+    bestSeason: 'Maggio - Settembre (secco, ideale per avvistamento animali al Kruger) e Novembre - Marzo (estate ideale a Cape Town)',
+    avoidSeason: 'Giugno - Agosto a Cape Town (inverno umido, freddo e piovoso)',
+    climateSummary: 'Clima mediterraneo a Cape Town, subtropicale a Durban, semi-arido/altopiano nell\'interno.'
+  },
+  {
+    country: 'Marocco',
+    flag: '🇲🇦',
+    code: 'MA',
+    continent: 'Africa',
+    requiredVaccines: ['Nessuna vaccinazione obbligatoria'],
+    recommendedVaccines: ['Epatite A', 'Epatite B', 'Tetano-Difterite', 'Febbre Tifoide'],
+    healthRisks: ['Disturbi gastrointestinali da acqua non sigillata o cibi crudi', 'Escursione termica nel deserto'],
+    waterSafety: 'bottled_only',
+    malariaRisk: 'none',
+    advisoryNote: 'Bere sempre acqua minerale in bottiglia. Nel deserto di Merzouga coprirsi bene la notte (la temperatura cala di 20°C). Rischio malaria inesistente.',
+    recommendedKit: ['Fermenti lattici e antidiarroico', 'Sciarpa di cotone per la sabbia', 'Occhiali da sole protettivi UV', 'Paracetamolo'],
+    bestSeason: 'Marzo - Maggio e Settembre - Novembre (primavera e autunno con clima ideale 22-26°C)',
+    avoidSeason: 'Luglio - Agosto (caldo torrido a Marrakech e Fez con picchi oltre 42°C)',
+    climateSummary: 'Mediterraneo lungo le coste, continentale nell\'interno montano, desertico a sud.'
+  },
+  {
+    country: 'Maldive',
+    flag: '🇲🇻',
+    code: 'MV',
+    continent: 'Asia',
+    requiredVaccines: ['Febbre Gialla (solo se provenienti da paesi a rischio)'],
+    recommendedVaccines: ['Epatite A', 'Tetano-Difterite'],
+    healthRisks: ['Forte irradiazione solare equatoriale', 'Possibile Dengue in isole locali', 'Punture da coralli'],
+    waterSafety: 'bottled_only',
+    malariaRisk: 'none',
+    advisoryNote: 'I resort dispongono di impianti di desalinizzazione e medici h24. Proteggersi scrupolosamente dal sole equatoriale. Malaria assente.',
+    recommendedKit: ['Crema solare reef-safe 50+', 'Maglietta UV per snorkeling', 'Scarpe scoglio per coralli', 'Gocce auricolari per otiti'],
+    bestSeason: 'Dicembre - Aprile (monsone di nord-est asciutto, cielo limpidissimo e mare piatto)',
+    avoidSeason: 'Maggio - Ottobre (monsone di sud-ovest con venti, temporali e mare mosso)',
+    climateSummary: 'Clima equatoriale caldo e costante tra 28°C e 31°C sia nell\'aria che nell\'acqua.'
+  },
+  {
+    country: 'Filippine',
+    flag: '🇵🇭',
+    code: 'PH',
+    continent: 'Asia',
+    requiredVaccines: ['Febbre Gialla (se da paesi endemici)'],
+    recommendedVaccines: ['Epatite A', 'Epatite B', 'Tetano-Difterite', 'Febbre Tifoide', 'Rabbia'],
+    healthRisks: ['Dengue (presente nelle isole tropicali)', 'Intossicazioni da frutti di mare o acqua'],
+    waterSafety: 'bottled_only',
+    malariaRisk: 'low',
+    advisoryNote: 'Rischio malaria nullo nelle principali isole turistiche (Boracay, Cebu, Bohol, Siargao). Presente solo in aree forestali remote di Palawan meridionale.',
+    recommendedKit: ['Repellente insetti tropicale DEET', 'Fermenti lattici', 'Sacca stagna per barca', 'Cerotti impermeabili'],
+    bestSeason: 'Dicembre - Maggio (stagione secca con sole continuo e mare calmo turchese)',
+    avoidSeason: 'Luglio - Ottobre (stagione dei tifoni e temporali monsonici frequenti)',
+    climateSummary: 'Clima tropicale caldo-umido con temperature medie intorno a 30°C tutto l\'anno.'
+  },
+  {
+    country: 'Costa Rica',
+    flag: '🇨🇷',
+    code: 'CR',
+    continent: 'Centro America',
+    requiredVaccines: ['Febbre Gialla (solo se provenienti da paesi a rischio in Sud America o Africa)'],
+    recommendedVaccines: ['Epatite A', 'Epatite B', 'Tetano-Difterite', 'Febbre Tifoide'],
+    healthRisks: ['Dengue in zone calde umide', 'Zanzare nella foresta pluviale'],
+    waterSafety: 'safe',
+    malariaRisk: 'none',
+    advisoryNote: 'L\'acqua è potabile nella maggior parte del paese (hotel e città principali). Elevati standard sanitari. Portare repellente ecologico per i parchi nazionali.',
+    recommendedKit: ['Repellente zanzare', 'K-way traspirante per foresta pluviale', 'Scarpe da trekking con grip', 'Crema solare biodegradabile'],
+    bestSeason: 'Dicembre - Aprile (stagione secca con giornate piene di sole sia sul Pacifico che nei parchi)',
+    avoidSeason: 'Settembre - Ottobre (mesi con le piogge più intense dell\'anno)',
+    climateSummary: 'Tropicale con microclimi vari: caldo umido sulle coste, fresco negli altipiani di Monteverde.'
+  },
+  {
+    country: 'Giordania',
+    flag: '🇯🇴',
+    code: 'JO',
+    continent: 'Medio Oriente',
+    requiredVaccines: ['Nessuna vaccinazione obbligatoria'],
+    recommendedVaccines: ['Epatite A', 'Tetano-Difterite', 'Febbre Tifoide'],
+    healthRisks: ['Disidratazione nel Wadi Rum e Petra', 'Irritazione oculare da sabbia o polvere'],
+    waterSafety: 'bottled_only',
+    malariaRisk: 'none',
+    advisoryNote: 'Sanità di ottimo livello ad Amman. Bere molta acqua con sali minerali durante le lunghe camminate a Petra. Rischio malaria zero.',
+    recommendedKit: ['Scarpe da trekking per Petra', 'Sali minerali reidratanti', 'Collirio lenitivo per la polvere', 'Giacca antivento per la notte nel deserto'],
+    bestSeason: 'Marzo - Maggio e Settembre - Novembre (primavera e autunno con temperature ideali tra 20°C e 26°C)',
+    avoidSeason: 'Luglio - Agosto (caldo estremo nel deserto e Mar Morto oltre 40°C)',
+    climateSummary: 'Mediterraneo arido con inverni freschi ad Amman e climi desertici nel sud.'
   },
   {
     country: 'Giappone',
     flag: '🇯🇵',
     code: 'JP',
+    continent: 'Asia',
     requiredVaccines: ['Nessun vaccino obbligatorio'],
     recommendedVaccines: ['Vaccinazioni di routine (Tetano, Morbillo, Epatite A)'],
     healthRisks: ['Nessun rischio sanitario particolare', 'Allergie ai pollini di cedro in primavera'],
     waterSafety: 'safe',
     malariaRisk: 'none',
-    advisoryNote: 'Standard sanitari d\'eccellenza. Acqua del rubinetto purissima e potabile ovunque.',
-    recommendedKit: ['Antistaminico (se primaverile)', 'Paracetamolo', 'Cerotti vesciche', 'Crema idratante']
+    advisoryNote: 'Standard sanitari d\'eccellenza tra i migliori al mondo. Acqua del rubinetto purissima e potabile ovunque. Farmacie capillarmente fornite.',
+    recommendedKit: ['Antistaminico (se primaverile)', 'Paracetamolo', 'Cerotti vesciche per lunghe camminate', 'Crema idratante'],
+    bestSeason: 'Marzo - Maggio (fioritura dei ciliegi Sakura) e Ottobre - Novembre (foliage d\'autunno Momiji)',
+    avoidSeason: 'Luglio - Agosto (caldo afoso e umidità altissima, possibili tifoni a Settembre)',
+    climateSummary: 'Clima temperato con 4 stagioni marcate: inverni freddi, primavere miti, estati calde umide.'
   },
   {
     country: 'Stati Uniti & Canada',
     flag: '🇺🇸',
     code: 'US',
+    continent: 'Nord America',
     requiredVaccines: ['Nessun vaccino obbligatorio'],
-    recommendedVaccines: ['Vaccinazioni di routine (Tetano, Morbillo)'],
-    healthRisks: ['Nessuno endemico', 'Costi sanitari privatizzati esorbitanti'],
+    recommendedVaccines: ['Vaccinazioni di routine (Tetano, Morbillo, Epatite A/B)'],
+    healthRisks: ['Nessuno endemico', 'Costi sanitari privatizzati esorbitanti negli USA'],
     waterSafety: 'safe',
     malariaRisk: 'none',
-    advisoryNote: 'FONDAMENTALE: stipulare un\'assicurazione sanitaria privata con massimale illimitato prima di partire.',
-    recommendedKit: ['Polizza assicurazione sanitaria con contatti', 'Farmaci personali con prescrizione in inglese']
+    advisoryNote: 'FONDAMENTALE: stipulare un\'assicurazione sanitaria privata con massimale illimitato prima di partire per gli Stati Uniti. Negli ospedali canadesi TEAM non valida.',
+    recommendedKit: ['Polizza assicurazione sanitaria con contatti 24/7', 'Farmaci personali con prescrizione in inglese'],
+    bestSeason: 'Maggio - Ottobre (clima ideale per città e grandi parchi nazionali)',
+    avoidSeason: 'Gennaio - Febbraio nel nord e Midwest (gelo estremo e tempeste di neve)',
+    climateSummary: 'Dall\'artico al subtropicale in Florida e desertico nel Sud-Ovest.'
   },
   {
     country: 'Italia & Unione Europea',
     flag: '🇪🇺',
     code: 'IT',
+    continent: 'Europa',
     requiredVaccines: ['Nessun vaccino obbligatorio'],
     recommendedVaccines: ['Vaccinazioni di routine (Tetano, Morbillo-Parotite-Rosolia)'],
     healthRisks: ['Nessuno specifico', 'Zecche in aree montane/boschi'],
     waterSafety: 'safe',
     malariaRisk: 'none',
-    advisoryNote: 'Copertura sanitaria d\'emergenza garantita dalla Tessera Europea di Assicurazione Malattia (TEAM).',
-    recommendedKit: ['Tessera Sanitaria TEAM valida', 'Farmaci abituali']
+    advisoryNote: 'Copertura sanitaria d\'emergenza garantita dalla Tessera Europea di Assicurazione Malattia (TEAM). Acqua potabile ovunque.',
+    recommendedKit: ['Tessera Sanitaria TEAM valida', 'Farmaci abituali personali'],
+    bestSeason: 'Maggio - Giugno e Settembre - Ottobre (clima splendido, meno affollamento turistico)',
+    avoidSeason: 'Novembre - Febbraio per mete marittime (freddo e piogge)',
+    climateSummary: 'Clima mediterraneo al sud e costiero, continentale/alpino al centro-nord.'
+  },
+  {
+    country: 'Australia & Nuova Zelanda',
+    flag: '🇦🇺',
+    code: 'AU',
+    continent: 'Oceania',
+    requiredVaccines: ['Nessun vaccino obbligatorio'],
+    recommendedVaccines: ['Vaccinazioni di routine (Tetano, Epatite A)'],
+    healthRisks: ['Forte buco nell\'ozono e radiazione solare estrema', 'Fauna velenosa marina e terrestre in aree selvagge'],
+    waterSafety: 'safe',
+    malariaRisk: 'none',
+    advisoryNote: 'Standard sanitari di livello mondiale. Accordi bilaterali Medicare per italiani in Australia per le prime cure d\'urgenza.',
+    recommendedKit: ['Crema solare protettiva 50+ ad ampio spettro', 'Occhiali polarizzati', 'Cappello da sole a tesa larga'],
+    bestSeason: 'Settembre - Novembre e Marzo - Maggio per l\'Australia; Dicembre - Marzo per Nuova Zelanda',
+    avoidSeason: 'Giugno - Agosto al sud (inverno freddo e piovoso)',
+    climateSummary: 'Stagioni invertite rispetto all\'Europa: dal tropicale del Queensland al temperato oceanico.'
   }
 ];
+
+// Helper per ottenere informazioni sanitarie per qualunque paese con fallback regionale intelligente
+export function getCountryHealthData(queryCountry: string): CountryHealthInfo {
+  if (!queryCountry) return TRAVEL_HEALTH_DB[0];
+  const q = queryCountry.toLowerCase().trim();
+  
+  const direct = TRAVEL_HEALTH_DB.find(h => 
+    h.country.toLowerCase().includes(q) || 
+    q.includes(h.country.toLowerCase()) ||
+    h.code.toLowerCase() === q
+  );
+  if (direct) return direct;
+
+  // Riconoscimento Europa
+  const isEurope = /italia|francia|spagna|germania|grecia|portogallo|austria|svizzera|regno unito|inghilterra|irlanda|olanda|belgio|croazia|svezia|norvegia|danimarca|finlandia|islanda|polonia|repubblica ceca|ungheria|romania|bulgaria|albania/i.test(q);
+  if (isEurope) {
+    return {
+      country: queryCountry,
+      flag: '🇪🇺',
+      code: 'EU',
+      continent: 'Europa',
+      requiredVaccines: ['Nessuna vaccinazione obbligatoria per cittadini UE'],
+      recommendedVaccines: ['Vaccinazioni di routine (Tetano, Morbillo-Parotite-Rosolia, Epatite A)'],
+      healthRisks: ['Standard sanitari eccellenti', 'Zecche in aree boschive ed alpine'],
+      waterSafety: 'safe',
+      malariaRisk: 'none',
+      advisoryNote: 'Copertura sanitaria d\'emergenza garantita dalla Tessera TEAM (Tessera Sanitaria). Acqua potabile e sicura.',
+      recommendedKit: ['Tessera Sanitaria TEAM valida', 'Farmaci personali abituali'],
+      bestSeason: 'Maggio - Ottobre (primavera ed estate miti e soleggiate)',
+      avoidSeason: 'Novembre - Febbraio (clima invernale rigido e freddo)',
+      climateSummary: 'Clima temperato continentale / mediterraneo con 4 stagioni ben definite.'
+    };
+  }
+
+  // Riconoscimento Nord America
+  const isNorthAmerica = /stati uniti|usa|canada|america/i.test(q);
+  if (isNorthAmerica) {
+    return {
+      country: queryCountry,
+      flag: '🇺🇸',
+      code: 'NA',
+      continent: 'Nord America',
+      requiredVaccines: ['Nessuna vaccinazione obbligatoria'],
+      recommendedVaccines: ['Vaccinazioni di routine (Tetano, Morbillo, Epatite A/B)'],
+      healthRisks: ['Costi sanitari privatizzati esorbitanti negli USA'],
+      waterSafety: 'safe',
+      malariaRisk: 'none',
+      advisoryNote: 'Fondamentale stipulare una polizza sanitaria con massimale illimitato prima del viaggio.',
+      recommendedKit: ['Polizza sanitaria con numeri emergenza 24/7', 'Farmaci personali con ricetta in inglese'],
+      bestSeason: 'Maggio - Settembre per parchi e città',
+      avoidSeason: 'Gennaio - Febbraio al nord (gelo polare e bufere di neve)',
+      climateSummary: 'Ampia varietà climatica, dal temperato al continentale con inverni freddi ed estati calde.'
+    };
+  }
+
+  // Fallback universale intelligente e sicuro
+  return {
+    country: queryCountry,
+    flag: '🌐',
+    code: 'INT',
+    continent: 'Internazionale',
+    requiredVaccines: ['Verificare certificato Febbre Gialla se provenienti o in transito da paesi a rischio'],
+    recommendedVaccines: ['Epatite A', 'Tetano-Difterite', 'Febbre Tifoide', 'Epatite B'],
+    healthRisks: ['Possibili infezioni gastrointestinali da cibo o acqua', 'Punture da zanzare tropicali'],
+    waterSafety: 'bottled_only',
+    malariaRisk: 'low',
+    advisoryNote: 'Consultare il centro di medicina dei viaggi della propria ASL 4-6 settimane prima della partenza. Bere solo acqua minerale sigillata.',
+    recommendedKit: ['Repellente per insetti con DEET', 'Fermenti lattici e sali minerali reidratanti', 'Paracetamolo e termometro', 'Kit disinfettante e cerotti'],
+    bestSeason: 'Verificare la stagione secca locale della destinazione prima della partenza',
+    avoidSeason: 'Stagione dei monsoni / forti piogge tropicali',
+    climateSummary: 'Si raccomanda di verificare il meteo locale e le previsioni stagionali.'
+  };
+}
 
 // --- Main TravelScreen ---
 export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onClose }) => {
@@ -1322,6 +1623,17 @@ export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onCl
   const [currencyAmount, setCurrencyAmount] = useState<number>(100);
   const [currencyFrom, setCurrencyFrom] = useState<string>('EUR');
   const [currencyTo, setCurrencyTo] = useState<string>('USD');
+  const [currencySearchQuery, setCurrencySearchQuery] = useState<string>('');
+
+  const filteredCurrencies = useMemo(() => {
+    if (!currencySearchQuery.trim()) return GLOBAL_CURRENCIES;
+    const q = currencySearchQuery.toLowerCase().trim();
+    return GLOBAL_CURRENCIES.filter(c => 
+      c.code.toLowerCase().includes(q) ||
+      c.country.toLowerCase().includes(q) ||
+      c.name.toLowerCase().includes(q)
+    );
+  }, [currencySearchQuery]);
 
   const convertedAmount = useMemo(() => {
     const fromInfo = GLOBAL_CURRENCIES.find(c => c.code === currencyFrom) || GLOBAL_CURRENCIES[0];
@@ -1336,6 +1648,9 @@ export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onCl
     setCurrencyFrom(currencyTo);
     setCurrencyTo(prevFrom);
   };
+
+  // --- Weather Mode State ---
+  const [weatherViewMode, setWeatherViewMode] = useState<'live' | 'seasonal'>('live');
 
   // --- Vaccines & Health State ---
   const [selectedHealthCountry, setSelectedHealthCountry] = useState<string>(() => {
@@ -1363,8 +1678,28 @@ export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onCl
     });
   };
 
+  // Sync selected destination / nation with Weather and Vaccines intelligently
+  useEffect(() => {
+    if (focusedDestId) {
+      const dest = destinations.find(d => d.id === focusedDestId);
+      if (dest) {
+        if (dest.city || dest.name) setSelectedWeatherCity(dest.city || dest.name);
+        const n = getDestNation(dest, countryGroups);
+        if (n) setSelectedHealthCountry(n);
+      }
+    } else if (selectedNation) {
+      setSelectedHealthCountry(selectedNation);
+      const destsInNation = destinations.filter(d => getDestNation(d, countryGroups).toLowerCase() === selectedNation.toLowerCase());
+      if (destsInNation.length > 0 && (destsInNation[0].city || destsInNation[0].name)) {
+        setSelectedWeatherCity(destsInNation[0].city || destsInNation[0].name);
+      }
+    }
+  }, [focusedDestId, selectedNation, destinations, countryGroups]);
+
   // Travel Budget
   const [totalTripBudget, setTotalTripBudget] = useState<number>(() => module.travelBudget?.total || 1500);
+  const [isEditingBudget, setIsEditingBudget] = useState(false);
+  const [editBudgetValue, setEditBudgetValue] = useState(String(module.travelBudget?.total || 1500));
   const [expenses, setExpenses] = useState<{ id: string; desc: string; amount: number; category: string; date: string }[]>(
     () => module.travelBudget?.expenses || [
       { id: '1', desc: 'Volo A/R', amount: 350, category: 'Trasporti', date: new Date().toISOString().substring(0, 10) },
@@ -1379,6 +1714,19 @@ export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onCl
   const totalSpent = useMemo(() => expenses.reduce((s, e) => s + e.amount, 0), [expenses]);
   const budgetRemaining = totalTripBudget - totalSpent;
   const budgetPercent = Math.min(100, Math.round((totalSpent / (totalTripBudget || 1)) * 100));
+
+  const handleUpdateTotalBudget = () => {
+    const val = parseFloat(editBudgetValue);
+    if (!isNaN(val) && val > 0) {
+      setTotalTripBudget(val);
+      setIsEditingBudget(false);
+      onSave({
+        ...module,
+        destinations,
+        travelBudget: { total: val, currency: 'EUR', expenses }
+      });
+    }
+  };
 
   const handleAddExpense = () => {
     const amt = parseFloat(newExpenseAmount);
@@ -1409,6 +1757,71 @@ export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onCl
       destinations,
       travelBudget: { total: totalTripBudget, currency: 'EUR', expenses: updated }
     });
+  };
+
+  // Preset Smart Kits for Suitcase
+  const handleAddPresetKit = (kitType: 'beach' | 'winter' | 'cabin' | 'meds' | 'tech') => {
+    let kitItems: { name: string; category: string }[] = [];
+    if (kitType === 'beach') {
+      kitItems = [
+        { name: 'Costume da bagno', category: 'Abbigliamento' },
+        { name: 'Telo mare microfibra', category: 'Accessori' },
+        { name: 'Crema solare protettiva 50+', category: 'Accessori' },
+        { name: 'Occhiali da sole polarizzati', category: 'Accessori' },
+        { name: 'Infradito / Sandali mare', category: 'Abbigliamento' },
+        { name: 'Borsa impermeabile / Dry bag', category: 'Accessori' },
+      ];
+    } else if (kitType === 'winter') {
+      kitItems = [
+        { name: 'Giacca termica / Piumino antivento', category: 'Abbigliamento' },
+        { name: 'Maglie termiche intime', category: 'Abbigliamento' },
+        { name: 'Sciarpa calda & Berretto di lana', category: 'Abbigliamento' },
+        { name: 'Guanti termici impermeabili', category: 'Abbigliamento' },
+        { name: 'Scarponcini da trekking impermeabili', category: 'Abbigliamento' },
+        { name: 'Burrocacao protettivo labbra', category: 'Toilette' },
+      ];
+    } else if (kitType === 'cabin') {
+      kitItems = [
+        { name: 'Liquidi beauty case (<100ml trasparenti)', category: 'Toilette' },
+        { name: 'Adattatore prese universale', category: 'Elettronica' },
+        { name: 'Cuscino gonfiabile da collo', category: 'Accessori' },
+        { name: 'Mascherina oscurante e tappi orecchie', category: 'Accessori' },
+        { name: 'Powerbank omologato per cabina', category: 'Elettronica' },
+        { name: 'Copia documenti e passaporto', category: 'Documenti' },
+      ];
+    } else if (kitType === 'meds') {
+      kitItems = [
+        { name: 'Antidiarroico / Dissenten', category: 'Salute' },
+        { name: 'Fermenti lattici ad alta concentrazione', category: 'Salute' },
+        { name: 'Paracetamolo / Tachipirina', category: 'Salute' },
+        { name: 'Cerotti assortiti e disinfettante', category: 'Salute' },
+        { name: 'Repellente insetti e zanzare DEET', category: 'Salute' },
+        { name: 'Termometro digitale compatto', category: 'Salute' },
+        { name: 'Antistaminico / Antinfiammatorio', category: 'Salute' },
+      ];
+    } else if (kitType === 'tech') {
+      kitItems = [
+        { name: 'Caricatore multiplo rapido USB-C', category: 'Elettronica' },
+        { name: 'Cavi ricarica di riserva', category: 'Elettronica' },
+        { name: 'Cuffie con cancellazione del rumore', category: 'Elettronica' },
+        { name: 'Adattatore prese universale', category: 'Elettronica' },
+        { name: 'Supporto smartphone da aereo/auto', category: 'Elettronica' },
+      ];
+    }
+    const existingNames = new Set(packingItems.map(p => p.name.toLowerCase()));
+    const toAdd = kitItems
+      .filter(it => !existingNames.has(it.name.toLowerCase()))
+      .map(it => ({
+        id: Math.random().toString(36).substr(2, 9),
+        name: it.name,
+        category: it.category,
+        checked: false
+      }));
+    if (toAdd.length > 0) {
+      const updated = [...packingItems, ...toAdd];
+      setPackingItems(updated);
+      onSave({ ...module, destinations, packingList: updated });
+    }
   };
 
   // --- Emergency Numbers Database ---
@@ -1685,10 +2098,10 @@ export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onCl
           <div className="p-4 space-y-4">
 
             {/* Travel Tools Sub-tabs Bar */}
-            <div className="flex bg-[var(--surface-variant)] p-1 rounded-2xl border border-[var(--border)] overflow-x-auto no-scrollbar">
+            <div className="flex bg-[var(--surface-variant)] p-1.5 rounded-2xl border border-[var(--border)] overflow-x-auto no-scrollbar gap-1">
               <button
                 onClick={() => setTravelActiveTab('destinations')}
-                className={`flex-1 py-2 px-1 text-[11px] font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer shrink-0 ${
+                className={`py-2 px-3 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer shrink-0 ${
                   travelActiveTab === 'destinations' ? 'bg-[var(--card-bg)] text-blue-500 shadow-sm' : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
                 }`}
               >
@@ -1698,17 +2111,17 @@ export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onCl
 
               <button
                 onClick={() => setTravelActiveTab('weather')}
-                className={`flex-1 py-2 px-1 text-[11px] font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer shrink-0 ${
+                className={`py-2 px-3 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer shrink-0 ${
                   travelActiveTab === 'weather' ? 'bg-[var(--card-bg)] text-amber-500 shadow-sm' : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
                 }`}
               >
                 <CloudSun className="w-3.5 h-3.5" />
-                <span>Meteo</span>
+                <span>Meteo & Clima</span>
               </button>
 
               <button
                 onClick={() => setTravelActiveTab('packing')}
-                className={`flex-1 py-2 px-1 text-[11px] font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer shrink-0 ${
+                className={`py-2 px-3 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer shrink-0 ${
                   travelActiveTab === 'packing' ? 'bg-[var(--card-bg)] text-emerald-500 shadow-sm' : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
                 }`}
               >
@@ -1718,27 +2131,27 @@ export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onCl
 
               <button
                 onClick={() => setTravelActiveTab('budget')}
-                className={`flex-1 py-2 px-1 text-[11px] font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer shrink-0 ${
+                className={`py-2 px-3 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer shrink-0 ${
                   travelActiveTab === 'budget' ? 'bg-[var(--card-bg)] text-purple-500 shadow-sm' : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
                 }`}
               >
                 <DollarSign className="w-3.5 h-3.5" />
-                <span>Budget</span>
+                <span>Budget & Valute</span>
               </button>
 
               <button
                 onClick={() => setTravelActiveTab('vaccines')}
-                className={`flex-1 py-2 px-1 text-[11px] font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer shrink-0 ${
+                className={`py-2 px-3 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer shrink-0 ${
                   travelActiveTab === 'vaccines' ? 'bg-[var(--card-bg)] text-rose-500 shadow-sm' : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
                 }`}
               >
                 <HeartPulse className="w-3.5 h-3.5" />
-                <span>Vaccini</span>
+                <span>Vaccini & Sanità</span>
               </button>
 
               <button
                 onClick={() => setTravelActiveTab('emergency')}
-                className={`flex-1 py-2 px-1 text-[11px] font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer shrink-0 ${
+                className={`py-2 px-3 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer shrink-0 ${
                   travelActiveTab === 'emergency' ? 'bg-[var(--card-bg)] text-rose-500 shadow-sm' : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
                 }`}
               >
@@ -1855,6 +2268,40 @@ export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onCl
                                       {dest.notes && (
                                         <p className="text-xs text-[var(--text-muted)] mt-1 line-clamp-2">{dest.notes}</p>
                                       )}
+                                      <div className="flex items-center gap-1.5 mt-2 flex-wrap">
+                                        <button
+                                          type="button"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            const targetCity = dest.city || dest.name;
+                                            setSelectedWeatherCity(targetCity);
+                                            fetchLiveWeather(targetCity);
+                                            setTravelActiveTab('weather');
+                                          }}
+                                          className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/20 transition-colors cursor-pointer"
+                                        >
+                                          <CloudSun className="w-3 h-3" />
+                                          <span>Meteo</span>
+                                        </button>
+                                        {(() => {
+                                          const nationVal = getDestNation(dest, countryGroups);
+                                          if (!nationVal) return null;
+                                          return (
+                                            <button
+                                              type="button"
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                setSelectedHealthCountry(nationVal);
+                                                setTravelActiveTab('vaccines');
+                                              }}
+                                              className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 border border-rose-500/20 transition-colors cursor-pointer"
+                                            >
+                                              <HeartPulse className="w-3 h-3" />
+                                              <span>Vaccini</span>
+                                            </button>
+                                          );
+                                        })()}
+                                      </div>
                                     </div>
                                     <div className="flex items-center gap-1 shrink-0">
                                       <button
@@ -1931,7 +2378,7 @@ export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onCl
               </div>
             )}
 
-            {/* TAB 2: METEO DESTINAZIONI (SMART & OPEN-METEO LIVE) */}
+            {/* TAB 2: METEO & CLIMA DESTINAZIONI (DUAL-MODE: LIVE OPEN-METEO + QUANDO ANDARE & CLIMA STAGIONALE) */}
             {travelActiveTab === 'weather' && (
               <div className="space-y-4 animate-fade-in">
                 <div className="flex items-center justify-between">
@@ -1941,7 +2388,7 @@ export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onCl
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-[10px] font-bold text-amber-500 bg-amber-500/10 px-2.5 py-0.5 rounded-full border border-amber-500/20 flex items-center gap-1">
-                      <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" /> Live Open-Meteo
+                      <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" /> Live & Clima
                     </span>
                     <button
                       onClick={() => fetchLiveWeather(selectedWeatherCity)}
@@ -1951,6 +2398,34 @@ export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onCl
                       <RefreshCw className={`w-3.5 h-3.5 ${isWeatherLoading ? 'animate-spin' : ''}`} />
                     </button>
                   </div>
+                </div>
+
+                {/* Sub-mode selector: Live Open-Meteo vs Quando Andare & Clima */}
+                <div className="flex p-1 bg-[var(--surface-variant)] rounded-2xl border border-[var(--border)] text-xs font-bold gap-1">
+                  <button
+                    type="button"
+                    onClick={() => setWeatherViewMode('live')}
+                    className={`flex-1 py-2 px-3 rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                      weatherViewMode === 'live'
+                        ? 'bg-amber-500 text-white shadow-xs'
+                        : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
+                    }`}
+                  >
+                    <Sun className="w-3.5 h-3.5" />
+                    <span>Previsioni Live</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setWeatherViewMode('seasonal')}
+                    className={`flex-1 py-2 px-3 rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                      weatherViewMode === 'seasonal'
+                        ? 'bg-amber-500 text-white shadow-xs'
+                        : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
+                    }`}
+                  >
+                    <Sparkles className="w-3.5 h-3.5" />
+                    <span>Quando Andare & Clima</span>
+                  </button>
                 </div>
 
                 {/* City selection chips: user destinations + world hubs */}
@@ -2008,96 +2483,193 @@ export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onCl
                   </div>
                 </div>
 
-                {/* Main Weather Card */}
-                <div className="p-5 rounded-3xl bg-gradient-to-br from-amber-500/20 via-orange-500/10 to-transparent border border-amber-500/30 text-[var(--text-main)] relative overflow-hidden shadow-sm">
-                  {isWeatherLoading ? (
-                    <div className="py-12 flex flex-col items-center justify-center gap-2 text-amber-500">
-                      <Loader2 className="w-8 h-8 animate-spin" />
-                      <span className="text-xs font-bold">Rilevamento meteo in tempo reale...</span>
-                    </div>
-                  ) : (
-                    <>
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <span className="text-[10px] font-black uppercase tracking-wider text-amber-600 dark:text-amber-400">
-                            Condizioni Attuali
-                          </span>
-                          <h4 className="text-2xl font-black mt-0.5">{liveWeather.city}</h4>
-                          <p className="text-xs text-[var(--text-muted)] font-medium mt-0.5">{liveWeather.cond}</p>
+                {/* MODE 1: PREVISIONI LIVE OPEN-METEO */}
+                {weatherViewMode === 'live' ? (
+                  <div className="space-y-4">
+                    {/* Main Weather Card */}
+                    <div className="p-5 rounded-3xl bg-gradient-to-br from-amber-500/20 via-orange-500/10 to-transparent border border-amber-500/30 text-[var(--text-main)] relative overflow-hidden shadow-sm">
+                      {isWeatherLoading ? (
+                        <div className="py-12 flex flex-col items-center justify-center gap-2 text-amber-500">
+                          <Loader2 className="w-8 h-8 animate-spin" />
+                          <span className="text-xs font-bold">Rilevamento meteo in tempo reale...</span>
                         </div>
-                        <div className="text-right">
-                          <div className="text-4xl mb-1">{liveWeather.icon}</div>
-                          <span className="text-3xl font-black">{liveWeather.temp}°C</span>
-                        </div>
-                      </div>
+                      ) : (
+                        <>
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <span className="text-[10px] font-black uppercase tracking-wider text-amber-600 dark:text-amber-400">
+                                Condizioni Attuali
+                              </span>
+                              <h4 className="text-2xl font-black mt-0.5">{liveWeather.city}</h4>
+                              <p className="text-xs text-[var(--text-muted)] font-medium mt-0.5">{liveWeather.cond}</p>
+                            </div>
+                            <div className="text-right">
+                              <div className="text-4xl mb-1">{liveWeather.icon}</div>
+                              <span className="text-3xl font-black">{liveWeather.temp}°C</span>
+                            </div>
+                          </div>
 
-                      {/* Smart Advice Box */}
-                      <div className="mt-4 p-3 rounded-2xl bg-[var(--card-bg)]/90 border border-amber-500/30 shadow-xs flex items-start gap-2.5">
-                        <Sparkles className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
-                        <div>
-                          <span className="text-[9px] font-black uppercase tracking-wider text-amber-600 dark:text-amber-400 block mb-0.5">
-                            Consiglio Smart per il Viaggiatore
-                          </span>
-                          <p className="text-xs text-[var(--text-main)] font-semibold leading-relaxed">
-                            {liveWeather.advice}
+                          {/* Smart Advice Box */}
+                          <div className="mt-4 p-3 rounded-2xl bg-[var(--card-bg)]/90 border border-amber-500/30 shadow-xs flex items-start gap-2.5">
+                            <Sparkles className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+                            <div>
+                              <span className="text-[9px] font-black uppercase tracking-wider text-amber-600 dark:text-amber-400 block mb-0.5">
+                                Consiglio Smart per il Viaggiatore
+                              </span>
+                              <p className="text-xs text-[var(--text-main)] font-semibold leading-relaxed">
+                                {liveWeather.advice}
+                              </p>
+                            </div>
+                          </div>
+
+                          {/* Weather Stats Grid */}
+                          <div className="grid grid-cols-3 gap-2 mt-4 pt-3 border-t border-[var(--border)]/60 text-center">
+                            <div className="p-2 rounded-2xl bg-[var(--card-bg)]/80 border border-[var(--border)]">
+                              <Droplets className="w-3.5 h-3.5 text-blue-500 mx-auto mb-1" />
+                              <span className="text-[9px] text-[var(--text-muted)] uppercase font-bold block">Umidità</span>
+                              <span className="text-xs font-black">{liveWeather.humidity}%</span>
+                            </div>
+                            <div className="p-2 rounded-2xl bg-[var(--card-bg)]/80 border border-[var(--border)]">
+                              <Wind className="w-3.5 h-3.5 text-teal-500 mx-auto mb-1" />
+                              <span className="text-[9px] text-[var(--text-muted)] uppercase font-bold block">Vento</span>
+                              <span className="text-xs font-black">{liveWeather.wind} km/h</span>
+                            </div>
+                            <div className="p-2 rounded-2xl bg-[var(--card-bg)]/80 border border-[var(--border)]">
+                              <CloudSun className="w-3.5 h-3.5 text-amber-500 mx-auto mb-1" />
+                              <span className="text-[9px] text-[var(--text-muted)] uppercase font-bold block">Indice UV</span>
+                              <span className="text-xs font-black">{liveWeather.uv} / 10</span>
+                            </div>
+                          </div>
+                        </>
+                      )}
+                    </div>
+
+                    {/* 5-Day Forecast */}
+                    <div>
+                      <h4 className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] mb-2 px-1">
+                        Previsioni Prossimi 5 Giorni
+                      </h4>
+                      <div className="grid grid-cols-5 gap-1.5">
+                        {liveWeather.forecast.map((f, i) => (
+                          <div key={i} className="p-2.5 rounded-2xl bg-[var(--card-bg)] border border-[var(--border)] text-center shadow-xs">
+                            <span className="text-[10px] font-black uppercase text-[var(--text-muted)] block">{f.day}</span>
+                            <div className="text-xl my-1">{f.icon}</div>
+                            <span className="text-xs font-black block">{f.max}°</span>
+                            <span className="text-[10px] text-[var(--text-muted)] block">{f.min}°</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  /* MODE 2: QUANDO ANDARE & CLIMA STAGIONALE (INTELLIGENTE PER CHI PIANIFICA VIAGGI) */
+                  (() => {
+                    const matchingDest = destinations.find(d => 
+                      (d.city && d.city.toLowerCase() === selectedWeatherCity.toLowerCase()) || 
+                      d.name.toLowerCase() === selectedWeatherCity.toLowerCase()
+                    );
+                    const countryName = matchingDest?.nation || getDestNation(matchingDest, countryGroups) || selectedWeatherCity;
+                    const healthData = getCountryHealthData(countryName);
+
+                    return (
+                      <div className="space-y-3 animate-fade-in">
+                        {/* Seasonal Climate Header Banner */}
+                        <div className="p-4 rounded-3xl bg-gradient-to-br from-amber-500/15 via-orange-500/5 to-transparent border border-amber-500/30 space-y-2">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <span className="text-2xl">{healthData.flag}</span>
+                              <div>
+                                <h4 className="text-base font-black text-[var(--text-main)]">
+                                  Clima & Quando Andare: {selectedWeatherCity}
+                                </h4>
+                                <span className="text-[10px] text-[var(--text-muted)] font-semibold">
+                                  {healthData.country} ({healthData.continent})
+                                </span>
+                              </div>
+                            </div>
+                            <span className="text-[10px] font-bold text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">
+                              Guida Clima
+                            </span>
+                          </div>
+                          <p className="text-xs text-[var(--text-main)] font-medium leading-relaxed bg-[var(--card-bg)]/80 p-3 rounded-2xl border border-[var(--border)]">
+                            🌤️ {healthData.climateSummary}
                           </p>
                         </div>
-                      </div>
 
-                      {/* Weather Stats Grid */}
-                      <div className="grid grid-cols-3 gap-2 mt-4 pt-3 border-t border-[var(--border)]/60 text-center">
-                        <div className="p-2 rounded-2xl bg-[var(--card-bg)]/80 border border-[var(--border)]">
-                          <Droplets className="w-3.5 h-3.5 text-blue-500 mx-auto mb-1" />
-                          <span className="text-[9px] text-[var(--text-muted)] uppercase font-bold block">Umidità</span>
-                          <span className="text-xs font-black">{liveWeather.humidity}%</span>
+                        {/* Miglior Periodo (Quando Andare) */}
+                        <div className="p-4 rounded-3xl bg-[var(--card-bg)] border border-[var(--border)] space-y-2 shadow-xs">
+                          <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400">
+                            <CheckCircle2 className="w-4 h-4 shrink-0" />
+                            <h5 className="text-xs font-black uppercase tracking-wider">
+                              Miglior Periodo per Viaggiare (Quando Andare)
+                            </h5>
+                          </div>
+                          <p className="text-xs font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-500/10 border border-emerald-500/20 p-3 rounded-2xl leading-relaxed">
+                            ✨ {healthData.bestSeason}
+                          </p>
                         </div>
-                        <div className="p-2 rounded-2xl bg-[var(--card-bg)]/80 border border-[var(--border)]">
-                          <Wind className="w-3.5 h-3.5 text-teal-500 mx-auto mb-1" />
-                          <span className="text-[9px] text-[var(--text-muted)] uppercase font-bold block">Vento</span>
-                          <span className="text-xs font-black">{liveWeather.wind} km/h</span>
-                        </div>
-                        <div className="p-2 rounded-2xl bg-[var(--card-bg)]/80 border border-[var(--border)]">
-                          <CloudSun className="w-3.5 h-3.5 text-amber-500 mx-auto mb-1" />
-                          <span className="text-[9px] text-[var(--text-muted)] uppercase font-bold block">Indice UV</span>
-                          <span className="text-xs font-black">{liveWeather.uv} / 10</span>
-                        </div>
-                      </div>
-                    </>
-                  )}
-                </div>
 
-                {/* 5-Day Forecast */}
-                <div>
-                  <h4 className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] mb-2 px-1">
-                    Previsioni Prossimi 5 Giorni
-                  </h4>
-                  <div className="grid grid-cols-5 gap-1.5">
-                    {liveWeather.forecast.map((f, i) => (
-                      <div key={i} className="p-2.5 rounded-2xl bg-[var(--card-bg)] border border-[var(--border)] text-center shadow-xs">
-                        <span className="text-[10px] font-black uppercase text-[var(--text-muted)] block">{f.day}</span>
-                        <div className="text-xl my-1">{f.icon}</div>
-                        <span className="text-xs font-black block">{f.max}°</span>
-                        <span className="text-[10px] text-[var(--text-muted)] block">{f.min}°</span>
+                        {/* Periodo Sconsigliato / Monsoni */}
+                        <div className="p-4 rounded-3xl bg-[var(--card-bg)] border border-[var(--border)] space-y-2 shadow-xs">
+                          <div className="flex items-center gap-2 text-rose-500">
+                            <AlertTriangle className="w-4 h-4 shrink-0" />
+                            <h5 className="text-xs font-black uppercase tracking-wider">
+                              Periodo da Attenzionare o Sconsigliato
+                            </h5>
+                          </div>
+                          <p className="text-xs font-semibold text-rose-700 dark:text-rose-300 bg-rose-500/10 border border-rose-500/20 p-3 rounded-2xl leading-relaxed">
+                            ⚠️ {healthData.avoidSeason}
+                          </p>
+                        </div>
+
+                        {/* Abbigliamento Consigliato per questo Clima */}
+                        <div className="p-4 rounded-3xl bg-[var(--card-bg)] border border-[var(--border)] space-y-2 shadow-xs">
+                          <h5 className="text-xs font-black uppercase tracking-wider text-[var(--text-muted)] flex items-center gap-1.5">
+                            <Luggage className="w-3.5 h-3.5 text-blue-500" /> Abbigliamento Consigliato per questo Clima
+                          </h5>
+                          <div className="flex flex-wrap gap-1.5">
+                            {healthData.continent === 'Europa' ? (
+                              <>
+                                <span className="text-xs font-semibold px-2.5 py-1 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">🧥 Abbigliamento a strati ("a cipolla")</span>
+                                <span className="text-xs font-semibold px-2.5 py-1 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">👟 Scarpe comode da cammino</span>
+                                <span className="text-xs font-semibold px-2.5 py-1 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">☂️ Ombrello compatto antivento</span>
+                              </>
+                            ) : healthData.continent.includes('Africa') || healthData.continent.includes('Asia') ? (
+                              <>
+                                <span className="text-xs font-semibold px-2.5 py-1 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">👕 Capi in lino o cotone traspirante</span>
+                                <span className="text-xs font-semibold px-2.5 py-1 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">🧢 Cappello e occhiali anti-UV</span>
+                                <span className="text-xs font-semibold px-2.5 py-1 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">🧴 Protezione solare 50+</span>
+                                <span className="text-xs font-semibold px-2.5 py-1 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">🦟 Pantaloni lunghi leggeri per la sera</span>
+                              </>
+                            ) : (
+                              <>
+                                <span className="text-xs font-semibold px-2.5 py-1 rounded-xl bg-teal-500/10 text-teal-600 dark:text-teal-400 border border-teal-500/20">🎒 Abbigliamento pratico e traspirante</span>
+                                <span className="text-xs font-semibold px-2.5 py-1 rounded-xl bg-teal-500/10 text-teal-600 dark:text-teal-400 border border-teal-500/20">🧥 Giacca impermeabile leggera</span>
+                                <span className="text-xs font-semibold px-2.5 py-1 rounded-xl bg-teal-500/10 text-teal-600 dark:text-teal-400 border border-teal-500/20">👟 Calzature con buon grip</span>
+                              </>
+                            )}
+                          </div>
+                        </div>
                       </div>
-                    ))}
-                  </div>
-                </div>
+                    );
+                  })()
+                )}
               </div>
             )}
 
             {/* TAB 3: CHECKLIST VALIGIA REDESIGN */}
             {travelActiveTab === 'packing' && (
               <div className="space-y-4 animate-fade-in">
-                {/* Progress Card */}
-                <div className="p-4 rounded-3xl bg-gradient-to-br from-emerald-500/15 via-teal-500/5 to-transparent border border-emerald-500/30">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-500 flex items-center justify-center">
-                        <Luggage className="w-4 h-4" />
+                {/* Visual Luggage Progress Container */}
+                <div className="p-4 rounded-3xl bg-gradient-to-br from-emerald-500/15 via-teal-500/5 to-transparent border border-emerald-500/30 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-9 h-9 rounded-2xl bg-emerald-500/20 text-emerald-500 flex items-center justify-center shadow-xs">
+                        <Luggage className="w-5 h-5" />
                       </div>
                       <div>
                         <span className="text-xs font-black uppercase tracking-wider text-[var(--text-main)] block">
-                          Preparazione Valigia
+                          Organizzazione Valigia
                         </span>
                         <span className="text-[10px] text-[var(--text-muted)] font-medium">
                           {packingCompletedCount} di {packingItems.length} oggetti pronti
@@ -2105,30 +2677,62 @@ export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onCl
                       </div>
                     </div>
                     <div className="text-right">
-                      <span className="text-lg font-black text-emerald-600 dark:text-emerald-400">
+                      <span className="text-xl font-black text-emerald-600 dark:text-emerald-400">
                         {packingProgressPercent}%
                       </span>
                     </div>
                   </div>
 
-                  {/* Progress Bar */}
-                  <div className="w-full h-2.5 rounded-full bg-[var(--surface-variant)] overflow-hidden">
+                  {/* Animated Progress Bar */}
+                  <div className="w-full h-2.5 rounded-full bg-[var(--surface-variant)] overflow-hidden shadow-inner">
                     <motion.div 
-                      className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full"
+                      className="h-full bg-gradient-to-r from-emerald-500 via-teal-400 to-cyan-400 rounded-full"
                       initial={{ width: 0 }}
                       animate={{ width: `${packingProgressPercent}%` }}
                       transition={{ duration: 0.4 }}
                     />
                   </div>
 
-                  {/* Smart Suggestions Action */}
-                  <div className="mt-3 pt-3 border-t border-[var(--border)]/60 flex items-center justify-between gap-2">
+                  {/* Category Progress Breakdown Pills */}
+                  {packingItems.length > 0 && (
+                    <div className="grid grid-cols-3 gap-1.5 pt-1">
+                      {[
+                        { cat: 'Abbigliamento', icon: '👕' },
+                        { cat: 'Documenti', icon: '📄' },
+                        { cat: 'Elettronica', icon: '🔌' },
+                        { cat: 'Toilette', icon: '🧴' },
+                        { cat: 'Salute', icon: '💊' },
+                        { cat: 'Accessori', icon: '🎒' }
+                      ].map(({ cat, icon }) => {
+                        const total = packingItems.filter(i => i.category === cat).length;
+                        if (total === 0) return null;
+                        const done = packingItems.filter(i => i.category === cat && i.checked).length;
+                        const isAll = done === total;
+                        return (
+                          <div 
+                            key={cat} 
+                            className={`p-1.5 rounded-xl border text-center transition-all ${
+                              isAll 
+                                ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-600 dark:text-emerald-400 font-bold' 
+                                : 'bg-[var(--card-bg)]/80 border-[var(--border)] text-[var(--text-muted)]'
+                            }`}
+                          >
+                            <span className="text-[10px] block leading-tight truncate">{icon} {cat}</span>
+                            <span className="text-[10px] font-black">{done}/{total}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {/* Smart Suggestions & Bulk Actions */}
+                  <div className="pt-2 border-t border-[var(--border)]/60 flex items-center justify-between gap-2">
                     <button
                       onClick={handleSmartSuggestions}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs font-bold transition-all cursor-pointer border border-emerald-500/20"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs font-bold transition-all cursor-pointer border border-emerald-500/20 active:scale-95"
                     >
                       <Sparkles className="w-3.5 h-3.5" />
-                      <span>+ Suggerimenti Essenziali</span>
+                      <span>+ Suggerimenti Smart</span>
                     </button>
                     <button
                       onClick={() => {
@@ -2144,7 +2748,34 @@ export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onCl
                   </div>
                 </div>
 
-                {/* Category filter chips with visual icons */}
+                {/* Preset Smart Kits Row (1-Click Kits) */}
+                <div className="p-3 bg-[var(--card-bg)] rounded-3xl border border-[var(--border)] space-y-2 shadow-xs">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-[var(--text-muted)] flex items-center gap-1.5">
+                    <Sparkles className="w-3 h-3 text-emerald-500" /> Kit Rapidi Intelligenti (Aggiungi in 1 Click)
+                  </span>
+                  <div className="flex gap-1.5 overflow-x-auto pb-1 no-scrollbar">
+                    {[
+                      { type: 'beach' as const, label: 'Kit Mare', emoji: '🏖️' },
+                      { type: 'winter' as const, label: 'Kit Neve', emoji: '❄️' },
+                      { type: 'cabin' as const, label: 'Kit Cabina', emoji: '✈️' },
+                      { type: 'meds' as const, label: 'Kit Farmacia', emoji: '💊' },
+                      { type: 'tech' as const, label: 'Kit Tech', emoji: '⚡' },
+                    ].map(kit => (
+                      <button
+                        key={kit.type}
+                        type="button"
+                        onClick={() => handleAddPresetKit(kit.type)}
+                        className="px-3 py-1.5 rounded-xl bg-[var(--surface-variant)] hover:bg-emerald-500/15 hover:border-emerald-500/30 border border-[var(--border)] text-xs font-bold text-[var(--text-main)] transition-all shrink-0 cursor-pointer flex items-center gap-1.5 active:scale-95 shadow-xs"
+                      >
+                        <span>{kit.emoji}</span>
+                        <span>{kit.label}</span>
+                        <Plus className="w-3 h-3 text-emerald-500" />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Category filter chips */}
                 <div className="flex gap-1.5 overflow-x-auto pb-1 no-scrollbar">
                   {[
                     { label: 'Tutte', icon: '🧳' },
@@ -2201,7 +2832,7 @@ export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onCl
                     <button
                       onClick={handleAddPackingItem}
                       disabled={!newPackingText.trim()}
-                      className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shrink-0 shadow-sm shadow-emerald-500/20"
+                      className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shrink-0 shadow-sm shadow-emerald-500/20 active:scale-95"
                     >
                       <Plus className="w-4 h-4" />
                       <span>Aggiungi</span>
@@ -2270,6 +2901,18 @@ export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onCl
                     </button>
                   </div>
 
+                  {/* Currency Search Input */}
+                  <div className="relative">
+                    <Search className="w-3.5 h-3.5 text-[var(--text-muted)] absolute left-3 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="text"
+                      value={currencySearchQuery}
+                      onChange={(e) => setCurrencySearchQuery(e.target.value)}
+                      placeholder="Cerca tra oltre 75 valute mondiali (codice o paese)..."
+                      className="w-full pl-9 pr-3 py-2 bg-[var(--surface-variant)] border border-[var(--border)] rounded-xl text-xs font-medium text-[var(--text-main)] placeholder:text-[var(--text-muted)] outline-none focus:border-purple-500"
+                    />
+                  </div>
+
                   {/* Converter Controls */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                     {/* From Currency */}
@@ -2280,9 +2923,9 @@ export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onCl
                         onChange={(e) => setCurrencyFrom(e.target.value)}
                         className="w-full bg-[var(--card-bg)] text-xs font-bold text-[var(--text-main)] p-1.5 rounded-xl border border-[var(--border)] outline-none mb-2"
                       >
-                        {GLOBAL_CURRENCIES.map(c => (
+                        {(currencySearchQuery.trim() ? filteredCurrencies : GLOBAL_CURRENCIES).map(c => (
                           <option key={c.code} value={c.code}>
-                            {c.code} - {c.country} ({c.name})
+                            {c.flag} {c.code} - {c.country} ({c.name})
                           </option>
                         ))}
                       </select>
@@ -2308,9 +2951,9 @@ export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onCl
                         onChange={(e) => setCurrencyTo(e.target.value)}
                         className="w-full bg-[var(--card-bg)] text-xs font-bold text-purple-600 dark:text-purple-400 p-1.5 rounded-xl border border-[var(--border)] outline-none mb-2"
                       >
-                        {GLOBAL_CURRENCIES.map(c => (
+                        {(currencySearchQuery.trim() ? filteredCurrencies : GLOBAL_CURRENCIES).map(c => (
                           <option key={c.code} value={c.code}>
-                            {c.code} - {c.country} ({c.name})
+                            {c.flag} {c.code} - {c.country} ({c.name})
                           </option>
                         ))}
                       </select>
@@ -2340,7 +2983,7 @@ export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onCl
                               : 'bg-[var(--surface-variant)] text-[var(--text-muted)] hover:text-[var(--text-main)]'
                           }`}
                         >
-                          1 EUR = {c.rateAgainstEur} {code}
+                          {c.flag} 1 EUR = {c.rateAgainstEur} {code}
                         </button>
                       );
                     })}
@@ -2352,9 +2995,47 @@ export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onCl
                   <div className="flex items-center justify-between">
                     <div>
                       <span className="text-[10px] font-black uppercase tracking-wider text-[var(--text-muted)]">Budget Viaggio</span>
-                      <h4 className="text-xl font-black text-[var(--text-main)]">
-                        €{totalSpent} <span className="text-xs font-normal text-[var(--text-muted)]">/ €{totalTripBudget}</span>
-                      </h4>
+                      {isEditingBudget ? (
+                        <div className="flex items-center gap-1.5 mt-1">
+                          <input
+                            type="number"
+                            value={editBudgetValue}
+                            onChange={(e) => setEditBudgetValue(e.target.value)}
+                            className="w-24 bg-[var(--surface-variant)] border border-purple-500 px-2 py-1 rounded-lg text-sm font-black text-[var(--text-main)] outline-none"
+                            autoFocus
+                          />
+                          <button
+                            onClick={handleUpdateTotalBudget}
+                            className="p-1.5 rounded-lg bg-purple-600 text-white hover:bg-purple-700 transition-colors cursor-pointer"
+                            title="Salva Budget"
+                          >
+                            <Check className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => setIsEditingBudget(false)}
+                            className="p-1.5 rounded-lg bg-[var(--surface-variant)] text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors cursor-pointer"
+                            title="Annulla"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <h4 className="text-xl font-black text-[var(--text-main)]">
+                            €{totalSpent} <span className="text-xs font-normal text-[var(--text-muted)]">/ €{totalTripBudget}</span>
+                          </h4>
+                          <button
+                            onClick={() => {
+                              setEditBudgetValue(String(totalTripBudget));
+                              setIsEditingBudget(true);
+                            }}
+                            className="p-1 rounded-lg text-[var(--text-muted)] hover:text-purple-600 hover:bg-purple-500/10 transition-colors cursor-pointer"
+                            title="Modifica Budget Totale"
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      )}
                     </div>
                     <div className="text-right">
                       <span className="text-[10px] font-black uppercase tracking-wider text-emerald-500">Rimanenti</span>
@@ -2371,7 +3052,10 @@ export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onCl
                   </div>
 
                   {/* Fixed Add Expense Form: Clean Responsive Layout (No Overflow) */}
-                  <div className="pt-3 border-t border-[var(--border)]/60 space-y-2">
+                  <div className="pt-3 border-t border-[var(--border)]/60 space-y-2.5">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-[var(--text-muted)] flex items-center gap-1.5">
+                      <Plus className="w-3.5 h-3.5 text-purple-500" /> Aggiungi Nuova Spesa
+                    </span>
                     <input
                       type="text"
                       placeholder="Descrizione spesa (es. Volo, Hotel, Pranzo)..."
@@ -2379,11 +3063,11 @@ export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onCl
                       onChange={(e) => setNewExpenseDesc(e.target.value)}
                       className="w-full bg-[var(--surface-variant)] px-3 py-2 rounded-xl text-xs font-medium text-[var(--text-main)] outline-none border border-[var(--border)] placeholder:text-[var(--text-muted)] focus:border-purple-500"
                     />
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                    <div className="flex flex-col sm:flex-row gap-2">
                       <select
                         value={newExpenseCat}
                         onChange={(e) => setNewExpenseCat(e.target.value)}
-                        className="bg-[var(--surface-variant)] px-2 py-2 rounded-xl text-xs font-bold text-[var(--text-main)] outline-none border border-[var(--border)]"
+                        className="w-full sm:w-1/2 bg-[var(--surface-variant)] px-2.5 py-2 rounded-xl text-xs font-bold text-[var(--text-main)] outline-none border border-[var(--border)]"
                       >
                         <option value="Cibo">🍽️ Cibo</option>
                         <option value="Alloggio">🏨 Alloggio</option>
@@ -2392,25 +3076,25 @@ export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onCl
                         <option value="Shopping">🛍️ Shopping</option>
                         <option value="Altro">📦 Altro</option>
                       </select>
-                      <div className="relative">
+                      <div className="relative w-full sm:w-1/2">
                         <input
                           type="number"
                           placeholder="0.00"
                           value={newExpenseAmount}
                           onChange={(e) => setNewExpenseAmount(e.target.value)}
-                          className="w-full bg-[var(--surface-variant)] px-2.5 py-2 pr-7 rounded-xl text-xs font-bold text-[var(--text-main)] outline-none border border-[var(--border)]"
+                          className="w-full bg-[var(--surface-variant)] px-2.5 py-2 pr-7 rounded-xl text-xs font-bold text-[var(--text-main)] outline-none border border-[var(--border)] focus:border-purple-500"
                         />
                         <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-[var(--text-muted)]">€</span>
                       </div>
-                      <button
-                        onClick={handleAddExpense}
-                        disabled={!newExpenseDesc.trim() || !newExpenseAmount}
-                        className="col-span-2 sm:col-span-1 w-full py-2 px-3 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 disabled:opacity-50 text-white font-bold text-xs cursor-pointer active:scale-95 transition-all shadow-md shadow-purple-500/20 flex items-center justify-center gap-1"
-                      >
-                        <Plus className="w-3.5 h-3.5" />
-                        <span>Aggiungi</span>
-                      </button>
                     </div>
+                    <button
+                      onClick={handleAddExpense}
+                      disabled={!newExpenseDesc.trim() || !newExpenseAmount}
+                      className="w-full py-2.5 px-3 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 disabled:opacity-50 text-white font-bold text-xs cursor-pointer active:scale-95 transition-all shadow-md shadow-purple-500/20 flex items-center justify-center gap-1.5"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>Aggiungi Spesa</span>
+                    </button>
                   </div>
 
                   {/* Expenses List */}
@@ -2465,7 +3149,10 @@ export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onCl
                       return (
                         <button
                           key={cName}
-                          onClick={() => setSelectedHealthCountry(cName)}
+                          onClick={() => {
+                            setSelectedHealthCountry(cName);
+                            setHealthSearchQuery('');
+                          }}
                           className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer flex items-center gap-1.5 ${
                             isSelected
                               ? 'bg-rose-600 text-white shadow-sm'
@@ -2498,7 +3185,9 @@ export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onCl
                     ? TRAVEL_HEALTH_DB.filter(h => h.country.toLowerCase().includes(healthSearchQuery.toLowerCase()))
                     : TRAVEL_HEALTH_DB.filter(h => h.country.toLowerCase().includes(selectedHealthCountry.toLowerCase()) || selectedHealthCountry.toLowerCase().includes(h.country.toLowerCase()));
                   
-                  const activeCountryData = filteredList.length > 0 ? filteredList[0] : TRAVEL_HEALTH_DB[0];
+                  const activeCountryData = filteredList.length > 0 
+                    ? filteredList[0] 
+                    : getCountryHealthData(healthSearchQuery.trim() || selectedHealthCountry);
 
                   return (
                     <div className="space-y-3">
