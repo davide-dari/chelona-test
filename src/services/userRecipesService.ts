@@ -21,6 +21,8 @@ export interface UserRecipeItem extends RecipeItem {
   updatedAt?: number;
 }
 
+export type UserRecipeInput = Partial<UserRecipeItem> & { title: string; category?: string };
+
 export interface CulinaryPreset {
   id: string;
   name: string;
@@ -425,167 +427,81 @@ export function mapToChelonaCategory(cat: string | undefined, cuisine?: string):
 }
 
 /**
- * Parser sicuro ed esaustivo di Schema.org JSON-LD e metadati HTML (incluso Microdata e OpenGraph)
+ * Risolve un URL relativo o assoluto rispetto a baseUrl
  */
-export function extractRecipeFromHtml(html: string, originalUrl: string): UserRecipeItem {
-  let recipeLd: any = null;
-
-  const isRecipeType = (typeVal: any): boolean => {
-    if (!typeVal) return false;
-    if (typeof typeVal === 'string') {
-      const clean = typeVal.toLowerCase().trim();
-      return clean === 'recipe' || clean.endsWith('/recipe') || clean.endsWith(':recipe');
-    }
-    if (Array.isArray(typeVal)) {
-      return typeVal.some(isRecipeType);
-    }
-    return false;
-  };
-
-  // 1. Cerca blocchi script type="application/ld+json"
-  const scriptRegex = /<script\b[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi;
-  let match: RegExpExecArray | null;
-
-  while ((match = scriptRegex.exec(html)) !== null) {
-    const rawJson = match[1]?.trim();
-    if (!rawJson) continue;
-
-    try {
-      const data = JSON.parse(rawJson);
-      
-      const searchForRecipe = (node: any): any => {
-        if (!node) return null;
-        if (Array.isArray(node)) {
-          for (const item of node) {
-            const found = searchForRecipe(item);
-            if (found) return found;
-          }
-        } else if (typeof node === 'object') {
-          if (isRecipeType(node['@type'])) {
-            return node;
-          }
-          if (node['@graph']) {
-            const found = searchForRecipe(node['@graph']);
-            if (found) return found;
-          }
-        }
-        return null;
-      };
-
-      const found = searchForRecipe(data);
-      if (found) {
-        recipeLd = found;
-        break;
-      }
-    } catch {
-      // JSON malformato o troncato, continua la scansione dei blocchi successivi
-    }
+export function resolveUrl(urlStr: string | undefined, baseUrl: string): string {
+  if (!urlStr) return baseUrl;
+  try {
+    return new URL(urlStr, baseUrl).href;
+  } catch {
+    return urlStr;
   }
+}
 
-  // 2. Fallback HTML Microdata (itemscope itemtype="http://schema.org/Recipe")
-  let microdataTitle = '';
-  let microdataImage = '';
-  const microdataIngredients: string[] = [];
-  const microdataSteps: string[] = [];
-  let microdataYield = '';
-  let microdataPrep = '';
-  let microdataCook = '';
-  let microdataCategory = '';
-  let microdataCuisine = '';
-
-  if (!recipeLd) {
-    try {
-      // Ingredienti microdata
-      const ingRegex = /<[^>]+itemprop=["'](?:recipeIngredient|ingredients)["'][^>]*>([\s\S]*?)<\/[^>]+>/gi;
-      let ingMatch: RegExpExecArray | null;
-      while ((ingMatch = ingRegex.exec(html)) !== null) {
-        const text = cleanText(ingMatch[1]);
-        if (text) microdataIngredients.push(text);
-      }
-
-      // Istruzioni microdata
-      const stepRegex = /<[^>]+itemprop=["'](?:recipeInstructions|instruction|step)["'][^>]*>([\s\S]*?)<\/[^>]+>/gi;
-      let stepMatch: RegExpExecArray | null;
-      while ((stepMatch = stepRegex.exec(html)) !== null) {
-        const text = cleanText(stepMatch[1]);
-        if (text && text.length > 5) microdataSteps.push(text);
-      }
-
-      // Titolo microdata
-      const nameMatch = html.match(/<[^>]+itemprop=["']name["'][^>]*>([^<]+)<\/[^>]+>/i);
-      if (nameMatch) microdataTitle = cleanText(nameMatch[1]);
-
-      // Immagine microdata
-      const imgMatch = html.match(/<img[^>]+itemprop=["']image["'][^>]+src=["']([^"']*)["']/i) ||
-                       html.match(/<meta[^>]+itemprop=["']image["'][^>]+content=["']([^"']*)["']/i);
-      if (imgMatch) microdataImage = imgMatch[1].trim();
-
-      // Yield / porzioni
-      const yieldMatch = html.match(/<[^>]+itemprop=["']recipeYield["'][^>]+content=["']([^"']*)["']/i) ||
-                         html.match(/<[^>]+itemprop=["']recipeYield["'][^>]*>([^<]+)<\/[^>]+>/i);
-      if (yieldMatch) microdataYield = cleanText(yieldMatch[1]);
-
-      // Prep / Cook time
-      const prepMatch = html.match(/<[^>]+itemprop=["']prepTime["'][^>]+content=["']([^"']*)["']/i) ||
-                        html.match(/<[^>]+itemprop=["']prepTime["'][^>]*>([^<]+)<\/[^>]+>/i);
-      if (prepMatch) microdataPrep = cleanText(prepMatch[1]);
-
-      const cookMatch = html.match(/<[^>]+itemprop=["']cookTime["'][^>]+content=["']([^"']*)["']/i) ||
-                        html.match(/<[^>]+itemprop=["']cookTime["'][^>]*>([^<]+)<\/[^>]+>/i);
-      if (cookMatch) microdataCook = cleanText(cookMatch[1]);
-
-      // Category / Cuisine
-      const catMatch = html.match(/<[^>]+itemprop=["']recipeCategory["'][^>]*>([^<]+)<\/[^>]+>/i);
-      if (catMatch) microdataCategory = cleanText(catMatch[1]);
-
-      const cuisineMatch = html.match(/<[^>]+itemprop=["']recipeCuisine["'][^>]*>([^<]+)<\/[^>]+>/i);
-      if (cuisineMatch) microdataCuisine = cleanText(cuisineMatch[1]);
-    } catch {
-      // Ignora errori di parsing microdata
-    }
+/** Verifica se il tipo Schema.org indica una Recipe */
+export const isRecipeType = (typeVal: any): boolean => {
+  if (!typeVal) return false;
+  if (typeof typeVal === 'string') {
+    const clean = typeVal.toLowerCase().trim();
+    return clean === 'recipe' || clean.endsWith('/recipe') || clean.endsWith(':recipe');
   }
+  if (Array.isArray(typeVal)) {
+    return typeVal.some(isRecipeType);
+  }
+  return false;
+};
 
-  // 3. Fallback OpenGraph / Meta tag
-  const extractMetaContent = (nameOrProp: string): string => {
-    const escaped = nameOrProp.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const rgx1 = new RegExp(`<meta[^>]+(?:property|name)=["']${escaped}["'][^>]+content=["']([^"']*)["']`, 'i');
-    const m1 = html.match(rgx1);
-    if (m1 && m1[1]) return m1[1];
+/** Verifica se il tipo Schema.org indica un ItemList */
+export const isItemListType = (typeVal: any): boolean => {
+  if (!typeVal) return false;
+  if (typeof typeVal === 'string') {
+    const clean = typeVal.toLowerCase().trim();
+    return clean === 'itemlist' || clean.endsWith('/itemlist') || clean.endsWith(':itemlist');
+  }
+  if (Array.isArray(typeVal)) {
+    return typeVal.some(isItemListType);
+  }
+  return false;
+};
 
-    const rgx2 = new RegExp(`<meta[^>]+content=["']([^"']*)["'][^>]+(?:property|name)=["']${escaped}["']`, 'i');
-    const m2 = html.match(rgx2);
-    if (m2 && m2[1]) return m2[1];
+/**
+ * Converte un nodo JSON-LD di tipo Recipe in un UserRecipeItem standard
+ */
+export function convertJsonLdRecipeToItem(
+  recipeLd: any,
+  originalUrl: string,
+  index: number = 0,
+  fallbackTitle?: string,
+  fallbackImage?: string
+): UserRecipeItem | null {
+  if (!recipeLd || typeof recipeLd !== 'object') return null;
 
-    return '';
-  };
+  const rawTitle = recipeLd.name || recipeLd.headline || fallbackTitle;
+  const title = cleanText(typeof rawTitle === 'string' ? rawTitle : '');
+  if (!title || title.length < 2) return null;
 
-  const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
-  const htmlTitle = titleMatch ? cleanText(titleMatch[1]) : '';
-  const ogTitle = cleanText(extractMetaContent('og:title') || extractMetaContent('twitter:title'));
-  const ogImage = extractMetaContent('og:image') || extractMetaContent('twitter:image');
+  const ingredients = parseIngredients(recipeLd.recipeIngredient || recipeLd.ingredients);
+  const steps = parseInstructions(recipeLd.recipeInstructions);
+  const image = parseImageUrl(recipeLd.image) || fallbackImage || 'https://images.unsplash.com/photo-1498837167922-ddd27525d352?w=800';
 
-  // Assembla i dati
-  const title = cleanText(recipeLd?.name || recipeLd?.headline || microdataTitle || ogTitle || htmlTitle || 'Ricetta Importata');
-  const ingredients = recipeLd ? parseIngredients(recipeLd.recipeIngredient || recipeLd.ingredients) : (microdataIngredients.length > 0 ? microdataIngredients : []);
-  const steps = recipeLd ? parseInstructions(recipeLd.recipeInstructions) : (microdataSteps.length > 0 ? microdataSteps : []);
-  const image = parseImageUrl(recipeLd?.image) || (microdataImage ? microdataImage : '') || (ogImage ? ogImage.trim() : '') || 'https://images.unsplash.com/photo-1498837167922-ddd27525d352?w=800';
-  
-  const servings = parseServings(recipeLd?.recipeYield || microdataYield);
-  const prepTimeMinutes = parseDurationISO(recipeLd?.prepTime || microdataPrep);
-  const cookTimeMinutes = parseDurationISO(recipeLd?.cookTime || microdataCook);
-  const calories = parseCalories(recipeLd?.nutrition?.calories);
+  const servings = parseServings(recipeLd.recipeYield);
+  const prepTimeMinutes = parseDurationISO(recipeLd.prepTime);
+  const cookTimeMinutes = parseDurationISO(recipeLd.cookTime || recipeLd.totalTime);
+  const calories = parseCalories(recipeLd.nutrition?.calories);
 
-  const rawCat = Array.isArray(recipeLd?.recipeCategory) ? recipeLd.recipeCategory[0] : (recipeLd?.recipeCategory || microdataCategory);
-  const rawCuisine = Array.isArray(recipeLd?.recipeCuisine) ? recipeLd.recipeCuisine[0] : (recipeLd?.recipeCuisine || microdataCuisine);
-  const category = mapToChelonaCategory(rawCat, rawCuisine);
+  const rawCat = Array.isArray(recipeLd.recipeCategory) ? recipeLd.recipeCategory[0] : recipeLd.recipeCategory;
+  const rawCuisine = Array.isArray(recipeLd.recipeCuisine) ? recipeLd.recipeCuisine[0] : recipeLd.recipeCuisine;
+  const category = mapToChelonaCategory(rawCat || title, rawCuisine);
 
   let country = rawCuisine ? cleanText(rawCuisine) : 'Italia';
   if (category === 'Cucine dal Mondo' && country.toLowerCase() === 'italia') {
     country = 'Mondo';
   }
 
-  const sourceName = extractSourceName(originalUrl);
-  const id = `user_rec_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+  const recipeUrl = resolveUrl(recipeLd.url, originalUrl);
+  const sourceName = extractSourceName(recipeUrl);
+  const now = Date.now();
+  const id = `user_rec_${now}_${index}_${Math.random().toString(36).slice(2, 7)}`;
 
   return {
     id,
@@ -599,19 +515,333 @@ export function extractRecipeFromHtml(html: string, originalUrl: string): UserRe
     cookTimeMinutes,
     calories,
     country,
-    sourceUrl: originalUrl,
+    sourceUrl: recipeUrl,
     sourceName,
     isCustom: true,
-    createdAt: Date.now(),
-    updatedAt: Date.now(),
+    createdAt: now + index,
+    updatedAt: now,
   };
 }
 
 /**
- * Scarica una pagina web e ne estrae la ricetta.
- * Usa CapacitorHttp se in ambiente nativo, oppure fallback con CORS proxy in browser.
+ * Parsing di un singolo blocco HTML Microdata (itemscope itemtype="http://schema.org/Recipe")
  */
-export async function fetchAndExtractRecipeFromUrl(rawUrl: string): Promise<UserRecipeItem> {
+function parseMicrodataBlock(block: string, originalUrl: string, index: number): UserRecipeItem | null {
+  try {
+    const nameMatch = block.match(/<[^>]+itemprop=["']name["'][^>]*>([^<]+)<\/[^>]+>/i);
+    const titleMatch = nameMatch ? cleanText(nameMatch[1]) : '';
+    if (!titleMatch || titleMatch.length < 2) return null;
+
+    const imgMatch = block.match(/<img[^>]+itemprop=["']image["'][^>]+src=["']([^"']*)["']/i) ||
+                     block.match(/<meta[^>]+itemprop=["']image["'][^>]+content=["']([^"']*)["']/i);
+    const image = imgMatch && imgMatch[1].trim()
+      ? resolveUrl(imgMatch[1].trim(), originalUrl)
+      : 'https://images.unsplash.com/photo-1498837167922-ddd27525d352?w=800';
+
+    const microdataIngredients: string[] = [];
+    const ingRegex = /<[^>]+itemprop=["'](?:recipeIngredient|ingredients)["'][^>]*>([\s\S]*?)<\/[^>]+>/gi;
+    let ingMatch: RegExpExecArray | null;
+    while ((ingMatch = ingRegex.exec(block)) !== null) {
+      const text = cleanText(ingMatch[1]);
+      if (text) microdataIngredients.push(text);
+    }
+
+    const microdataSteps: string[] = [];
+    const stepRegex = /<[^>]+itemprop=["'](?:recipeInstructions|instruction|step)["'][^>]*>([\s\S]*?)<\/[^>]+>/gi;
+    let stepMatch: RegExpExecArray | null;
+    while ((stepMatch = stepRegex.exec(block)) !== null) {
+      const text = cleanText(stepMatch[1]);
+      if (text && text.length > 5) microdataSteps.push(text);
+    }
+
+    const yieldMatch = block.match(/<[^>]+itemprop=["']recipeYield["'][^>]+content=["']([^"']*)["']/i) ||
+                       block.match(/<[^>]+itemprop=["']recipeYield["'][^>]*>([^<]+)<\/[^>]+>/i);
+    const servings = parseServings(yieldMatch ? cleanText(yieldMatch[1]) : undefined);
+
+    const prepMatch = block.match(/<[^>]+itemprop=["']prepTime["'][^>]+content=["']([^"']*)["']/i) ||
+                      block.match(/<[^>]+itemprop=["']prepTime["'][^>]*>([^<]+)<\/[^>]+>/i);
+    const prepTimeMinutes = parseDurationISO(prepMatch ? cleanText(prepMatch[1]) : undefined);
+
+    const cookMatch = block.match(/<[^>]+itemprop=["']cookTime["'][^>]+content=["']([^"']*)["']/i) ||
+                      block.match(/<[^>]+itemprop=["']cookTime["'][^>]*>([^<]+)<\/[^>]+>/i);
+    const cookTimeMinutes = parseDurationISO(cookMatch ? cleanText(cookMatch[1]) : undefined);
+
+    const catMatch = block.match(/<[^>]+itemprop=["']recipeCategory["'][^>]*>([^<]+)<\/[^>]+>/i);
+    const microdataCategory = catMatch ? cleanText(catMatch[1]) : '';
+
+    const cuisineMatch = block.match(/<[^>]+itemprop=["']recipeCuisine["'][^>]*>([^<]+)<\/[^>]+>/i);
+    const microdataCuisine = cuisineMatch ? cleanText(cuisineMatch[1]) : '';
+
+    const category = mapToChelonaCategory(microdataCategory || titleMatch, microdataCuisine);
+    let country = microdataCuisine ? cleanText(microdataCuisine) : 'Italia';
+    if (category === 'Cucine dal Mondo' && country.toLowerCase() === 'italia') {
+      country = 'Mondo';
+    }
+
+    const now = Date.now();
+    return {
+      id: `user_rec_${now}_${index}_${Math.random().toString(36).slice(2, 7)}`,
+      title: titleMatch,
+      category,
+      ingredients: microdataIngredients,
+      steps: microdataSteps,
+      image,
+      servings: servings || 4,
+      prepTimeMinutes,
+      cookTimeMinutes,
+      country,
+      sourceUrl: originalUrl,
+      sourceName: extractSourceName(originalUrl),
+      isCustom: true,
+      createdAt: now + index,
+      updatedAt: now,
+    };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Estrae TUTTE le ricette presenti in una pagina HTML.
+ * Riconosce:
+ * - Schema.org JSON-LD (@type: Recipe, @type: ItemList, blocchi @graph, molteplici script JSON-LD)
+ * - Molteplici blocchi HTML Microdata (itemscope itemtype="http://schema.org/Recipe")
+ * - Schede ricetta HTML (per pagine di raccolta o indice)
+ * - Fallback OpenGraph / Meta tag
+ */
+export function extractAllRecipesFromHtml(html: string, originalUrl: string): UserRecipeItem[] {
+  if (!html || typeof html !== 'string') return [];
+
+  const collectedRawNodes: any[] = [];
+  const seenTitles = new Set<string>();
+  const recipes: UserRecipeItem[] = [];
+
+  const addRecipe = (rec: UserRecipeItem | null) => {
+    if (!rec || !rec.title) return;
+    const normKey = rec.title.toLowerCase().replace(/[^a-z0-9]/g, '');
+    if (!normKey) return;
+    if (!seenTitles.has(normKey)) {
+      seenTitles.add(normKey);
+      recipes.push(rec);
+    }
+  };
+
+  // 1. Cerca TUTTI i blocchi script type="application/ld+json"
+  const scriptRegex = /<script\b[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi;
+  let match: RegExpExecArray | null;
+
+  const traverseJson = (node: any) => {
+    if (!node) return;
+    if (Array.isArray(node)) {
+      for (const item of node) {
+        traverseJson(item);
+      }
+      return;
+    }
+    if (typeof node !== 'object') return;
+
+    if (isRecipeType(node['@type'])) {
+      collectedRawNodes.push(node);
+    }
+
+    if (isItemListType(node['@type']) && node.itemListElement) {
+      const elements = Array.isArray(node.itemListElement) ? node.itemListElement : [node.itemListElement];
+      for (const el of elements) {
+        if (!el) continue;
+        if (typeof el === 'object') {
+          if (isRecipeType(el['@type'])) {
+            collectedRawNodes.push(el);
+          } else if (el.item && typeof el.item === 'object') {
+            if (isRecipeType(el.item['@type'])) {
+              collectedRawNodes.push(el.item);
+            } else if (el.item.name) {
+              collectedRawNodes.push({
+                '@type': 'Recipe',
+                name: el.item.name,
+                description: el.item.description || el.description,
+                image: el.item.image || el.image,
+                url: el.item.url || el.url,
+                recipeIngredient: el.item.recipeIngredient || el.item.ingredients,
+                recipeInstructions: el.item.recipeInstructions,
+                prepTime: el.item.prepTime,
+                cookTime: el.item.cookTime,
+                recipeYield: el.item.recipeYield,
+                recipeCategory: el.item.recipeCategory,
+                recipeCuisine: el.item.recipeCuisine,
+                nutrition: el.item.nutrition,
+              });
+            } else {
+              traverseJson(el.item);
+            }
+          } else if (el.name && (el.url || el.image || el.description || el.recipeIngredient)) {
+            collectedRawNodes.push({
+              '@type': 'Recipe',
+              name: el.name,
+              description: el.description,
+              image: el.image,
+              url: el.url,
+              recipeIngredient: el.recipeIngredient || el.ingredients,
+              recipeInstructions: el.recipeInstructions,
+              prepTime: el.prepTime,
+              cookTime: el.cookTime,
+              recipeYield: el.recipeYield,
+              recipeCategory: el.recipeCategory,
+              recipeCuisine: el.recipeCuisine,
+              nutrition: el.nutrition,
+            });
+          } else {
+            traverseJson(el);
+          }
+        }
+      }
+    }
+
+    if (node['@graph']) {
+      traverseJson(node['@graph']);
+    }
+
+    for (const key of Object.keys(node)) {
+      if (key !== '@graph' && key !== 'itemListElement' && typeof node[key] === 'object' && node[key] !== null) {
+        traverseJson(node[key]);
+      }
+    }
+  };
+
+  while ((match = scriptRegex.exec(html)) !== null) {
+    const rawJson = match[1]?.trim();
+    if (!rawJson) continue;
+
+    try {
+      const cleanJson = rawJson.replace(/^\s*\/\*[\s\S]*?\*\//, '').replace(/^\s*<!--([\s\S]*?)-->/, '$1').trim();
+      const data = JSON.parse(cleanJson);
+      traverseJson(data);
+    } catch {
+      // JSON malformato o commenti non standard, continua la scansione
+    }
+  }
+
+  // Converti i nodi JSON-LD raccolti in UserRecipeItem
+  for (let i = 0; i < collectedRawNodes.length; i++) {
+    const recItem = convertJsonLdRecipeToItem(collectedRawNodes[i], originalUrl, recipes.length);
+    addRecipe(recItem);
+  }
+
+  // 2. Cerca TUTTI i blocchi HTML Microdata (itemscope itemtype="http://schema.org/Recipe")
+  const microdataTagRegex = /<([a-z0-9]+)\b[^>]*itemtype=["']https?:\/\/schema\.org\/Recipe["'][^>]*>/gi;
+  let tagMatch: RegExpExecArray | null;
+  const startIndices: number[] = [];
+
+  while ((tagMatch = microdataTagRegex.exec(html)) !== null) {
+    startIndices.push(tagMatch.index);
+  }
+
+  if (startIndices.length > 0) {
+    for (let i = 0; i < startIndices.length; i++) {
+      const start = startIndices[i];
+      const end = (i + 1 < startIndices.length) ? startIndices[i + 1] : Math.min(start + 25000, html.length);
+      const block = html.slice(start, end);
+      const microItem = parseMicrodataBlock(block, originalUrl, recipes.length);
+      addRecipe(microItem);
+    }
+  }
+
+  // 3. Fallback Schede Ricetta HTML per pagine di raccolta / archivio blog (se nessuna ricetta trovata finora)
+  if (recipes.length === 0) {
+    const cardRegex = /<(?:article|div)\b[^>]*(?:class|id)=["'][^"']*(?:recipe-card|ricetta-card|recipe_item|recipe-item|card-recipe|teaser-recipe|archive-recipe|post-recipe)[^"']*["'][^>]*>([\s\S]*?)<\/(?:article|div)>/gi;
+    let cardMatch: RegExpExecArray | null;
+    let cardCount = 0;
+
+    while ((cardMatch = cardRegex.exec(html)) !== null && cardCount < 30) {
+      const cardHtml = cardMatch[1];
+      const titleM = cardHtml.match(/<h[2-4][^>]*>(?:<a[^>]+>)?([^<]+)(?:<\/a>)?<\/h[2-4]>/i) ||
+                     cardHtml.match(/<a[^>]+title=["']([^"']+)["']/i);
+      if (titleM) {
+        const cardTitle = cleanText(titleM[1]);
+        if (cardTitle.length >= 3) {
+          const imgM = cardHtml.match(/<img[^>]+src=["']([^"']+)["']/i) || cardHtml.match(/<img[^>]+data-src=["']([^"']+)["']/i);
+          const linkM = cardHtml.match(/<a[^>]+href=["']([^"']+)["']/i);
+          const cardImage = imgM ? resolveUrl(imgM[1].trim(), originalUrl) : 'https://images.unsplash.com/photo-1498837167922-ddd27525d352?w=800';
+          const cardUrl = resolveUrl(linkM ? linkM[1].trim() : undefined, originalUrl);
+          const category = mapToChelonaCategory(cardTitle);
+
+          addRecipe({
+            id: `user_rec_${Date.now()}_${recipes.length}_${Math.random().toString(36).slice(2, 7)}`,
+            title: cardTitle,
+            category,
+            ingredients: [],
+            steps: [],
+            image: cardImage,
+            servings: 4,
+            country: 'Italia',
+            sourceUrl: cardUrl,
+            sourceName: extractSourceName(cardUrl),
+            isCustom: true,
+            createdAt: Date.now() + recipes.length,
+            updatedAt: Date.now(),
+          });
+          cardCount++;
+        }
+      }
+    }
+  }
+
+  // 4. Fallback finale OpenGraph / Meta tag se ancora 0 ricette
+  if (recipes.length === 0) {
+    const extractMetaContent = (nameOrProp: string): string => {
+      const escaped = nameOrProp.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const rgx1 = new RegExp(`<meta[^>]+(?:property|name)=["']${escaped}["'][^>]+content=["']([^"']*)["']`, 'i');
+      const m1 = html.match(rgx1);
+      if (m1 && m1[1]) return m1[1];
+
+      const rgx2 = new RegExp(`<meta[^>]+content=["']([^"']*)["'][^>]+(?:property|name)=["']${escaped}["']`, 'i');
+      const m2 = html.match(rgx2);
+      if (m2 && m2[1]) return m2[1];
+
+      return '';
+    };
+
+    const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
+    const htmlTitle = titleMatch ? cleanText(titleMatch[1]) : '';
+    const ogTitle = cleanText(extractMetaContent('og:title') || extractMetaContent('twitter:title'));
+    const ogImage = extractMetaContent('og:image') || extractMetaContent('twitter:image');
+
+    const title = ogTitle || htmlTitle || 'Ricetta Importata';
+    const image = (ogImage ? ogImage.trim() : '') || 'https://images.unsplash.com/photo-1498837167922-ddd27525d352?w=800';
+    const category = mapToChelonaCategory(title);
+
+    recipes.push({
+      id: `user_rec_${Date.now()}_0_${Math.random().toString(36).slice(2, 7)}`,
+      title,
+      category,
+      ingredients: [],
+      steps: [],
+      image,
+      servings: 4,
+      country: 'Italia',
+      sourceUrl: originalUrl,
+      sourceName: extractSourceName(originalUrl),
+      isCustom: true,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+  }
+
+  return recipes;
+}
+
+/**
+ * Parser per singola ricetta da HTML (retrocompatibile con codice esistente)
+ */
+export function extractRecipeFromHtml(html: string, originalUrl: string): UserRecipeItem {
+  const all = extractAllRecipesFromHtml(html, originalUrl);
+  return all[0];
+}
+
+/**
+ * Scarica una pagina web ed estrae TUTTE le ricette presenti.
+ * Usa CapacitorHttp in ambiente nativo (zero CORS) e fallback proxy in browser.
+ */
+export async function fetchAndExtractRecipesFromUrl(rawUrl: string): Promise<UserRecipeItem[]> {
   const url = rawUrl.trim();
   if (!url.startsWith('http://') && !url.startsWith('https://')) {
     throw new Error('Inserisci un link URL valido che inizia con https:// o http://');
@@ -672,8 +902,20 @@ export async function fetchAndExtractRecipeFromUrl(rawUrl: string): Promise<User
     throw new Error('Impossibile scaricare la pagina. Verifica la connessione internet o che il link sia accessibile.');
   }
 
-  const recipe = extractRecipeFromHtml(html, url);
-  return recipe;
+  const recipes = extractAllRecipesFromHtml(html, url);
+  if (!recipes || recipes.length === 0) {
+    throw new Error('Nessuna ricetta valida trovata in questa pagina.');
+  }
+
+  return recipes;
+}
+
+/**
+ * Scarica una pagina web e ne estrae la prima ricetta trovata (retrocompatibile).
+ */
+export async function fetchAndExtractRecipeFromUrl(rawUrl: string): Promise<UserRecipeItem> {
+  const recipes = await fetchAndExtractRecipesFromUrl(rawUrl);
+  return recipes[0];
 }
 
 /** Carica tutte le ricette create dall'utente dal localStorage */
@@ -731,49 +973,61 @@ function notifyRecipesUpdated() {
   }
 }
 
-/** Salva o aggiorna una ricetta personalizzata dell'utente */
-export function saveUserRecipe(recipeData: Partial<UserRecipeItem> & { title: string; category: string }): UserRecipeItem {
+/** Salva o aggiorna multiple ricette create o importate dall'utente in un colpo solo */
+export function saveUserRecipes(
+  recipesData: (Partial<UserRecipeItem> & { title: string; category?: string })[]
+): UserRecipeItem[] {
+  if (!recipesData || recipesData.length === 0) return [];
   const existing = loadUserRecipes();
   const now = Date.now();
+  const savedList: UserRecipeItem[] = [];
 
-  const id = recipeData.id || `user_rec_${now}_${Math.random().toString(36).slice(2, 7)}`;
-  const cleanRecipe: UserRecipeItem = {
-    id,
-    title: recipeData.title.trim(),
-    category: recipeData.category || 'Primi',
-    ingredients: Array.isArray(recipeData.ingredients) ? recipeData.ingredients.filter(Boolean) : [],
-    steps: Array.isArray(recipeData.steps) ? recipeData.steps.filter(Boolean) : [],
-    image: recipeData.image || 'https://images.unsplash.com/photo-1498837167922-ddd27525d352?w=800',
-    servings: recipeData.servings && recipeData.servings > 0 ? Number(recipeData.servings) : 4,
-    prepTimeMinutes: recipeData.prepTimeMinutes ? Number(recipeData.prepTimeMinutes) : undefined,
-    cookTimeMinutes: recipeData.cookTimeMinutes ? Number(recipeData.cookTimeMinutes) : undefined,
-    calories: recipeData.calories ? Number(recipeData.calories) : undefined,
-    country: recipeData.country?.trim() || 'Italia',
-    flag: recipeData.flag || (recipeData.country === 'Italia' ? '🇮🇹' : '🌍'),
-    tags: recipeData.tags || ['Personalizzata', 'La mia ricetta'],
-    sourceUrl: recipeData.sourceUrl,
-    sourceName: recipeData.sourceName || (recipeData.sourceUrl ? extractSourceName(recipeData.sourceUrl) : undefined),
-    isCustom: true,
-    createdAt: recipeData.createdAt || now,
-    updatedAt: now,
-  };
-
-  const index = existing.findIndex(r => r.id === id);
-  let updatedList: UserRecipeItem[];
-
-  if (index >= 0) {
-    updatedList = [...existing];
-    updatedList[index] = cleanRecipe;
-  } else {
-    updatedList = [cleanRecipe, ...existing];
+  for (let i = 0; i < recipesData.length; i++) {
+    const recipeData = recipesData[i];
+    const id = recipeData.id || `user_rec_${now}_${i}_${Math.random().toString(36).slice(2, 7)}`;
+    const category = recipeData.category || 'Primi';
+    const cleanRecipe: UserRecipeItem = {
+      id,
+      title: recipeData.title.trim(),
+      category,
+      ingredients: Array.isArray(recipeData.ingredients) ? recipeData.ingredients.filter(Boolean) : [],
+      steps: Array.isArray(recipeData.steps) ? recipeData.steps.filter(Boolean) : [],
+      image: recipeData.image || 'https://images.unsplash.com/photo-1498837167922-ddd27525d352?w=800',
+      servings: recipeData.servings && recipeData.servings > 0 ? Number(recipeData.servings) : 4,
+      prepTimeMinutes: recipeData.prepTimeMinutes ? Number(recipeData.prepTimeMinutes) : undefined,
+      cookTimeMinutes: recipeData.cookTimeMinutes ? Number(recipeData.cookTimeMinutes) : undefined,
+      calories: recipeData.calories ? Number(recipeData.calories) : undefined,
+      country: recipeData.country?.trim() || 'Italia',
+      flag: recipeData.flag || (recipeData.country === 'Italia' ? '🇮🇹' : '🌍'),
+      tags: recipeData.tags || ['Personalizzata', 'La mia ricetta'],
+      sourceUrl: recipeData.sourceUrl,
+      sourceName: recipeData.sourceName || (recipeData.sourceUrl ? extractSourceName(recipeData.sourceUrl) : undefined),
+      isCustom: true,
+      createdAt: recipeData.createdAt || (now + i),
+      updatedAt: now,
+    };
+    savedList.push(cleanRecipe);
   }
+
+  // Prepend new recipes, update existing ones if id matched
+  const newIds = new Set(savedList.map(r => r.id));
+  const remainingExisting = existing.filter(r => !newIds.has(r.id));
+  const updatedList = [...savedList, ...remainingExisting];
 
   if (typeof localStorage !== 'undefined') {
     localStorage.setItem(USER_RECIPES_STORAGE_KEY, JSON.stringify(updatedList));
   }
 
   notifyRecipesUpdated();
-  return cleanRecipe;
+  return savedList;
+}
+
+/** Salva o aggiorna una ricetta personalizzata dell'utente */
+export function saveUserRecipe(
+  recipeData: Partial<UserRecipeItem> & { title: string; category?: string }
+): UserRecipeItem {
+  const result = saveUserRecipes([recipeData]);
+  return result[0];
 }
 
 /** Elimina una ricetta utente per ID */

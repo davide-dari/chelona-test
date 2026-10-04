@@ -485,9 +485,14 @@ export function RecipesScreen({
     setSelectedMeal(saved);
   };
 
-  const handleImportRecipeSuccess = (saved: UserRecipeItem) => {
-    showToast(`Ricetta "${saved.title}" importata con successo!`);
-    setSelectedMeal(saved);
+  const handleImportRecipeSuccess = (saved: UserRecipeItem, allRecipes?: UserRecipeItem[]) => {
+    if (allRecipes && allRecipes.length > 1) {
+      showToast(`${allRecipes.length} ricette importate con successo!`);
+      setSelectedMeal(saved);
+    } else {
+      showToast(`Ricetta "${saved.title}" importata con successo!`);
+      setSelectedMeal(saved);
+    }
   };
 
   useEffect(() => {

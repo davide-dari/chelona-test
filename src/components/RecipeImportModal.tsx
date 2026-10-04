@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { 
   X, Link2, Sparkles, Globe, ChefHat, Check, Clock, 
-  Users, AlertCircle, ArrowRight, ExternalLink, RefreshCw, ClipboardPaste, Flame, Edit3
+  Users, AlertCircle, ArrowRight, ExternalLink, RefreshCw, ClipboardPaste, 
+  Flame, Edit3, CheckSquare, Square, Layers, ArrowLeft
 } from 'lucide-react';
 import { 
-  fetchAndExtractRecipeFromUrl, 
+  fetchAndExtractRecipesFromUrl, 
   saveUserRecipe,
+  saveUserRecipes,
   type UserRecipeItem 
 } from '../services/userRecipesService';
 
@@ -23,7 +25,7 @@ const CATEGORIES = [
 interface RecipeImportModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onImportSuccess: (recipe: UserRecipeItem) => void;
+  onImportSuccess: (recipe: UserRecipeItem, allRecipes?: UserRecipeItem[]) => void;
   onOpenInBuilder?: (recipe: UserRecipeItem) => void;
 }
 
@@ -37,8 +39,13 @@ export function RecipeImportModal({
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   
-  // Modalità Anteprima & Modifica prima del salvataggio
-  const [extractedRecipe, setExtractedRecipe] = useState<UserRecipeItem | null>(null);
+  // Elenco ricette trovate dalla scansione dell'URL
+  const [extractedRecipes, setExtractedRecipes] = useState<UserRecipeItem[]>([]);
+  // Insieme degli indici selezionati per l'importazione multipla
+  const [selectedIndices, setSelectedIndices] = useState<Set<number>>(new Set());
+  // Ricetta singola aperta in modalità anteprima/modifica dettagliata
+  const [activeRecipe, setActiveRecipe] = useState<UserRecipeItem | null>(null);
+  const [activeRecipeIndex, setActiveRecipeIndex] = useState<number | null>(null);
 
   if (!isOpen) return null;
 
@@ -59,11 +66,11 @@ export function RecipeImportModal({
     }
   };
 
-  // Esecuzione estrazione ricetta dal link
+  // Esecuzione estrazione ricette dal link
   const handleExtract = async () => {
     const cleanUrl = url.trim();
     if (!cleanUrl) {
-      setErrorMsg('Inserisci l\'URL di una ricetta web da importare.');
+      setErrorMsg('Inserisci l\'URL di una ricetta o raccolta da importare.');
       return;
     }
     if (!cleanUrl.startsWith('http://') && !cleanUrl.startsWith('https://')) {
@@ -74,31 +81,112 @@ export function RecipeImportModal({
     try {
       setIsLoading(true);
       setErrorMsg(null);
-      const recipe = await fetchAndExtractRecipeFromUrl(cleanUrl);
-      setExtractedRecipe(recipe);
+      const recipes = await fetchAndExtractRecipesFromUrl(cleanUrl);
+      if (!recipes || recipes.length === 0) {
+        throw new Error('Nessuna ricetta valida trovata in questa pagina.');
+      }
+
+      setExtractedRecipes(recipes);
+      if (recipes.length === 1) {
+        // Singola ricetta: apri subito l'anteprima dettagliata
+        setActiveRecipe(recipes[0]);
+        setActiveRecipeIndex(0);
+        setSelectedIndices(new Set([0]));
+      } else {
+        // Multi-ricetta: tutte selezionate di default
+        setActiveRecipe(null);
+        setActiveRecipeIndex(null);
+        setSelectedIndices(new Set(recipes.map((_, i) => i)));
+      }
     } catch (err: any) {
-      console.error('Errore estrazione ricetta', err);
-      setErrorMsg(err.message || 'Impossibile estrarre la ricetta da questo link. Verifica che la pagina sia pubblica.');
+      console.error('Errore estrazione ricette', err);
+      setErrorMsg(err.message || 'Impossibile estrarre le ricette da questo link. Verifica che la pagina sia pubblica.');
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Conferma salvataggio nel ricettario locale
-  const handleConfirmSave = () => {
-    if (!extractedRecipe) return;
-    const saved = saveUserRecipe(extractedRecipe);
-    onImportSuccess(saved);
+  // Seleziona / Deseleziona tutte le ricette
+  const handleSelectAll = () => {
+    setSelectedIndices(new Set(extractedRecipes.map((_, i) => i)));
+  };
+
+  const handleDeselectAll = () => {
+    setSelectedIndices(new Set());
+  };
+
+  const handleToggleIndex = (idx: number) => {
+    setSelectedIndices(prev => {
+      const next = new Set(prev);
+      if (next.has(idx)) {
+        next.delete(idx);
+      } else {
+        next.add(idx);
+      }
+      return next;
+    });
+  };
+
+  // Apri una specifica ricetta per visualizzarne/modificarne i dettagli
+  const handleOpenDetail = (recipe: UserRecipeItem, index: number) => {
+    setActiveRecipe(recipe);
+    setActiveRecipeIndex(index);
+  };
+
+  // Torna dall'anteprima dettagliata all'elenco multi-ricetta
+  const handleBackToList = () => {
+    if (activeRecipe && activeRecipeIndex !== null) {
+      // Aggiorna l'elemento modificato nella lista
+      setExtractedRecipes(prev => {
+        const copy = [...prev];
+        copy[activeRecipeIndex] = activeRecipe;
+        return copy;
+      });
+    }
+    setActiveRecipe(null);
+    setActiveRecipeIndex(null);
+  };
+
+  // Salva TUTTE le ricette selezionate in chelona_user_recipes in un colpo solo
+  const handleImportSelected = () => {
+    const toSave = extractedRecipes.filter((_, idx) => selectedIndices.has(idx));
+    if (toSave.length === 0) return;
+
+    const savedList = saveUserRecipes(toSave);
+    if (savedList.length > 0) {
+      onImportSuccess(savedList[0], savedList);
+    }
+    handleCloseModal();
+  };
+
+  // Salva la singola ricetta attiva
+  const handleConfirmSingleSave = () => {
+    if (!activeRecipe) return;
+    const saved = saveUserRecipe(activeRecipe);
+    onImportSuccess(saved, [saved]);
+    handleCloseModal();
+  };
+
+  const handleCloseModal = () => {
     onClose();
-    // Reset state
-    setExtractedRecipe(null);
+    setExtractedRecipes([]);
+    setSelectedIndices(new Set());
+    setActiveRecipe(null);
+    setActiveRecipeIndex(null);
     setUrl('');
+    setErrorMsg(null);
   };
 
   const handleReset = () => {
-    setExtractedRecipe(null);
+    setExtractedRecipes([]);
+    setSelectedIndices(new Set());
+    setActiveRecipe(null);
+    setActiveRecipeIndex(null);
     setErrorMsg(null);
   };
+
+  const isMultiView = extractedRecipes.length > 1 && !activeRecipe;
+  const isSingleView = !!activeRecipe;
 
   return (
     <div className="fixed inset-0 z-[150] bg-black/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
@@ -111,22 +199,30 @@ export function RecipeImportModal({
         {/* Header Modal */}
         <div className="px-6 py-4 border-b border-[var(--border)] flex items-center justify-between shrink-0 bg-[var(--surface-variant)]/40">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-orange-500/15 text-orange-600 flex items-center justify-center">
-              <Link2 className="w-5 h-5" />
+            <div className="w-10 h-10 rounded-2xl bg-orange-500/15 text-orange-600 flex items-center justify-center shrink-0">
+              {isMultiView ? <Layers className="w-5 h-5" /> : <Link2 className="w-5 h-5" />}
             </div>
             <div>
               <h2 className="text-lg sm:text-xl font-black text-[var(--text-main)]">
-                {extractedRecipe ? 'Anteprima Ricetta Importata' : 'Importa Ricetta da Link Web'}
+                {isMultiView 
+                  ? `Trovate ${extractedRecipes.length} ricette in questa pagina`
+                  : isSingleView 
+                    ? 'Anteprima Ricetta Importata' 
+                    : 'Importa Ricette da Link Web'}
               </h2>
               <p className="text-xs text-[var(--text-muted)] font-medium">
-                {extractedRecipe ? 'Verifica e modifica i dettagli prima di salvarla nel tuo ricettario' : 'Incolla qualsiasi link da GialloZafferano, Cookist, Allrecipes o blog culinari'}
+                {isMultiView
+                  ? 'Seleziona le ricette che desideri salvare nel tuo ricettario personale'
+                  : isSingleView
+                    ? 'Verifica e modifica i dettagli prima di salvarla nel tuo ricettario'
+                    : 'Incolla qualsiasi link da GialloZafferano, Cookist, raccolte di ricette o blog culinari'}
               </p>
             </div>
           </div>
 
           <button
-            onClick={onClose}
-            className="w-9 h-9 rounded-full bg-[var(--surface-variant)] text-[var(--text-muted)] hover:text-[var(--text-main)] flex items-center justify-center cursor-pointer transition-colors"
+            onClick={handleCloseModal}
+            className="w-9 h-9 rounded-full bg-[var(--surface-variant)] text-[var(--text-muted)] hover:text-[var(--text-main)] flex items-center justify-center cursor-pointer transition-colors shrink-0"
           >
             <X className="w-5 h-5" />
           </button>
@@ -141,12 +237,12 @@ export function RecipeImportModal({
             </div>
           )}
 
-          {!extractedRecipe ? (
-            /* FASE 1: INSERIMENTO URL */
+          {/* FASE 1: INSERIMENTO URL */}
+          {extractedRecipes.length === 0 && (
             <div className="space-y-6">
               <div className="space-y-2">
                 <label className="text-xs font-black uppercase tracking-wider text-[var(--text-muted)] flex items-center justify-between">
-                  <span>URL della Ricetta</span>
+                  <span>URL della Ricetta o Raccolta</span>
                   <button
                     type="button"
                     onClick={handlePasteClipboard}
@@ -161,7 +257,7 @@ export function RecipeImportModal({
                   <Globe className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--text-muted)] w-5 h-5" />
                   <input
                     type="url"
-                    placeholder="https://ricette.giallozafferano.it/... o qualsiasi blog"
+                    placeholder="https://ricette.giallozafferano.it/... o qualsiasi pagina di ricette"
                     value={url}
                     onChange={(e) => setUrl(e.target.value)}
                     onKeyDown={(e) => {
@@ -175,11 +271,11 @@ export function RecipeImportModal({
                 </div>
               </div>
 
-              {/* Siti Supportati e Info di Sicurezza / Legale */}
+              {/* Info Compatibilità e Supporto Multi-Ricetta */}
               <div className="p-4 rounded-2xl bg-[var(--surface-variant)]/60 border border-[var(--border)] space-y-3">
                 <span className="text-xs font-bold text-[var(--text-main)] flex items-center gap-1.5">
                   <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-                  <span>Compatibilità Universale Schema.org & Blog Web:</span>
+                  <span>Compatibilità Universale con Ricette Singole e Raccolte:</span>
                 </span>
                 
                 <div className="flex flex-wrap gap-1.5">
@@ -190,7 +286,8 @@ export function RecipeImportModal({
                     'Fatto in Casa da Benedetta',
                     'Il Cucchiaio d\'Argento',
                     'Misya',
-                    'Tutti i blog e siti con Recipe Schema'
+                    'Raccolte & Menu con più ricette',
+                    'Tutti i blog Schema.org'
                   ].map((site) => (
                     <span
                       key={site}
@@ -202,7 +299,7 @@ export function RecipeImportModal({
                 </div>
 
                 <p className="text-[11px] text-[var(--text-muted)] leading-relaxed">
-                  ⚖️ <strong>Uso Personale & Rispetto del Diritto d'Autore:</strong> la ricetta viene salvata esclusivamente sul tuo dispositivo in locale per uso privato e riporta sempre il link e l'attribuzione alla fonte originale.
+                  ⚖️ <strong>Uso Personale & Rispetto del Diritto d'Autore:</strong> le ricette vengono salvate esclusivamente sul tuo dispositivo in locale per uso privato e mantengono sempre il link originale e l'attribuzione alla fonte.
                 </p>
               </div>
 
@@ -216,27 +313,180 @@ export function RecipeImportModal({
                   {isLoading ? (
                     <>
                       <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                      <span>Analisi e importazione in corso...</span>
+                      <span>Analisi e scansione pagina in corso...</span>
                     </>
                   ) : (
                     <>
                       <Sparkles className="w-4 h-4" />
-                      <span>Estrai Ricetta dal Link</span>
+                      <span>Estrai Tutte le Ricette dal Link</span>
                       <ArrowRight className="w-4 h-4" />
                     </>
                   )}
                 </button>
               </div>
             </div>
-          ) : (
-            /* FASE 2: ANTEPRIMA & MODIFICA PRE-SALVATAGGIO */
+          )}
+
+          {/* FASE 2: SCHERMATA MULTI-RICETTA */}
+          {isMultiView && (
+            <div className="space-y-4">
+              {/* Barra comandi selezione rapida */}
+              <div className="flex items-center justify-between gap-2 p-3 rounded-2xl bg-[var(--surface-variant)]/60 border border-[var(--border)] flex-wrap">
+                <div className="flex items-center gap-2">
+                  <span className="px-2.5 py-1 rounded-full bg-orange-500/15 text-orange-600 dark:text-orange-400 font-black text-xs">
+                    {selectedIndices.size} di {extractedRecipes.length} selezionate
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleSelectAll}
+                    className="px-3 py-1.5 rounded-xl bg-[var(--card-bg)] hover:bg-orange-500/10 text-[var(--text-main)] hover:text-orange-600 font-bold text-xs border border-[var(--border)] flex items-center gap-1.5 cursor-pointer transition-colors"
+                  >
+                    <CheckSquare className="w-3.5 h-3.5 text-orange-500" />
+                    <span>Seleziona tutte</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleDeselectAll}
+                    className="px-3 py-1.5 rounded-xl bg-[var(--card-bg)] hover:bg-[var(--surface-variant)] text-[var(--text-muted)] hover:text-[var(--text-main)] font-bold text-xs border border-[var(--border)] flex items-center gap-1.5 cursor-pointer transition-colors"
+                  >
+                    <Square className="w-3.5 h-3.5" />
+                    <span>Deseleziona tutte</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Elenco schede ricetta trovate */}
+              <div className="space-y-2.5 max-h-[52vh] overflow-y-auto custom-scrollbar pr-1">
+                {extractedRecipes.map((recipe, index) => {
+                  const isSelected = selectedIndices.has(index);
+                  const totalTime = (recipe.prepTimeMinutes || 0) + (recipe.cookTimeMinutes || 0);
+
+                  return (
+                    <div
+                      key={recipe.id || index}
+                      onClick={() => handleToggleIndex(index)}
+                      className={`p-3 rounded-2xl border transition-all cursor-pointer flex items-center gap-3.5 ${
+                        isSelected 
+                          ? 'bg-orange-500/10 border-orange-500/40 shadow-sm' 
+                          : 'bg-[var(--surface-variant)]/40 border-[var(--border)] hover:bg-[var(--surface-variant)]/70 opacity-75'
+                      }`}
+                    >
+                      {/* Checkbox */}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleToggleIndex(index);
+                        }}
+                        className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0 transition-colors cursor-pointer ${
+                          isSelected 
+                            ? 'bg-orange-500 text-white' 
+                            : 'border-2 border-[var(--border)] text-transparent hover:border-orange-400'
+                        }`}
+                      >
+                        <Check className="w-4 h-4 stroke-[3]" />
+                      </button>
+
+                      {/* Foto ricetta */}
+                      <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl overflow-hidden bg-[var(--surface-variant)] shrink-0 shadow-sm border border-[var(--border)]">
+                        <img
+                          src={recipe.image}
+                          alt={recipe.title}
+                          className="w-full h-full object-cover"
+                          loading="lazy"
+                        />
+                      </div>
+
+                      {/* Informazioni principali */}
+                      <div className="flex-1 min-w-0 space-y-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="px-2 py-0.5 rounded-md bg-orange-500/15 text-orange-600 dark:text-orange-400 font-bold text-[10px]">
+                            {recipe.category}
+                          </span>
+                          {recipe.sourceName && (
+                            <span className="text-[10px] text-[var(--text-muted)] font-semibold">
+                              {recipe.sourceName}
+                            </span>
+                          )}
+                        </div>
+
+                        <h4 className="text-sm font-bold text-[var(--text-main)] line-clamp-2 leading-snug">
+                          {recipe.title}
+                        </h4>
+
+                        {/* Metriche rapide */}
+                        <div className="flex items-center gap-3 text-[11px] text-[var(--text-muted)] font-medium pt-0.5 flex-wrap">
+                          {totalTime > 0 && (
+                            <span className="flex items-center gap-1">
+                              <Clock className="w-3 h-3 text-amber-500" />
+                              <span>{totalTime} min</span>
+                            </span>
+                          )}
+                          {recipe.calories && (
+                            <span className="flex items-center gap-1">
+                              <Flame className="w-3 h-3 text-rose-500" />
+                              <span>{recipe.calories} kcal</span>
+                            </span>
+                          )}
+                          {recipe.servings && recipe.servings > 0 && (
+                            <span className="flex items-center gap-1">
+                              <Users className="w-3 h-3 text-blue-500" />
+                              <span>{recipe.servings} porz.</span>
+                            </span>
+                          )}
+                          {recipe.ingredients && recipe.ingredients.length > 0 && (
+                            <span className="flex items-center gap-1">
+                              <ChefHat className="w-3 h-3 text-emerald-500" />
+                              <span>{recipe.ingredients.length} ingr.</span>
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Pulsante Modifica / Ispezione rapida */}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleOpenDetail(recipe, index);
+                        }}
+                        className="p-2.5 rounded-xl bg-[var(--card-bg)] hover:bg-orange-500/15 text-[var(--text-muted)] hover:text-orange-600 border border-[var(--border)] transition-colors shrink-0 cursor-pointer"
+                        title="Vedi e modifica i dettagli di questa ricetta"
+                      >
+                        <Edit3 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* FASE 3: ANTEPRIMA & MODIFICA DETTAGLIATA (Singola o da elenco) */}
+          {isSingleView && activeRecipe && (
             <div className="space-y-6">
+              {/* Tasto torna all'elenco se c'erano più ricette */}
+              {extractedRecipes.length > 1 && (
+                <button
+                  type="button"
+                  onClick={handleBackToList}
+                  className="inline-flex items-center gap-1.5 text-xs font-bold text-orange-600 dark:text-orange-400 hover:underline cursor-pointer"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                  <span>Torna all'elenco delle {extractedRecipes.length} ricette trovate</span>
+                </button>
+              )}
+
               {/* Header scheda anteprima */}
               <div className="flex flex-col sm:flex-row gap-4 items-start bg-[var(--surface-variant)]/50 p-4 rounded-3xl border border-[var(--border)]">
                 <div className="w-full sm:w-36 h-28 rounded-2xl overflow-hidden bg-[var(--surface-variant)] shrink-0 shadow-sm">
                   <img
-                    src={extractedRecipe.image}
-                    alt={extractedRecipe.title}
+                    src={activeRecipe.image}
+                    alt={activeRecipe.title}
                     className="w-full h-full object-cover"
                   />
                 </div>
@@ -246,8 +496,8 @@ export function RecipeImportModal({
                     <div className="flex items-center gap-2">
                       <span className="text-[11px] font-bold text-[var(--text-muted)]">Categoria:</span>
                       <select
-                        value={extractedRecipe.category}
-                        onChange={(e) => setExtractedRecipe({ ...extractedRecipe, category: e.target.value })}
+                        value={activeRecipe.category}
+                        onChange={(e) => setActiveRecipe({ ...activeRecipe, category: e.target.value })}
                         className="bg-[var(--card-bg)] border border-[var(--border)] text-orange-600 dark:text-orange-400 font-bold text-xs rounded-lg px-2 py-1 outline-none focus:ring-1 focus:ring-orange-500"
                       >
                         {CATEGORIES.map(cat => (
@@ -256,14 +506,14 @@ export function RecipeImportModal({
                       </select>
                     </div>
 
-                    {extractedRecipe.sourceUrl && (
+                    {activeRecipe.sourceUrl && (
                       <a
-                        href={extractedRecipe.sourceUrl}
+                        href={activeRecipe.sourceUrl}
                         target="_blank"
                         rel="noreferrer"
                         className="inline-flex items-center gap-1 text-[11px] font-bold text-[var(--text-muted)] hover:text-orange-500 transition-colors"
                       >
-                        <span>Fonte: {extractedRecipe.sourceName || 'Web'}</span>
+                        <span>Fonte: {activeRecipe.sourceName || 'Web'}</span>
                         <ExternalLink className="w-3 h-3" />
                       </a>
                     )}
@@ -272,8 +522,8 @@ export function RecipeImportModal({
                   {/* Modifica Rapida Titolo */}
                   <input
                     type="text"
-                    value={extractedRecipe.title}
-                    onChange={(e) => setExtractedRecipe({ ...extractedRecipe, title: e.target.value })}
+                    value={activeRecipe.title}
+                    onChange={(e) => setActiveRecipe({ ...activeRecipe, title: e.target.value })}
                     className="w-full bg-[var(--card-bg)] border border-[var(--border)] rounded-xl py-2 px-3 text-base font-black text-[var(--text-main)] outline-none focus:ring-2 focus:ring-orange-500"
                   />
 
@@ -285,8 +535,8 @@ export function RecipeImportModal({
                         type="number"
                         min="1"
                         max="20"
-                        value={extractedRecipe.servings || 4}
-                        onChange={(e) => setExtractedRecipe({ ...extractedRecipe, servings: Math.max(1, parseInt(e.target.value, 10) || 1) })}
+                        value={activeRecipe.servings || 4}
+                        onChange={(e) => setActiveRecipe({ ...activeRecipe, servings: Math.max(1, parseInt(e.target.value, 10) || 1) })}
                         className="w-8 font-black text-xs text-[var(--text-main)] outline-none bg-transparent"
                       />
                       <span>porzioni</span>
@@ -299,8 +549,8 @@ export function RecipeImportModal({
                         type="number"
                         min="0"
                         placeholder="min"
-                        value={extractedRecipe.prepTimeMinutes ?? ''}
-                        onChange={(e) => setExtractedRecipe({ ...extractedRecipe, prepTimeMinutes: e.target.value ? parseInt(e.target.value, 10) : undefined })}
+                        value={activeRecipe.prepTimeMinutes ?? ''}
+                        onChange={(e) => setActiveRecipe({ ...activeRecipe, prepTimeMinutes: e.target.value ? parseInt(e.target.value, 10) : undefined })}
                         className="w-10 font-black text-xs text-[var(--text-main)] outline-none bg-transparent"
                       />
                       <span>m</span>
@@ -313,17 +563,17 @@ export function RecipeImportModal({
                         type="number"
                         min="0"
                         placeholder="min"
-                        value={extractedRecipe.cookTimeMinutes ?? ''}
-                        onChange={(e) => setExtractedRecipe({ ...extractedRecipe, cookTimeMinutes: e.target.value ? parseInt(e.target.value, 10) : undefined })}
+                        value={activeRecipe.cookTimeMinutes ?? ''}
+                        onChange={(e) => setActiveRecipe({ ...activeRecipe, cookTimeMinutes: e.target.value ? parseInt(e.target.value, 10) : undefined })}
                         className="w-10 font-black text-xs text-[var(--text-main)] outline-none bg-transparent"
                       />
                       <span>m</span>
                     </label>
 
-                    {extractedRecipe.calories && (
+                    {activeRecipe.calories && (
                       <span className="flex items-center gap-1 bg-[var(--card-bg)] px-2.5 py-1 rounded-xl border border-[var(--border)]">
                         <Flame className="w-3.5 h-3.5 text-rose-500" />
-                        <span>{extractedRecipe.calories} kcal</span>
+                        <span>{activeRecipe.calories} kcal</span>
                       </span>
                     )}
                   </div>
@@ -335,20 +585,24 @@ export function RecipeImportModal({
                 <div className="flex items-center justify-between border-b border-[var(--border)] pb-2">
                   <h3 className="text-xs font-black uppercase tracking-wider text-[var(--text-muted)] flex items-center gap-1.5">
                     <ChefHat className="w-4 h-4 text-orange-500" />
-                    <span>Ingredienti Rilevati ({extractedRecipe.ingredients?.length || 0})</span>
+                    <span>Ingredienti Rilevati ({activeRecipe.ingredients?.length || 0})</span>
                   </h3>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-48 overflow-y-auto custom-scrollbar p-1">
-                  {extractedRecipe.ingredients?.map((ing, i) => (
-                    <div
-                      key={i}
-                      className="px-3 py-1.5 rounded-xl bg-[var(--surface-variant)]/60 border border-[var(--border)] text-xs font-semibold text-[var(--text-main)] flex items-center gap-2"
-                    >
-                      <span className="w-1.5 h-1.5 rounded-full bg-orange-500 shrink-0" />
-                      <span className="truncate">{ing}</span>
-                    </div>
-                  ))}
+                  {activeRecipe.ingredients && activeRecipe.ingredients.length > 0 ? (
+                    activeRecipe.ingredients.map((ing, i) => (
+                      <div
+                        key={i}
+                        className="px-3 py-1.5 rounded-xl bg-[var(--surface-variant)]/60 border border-[var(--border)] text-xs font-semibold text-[var(--text-main)] flex items-center gap-2"
+                      >
+                        <span className="w-1.5 h-1.5 rounded-full bg-orange-500 shrink-0" />
+                        <span className="truncate">{ing}</span>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-xs text-[var(--text-muted)] italic">Nessun ingrediente dettagliato rilevato.</p>
+                  )}
                 </div>
               </div>
 
@@ -357,22 +611,26 @@ export function RecipeImportModal({
                 <div className="flex items-center justify-between border-b border-[var(--border)] pb-2">
                   <h3 className="text-xs font-black uppercase tracking-wider text-[var(--text-muted)] flex items-center gap-1.5">
                     <Clock className="w-4 h-4 text-orange-500" />
-                    <span>Procedimento ({extractedRecipe.steps?.length || 0} passaggi)</span>
+                    <span>Procedimento ({activeRecipe.steps?.length || 0} passaggi)</span>
                   </h3>
                 </div>
 
                 <div className="space-y-2 max-h-56 overflow-y-auto custom-scrollbar p-1">
-                  {extractedRecipe.steps?.map((step, idx) => (
-                    <div
-                      key={idx}
-                      className="p-3 rounded-2xl bg-[var(--surface-variant)]/40 border border-[var(--border)] flex items-start gap-2.5 text-xs text-[var(--text-main)]"
-                    >
-                      <span className="w-5 h-5 rounded-full bg-orange-500 text-white font-black text-[10px] flex items-center justify-center shrink-0 mt-0.5">
-                        {idx + 1}
-                      </span>
-                      <p className="leading-relaxed flex-1">{step}</p>
-                    </div>
-                  ))}
+                  {activeRecipe.steps && activeRecipe.steps.length > 0 ? (
+                    activeRecipe.steps.map((step, idx) => (
+                      <div
+                        key={idx}
+                        className="p-3 rounded-2xl bg-[var(--surface-variant)]/40 border border-[var(--border)] flex items-start gap-2.5 text-xs text-[var(--text-main)]"
+                      >
+                        <span className="w-5 h-5 rounded-full bg-orange-500 text-white font-black text-[10px] flex items-center justify-center shrink-0 mt-0.5">
+                          {idx + 1}
+                        </span>
+                        <p className="leading-relaxed flex-1">{step}</p>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-xs text-[var(--text-muted)] italic">Nessun passaggio dettagliato rilevato.</p>
+                  )}
                 </div>
               </div>
             </div>
@@ -381,7 +639,8 @@ export function RecipeImportModal({
 
         {/* Footer */}
         <div className="px-6 py-4 border-t border-[var(--border)] flex items-center justify-between shrink-0 bg-[var(--surface-variant)]/30 flex-wrap gap-2">
-          {extractedRecipe ? (
+          {/* Footer FASE 2: MULTI-RICETTA */}
+          {isMultiView && (
             <>
               <button
                 type="button"
@@ -392,13 +651,48 @@ export function RecipeImportModal({
                 <span>Altro link</span>
               </button>
 
+              <button
+                type="button"
+                onClick={handleImportSelected}
+                disabled={selectedIndices.size === 0}
+                className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-black text-xs shadow-md flex items-center gap-1.5 cursor-pointer transition-transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Check className="w-4 h-4" />
+                <span>Importa tutte le ricette selezionate ({selectedIndices.size})</span>
+              </button>
+            </>
+          )}
+
+          {/* Footer FASE 3: ANTEPRIMA DETTAGLIATA */}
+          {isSingleView && activeRecipe && (
+            <>
+              {extractedRecipes.length > 1 ? (
+                <button
+                  type="button"
+                  onClick={handleBackToList}
+                  className="px-3.5 py-2 rounded-xl bg-[var(--surface-variant)] text-[var(--text-muted)] hover:text-[var(--text-main)] font-bold text-xs flex items-center gap-1.5 cursor-pointer transition-colors"
+                >
+                  <ArrowLeft className="w-3.5 h-3.5" />
+                  <span>Torna all'elenco</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleReset}
+                  className="px-3.5 py-2 rounded-xl bg-[var(--surface-variant)] text-[var(--text-muted)] hover:text-[var(--text-main)] font-bold text-xs flex items-center gap-1.5 cursor-pointer transition-colors"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  <span>Altro link</span>
+                </button>
+              )}
+
               <div className="flex items-center gap-2">
                 {onOpenInBuilder && (
                   <button
                     type="button"
                     onClick={() => {
-                      onOpenInBuilder(extractedRecipe);
-                      onClose();
+                      onOpenInBuilder(activeRecipe);
+                      handleCloseModal();
                     }}
                     className="px-4 py-2 rounded-xl bg-[var(--surface-variant)] hover:bg-orange-500/15 text-[var(--text-main)] hover:text-orange-600 font-bold text-xs border border-[var(--border)] flex items-center gap-1.5 cursor-pointer transition-colors"
                     title="Modifica ingredienti, dosi e passaggi nel builder completo"
@@ -410,7 +704,7 @@ export function RecipeImportModal({
 
                 <button
                   type="button"
-                  onClick={handleConfirmSave}
+                  onClick={handleConfirmSingleSave}
                   className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-black text-xs shadow-md flex items-center gap-1.5 cursor-pointer transition-transform active:scale-95"
                 >
                   <Check className="w-4 h-4" />
@@ -418,11 +712,14 @@ export function RecipeImportModal({
                 </button>
               </div>
             </>
-          ) : (
+          )}
+
+          {/* Footer FASE 1: INSERIMENTO URL */}
+          {extractedRecipes.length === 0 && (
             <div className="flex justify-end w-full">
               <button
                 type="button"
-                onClick={onClose}
+                onClick={handleCloseModal}
                 className="px-4 py-2 rounded-xl bg-[var(--surface-variant)] text-[var(--text-muted)] hover:text-[var(--text-main)] font-bold text-xs transition-colors cursor-pointer"
               >
                 Chiudi

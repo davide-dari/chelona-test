@@ -6,9 +6,11 @@ import {
   parseInstructions, 
   parseIngredients, 
   extractRecipeFromHtml, 
+  extractAllRecipesFromHtml,
   extractSourceName,
   mapToChelonaCategory,
   saveUserRecipe,
+  saveUserRecipes,
   loadUserRecipes,
   deleteUserRecipe,
   USER_RECIPES_STORAGE_KEY,
@@ -311,5 +313,198 @@ for (const preset of CULINARY_PRESETS) {
   assert(preset.image.startsWith('https://'));
 }
 console.log(`✓ All ${CULINARY_PRESETS.length} culinary presets validated`);
+
+// 11. Test Multi-Recipe Extraction from ItemList
+console.log('11. Testing Multi-Recipe Extraction from ItemList (Schema.org)...');
+const mockItemListHtml = `
+<!DOCTYPE html>
+<html>
+<head>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    "name": "Le migliori 3 ricette estive",
+    "itemListElement": [
+      {
+        "@type": "ListItem",
+        "position": 1,
+        "item": {
+          "@type": "Recipe",
+          "name": "Pasta Fredda alla Caprese",
+          "image": "https://images.unsplash.com/photo-pasta1",
+          "recipeIngredient": ["320g fusilli", "200g mozzarella", "200g pomodorini"],
+          "recipeInstructions": ["Cuocere i fusilli", "Tagliare la mozzarella"],
+          "prepTime": "PT15M",
+          "recipeYield": "4"
+        }
+      },
+      {
+        "@type": "ListItem",
+        "position": 2,
+        "item": {
+          "@type": "Recipe",
+          "name": "Insalata di Riso Classica",
+          "image": "https://images.unsplash.com/photo-rice1",
+          "recipeIngredient": ["300g riso", "150g condiriso", "2 uova sode"],
+          "recipeInstructions": ["Lessare il riso", "Unire tutti gli ingredienti"],
+          "prepTime": "PT20M",
+          "recipeYield": "4"
+        }
+      },
+      {
+        "@type": "ListItem",
+        "position": 3,
+        "name": "Couscous con Verdure Grigliate",
+        "url": "https://example.com/couscous-verdure",
+        "image": "https://images.unsplash.com/photo-couscous"
+      }
+    ]
+  }
+  </script>
+</head>
+<body></body>
+</html>
+`;
+const itemListRecipes = extractAllRecipesFromHtml(mockItemListHtml, 'https://example.com/raccolte/estate');
+assert.strictEqual(itemListRecipes.length, 3);
+assert.strictEqual(itemListRecipes[0].title, 'Pasta Fredda alla Caprese');
+assert.strictEqual(itemListRecipes[0].category, 'Primi');
+assert.strictEqual(itemListRecipes[0].ingredients.length, 3);
+assert.strictEqual(itemListRecipes[1].title, 'Insalata di Riso Classica');
+assert.strictEqual(itemListRecipes[1].category, 'Primi');
+assert.strictEqual(itemListRecipes[2].title, 'Couscous con Verdure Grigliate');
+assert.strictEqual(itemListRecipes[2].sourceUrl, 'https://example.com/couscous-verdure');
+console.log('✓ Multi-recipe ItemList extraction passed');
+
+// 12. Test Multi-Recipe Extraction from @graph
+console.log('12. Testing Multi-Recipe Extraction from @graph...');
+const mockMultiGraphHtml = `
+<!DOCTYPE html>
+<html>
+<head>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebSite",
+        "name": "Blog di Cucina"
+      },
+      {
+        "@type": "Recipe",
+        "name": "Gnocchi alla Sorrentina",
+        "recipeCategory": "Primi",
+        "recipeIngredient": ["500g gnocchi", "400g passata", "200g fior di latte"],
+        "recipeInstructions": ["Cuocere la passata", "Infornare a 200°C"]
+      },
+      {
+        "@type": "Recipe",
+        "name": "Polpette al Sugo della Nonna",
+        "recipeCategory": "Secondi",
+        "recipeIngredient": ["500g macinato", "1 uovo", "pangrattato"],
+        "recipeInstructions": ["Impastare", "Friggere e cuocere nel sugo"]
+      }
+    ]
+  }
+  </script>
+</head>
+</html>
+`;
+const graphRecipes = extractAllRecipesFromHtml(mockMultiGraphHtml, 'https://example.com/menu-domenica');
+assert.strictEqual(graphRecipes.length, 2);
+assert.strictEqual(graphRecipes[0].title, 'Gnocchi alla Sorrentina');
+assert.strictEqual(graphRecipes[0].category, 'Primi');
+assert.strictEqual(graphRecipes[1].title, 'Polpette al Sugo della Nonna');
+assert.strictEqual(graphRecipes[1].category, 'Secondi');
+console.log('✓ Multi-recipe @graph extraction passed');
+
+// 13. Test Multi-Recipe from Multiple <script type="application/ld+json"> tags
+console.log('13. Testing Multiple <script type="application/ld+json"> tags...');
+const mockMultiScriptHtml = `
+<!DOCTYPE html>
+<html>
+<head>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Recipe",
+    "name": "Bruschetta al Pomodoro",
+    "recipeCategory": "Antipasti"
+  }
+  </script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Recipe",
+    "name": "Panna Cotta ai Frutti di Bosco",
+    "recipeCategory": "Dolci"
+  }
+  </script>
+</head>
+</html>
+`;
+const multiScriptRecipes = extractAllRecipesFromHtml(mockMultiScriptHtml, 'https://example.com/cena-due');
+assert.strictEqual(multiScriptRecipes.length, 2);
+assert.strictEqual(multiScriptRecipes[0].title, 'Bruschetta al Pomodoro');
+assert.strictEqual(multiScriptRecipes[0].category, 'Antipasti');
+assert.strictEqual(multiScriptRecipes[1].title, 'Panna Cotta ai Frutti di Bosco');
+assert.strictEqual(multiScriptRecipes[1].category, 'Dolci');
+console.log('✓ Multiple JSON-LD script tags extraction passed');
+
+// 14. Test Multi-Recipe from Multiple HTML Microdata blocks
+console.log('14. Testing Multiple HTML Microdata blocks...');
+const mockMultiMicrodataHtml = `
+<!DOCTYPE html>
+<html>
+<body>
+  <div itemscope itemtype="http://schema.org/Recipe">
+    <h2 itemprop="name">Risotto allo Zafferano</h2>
+    <span itemprop="recipeCategory">Primi</span>
+    <ul>
+      <li itemprop="recipeIngredient">320g riso carnaroli</li>
+      <li itemprop="recipeIngredient">1 bustina di zafferano</li>
+    </ul>
+    <div itemprop="recipeInstructions">Tostare il riso e unire lo zafferano sciolto in brodo.</div>
+  </div>
+  <div itemscope itemtype="http://schema.org/Recipe">
+    <h2 itemprop="name">Filetto di Spigola al Forno</h2>
+    <span itemprop="recipeCategory">Secondi</span>
+    <ul>
+      <li itemprop="recipeIngredient">2 filetti di spigola</li>
+      <li itemprop="recipeIngredient">1 limone</li>
+    </ul>
+    <div itemprop="recipeInstructions">Disporre i filetti su carta forno e cuocere per 15 min.</div>
+  </div>
+</body>
+</html>
+`;
+const multiMicroRecipes = extractAllRecipesFromHtml(mockMultiMicrodataHtml, 'https://example.com/menu-pesce');
+assert.strictEqual(multiMicroRecipes.length, 2);
+assert.strictEqual(multiMicroRecipes[0].title, 'Risotto allo Zafferano');
+assert.strictEqual(multiMicroRecipes[0].category, 'Primi');
+assert.strictEqual(multiMicroRecipes[0].ingredients.length, 2);
+assert.strictEqual(multiMicroRecipes[1].title, 'Filetto di Spigola al Forno');
+assert.strictEqual(multiMicroRecipes[1].category, 'Secondi');
+assert.strictEqual(multiMicroRecipes[1].ingredients.length, 2);
+console.log('✓ Multiple HTML Microdata blocks extraction passed');
+
+// 15. Test Bulk Saving with saveUserRecipes
+console.log('15. Testing Bulk Saving with saveUserRecipes...');
+const bulkSaved = saveUserRecipes([
+  { title: 'Ricetta Multipla 1', category: 'Primi', ingredients: ['Ing 1'], steps: ['Step 1'] },
+  { title: 'Ricetta Multipla 2', category: 'Dolci', ingredients: ['Ing 2'], steps: ['Step 2'] }
+]);
+assert.strictEqual(bulkSaved.length, 2);
+const loadedAll = loadUserRecipes();
+assert(loadedAll.some(r => r.title === 'Ricetta Multipla 1'));
+assert(loadedAll.some(r => r.title === 'Ricetta Multipla 2'));
+console.log('✓ Bulk saveUserRecipes passed');
+
+// 16. Test extractRecipeFromHtml returns first recipe from multi-recipe page
+console.log('16. Testing extractRecipeFromHtml returns first recipe...');
+const firstRecipe = extractRecipeFromHtml(mockMultiScriptHtml, 'https://example.com/cena-due');
+assert.strictEqual(firstRecipe.title, 'Bruschetta al Pomodoro');
+console.log('✓ extractRecipeFromHtml backward-compatibility passed');
 
 console.log('🎉 ALL USER RECIPES SERVICE TESTS PASSED PERFECTLY!');
