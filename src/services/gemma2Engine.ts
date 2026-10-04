@@ -16,7 +16,7 @@
 
 import { ragEngine, indexModulesIntoRAG } from './ragEngine';
 import { promptCache } from './promptCache';
-import { semanticCache } from './semanticCache';
+import { semanticCache, isCacheEnabled, setCacheEnabled } from './semanticCache';
 import { localDb } from './localDatabase';
 import { gemma2ModelManager } from './gemma2ModelManager';
 import { Capacitor } from '@capacitor/core';
@@ -158,6 +158,7 @@ export interface Gemma2Response {
   cached?: boolean;
   semanticMatch?: boolean;
   similarityScore?: number;
+  latencyMs?: number;
 }
 
 // ---- Template Prompt Multi-Modello (Gemma 4 / Gemma 2 / Qwen 2.5) ----
@@ -420,9 +421,12 @@ export async function queryGemma2(
 
   // ⚡ Sincronizzazione continua del Database Personale (RAG) solo quando necessario
   const currentModulesHash = computeModulesHash(modules);
+  const startTime = performance.now();
+  const cacheActive = isCacheEnabled();
 
   const executeFallback = async (options?: { immediate?: boolean }): Promise<Gemma2Response> => {
     const result = await queryChelonaAi(userQuery, modules, username, activeSection);
+    const elapsed = Math.round(performance.now() - startTime);
 
     // Se richiesto streaming, emetti i frammenti progressivamente
     if (onToken && result && result.text) {
@@ -442,7 +446,7 @@ export async function queryGemma2(
       }
     }
 
-    if (result && result.text) {
+    if (result && result.text && cacheActive) {
       // Pulizia prima di salvare in cache per evitare persistenza di search per ricette
       const cleanActions = result.actions?.map(a => {
         if (a.type === 'recipes' || a.category === 'recipes') {
@@ -468,6 +472,7 @@ export async function queryGemma2(
     return {
       ...result,
       engineUsed: 'chelona-engine',
+      latencyMs: elapsed,
     };
   };
 
@@ -491,7 +496,7 @@ export async function queryGemma2(
 
   // ⚡ STEP 0: CONTROLLO ISTANTANEO CACHE SEMANTICA IN RAM (Latenza 0ms)
   // Ignora totalmente llama.rn, caricamenti, controlli batteria e RAG se c'è un hit!
-  const semanticHit = semanticCache.findMatch(userQuery);
+  const semanticHit = cacheActive ? semanticCache.findMatch(userQuery) : null;
   if (semanticHit) {
     console.log(`[SemanticCache] ⚡ HIT ISTANTANEO IN RAM (${semanticHit.exactMatch ? '100% esatto' : `similarità ${Math.round(semanticHit.similarity * 100)}%`}): "${userQuery}" -> "${semanticHit.entry.query}"`);
     
@@ -528,6 +533,7 @@ export async function queryGemma2(
       cached: true,
       semanticMatch: true,
       similarityScore: semanticHit.similarity,
+      latencyMs: Math.round(performance.now() - startTime),
     };
   }
 
@@ -582,7 +588,7 @@ export async function queryGemma2(
       const ragContext = ragDocs.length > 0 ? ragDocs[0].text.slice(0, 350).trim() : '';
 
       // 4. Controllo Prompt Cache prima di invocare il modello pesante
-      const cachedPrompt = promptCache.get(userQuery, ragContext);
+      const cachedPrompt = cacheActive ? promptCache.get(userQuery, ragContext) : null;
       if (cachedPrompt && cachedPrompt.text) {
         if (onToken) onToken(cachedPrompt.text);
         return {
@@ -592,6 +598,7 @@ export async function queryGemma2(
           ragDocsUsed: ragDocs.length,
           cached: true,
           semanticMatch: false,
+          latencyMs: Math.round(performance.now() - startTime),
         };
       }
 
@@ -629,7 +636,7 @@ export async function queryGemma2(
       }
 
       // 7. Memorizzazione in Cache Semantica in RAM e persistenza locale
-      if (responseText) {
+      if (responseText && cacheActive) {
         promptCache.set(userQuery, ragContext, { text: responseText });
         semanticCache.set(userQuery, currentModulesHash, { text: responseText });
       }
@@ -640,6 +647,7 @@ export async function queryGemma2(
         ragDocsUsed: ragDocs.length,
         cached: false,
         semanticMatch: false,
+        latencyMs: Math.round(performance.now() - startTime),
       };
     })();
 
@@ -705,6 +713,11 @@ export function deleteSemanticCacheEntries(keys: string[]) {
 export function clearSemanticCache() {
   semanticCache.clearAllCache();
 }
+
+export {
+  isCacheEnabled,
+  setCacheEnabled
+};
 
 export {
   getLearnedMemories,

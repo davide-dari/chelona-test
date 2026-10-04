@@ -24,7 +24,7 @@ globalThis.localStorage = {
 
 console.log('🧪 Starting AI Latency, Cache & Response Time Verification Tests...');
 
-import { queryGemma2, checkNativeLlmAvailability } from '../src/services/gemma2Engine.ts';
+import { queryGemma2, checkNativeLlmAvailability, isCacheEnabled, setCacheEnabled } from '../src/services/gemma2Engine.ts';
 import { queryChelonaAi } from '../src/services/chelonaEngine.ts';
 
 // 1. Check checkNativeLlmAvailability speed
@@ -64,6 +64,26 @@ assert(elapsedCache < 50, `Cache hit must be under 50ms, got ${elapsedCache}ms`)
 assert.strictEqual(resCache.cached, true);
 assert.strictEqual(resCache.semanticMatch, true);
 console.log('✅ Semantic cache 0ms hit test passed');
+
+// 4b. queryGemma2 Cache Toggle Verification (Disable Cache -> Test Real Speed -> Re-enable)
+assert.strictEqual(isCacheEnabled(), true, 'Cache should be enabled by default');
+setCacheEnabled(false);
+assert.strictEqual(isCacheEnabled(), false, 'Cache should now be disabled');
+
+const startDisabled = performance.now();
+const resDisabled = await queryGemma2('Che spese ho questo mese?', [], 'Davide');
+const elapsedDisabled = performance.now() - startDisabled;
+console.log(`[Test 4b] queryGemma2 with Cache Disabled (Real Engine Execution): ${elapsedDisabled.toFixed(2)}ms`);
+assert.strictEqual(resDisabled.cached, undefined, 'Cache hit must not be returned when cache is disabled');
+assert.strictEqual(resDisabled.semanticMatch, undefined, 'semanticMatch must not be returned when cache is disabled');
+assert(resDisabled.text && resDisabled.text.length > 0, 'Real engine response must be returned');
+
+// Re-enable cache and verify normal caching behavior resumes
+setCacheEnabled(true);
+assert.strictEqual(isCacheEnabled(), true, 'Cache should be re-enabled');
+const resReenabled = await queryGemma2('Che spese ho questo mese?', [], 'Davide');
+assert.strictEqual(resReenabled.cached, true, 'Cache hit should work again once cache is re-enabled');
+console.log('✅ AI Cache Toggle and Real Speed verification passed');
 
 // 5. queryGemma2 with onToken streaming
 let streamedText = '';

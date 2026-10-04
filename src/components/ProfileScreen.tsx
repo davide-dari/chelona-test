@@ -29,6 +29,8 @@ import {
   deleteSemanticCacheEntry, 
   deleteSemanticCacheEntries, 
   clearSemanticCache,
+  isCacheEnabled,
+  setCacheEnabled,
   getLearnedMemories,
   deleteLearnedMemory,
   clearAllLearnedMemories,
@@ -199,16 +201,29 @@ export function ProfileScreen({
 
   // Cache management
   type CacheEntry = { query: string; responsePreview: string; responseText: string; timestamp: number; hits: number };
+  const [isCacheActive, setIsCacheActive] = useState<boolean>(() => isCacheEnabled());
   const [cacheEntries, setCacheEntries] = useState<CacheEntry[]>(() => getSemanticCacheEntries());
   const [selectedCacheKeys, setSelectedCacheKeys] = useState<Set<string>>(new Set());
   const [expandedCacheKey, setExpandedCacheKey] = useState<string | null>(null);
   const [cacheSearchFilter, setCacheSearchFilter] = useState('');
+
+  const handleToggleCache = () => {
+    const next = !isCacheActive;
+    setIsCacheActive(next);
+    setCacheEnabled(next);
+    if (!next) {
+      showToast('Cache Disattivata - Test Velocità Reale');
+    } else {
+      showToast('Cache Semantica AI riattivata');
+    }
+  };
 
   // Learned memories state
   const [memories, setMemories] = useState<AiMemory[]>(() => getLearnedMemories());
 
   useEffect(() => {
     if (activeTab === 'system') {
+      setIsCacheActive(isCacheEnabled());
       setCacheEntries(getSemanticCacheEntries());
       setMemories(getLearnedMemories());
     }
@@ -1605,6 +1620,49 @@ export function ProfileScreen({
                       title="Aggiorna lista"
                     >
                       <RefreshCw className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Cache Semantica AI Toggle Switch / Pill Card */}
+                <div className={`p-4 rounded-2xl border transition-all ${
+                  isCacheActive
+                    ? 'bg-amber-500/5 border-amber-500/25'
+                    : 'bg-rose-500/5 border-rose-500/30'
+                }`}>
+                  <div className="flex items-center justify-between gap-3 sm:gap-4">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h4 className="text-sm font-bold text-[var(--text-main)]">Cache Semantica AI</h4>
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wide uppercase transition-colors ${
+                          isCacheActive
+                            ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
+                            : 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20'
+                        }`}>
+                          {isCacheActive ? 'Attiva' : 'Cache Disattivata - Test Velocità Reale'}
+                        </span>
+                      </div>
+                      <p className="text-xs text-[var(--text-muted)] mt-1.5 leading-relaxed">
+                        Disattiva la cache per testare la velocità di elaborazione reale del motore AI da zero, senza risposte pre-salvate.
+                      </p>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={handleToggleCache}
+                      className={`relative inline-flex h-7 w-12 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-amber-500/40 ${
+                        isCacheActive ? 'bg-amber-500' : 'bg-slate-300 dark:bg-slate-700'
+                      }`}
+                      role="switch"
+                      aria-checked={isCacheActive}
+                      title={isCacheActive ? 'Disattiva Cache Semantica AI' : 'Attiva Cache Semantica AI'}
+                    >
+                      <span
+                        aria-hidden="true"
+                        className={`pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+                          isCacheActive ? 'translate-x-5' : 'translate-x-0'
+                        }`}
+                      />
                     </button>
                   </div>
                 </div>

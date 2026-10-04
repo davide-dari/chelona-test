@@ -16,6 +16,41 @@
 
 import { localDb, CachedSemanticItem } from './localDatabase';
 
+export const CACHE_ENABLED_KEY = 'chelona_ai_cache_enabled';
+
+export function isCacheEnabled(): boolean {
+  try {
+    const storage = typeof window !== 'undefined' && window.localStorage
+      ? window.localStorage
+      : (typeof localStorage !== 'undefined' ? localStorage : null);
+    if (storage) {
+      const val = storage.getItem(CACHE_ENABLED_KEY);
+      if (val !== null) {
+        return val === 'true';
+      }
+    }
+  } catch (e) {
+    console.warn('[SemanticCache] Errore lettura cache enabled flag', e);
+  }
+  return true;
+}
+
+export function setCacheEnabled(enabled: boolean): void {
+  try {
+    const storage = typeof window !== 'undefined' && window.localStorage
+      ? window.localStorage
+      : (typeof localStorage !== 'undefined' ? localStorage : null);
+    if (storage) {
+      storage.setItem(CACHE_ENABLED_KEY, String(enabled));
+    }
+    if (typeof window !== 'undefined' && window.dispatchEvent) {
+      window.dispatchEvent(new CustomEvent('chelona_cache_toggle', { detail: { enabled } }));
+    }
+  } catch (e) {
+    console.warn('[SemanticCache] Errore scrittura cache enabled flag', e);
+  }
+}
+
 const MAX_RAM_ENTRIES = 200;
 const DEFAULT_SIMILARITY_THRESHOLD = 0.72; // Soglia permissiva per aumentare i cache hit (72%+)
 
@@ -146,6 +181,14 @@ export class SemanticCache {
     this.isLoaded = true;
   }
 
+  public isEnabled(): boolean {
+    return isCacheEnabled();
+  }
+
+  public setEnabled(enabled: boolean): void {
+    setCacheEnabled(enabled);
+  }
+
   /**
    * Normalizza una stringa per confronto canonico
    */
@@ -232,6 +275,7 @@ export class SemanticCache {
     query: string,
     threshold = DEFAULT_SIMILARITY_THRESHOLD
   ): SemanticMatchResult | null {
+    if (!this.isEnabled()) return null;
     this.totalQueries++;
     const normQuery = this.normalize(query);
     if (!normQuery) return null;
@@ -320,6 +364,7 @@ export class SemanticCache {
     contextHash: string,
     response: { text: string; actions?: any[]; learnedFact?: string; autoAction?: any }
   ): void {
+    if (!this.isEnabled()) return;
     if (!query || !response || !response.text || response.text.trim().length === 0) return;
 
     const normQuery = this.normalize(query);
