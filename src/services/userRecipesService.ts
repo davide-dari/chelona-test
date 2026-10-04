@@ -680,11 +680,77 @@ function parseMicrodataBlock(block: string, originalUrl: string, index: number):
 }
 
 /**
+ * Normalizza gli URL di GialloZafferano gestendo redirect noti, alias di categorie e percorsi deprecati.
+ */
+export function normalizeGialloZafferanoUrl(rawUrl: string): string {
+  let url = rawUrl.trim();
+  try {
+    const parsed = new URL(url);
+    if (parsed.hostname.includes('giallozafferano.it')) {
+      // 1. /ricette o /ricette/ -> /ricette-cat/
+      if (parsed.pathname === '/ricette' || parsed.pathname === '/ricette/') {
+        parsed.hostname = 'www.giallozafferano.it';
+        parsed.pathname = '/ricette-cat/';
+        return parsed.toString();
+      }
+      // 2. /ricette-([a-z0-9-]+)/? (es. /ricette-primi-piatti/) -> /ricerca-ricette/primi+piatti/
+      const matchCat = parsed.pathname.match(/^\/ricette-([a-z0-9-]+)\/?$/i);
+      if (matchCat && matchCat[1]) {
+        parsed.hostname = 'www.giallozafferano.it';
+        parsed.pathname = `/ricerca-ricette/${matchCat[1].replace(/-/g, '+')}/`;
+        return parsed.toString();
+      }
+    }
+  } catch {
+    // Keep as is
+  }
+  return url;
+}
+
+/**
+ * Estrae l'URL immagine migliore da una scheda HTML gestendo lazy loading (data-src, data-lazy-src, srcset, picture).
+ */
+export function extractCardImage(cardHtml: string, baseUrl: string): string {
+  if (!cardHtml) return 'https://images.unsplash.com/photo-1498837167922-ddd27525d352?w=800';
+
+  // 1. data-src, data-lazy-src, data-original su img o source
+  const dataSrcMatch = cardHtml.match(/<(?:img|source)\b[^>]+(?:data-src|data-lazy-src|data-original)=["']([^"']+)["']/i);
+  if (dataSrcMatch && dataSrcMatch[1]) {
+    const u = dataSrcMatch[1].trim();
+    if (!u.startsWith('data:') && !u.includes('spacer.gif') && !u.includes('placeholder')) {
+      return resolveUrl(u, baseUrl);
+    }
+  }
+
+  // 2. srcset o data-srcset su img o source
+  const srcsetMatch = cardHtml.match(/<(?:img|source)\b[^>]+(?:data-srcset|srcset)=["']([^"']+)["']/i);
+  if (srcsetMatch && srcsetMatch[1]) {
+    const candidates = srcsetMatch[1].split(',').map(s => s.trim().split(/\s+/)[0]).filter(Boolean);
+    const candidate = candidates[candidates.length - 1] || candidates[0];
+    if (candidate && !candidate.startsWith('data:') && !candidate.includes('spacer.gif') && !candidate.includes('placeholder')) {
+      return resolveUrl(candidate, baseUrl);
+    }
+  }
+
+  // 3. src standard
+  const srcMatch = cardHtml.match(/<img\b[^>]+src=["']([^"']+)["']/i);
+  if (srcMatch && srcMatch[1]) {
+    const u = srcMatch[1].trim();
+    if (!u.startsWith('data:') && !u.includes('spacer.gif') && !u.includes('placeholder')) {
+      return resolveUrl(u, baseUrl);
+    }
+  }
+
+  return 'https://images.unsplash.com/photo-1498837167922-ddd27525d352?w=800';
+}
+
+/**
  * Estrae TUTTE le ricette presenti in una pagina HTML.
  * Riconosce:
  * - Schema.org JSON-LD (@type: Recipe, @type: ItemList, blocchi @graph, molteplici script JSON-LD)
  * - Molteplici blocchi HTML Microdata (itemscope itemtype="http://schema.org/Recipe")
- * - Schede ricetta HTML (per pagine di raccolta o indice)
+ * - Schede ricetta HTML per GialloZafferano (article/div.gz-card, gz-title, lazy images, metadata)
+ * - Schede ricetta HTML generiche (per pagine di raccolta o indice di altri portali)
  * - Fallback OpenGraph / Meta tag
  */
 export function extractAllRecipesFromHtml(html: string, originalUrl: string): UserRecipeItem[] {
@@ -692,6 +758,7 @@ export function extractAllRecipesFromHtml(html: string, originalUrl: string): Us
 
   const collectedRawNodes: any[] = [];
   const seenTitles = new Set<string>();
+  const seenUrls = new Set<string>();
   const recipes: UserRecipeItem[] = [];
 
   const addRecipe = (rec: UserRecipeItem | null) => {
@@ -704,6 +771,7 @@ export function extractAllRecipesFromHtml(html: string, originalUrl: string): Us
     if (!normKey) return;
     if (!seenTitles.has(normKey)) {
       seenTitles.add(normKey);
+      if (rec.sourceUrl) seenUrls.add(rec.sourceUrl);
       recipes.push(rec);
     }
   };
@@ -759,7 +827,19 @@ export function extractAllRecipesFromHtml(html: string, originalUrl: string): Us
             }
           } else {
             const itemUrl = (typeof el.item === 'string' ? el.item : undefined) || el.url;
-            const itemName = el.name;
+            let itemName = el.name;
+            if (!itemName && itemUrl) {
+              // Estrai un titolo leggibile dallo slug URL se mancante
+              try {
+                const slug = decodeURIComponent(itemUrl.split('/').filter(Boolean).pop() || '')
+                  .replace(/\.html?$/i, '')
+                  .replace(/[-_]+/g, ' ')
+                  .trim();
+                if (slug.length >= 3) {
+                  itemName = slug.charAt(0).toUpperCase() + slug.slice(1);
+                }
+              } catch {}
+            }
             if (isItemListType(el['@type'])) {
               traverseJson(el);
             } else if (itemName && (itemUrl || el.image || el.description || el.recipeIngredient)) {
@@ -812,7 +892,16 @@ export function extractAllRecipesFromHtml(html: string, originalUrl: string): Us
 
   // Converti i nodi JSON-LD raccolti in UserRecipeItem
   for (let i = 0; i < collectedRawNodes.length; i++) {
-    const recItem = convertJsonLdRecipeToItem(collectedRawNodes[i], originalUrl, recipes.length);
+    const node = collectedRawNodes[i];
+    // Se è un banner di categoria di GialloZafferano (es. "Primi piatti - Le ricette di GialloZafferano" senza ingredienti)
+    // e ci sono molteplici nodi o schede nella pagina, non aggiungerlo come singola ricetta
+    const nodeName = typeof node.name === 'string' ? node.name : '';
+    const hasIngredients = Array.isArray(node.recipeIngredient) && node.recipeIngredient.length > 0;
+    const hasInstructions = Boolean(node.recipeInstructions);
+    if (!hasIngredients && !hasInstructions && /le ricette di giallozafferano/i.test(nodeName)) {
+      continue;
+    }
+    const recItem = convertJsonLdRecipeToItem(node, originalUrl, recipes.length);
     addRecipe(recItem);
   }
 
@@ -835,9 +924,87 @@ export function extractAllRecipesFromHtml(html: string, originalUrl: string): Us
     }
   }
 
-  // 3. Fallback Schede Ricetta HTML per pagine di raccolta / archivio blog (se nessuna ricetta strutturata trovata)
-  if (recipes.length === 0) {
-    // 3a. Cerca titoli di ricette numerate in articoli di raccolta (es. "10 ricette veloci con le zucchine": <h2>1. Titolo</h2>)
+  // 3. Estrazione Schede Ricetta HTML per pagine di archivio, categoria, ricerca o raccolta
+  // Si attiva se non ci sono ancora ricette O se le ricette trovate finora non hanno ingredienti/passaggi
+  const hasFullStructuredRecipes = recipes.some(r => (r.ingredients && r.ingredients.length > 0) || (r.steps && r.steps.length > 0));
+
+  if (!hasFullStructuredRecipes || recipes.length <= 1) {
+    // 3a. Estrazione specifica per GialloZafferano (<article class="gz-card ...">)
+    const gzArticleRegex = /<article\b[^>]*class=["'][^"']*gz-card[^"']*["'][^>]*>([\s\S]*?)<\/article>/gi;
+    let gzMatch: RegExpExecArray | null;
+    let gzCount = 0;
+
+    while ((gzMatch = gzArticleRegex.exec(html)) !== null && gzCount < 60) {
+      const cardHtml = gzMatch[1];
+      const titleMatch = cardHtml.match(/<[a-z0-9]+\b[^>]*class=["'][^"']*gz-title[^"']*["'][^>]*>([\s\S]*?)<\/[a-z0-9]+>/i) ||
+                         cardHtml.match(/<a\b[^>]*title=["']([^"']+)["']/i) ||
+                         cardHtml.match(/<h[2-4][^>]*>([\s\S]*?)<\/h[2-4]>/i);
+      if (!titleMatch) continue;
+      const cardTitle = cleanText(titleMatch[1]);
+      if (!cardTitle || cardTitle.length < 2) continue;
+
+      // Link ricetta
+      const linkMatch = cardHtml.match(/<a\b[^>]*href=["']([^"']+)["']/i);
+      const cardUrl = resolveUrl(linkMatch ? linkMatch[1].trim() : undefined, originalUrl);
+
+      // Immagine con lazy-loading
+      const cardImage = extractCardImage(cardHtml, originalUrl);
+
+      // Categoria
+      const catMatch = cardHtml.match(/class=["'][^"']*gz-category[^"']*["'][^>]*>([\s\S]*?)<\/[a-z0-9]+>/i);
+      const rawCat = catMatch ? cleanText(catMatch[1]) : '';
+      const category = mapToChelonaCategory(rawCat || cardTitle);
+
+      // Tempo
+      let prepTimeMinutes: number | undefined;
+      const timeMatch = cardHtml.match(/#tempo-[^"']*["'][\s\S]*?<\/svg>\s*<\/span>\s*([^<]+)<\/li>/i) ||
+                        cardHtml.match(/<li[^>]*class=["'][^"']*gz-single-data-recipe[^"']*["'][^>]*>[\s\S]*?(\d+\s*(?:min|h|ore)[\s\S]*?)<\/li>/i);
+      if (timeMatch) {
+        prepTimeMinutes = parseDurationISO(cleanText(timeMatch[1]));
+      }
+
+      // Calorie
+      let calories: number | undefined;
+      const calMatch = cardHtml.match(/#kcal-[^"']*["'][\s\S]*?<\/svg>\s*<\/span>\s*([^<]+)<\/li>/i) ||
+                       cardHtml.match(/(?:kcal|calorie)\s*(\d+)/i);
+      if (calMatch) {
+        calories = parseCalories(cleanText(calMatch[1]));
+      }
+
+      // Se la ricetta era già stata parzialmente inserita da ItemList, aggiornane i dettagli
+      const normCardTitle = cardTitle.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '');
+      const existing = recipes.find(r => (cardUrl && r.sourceUrl === cardUrl) || 
+        r.title.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '') === normCardTitle);
+      
+      if (existing) {
+        if (!existing.image || existing.image.includes('photo-1498837167922')) existing.image = cardImage;
+        if (!existing.prepTimeMinutes && prepTimeMinutes) existing.prepTimeMinutes = prepTimeMinutes;
+        if (!existing.calories && calories) existing.calories = calories;
+        if (existing.category === 'Primi' && category !== 'Primi') existing.category = category;
+        if (!existing.sourceUrl && cardUrl) existing.sourceUrl = cardUrl;
+      } else {
+        addRecipe({
+          id: `user_rec_${Date.now()}_${recipes.length}_${Math.random().toString(36).slice(2, 7)}`,
+          title: cardTitle,
+          category,
+          ingredients: [],
+          steps: [],
+          image: cardImage,
+          servings: 4,
+          prepTimeMinutes,
+          calories,
+          country: 'Italia',
+          sourceUrl: cardUrl,
+          sourceName: extractSourceName(cardUrl),
+          isCustom: true,
+          createdAt: Date.now() + recipes.length,
+          updatedAt: Date.now(),
+        });
+      }
+      gzCount++;
+    }
+
+    // 3b. Cerca titoli di ricette numerate in articoli di raccolta (es. "10 ricette veloci con le zucchine": <h2>1. Titolo</h2>)
     const headingRegex = /<h([2-4])[^>]*>([\s\S]*?)<\/h\1>/gi;
     const headings: { title: string; startIndex: number; endIndex: number }[] = [];
     let hm: RegExpExecArray | null;
@@ -859,9 +1026,8 @@ export function extractAllRecipesFromHtml(html: string, originalUrl: string): Us
         const nextStart = (i + 1 < headings.length) ? headings[i + 1].startIndex : Math.min(h.endIndex + 12000, html.length);
         const sectionHtml = html.slice(h.endIndex, nextStart);
 
-        const imgM = sectionHtml.match(/<img[^>]+(?:src|data-src)=["']([^"']+)["']/i);
+        const cardImage = extractCardImage(sectionHtml, originalUrl);
         const linkM = sectionHtml.match(/<a[^>]+href=["']([^"']+)["']/i);
-        const cardImage = imgM ? resolveUrl(imgM[1].trim(), originalUrl) : 'https://images.unsplash.com/photo-1498837167922-ddd27525d352?w=800';
         const cardUrl = resolveUrl(linkM ? linkM[1].trim() : undefined, originalUrl);
         const category = mapToChelonaCategory(h.title);
 
@@ -883,12 +1049,12 @@ export function extractAllRecipesFromHtml(html: string, originalUrl: string): Us
       }
     }
 
-    // 3b. Schede HTML in <article>, <div>, <li> o <section>
-    const cardRegex = /<(?:article|div|li|section)\b[^>]*(?:class|id)=["'][^"']*(?:recipe-card|ricetta-card|recipe_item|recipe-item|card-recipe|teaser-recipe|archive-recipe|post-recipe|recipe_card|c-recipe|recipe-teaser)[^"']*["'][^>]*>([\s\S]*?)<\/(?:article|div|li|section)>/gi;
+    // 3c. Schede HTML generiche in <article>, <div>, <li> o <section>
+    const cardRegex = /<(?:article|div|li|section)\b[^>]*(?:class|id)=["'][^"']*(?:recipe-card|ricetta-card|recipe_item|recipe-item|card-recipe|teaser-recipe|archive-recipe|post-recipe|recipe_card|c-recipe|recipe-teaser|card-ricetta)[^"']*["'][^>]*>([\s\S]*?)<\/(?:article|div|li|section)>/gi;
     let cardMatch: RegExpExecArray | null;
     let cardCount = 0;
 
-    while ((cardMatch = cardRegex.exec(html)) !== null && cardCount < 30) {
+    while ((cardMatch = cardRegex.exec(html)) !== null && cardCount < 40) {
       const cardHtml = cardMatch[1];
       const titleM = cardHtml.match(/<h[2-4][^>]*>(?:<a[^>]+>)?([^<]+)(?:<\/a>)?<\/h[2-4]>/i) ||
                      cardHtml.match(/<a[^>]+title=["']([^"']+)["']/i) ||
@@ -896,9 +1062,8 @@ export function extractAllRecipesFromHtml(html: string, originalUrl: string): Us
       if (titleM) {
         const cardTitle = cleanText(titleM[1]);
         if (cardTitle.length >= 3) {
-          const imgM = cardHtml.match(/<img[^>]+src=["']([^"']+)["']/i) || cardHtml.match(/<img[^>]+data-src=["']([^"']+)["']/i);
+          const cardImage = extractCardImage(cardHtml, originalUrl);
           const linkM = cardHtml.match(/<a[^>]+href=["']([^"']+)["']/i);
-          const cardImage = imgM ? resolveUrl(imgM[1].trim(), originalUrl) : 'https://images.unsplash.com/photo-1498837167922-ddd27525d352?w=800';
           const cardUrl = resolveUrl(linkM ? linkM[1].trim() : undefined, originalUrl);
           const category = mapToChelonaCategory(cardTitle);
 
@@ -919,6 +1084,21 @@ export function extractAllRecipesFromHtml(html: string, originalUrl: string): Us
           });
           cardCount++;
         }
+      }
+    }
+
+    // Se abbiamo estratto molteplici ricette reali, rimuovi eventuali dummy category headers
+    if (recipes.length > 1) {
+      const filtered = recipes.filter(r => {
+        const isDummy = (!r.ingredients?.length && !r.steps?.length) &&
+          (r.title.includes('Le ricette di GialloZafferano') ||
+           r.title.toLowerCase().startsWith('ricette ') ||
+           r.sourceUrl === originalUrl);
+        return !isDummy;
+      });
+      if (filtered.length > 0) {
+        recipes.length = 0;
+        recipes.push(...filtered);
       }
     }
   }
@@ -976,11 +1156,97 @@ export function extractRecipeFromHtml(html: string, originalUrl: string): UserRe
 }
 
 /**
+ * Arricchisce una ricetta scaricando la sua pagina originale se priva di ingredienti o passaggi completi.
+ */
+export async function enrichRecipeDetail(
+  recipe: UserRecipeItem,
+  timeoutMs = 6000
+): Promise<UserRecipeItem> {
+  if (!recipe.sourceUrl) return recipe;
+  if (recipe.ingredients && recipe.ingredients.length > 0 && recipe.steps && recipe.steps.length > 0) {
+    return recipe;
+  }
+
+  try {
+    const fetchPromise = fetchAndExtractRecipeFromUrl(recipe.sourceUrl);
+    const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), timeoutMs));
+    const full = await Promise.race([fetchPromise, timeoutPromise]);
+
+    if (full) {
+      return {
+        ...recipe,
+        title: full.title || recipe.title,
+        ingredients: full.ingredients && full.ingredients.length > 0 ? full.ingredients : recipe.ingredients,
+        steps: full.steps && full.steps.length > 0 ? full.steps : recipe.steps,
+        servings: full.servings || recipe.servings || 4,
+        prepTimeMinutes: full.prepTimeMinutes ?? recipe.prepTimeMinutes,
+        cookTimeMinutes: full.cookTimeMinutes ?? recipe.cookTimeMinutes,
+        calories: full.calories ?? recipe.calories,
+        category: full.category || recipe.category,
+        image: full.image && !full.image.includes('placeholder') && !full.image.includes('unsplash.com/photo-1498837167922') 
+          ? full.image 
+          : recipe.image,
+        country: full.country || recipe.country,
+        sourceName: full.sourceName || recipe.sourceName,
+        sourceUrl: full.sourceUrl || recipe.sourceUrl,
+      };
+    }
+  } catch (e) {
+    console.warn(`[UserRecipesService] Impossibile arricchire ricetta "${recipe.title}":`, e);
+  }
+
+  return recipe;
+}
+
+/**
+ * Arricchisce una lista di ricette con download concorrente controllato (concurrency 3)
+ * e notifica del progresso in tempo reale.
+ */
+export async function enrichRecipesWithProgress(
+  recipes: UserRecipeItem[],
+  onProgress?: (current: number, total: number, currentTitle: string) => void
+): Promise<UserRecipeItem[]> {
+  if (!recipes || recipes.length === 0) return [];
+  const total = recipes.length;
+  const enriched: UserRecipeItem[] = new Array(total);
+  let completedCount = 0;
+
+  // Se tutte hanno già ingredienti e passaggi, ritorna subito
+  const needsEnrichment = recipes.some(r => r.sourceUrl && (!r.ingredients?.length || !r.steps?.length));
+  if (!needsEnrichment) {
+    onProgress?.(total, total, recipes[total - 1]?.title || '');
+    return [...recipes];
+  }
+
+  // Concurrency pool (3 contemporaneamente per velocità massima e affidabilità di rete)
+  const CONCURRENCY = 3;
+  let queueIndex = 0;
+
+  const worker = async () => {
+    while (queueIndex < total) {
+      const idx = queueIndex++;
+      const item = recipes[idx];
+      onProgress?.(completedCount + 1, total, item.title);
+
+      const res = await enrichRecipeDetail(item);
+      enriched[idx] = res;
+      completedCount++;
+      onProgress?.(completedCount, total, item.title);
+    }
+  };
+
+  const workers = Array.from({ length: Math.min(CONCURRENCY, total) }, () => worker());
+  await Promise.all(workers);
+
+  return enriched;
+}
+
+/**
  * Scarica una pagina web ed estrae TUTTE le ricette presenti.
  * Usa CapacitorHttp in ambiente nativo (zero CORS) e fallback proxy in browser.
  */
 export async function fetchAndExtractRecipesFromUrl(rawUrl: string): Promise<UserRecipeItem[]> {
-  const url = rawUrl.trim();
+  const url = normalizeGialloZafferanoUrl(rawUrl.trim());
   if (!url.startsWith('http://') && !url.startsWith('https://')) {
     throw new Error('Inserisci un link URL valido che inizia con https:// o http://');
   }
@@ -993,11 +1259,11 @@ export async function fetchAndExtractRecipesFromUrl(rawUrl: string): Promise<Use
       url,
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
         'Accept-Language': 'it-IT,it;q=0.9,en-US;q=0.8,en;q=0.7',
       },
     });
-    if (res && res.data && typeof res.data === 'string') {
+    if (res && res.data && typeof res.data === 'string' && (res.status === undefined || (res.status >= 200 && res.status < 400))) {
       html = res.data;
     }
   } catch (nativeErr) {
@@ -1007,7 +1273,12 @@ export async function fetchAndExtractRecipesFromUrl(rawUrl: string): Promise<Use
   // 2. Se non ha funzionato o siamo nel browser in dev, prova fetch diretto
   if (!html) {
     try {
-      const res = await fetch(url);
+      const res = await fetch(url, {
+        headers: {
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+          'Accept-Language': 'it-IT,it;q=0.9,en;q=0.8',
+        }
+      });
       if (res.ok) {
         html = await res.text();
       }
@@ -1021,14 +1292,18 @@ export async function fetchAndExtractRecipesFromUrl(rawUrl: string): Promise<Use
     const proxies = [
       `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
       `https://corsproxy.io/?url=${encodeURIComponent(url)}`,
+      `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
     ];
 
     for (const proxyUrl of proxies) {
       try {
         const res = await fetch(proxyUrl);
         if (res.ok) {
-          html = await res.text();
-          if (html.length > 500) break;
+          const text = await res.text();
+          if (text && text.length > 500) {
+            html = text;
+            break;
+          }
         }
       } catch (err) {
         console.warn(`[UserRecipesService] Proxy ${proxyUrl} failed:`, err);
@@ -1055,6 +1330,12 @@ export async function fetchAndExtractRecipeFromUrl(rawUrl: string): Promise<User
   const recipes = await fetchAndExtractRecipesFromUrl(rawUrl);
   return recipes[0];
 }
+
+/**
+ * Alias per retrocompatibilità e convenzione
+ */
+export const fetchRecipeFromUrl = fetchAndExtractRecipeFromUrl;
+export const fetchRecipesFromUrl = fetchAndExtractRecipesFromUrl;
 
 /** Carica tutte le ricette create dall'utente dal localStorage */
 export function loadUserRecipes(): UserRecipeItem[] {

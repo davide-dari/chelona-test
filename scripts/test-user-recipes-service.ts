@@ -13,6 +13,10 @@ import {
   saveUserRecipes,
   loadUserRecipes,
   deleteUserRecipe,
+  normalizeGialloZafferanoUrl,
+  extractCardImage,
+  enrichRecipesWithProgress,
+  fetchRecipeFromUrl,
   USER_RECIPES_STORAGE_KEY,
   CULINARY_PRESETS
 } from '../src/services/userRecipesService.ts';
@@ -710,5 +714,202 @@ assert.strictEqual(liCardRecipes[0].sourceUrl, 'https://example.com/ricette/riso
 assert.strictEqual(liCardRecipes[1].title, 'Vellutata di Piselli e Menta');
 console.log('✓ <li> recipe cards list passed');
 
-console.log('🎉 ALL 23 USER RECIPES SERVICE TESTS PASSED PERFECTLY!');
+// 24. Test Real GialloZafferano Category/Archive HTML Extraction
+console.log('24. Testing GialloZafferano Category/Archive HTML Extraction...');
+const mockGzArchiveHtml = `
+<!DOCTYPE html>
+<html>
+<head>
+  <script type="application/ld+json">
+  {"@context":"https://schema.org","@type":"ItemList","itemListElement":[
+    {"@type":"ListItem","position":1,"url":"https://ricette.giallozafferano.it/Spaghetti-alla-Carbonara.html"},
+    {"@type":"ListItem","position":2,"url":"https://ricette.giallozafferano.it/Risotto-ai-funghi-porcini.html"}
+  ]}
+  </script>
+  <script type="application/ld+json">
+  {"@context":"https://schema.org","@type":"Recipe","name":"Primi piatti - Le ricette di GialloZafferano","image":"https://www.giallozafferano.it/cover.jpg"}
+  </script>
+</head>
+<body>
+  <article class="gz-card gz-card-horizontal gz-mBottom3x">
+    <div class="gz-card-image">
+      <a href="https://ricette.giallozafferano.it/Spaghetti-alla-Carbonara.html" title="Spaghetti alla Carbonara">
+        <picture>
+          <img src="data:image/svg+xml..." data-src="https://www.giallozafferano.it/images/244-24489/Spaghetti-alla-Carbonara_360x300.jpg" alt="Spaghetti alla Carbonara" />
+        </picture>
+      </a>
+    </div>
+    <div class="gz-card-content">
+      <div class="gz-category"><a href="/ricette-cat/Primi/">Primi piatti</a></div>
+      <h2 class="gz-title"><a href="https://ricette.giallozafferano.it/Spaghetti-alla-Carbonara.html" title="Spaghetti alla Carbonara">Spaghetti alla Carbonara</a></h2>
+      <div class="gz-description">I veri spaghetti alla carbonara romani con guanciale e pecorino.</div>
+      <ul class="gz-card-data bottom">
+        <li class="gz-single-data-recipe">
+          <span class="gz-icon"><svg><use xlink:href="/icons.svg#tempo-grey" /></svg></span> 25 min
+        </li>
+        <li class="gz-single-data-recipe">
+          <span class="gz-icon"><svg><use xlink:href="/icons.svg#kcal-grey" /></svg></span> Kcal 559
+        </li>
+      </ul>
+    </div>
+  </article>
+
+  <article class="gz-card gz-card-horizontal gz-mBottom3x">
+    <div class="gz-card-image">
+      <a href="https://ricette.giallozafferano.it/Risotto-ai-funghi-porcini.html" title="Risotto ai funghi porcini">
+        <picture>
+          <img src="https://www.giallozafferano.it/images/6-685/Risotto-ai-funghi-porcini_360x300.jpg" alt="Risotto ai funghi porcini" />
+        </picture>
+      </a>
+    </div>
+    <div class="gz-card-content">
+      <div class="gz-category">Primi piatti</div>
+      <h2 class="gz-title"><a href="https://ricette.giallozafferano.it/Risotto-ai-funghi-porcini.html" title="Risotto ai funghi porcini">Risotto ai funghi porcini</a></h2>
+      <ul class="gz-card-data bottom">
+        <li class="gz-single-data-recipe">
+          <span class="gz-icon"><svg><use xlink:href="/icons.svg#tempo-grey" /></svg></span> 45 min
+        </li>
+        <li class="gz-single-data-recipe">
+          <span class="gz-icon"><svg><use xlink:href="/icons.svg#kcal-grey" /></svg></span> Kcal 545
+        </li>
+      </ul>
+    </div>
+  </article>
+</body>
+</html>
+`;
+const gzExtracted = extractAllRecipesFromHtml(mockGzArchiveHtml, 'https://www.giallozafferano.it/ricette-cat/Primi/');
+assert.strictEqual(gzExtracted.length, 2, 'Should extract 2 real recipes and ignore dummy category banner');
+assert.strictEqual(gzExtracted[0].title, 'Spaghetti alla Carbonara');
+assert.strictEqual(gzExtracted[0].prepTimeMinutes, 25);
+assert.strictEqual(gzExtracted[0].calories, 559);
+assert.strictEqual(gzExtracted[0].category, 'Primi');
+assert.strictEqual(gzExtracted[0].image, 'https://www.giallozafferano.it/images/244-24489/Spaghetti-alla-Carbonara_360x300.jpg');
+assert.strictEqual(gzExtracted[0].sourceUrl, 'https://ricette.giallozafferano.it/Spaghetti-alla-Carbonara.html');
+assert.strictEqual(gzExtracted[1].title, 'Risotto ai funghi porcini');
+assert.strictEqual(gzExtracted[1].prepTimeMinutes, 45);
+assert.strictEqual(gzExtracted[1].calories, 545);
+console.log('✓ GialloZafferano Category/Archive HTML extraction passed');
+
+// 25. Test GialloZafferano Search Page HTML Extraction
+console.log('25. Testing GialloZafferano Search Page HTML Extraction...');
+const mockGzSearchHtml = `
+<!DOCTYPE html>
+<html>
+<body>
+  <article class="gz-card gz-card-horizontal gz-ets-serp-target gz-card-special">
+    <a href="https://www.giallozafferano.it/lasagne-al-forno-migliori-ricette" title="Lasagne al forno: le migliori ricette!">
+      <div class="gz-card-image">
+        <picture>
+          <img src="https://ricette.giallozafferano.it/images/speciali/561/hd600x500.jpg" alt="Lasagne al forno" />
+        </picture>
+      </div>
+      <div class="gz-card-content">
+        <div class="gz-category">SPECIALE</div>
+        <h2 class="gz-title">Lasagne al forno: le migliori ricette!</h2>
+      </div>
+    </a>
+  </article>
+
+  <article class="gz-card gz-card-horizontal gz-card-search gz-ets-serp-target">
+    <div class="gz-card-image">
+      <a href="https://ricette.giallozafferano.it/Lasagne-alla-Bolognese.html" title="Lasagne alla bolognese">
+        <picture>
+          <img src="data:image/gif..." data-lazy-src="https://www.giallozafferano.it/images/229-22941/Lasagne-alla-Bolognese_360x300.jpg" />
+        </picture>
+      </a>
+    </div>
+    <div class="gz-card-content">
+      <h2 class="gz-title">
+        <a href="https://ricette.giallozafferano.it/Lasagne-alla-Bolognese.html" title="Lasagne alla bolognese">
+          Lasagne alla bolognese
+        </a>
+      </h2>
+      <ul class="gz-card-data bottom">
+        <li class="gz-single-data-recipe">
+          <span class="gz-icon"><svg><use xlink:href="/icons.svg#tempo-grey" /></svg></span> 5 h
+        </li>
+        <li class="gz-single-data-recipe">
+          <span class="gz-icon"><svg><use xlink:href="/icons.svg#kcal-grey" /></svg></span> Kcal 722
+        </li>
+      </ul>
+    </div>
+  </article>
+</body>
+</html>
+`;
+const gzSearchExtracted = extractAllRecipesFromHtml(mockGzSearchHtml, 'https://www.giallozafferano.it/ricerca-ricette/lasagna/');
+assert.strictEqual(gzSearchExtracted.length, 2);
+assert.strictEqual(gzSearchExtracted[0].title, 'Lasagne al forno: le migliori ricette!');
+assert.strictEqual(gzSearchExtracted[1].title, 'Lasagne alla bolognese');
+assert.strictEqual(gzSearchExtracted[1].prepTimeMinutes, 300);
+assert.strictEqual(gzSearchExtracted[1].calories, 722);
+assert.strictEqual(gzSearchExtracted[1].image, 'https://www.giallozafferano.it/images/229-22941/Lasagne-alla-Bolognese_360x300.jpg');
+console.log('✓ GialloZafferano Search Page HTML extraction passed');
+
+// 26. Test GialloZafferano URL Normalization
+console.log('26. Testing GialloZafferano URL Normalization...');
+assert.strictEqual(
+  normalizeGialloZafferanoUrl('https://www.giallozafferano.it/ricette/'),
+  'https://www.giallozafferano.it/ricette-cat/'
+);
+assert.strictEqual(
+  normalizeGialloZafferanoUrl('https://www.giallozafferano.it/ricette'),
+  'https://www.giallozafferano.it/ricette-cat/'
+);
+assert.strictEqual(
+  normalizeGialloZafferanoUrl('https://ricette.giallozafferano.it/ricette-primi-piatti/'),
+  'https://www.giallozafferano.it/ricerca-ricette/primi+piatti/'
+);
+assert.strictEqual(
+  normalizeGialloZafferanoUrl('https://ricette.giallozafferano.it/Spaghetti-alla-Carbonara.html'),
+  'https://ricette.giallozafferano.it/Spaghetti-alla-Carbonara.html'
+);
+console.log('✓ GialloZafferano URL Normalization passed');
+
+// 27. Test Lazy Image Extraction (data-src, data-lazy-src, srcset, picture)
+console.log('27. Testing Lazy Image Extraction...');
+const cardWithDataSrc = '<div><picture><img src="data:image/svg+xml..." data-src="https://media.giallozafferano.it/img1.jpg" /></picture></div>';
+assert.strictEqual(extractCardImage(cardWithDataSrc, 'https://example.com'), 'https://media.giallozafferano.it/img1.jpg');
+
+const cardWithSrcset = '<div><picture><source srcset="https://media.giallozafferano.it/small.jpg 1x, https://media.giallozafferano.it/large.jpg 2x"><img src="spacer.gif"></picture></div>';
+assert.strictEqual(extractCardImage(cardWithSrcset, 'https://example.com'), 'https://media.giallozafferano.it/large.jpg');
+
+const cardWithDataLazy = '<div><img src="data:image/png..." data-lazy-src="/thumb.jpg" /></div>';
+assert.strictEqual(extractCardImage(cardWithDataLazy, 'https://example.com/base/'), 'https://example.com/thumb.jpg');
+console.log('✓ Lazy Image Extraction passed');
+
+// 28. Test Bulk Recipe Enrichment with progress
+console.log('28. Testing Bulk Recipe Enrichment with progress callback...');
+const mockInitialList = [
+  {
+    id: 'test_1',
+    title: 'Ricetta Già Completa',
+    category: 'Primi',
+    ingredients: ['Pasta', 'Pomodoro'],
+    steps: ['Cuocere'],
+    servings: 4,
+    sourceUrl: 'https://example.com/pasta'
+  },
+  {
+    id: 'test_2',
+    title: 'Ricetta Solo Titolo',
+    category: 'Dolci',
+    ingredients: [],
+    steps: [],
+    servings: 4,
+    sourceUrl: 'https://example.com/torta'
+  }
+];
+const progressUpdates: string[] = [];
+const enrichedRes = await enrichRecipesWithProgress(mockInitialList, (cur, tot, title) => {
+  progressUpdates.push(`${cur}/${tot}: ${title}`);
+});
+assert.strictEqual(enrichedRes.length, 2);
+assert.strictEqual(enrichedRes[0].title, 'Ricetta Già Completa');
+assert(progressUpdates.length > 0);
+console.log('✓ Bulk Recipe Enrichment with progress callback passed');
+
+console.log('🎉 ALL 28 USER RECIPES SERVICE TESTS PASSED PERFECTLY!');
+
 

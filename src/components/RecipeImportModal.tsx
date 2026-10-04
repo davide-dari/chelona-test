@@ -3,10 +3,12 @@ import { motion } from 'framer-motion';
 import { 
   X, Link2, Sparkles, Globe, ChefHat, Check, Clock, 
   Users, AlertCircle, ArrowRight, ExternalLink, RefreshCw, ClipboardPaste, 
-  Flame, Edit3, CheckSquare, Square, Layers, ArrowLeft
+  Flame, Edit3, CheckSquare, Square, Layers, ArrowLeft, Loader2
 } from 'lucide-react';
 import { 
   fetchAndExtractRecipesFromUrl, 
+  enrichRecipeDetail,
+  enrichRecipesWithProgress,
   saveUserRecipe,
   saveUserRecipes,
   type UserRecipeItem 
@@ -46,6 +48,11 @@ export function RecipeImportModal({
   // Ricetta singola aperta in modalità anteprima/modifica dettagliata
   const [activeRecipe, setActiveRecipe] = useState<UserRecipeItem | null>(null);
   const [activeRecipeIndex, setActiveRecipeIndex] = useState<number | null>(null);
+  
+  // Stato avanzamento importazione ed arricchimento
+  const [isImporting, setIsImporting] = useState(false);
+  const [importProgress, setImportProgress] = useState<{ current: number; total: number; title: string } | null>(null);
+  const [isEnrichingSingle, setIsEnrichingSingle] = useState(false);
 
   if (!isOpen) return null;
 
@@ -128,9 +135,27 @@ export function RecipeImportModal({
   };
 
   // Apri una specifica ricetta per visualizzarne/modificarne i dettagli
-  const handleOpenDetail = (recipe: UserRecipeItem, index: number) => {
+  const handleOpenDetail = async (recipe: UserRecipeItem, index: number) => {
     setActiveRecipe(recipe);
     setActiveRecipeIndex(index);
+
+    // Se la ricetta manca ancora di ingredienti o passaggi ma ha sourceUrl, arricchiscila in background
+    if (recipe.sourceUrl && (!recipe.ingredients?.length || !recipe.steps?.length)) {
+      setIsEnrichingSingle(true);
+      try {
+        const enriched = await enrichRecipeDetail(recipe);
+        setActiveRecipe(enriched);
+        setExtractedRecipes(prev => {
+          const copy = [...prev];
+          copy[index] = enriched;
+          return copy;
+        });
+      } catch (e) {
+        console.warn('Errore arricchimento singola ricetta', e);
+      } finally {
+        setIsEnrichingSingle(false);
+      }
+    }
   };
 
   // Torna dall'anteprima dettagliata all'elenco multi-ricetta
@@ -147,16 +172,36 @@ export function RecipeImportModal({
     setActiveRecipeIndex(null);
   };
 
-  // Salva TUTTE le ricette selezionate in chelona_user_recipes in un colpo solo
-  const handleImportSelected = () => {
+  // Salva TUTTE le ricette selezionate arricchendole con barra di avanzamento
+  const handleImportSelected = async () => {
     const toSave = extractedRecipes.filter((_, idx) => selectedIndices.has(idx));
     if (toSave.length === 0) return;
 
-    const savedList = saveUserRecipes(toSave);
-    if (savedList.length > 0) {
-      onImportSuccess(savedList[0], savedList);
+    setIsImporting(true);
+    setImportProgress({ current: 0, total: toSave.length, title: 'Avvio arricchimento...' });
+
+    try {
+      const enrichedList = await enrichRecipesWithProgress(toSave, (curr, tot, title) => {
+        setImportProgress({ current: curr, total: tot, title });
+      });
+
+      const savedList = saveUserRecipes(enrichedList);
+      if (savedList.length > 0) {
+        onImportSuccess(savedList[0], savedList);
+      }
+      handleCloseModal();
+    } catch (err: any) {
+      console.error('Errore importazione ricette', err);
+      // Salva comunque le ricette base trovate
+      const fallbackList = saveUserRecipes(toSave);
+      if (fallbackList.length > 0) {
+        onImportSuccess(fallbackList[0], fallbackList);
+      }
+      handleCloseModal();
+    } finally {
+      setIsImporting(false);
+      setImportProgress(null);
     }
-    handleCloseModal();
   };
 
   // Salva la singola ricetta attiva
@@ -168,6 +213,7 @@ export function RecipeImportModal({
   };
 
   const handleCloseModal = () => {
+    if (isImporting) return; // Non chiudere durante l'importazione in corso
     onClose();
     setExtractedRecipes([]);
     setSelectedIndices(new Set());
@@ -175,14 +221,19 @@ export function RecipeImportModal({
     setActiveRecipeIndex(null);
     setUrl('');
     setErrorMsg(null);
+    setIsImporting(false);
+    setImportProgress(null);
   };
 
   const handleReset = () => {
+    if (isImporting) return;
     setExtractedRecipes([]);
     setSelectedIndices(new Set());
     setActiveRecipe(null);
     setActiveRecipeIndex(null);
     setErrorMsg(null);
+    setIsImporting(false);
+    setImportProgress(null);
   };
 
   const isMultiView = extractedRecipes.length > 1 && !activeRecipe;
@@ -330,6 +381,38 @@ export function RecipeImportModal({
           {/* FASE 2: SCHERMATA MULTI-RICETTA */}
           {isMultiView && (
             <div className="space-y-4">
+              {/* Barra di avanzamento e stato arricchimento durante importazione multipla */}
+              {isImporting && importProgress && (
+                <div className="p-4 rounded-2xl bg-orange-500/10 border border-orange-500/30 space-y-2.5 shadow-sm">
+                  <div className="flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-2 font-black text-orange-600 dark:text-orange-400">
+                      <Loader2 className="w-4 h-4 animate-spin shrink-0" />
+                      <span>Importazione ricetta {importProgress.current} di {importProgress.total}...</span>
+                    </div>
+                    <span className="font-black text-orange-600 dark:text-orange-400">
+                      {Math.round((importProgress.current / Math.max(1, importProgress.total)) * 100)}%
+                    </span>
+                  </div>
+
+                  <p className="text-xs font-semibold text-[var(--text-main)] truncate">
+                    {importProgress.title}
+                  </p>
+
+                  <div className="w-full bg-[var(--card-bg)] h-2.5 rounded-full overflow-hidden border border-[var(--border)] p-0.5">
+                    <motion.div
+                      className="h-full bg-gradient-to-r from-orange-500 to-amber-500 rounded-full"
+                      initial={{ width: 0 }}
+                      animate={{ width: `${Math.min(100, Math.round((importProgress.current / Math.max(1, importProgress.total)) * 100))}%` }}
+                      transition={{ duration: 0.2 }}
+                    />
+                  </div>
+
+                  <p className="text-[10px] text-[var(--text-muted)] font-medium">
+                    Download e arricchimento di tutti gli ingredienti, dosi e procedimenti completi in corso...
+                  </p>
+                </div>
+              )}
+
               {/* Barra comandi selezione rapida */}
               <div className="flex items-center justify-between gap-2 p-3 rounded-2xl bg-[var(--surface-variant)]/60 border border-[var(--border)] flex-wrap">
                 <div className="flex items-center gap-2">
@@ -342,7 +425,8 @@ export function RecipeImportModal({
                   <button
                     type="button"
                     onClick={handleSelectAll}
-                    className="px-3 py-1.5 rounded-xl bg-[var(--card-bg)] hover:bg-orange-500/10 text-[var(--text-main)] hover:text-orange-600 font-bold text-xs border border-[var(--border)] flex items-center gap-1.5 cursor-pointer transition-colors"
+                    disabled={isImporting}
+                    className="px-3 py-1.5 rounded-xl bg-[var(--card-bg)] hover:bg-orange-500/10 text-[var(--text-main)] hover:text-orange-600 font-bold text-xs border border-[var(--border)] flex items-center gap-1.5 cursor-pointer transition-colors disabled:opacity-50"
                   >
                     <CheckSquare className="w-3.5 h-3.5 text-orange-500" />
                     <span>Seleziona tutte</span>
@@ -351,7 +435,8 @@ export function RecipeImportModal({
                   <button
                     type="button"
                     onClick={handleDeselectAll}
-                    className="px-3 py-1.5 rounded-xl bg-[var(--card-bg)] hover:bg-[var(--surface-variant)] text-[var(--text-muted)] hover:text-[var(--text-main)] font-bold text-xs border border-[var(--border)] flex items-center gap-1.5 cursor-pointer transition-colors"
+                    disabled={isImporting}
+                    className="px-3 py-1.5 rounded-xl bg-[var(--card-bg)] hover:bg-[var(--surface-variant)] text-[var(--text-muted)] hover:text-[var(--text-main)] font-bold text-xs border border-[var(--border)] flex items-center gap-1.5 cursor-pointer transition-colors disabled:opacity-50"
                   >
                     <Square className="w-3.5 h-3.5" />
                     <span>Deseleziona tutte</span>
@@ -469,6 +554,14 @@ export function RecipeImportModal({
           {/* FASE 3: ANTEPRIMA & MODIFICA DETTAGLIATA (Singola o da elenco) */}
           {isSingleView && activeRecipe && (
             <div className="space-y-6">
+              {/* Indicatore arricchimento dettagli ricetta in background */}
+              {isEnrichingSingle && (
+                <div className="p-3.5 rounded-2xl bg-orange-500/10 border border-orange-500/30 text-orange-600 dark:text-orange-400 text-xs font-bold flex items-center gap-2.5 animate-pulse shadow-sm">
+                  <Loader2 className="w-4 h-4 animate-spin shrink-0" />
+                  <span>Download dettagli ricetta e arricchimento ingredienti dal web in corso...</span>
+                </div>
+              )}
+
               {/* Tasto torna all'elenco se c'erano più ricette */}
               {extractedRecipes.length > 1 && (
                 <button
@@ -654,11 +747,20 @@ export function RecipeImportModal({
               <button
                 type="button"
                 onClick={handleImportSelected}
-                disabled={selectedIndices.size === 0}
-                className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-black text-xs shadow-md flex items-center gap-1.5 cursor-pointer transition-transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={selectedIndices.size === 0 || isImporting}
+                className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-black text-xs shadow-md flex items-center gap-2 cursor-pointer transition-transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <Check className="w-4 h-4" />
-                <span>Importa tutte le ricette selezionate ({selectedIndices.size})</span>
+                {isImporting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Importazione in corso ({importProgress?.current || 0}/{importProgress?.total || selectedIndices.size})...</span>
+                  </>
+                ) : (
+                  <>
+                    <Check className="w-4 h-4" />
+                    <span>Importa tutte le ricette selezionate ({selectedIndices.size})</span>
+                  </>
+                )}
               </button>
             </>
           )}
