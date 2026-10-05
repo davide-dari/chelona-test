@@ -657,106 +657,139 @@ export function RecipesScreen({
       </header>
 
       <main className="flex-1 overflow-y-auto p-4 md:p-8 custom-scrollbar">
-        {/* TITOLO HERO E BARRA DI RICERCA PROTAGONISTA ASSOLUTA */}
-        <div className="max-w-4xl mx-auto space-y-4 mb-6">
-          <div className="text-center space-y-1 pt-1 sm:pt-2">
+        {/* TITOLO HERO E BARRA AL CENTRO */}
+        <div className="max-w-3xl mx-auto space-y-4 mb-6">
+          <div className="text-center space-y-1 pt-2 sm:pt-4">
             <h2 className="text-2xl sm:text-3xl font-black text-[var(--text-main)] tracking-tight">
               Cerca la tua ricetta
             </h2>
             <p className="text-xs sm:text-sm text-[var(--text-muted)] font-medium">
-              Migliaia di piatti da tutto il mondo con ingredienti e procedimenti passo-passo
+              Trova migliaia di piatti da tutto il mondo con ingredienti e procedimenti
             </p>
           </div>
 
-          {/* BARRA DI RICERCA HERO */}
-          <div className="relative group">
-            <div className="absolute inset-0 bg-gradient-to-r from-orange-500/20 via-amber-500/20 to-emerald-500/20 rounded-3xl blur-xl opacity-70 group-focus-within:opacity-100 transition-opacity duration-300" />
-            <div className="relative flex items-center gap-3 bg-[var(--card-bg)] border-2 border-[var(--border)] focus-within:border-orange-500 rounded-3xl px-5 py-4 shadow-lg transition-all">
-              {isSearchingOnline ? (
-                <Loader2 className="w-6 h-6 text-orange-500 shrink-0 animate-spin" />
-              ) : (
-                <Search className="w-6 h-6 text-orange-500 shrink-0" />
-              )}
-              <input
-                type="text"
-                placeholder="Cerca qualsiasi ricetta (es. Carbonara, Torta di Mele, Tacos, Sushi)..."
-                value={searchQuery}
-                onChange={(e) => {
-                  setSearchQuery(e.target.value);
-                  if (selectedCategory) setSelectedCategory(null);
-                  if (selectedCountry) setSelectedCountry(null);
-                }}
-                className="flex-1 bg-transparent text-[var(--text-main)] placeholder-[var(--text-muted)] outline-none text-base font-medium"
-              />
-              {searchQuery && (
-                <button 
-                  type="button" 
-                  onClick={() => setSearchQuery('')} 
-                  className="p-1 rounded-full hover:bg-[var(--surface-variant)] text-[var(--text-muted)] cursor-pointer"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              )}
-              <span className="text-[10px] font-black uppercase tracking-wider px-2 py-1 rounded-lg bg-emerald-500/15 text-emerald-600 border border-emerald-500/20 shrink-0 hidden sm:inline-block">
-                Live Web
-              </span>
+          {/* RIGA BARRA DI RICERCA CON SOLO LA STELLA PER I PREFERITI */}
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="relative flex-1 group">
+              <div className="absolute inset-0 bg-gradient-to-r from-orange-500/20 via-amber-500/20 to-emerald-500/20 rounded-3xl blur-xl opacity-70 group-focus-within:opacity-100 transition-opacity duration-300" />
+              <div className="relative flex items-center gap-3 bg-[var(--card-bg)] border-2 border-[var(--border)] focus-within:border-orange-500 rounded-3xl px-5 py-4 shadow-lg transition-all">
+                {isSearchingOnline ? (
+                  <Loader2 className="w-6 h-6 text-orange-500 shrink-0 animate-spin" />
+                ) : (
+                  <Search className="w-6 h-6 text-orange-500 shrink-0" />
+                )}
+                <input
+                  type="text"
+                  placeholder="Cerca qualsiasi ricetta (es. Carbonara, Torta di Mele, Tacos, Sushi)..."
+                  value={searchQuery}
+                  onChange={(e) => {
+                    setSearchQuery(e.target.value);
+                  }}
+                  className="flex-1 bg-transparent text-[var(--text-main)] placeholder-[var(--text-muted)] outline-none text-base font-medium"
+                />
+                {searchQuery && (
+                  <button 
+                    type="button" 
+                    onClick={() => setSearchQuery('')} 
+                    className="p-1 rounded-full hover:bg-[var(--surface-variant)] text-[var(--text-muted)] cursor-pointer"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
+                <span className="text-[10px] font-black uppercase tracking-wider px-2 py-1 rounded-lg bg-emerald-500/15 text-emerald-600 border border-emerald-500/20 shrink-0 hidden sm:inline-block">
+                  Live Web
+                </span>
+              </div>
             </div>
+
+            {/* SOLO LA STELLA COME PREFERITI ACCANTO ALLA BARRA */}
+            <button
+              type="button"
+              onClick={() => {
+                if (selectedCategory === 'favorites') {
+                  setSelectedCategory(null);
+                } else {
+                  setSelectedCategory('favorites');
+                  setSelectedCountry(null);
+                  setSearchQuery('');
+                }
+              }}
+              className={`p-4 rounded-3xl border-2 transition-all cursor-pointer shadow-md flex items-center justify-center shrink-0 active:scale-95 ${
+                selectedCategory === 'favorites'
+                  ? 'bg-yellow-400/20 border-yellow-400 text-yellow-500 shadow-yellow-500/20'
+                  : 'bg-[var(--card-bg)] border-[var(--border)] hover:border-yellow-400 text-[var(--text-muted)] hover:text-yellow-500'
+              }`}
+              title={selectedCategory === 'favorites' ? 'Tutte le ricette' : 'Le mie ricette preferite'}
+            >
+              <Star className={`w-6 h-6 ${selectedCategory === 'favorites' ? 'fill-yellow-400 text-yellow-500' : 'text-[var(--text-muted)] hover:text-yellow-500'}`} />
+            </button>
           </div>
 
-          {/* TASTI CATEGORIE E NAZIONI IN RISALTO */}
-          <div className="flex items-center justify-center gap-2 pt-1">
-            <button
-              type="button"
-              onClick={() => {
-                setExploreTab('categories');
-                setSelectedCategory(null);
-                setSelectedCountry(null);
-                setSearchQuery('');
-              }}
-              className={`px-4 py-2 rounded-2xl text-xs font-black transition-all flex items-center gap-2 cursor-pointer border shadow-xs active:scale-95 ${
-                exploreTab === 'categories' && !selectedCategory && !selectedCountry && !searchQuery
-                  ? 'bg-gradient-to-r from-orange-500 to-amber-500 text-white border-transparent shadow-sm shadow-orange-500/20'
-                  : 'bg-[var(--card-bg)] text-[var(--text-main)] border-[var(--border)] hover:border-orange-500'
-              }`}
-            >
-              <span>📂</span>
-              <span>Categorie</span>
-            </button>
+          {/* FILTRI: CATEGORIE & NAZIONI COME COMPATTE PILLOLE ORIZZONTALI */}
+          <div className="space-y-2 pt-1">
+            {/* Filtro Categorie (Portate) */}
+            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1">
+              <span className="text-[10px] font-black uppercase tracking-wider text-[var(--text-muted)] shrink-0 mr-1">
+                Portata:
+              </span>
+              {[
+                { id: null, label: 'Tutte', emoji: '🍽️' },
+                { id: 'Antipasti', label: 'Antipasti', emoji: '🥗' },
+                { id: 'Primi', label: 'Primi', emoji: '🍝' },
+                { id: 'Secondi', label: 'Secondi', emoji: '🥩' },
+                { id: 'Dolci', label: 'Dolci', emoji: '🍰' },
+                { id: 'Colazione', label: 'Colazione', emoji: '☕' },
+                { id: 'Fitness & Dieta', label: 'Fitness', emoji: '💪' },
+              ].map(cat => {
+                const isActive = selectedCategory === cat.id;
+                return (
+                  <button
+                    key={cat.id || 'all'}
+                    type="button"
+                    onClick={() => {
+                      setSelectedCategory(isActive ? null : cat.id);
+                    }}
+                    className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer shrink-0 flex items-center gap-1.5 border active:scale-95 ${
+                      isActive
+                        ? 'bg-orange-500 text-white border-orange-500 shadow-xs scale-105'
+                        : 'bg-[var(--card-bg)] hover:bg-orange-500/10 text-[var(--text-main)] hover:text-orange-500 border-[var(--border)]'
+                    }`}
+                  >
+                    <span>{cat.emoji}</span>
+                    <span>{cat.label}</span>
+                  </button>
+                );
+              })}
+            </div>
 
-            <button
-              type="button"
-              onClick={() => {
-                setExploreTab('countries');
-                setSelectedCategory(null);
-                setSelectedCountry(null);
-                setSearchQuery('');
-              }}
-              className={`px-4 py-2 rounded-2xl text-xs font-black transition-all flex items-center gap-2 cursor-pointer border shadow-xs active:scale-95 ${
-                exploreTab === 'countries' && !selectedCategory && !selectedCountry && !searchQuery
-                  ? 'bg-gradient-to-r from-orange-500 to-amber-500 text-white border-transparent shadow-sm shadow-orange-500/20'
-                  : 'bg-[var(--card-bg)] text-[var(--text-main)] border-[var(--border)] hover:border-orange-500'
-              }`}
-            >
-              <span>🌍</span>
-              <span>Nazioni</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                setSelectedCategory('favorites');
-                setSelectedCountry(null);
-                setSearchQuery('');
-              }}
-              className={`px-4 py-2 rounded-2xl text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer border shadow-xs active:scale-95 ${
-                selectedCategory === 'favorites'
-                  ? 'bg-yellow-500 text-white border-transparent shadow-sm'
-                  : 'bg-[var(--card-bg)] text-yellow-600 border-[var(--border)] hover:border-yellow-400'
-              }`}
-            >
-              <Star className="w-3.5 h-3.5 fill-yellow-500 text-yellow-500" />
-              <span>Preferiti</span>
-            </button>
+            {/* Filtro Nazioni (Cucine dal Mondo) */}
+            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1">
+              <span className="text-[10px] font-black uppercase tracking-wider text-[var(--text-muted)] shrink-0 mr-1">
+                Nazione:
+              </span>
+              {COUNTRIES_LIST.map(c => {
+                const isActive = (c.code === 'ALL' && !selectedCountry) || selectedCountry === c.name;
+                return (
+                  <button
+                    key={c.code}
+                    type="button"
+                    onClick={() => {
+                      setSelectedCountry(c.code === 'ALL' ? null : (selectedCountry === c.name ? null : c.name));
+                    }}
+                    className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer shrink-0 flex items-center gap-1.5 border active:scale-95 ${
+                      isActive && selectedCountry
+                        ? 'bg-orange-500 text-white border-orange-500 shadow-xs scale-105'
+                        : isActive && !selectedCountry && c.code === 'ALL'
+                        ? 'bg-[var(--surface-variant)] text-[var(--text-main)] border-orange-400/50'
+                        : 'bg-[var(--card-bg)] hover:bg-orange-500/10 text-[var(--text-main)] hover:text-orange-500 border-[var(--border)]'
+                    }`}
+                  >
+                    <span>{c.flag}</span>
+                    <span>{c.name}</span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
 
@@ -872,136 +905,33 @@ export function RecipesScreen({
               </div>
             )}
           </div>
-        ) : !selectedCategory && !selectedCountry ? (
-          <div className="max-w-6xl mx-auto space-y-8">
-            {/* SE TAB == 'countries': MOSTRA CUCINE DAL MONDO */}
-            {exploreTab === 'countries' ? (
-              <div className="space-y-4">
-                <div className="flex items-center justify-between border-b border-[var(--border)] pb-2">
-                  <h3 className="text-base font-extrabold text-[var(--text-main)] flex items-center gap-2">
-                    <span>🌍</span>
-                    <span>Esplora Cucine dal Mondo per Paese</span>
-                  </h3>
-                </div>
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-                  {COUNTRIES_LIST.filter(c => c.code !== 'ALL').map(c => (
-                    <button
-                      key={c.code}
-                      type="button"
-                      onClick={() => setSelectedCountry(c.name)}
-                      className="p-4 rounded-2xl bg-[var(--card-bg)] border border-[var(--border)] hover:border-orange-500 hover:bg-orange-50/10 text-[var(--text-main)] flex items-center gap-3 transition-all cursor-pointer shadow-xs active:scale-95 group"
-                    >
-                      <span className="text-3xl group-hover:scale-110 transition-transform leading-none">{c.flag}</span>
-                      <span className="font-bold text-sm text-left">{c.name}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            ) : (
-              /* SE TAB == 'categories': MOSTRA CATEGORIE GASTRONOMICHE */
-              <div>
-                <h2 className="text-lg font-extrabold text-[var(--text-main)] mb-4 flex items-center gap-2">
-                  <ChefHat className="w-5 h-5 text-orange-500" />
-                  <span>Categorie</span>
-                </h2>
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-                  {/* Preferiti */}
-                  <motion.button
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                    onClick={() => setSelectedCategory('favorites')}
-                    className="flex flex-col items-center justify-center p-5 bg-gradient-to-br from-yellow-50 to-amber-100 dark:from-yellow-900/20 dark:to-amber-900/20 border border-yellow-200 dark:border-yellow-800 rounded-2xl hover:shadow-md transition-all cursor-pointer group"
-                  >
-                    <Star className="w-9 h-9 text-yellow-500 fill-yellow-500 mb-2 group-hover:scale-110 transition-transform" />
-                    <span className="font-bold text-yellow-700 dark:text-yellow-400 text-sm text-center">Preferite</span>
-                  </motion.button>
-
-                  {/* Categorie gastronomiche */}
-                  {(() => {
-                    const catConfig: Record<string, { emoji: string; from: string; to: string; textColor: string; borderColor: string }> = {
-                      'Antipasti': { emoji: '🥗', from: 'from-green-50 dark:from-green-900/20', to: 'to-emerald-100 dark:to-emerald-900/20', textColor: 'text-emerald-700 dark:text-emerald-400', borderColor: 'border-emerald-200 dark:border-emerald-800' },
-                      'Primi': { emoji: '🍝', from: 'from-orange-50 dark:from-orange-900/20', to: 'to-amber-100 dark:to-amber-900/20', textColor: 'text-orange-700 dark:text-orange-400', borderColor: 'border-orange-200 dark:border-orange-800' },
-                      'Secondi': { emoji: '🥩', from: 'from-red-50 dark:from-red-900/20', to: 'to-rose-100 dark:to-rose-900/20', textColor: 'text-red-700 dark:text-red-400', borderColor: 'border-red-200 dark:border-red-800' },
-                      'Dolci': { emoji: '🍰', from: 'from-pink-50 dark:from-pink-900/20', to: 'to-fuchsia-100 dark:to-fuchsia-900/20', textColor: 'text-pink-700 dark:text-pink-400', borderColor: 'border-pink-200 dark:border-pink-800' },
-                      'Colazione': { emoji: '☕', from: 'from-amber-50 dark:from-amber-900/20', to: 'to-yellow-100 dark:to-yellow-900/20', textColor: 'text-amber-700 dark:text-amber-400', borderColor: 'border-amber-200 dark:border-amber-800' },
-                      'Cucine dal Mondo': { emoji: '🌍', from: 'from-teal-50 dark:from-teal-900/20', to: 'to-cyan-100 dark:to-cyan-900/20', textColor: 'text-teal-700 dark:text-teal-400', borderColor: 'border-teal-200 dark:border-teal-800' },
-                      'Fitness & Dieta': { emoji: '💪', from: 'from-lime-50 dark:from-lime-900/20', to: 'to-green-100 dark:to-green-900/20', textColor: 'text-lime-700 dark:text-lime-400', borderColor: 'border-lime-200 dark:border-lime-800' },
-                    };
-                    return categories.map((cat) => {
-                      const cfg = catConfig[cat] || { emoji: '🍽️', from: 'from-slate-50 dark:from-slate-900/20', to: 'to-gray-100 dark:to-gray-900/20', textColor: 'text-slate-700 dark:text-slate-400', borderColor: 'border-slate-200 dark:border-slate-800' };
-                      const count = allMeals.filter(m => m.category === cat || (cat === 'Cucine dal Mondo' && m.country && m.country !== 'Italia')).length;
-                      return (
-                        <motion.button
-                          key={cat}
-                          whileHover={{ scale: 1.02 }}
-                          whileTap={{ scale: 0.98 }}
-                          onClick={() => setSelectedCategory(cat)}
-                          className={`flex flex-col items-center justify-center p-5 bg-gradient-to-br ${cfg.from} ${cfg.to} border ${cfg.borderColor} rounded-2xl hover:shadow-md transition-all cursor-pointer group`}
-                        >
-                          <span className="text-3xl mb-2 group-hover:scale-110 transition-transform leading-none">{cfg.emoji}</span>
-                          <span className={`font-bold ${cfg.textColor} text-sm text-center`}>{cat}</span>
-                          {count > 0 && <span className={`text-[10px] font-black ${cfg.textColor} opacity-60 mt-0.5`}>{count} {count === 1 ? 'ricetta' : 'ricette'}</span>}
-                        </motion.button>
-                      );
-                    });
-                  })()}
-                </div>
-              </div>
-            )}
-          </div>
         ) : (
           <div className="max-w-6xl mx-auto space-y-4 sm:space-y-6">
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-              <div className="flex items-center gap-3 w-full sm:w-auto">
-                <h2 className="text-xl sm:text-2xl font-black text-[var(--text-main)] flex items-center gap-2">
-                  {selectedCategory === 'favorites' ? (
-                    <>⭐ Preferiti</>
-                  ) : selectedCategory === 'user_recipes' ? (
-                    <>👨‍🍳 Le mie Ricette Personalizzate</>
-                  ) : selectedCategory === 'Cucine dal Mondo' ? (
-                    <>🌍 Cucine dal Mondo {selectedCountry ? `· ${selectedCountry}` : ''}</>
-                  ) : selectedCountry && !selectedCategory ? (
-                    <>🌍 Cucine dal Mondo · <span className="text-orange-500">{selectedCountry}</span></>
-                  ) : searchQuery && !selectedCategory ? (
-                    <>Ricerca: <span className="text-orange-500">{searchQuery}</span></>
-                  ) : (
-                    <>Categoria <span className="text-orange-500 capitalize">{selectedCategory}</span> {selectedCountry ? `· ${selectedCountry}` : ''}</>
-                  )}
-                </h2>
-              </div>
-              
-              <div className="relative w-full sm:w-64">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] w-4 h-4" />
-                <input
-                  type="text"
-                  placeholder="Cerca tra queste..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full bg-[var(--surface-variant)] border border-[var(--border)] rounded-xl py-2 pl-9 pr-4 text-[var(--text-main)] outline-none text-sm"
-                />
-              </div>
-            </div>
+            <div className="flex items-center justify-between border-b border-[var(--border)] pb-3">
+              <h3 className="text-lg font-black text-[var(--text-main)] flex items-center gap-2">
+                {selectedCategory === 'favorites' ? (
+                  <>⭐ Ricette Preferite ({filteredMeals.length})</>
+                ) : selectedCategory ? (
+                  <>Portata: <span className="text-orange-500 capitalize">{selectedCategory}</span> {selectedCountry ? `· ${selectedCountry}` : ''} ({filteredMeals.length})</>
+                ) : selectedCountry ? (
+                  <>Cucina: <span className="text-orange-500">{selectedCountry}</span> ({filteredMeals.length})</>
+                ) : (
+                  <>Ricette salvate ({filteredMeals.length})</>
+                )}
+              </h3>
 
-            {/* Selettore Paesi / Cucine dal Mondo */}
-            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1">
-              {COUNTRIES_LIST.map(c => {
-                const isSelected = (c.code === 'ALL' && !selectedCountry) || selectedCountry === c.name;
-                return (
-                  <button
-                    key={c.code}
-                    type="button"
-                    onClick={() => setSelectedCountry(c.code === 'ALL' ? null : c.name)}
-                    className={`px-3.5 py-1.5 rounded-full text-xs font-bold whitespace-nowrap flex items-center gap-1.5 transition-all cursor-pointer ${
-                      isSelected
-                        ? 'bg-orange-500 text-white shadow-sm shadow-orange-500/20 scale-105'
-                        : 'bg-[var(--surface-variant)] text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--border)]'
-                    }`}
-                  >
-                    <span>{c.flag}</span>
-                    <span>{c.name}</span>
-                  </button>
-                );
-              })}
+              {(selectedCategory || selectedCountry) && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedCategory(null);
+                    setSelectedCountry(null);
+                  }}
+                  className="text-xs font-bold text-orange-500 hover:underline cursor-pointer"
+                >
+                  Azzera filtri
+                </button>
+              )}
             </div>
 
             {loading ? (
