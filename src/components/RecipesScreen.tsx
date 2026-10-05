@@ -5,7 +5,7 @@ import {
   ShoppingCart, Check, Utensils, CheckCircle2, Eye,
   BookmarkCheck, Trash2, Plus, Link2, Edit3, ExternalLink, Users,
   Timer, Play, Pause, RotateCcw, ChevronLeft, Clock, Flame, ListOrdered,
-  Globe, Loader2
+  Globe, Loader2, SlidersHorizontal, Filter
 } from 'lucide-react';
 
 export const FALLBACK_RECIPE_IMAGE = 'https://images.unsplash.com/photo-1498837167922-ddd27525d352?w=800';
@@ -94,6 +94,7 @@ export function RecipesScreen({
   // Live online search states
   const [onlineResults, setOnlineResults] = useState<UserRecipeItem[]>([]);
   const [isSearchingOnline, setIsSearchingOnline] = useState(false);
+  const [isFiltersSheetOpen, setIsFiltersSheetOpen] = useState(false);
   const [exploreTab, setExploreTab] = useState<'categories' | 'countries'>('categories');
 
   const showToast = useCallback((msg: string) => {
@@ -636,51 +637,38 @@ export function RecipesScreen({
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          {/* Cerca Online — solo icona discreta */}
-          <button
-            onClick={() => setIsWebSearchOpen(true)}
-            className="p-2 rounded-full bg-[var(--surface-variant)] hover:bg-emerald-500/15 text-emerald-600 transition-all cursor-pointer active:scale-95"
-            title="Cerca ricette online"
-          >
-            <Globe className="w-5 h-5" />
-          </button>
-          {/* Importa da link — solo icona */}
-          <button
-            onClick={() => setIsImportModalOpen(true)}
-            className="p-2 rounded-full bg-[var(--surface-variant)] hover:bg-orange-500/15 text-orange-500 transition-all cursor-pointer active:scale-95"
-            title="Importa ricetta da link"
-          >
-            <Link2 className="w-5 h-5" />
-          </button>
-        </div>
+        {/* Header pulito: rimossi tasti internet e link */}
+        <div className="flex items-center gap-2"></div>
       </header>
 
       <main className="flex-1 overflow-y-auto p-4 md:p-8 custom-scrollbar flex flex-col">
         {(() => {
+          const hasActiveFilters = Boolean((selectedCategory && selectedCategory !== 'favorites') || selectedCountry);
           const hasActiveQueryOrFilter = searchQuery.trim().length >= 2 || selectedCategory !== null || selectedCountry !== null;
+          const activeFiltersCount = (selectedCategory && selectedCategory !== 'favorites' ? 1 : 0) + (selectedCountry ? 1 : 0);
+
           return (
             <div className={`w-full transition-all duration-300 ${
               !hasActiveQueryOrFilter 
-                ? 'flex-1 flex flex-col justify-center items-center max-w-2xl mx-auto px-2 -mt-10 sm:-mt-14 space-y-4' 
+                ? 'flex-1 flex flex-col justify-center items-center max-w-xl mx-auto px-4 -mt-12 sm:-mt-16 space-y-5' 
                 : 'max-w-3xl mx-auto space-y-3 mb-6 shrink-0'
             }`}>
-              {/* TITOLO E SOTTOTITOLO */}
-              <div className="text-center space-y-1">
+              {/* TITOLO AL CENTRO */}
+              <div className="text-center space-y-1.5">
                 <h2 className={`font-black text-[var(--text-main)] tracking-tight transition-all ${
                   !hasActiveQueryOrFilter ? 'text-3xl sm:text-4xl' : 'text-xl sm:text-2xl'
                 }`}>
                   Cerca la tua ricetta
                 </h2>
                 {!hasActiveQueryOrFilter && (
-                  <p className="text-xs sm:text-sm text-[var(--text-muted)] font-medium max-w-md mx-auto">
-                    Trova migliaia di piatti da tutto il mondo con ingredienti e procedimenti passo-passo
+                  <p className="text-xs sm:text-sm text-[var(--text-muted)] font-medium max-w-sm mx-auto">
+                    Trova qualsiasi piatto dal web con ingredienti e procedimenti
                   </p>
                 )}
               </div>
 
-              {/* RIGA BARRA DI RICERCA CON SOLO LA STELLA PER I PREFERITI */}
-              <div className="w-full flex items-center gap-2 sm:gap-3">
+              {/* BARRA DI RICERCA CON TASTO FILTRI E STELLA PREFERITI */}
+              <div className="w-full flex items-center gap-2 sm:gap-2.5">
                 <div className="relative flex-1 group">
                   <div className="absolute inset-0 bg-gradient-to-r from-orange-500/20 via-amber-500/20 to-emerald-500/20 rounded-3xl blur-xl opacity-70 group-focus-within:opacity-100 transition-opacity duration-300" />
                   <div className="relative flex items-center gap-3 bg-[var(--card-bg)] border-2 border-[var(--border)] focus-within:border-orange-500 rounded-3xl px-4 sm:px-5 py-3.5 sm:py-4 shadow-lg transition-all">
@@ -713,6 +701,25 @@ export function RecipesScreen({
                   </div>
                 </div>
 
+                {/* TASTO FILTRI ELEGANTE (CON BADGE SE ATTIVO) */}
+                <button
+                  type="button"
+                  onClick={() => setIsFiltersSheetOpen(true)}
+                  className={`relative p-3.5 sm:p-4 rounded-3xl border-2 transition-all cursor-pointer shadow-md flex items-center justify-center shrink-0 active:scale-95 ${
+                    hasActiveFilters
+                      ? 'bg-orange-500/15 border-orange-500 text-orange-500 shadow-orange-500/20'
+                      : 'bg-[var(--card-bg)] border-[var(--border)] hover:border-orange-400 text-[var(--text-muted)] hover:text-orange-500'
+                  }`}
+                  title="Filtri per portata e cucina"
+                >
+                  <SlidersHorizontal className="w-5 h-5 sm:w-6 sm:h-6" />
+                  {activeFiltersCount > 0 && (
+                    <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-orange-500 text-white text-[10px] font-black flex items-center justify-center shadow-sm">
+                      {activeFiltersCount}
+                    </span>
+                  )}
+                </button>
+
                 {/* SOLO LA STELLA COME PREFERITI ACCANTO ALLA BARRA */}
                 <button
                   type="button"
@@ -730,72 +737,47 @@ export function RecipesScreen({
                       ? 'bg-yellow-400/20 border-yellow-400 text-yellow-500 shadow-yellow-500/20'
                       : 'bg-[var(--card-bg)] border-[var(--border)] hover:border-yellow-400 text-[var(--text-muted)] hover:text-yellow-500'
                   }`}
-                  title={selectedCategory === 'favorites' ? 'Tutte le ricette' : 'Le mie ricette preferite'}
+                  title={selectedCategory === 'favorites' ? 'Tutte le ricette' : 'I miei Preferiti'}
                 >
                   <Star className={`w-5 h-5 sm:w-6 sm:h-6 ${selectedCategory === 'favorites' ? 'fill-yellow-400 text-yellow-500' : 'text-[var(--text-muted)] hover:text-yellow-500'}`} />
                 </button>
               </div>
 
-              {/* FILTRI DISCRETI (SENZA DICITURE PORTATA E NAZIONE) */}
-              <div className="w-full space-y-1.5 pt-0.5">
-                {/* Filtro Categorie (senza scritta 'Portata:') */}
-                <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
-                  {[
-                    { id: null, label: 'Tutte', emoji: '🍽️' },
-                    { id: 'Antipasti', label: 'Antipasti', emoji: '🥗' },
-                    { id: 'Primi', label: 'Primi', emoji: '🍝' },
-                    { id: 'Secondi', label: 'Secondi', emoji: '🥩' },
-                    { id: 'Dolci', label: 'Dolci', emoji: '🍰' },
-                    { id: 'Colazione', label: 'Colazione', emoji: '☕' },
-                    { id: 'Fitness & Dieta', label: 'Fitness', emoji: '💪' },
-                  ].map(cat => {
-                    const isActive = selectedCategory === cat.id;
-                    return (
-                      <button
-                        key={cat.id || 'all'}
-                        type="button"
-                        onClick={() => {
-                          setSelectedCategory(isActive ? null : cat.id);
-                        }}
-                        className={`px-2.5 py-1 rounded-full text-[11px] font-bold transition-all cursor-pointer shrink-0 flex items-center gap-1 border active:scale-95 ${
-                          isActive
-                            ? 'bg-orange-500 text-white border-orange-500 shadow-xs'
-                            : 'bg-[var(--card-bg)] hover:bg-orange-500/10 text-[var(--text-muted)] hover:text-orange-500 border-[var(--border)]'
-                        }`}
-                      >
-                        <span>{cat.emoji}</span>
-                        <span>{cat.label}</span>
-                      </button>
-                    );
-                  })}
+              {/* CHIP ATTIVI MINIMALI (COMPAIONO SOLO SE UN FILTRO È STATO APPLICATO) */}
+              {hasActiveFilters && (
+                <div className="flex items-center justify-center gap-2 pt-1 flex-wrap">
+                  {selectedCategory && selectedCategory !== 'favorites' && (
+                    <button
+                      type="button"
+                      onClick={() => setSelectedCategory(null)}
+                      className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-orange-500 text-white shadow-xs cursor-pointer active:scale-95"
+                    >
+                      <span>{selectedCategory}</span>
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                  {selectedCountry && (
+                    <button
+                      type="button"
+                      onClick={() => setSelectedCountry(null)}
+                      className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-orange-500 text-white shadow-xs cursor-pointer active:scale-95"
+                    >
+                      <span>{selectedCountry}</span>
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedCategory(null);
+                      setSelectedCountry(null);
+                    }}
+                    className="text-[11px] font-bold text-[var(--text-muted)] hover:text-orange-500 underline ml-1 cursor-pointer"
+                  >
+                    Azzera filtri
+                  </button>
                 </div>
-
-                {/* Filtro Nazioni (senza scritta 'Nazione:') */}
-                <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
-                  {COUNTRIES_LIST.map(c => {
-                    const isActive = (c.code === 'ALL' && !selectedCountry) || selectedCountry === c.name;
-                    return (
-                      <button
-                        key={c.code}
-                        type="button"
-                        onClick={() => {
-                          setSelectedCountry(c.code === 'ALL' ? null : (selectedCountry === c.name ? null : c.name));
-                        }}
-                        className={`px-2.5 py-1 rounded-full text-[11px] font-bold transition-all cursor-pointer shrink-0 flex items-center gap-1 border active:scale-95 ${
-                          isActive && selectedCountry
-                            ? 'bg-orange-500 text-white border-orange-500 shadow-xs'
-                            : isActive && !selectedCountry && c.code === 'ALL'
-                            ? 'bg-[var(--surface-variant)] text-[var(--text-main)] border-orange-400/50'
-                            : 'bg-[var(--card-bg)] hover:bg-orange-500/10 text-[var(--text-muted)] hover:text-orange-500 border-[var(--border)]'
-                        }`}
-                      >
-                        <span>{c.flag}</span>
-                        <span>{c.name}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
+              )}
             </div>
           );
         })()}
@@ -2054,6 +2036,136 @@ export function RecipesScreen({
       </AnimatePresence>
 
 
+
+      {/* ═══════════════════════════════════════════════════════════════════
+          MODAL FILTRI (PORTATE & CUCINE DAL MONDO) - UX DESIGNER PREMIUM
+          ═══════════════════════════════════════════════════════════════════ */}
+      <AnimatePresence>
+        {isFiltersSheetOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[150] bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4"
+            onClick={() => setIsFiltersSheetOpen(false)}
+          >
+            <motion.div
+              initial={{ y: 80, scale: 0.98 }}
+              animate={{ y: 0, scale: 1 }}
+              exit={{ y: 80, scale: 0.98 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full sm:max-w-lg bg-[var(--card-bg)] border border-[var(--border)] rounded-t-[2.5rem] sm:rounded-3xl shadow-2xl p-6 sm:p-7 space-y-6 max-h-[85vh] overflow-y-auto custom-scrollbar"
+            >
+              {/* Header Modal Filtri */}
+              <div className="flex items-center justify-between border-b border-[var(--border)] pb-4">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-10 h-10 rounded-2xl bg-orange-500/10 text-orange-500 flex items-center justify-center">
+                    <SlidersHorizontal className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-black text-lg text-[var(--text-main)]">Filtri Ricette</h3>
+                    <p className="text-xs text-[var(--text-muted)]">Seleziona portata o nazione di origine</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsFiltersSheetOpen(false)}
+                  className="p-2 rounded-full hover:bg-[var(--surface-variant)] text-[var(--text-muted)] transition-colors cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Sezione 1: Portate */}
+              <div className="space-y-3">
+                <h4 className="text-xs font-black uppercase tracking-wider text-[var(--text-muted)]">
+                  Portate
+                </h4>
+                <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                  {[
+                    { id: null, label: 'Tutte', emoji: '🍽️' },
+                    { id: 'Antipasti', label: 'Antipasti', emoji: '🥗' },
+                    { id: 'Primi', label: 'Primi', emoji: '🍝' },
+                    { id: 'Secondi', label: 'Secondi', emoji: '🥩' },
+                    { id: 'Dolci', label: 'Dolci', emoji: '🍰' },
+                    { id: 'Colazione', label: 'Colazione', emoji: '☕' },
+                    { id: 'Fitness & Dieta', label: 'Fitness', emoji: '💪' },
+                  ].map(cat => {
+                    const isSelected = selectedCategory === cat.id;
+                    return (
+                      <button
+                        key={cat.id || 'all'}
+                        type="button"
+                        onClick={() => {
+                          setSelectedCategory(isSelected ? null : cat.id);
+                        }}
+                        className={`p-3 rounded-2xl border text-center transition-all cursor-pointer flex flex-col items-center justify-center gap-1.5 active:scale-95 ${
+                          isSelected
+                            ? 'bg-orange-500 text-white border-orange-500 shadow-sm font-black'
+                            : 'bg-[var(--surface-variant)]/60 hover:bg-orange-500/10 border-[var(--border)] text-[var(--text-main)] font-semibold'
+                        }`}
+                      >
+                        <span className="text-2xl leading-none">{cat.emoji}</span>
+                        <span className="text-[11px] truncate w-full">{cat.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Sezione 2: Cucine dal Mondo per Paese */}
+              <div className="space-y-3">
+                <h4 className="text-xs font-black uppercase tracking-wider text-[var(--text-muted)]">
+                  Origine & Nazione
+                </h4>
+                <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 max-h-48 overflow-y-auto custom-scrollbar p-0.5">
+                  {COUNTRIES_LIST.map(c => {
+                    const isSelected = (c.code === 'ALL' && !selectedCountry) || selectedCountry === c.name;
+                    return (
+                      <button
+                        key={c.code}
+                        type="button"
+                        onClick={() => {
+                          setSelectedCountry(c.code === 'ALL' ? null : (selectedCountry === c.name ? null : c.name));
+                        }}
+                        className={`p-2.5 rounded-2xl border text-center transition-all cursor-pointer flex flex-col items-center justify-center gap-1 active:scale-95 ${
+                          isSelected && (selectedCountry || c.code === 'ALL')
+                            ? 'bg-orange-500 text-white border-orange-500 shadow-sm font-black'
+                            : 'bg-[var(--surface-variant)]/60 hover:bg-orange-500/10 border-[var(--border)] text-[var(--text-main)] font-semibold'
+                        }`}
+                      >
+                        <span className="text-xl leading-none">{c.flag}</span>
+                        <span className="text-[10px] truncate w-full">{c.name}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Footer con azioni */}
+              <div className="flex items-center gap-3 pt-2 border-t border-[var(--border)]">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedCategory(null);
+                    setSelectedCountry(null);
+                  }}
+                  className="flex-1 py-3 rounded-2xl border border-[var(--border)] text-xs font-bold text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--surface-variant)] transition-all cursor-pointer"
+                >
+                  Azzera
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsFiltersSheetOpen(false)}
+                  className="flex-1 py-3 rounded-2xl bg-gradient-to-r from-orange-500 to-amber-500 text-white text-xs font-black shadow-md hover:from-orange-600 hover:to-amber-600 transition-all cursor-pointer active:scale-95"
+                >
+                  Applica
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Modal Importazione Ricetta da Link Web */}
       <RecipeImportModal
