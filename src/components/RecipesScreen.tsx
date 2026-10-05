@@ -785,6 +785,26 @@ export function RecipesScreen({
                   </button>
                 </div>
               )}
+
+              {/* STATO VUOTO ELEGANTE (STILE LISTA DELLA SPESA) */}
+              {!hasActiveResultsView && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3 }}
+                  className="pt-8 sm:pt-12 flex flex-col items-center justify-center text-center px-4"
+                >
+                  <div className="w-16 h-16 sm:w-20 sm:h-20 bg-orange-500/10 rounded-full flex items-center justify-center mb-4 sm:mb-5 border border-orange-500/20 shadow-xs">
+                    <ChefHat className="w-8 h-8 sm:w-10 sm:h-10 text-orange-500" />
+                  </div>
+                  <h3 className="text-lg sm:text-xl font-bold text-[var(--text-main)] mb-1.5 sm:mb-2">
+                    Ricettario vuoto
+                  </h3>
+                  <p className="text-xs sm:text-sm text-[var(--text-muted)] max-w-xs leading-relaxed">
+                    Cerca un piatto nella barra per trovare ricette dal web, usa i filtri per portata o tocca la <b className="text-yellow-500 font-semibold">stella</b> per vedere i preferiti.
+                  </p>
+                </motion.div>
+              )}
             </div>
 
         {/* RISULTATI: COMPAIONO SOLO SE SI CERCA ONLINE O SE SI PREME LA STELLA PREFERITI O UN FILTRO */}
