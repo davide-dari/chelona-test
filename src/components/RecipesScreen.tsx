@@ -15,7 +15,6 @@ import {
   type RecipeItem,
   type SavedMenu
 } from '../services/menuPlannerService';
-import { RecipeCreateModal } from './RecipeCreateModal';
 import { RecipeImportModal } from './RecipeImportModal';
 import { RecipeWebSearchModal } from './RecipeWebSearchModal';
 import { 
@@ -84,10 +83,8 @@ export function RecipesScreen({
 
   // User Recipes state
   const [userRecipes, setUserRecipes] = useState<UserRecipeItem[]>(loadUserRecipes);
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [isWebSearchOpen, setIsWebSearchOpen] = useState(false);
-  const [recipeToEdit, setRecipeToEdit] = useState<UserRecipeItem | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const showToast = useCallback((msg: string) => {
@@ -347,11 +344,7 @@ export function RecipesScreen({
       setIsWebSearchOpen(false);
       return;
     }
-    if (isCreateModalOpen) {
-      setIsCreateModalOpen(false);
-      setRecipeToEdit(null);
-      return;
-    }
+
     if (isImportModalOpen) {
       setIsImportModalOpen(false);
       return;
@@ -389,7 +382,6 @@ export function RecipesScreen({
     }
   }, [
     isWebSearchOpen,
-    isCreateModalOpen,
     isImportModalOpen,
     showShoppingReviewModal,
     selectedMeal, 
@@ -431,15 +423,10 @@ export function RecipesScreen({
     showToast('Ricetta eliminata.');
   };
 
-  const handleEditUserRecipe = (meal: any) => {
-    setRecipeToEdit(meal);
-    setIsCreateModalOpen(true);
-  };
+
 
   const handleSaveUserRecipeSuccess = (saved: UserRecipeItem) => {
-    const msg = recipeToEdit ? 'Ricetta aggiornata!' : `Ricetta salvata in ${saved.category || 'Ricettario'}!`;
-    showToast(msg);
-    // Navigate to the correct gastronomic category
+    showToast(`Ricetta salvata in ${saved.category || 'Ricettario'}!`);
     const destCat = saved.category && FIXED_CATEGORIES.includes(saved.category) ? saved.category : null;
     if (destCat) setSelectedCategory(destCat);
     setSelectedMeal(saved);
@@ -625,11 +612,19 @@ export function RecipesScreen({
       <main className="flex-1 overflow-y-auto p-4 md:p-8 custom-scrollbar">
         {!selectedCategory && !searchQuery && !selectedCountry ? (
           <div className="max-w-6xl mx-auto space-y-8">
-            {/* ===== HERO SEARCH BAR ===== */}
-            <div className="relative group">
+            {/* ===== HERO SEARCH BAR INTERATTIVA ===== */}
+            <form 
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (searchQuery.trim()) {
+                  setIsWebSearchOpen(true);
+                }
+              }}
+              className="relative group"
+            >
               <div className="absolute inset-0 bg-gradient-to-r from-orange-500/20 to-amber-500/10 rounded-3xl blur-xl opacity-0 group-focus-within:opacity-100 transition-opacity duration-300" />
               <div className="relative flex items-center gap-3 bg-[var(--card-bg)] border-2 border-[var(--border)] focus-within:border-orange-400 rounded-3xl px-5 py-4 shadow-md transition-all">
-                <Search className="w-6 h-6 text-orange-400 shrink-0" />
+                <Search className="w-6 h-6 text-orange-400 shrink-0 cursor-pointer" onClick={() => { if (searchQuery.trim()) setIsWebSearchOpen(true); }} />
                 <input
                   type="text"
                   placeholder="Cerca qualsiasi ricetta (es. Carbonara, Torta di Mele, Tacos, Sushi)..."
@@ -638,27 +633,31 @@ export function RecipesScreen({
                   className="flex-1 bg-transparent text-[var(--text-main)] placeholder-[var(--text-muted)] outline-none text-base font-medium"
                 />
                 {searchQuery && (
-                  <button onClick={() => setSearchQuery('')} className="p-1 rounded-full hover:bg-[var(--surface-variant)] text-[var(--text-muted)] cursor-pointer">
+                  <button type="button" onClick={() => setSearchQuery('')} className="p-1 rounded-full hover:bg-[var(--surface-variant)] text-[var(--text-muted)] cursor-pointer">
                     <X className="w-4 h-4" />
                   </button>
                 )}
                 <button
-                  onClick={() => setIsWebSearchOpen(true)}
-                  className="shrink-0 flex items-center gap-1.5 px-3.5 py-2 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-bold text-xs shadow-sm hover:from-emerald-600 hover:to-teal-700 transition-all cursor-pointer active:scale-95"
+                  type="submit"
+                  className="shrink-0 flex items-center gap-1.5 px-4 py-2.5 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-extrabold text-xs shadow-sm hover:from-emerald-600 hover:to-teal-700 transition-all cursor-pointer active:scale-95"
                   title="Cerca ricette online su più siti"
                 >
                   <Globe className="w-4 h-4" />
-                  <span className="hidden sm:inline">Web</span>
+                  <span>Cerca</span>
                 </button>
               </div>
-            </div>
+            </form>
 
             {/* ===== QUICK SEARCH CHIPS ===== */}
             <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
               {['Pasta', 'Pollo', 'Pizza', 'Dolci veloci', 'Vegetariano', 'Pesce', 'Zucchine', 'Senza glutine'].map(q => (
                 <button
                   key={q}
-                  onClick={() => setSearchQuery(q)}
+                  type="button"
+                  onClick={() => {
+                    setSearchQuery(q);
+                    setIsWebSearchOpen(true);
+                  }}
                   className="shrink-0 px-3.5 py-1.5 rounded-full text-xs font-bold bg-[var(--surface-variant)] border border-[var(--border)] text-[var(--text-muted)] hover:text-orange-500 hover:border-orange-400 hover:bg-orange-50/10 transition-all cursor-pointer whitespace-nowrap"
                 >
                   {q}
@@ -806,9 +805,26 @@ export function RecipesScreen({
                 <div className="w-10 h-10 border-4 border-orange-500/30 border-t-orange-500 rounded-full animate-spin" />
               </div>
             ) : filteredMeals.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-20 opacity-50">
-                <BookOpen className="w-16 h-16 text-[var(--text-muted)] mb-4" />
-                <p className="text-[var(--text-main)] font-bold text-xl">Nessuna ricetta trovata.</p>
+              <div className="flex flex-col items-center justify-center py-12 px-4 text-center max-w-md mx-auto space-y-4">
+                <div className="w-16 h-16 rounded-3xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center mx-auto shadow-inner">
+                  <Globe className="w-8 h-8" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-black text-[var(--text-main)]">
+                    {searchQuery ? `Nessuna ricetta salvata per "${searchQuery}"` : 'Nessuna ricetta salvata in questa sezione'}
+                  </h3>
+                  <p className="text-xs text-[var(--text-muted)] mt-1">
+                    Cerca subito sul Web tra migliaia di ricette con ingredienti, passaggi e timer di cottura.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsWebSearchOpen(true)}
+                  className="px-6 py-3 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-extrabold text-sm shadow-md transition-all cursor-pointer flex items-center gap-2 mx-auto active:scale-95"
+                >
+                  <Search className="w-4 h-4" />
+                  <span>Cerca {searchQuery ? `"${searchQuery}"` : 'Ricette'} Online</span>
+                </button>
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
@@ -1003,14 +1019,6 @@ export function RecipesScreen({
                   <div className="flex items-center gap-2 shrink-0">
                     {selectedMeal.isCustom && (
                       <>
-                        <button
-                          type="button"
-                          onClick={() => handleEditUserRecipe(selectedMeal)}
-                          className="p-2.5 bg-[var(--surface-variant)] hover:bg-orange-500/10 hover:text-orange-500 rounded-full text-[var(--text-muted)] transition-colors cursor-pointer"
-                          title="Modifica ricetta"
-                        >
-                          <Edit3 className="w-4 h-4" />
-                        </button>
                         <button
                           type="button"
                           onClick={() => {
@@ -1884,27 +1892,13 @@ export function RecipesScreen({
         )}
       </AnimatePresence>
 
-      {/* Modal Creazione e Modifica Ricetta */}
-      <RecipeCreateModal
-        isOpen={isCreateModalOpen}
-        onClose={() => {
-          setIsCreateModalOpen(false);
-          setRecipeToEdit(null);
-        }}
-        onSaveSuccess={handleSaveUserRecipeSuccess}
-        recipeToEdit={recipeToEdit}
-      />
+
 
       {/* Modal Importazione Ricetta da Link Web */}
       <RecipeImportModal
         isOpen={isImportModalOpen}
         onClose={() => setIsImportModalOpen(false)}
         onImportSuccess={handleImportRecipeSuccess}
-        onOpenInBuilder={(recipe) => {
-          setIsImportModalOpen(false);
-          setRecipeToEdit(recipe);
-          setIsCreateModalOpen(true);
-        }}
       />
 
       {/* Modal Ricerca Web Integrata Multi-Sito */}
@@ -1916,21 +1910,7 @@ export function RecipesScreen({
         onAddToShoppingList={onAddToShoppingList}
       />
 
-      {/* FAB — Crea nuova ricetta (punto 8) */}
-      {!selectedMeal && (
-        <motion.button
-          initial={{ scale: 0, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          exit={{ scale: 0, opacity: 0 }}
-          whileHover={{ scale: 1.08 }}
-          whileTap={{ scale: 0.94 }}
-          onClick={() => { setRecipeToEdit(null); setIsCreateModalOpen(true); }}
-          className="fixed bottom-6 right-5 z-[150] w-14 h-14 rounded-full bg-gradient-to-br from-orange-500 to-amber-500 text-white shadow-xl flex items-center justify-center cursor-pointer hover:shadow-orange-400/40"
-          title="Crea una ricetta personalizzata"
-        >
-          <Plus className="w-7 h-7" />
-        </motion.button>
-      )}
+
 
       {/* Toast Notifiche */}
       <AnimatePresence>
