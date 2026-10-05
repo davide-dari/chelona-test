@@ -641,26 +641,33 @@ export function RecipesScreen({
         <div className="flex items-center gap-2"></div>
       </header>
 
-      <main className="flex-1 overflow-y-auto p-4 md:p-8 custom-scrollbar flex flex-col">
-        {(() => {
-          const hasActiveFilters = Boolean((selectedCategory && selectedCategory !== 'favorites') || selectedCountry);
-          const hasActiveQueryOrFilter = searchQuery.trim().length >= 2 || selectedCategory !== null || selectedCountry !== null;
-          const activeFiltersCount = (selectedCategory && selectedCategory !== 'favorites' ? 1 : 0) + (selectedCountry ? 1 : 0);
+      {(() => {
+        const hasActiveFilters = Boolean((selectedCategory && selectedCategory !== 'favorites') || selectedCountry);
+        const isFavoritesActive = selectedCategory === 'favorites';
+        const isOnlineSearchActive = searchQuery.trim().length >= 2;
+        const hasActiveResultsView = isOnlineSearchActive || isFavoritesActive || hasActiveFilters;
+        const activeFiltersCount = (selectedCategory && selectedCategory !== 'favorites' ? 1 : 0) + (selectedCountry ? 1 : 0);
 
-          return (
-            <div className={`w-full transition-all duration-300 ${
-              !hasActiveQueryOrFilter 
-                ? 'flex-1 flex flex-col justify-center items-center max-w-xl mx-auto px-4 -mt-12 sm:-mt-16 space-y-5' 
+        return (
+          <main className={`flex-1 flex flex-col ${
+            !hasActiveResultsView 
+              ? 'h-full justify-center items-center overflow-hidden p-4' 
+              : 'overflow-y-auto p-4 md:p-8 custom-scrollbar'
+          }`}>
+            {/* HERO BARRA & TITOLO (Perfettamente centrato quando fermo, in alto quando ci sono risultati) */}
+            <div className={`w-full transition-all duration-200 ${
+              !hasActiveResultsView 
+                ? 'max-w-xl mx-auto space-y-6 my-auto text-center' 
                 : 'max-w-3xl mx-auto space-y-3 mb-6 shrink-0'
             }`}>
               {/* TITOLO AL CENTRO */}
               <div className="text-center space-y-1.5">
                 <h2 className={`font-black text-[var(--text-main)] tracking-tight transition-all ${
-                  !hasActiveQueryOrFilter ? 'text-3xl sm:text-4xl' : 'text-xl sm:text-2xl'
+                  !hasActiveResultsView ? 'text-3xl sm:text-4xl' : 'text-xl sm:text-2xl'
                 }`}>
                   Cerca la tua ricetta
                 </h2>
-                {!hasActiveQueryOrFilter && (
+                {!hasActiveResultsView && (
                   <p className="text-xs sm:text-sm text-[var(--text-muted)] font-medium max-w-sm mx-auto">
                     Trova qualsiasi piatto dal web con ingredienti e procedimenti
                   </p>
@@ -733,13 +740,13 @@ export function RecipesScreen({
                     }
                   }}
                   className={`p-3.5 sm:p-4 rounded-3xl border-2 transition-all cursor-pointer shadow-md flex items-center justify-center shrink-0 active:scale-95 ${
-                    selectedCategory === 'favorites'
+                    isFavoritesActive
                       ? 'bg-yellow-400/20 border-yellow-400 text-yellow-500 shadow-yellow-500/20'
                       : 'bg-[var(--card-bg)] border-[var(--border)] hover:border-yellow-400 text-[var(--text-muted)] hover:text-yellow-500'
                   }`}
-                  title={selectedCategory === 'favorites' ? 'Tutte le ricette' : 'I miei Preferiti'}
+                  title={isFavoritesActive ? 'Chiudi Preferiti' : 'I miei Preferiti'}
                 >
-                  <Star className={`w-5 h-5 sm:w-6 sm:h-6 ${selectedCategory === 'favorites' ? 'fill-yellow-400 text-yellow-500' : 'text-[var(--text-muted)] hover:text-yellow-500'}`} />
+                  <Star className={`w-5 h-5 sm:w-6 sm:h-6 ${isFavoritesActive ? 'fill-yellow-400 text-yellow-500' : 'text-[var(--text-muted)] hover:text-yellow-500'}`} />
                 </button>
               </div>
 
@@ -779,11 +786,9 @@ export function RecipesScreen({
                 </div>
               )}
             </div>
-          );
-        })()}
 
-        {/* SE C'È UNA RICERCA LIVE IN CORSO (searchQuery >= 2): MOSTRA RISULTATI ONLINE */}
-        {searchQuery.trim().length >= 2 ? (
+        {/* RISULTATI: COMPAIONO SOLO SE SI CERCA ONLINE O SE SI PREME LA STELLA PREFERITI O UN FILTRO */}
+        {isOnlineSearchActive ? (
           <div className="max-w-6xl mx-auto space-y-6">
             <div className="flex items-center justify-between border-b border-[var(--border)] pb-3">
               <div className="flex items-center gap-2">
@@ -894,7 +899,7 @@ export function RecipesScreen({
               </div>
             )}
           </div>
-        ) : (
+        ) : (isFavoritesActive || hasActiveFilters) ? (
           <div className="max-w-6xl mx-auto space-y-4 sm:space-y-6">
             <div className="flex items-center justify-between border-b border-[var(--border)] pb-3">
               <h3 className="text-lg font-black text-[var(--text-main)] flex items-center gap-2">
@@ -1012,8 +1017,10 @@ export function RecipesScreen({
               </div>
             )}
           </div>
-        )}
-      </main>
+        ) : null}
+          </main>
+        );
+      })()}
 
       {/* ═══════════════════════════════════════════════════════════════════
           MODAL DETTAGLIO RICETTA (CON SELEZIONE INGREDIENTI & AGGIUNTA SPESA)
