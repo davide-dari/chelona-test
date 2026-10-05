@@ -651,13 +651,13 @@ export function RecipesScreen({
         return (
           <main className={`flex-1 flex flex-col ${
             !hasActiveResultsView 
-              ? 'h-full justify-center items-center overflow-hidden p-4' 
+              ? 'h-full justify-center items-center overflow-hidden p-4 pb-16 sm:pb-24' 
               : 'overflow-y-auto p-4 md:p-8 custom-scrollbar'
           }`}>
-            {/* HERO BARRA & TITOLO (Perfettamente centrato quando fermo, in alto quando ci sono risultati) */}
+            {/* HERO BARRA & TITOLO (Centro ottico ergonomico, rialzato dal fondo) */}
             <div className={`w-full transition-all duration-200 ${
               !hasActiveResultsView 
-                ? 'max-w-xl mx-auto space-y-6 my-auto text-center' 
+                ? 'max-w-xl mx-auto space-y-6 text-center -translate-y-8 sm:-translate-y-12' 
                 : 'max-w-3xl mx-auto space-y-3 mb-6 shrink-0'
             }`}>
               {/* TITOLO AL CENTRO */}
