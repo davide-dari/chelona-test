@@ -656,142 +656,149 @@ export function RecipesScreen({
         </div>
       </header>
 
-      <main className="flex-1 overflow-y-auto p-4 md:p-8 custom-scrollbar">
-        {/* TITOLO HERO E BARRA AL CENTRO */}
-        <div className="max-w-3xl mx-auto space-y-4 mb-6">
-          <div className="text-center space-y-1 pt-2 sm:pt-4">
-            <h2 className="text-2xl sm:text-3xl font-black text-[var(--text-main)] tracking-tight">
-              Cerca la tua ricetta
-            </h2>
-            <p className="text-xs sm:text-sm text-[var(--text-muted)] font-medium">
-              Trova migliaia di piatti da tutto il mondo con ingredienti e procedimenti
-            </p>
-          </div>
+      <main className="flex-1 overflow-y-auto p-4 md:p-8 custom-scrollbar flex flex-col">
+        {(() => {
+          const hasActiveQueryOrFilter = searchQuery.trim().length >= 2 || selectedCategory !== null || selectedCountry !== null;
+          return (
+            <div className={`w-full transition-all duration-300 ${
+              !hasActiveQueryOrFilter 
+                ? 'flex-1 flex flex-col justify-center items-center max-w-2xl mx-auto px-2 -mt-10 sm:-mt-14 space-y-4' 
+                : 'max-w-3xl mx-auto space-y-3 mb-6 shrink-0'
+            }`}>
+              {/* TITOLO E SOTTOTITOLO */}
+              <div className="text-center space-y-1">
+                <h2 className={`font-black text-[var(--text-main)] tracking-tight transition-all ${
+                  !hasActiveQueryOrFilter ? 'text-3xl sm:text-4xl' : 'text-xl sm:text-2xl'
+                }`}>
+                  Cerca la tua ricetta
+                </h2>
+                {!hasActiveQueryOrFilter && (
+                  <p className="text-xs sm:text-sm text-[var(--text-muted)] font-medium max-w-md mx-auto">
+                    Trova migliaia di piatti da tutto il mondo con ingredienti e procedimenti passo-passo
+                  </p>
+                )}
+              </div>
 
-          {/* RIGA BARRA DI RICERCA CON SOLO LA STELLA PER I PREFERITI */}
-          <div className="flex items-center gap-2 sm:gap-3">
-            <div className="relative flex-1 group">
-              <div className="absolute inset-0 bg-gradient-to-r from-orange-500/20 via-amber-500/20 to-emerald-500/20 rounded-3xl blur-xl opacity-70 group-focus-within:opacity-100 transition-opacity duration-300" />
-              <div className="relative flex items-center gap-3 bg-[var(--card-bg)] border-2 border-[var(--border)] focus-within:border-orange-500 rounded-3xl px-5 py-4 shadow-lg transition-all">
-                {isSearchingOnline ? (
-                  <Loader2 className="w-6 h-6 text-orange-500 shrink-0 animate-spin" />
-                ) : (
-                  <Search className="w-6 h-6 text-orange-500 shrink-0" />
-                )}
-                <input
-                  type="text"
-                  placeholder="Cerca qualsiasi ricetta (es. Carbonara, Torta di Mele, Tacos, Sushi)..."
-                  value={searchQuery}
-                  onChange={(e) => {
-                    setSearchQuery(e.target.value);
+              {/* RIGA BARRA DI RICERCA CON SOLO LA STELLA PER I PREFERITI */}
+              <div className="w-full flex items-center gap-2 sm:gap-3">
+                <div className="relative flex-1 group">
+                  <div className="absolute inset-0 bg-gradient-to-r from-orange-500/20 via-amber-500/20 to-emerald-500/20 rounded-3xl blur-xl opacity-70 group-focus-within:opacity-100 transition-opacity duration-300" />
+                  <div className="relative flex items-center gap-3 bg-[var(--card-bg)] border-2 border-[var(--border)] focus-within:border-orange-500 rounded-3xl px-4 sm:px-5 py-3.5 sm:py-4 shadow-lg transition-all">
+                    {isSearchingOnline ? (
+                      <Loader2 className="w-5 h-5 sm:w-6 sm:h-6 text-orange-500 shrink-0 animate-spin" />
+                    ) : (
+                      <Search className="w-5 h-5 sm:w-6 sm:h-6 text-orange-500 shrink-0" />
+                    )}
+                    <input
+                      type="text"
+                      placeholder="Cerca qualsiasi ricetta (es. Carbonara, Torta di Mele, Tacos)..."
+                      value={searchQuery}
+                      onChange={(e) => {
+                        setSearchQuery(e.target.value);
+                      }}
+                      className="flex-1 bg-transparent text-[var(--text-main)] placeholder-[var(--text-muted)] outline-none text-sm sm:text-base font-medium"
+                    />
+                    {searchQuery && (
+                      <button 
+                        type="button" 
+                        onClick={() => setSearchQuery('')} 
+                        className="p-1 rounded-full hover:bg-[var(--surface-variant)] text-[var(--text-muted)] cursor-pointer"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    )}
+                    <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-wider px-2 py-0.5 sm:py-1 rounded-lg bg-emerald-500/15 text-emerald-600 border border-emerald-500/20 shrink-0 hidden sm:inline-block">
+                      Live Web
+                    </span>
+                  </div>
+                </div>
+
+                {/* SOLO LA STELLA COME PREFERITI ACCANTO ALLA BARRA */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (selectedCategory === 'favorites') {
+                      setSelectedCategory(null);
+                    } else {
+                      setSelectedCategory('favorites');
+                      setSelectedCountry(null);
+                      setSearchQuery('');
+                    }
                   }}
-                  className="flex-1 bg-transparent text-[var(--text-main)] placeholder-[var(--text-muted)] outline-none text-base font-medium"
-                />
-                {searchQuery && (
-                  <button 
-                    type="button" 
-                    onClick={() => setSearchQuery('')} 
-                    className="p-1 rounded-full hover:bg-[var(--surface-variant)] text-[var(--text-muted)] cursor-pointer"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                )}
-                <span className="text-[10px] font-black uppercase tracking-wider px-2 py-1 rounded-lg bg-emerald-500/15 text-emerald-600 border border-emerald-500/20 shrink-0 hidden sm:inline-block">
-                  Live Web
-                </span>
+                  className={`p-3.5 sm:p-4 rounded-3xl border-2 transition-all cursor-pointer shadow-md flex items-center justify-center shrink-0 active:scale-95 ${
+                    selectedCategory === 'favorites'
+                      ? 'bg-yellow-400/20 border-yellow-400 text-yellow-500 shadow-yellow-500/20'
+                      : 'bg-[var(--card-bg)] border-[var(--border)] hover:border-yellow-400 text-[var(--text-muted)] hover:text-yellow-500'
+                  }`}
+                  title={selectedCategory === 'favorites' ? 'Tutte le ricette' : 'Le mie ricette preferite'}
+                >
+                  <Star className={`w-5 h-5 sm:w-6 sm:h-6 ${selectedCategory === 'favorites' ? 'fill-yellow-400 text-yellow-500' : 'text-[var(--text-muted)] hover:text-yellow-500'}`} />
+                </button>
+              </div>
+
+              {/* FILTRI DISCRETI (SENZA DICITURE PORTATA E NAZIONE) */}
+              <div className="w-full space-y-1.5 pt-0.5">
+                {/* Filtro Categorie (senza scritta 'Portata:') */}
+                <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
+                  {[
+                    { id: null, label: 'Tutte', emoji: '🍽️' },
+                    { id: 'Antipasti', label: 'Antipasti', emoji: '🥗' },
+                    { id: 'Primi', label: 'Primi', emoji: '🍝' },
+                    { id: 'Secondi', label: 'Secondi', emoji: '🥩' },
+                    { id: 'Dolci', label: 'Dolci', emoji: '🍰' },
+                    { id: 'Colazione', label: 'Colazione', emoji: '☕' },
+                    { id: 'Fitness & Dieta', label: 'Fitness', emoji: '💪' },
+                  ].map(cat => {
+                    const isActive = selectedCategory === cat.id;
+                    return (
+                      <button
+                        key={cat.id || 'all'}
+                        type="button"
+                        onClick={() => {
+                          setSelectedCategory(isActive ? null : cat.id);
+                        }}
+                        className={`px-2.5 py-1 rounded-full text-[11px] font-bold transition-all cursor-pointer shrink-0 flex items-center gap-1 border active:scale-95 ${
+                          isActive
+                            ? 'bg-orange-500 text-white border-orange-500 shadow-xs'
+                            : 'bg-[var(--card-bg)] hover:bg-orange-500/10 text-[var(--text-muted)] hover:text-orange-500 border-[var(--border)]'
+                        }`}
+                      >
+                        <span>{cat.emoji}</span>
+                        <span>{cat.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Filtro Nazioni (senza scritta 'Nazione:') */}
+                <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
+                  {COUNTRIES_LIST.map(c => {
+                    const isActive = (c.code === 'ALL' && !selectedCountry) || selectedCountry === c.name;
+                    return (
+                      <button
+                        key={c.code}
+                        type="button"
+                        onClick={() => {
+                          setSelectedCountry(c.code === 'ALL' ? null : (selectedCountry === c.name ? null : c.name));
+                        }}
+                        className={`px-2.5 py-1 rounded-full text-[11px] font-bold transition-all cursor-pointer shrink-0 flex items-center gap-1 border active:scale-95 ${
+                          isActive && selectedCountry
+                            ? 'bg-orange-500 text-white border-orange-500 shadow-xs'
+                            : isActive && !selectedCountry && c.code === 'ALL'
+                            ? 'bg-[var(--surface-variant)] text-[var(--text-main)] border-orange-400/50'
+                            : 'bg-[var(--card-bg)] hover:bg-orange-500/10 text-[var(--text-muted)] hover:text-orange-500 border-[var(--border)]'
+                        }`}
+                      >
+                        <span>{c.flag}</span>
+                        <span>{c.name}</span>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             </div>
-
-            {/* SOLO LA STELLA COME PREFERITI ACCANTO ALLA BARRA */}
-            <button
-              type="button"
-              onClick={() => {
-                if (selectedCategory === 'favorites') {
-                  setSelectedCategory(null);
-                } else {
-                  setSelectedCategory('favorites');
-                  setSelectedCountry(null);
-                  setSearchQuery('');
-                }
-              }}
-              className={`p-4 rounded-3xl border-2 transition-all cursor-pointer shadow-md flex items-center justify-center shrink-0 active:scale-95 ${
-                selectedCategory === 'favorites'
-                  ? 'bg-yellow-400/20 border-yellow-400 text-yellow-500 shadow-yellow-500/20'
-                  : 'bg-[var(--card-bg)] border-[var(--border)] hover:border-yellow-400 text-[var(--text-muted)] hover:text-yellow-500'
-              }`}
-              title={selectedCategory === 'favorites' ? 'Tutte le ricette' : 'Le mie ricette preferite'}
-            >
-              <Star className={`w-6 h-6 ${selectedCategory === 'favorites' ? 'fill-yellow-400 text-yellow-500' : 'text-[var(--text-muted)] hover:text-yellow-500'}`} />
-            </button>
-          </div>
-
-          {/* FILTRI: CATEGORIE & NAZIONI COME COMPATTE PILLOLE ORIZZONTALI */}
-          <div className="space-y-2 pt-1">
-            {/* Filtro Categorie (Portate) */}
-            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1">
-              <span className="text-[10px] font-black uppercase tracking-wider text-[var(--text-muted)] shrink-0 mr-1">
-                Portata:
-              </span>
-              {[
-                { id: null, label: 'Tutte', emoji: '🍽️' },
-                { id: 'Antipasti', label: 'Antipasti', emoji: '🥗' },
-                { id: 'Primi', label: 'Primi', emoji: '🍝' },
-                { id: 'Secondi', label: 'Secondi', emoji: '🥩' },
-                { id: 'Dolci', label: 'Dolci', emoji: '🍰' },
-                { id: 'Colazione', label: 'Colazione', emoji: '☕' },
-                { id: 'Fitness & Dieta', label: 'Fitness', emoji: '💪' },
-              ].map(cat => {
-                const isActive = selectedCategory === cat.id;
-                return (
-                  <button
-                    key={cat.id || 'all'}
-                    type="button"
-                    onClick={() => {
-                      setSelectedCategory(isActive ? null : cat.id);
-                    }}
-                    className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer shrink-0 flex items-center gap-1.5 border active:scale-95 ${
-                      isActive
-                        ? 'bg-orange-500 text-white border-orange-500 shadow-xs scale-105'
-                        : 'bg-[var(--card-bg)] hover:bg-orange-500/10 text-[var(--text-main)] hover:text-orange-500 border-[var(--border)]'
-                    }`}
-                  >
-                    <span>{cat.emoji}</span>
-                    <span>{cat.label}</span>
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Filtro Nazioni (Cucine dal Mondo) */}
-            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1">
-              <span className="text-[10px] font-black uppercase tracking-wider text-[var(--text-muted)] shrink-0 mr-1">
-                Nazione:
-              </span>
-              {COUNTRIES_LIST.map(c => {
-                const isActive = (c.code === 'ALL' && !selectedCountry) || selectedCountry === c.name;
-                return (
-                  <button
-                    key={c.code}
-                    type="button"
-                    onClick={() => {
-                      setSelectedCountry(c.code === 'ALL' ? null : (selectedCountry === c.name ? null : c.name));
-                    }}
-                    className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer shrink-0 flex items-center gap-1.5 border active:scale-95 ${
-                      isActive && selectedCountry
-                        ? 'bg-orange-500 text-white border-orange-500 shadow-xs scale-105'
-                        : isActive && !selectedCountry && c.code === 'ALL'
-                        ? 'bg-[var(--surface-variant)] text-[var(--text-main)] border-orange-400/50'
-                        : 'bg-[var(--card-bg)] hover:bg-orange-500/10 text-[var(--text-main)] hover:text-orange-500 border-[var(--border)]'
-                    }`}
-                  >
-                    <span>{c.flag}</span>
-                    <span>{c.name}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        </div>
+          );
+        })()}
 
         {/* SE C'È UNA RICERCA LIVE IN CORSO (searchQuery >= 2): MOSTRA RISULTATI ONLINE */}
         {searchQuery.trim().length >= 2 ? (
@@ -910,13 +917,13 @@ export function RecipesScreen({
             <div className="flex items-center justify-between border-b border-[var(--border)] pb-3">
               <h3 className="text-lg font-black text-[var(--text-main)] flex items-center gap-2">
                 {selectedCategory === 'favorites' ? (
-                  <>⭐ Ricette Preferite ({filteredMeals.length})</>
+                  <>⭐ Preferiti ({filteredMeals.length})</>
                 ) : selectedCategory ? (
-                  <>Portata: <span className="text-orange-500 capitalize">{selectedCategory}</span> {selectedCountry ? `· ${selectedCountry}` : ''} ({filteredMeals.length})</>
+                  <><span className="text-orange-500 capitalize">{selectedCategory}</span> {selectedCountry ? `· ${selectedCountry}` : ''} ({filteredMeals.length})</>
                 ) : selectedCountry ? (
-                  <>Cucina: <span className="text-orange-500">{selectedCountry}</span> ({filteredMeals.length})</>
+                  <><span className="text-orange-500">{selectedCountry}</span> ({filteredMeals.length})</>
                 ) : (
-                  <>Ricette salvate ({filteredMeals.length})</>
+                  <>⭐ Preferiti ({filteredMeals.length})</>
                 )}
               </h3>
 
@@ -945,10 +952,10 @@ export function RecipesScreen({
                 </div>
                 <div>
                   <h3 className="text-lg font-black text-[var(--text-main)]">
-                    {searchQuery ? `Nessuna ricetta salvata per "${searchQuery}"` : 'Nessuna ricetta salvata in questa sezione'}
+                    {selectedCategory === 'favorites' ? 'Nessuna ricetta tra i Preferiti' : (searchQuery ? `Nessun risultato per "${searchQuery}"` : 'Nessuna ricetta in questa sezione')}
                   </h3>
                   <p className="text-xs text-[var(--text-muted)] mt-1">
-                    Cerca subito sul Web tra migliaia di ricette con ingredienti, passaggi e timer di cottura.
+                    Cerca qualsiasi piatto nella barra per visualizzarlo dal Web e aggiungerlo ai Preferiti.
                   </p>
                 </div>
                 <button
@@ -1151,8 +1158,8 @@ export function RecipesScreen({
                   </div>
 
                   <div className="flex items-center gap-2 shrink-0">
-                    {/* Salva nel ricettario se aperta da ricerca online e non ancora salvata */}
-                    {!userRecipes.some(r => r.id === selectedMeal.id || (Boolean(r.sourceUrl) && r.sourceUrl === selectedMeal.sourceUrl)) && (
+                    {/* Aggiungi ai Preferiti con la stella */}
+                    {!isFavorite(selectedMeal.id) && (
                       <button
                         type="button"
                         onClick={() => {
@@ -1160,14 +1167,15 @@ export function RecipesScreen({
                             ...selectedMeal,
                             isCustom: true,
                           });
-                          showToast(`✓ "${saved.title}" salvata in ${saved.category}!`);
+                          toggleFavorite(saved);
+                          showToast(`✓ "${saved.title}" aggiunta ai Preferiti!`);
                           setSelectedMeal(saved);
                         }}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-extrabold text-xs shadow-sm transition-all cursor-pointer active:scale-95"
-                        title="Salva ricetta nella sua categoria"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-white font-extrabold text-xs shadow-sm transition-all cursor-pointer active:scale-95"
+                        title="Aggiungi ai Preferiti"
                       >
-                        <Check className="w-3.5 h-3.5" />
-                        <span>Salva</span>
+                        <Star className="w-3.5 h-3.5 fill-white text-white" />
+                        <span>Preferiti</span>
                       </button>
                     )}
                     {selectedMeal.isCustom && (
