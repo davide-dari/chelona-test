@@ -651,13 +651,13 @@ export function RecipesScreen({
         return (
           <main className={`flex-1 flex flex-col ${
             !hasActiveResultsView 
-              ? 'h-full justify-center items-center overflow-hidden p-4 pb-16 sm:pb-24' 
+              ? 'h-full justify-start pt-10 sm:pt-14 items-center overflow-hidden px-4 pr-6 sm:px-6' 
               : 'overflow-y-auto p-4 md:p-8 custom-scrollbar'
           }`}>
-            {/* HERO BARRA & TITOLO (Centro ottico ergonomico, rialzato dal fondo) */}
+            {/* HERO BARRA & TITOLO (Posizionato in alto e leggermente arretrato a sinistra) */}
             <div className={`w-full transition-all duration-200 ${
               !hasActiveResultsView 
-                ? 'max-w-xl mx-auto space-y-6 text-center -translate-y-8 sm:-translate-y-12' 
+                ? 'max-w-xl mx-auto space-y-6 text-center -translate-x-1.5 sm:-translate-x-2' 
                 : 'max-w-3xl mx-auto space-y-3 mb-6 shrink-0'
             }`}>
               {/* TITOLO AL CENTRO */}
@@ -677,8 +677,8 @@ export function RecipesScreen({
               {/* BARRA DI RICERCA CON TASTO FILTRI E STELLA PREFERITI */}
               <div className="w-full flex items-center gap-2 sm:gap-2.5">
                 <div className="relative flex-1 group">
-                  <div className="absolute inset-0 bg-gradient-to-r from-orange-500/20 via-amber-500/20 to-emerald-500/20 rounded-3xl blur-xl opacity-70 group-focus-within:opacity-100 transition-opacity duration-300" />
-                  <div className="relative flex items-center gap-3 bg-[var(--card-bg)] border-2 border-[var(--border)] focus-within:border-orange-500 rounded-3xl px-4 sm:px-5 py-3.5 sm:py-4 shadow-lg transition-all">
+                  <div className="absolute inset-0 bg-gradient-to-r from-orange-500/20 via-amber-500/20 to-emerald-500/20 rounded-2xl sm:rounded-3xl blur-xl opacity-70 group-focus-within:opacity-100 transition-opacity duration-300" />
+                  <div className="relative flex items-center gap-2.5 sm:gap-3 bg-[var(--card-bg)] border-2 border-[var(--border)] focus-within:border-orange-500 rounded-2xl sm:rounded-3xl px-3.5 sm:px-5 py-3 sm:py-4 shadow-lg transition-all">
                     {isSearchingOnline ? (
                       <Loader2 className="w-5 h-5 sm:w-6 sm:h-6 text-orange-500 shrink-0 animate-spin" />
                     ) : (
@@ -691,7 +691,7 @@ export function RecipesScreen({
                       onChange={(e) => {
                         setSearchQuery(e.target.value);
                       }}
-                      className="flex-1 bg-transparent text-[var(--text-main)] placeholder-[var(--text-muted)] outline-none text-sm sm:text-base font-medium"
+                      className="flex-1 bg-transparent text-[var(--text-main)] placeholder-[var(--text-muted)] outline-none text-sm sm:text-base font-medium min-w-0"
                     />
                     {searchQuery && (
                       <button 
@@ -712,7 +712,7 @@ export function RecipesScreen({
                 <button
                   type="button"
                   onClick={() => setIsFiltersSheetOpen(true)}
-                  className={`relative p-3.5 sm:p-4 rounded-3xl border-2 transition-all cursor-pointer shadow-md flex items-center justify-center shrink-0 active:scale-95 ${
+                  className={`relative p-3 sm:p-4 rounded-2xl sm:rounded-3xl border-2 transition-all cursor-pointer shadow-md flex items-center justify-center shrink-0 active:scale-95 ${
                     hasActiveFilters
                       ? 'bg-orange-500/15 border-orange-500 text-orange-500 shadow-orange-500/20'
                       : 'bg-[var(--card-bg)] border-[var(--border)] hover:border-orange-400 text-[var(--text-muted)] hover:text-orange-500'
@@ -739,7 +739,7 @@ export function RecipesScreen({
                       setSearchQuery('');
                     }
                   }}
-                  className={`p-3.5 sm:p-4 rounded-3xl border-2 transition-all cursor-pointer shadow-md flex items-center justify-center shrink-0 active:scale-95 ${
+                  className={`p-3 sm:p-4 rounded-2xl sm:rounded-3xl border-2 transition-all cursor-pointer shadow-md flex items-center justify-center shrink-0 active:scale-95 ${
                     isFavoritesActive
                       ? 'bg-yellow-400/20 border-yellow-400 text-yellow-500 shadow-yellow-500/20'
                       : 'bg-[var(--card-bg)] border-[var(--border)] hover:border-yellow-400 text-[var(--text-muted)] hover:text-yellow-500'
