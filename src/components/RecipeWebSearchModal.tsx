@@ -13,10 +13,34 @@ import {
   saveUserRecipe,
   saveUserRecipes,
   loadUserRecipes,
+  formatSourceBadge,
   type UserRecipeItem 
 } from '../services/userRecipesService';
 
 const FALLBACK_RECIPE_IMAGE = 'https://images.unsplash.com/photo-1498837167922-ddd27525d352?w=800';
+
+
+const COURSE_FILTERS = [
+  { id: 'ALL', label: 'Tutte le Portate', emoji: '🍽️' },
+  { id: 'Antipasti', label: 'Antipasti', emoji: '🥗' },
+  { id: 'Primi', label: 'Primi', emoji: '🍝' },
+  { id: 'Secondi', label: 'Secondi', emoji: '🥩' },
+  { id: 'Contorni', label: 'Contorni', emoji: '🥦' },
+  { id: 'Dolci', label: 'Dolci', emoji: '🍰' },
+];
+
+const COUNTRY_FILTERS = [
+  { code: 'ALL', name: 'Tutti i Paesi', flag: '🌐' },
+  { code: 'IT', name: 'Italia', flag: '🇮🇹' },
+  { code: 'JP', name: 'Giappone', flag: '🇯🇵' },
+  { code: 'MX', name: 'Messico', flag: '🇲🇽' },
+  { code: 'ES', name: 'Spagna', flag: '🇪🇸' },
+  { code: 'US', name: 'USA', flag: '🇺🇸' },
+  { code: 'FR', name: 'Francia', flag: '🇫🇷' },
+  { code: 'IN', name: 'India', flag: '🇮🇳' },
+  { code: 'GR', name: 'Grecia', flag: '🇬🇷' },
+  { code: 'CN', name: 'Cina', flag: '🇨🇳' },
+];
 
 const POPULAR_SUGGESTIONS = [
   { label: 'Primi Piatti', query: 'primi piatti', emoji: '🍝' },
@@ -82,10 +106,21 @@ export function RecipeWebSearchModal({
   const [recipes, setRecipes] = useState<UserRecipeItem[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [hasNextPage, setHasNextPage] = useState(false);
+  const [selectedCourse, setSelectedCourse] = useState<string>('ALL');
+  const [selectedCountryFilter, setSelectedCountryFilter] = useState<string>('ALL');
   
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  // Filtro ricette per Portata e Paese di Origine (Requisito 5)
+  const filteredRecipes = useMemo(() => {
+    return recipes.filter(r => {
+      const matchCourse = selectedCourse === 'ALL' || r.category === selectedCourse;
+      const matchCountry = selectedCountryFilter === 'ALL' || (r.country && r.country.toLowerCase() === selectedCountryFilter.toLowerCase());
+      return matchCourse && matchCountry;
+    });
+  }, [recipes, selectedCourse, selectedCountryFilter]);
 
   // Multi-selezione per importazione massiva
   const [selectedIndices, setSelectedIndices] = useState<Set<number>>(new Set());
@@ -546,7 +581,7 @@ export function RecipeWebSearchModal({
               <h2 className="text-base sm:text-lg font-black text-[var(--text-main)] leading-tight flex items-center gap-2">
                 <span>Cerca Ricette Online</span>
                 <span className="text-[10px] uppercase tracking-wider font-extrabold px-1.5 py-0.5 rounded-md bg-emerald-500/10 text-emerald-600 border border-emerald-500/20">
-                  GialloZafferano
+                  Ricette Web
                 </span>
               </h2>
               <p className="text-xs text-[var(--text-muted)] hidden sm:block">
@@ -573,7 +608,7 @@ export function RecipeWebSearchModal({
               type="text"
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
-              placeholder="Cerca tra migliaia di ricette online (es. Carbonara, Risotto ai Funghi, Torta di Mele)..."
+              placeholder="Cerca qualsiasi ricetta (es. Carbonara, Torta di Mele, Tacos, Sushi, Ramen)..."
               className="w-full bg-[var(--surface-variant)] border border-[var(--border)] focus:border-emerald-500 rounded-2xl py-3 pl-11 pr-10 text-sm sm:text-base text-[var(--text-main)] placeholder-[var(--text-muted)] outline-none focus:ring-2 focus:ring-emerald-500/20 transition-all"
             />
             {searchInput && (
@@ -621,6 +656,51 @@ export function RecipeWebSearchModal({
             );
           })}
         </div>
+
+        {/* FILTRI PORTATA & PAESE DI ORIGINE (Punto 5) */}
+        {recipes.length > 0 && (
+          <div className="max-w-4xl mx-auto pt-1 space-y-2 border-t border-[var(--border)]/60">
+            {/* Filtro Portata */}
+            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar text-xs">
+              <span className="text-[10px] font-black uppercase text-[var(--text-muted)] shrink-0">Portata:</span>
+              {COURSE_FILTERS.map(c => (
+                <button
+                  key={c.id}
+                  type="button"
+                  onClick={() => setSelectedCourse(c.id)}
+                  className={`px-2.5 py-1 rounded-lg font-bold text-xs transition-all cursor-pointer shrink-0 flex items-center gap-1 ${
+                    selectedCourse === c.id
+                      ? 'bg-emerald-600 text-white shadow-xs'
+                      : 'bg-[var(--surface-variant)] text-[var(--text-muted)] hover:text-[var(--text-main)]'
+                  }`}
+                >
+                  <span>{c.emoji}</span>
+                  <span>{c.label}</span>
+                </button>
+              ))}
+            </div>
+
+            {/* Filtro Paese */}
+            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar text-xs">
+              <span className="text-[10px] font-black uppercase text-[var(--text-muted)] shrink-0">Origine:</span>
+              {COUNTRY_FILTERS.map(c => (
+                <button
+                  key={c.code}
+                  type="button"
+                  onClick={() => setSelectedCountryFilter(c.code === 'ALL' ? 'ALL' : c.name)}
+                  className={`px-2.5 py-1 rounded-lg font-bold text-xs transition-all cursor-pointer shrink-0 flex items-center gap-1 ${
+                    (c.code === 'ALL' && selectedCountryFilter === 'ALL') || selectedCountryFilter.toLowerCase() === c.name.toLowerCase()
+                      ? 'bg-emerald-600 text-white shadow-xs'
+                      : 'bg-[var(--surface-variant)] text-[var(--text-muted)] hover:text-[var(--text-main)]'
+                  }`}
+                >
+                  <span>{c.flag}</span>
+                  <span>{c.name}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* BARRA AZIONI MULTI-SELEZIONE (quando ci sono ricette selezionate) */}
@@ -699,7 +779,7 @@ export function RecipeWebSearchModal({
               </h3>
               <p className="text-sm text-[var(--text-muted)] leading-relaxed">
                 Cerca piatti della tradizione italiana, dolci, secondi o piatti esotici dal catalogo di 
-                <strong className="text-[var(--text-main)]"> GialloZafferano</strong>.
+                <strong className="text-[var(--text-main)]"> Ricette Web</strong>.
                 Tocca un piatto per visualizzare passaggi e ingredienti, o salvalo con un tap nel tuo Ricettario.
               </p>
               <div className="pt-2 flex flex-wrap justify-center gap-2">
@@ -755,9 +835,9 @@ export function RecipeWebSearchModal({
           )}
 
           {/* GRIGLIA SCHEDE RICETTA */}
-          {!isLoading && recipes.length > 0 && (
+          {!isLoading && filteredRecipes.length > 0 && (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-              {recipes.map((recipe, index) => {
+              {filteredRecipes.map((recipe, index) => {
                 const isSelected = selectedIndices.has(index);
                 const isSaved = isAlreadySaved(recipe);
 
@@ -804,18 +884,25 @@ export function RecipeWebSearchModal({
                         )}
                       </button>
 
-                      {/* Badge Sorgente */}
-                      <span className="absolute top-2.5 right-2.5 px-2 py-0.5 rounded-full bg-black/60 backdrop-blur-md text-[10px] font-bold text-white flex items-center gap-1 border border-white/10">
-                        <Globe className="w-3 h-3 text-emerald-400" />
-                        {recipe.sourceName || 'GZ'}
+                      {/* Badge Sorgente e Sito (Punto 4) */}
+                      <span className="absolute top-2.5 right-2.5 px-2 py-0.5 rounded-full bg-black/70 backdrop-blur-md text-[10px] font-bold text-white flex items-center gap-1 border border-white/15 shadow-xs">
+                        {formatSourceBadge(recipe.sourceName, recipe.sourceUrl)}
                       </span>
 
-                      {/* Categoria */}
-                      {recipe.category && (
-                        <span className="absolute bottom-2.5 left-2.5 px-2 py-0.5 rounded-md bg-white/90 backdrop-blur-md text-[10px] font-black text-slate-800 uppercase tracking-wide">
-                          {recipe.category}
-                        </span>
-                      )}
+                      {/* Categoria & Paese di Origine (Punto 5) */}
+                      <div className="absolute bottom-2.5 left-2.5 flex items-center gap-1.5 flex-wrap">
+                        {recipe.category && (
+                          <span className="px-2 py-0.5 rounded-md bg-white/90 dark:bg-slate-900/90 backdrop-blur-md text-[10px] font-black text-slate-800 dark:text-white uppercase tracking-wide shadow-xs">
+                            {recipe.category}
+                          </span>
+                        )}
+                        {recipe.country && (
+                          <span className="px-1.5 py-0.5 rounded-md bg-black/60 backdrop-blur-md text-[10px] font-bold text-white flex items-center gap-1 shadow-xs border border-white/10">
+                            <span>{recipe.flag || '🌍'}</span>
+                            <span>{recipe.country}</span>
+                          </span>
+                        )}
+                      </div>
 
                       {/* Già Salvato Badge */}
                       {isSaved && (
@@ -1091,7 +1178,7 @@ export function RecipeWebSearchModal({
                 {isPreviewLoading && (
                   <div className="py-4 px-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 flex items-center gap-3 text-xs font-bold animate-pulse">
                     <Loader2 className="w-4 h-4 animate-spin text-emerald-600" />
-                    <span>Estrazione dosi, ingredienti e timer passo-passo da GialloZafferano...</span>
+                    <span>Estrazione dosi, ingredienti e timer passo-passo da Ricette Web...</span>
                   </div>
                 )}
 

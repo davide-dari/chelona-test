@@ -456,6 +456,15 @@ export function extractSourceName(url: string): string {
   try {
     const parsed = new URL(url);
     const host = parsed.hostname.toLowerCase().replace(/^www\./, '');
+    if (host.includes('giallozafferano')) return 'Giallozafferano';
+    if (host.includes('cookist')) return 'Cookist';
+    if (host.includes('fattoincasadabenedetta')) return 'Fatto in Casa';
+    if (host.includes('cucchiaio')) return "Cucchiaio d'Argento";
+    if (host.includes('allrecipes')) return 'AllRecipes';
+    if (host.includes('lacucinaitaliana')) return 'La Cucina Italiana';
+    if (host.includes('misya')) return 'Misya';
+    if (host.includes('tavolartegusto')) return 'Tavolartegusto';
+
     const parts = host.split('.');
     if (parts.length >= 2) {
       const subdomains = new Set(['ricette', 'blog', 'cucina', 'm', 'it', 'en', 'es', 'fr', 'de']);
@@ -471,6 +480,243 @@ export function extractSourceName(url: string): string {
   } catch {
     return 'Web';
   }
+}
+
+/** Formatta il badge del sito di provenienza con emoji e nome elegante (es. '🌐 Cookist', '🌐 GialloZafferano', '🌐 Fatto in Casa') */
+export function formatSourceBadge(sourceName?: string, sourceUrl?: string): string {
+  const norm = (sourceName || (sourceUrl ? extractSourceName(sourceUrl) : '')).toLowerCase();
+  if (norm.includes('cookist')) return '🌐 Cookist';
+  if (norm.includes('giallozafferano')) return '🌐 GialloZafferano';
+  if (norm.includes('fattoincasa') || norm.includes('benedetta')) return '🌐 Fatto in Casa';
+  if (norm.includes('cucchiaio')) return "🌐 Cucchiaio d'Argento";
+  if (norm.includes('allrecipes')) return '🌐 AllRecipes';
+  if (norm.includes('lacucinaitaliana')) return '🌐 La Cucina Italiana';
+  if (norm.includes('misya')) return '🌐 Misya';
+  if (norm.includes('tavolartegusto')) return '🌐 Tavolartegusto';
+  if (sourceName && sourceName !== 'Web' && sourceName !== 'Link Web') {
+    return `🌐 ${sourceName}`;
+  }
+  return '🌐 Web';
+}
+
+/**
+ * Rileva il paese di origine culinario, codice ISO e bandiera emoji
+ */
+export function detectRecipeCountry(
+  title: string,
+  rawCuisine?: string,
+  url?: string
+): { country: string; countryCode: string; flag: string } {
+  const normTitle = (title || '').toLowerCase();
+  const normCuisine = (rawCuisine || '').toLowerCase().trim();
+
+  if (normCuisine.includes('giappon') || normCuisine.includes('japan')) {
+    return { country: 'Giappone', countryCode: 'JP', flag: '🇯🇵' };
+  }
+  if (normCuisine.includes('messic') || normCuisine.includes('mexic')) {
+    return { country: 'Messico', countryCode: 'MX', flag: '🇲🇽' };
+  }
+  if (normCuisine.includes('americ') || normCuisine.includes('usa') || normCuisine.includes('stati uniti')) {
+    return { country: 'USA', countryCode: 'US', flag: '🇺🇸' };
+  }
+  if (normCuisine.includes('spagn') || normCuisine.includes('span')) {
+    return { country: 'Spagna', countryCode: 'ES', flag: '🇪🇸' };
+  }
+  if (normCuisine.includes('frances') || normCuisine.includes('french')) {
+    return { country: 'Francia', countryCode: 'FR', flag: '🇫🇷' };
+  }
+  if (normCuisine.includes('indian') || normCuisine.includes('india')) {
+    return { country: 'India', countryCode: 'IN', flag: '🇮🇳' };
+  }
+  if (normCuisine.includes('grec') || normCuisine.includes('greek')) {
+    return { country: 'Grecia', countryCode: 'GR', flag: '🇬🇷' };
+  }
+  if (normCuisine.includes('cines') || normCuisine.includes('chin')) {
+    return { country: 'Cina', countryCode: 'CN', flag: '🇨🇳' };
+  }
+  if (normCuisine.includes('thai')) {
+    return { country: 'Thailandia', countryCode: 'TH', flag: '🇹🇭' };
+  }
+  if (normCuisine.includes('turc') || normCuisine.includes('turk')) {
+    return { country: 'Turchia', countryCode: 'TR', flag: '🇹🇷' };
+  }
+  if (normCuisine.includes('liban')) {
+    return { country: 'Libano', countryCode: 'LB', flag: '🇱🇧' };
+  }
+  if (normCuisine.includes('brasil')) {
+    return { country: 'Brasile', countryCode: 'BR', flag: '🇧🇷' };
+  }
+  if (normCuisine.includes('tedesc') || normCuisine.includes('german')) {
+    return { country: 'Germania', countryCode: 'DE', flag: '🇩🇪' };
+  }
+
+  // Controllo basato sui termini nel titolo della ricetta
+  if (/\b(?:sushi|ramen|gyoza|sashimi|tempura|yakitori|teriyaki|miso|dorayaki|edamame|katsu|udon|onigiri|okonomiyaki|tataki|matcha)\b/i.test(normTitle)) {
+    return { country: 'Giappone', countryCode: 'JP', flag: '🇯🇵' };
+  }
+  if (/\b(?:taco|tacos|burrito|burritos|quesadilla|quesadillas|guacamole|nachos|fajitas|enchiladas|chili con carne|jalapeno|jalapeño|fajita|carnitas|birria)\b/i.test(normTitle)) {
+    return { country: 'Messico', countryCode: 'MX', flag: '🇲🇽' };
+  }
+  if (/\b(?:hamburger|burger|brownie|brownies|cheesecake|pancake|pancakes|hot dog|muffin|muffins|pulled pork|cookies|apple pie|bagel|donut|donuts|waffle|waffles|mac and cheese)\b/i.test(normTitle)) {
+    return { country: 'USA', countryCode: 'US', flag: '🇺🇸' };
+  }
+  if (/\b(?:paella|gazpacho|tapas|tortilla de patatas|churros|crema catalana|sangria|patatas bravas|empanada|empanadas)\b/i.test(normTitle)) {
+    return { country: 'Spagna', countryCode: 'ES', flag: '🇪🇸' };
+  }
+  if (/\b(?:croissant|croissants|quiche|ratatouille|souffle|soufflé|creme brulee|crème brûlée|macaron|macarons|boeuf bourguignon|clafoutis)\b/i.test(normTitle)) {
+    return { country: 'Francia', countryCode: 'FR', flag: '🇫🇷' };
+  }
+  if (/\b(?:curry|tikka masala|samosa|samosas|naan|biryani|tandoori|korma|dahl|dal|garam masala)\b/i.test(normTitle)) {
+    return { country: 'India', countryCode: 'IN', flag: '🇮🇳' };
+  }
+  if (/\b(?:moussaka|tzatziki|souvlaki|pita greca|insalata greca|spanakopita|gyros)\b/i.test(normTitle)) {
+    return { country: 'Grecia', countryCode: 'GR', flag: '🇬🇷' };
+  }
+  if (/\b(?:ravioli cinesi|involtini primavera|noodles|riso cantonese|bao|baozi|wonton|anatra pechinese)\b/i.test(normTitle)) {
+    return { country: 'Cina', countryCode: 'CN', flag: '🇨🇳' };
+  }
+  if (/\b(?:pad thai|tom yum)\b/i.test(normTitle)) {
+    return { country: 'Thailandia', countryCode: 'TH', flag: '🇹🇭' };
+  }
+  if (/\b(?:kebab|doner|baklava|börek|köfte)\b/i.test(normTitle)) {
+    return { country: 'Turchia', countryCode: 'TR', flag: '🇹🇷' };
+  }
+  if (/\b(?:falafel|taboule|taboulè|babaganoush|hummus)\b/i.test(normTitle)) {
+    return { country: 'Libano', countryCode: 'LB', flag: '🇱🇧' };
+  }
+  if (/\b(?:feijoada|picanha|coxinha|brigadeiro)\b/i.test(normTitle)) {
+    return { country: 'Brasile', countryCode: 'BR', flag: '🇧🇷' };
+  }
+  if (/\b(?:pretzel|bretzel|strudel|crauti|bratwurst|kartoffelsalat)\b/i.test(normTitle)) {
+    return { country: 'Germania', countryCode: 'DE', flag: '🇩🇪' };
+  }
+
+  return { country: 'Italia', countryCode: 'IT', flag: '🇮🇹' };
+}
+
+/**
+ * Rileva la portata culinaria (Antipasti, Primi, Secondi, Contorni, Dolci, Piatti Unici, Colazione)
+ */
+export function detectRecipeCourse(title: string, rawCategory?: string): string {
+  const normTitle = (title || '').toLowerCase();
+  const normCat = (rawCategory || '').toLowerCase();
+
+  // 1. Dolci
+  if (
+    normCat.includes('dolc') || normCat.includes('dessert') || normCat.includes('torta') || 
+    normCat.includes('biscott') || normCat.includes('crostata') || normCat.includes('pasticceria') ||
+    /\b(?:torta|torte|crostata|crostate|biscotti|biscotto|tiramis[uù]|muffin|muffins|pancake|pancakes|cheesecake|brownie|brownies|gelato|sorbetto|mousse|budino|panna cotta|plumcake|ciambella|ciambellone|bign[eè]|cioccolato|crema pasticcera|crema chantilly|profiteroles?|pandoro|panettone|bavarese|meringa|crumble|cupcake|waffle|waffles|churros|crema catalana|baklava|dorayaki)\b/i.test(normTitle)
+  ) {
+    return 'Dolci';
+  }
+
+  // 2. Colazione
+  if (
+    normCat.includes('colazion') || normCat.includes('breakfast') || normCat.includes('brunch') ||
+    /\b(?:porridge|granola|cornetto|brioche|croissant|fette biscottate|smoothie bowl)\b/i.test(normTitle)
+  ) {
+    return 'Colazione';
+  }
+
+  // 3. Contorni
+  if (
+    normCat.includes('contorn') || normCat.includes('side dish') ||
+    /\b(?:patate al forno|patatine|purea|pur[eè]|verdure al forno|verdure grigliate|zucchine trifolate|peperonata|caponata|spinaci al burro|fagiolini|carote al burro|funghi trifolati|bietole|finocchi gratinati|insalata mista|insalata verde|crauti)\b/i.test(normTitle)
+  ) {
+    return 'Contorni';
+  }
+
+  // 4. Antipasti
+  if (
+    normCat.includes('antipas') || normCat.includes('appetizer') || normCat.includes('starter') || 
+    normCat.includes('bruschett') || normCat.includes('finger') ||
+    /\b(?:bruschetta|bruschette|crostini|crostino|finger food|carpaccio|tartare|vol-au-vent|voulevant|involtini|pinzimonio|frittelle|fiori di zucca|olive ascolane)\b/i.test(normTitle)
+  ) {
+    return 'Antipasti';
+  }
+
+  // 5. Piatti Unici
+  if (
+    normCat.includes('piatto unico') || normCat.includes('piatti unici') || normCat.includes('one pot') ||
+    /\b(?:pizza|pizze|focaccia|focacce|calzone|calzoni|torta salata|quiche|poke bowl|poke|burrito|burritos|tacos?|fajitas?|quesadillas?|enchiladas?|piadina|piadine|club sandwich|insalatona|paella|chili con carne|rustico salato)\b/i.test(normTitle)
+  ) {
+    return 'Piatti Unici';
+  }
+
+  // 6. Secondi
+  if (
+    normCat.includes('second') || normCat.includes('carne') || normCat.includes('pesce') || 
+    normCat.includes('arrosto') || normCat.includes('main') ||
+    /\b(?:carne|pollo|vitello|manzo|maiale|agnello|tacchino|bistecca|arrosto|polpette|polpettone|scaloppine|tagliata|spezzatino|cotoletta|costine|straccetti|pesce|salmone|tonno|orata|orate|spigola|spigole|merluzzo|baccal[aà]|calamari|calamaro|gamberi|gamberoni|polpo|seppie|seppia|fritto misto|hamburger|burger|omelette|frittata|kebab|teriyaki|katsu|souvlaki|feijoada|picanha)\b/i.test(normTitle)
+  ) {
+    return 'Secondi';
+  }
+
+  // 7. Primi
+  if (
+    normCat.includes('prim') || normCat.includes('pasta') || normCat.includes('riso') || 
+    normCat.includes('zuppa') || normCat.includes('minestra') ||
+    /\b(?:pasta|spaghetti|penne|rigatoni|tagliatelle|fettuccine|lasagn[ae]|gnocchi|risotto|riso|zuppa|minestra|vellutata|ramen|noodles|couscous|tortellini|ravioli|orzo|farro|polenta|orecchiette|fusilli|bucatini|canederli|carbonara|amatriciana|cacio e pepe|bolognese|rag[uù]|pesto)\b/i.test(normTitle)
+  ) {
+    return 'Primi';
+  }
+
+  return mapToChelonaCategory(rawCategory || title);
+}
+
+/**
+ * Classifica completa di una ricetta (Paese + Portata)
+ */
+export function classifyRecipe(
+  title: string,
+  rawCategory?: string,
+  rawCuisine?: string,
+  url?: string
+): { country: string; countryCode: string; flag: string; category: string } {
+  const countryInfo = detectRecipeCountry(title, rawCuisine, url);
+  const category = detectRecipeCourse(title, rawCategory);
+  return {
+    ...countryInfo,
+    category,
+  };
+}
+
+/**
+ * Formatta l'etichetta per la portata (es. 'Primo', 'Secondo', 'Dolce')
+ */
+export function formatRecipeCourseLabel(cat: string): string {
+  switch (cat) {
+    case 'Primi':
+    case 'Primi Piatti':
+      return 'Primo';
+    case 'Secondi':
+    case 'Secondi Piatti':
+      return 'Secondo';
+    case 'Antipasti':
+      return 'Antipasto';
+    case 'Contorni':
+      return 'Contorno';
+    case 'Dolci':
+    case 'Dolci & Dessert':
+      return 'Dolce';
+    case 'Piatti Unici':
+      return 'Piatto Unico';
+    case 'Colazione':
+    case 'Colazione & Merenda':
+      return 'Colazione';
+    default:
+      return cat || 'Primo';
+  }
+}
+
+/**
+ * Formatta il tag identificativo (es. "🇮🇹 Italia • Primo" o "🇲🇽 Messico • Secondo")
+ */
+export function formatRecipeTags(recipe: { country?: string; flag?: string; category?: string; title?: string }): string {
+  const flag = recipe.flag || (recipe.country === 'Giappone' ? '🇯🇵' : recipe.country === 'Messico' ? '🇲🇽' : recipe.country === 'USA' || recipe.country === 'Stati Uniti' ? '🇺🇸' : recipe.country === 'Spagna' ? '🇪🇸' : recipe.country === 'Francia' ? '🇫🇷' : recipe.country === 'India' ? '🇮🇳' : recipe.country === 'Grecia' ? '🇬🇷' : recipe.country === 'Cina' ? '🇨🇳' : '🇮🇹');
+  const country = recipe.country || 'Italia';
+  const course = formatRecipeCourseLabel(recipe.category || 'Primi');
+  return `${flag} ${country} • ${course}`;
 }
 
 /** Mappa la categoria da recipeCategory / tags a una categoria valida di Chelona */
@@ -573,9 +819,12 @@ export function convertJsonLdRecipeToItem(
 
   const rawCat = Array.isArray(recipeLd.recipeCategory) ? recipeLd.recipeCategory[0] : recipeLd.recipeCategory;
   const rawCuisine = Array.isArray(recipeLd.recipeCuisine) ? recipeLd.recipeCuisine[0] : recipeLd.recipeCuisine;
+  const classification = classifyRecipe(title, rawCat, rawCuisine, originalUrl);
   const category = mapToChelonaCategory(rawCat || title, rawCuisine);
 
-  let country = rawCuisine ? cleanText(rawCuisine) : 'Italia';
+  let country = classification.country;
+  let flag = classification.flag;
+  let countryCode = classification.countryCode;
   if (category === 'Cucine dal Mondo' && country.toLowerCase() === 'italia') {
     country = 'Mondo';
   }
@@ -598,6 +847,8 @@ export function convertJsonLdRecipeToItem(
     calories,
     difficulty,
     country,
+    countryCode,
+    flag,
     sourceUrl: recipeUrl,
     sourceName,
     isCustom: true,
@@ -1114,6 +1365,7 @@ export function extractAllRecipesFromHtml(html: string, originalUrl: string): Us
         if (existing.category === 'Primi' && category !== 'Primi') existing.category = category;
         if (!existing.sourceUrl && cardUrl) existing.sourceUrl = cardUrl;
       } else {
+        const classification = classifyRecipe(cardTitle, rawCat || cardTitle, undefined, cardUrl);
         addRecipe({
           id: `user_rec_${Date.now()}_${recipes.length}_${Math.random().toString(36).slice(2, 7)}`,
           title: cardTitle,
@@ -1125,7 +1377,9 @@ export function extractAllRecipesFromHtml(html: string, originalUrl: string): Us
           prepTimeMinutes,
           difficulty,
           calories,
-          country: 'Italia',
+          country: classification.country,
+          countryCode: classification.countryCode,
+          flag: classification.flag,
           sourceUrl: cardUrl,
           sourceName: extractSourceName(cardUrl),
           isCustom: true,
@@ -1162,6 +1416,7 @@ export function extractAllRecipesFromHtml(html: string, originalUrl: string): Us
         const linkM = sectionHtml.match(/<a[^>]+href=["']([^"']+)["']/i);
         const cardUrl = resolveUrl(linkM ? linkM[1].trim() : undefined, originalUrl);
         const category = mapToChelonaCategory(h.title);
+        const classification = classifyRecipe(h.title, undefined, undefined, cardUrl);
 
         addRecipe({
           id: `user_rec_${Date.now()}_${recipes.length}_${Math.random().toString(36).slice(2, 7)}`,
@@ -1171,7 +1426,9 @@ export function extractAllRecipesFromHtml(html: string, originalUrl: string): Us
           steps: [],
           image: cardImage,
           servings: 4,
-          country: 'Italia',
+          country: classification.country,
+          countryCode: classification.countryCode,
+          flag: classification.flag,
           sourceUrl: cardUrl,
           sourceName: extractSourceName(cardUrl),
           isCustom: true,
@@ -1181,7 +1438,87 @@ export function extractAllRecipesFromHtml(html: string, originalUrl: string): Us
       }
     }
 
-    // 3c. Schede HTML generiche in <article>, <div>, <li> o <section>
+    // 3c. Schede Cookist (<div class="ac ...">)
+    const cookistRegex = /<div\b[^>]*class=["'][^"']*\bac\b[^"']*["'][^>]*>([\s\S]*?)<\/div>\s*<\/div>/gi;
+    let cm: RegExpExecArray | null;
+    let cookistCount = 0;
+    while ((cm = cookistRegex.exec(html)) !== null && cookistCount < 30) {
+      const cardHtml = cm[1];
+      const titleM = cardHtml.match(/class=["'][^"']*ac__title[^"']*["'][^>]*>([\s\S]*?)<\/a>/i);
+      const linkM = cardHtml.match(/<a\b[^>]*class=["'][^"']*ac__title[^"']*["'][^>]*href=["']([^"']+)["']/i) || cardHtml.match(/<a\b[^>]*href=["']([^"']+)["']/i);
+      const imgM = cardHtml.match(/<img[^>]+src=["']([^"']+)["']/i);
+      const catM = cardHtml.match(/class=["'][^"']*lbl__content[^"']*["'][^>]*>([\s\S]*?)<\/span>/i);
+      if (titleM && linkM) {
+        const rawTitle = cleanText(titleM[1]).replace(/&#039;/g, "'").replace(/&amp;/g, '&');
+        if (rawTitle && rawTitle.length >= 3 && !rawTitle.toLowerCase().includes('come votare')) {
+          const cardUrl = resolveUrl(linkM[1].trim(), originalUrl);
+          const rawCat = catM ? cleanText(catM[1]) : '';
+          const classification = classifyRecipe(rawTitle, rawCat, undefined, cardUrl);
+          const cardImage = imgM ? imgM[1].trim() : extractCardImage(cardHtml, originalUrl);
+
+          addRecipe({
+            id: `user_rec_${Date.now()}_${recipes.length}_${Math.random().toString(36).slice(2, 7)}`,
+            title: rawTitle,
+            category: classification.category,
+            ingredients: [],
+            steps: [],
+            image: cardImage,
+            servings: 4,
+            country: classification.country,
+            countryCode: classification.countryCode,
+            flag: classification.flag,
+            sourceUrl: cardUrl,
+            sourceName: 'Cookist',
+            isCustom: true,
+            createdAt: Date.now() + recipes.length,
+            updatedAt: Date.now(),
+          });
+          cookistCount++;
+        }
+      }
+    }
+
+    // 3d. Schede Fatto in Casa da Benedetta (<div class="recipe-teaser ...">)
+    const fattoRegex = /<div\b[^>]*class=["'][^"']*\brecipe-teaser\b[^"']*["'][\s\S]*?<div\b[^>]*class=["'][^"']*\bteaser-intro\b[^"']*["']>([\s\S]*?)<\/div>/gi;
+    let fm: RegExpExecArray | null;
+    let fattoCount = 0;
+    while ((fm = fattoRegex.exec(html)) !== null && fattoCount < 30) {
+      const block = fm[0];
+      const linkM = block.match(/href=["'](https?:\/\/[^"']+)["']/i);
+      const titleM = block.match(/<h3[^>]*class=["'][^"']*title[^"']*["'][^>]*>([\s\S]*?)<\/h3>/i);
+      const imgM = block.match(/(?:data-lazy-src|src)=["'](https?:\/\/[^"']+\.(?:jpg|png|webp|jpeg)[^"']*)["']/i);
+      const catM = block.match(/<p[^>]*class=["'][^"']*category[^"']*["'][^>]*>([\s\S]*?)<\/p>/i);
+      if (titleM && linkM) {
+        const rawTitle = cleanText(titleM[1]);
+        if (rawTitle && rawTitle.length >= 3) {
+          const cardUrl = resolveUrl(linkM[1].trim(), originalUrl);
+          const rawCat = catM ? cleanText(catM[1]) : '';
+          const classification = classifyRecipe(rawTitle, rawCat, undefined, cardUrl);
+          const cardImage = imgM ? imgM[1].trim() : extractCardImage(block, originalUrl);
+
+          addRecipe({
+            id: `user_rec_${Date.now()}_${recipes.length}_${Math.random().toString(36).slice(2, 7)}`,
+            title: rawTitle,
+            category: classification.category,
+            ingredients: [],
+            steps: [],
+            image: cardImage,
+            servings: 4,
+            country: classification.country,
+            countryCode: classification.countryCode,
+            flag: classification.flag,
+            sourceUrl: cardUrl,
+            sourceName: 'Fatto in Casa',
+            isCustom: true,
+            createdAt: Date.now() + recipes.length,
+            updatedAt: Date.now(),
+          });
+          fattoCount++;
+        }
+      }
+    }
+
+    // 3e. Schede HTML generiche in <article>, <div>, <li> o <section>
     const cardRegex = /<(?:article|div|li|section)\b[^>]*(?:class|id)=["'][^"']*(?:recipe-card|ricetta-card|recipe_item|recipe-item|card-recipe|teaser-recipe|archive-recipe|post-recipe|recipe_card|c-recipe|recipe-teaser|card-ricetta)[^"']*["'][^>]*>([\s\S]*?)<\/(?:article|div|li|section)>/gi;
     let cardMatch: RegExpExecArray | null;
     let cardCount = 0;
@@ -1198,6 +1535,7 @@ export function extractAllRecipesFromHtml(html: string, originalUrl: string): Us
           const linkM = cardHtml.match(/<a[^>]+href=["']([^"']+)["']/i);
           const cardUrl = resolveUrl(linkM ? linkM[1].trim() : undefined, originalUrl);
           const category = mapToChelonaCategory(cardTitle);
+          const classification = classifyRecipe(cardTitle, undefined, undefined, cardUrl);
 
           addRecipe({
             id: `user_rec_${Date.now()}_${recipes.length}_${Math.random().toString(36).slice(2, 7)}`,
@@ -1207,7 +1545,9 @@ export function extractAllRecipesFromHtml(html: string, originalUrl: string): Us
             steps: [],
             image: cardImage,
             servings: 4,
-            country: 'Italia',
+            country: classification.country,
+            countryCode: classification.countryCode,
+            flag: classification.flag,
             sourceUrl: cardUrl,
             sourceName: extractSourceName(cardUrl),
             isCustom: true,
@@ -1539,31 +1879,78 @@ export async function searchWebRecipes(
   const safePage = Math.max(1, Math.floor(page || 1));
   const encodedQuery = encodeURIComponent(cleanQ.toLowerCase()).replace(/%20/g, '+');
 
-  // URL primario per la pagina specificata
+  // URL primario per la pagina specificata (GialloZafferano)
   const primaryUrl = safePage <= 1
     ? `https://www.giallozafferano.it/ricerca-ricette/${encodedQuery}/`
     : `https://www.giallozafferano.it/ricerca-ricette/page${safePage}/${encodedQuery}/`;
 
-  let html = await fetchHtmlFromUrl(primaryUrl).catch(() => '');
+  // Fonti multi-sito (Cookist e Fatto in Casa)
+  const cookistUrl = safePage <= 1
+    ? `https://www.cookist.it/?s=${encodedQuery}`
+    : `https://www.cookist.it/page/${safePage}/?s=${encodedQuery}`;
 
-  // Fallback se primaryUrl non restituisce nulla per pagine > 1
-  if ((!html || html.length < 500) && safePage > 1) {
-    const fallbackUrl = `https://www.giallozafferano.it/ricerca-ricette/${encodedQuery}/page${safePage}/`;
-    const fallbackHtml = await fetchHtmlFromUrl(fallbackUrl).catch(() => '');
-    if (fallbackHtml && fallbackHtml.length > 500) {
-      html = fallbackHtml;
+  const fattoUrl = safePage <= 1
+    ? `https://www.fattoincasadabenedetta.it/?s=${encodedQuery}`
+    : `https://www.fattoincasadabenedetta.it/page/${safePage}/?s=${encodedQuery}`;
+
+  // Se safePage <= 2, interroghiamo sia GZ che Cookist e Fatto in Casa
+  const fetchPromises: Promise<{ url: string; html: string }>[] = [
+    fetchHtmlFromUrl(primaryUrl).then(html => ({ url: primaryUrl, html })).catch(() => ({ url: primaryUrl, html: '' })),
+  ];
+
+  if (safePage <= 2) {
+    fetchPromises.push(
+      fetchHtmlFromUrl(cookistUrl).then(html => ({ url: cookistUrl, html })).catch(() => ({ url: cookistUrl, html: '' })),
+      fetchHtmlFromUrl(fattoUrl).then(html => ({ url: fattoUrl, html })).catch(() => ({ url: fattoUrl, html: '' }))
+    );
+  }
+
+  const results = await Promise.allSettled(fetchPromises);
+  const allRecipes: UserRecipeItem[] = [];
+  const seenTitles = new Set<string>();
+  let hasNextPage = false;
+
+  for (const res of results) {
+    if (res.status === 'fulfilled' && res.value.html && res.value.html.length > 500) {
+      if (res.value.url.includes('giallozafferano.it')) {
+        if (detectHasNextPage(res.value.html, safePage, 1)) {
+          hasNextPage = true;
+        }
+      }
+      const pageRecs = extractAllRecipesFromHtml(res.value.html, res.value.url);
+      for (const rec of pageRecs) {
+        const normTitle = (rec.title || '')
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .toLowerCase()
+          .replace(/[^a-z0-9]/g, '');
+        if (normTitle && !seenTitles.has(normTitle)) {
+          seenTitles.add(normTitle);
+          allRecipes.push(rec);
+        }
+      }
     }
   }
 
-  if (!html || html.trim().length === 0) {
-    throw new Error('Impossibile contattare il catalogo online. Verifica la connessione internet.');
+  // Fallback se primaryUrl non restituisce nulla per pagine > 1
+  if (allRecipes.length === 0 && safePage > 1) {
+    const fallbackUrl = `https://www.giallozafferano.it/ricerca-ricette/${encodedQuery}/page${safePage}/`;
+    const fallbackHtml = await fetchHtmlFromUrl(fallbackUrl).catch(() => '');
+    if (fallbackHtml && fallbackHtml.length > 500) {
+      const recs = extractAllRecipesFromHtml(fallbackHtml, fallbackUrl);
+      allRecipes.push(...recs);
+      hasNextPage = detectHasNextPage(fallbackHtml, safePage, recs.length);
+    }
   }
 
-  const recipes = extractAllRecipesFromHtml(html, primaryUrl);
-  const hasNextPage = detectHasNextPage(html, safePage, recipes.length);
+  if (allRecipes.length === 0) {
+    if (results.every(r => r.status === 'rejected' || !r.value.html)) {
+      throw new Error('Impossibile contattare il catalogo online. Verifica la connessione internet.');
+    }
+  }
 
   return {
-    recipes,
+    recipes: allRecipes,
     hasNextPage,
     currentPage: safePage,
   };
@@ -1662,7 +2049,13 @@ export function saveUserRecipes(
   for (let i = 0; i < recipesData.length; i++) {
     const recipeData = recipesData[i];
     const id = recipeData.id || `user_rec_${now}_${i}_${Math.random().toString(36).slice(2, 7)}`;
-    const category = recipeData.category || 'Primi';
+    const classification = classifyRecipe(recipeData.title, recipeData.category, undefined, recipeData.sourceUrl);
+    const category = recipeData.category || classification.category || 'Primi';
+    const country = recipeData.country?.trim() || classification.country;
+    const countryCode = recipeData.countryCode?.trim() || classification.countryCode;
+    const flag = recipeData.flag || classification.flag;
+    const sourceName = recipeData.sourceName || (recipeData.sourceUrl ? extractSourceName(recipeData.sourceUrl) : undefined);
+
     const cleanRecipe: UserRecipeItem = {
       id,
       title: recipeData.title.trim(),
@@ -1678,14 +2071,14 @@ export function saveUserRecipes(
       protein: recipeData.protein ? Number(recipeData.protein) : undefined,
       carbs: recipeData.carbs ? Number(recipeData.carbs) : undefined,
       fat: recipeData.fat ? Number(recipeData.fat) : undefined,
-      country: recipeData.country?.trim() || 'Italia',
-      countryCode: recipeData.countryCode?.trim() || undefined,
-      flag: recipeData.flag || (recipeData.country === 'Italia' ? '🇮🇹' : '🌍'),
+      country,
+      countryCode,
+      flag,
       tags: recipeData.tags && recipeData.tags.length > 0 
         ? recipeData.tags 
-        : (recipeData.sourceUrl ? ['Link Web', recipeData.sourceName || 'GialloZafferano'] : ['Personalizzata', 'La mia ricetta']),
+        : (recipeData.sourceUrl ? ['Link Web', sourceName || 'Web', formatRecipeCourseLabel(category)] : ['Personalizzata', formatRecipeCourseLabel(category)]),
       sourceUrl: recipeData.sourceUrl,
-      sourceName: recipeData.sourceName || (recipeData.sourceUrl ? extractSourceName(recipeData.sourceUrl) : undefined),
+      sourceName,
       isCustom: true,
       createdAt: recipeData.createdAt || (now + i),
       updatedAt: now,
