@@ -390,6 +390,11 @@ export default function VolantinoScreen({
   const [activeCategory, setActiveCategory] = useState<string>('all');
   const [selectedChainSlug, setSelectedChainSlug] = useState<string | null>(null);
 
+  // In-app reader state (opens reader URL directly inside the app without leaving)
+  const [activeReaderFlyer, setActiveReaderFlyer] = useState<VolantinoFlyer | null>(null);
+  const [activeReaderChain, setActiveReaderChain] = useState<VolantinoChain | null>(null);
+  const [activeReaderPage, setActiveReaderPage] = useState<number>(1);
+  const [readerLoading, setReaderLoading] = useState<boolean>(true);
 
   // Best Offers filter state
   const [offersFavOnly, setOffersFavOnly] = useState(false);
@@ -604,14 +609,15 @@ export default function VolantinoScreen({
     return { chain: targetChain, flyer: targetFlyer };
   }, [db]);
 
-  // Direct flyer opener - opens immediately via external browser reader (just like the ExternalLink button in the top right)
-  const openFlyer = useCallback((flyer: VolantinoFlyer, _chain?: VolantinoChain, page: number = 1) => {
+  // Direct in-app flyer opener - opens the reader directly inside the app without leaving
+  const openFlyer = useCallback((flyer: VolantinoFlyer, chain?: VolantinoChain, page: number = 1) => {
+    const parentChain = chain || db.chains.find(c => c.flyers.some(f => f.id === flyer.id)) || null;
     const targetPage = page >= 1 ? page : 1;
-    const url = getBrowserUrl(flyer, targetPage);
-    if (url) {
-      openExternalUrl(url);
-    }
-  }, []);
+    setReaderLoading(true);
+    setActiveReaderFlyer(flyer);
+    setActiveReaderChain(parentChain);
+    setActiveReaderPage(targetPage);
+  }, [db]);
 
   // Direct offer / flyer launch from outside
   const handledInitialOfferRef = useRef<string | null>(null);
@@ -662,6 +668,10 @@ export default function VolantinoScreen({
 
   // Back handling (single unified exit path)
   const handleBack = useCallback(() => {
+    if (activeReaderFlyer) {
+      setActiveReaderFlyer(null);
+      return;
+    }
     if (selectedChainSlug) {
       setSelectedChainSlug(null);
       return;
@@ -675,7 +685,7 @@ export default function VolantinoScreen({
       return;
     }
     onClose();
-  }, [selectedChainSlug, searchQuery, activeCategory, onClose]);
+  }, [activeReaderFlyer, selectedChainSlug, searchQuery, activeCategory, onClose]);
 
   // Listen to Android hardware back
   useEffect(() => {
@@ -801,9 +811,110 @@ export default function VolantinoScreen({
       className="fixed inset-0 z-[150] flex flex-col h-[100dvh] w-full bg-[var(--bg)] overflow-hidden"
     >
       {/* ═══════════════════════════════════════════════════════════════
-          MAIN UNIFIED MINIMAL HUB (Single-Screen, Zero Clutter)
+          IN-APP FLYER READER (Opens inside the app without leaving)
           ═══════════════════════════════════════════════════════════════ */}
-      <div className="flex-1 flex flex-col h-full w-full overflow-hidden">
+      {activeReaderFlyer ? (
+        <div className="flex-1 flex flex-col h-full w-full bg-[var(--bg)] relative overflow-hidden">
+          {/* Reader Top Bar */}
+          <header className="flex items-center justify-between gap-3 pt-[max(env(safe-area-inset-top),12px)] px-3 pb-2.5 bg-[var(--card-bg)] border-b border-[var(--border)] shrink-0 z-30 shadow-xs">
+            <button
+              onClick={() => setActiveReaderFlyer(null)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[var(--surface-variant)] text-[var(--text-main)] hover:bg-[var(--border)] text-xs font-bold transition-all cursor-pointer shrink-0 active:scale-95"
+              title="Torna ai volantini"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              <span>Volantini</span>
+            </button>
+
+            <div className="flex-1 min-w-0 text-center px-1">
+              <div className="flex items-center justify-center gap-2">
+                {activeReaderChain && (
+                  <div className="w-5 h-5 rounded-md bg-white ring-1 ring-[var(--border)] flex items-center justify-center overflow-hidden shrink-0">
+                    <StoreLogo 
+                      id={activeReaderChain.slug} 
+                      short={activeReaderChain.name.slice(0, 2)} 
+                      brandSlug={activeReaderChain.slug.replace('md-discount', 'md').replace('-italia', '').replace('iper-', '').replace('-market', '')} 
+                      size={18} 
+                    />
+                  </div>
+                )}
+                <h1 className="text-xs sm:text-sm font-black text-[var(--text-main)] truncate max-w-[200px] sm:max-w-md">
+                  {cleanTitle(activeReaderFlyer.title)}
+                </h1>
+              </div>
+              <p className="text-[10px] text-[var(--text-muted)] font-medium truncate mt-0.5">
+                {activeReaderChain?.name || 'Supermercato'} · Pagina {activeReaderPage}
+              </p>
+            </div>
+
+            <div className="flex items-center gap-1 shrink-0">
+              {activeReaderChain && (
+                <button
+                  type="button"
+                  onClick={() => toggleFavorite(activeReaderChain.slug)}
+                  className={`p-2 rounded-full hover:bg-[var(--surface-variant)] transition-all active:scale-90 cursor-pointer ${
+                    favorites.includes(activeReaderChain.slug) ? 'text-amber-500' : 'text-[var(--text-muted)] hover:text-amber-500'
+                  }`}
+                  title={favorites.includes(activeReaderChain.slug) ? 'Rimuovi dai preferiti' : 'Aggiungi ai preferiti'}
+                >
+                  <Star className={`w-5 h-5 ${favorites.includes(activeReaderChain.slug) ? 'fill-amber-500' : ''}`} />
+                </button>
+              )}
+              <button
+                onClick={() => {
+                  const targetName = activeReaderChain?.name || activeReaderFlyer.title.replace(/^Volantino\s+/i, '').split(' ')[0];
+                  const loc = zone?.city || (zone?.cap ? `CAP ${zone.cap}` : '');
+                  const q = encodeURIComponent(`${targetName} supermercato ${loc}`.trim());
+                  openExternalUrl(`https://www.google.com/maps/search/${q}`);
+                }}
+                className="p-2 rounded-full hover:bg-[var(--surface-variant)] text-[var(--text-muted)] hover:text-emerald-500 transition-colors cursor-pointer"
+                title="Trova negozio su Google Maps"
+              >
+                <MapPin className="w-4 h-4 text-emerald-500" />
+              </button>
+              <button
+                onClick={() => openExternalUrl(getBrowserUrl(activeReaderFlyer, activeReaderPage))}
+                className="p-2 hover:bg-[var(--surface-variant)] rounded-full text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors cursor-pointer"
+                title="Apri nel browser esterno"
+              >
+                <ExternalLink className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => setActiveReaderFlyer(null)}
+                className="p-2 hover:bg-rose-500/10 rounded-full text-[var(--text-muted)] hover:text-rose-500 transition-colors cursor-pointer"
+                title="Chiudi lettore"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          </header>
+
+          {/* Iframe In-App Reader Container */}
+          <div className="flex-1 min-h-0 relative bg-zinc-950 flex flex-col">
+            {readerLoading && (
+              <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-zinc-950/85 backdrop-blur-xs text-white p-4 text-center">
+                <RefreshCw className="w-6 h-6 animate-spin text-emerald-400" />
+                <p className="text-xs font-bold text-zinc-300">Caricamento volantino in corso…</p>
+              </div>
+            )}
+
+            {/* In-App Reader: loads getBrowserUrl inside app */}
+            <iframe
+              key={`inapp-reader-${activeReaderFlyer.id}-${activeReaderFlyer.bkcode || ''}-${activeReaderPage}`}
+              src={getBrowserUrl(activeReaderFlyer, activeReaderPage)}
+              title={activeReaderFlyer.title}
+              onLoad={() => setReaderLoading(false)}
+              onError={() => setReaderLoading(false)}
+              className="w-full flex-1 border-0"
+              allow="fullscreen; clipboard-write"
+            />
+          </div>
+        </div>
+      ) : (
+        /* ═══════════════════════════════════════════════════════════════
+           MAIN UNIFIED MINIMAL HUB (Single-Screen, Zero Clutter)
+           ═══════════════════════════════════════════════════════════════ */
+        <div className="flex-1 flex flex-col h-full w-full overflow-hidden">
           {/* ── Top Bar Minimal & Clean (Single Back Arrow, No Redundant X) ── */}
           <header className="flex items-center justify-between gap-3 pt-[max(env(safe-area-inset-top),14px)] px-4 pb-3 bg-[var(--card-bg)] border-b border-[var(--border)] shrink-0 z-20">
             <div className="flex items-center gap-2.5 min-w-0">
@@ -1534,6 +1645,7 @@ export default function VolantinoScreen({
             )}
           </div>
         </div>
+      )}
 
       {/* Floating Toast Notification */}
       <AnimatePresence>
