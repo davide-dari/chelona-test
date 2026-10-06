@@ -150,7 +150,26 @@ const CHAIN_CATEGORY_MAP: Record<string, string> = {
 };
 
 // Calaméo Reader URL con salto a pagina
-const getFlyerUrl = (f: VolantinoFlyer, page?: number) => {
+export const getFlyerUrl = (f: VolantinoFlyer, page?: number) => {
+  const targetPage = typeof page === 'number' && page >= 1 ? Math.floor(page) : 1;
+  if (f.directUrl) {
+    if (targetPage > 1) {
+      const sep = f.directUrl.includes('?') ? '&' : '?';
+      return `${f.directUrl}${sep}page=${targetPage}#page/${targetPage}`;
+    }
+    return f.directUrl;
+  }
+  const params: string[] = [];
+  if (f.authid) params.push(`authid=${encodeURIComponent(f.authid)}`);
+  if (targetPage > 1) {
+    params.push(`page=${targetPage}`);
+  }
+  const queryString = params.length > 0 ? `?${params.join('&')}` : '';
+  // Calaméo dedicated embed player for iframe integration
+  return `https://v.calameo.com/?bkcode=${f.bkcode}${queryString}`;
+};
+
+export const getBrowserUrl = (f: VolantinoFlyer, page?: number) => {
   const targetPage = typeof page === 'number' && page >= 1 ? Math.floor(page) : 1;
   if (f.directUrl) {
     if (targetPage > 1) {
@@ -168,10 +187,6 @@ const getFlyerUrl = (f: VolantinoFlyer, page?: number) => {
   const queryString = params.length > 0 ? `?${params.join('&')}` : '';
   const hashString = targetPage > 1 ? `#page/${targetPage}` : '';
   return `https://www.calameo.com/read/${f.bkcode}${queryString}${hashString}`;
-};
-
-const getBrowserUrl = (f: VolantinoFlyer, page?: number) => {
-  return getFlyerUrl(f, page);
 };
 
 /* ═══════════════════════════════════════════════════════════════════
@@ -291,19 +306,49 @@ function FlyerCardCover({ flyer, chain }: FlyerCardCoverProps) {
   const [candidateIndex, setCandidateIndex] = useState(0);
   const [allFailed, setAllFailed] = useState(false);
 
+  // Reset resolution state whenever flyer changes
+  useEffect(() => {
+    setCandidateIndex(0);
+    setAllFailed(false);
+  }, [flyer.id, flyer.coverUrl, flyer.fallbackCoverUrl, flyer.bkcode]);
+
   const candidates = useMemo(() => {
     const list: string[] = [];
-    if (flyer.coverUrl) list.push(flyer.coverUrl);
-    if (flyer.bkcode) {
-      const calameoCover = `https://www.calameo.com/books/social/cover/${flyer.bkcode}${flyer.authid ? `?authid=${flyer.authid}` : ''}`;
-      if (!list.includes(calameoCover)) list.push(calameoCover);
+
+    // 1. Primary configured CDN cover
+    if (flyer.coverUrl) {
+      list.push(flyer.coverUrl);
     }
-    if (flyer.directUrl && flyer.directUrl.includes('cedigros.com')) {
+
+    // 2. High-res Calaméo social CDN cover
+    if (flyer.bkcode) {
+      const calameoSocial = `https://www.calameo.com/books/social/cover/${flyer.bkcode}${flyer.authid ? `?authid=${encodeURIComponent(flyer.authid)}` : ''}`;
+      if (!list.includes(calameoSocial)) list.push(calameoSocial);
+    }
+
+    // 3. Fallback CDN thumbnail (e.g. CentroVolantini original)
+    if (flyer.fallbackCoverUrl && !list.includes(flyer.fallbackCoverUrl)) {
+      list.push(flyer.fallbackCoverUrl);
+    }
+
+    // 4. Working Calaméo thumbnail CDN URLs (https://p.calameoassets.com/...)
+    if (flyer.bkcode) {
+      const assetLarge = `https://p.calameoassets.com/${flyer.bkcode}/p1.large.jpg`;
+      const assetMedium = `https://p.calameoassets.com/${flyer.bkcode}/p1.jpg`;
+      const assetThumb = `https://p.calameoassets.com/${flyer.bkcode}/thumb.jpg`;
+      if (!list.includes(assetLarge)) list.push(assetLarge);
+      if (!list.includes(assetMedium)) list.push(assetMedium);
+      if (!list.includes(assetThumb)) list.push(assetThumb);
+    }
+
+    // 5. CeDiGros CDN cover for GROS flyers
+    if ((flyer.directUrl && flyer.directUrl.includes('cedigros.com')) || chain.slug === 'gros' || flyer.id > 10000) {
       const cedigrosCover = `https://www.cedigros.com/images/covers/cover-flyer_${flyer.id}.jpg`;
       if (!list.includes(cedigrosCover)) list.push(cedigrosCover);
     }
+
     return list;
-  }, [flyer.coverUrl, flyer.bkcode, flyer.authid, flyer.directUrl, flyer.id]);
+  }, [flyer.coverUrl, flyer.fallbackCoverUrl, flyer.bkcode, flyer.authid, flyer.directUrl, flyer.id, chain.slug]);
 
   const currentSrc = candidates[candidateIndex];
 
@@ -425,10 +470,10 @@ export default function VolantinoScreen({
     showToast(`CAP impostato su ${newZone.city || newZone.cap}`);
   }, [showToast]);
 
-  // Sync data with remote
+  // Sync data with remote (forced by user tap)
   const handleSync = async () => {
     setIsSyncing(true);
-    const res = await syncVolantiniRemote();
+    const res = await syncVolantiniRemote({ force: true });
     setIsSyncing(false);
     if (res.updated) {
       setDb(res.db);
@@ -441,7 +486,7 @@ export default function VolantinoScreen({
     if (!calameoFlyer) return;
     const timer = setTimeout(() => {
       setIframeLoading(false);
-    }, 7000);
+    }, 5000);
     return () => clearTimeout(timer);
   }, [calameoFlyer]);
 
@@ -449,13 +494,15 @@ export default function VolantinoScreen({
   useEffect(() => {
     const lastCheck = Number(localStorage.getItem('chelona_volantini_last_sync_check') || 0);
     const now = Date.now();
+    const todayMidnight = new Date();
+    todayMidnight.setHours(0, 0, 0, 0);
     const hasExpiredFlyers = db.chains.some(c =>
-      c.flyers.some(f => f.to && new Date(f.to).getTime() < now - 24 * 3600 * 1000)
+      c.flyers.some(f => f.to && new Date(f.to).getTime() < todayMidnight.getTime())
     );
 
-    if (now - lastCheck > 15 * 60 * 1000 || hasExpiredFlyers) {
+    if (now - lastCheck > 10 * 60 * 1000 || hasExpiredFlyers) {
       localStorage.setItem('chelona_volantini_last_sync_check', String(now));
-      syncVolantiniRemote({ silent: true })
+      syncVolantiniRemote({ silent: true, force: hasExpiredFlyers })
         .then(res => {
           if (res.updated) {
             setDb(res.db);
@@ -716,29 +763,31 @@ export default function VolantinoScreen({
     return allChains.find(c => c.slug === selectedChainSlug) || null;
   }, [selectedChainSlug, allChains]);
 
-  // Display flyers
+  // Display flyers (active flyers prioritized at top)
   const displayFlyers = useMemo(() => {
+    let list: { flyer: VolantinoFlyer; chain: VolantinoChain }[] = [];
     if (activeSelectedChain) {
-      return activeSelectedChain.flyers.map(f => ({ flyer: f, chain: activeSelectedChain }));
-    }
-
-    const q = searchQuery.trim().toLowerCase();
-    const result: { flyer: VolantinoFlyer; chain: VolantinoChain }[] = [];
-
-    for (const c of filteredChains) {
-      for (const f of c.flyers) {
-        if (!q) {
-          result.push({ flyer: f, chain: c });
-        } else {
-          const matchFlyer = f.title.toLowerCase().includes(q) || (f.subtitle && f.subtitle.toLowerCase().includes(q));
-          const matchChain = c.name.toLowerCase().includes(q) || c.slug.includes(q);
-          if (matchFlyer || matchChain) {
-            result.push({ flyer: f, chain: c });
+      list = activeSelectedChain.flyers.map(f => ({ flyer: f, chain: activeSelectedChain }));
+    } else {
+      const q = searchQuery.trim().toLowerCase();
+      for (const c of filteredChains) {
+        for (const f of c.flyers) {
+          if (!q) {
+            list.push({ flyer: f, chain: c });
+          } else {
+            const matchFlyer = f.title.toLowerCase().includes(q) || (f.subtitle && f.subtitle.toLowerCase().includes(q));
+            const matchChain = c.name.toLowerCase().includes(q) || c.slug.includes(q);
+            if (matchFlyer || matchChain) {
+              list.push({ flyer: f, chain: c });
+            }
           }
         }
       }
     }
-    return result;
+
+    const active = list.filter(r => getFlyerExpiryInfo(r.flyer).status !== 'expired');
+    const expired = list.filter(r => getFlyerExpiryInfo(r.flyer).status === 'expired');
+    return [...active, ...expired];
   }, [activeSelectedChain, filteredChains, searchQuery]);
 
   // Best Offers comparison filtering
@@ -880,7 +929,7 @@ export default function VolantinoScreen({
           {/* Expiry alert inside reader */}
           {!dismissExpiryAlert && (() => {
             const expiry = getFlyerExpiryInfo(calameoFlyer);
-            if (expiry.status === 'today' || expiry.status === 'tomorrow' || expiry.status === 'soon') {
+            if (expiry.status === 'today' || expiry.status === 'tomorrow' || expiry.status === 'soon' || expiry.status === 'expired') {
               return (
                 <div className={`px-3 py-1.5 flex items-center justify-between text-xs border-b shrink-0 transition-all ${expiry.badgeBg} ${expiry.textColor} ${expiry.borderColor}`}>
                   <div className="flex items-center gap-2 min-w-0">
@@ -894,7 +943,11 @@ export default function VolantinoScreen({
                         {expiry.shortLabel}
                       </span>
                       {calameoFlyer.to && (
-                        <span className="opacity-90">Valido fino al {new Date(calameoFlyer.to).toLocaleDateString('it-IT')}</span>
+                        <span className="opacity-90">
+                          {expiry.status === 'expired'
+                            ? `Scaduto il ${new Date(calameoFlyer.to).toLocaleDateString('it-IT')}`
+                            : `Valido fino al ${new Date(calameoFlyer.to).toLocaleDateString('it-IT')}`}
+                        </span>
                       )}
                     </p>
                   </div>
@@ -943,6 +996,7 @@ export default function VolantinoScreen({
               src={getFlyerUrl(calameoFlyer, calameoPage)}
               title={calameoFlyer.title}
               onLoad={() => setIframeLoading(false)}
+              onError={() => setIframeLoading(false)}
               className="w-full flex-1 border-0"
               allow="fullscreen"
               sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-popups-to-escape-sandbox"
@@ -1110,7 +1164,7 @@ export default function VolantinoScreen({
                         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                           {displayFlyers.map(({ flyer: f, chain: c }) => {
                             const expiry = getFlyerExpiryInfo(f);
-                            const isExpiringSoon = expiry.status === 'today' || expiry.status === 'tomorrow' || expiry.status === 'soon';
+                            const showExpiryBadge = expiry.status === 'today' || expiry.status === 'tomorrow' || expiry.status === 'soon' || expiry.status === 'expired';
                             const isFav = favorites.includes(c.slug);
                             const isBroken = brokenImages.has(f.id);
 
@@ -1132,7 +1186,7 @@ export default function VolantinoScreen({
                                     />
                                   </div>
 
-                                  {isExpiringSoon && (
+                                  {showExpiryBadge && (
                                     <div className="absolute top-2 right-2 z-10">
                                       <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-black border backdrop-blur-md shadow-xs ${expiry.badgeBg} ${expiry.textColor} ${expiry.borderColor}`}>
                                         {expiry.iconType === 'alert' ? <AlertTriangle className="w-2.5 h-2.5" /> : <Clock className="w-2.5 h-2.5" />}
@@ -1415,7 +1469,7 @@ export default function VolantinoScreen({
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                     {displayFlyers.map(({ flyer: f, chain: c }) => {
                       const expiry = getFlyerExpiryInfo(f);
-                      const isExpiringSoon = expiry.status === 'today' || expiry.status === 'tomorrow' || expiry.status === 'soon';
+                      const showExpiryBadge = expiry.status === 'today' || expiry.status === 'tomorrow' || expiry.status === 'soon' || expiry.status === 'expired';
                       const isFav = favorites.includes(c.slug);
                       const isBroken = brokenImages.has(f.id);
 
@@ -1437,7 +1491,7 @@ export default function VolantinoScreen({
                               />
                             </div>
 
-                            {isExpiringSoon && (
+                            {showExpiryBadge && (
                               <div className="absolute top-2 right-2 z-10">
                                 <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-black border backdrop-blur-md shadow-xs ${expiry.badgeBg} ${expiry.textColor} ${expiry.borderColor}`}>
                                   {expiry.iconType === 'alert' ? <AlertTriangle className="w-2.5 h-2.5" /> : <Clock className="w-2.5 h-2.5" />}

@@ -293,27 +293,13 @@ async function verifyCalameoFlyer(flyer) {
       return null;
     }
 
-    // 2. Risoluzione della copertina migliore (Social Cover CDN verificata)
-    let finalCoverUrl = socialCoverUrl;
-    const coverRes = await fetchWithRetry(socialCoverUrl, { method: 'HEAD' });
-    const isSocialCoverOk = coverRes && coverRes.ok && (coverRes.headers.get('content-type') || '').includes('image');
-
-    if (!isSocialCoverOk && flyer.rawCvCoverUrl) {
-      const cvCoverRes = await fetchWithRetry(flyer.rawCvCoverUrl, { method: 'HEAD' });
-      if (cvCoverRes && cvCoverRes.ok) {
-        finalCoverUrl = flyer.rawCvCoverUrl;
-      } else {
-        return null; // Nessuna copertina funzionante
-      }
-    } else if (!isSocialCoverOk) {
-      return null;
-    }
-
+    // 2. Risoluzione della copertina migliore (Social Cover CDN ad alta risoluzione + fallback CentroVolantini)
     return {
       id: flyer.id,
       title: flyer.title,
       subtitle: flyer.subtitle,
-      coverUrl: finalCoverUrl,
+      coverUrl: socialCoverUrl,
+      fallbackCoverUrl: flyer.rawCvCoverUrl,
       from: flyer.from,
       to: flyer.to,
       bkcode: flyer.bkcode,
@@ -460,6 +446,7 @@ export interface VolantinoFlyer {
   title: string;
   subtitle?: string;
   coverUrl?: string;
+  fallbackCoverUrl?: string;
   from?: string;
   to?: string;
   bkcode?: string;

@@ -98,12 +98,16 @@ console.log('5. Testing Live HTTP sample reachability...');
 const sampleCalameo = VOLANTINI_DB.chains.find(c => c.slug === 'lidl')?.flyers[0];
 assert.ok(sampleCalameo, 'Lidl flyer must exist');
 const calameoReaderUrl = `https://www.calameo.com/read/${sampleCalameo.bkcode}${sampleCalameo.authid ? `?authid=${sampleCalameo.authid}` : ''}`;
+const calameoEmbedUrl = `https://v.calameo.com/?bkcode=${sampleCalameo.bkcode}${sampleCalameo.authid ? `&authid=${sampleCalameo.authid}` : ''}`;
 const calameoRes = await fetch(calameoReaderUrl, { method: 'HEAD' });
 assert.equal(calameoRes.status, 200, 'Calameo reader URL must return HTTP 200');
 
+const calameoEmbedRes = await fetch(calameoEmbedUrl, { method: 'HEAD' });
+assert.equal(calameoEmbedRes.status, 200, 'Calameo embed URL (v.calameo.com) must return HTTP 200');
+
 const calameoCoverRes = await fetch(sampleCalameo.coverUrl, { method: 'HEAD' });
 assert.equal(calameoCoverRes.status, 200, 'Calameo cover URL must return HTTP 200');
-console.log(`✓ Calameo flyer #${sampleCalameo.id} reader (200) and cover (200) verified`);
+console.log(`✓ Calameo flyer #${sampleCalameo.id} embed (200), reader (200) and cover (200) verified`);
 
 const sampleGros = VOLANTINI_DB.chains.find(c => c.slug === 'pewex')?.flyers[0];
 assert.ok(sampleGros, 'Pewex flyer must exist');
@@ -113,5 +117,25 @@ assert.equal(grosRes.status, 200, 'CeDiGros direct reader URL must return HTTP 2
 const grosCoverRes = await fetch(sampleGros.coverUrl, { method: 'HEAD' });
 assert.equal(grosCoverRes.status, 200, 'CeDiGros cover URL must return HTTP 200');
 console.log(`✓ CeDiGros flyer #${sampleGros.id} reader (200) and cover (200) verified`);
+
+// 6. Test Remote Sync Endpoints
+console.log('6. Testing Remote Sync Endpoints Reachability...');
+const remoteUrls = [
+  'https://raw.githubusercontent.com/davide-dari/chelona-test/main/public/volantiniDb.json',
+  'https://cdn.jsdelivr.net/gh/davide-dari/chelona-test@main/public/volantiniDb.json'
+];
+for (const u of remoteUrls) {
+  const res = await fetch(u, { method: 'HEAD' });
+  assert.equal(res.status, 200, `Remote endpoint ${u} must return HTTP 200`);
+}
+console.log('✓ Remote sync endpoints (GitHub raw & jsDelivr CDN) responding with HTTP 200');
+
+// 7. Test Multi-CDN Cover Fallback Candidates
+console.log('7. Testing Multi-CDN Cover Candidate Resolution...');
+assert.ok(sampleCalameo.coverUrl.includes('calameo.com'), 'Calaméo flyer primary cover must be CDN cover');
+const sampleWithFallback = VOLANTINI_DB.chains.flatMap(c => c.flyers).find(f => f.fallbackCoverUrl);
+assert.ok(sampleWithFallback, 'Must have flyers with fallbackCoverUrl');
+assert.ok(sampleWithFallback.fallbackCoverUrl.includes('centrovolantini.it'), 'Fallback cover points to CV thumbnail');
+console.log('✓ Multi-candidate cover resolution (Calaméo CDN cover + fallbackCoverUrl) verified');
 
 console.log('\n🎉 ALL VOLANTINI TESTS PASSED PERFECTLY (100% OPERATIONAL)!');
