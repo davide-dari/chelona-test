@@ -5,7 +5,7 @@ import {
   ShoppingCart, Check, Utensils, CheckCircle2, Eye,
   BookmarkCheck, Trash2, Plus, Link2, Edit3, ExternalLink, Users,
   Timer, Play, Pause, RotateCcw, ChevronLeft, Clock, Flame, ListOrdered,
-  Globe, Loader2, SlidersHorizontal, Filter
+  Globe, Loader2, SlidersHorizontal, Filter, Smartphone
 } from 'lucide-react';
 
 export const FALLBACK_RECIPE_IMAGE = 'https://images.unsplash.com/photo-1498837167922-ddd27525d352?w=800';
@@ -637,8 +637,26 @@ export function RecipesScreen({
           </div>
         </div>
 
-        {/* Header pulito: rimossi tasti internet e link */}
-        <div className="flex items-center gap-2"></div>
+        {/* Tasto Crea App Indipendente */}
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={async () => {
+              try {
+                const { createSectionShortcut } = await import('../services/shortcutService');
+                const res = await createSectionShortcut('recipes');
+                showToast(res.message);
+              } catch {
+                showToast('Errore durante la creazione dell\'app');
+              }
+            }}
+            className="px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-2xl bg-[var(--card-bg)] border border-[var(--border)] hover:border-orange-500/50 text-[var(--text-muted)] hover:text-orange-500 transition-all cursor-pointer flex items-center gap-1.5 shadow-xs active:scale-95 text-xs font-bold"
+            title="Aggiungi Ricettario alla Schermata Home come App indipendente"
+          >
+            <Smartphone className="w-4 h-4 text-orange-500" />
+            <span className="hidden sm:inline">Crea App</span>
+          </button>
+        </div>
       </header>
 
       {(() => {

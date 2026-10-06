@@ -5178,7 +5178,14 @@ export default function App() {
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                           <button
                             onClick={() => { setInitialRecipesCategory(null); setIsRecipesOpen(true); }}
-                            className="bg-[var(--card-bg)] p-6 lg:p-8 rounded-[2.5rem] border border-[var(--border)] shadow-sm hover:border-orange-500/50 hover:bg-orange-500/5 transition-all group flex flex-col items-center text-center gap-4 cursor-pointer"
+                            onTouchStart={(e) => handleSectionPressStart({ id: 'recipes', title: 'Ricettario & Cucina', icon: BookOpen, color: 'orange' }, e)}
+                            onTouchEnd={handleSectionPressEnd}
+                            onTouchMove={handleSectionTouchMove}
+                            onMouseDown={(e) => handleSectionPressStart({ id: 'recipes', title: 'Ricettario & Cucina', icon: BookOpen, color: 'orange' }, e)}
+                            onMouseUp={handleSectionPressEnd}
+                            onMouseLeave={handleSectionPressEnd}
+                            onContextMenu={(e) => e.preventDefault()}
+                            className="bg-[var(--card-bg)] p-6 lg:p-8 rounded-[2.5rem] border border-[var(--border)] shadow-sm hover:border-orange-500/50 hover:bg-orange-500/5 transition-all group flex flex-col items-center text-center gap-4 cursor-pointer select-none active:scale-[0.99] relative"
                           >
                             <div className="w-16 h-16 bg-orange-500/10 text-orange-500 rounded-3xl flex items-center justify-center group-hover:scale-110 transition-transform shadow-inner">
                               <BookOpen className="w-8 h-8" />
@@ -5214,7 +5221,14 @@ export default function App() {
                                 setEditingSupermarketModule(newSupermarket);
                               }
                             }}
-                            className="bg-[var(--card-bg)] p-6 lg:p-8 rounded-[2.5rem] border border-[var(--border)] shadow-sm hover:border-emerald-500/50 hover:bg-emerald-500/5 transition-all group flex flex-col items-center text-center gap-4 cursor-pointer"
+                            onTouchStart={(e) => handleSectionPressStart({ id: 'supermarket', title: 'Lista della Spesa', icon: ShoppingBasket, color: 'emerald' }, e)}
+                            onTouchEnd={handleSectionPressEnd}
+                            onTouchMove={handleSectionTouchMove}
+                            onMouseDown={(e) => handleSectionPressStart({ id: 'supermarket', title: 'Lista della Spesa', icon: ShoppingBasket, color: 'emerald' }, e)}
+                            onMouseUp={handleSectionPressEnd}
+                            onMouseLeave={handleSectionPressEnd}
+                            onContextMenu={(e) => e.preventDefault()}
+                            className="bg-[var(--card-bg)] p-6 lg:p-8 rounded-[2.5rem] border border-[var(--border)] shadow-sm hover:border-emerald-500/50 hover:bg-emerald-500/5 transition-all group flex flex-col items-center text-center gap-4 cursor-pointer select-none active:scale-[0.99] relative"
                           >
                             <div className="w-16 h-16 bg-emerald-500/10 text-emerald-500 rounded-3xl flex items-center justify-center group-hover:scale-110 transition-transform shadow-inner">
                               <ShoppingBasket className="w-8 h-8" />
@@ -5251,7 +5265,14 @@ export default function App() {
                                 setEditingVolantinoModule(newVolantino);
                               }
                             }}
-                            className="bg-[var(--card-bg)] p-6 lg:p-8 rounded-[2.5rem] border border-[var(--border)] shadow-sm hover:border-amber-500/50 hover:bg-amber-500/5 transition-all group flex flex-col items-center text-center gap-4 cursor-pointer"
+                            onTouchStart={(e) => handleSectionPressStart({ id: 'volantino', title: 'Volantino & Sconti', icon: BadgePercent, color: 'amber' }, e)}
+                            onTouchEnd={handleSectionPressEnd}
+                            onTouchMove={handleSectionTouchMove}
+                            onMouseDown={(e) => handleSectionPressStart({ id: 'volantino', title: 'Volantino & Sconti', icon: BadgePercent, color: 'amber' }, e)}
+                            onMouseUp={handleSectionPressEnd}
+                            onMouseLeave={handleSectionPressEnd}
+                            onContextMenu={(e) => e.preventDefault()}
+                            className="bg-[var(--card-bg)] p-6 lg:p-8 rounded-[2.5rem] border border-[var(--border)] shadow-sm hover:border-amber-500/50 hover:bg-amber-500/5 transition-all group flex flex-col items-center text-center gap-4 cursor-pointer select-none active:scale-[0.99] relative"
                           >
                             <div className="w-16 h-16 bg-amber-500/10 text-amber-500 rounded-3xl flex items-center justify-center group-hover:scale-110 transition-transform shadow-inner">
                               <BadgePercent className="w-8 h-8" />
@@ -5300,7 +5321,14 @@ export default function App() {
                                 setEditingFurnitureModule(newFurniture);
                               }
                             }}
-                            className="bg-[var(--card-bg)] p-6 lg:p-8 rounded-[2.5rem] border border-[var(--border)] shadow-sm hover:border-teal-500/50 hover:bg-teal-500/5 transition-all group flex flex-col items-center text-center gap-4 cursor-pointer"
+                            onTouchStart={(e) => handleSectionPressStart({ id: 'furniture', title: 'Casa & Arredamento', icon: Armchair, color: 'teal' }, e)}
+                            onTouchEnd={handleSectionPressEnd}
+                            onTouchMove={handleSectionTouchMove}
+                            onMouseDown={(e) => handleSectionPressStart({ id: 'furniture', title: 'Casa & Arredamento', icon: Armchair, color: 'teal' }, e)}
+                            onMouseUp={handleSectionPressEnd}
+                            onMouseLeave={handleSectionPressEnd}
+                            onContextMenu={(e) => e.preventDefault()}
+                            className="bg-[var(--card-bg)] p-6 lg:p-8 rounded-[2.5rem] border border-[var(--border)] shadow-sm hover:border-teal-500/50 hover:bg-teal-500/5 transition-all group flex flex-col items-center text-center gap-4 cursor-pointer select-none active:scale-[0.99] relative"
                           >
                             <div className="w-16 h-16 bg-teal-500/10 text-teal-500 rounded-3xl flex items-center justify-center group-hover:scale-110 transition-transform shadow-inner">
                               <Armchair className="w-8 h-8" />
@@ -5313,7 +5341,14 @@ export default function App() {
 
                           <button
                             onClick={() => setIsRecessoOpen(true)}
-                            className="bg-[var(--card-bg)] p-6 lg:p-8 rounded-[2.5rem] border border-[var(--border)] shadow-sm hover:border-rose-500/50 hover:bg-rose-500/5 transition-all group flex flex-col items-center text-center gap-4 cursor-pointer"
+                            onTouchStart={(e) => handleSectionPressStart({ id: 'recesso', title: 'Disdette & Recessi', icon: FileSignature, color: 'rose' }, e)}
+                            onTouchEnd={handleSectionPressEnd}
+                            onTouchMove={handleSectionTouchMove}
+                            onMouseDown={(e) => handleSectionPressStart({ id: 'recesso', title: 'Disdette & Recessi', icon: FileSignature, color: 'rose' }, e)}
+                            onMouseUp={handleSectionPressEnd}
+                            onMouseLeave={handleSectionPressEnd}
+                            onContextMenu={(e) => e.preventDefault()}
+                            className="bg-[var(--card-bg)] p-6 lg:p-8 rounded-[2.5rem] border border-[var(--border)] shadow-sm hover:border-rose-500/50 hover:bg-rose-500/5 transition-all group flex flex-col items-center text-center gap-4 cursor-pointer select-none active:scale-[0.99] relative"
                           >
                             <div className="w-16 h-16 bg-rose-500/10 text-rose-500 rounded-3xl flex items-center justify-center group-hover:scale-110 transition-transform shadow-inner">
                               <FileSignature className="w-8 h-8" />
