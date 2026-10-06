@@ -3834,6 +3834,7 @@ export default function App() {
                 module={editingVolantinoModule}
                 initialOffer={flyerInitialOffer ?? undefined}
                 initialChain={volantinoInitialChain ?? undefined}
+                onAddToShoppingList={handleAddItemsToShoppingList}
                 onClose={() => { 
                   setEditingVolantinoModule(null); 
                   setFlyerInitialOffer(null); 
