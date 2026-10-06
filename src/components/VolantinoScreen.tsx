@@ -53,6 +53,19 @@ function cleanTitle(title: string): string {
     .trim();
 }
 
+function openExternalUrl(url: string) {
+  if (!url) return;
+  try {
+    if (typeof window !== 'undefined') {
+      window.open(url, '_system');
+    }
+  } catch {
+    try {
+      window.open(url, '_blank');
+    } catch {}
+  }
+}
+
 // ── Categorie filtri veloci ──
 export const DC_INDEX_CATEGORIES = [
   { slug: 'all', name: 'Tutti', icon: '🛒' },
@@ -866,7 +879,7 @@ export default function VolantinoScreen({
                   const targetName = calameoChain?.name || calameoFlyer.title.replace(/^Volantino\s+/i, '').split(' ')[0];
                   const loc = zone?.city || (zone?.cap ? `CAP ${zone.cap}` : '');
                   const q = encodeURIComponent(`${targetName} supermercato ${loc}`.trim());
-                  window.open(`https://www.google.com/maps/search/${q}`, '_blank');
+                  openExternalUrl(`https://www.google.com/maps/search/${q}`);
                 }}
                 className="p-2 rounded-full hover:bg-[var(--surface-variant)] text-[var(--text-muted)] hover:text-emerald-500 transition-colors cursor-pointer"
                 title="Trova negozio su Google Maps"
@@ -874,7 +887,7 @@ export default function VolantinoScreen({
                 <MapPin className="w-4 h-4 text-emerald-500" />
               </button>
               <button
-                onClick={() => window.open(getBrowserUrl(calameoFlyer, calameoPage), '_blank')}
+                onClick={() => openExternalUrl(getBrowserUrl(calameoFlyer, calameoPage))}
                 className="p-2 hover:bg-[var(--surface-variant)] rounded-full text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors cursor-pointer"
                 title="Apri nel browser esterno"
               >
@@ -936,11 +949,11 @@ export default function VolantinoScreen({
                 <p className="text-xs font-bold text-zinc-300">Caricamento volantino in corso…</p>
                 <button
                   type="button"
-                  onClick={() => window.open(getBrowserUrl(calameoFlyer, calameoPage), '_blank')}
-                  className="mt-2 px-3.5 py-1.5 rounded-full bg-white/10 hover:bg-white/20 text-xs font-bold text-emerald-400 transition-colors flex items-center gap-1.5 cursor-pointer"
+                  onClick={() => openExternalUrl(getBrowserUrl(calameoFlyer, calameoPage))}
+                  className="mt-2 px-4 py-2 rounded-full bg-emerald-500 hover:bg-emerald-600 text-xs font-black text-white transition-all shadow-md flex items-center gap-1.5 cursor-pointer active:scale-95"
                 >
                   <ExternalLink className="w-3.5 h-3.5" />
-                  <span>Apri nel browser</span>
+                  <span>Apri nel browser esterno</span>
                 </button>
               </div>
             )}
@@ -954,7 +967,7 @@ export default function VolantinoScreen({
               </div>
             )}
 
-            {/* Stable Iframe (Key does NOT thrash DOM on internal page flips) */}
+            {/* Stable Iframe (No sandbox attribute to allow Calaméo embed player without 403 blocks) */}
             <iframe
               key={`flyer-frame-${calameoFlyer.id}-${calameoFlyer.bkcode || ''}`}
               src={getFlyerUrl(calameoFlyer, calameoPage)}
@@ -962,9 +975,7 @@ export default function VolantinoScreen({
               onLoad={() => setIframeLoading(false)}
               onError={() => setIframeLoading(false)}
               className="w-full flex-1 border-0"
-              allow="fullscreen"
-              sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-popups-to-escape-sandbox"
-              referrerPolicy="no-referrer"
+              allow="fullscreen; clipboard-write"
             />
 
             {/* Bottom helper bar */}
@@ -972,7 +983,7 @@ export default function VolantinoScreen({
               <span className="truncate max-w-[60%] font-medium">{calameoFlyer.title}</span>
               <button
                 type="button"
-                onClick={() => window.open(getBrowserUrl(calameoFlyer, calameoPage), '_blank')}
+                onClick={() => openExternalUrl(getBrowserUrl(calameoFlyer, calameoPage))}
                 className="text-emerald-400 hover:text-emerald-300 font-bold flex items-center gap-1 cursor-pointer shrink-0 transition-colors"
               >
                 <ExternalLink className="w-3 h-3" />

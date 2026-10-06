@@ -21,22 +21,32 @@ class UpdateService {
   private currentVersion = APP_VERSION;
 
   async getCurrentVersion(): Promise<string> {
+    let nativeVer = '';
     if (Capacitor.isNativePlatform()) {
       try {
         const info = await CapacitorApp.getInfo();
         if (info && info.version) {
-          this.currentVersion = info.version;
-          return info.version;
+          nativeVer = info.version;
         }
       } catch (e) {
         console.warn('[UpdateService] Failed to retrieve native version info:', e);
       }
     }
-    this.currentVersion = APP_VERSION;
-    return APP_VERSION;
+    // Considera la versione più recente tra il binario nativo e il bundle web (APP_VERSION)
+    if (nativeVer) {
+      this.currentVersion = this.compareVersions(nativeVer, APP_VERSION) >= 0 ? nativeVer : APP_VERSION;
+    } else {
+      this.currentVersion = APP_VERSION;
+    }
+    return this.currentVersion;
   }
 
   async checkForUpdates(force = false): Promise<UpdateInfo | null> {
+    // Su piattaforme web/non native, gli aggiornamenti APK non sono applicabili
+    if (!Capacitor.isNativePlatform() && !force) {
+      return null;
+    }
+
     await this.getCurrentVersion();
     const snoozedVersion = localStorage.getItem('chelona_update_snoozed_version');
     const snoozedUntil = parseInt(localStorage.getItem('chelona_update_snoozed_until') || '0', 10);
@@ -46,7 +56,7 @@ class UpdateService {
       localStorage.removeItem('chelona_update_snoozed_until');
     }
 
-    console.log(`[UpdateService] Checking for updates... Current version: ${this.currentVersion} (force: ${force})`);
+    console.log(`[UpdateService] Checking for updates... Current version: ${this.currentVersion}, APP_VERSION: ${APP_VERSION} (force: ${force})`);
     try {
       const releases = await this.fetchReleases();
       if (!releases || releases.length === 0) {
@@ -76,12 +86,13 @@ class UpdateService {
       }
 
       const latestVersion = validRelease.tag_name.replace(/^v/, '').trim();
-      console.log(`[UpdateService] Latest valid version on GitHub: ${latestVersion}, Current: ${this.currentVersion}`);
+      console.log(`[UpdateService] Latest valid version on GitHub: ${latestVersion}, Current: ${this.currentVersion}, Bundle: ${APP_VERSION}`);
 
-      const comparison = this.compareVersions(latestVersion, this.currentVersion);
-      console.log(`[UpdateService] Comparison: ${comparison} (1 = update available)`);
+      // Se sia la versione corrente rilevata che il bundle web (APP_VERSION) sono già alla versione latest o superiore, l'app è già aggiornata!
+      const currentCmp = this.compareVersions(latestVersion, this.currentVersion);
+      const bundleCmp = this.compareVersions(latestVersion, APP_VERSION);
 
-      if (comparison > 0) {
+      if (currentCmp > 0 && bundleCmp > 0) {
         if (!force && snoozedVersion === latestVersion && Date.now() < snoozedUntil) {
           console.log(`[UpdateService] Update ${latestVersion} snoozed until ${new Date(snoozedUntil).toISOString()}`);
           return null;
