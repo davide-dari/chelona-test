@@ -708,14 +708,52 @@ export function ProfileScreen({
                 <ArrowLeft className="w-4 h-4 text-[var(--accent)]" />
                 <span>Home</span>
               </button>
-              <button
-                type="button"
-                onClick={onClose}
-                className="absolute top-4 right-4 p-2 rounded-full bg-[var(--surface-variant)] hover:bg-[var(--border)] text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors cursor-pointer z-10"
-                title="Chiudi profilo e torna alla Home"
-              >
-                <X className="w-5 h-5" />
-              </button>
+              <div className="absolute top-4 right-4 flex items-center gap-2 z-10">
+                <motion.button
+                  type="button"
+                  whileHover={{ scale: 1.08 }}
+                  whileTap={{ scale: 0.88 }}
+                  onClick={onToggleTheme}
+                  className={`w-9 h-9 rounded-full border flex items-center justify-center transition-all shadow-sm cursor-pointer ${
+                    theme === 'dark'
+                      ? 'bg-amber-500/15 border-amber-500/30 text-amber-300 hover:bg-amber-500/25'
+                      : 'bg-indigo-500/15 border-indigo-500/30 text-indigo-500 hover:bg-indigo-500/25'
+                  }`}
+                  title={theme === 'dark' ? 'Passa alla modalità Chiara' : 'Passa alla modalità Scura'}
+                >
+                  <AnimatePresence mode="wait">
+                    {theme === 'dark' ? (
+                      <motion.div
+                        key="sun-hero"
+                        initial={{ rotate: -90, scale: 0.5, opacity: 0 }}
+                        animate={{ rotate: 0, scale: 1, opacity: 1 }}
+                        exit={{ rotate: 90, scale: 0.5, opacity: 0 }}
+                        transition={{ duration: 0.18 }}
+                      >
+                        <Sun className="w-4 h-4 text-amber-400" />
+                      </motion.div>
+                    ) : (
+                      <motion.div
+                        key="moon-hero"
+                        initial={{ rotate: 90, scale: 0.5, opacity: 0 }}
+                        animate={{ rotate: 0, scale: 1, opacity: 1 }}
+                        exit={{ rotate: -90, scale: 0.5, opacity: 0 }}
+                        transition={{ duration: 0.18 }}
+                      >
+                        <Moon className="w-4 h-4 text-indigo-500" />
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </motion.button>
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="p-2 rounded-full bg-[var(--surface-variant)] hover:bg-[var(--border)] text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors cursor-pointer"
+                  title="Chiudi profilo e torna alla Home"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
               <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6">
                 
                 {/* Avatar with Camera badge */}
@@ -847,52 +885,6 @@ export function ProfileScreen({
               </div>
             </div>
 
-            {/* ── Vault & Activity Summary Cards ── */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mb-6">
-              <div className="bg-[var(--card-bg)] p-4 rounded-2xl border border-[var(--border)] shadow-2xs flex flex-col justify-between">
-                <div className="flex items-center justify-between text-[var(--text-muted)] mb-2">
-                  <span className="text-[11px] font-bold uppercase tracking-wider">Moduli Totali</span>
-                  <Layers className="w-4 h-4 text-[var(--accent)]" />
-                </div>
-                <div>
-                  <span className="text-2xl font-black text-[var(--text-main)]">{stats.totalModules}</span>
-                  <p className="text-[10px] text-[var(--text-muted)] mt-0.5">elementi archiviati</p>
-                </div>
-              </div>
-
-              <div className="bg-[var(--card-bg)] p-4 rounded-2xl border border-[var(--border)] shadow-2xs flex flex-col justify-between">
-                <div className="flex items-center justify-between text-[var(--text-muted)] mb-2">
-                  <span className="text-[11px] font-bold uppercase tracking-wider">Gruppi & Cartelle</span>
-                  <FolderIcon className="w-4 h-4 text-indigo-500" />
-                </div>
-                <div>
-                  <span className="text-2xl font-black text-[var(--text-main)]">{stats.totalFolders}</span>
-                  <p className="text-[10px] text-[var(--text-muted)] mt-0.5">cartelle attive</p>
-                </div>
-              </div>
-
-              <div className="bg-[var(--card-bg)] p-4 rounded-2xl border border-[var(--border)] shadow-2xs flex flex-col justify-between">
-                <div className="flex items-center justify-between text-[var(--text-muted)] mb-2">
-                  <span className="text-[11px] font-bold uppercase tracking-wider">Dati Riservati</span>
-                  <Shield className="w-4 h-4 text-amber-500" />
-                </div>
-                <div>
-                  <span className="text-2xl font-black text-[var(--text-main)]">{stats.sensitiveCount}</span>
-                  <p className="text-[10px] text-[var(--text-muted)] mt-0.5">con blocco riservato</p>
-                </div>
-              </div>
-
-              <div className="bg-[var(--card-bg)] p-4 rounded-2xl border border-[var(--border)] shadow-2xs flex flex-col justify-between">
-                <div className="flex items-center justify-between text-[var(--text-muted)] mb-2">
-                  <span className="text-[11px] font-bold uppercase tracking-wider">Protezione</span>
-                  <Lock className="w-4 h-4 text-emerald-500" />
-                </div>
-                <div>
-                  <span className="text-xs sm:text-sm font-black text-[var(--text-main)] block truncate">AES-GCM 256</span>
-                  <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold mt-0.5">Hardware zero-leak</p>
-                </div>
-              </div>
-            </div>
           </>
         )}
 
@@ -938,45 +930,7 @@ export function ProfileScreen({
               transition={{ duration: 0.2 }}
               className="space-y-6"
             >
-              {/* Scheda Dettagli Account & Identità Vault */}
-              <div className="bg-[var(--card-bg)] rounded-[var(--radius-lg)] p-5 sm:p-6 border border-[var(--border)] shadow-sm space-y-4">
-                <div className="flex items-center gap-3 pb-3 border-b border-[var(--border)]">
-                  <div className="w-10 h-10 rounded-2xl bg-[var(--accent-bg)] flex items-center justify-center text-[var(--accent)]">
-                    <User className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h3 className="text-base font-bold text-[var(--text-main)]">Informazioni Profilo</h3>
-                    <p className="text-xs text-[var(--text-muted)]">Dati account locale e parametri di crittografia</p>
-                  </div>
-                </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-                  <div className="p-3.5 rounded-xl bg-[var(--surface-variant)]/60 border border-[var(--border)]">
-                    <span className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider block mb-1">Nome Utente</span>
-                    <span className="text-sm font-black text-[var(--text-main)] truncate block">{username || 'Utente Chelona'}</span>
-                  </div>
-
-                  <div className="p-3.5 rounded-xl bg-[var(--surface-variant)]/60 border border-[var(--border)]">
-                    <span className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider block mb-1">ID Profilo Locale</span>
-                    <span className="text-xs font-mono font-bold text-[var(--accent)] truncate block">{currentProfileId}</span>
-                  </div>
-
-                  <div className="p-3.5 rounded-xl bg-[var(--surface-variant)]/60 border border-[var(--border)]">
-                    <span className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider block mb-1">Protezione Hardware</span>
-                    <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
-                      <ShieldCheck className="w-3.5 h-3.5" />
-                      <span>AES-GCM 256 Zero-Leak</span>
-                    </span>
-                  </div>
-
-                  <div className="p-3.5 rounded-xl bg-[var(--surface-variant)]/60 border border-[var(--border)]">
-                    <span className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider block mb-1">Biometria Dispositivo</span>
-                    <span className="text-xs font-bold text-[var(--text-main)]">
-                      {isBioSupported ? (isBioEnabled ? 'Attiva (Impronta / Volto)' : 'Disponibile (Non attiva)') : 'Non supportata su questo dispositivo'}
-                    </span>
-                  </div>
-                </div>
-              </div>
 
               {/* Theme Toggle */}
               <div className="flex items-center justify-between bg-[var(--card-bg)] rounded-2xl px-5 py-4 border border-[var(--border)] shadow-sm">
@@ -1439,18 +1393,39 @@ export function ProfileScreen({
 
                 <motion.button
                   type="button"
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.92 }}
+                  whileHover={{ scale: 1.08 }}
+                  whileTap={{ scale: 0.88 }}
                   onClick={onToggleTheme}
-                  className={`px-5 py-2.5 rounded-xl border flex items-center justify-center gap-2 transition-all shadow-sm cursor-pointer shrink-0 font-bold text-xs uppercase tracking-wider ${
+                  className={`w-11 h-11 rounded-2xl border flex items-center justify-center transition-all shadow-sm cursor-pointer shrink-0 ${
                     theme === 'dark'
                       ? 'bg-amber-500/15 border-amber-500/30 text-amber-300 hover:bg-amber-500/25'
                       : 'bg-indigo-500/15 border-indigo-500/30 text-indigo-500 hover:bg-indigo-500/25'
                   }`}
-                  title={theme === 'dark' ? 'Attiva tema chiaro' : 'Attiva tema scuro'}
+                  title={theme === 'dark' ? 'Attiva modalità Chiara' : 'Attiva modalità Scura'}
                 >
-                  {theme === 'dark' ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-indigo-500" />}
-                  <span>{theme === 'dark' ? 'Passa a Chiara' : 'Passa a Scura'}</span>
+                  <AnimatePresence mode="wait">
+                    {theme === 'dark' ? (
+                      <motion.div
+                        key="sun-sys"
+                        initial={{ rotate: -90, scale: 0.5, opacity: 0 }}
+                        animate={{ rotate: 0, scale: 1, opacity: 1 }}
+                        exit={{ rotate: 90, scale: 0.5, opacity: 0 }}
+                        transition={{ duration: 0.18 }}
+                      >
+                        <Sun className="w-5 h-5 text-amber-400" />
+                      </motion.div>
+                    ) : (
+                      <motion.div
+                        key="moon-sys"
+                        initial={{ rotate: 90, scale: 0.5, opacity: 0 }}
+                        animate={{ rotate: 0, scale: 1, opacity: 1 }}
+                        exit={{ rotate: -90, scale: 0.5, opacity: 0 }}
+                        transition={{ duration: 0.18 }}
+                      >
+                        <Moon className="w-5 h-5 text-indigo-500" />
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </motion.button>
               </div>
 

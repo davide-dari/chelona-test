@@ -888,13 +888,14 @@ export default function VolantinoScreen({
             <div className="flex items-center gap-1 shrink-0">
               {calameoChain && (
                 <button
+                  type="button"
                   onClick={() => toggleFavorite(calameoChain.slug)}
-                  className={`p-2 rounded-full hover:bg-[var(--surface-variant)] transition-colors cursor-pointer ${
+                  className={`p-2 rounded-full hover:bg-[var(--surface-variant)] transition-all active:scale-90 cursor-pointer ${
                     favorites.includes(calameoChain.slug) ? 'text-amber-500' : 'text-[var(--text-muted)] hover:text-amber-500'
                   }`}
                   title={favorites.includes(calameoChain.slug) ? 'Rimuovi dai preferiti' : 'Aggiungi ai preferiti'}
                 >
-                  <Star className={`w-4 h-4 ${favorites.includes(calameoChain.slug) ? 'fill-amber-500' : ''}`} />
+                  <Star className={`w-5 h-5 ${favorites.includes(calameoChain.slug) ? 'fill-amber-500' : ''}`} />
                 </button>
               )}
               <button
@@ -1069,24 +1070,28 @@ export default function VolantinoScreen({
           </header>
 
           {/* ── Hero Search Bar (Universal: Finds Stores, Flyers, AND Discount Products) ── */}
-          <div className="px-4 pt-3 pb-2.5 bg-[var(--card-bg)]/80 backdrop-blur-md border-b border-[var(--border)] shrink-0 z-10 max-w-2xl mx-auto w-full space-y-2.5">
-            <div className="relative">
-              <Search className="w-4 h-4 text-[var(--text-muted)] absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-              <input
-                value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
-                placeholder="Cerca negozio o prodotto (es. Conad, pasta, caffè…)"
-                className="w-full pl-10 pr-9 py-2.5 rounded-2xl bg-[var(--surface-variant)] border border-[var(--border)] text-[var(--text-main)] font-semibold text-xs sm:text-sm outline-none focus:border-emerald-500 transition-colors placeholder:text-[var(--text-muted)]"
-              />
-              {searchQuery && (
-                <button
-                  onClick={() => setSearchQuery('')}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors cursor-pointer"
-                  title="Cancella ricerca"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              )}
+          <div className="px-4 pt-3.5 pb-3 bg-[var(--card-bg)]/90 backdrop-blur-md border-b border-[var(--border)] shrink-0 z-10 max-w-2xl mx-auto w-full space-y-3">
+            <div className="relative group">
+              <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/15 via-teal-500/15 to-amber-500/15 rounded-2xl sm:rounded-3xl blur-md opacity-60 group-focus-within:opacity-100 transition-opacity pointer-events-none" />
+              <div className="relative flex items-center bg-[var(--card-bg)] border-2 border-[var(--border)] focus-within:border-emerald-500 rounded-2xl sm:rounded-3xl shadow-sm transition-all px-3.5 sm:px-4 py-3 sm:py-3.5">
+                <Search className="w-5 h-5 sm:w-6 sm:h-6 text-emerald-500 shrink-0 mr-3 pointer-events-none" />
+                <input
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                  placeholder="Cerca negozio o prodotto (es. Conad, pasta, caffè…)"
+                  className="w-full bg-transparent text-[var(--text-main)] font-semibold text-sm sm:text-base outline-none placeholder:text-[var(--text-muted)] placeholder:font-normal"
+                />
+                {searchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setSearchQuery('')}
+                    className="p-1 rounded-full hover:bg-[var(--surface-variant)] text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors cursor-pointer ml-1 shrink-0"
+                    title="Cancella ricerca"
+                  >
+                    <X className="w-4 h-4 sm:w-5 sm:h-5" />
+                  </button>
+                )}
+              </div>
             </div>
 
             {/* When NOT searching: Segmented Tab Bar for Mode Switching */}
@@ -1201,12 +1206,12 @@ export default function VolantinoScreen({
                                       e.stopPropagation();
                                       toggleFavorite(c.slug);
                                     }}
-                                    className={`absolute bottom-2 right-2 p-1.5 rounded-full backdrop-blur-md transition-all z-10 cursor-pointer ${
-                                      isFav ? 'bg-amber-500 text-white shadow-xs' : 'bg-black/40 text-white/80 hover:text-white'
+                                    className={`absolute bottom-2 right-2 p-2 sm:p-2.5 rounded-full backdrop-blur-md transition-all z-10 cursor-pointer shadow-md active:scale-90 ${
+                                      isFav ? 'bg-amber-500 text-white shadow-amber-500/30' : 'bg-black/60 text-white/90 hover:text-white hover:bg-black/80'
                                     }`}
                                     title={isFav ? "Rimuovi preferito" : "Aggiungi preferito"}
                                   >
-                                    <Star className={`w-3.5 h-3.5 ${isFav ? 'fill-current' : ''}`} />
+                                    <Star className={`w-5 h-5 sm:w-5.5 sm:h-5.5 ${isFav ? 'fill-current' : ''}`} />
                                   </button>
                                 </div>
 
@@ -1506,12 +1511,12 @@ export default function VolantinoScreen({
                                 e.stopPropagation();
                                 toggleFavorite(c.slug);
                               }}
-                              className={`absolute bottom-2 right-2 p-1.5 rounded-full backdrop-blur-md transition-all z-10 cursor-pointer ${
-                                isFav ? 'bg-amber-500 text-white shadow-xs' : 'bg-black/40 text-white/80 hover:text-white'
+                              className={`absolute bottom-2 right-2 p-2 sm:p-2.5 rounded-full backdrop-blur-md transition-all z-10 cursor-pointer shadow-md active:scale-90 ${
+                                isFav ? 'bg-amber-500 text-white shadow-amber-500/30' : 'bg-black/60 text-white/90 hover:text-white hover:bg-black/80'
                               }`}
                               title={isFav ? "Rimuovi preferito" : "Aggiungi preferito"}
                             >
-                              <Star className={`w-3.5 h-3.5 ${isFav ? 'fill-current' : ''}`} />
+                              <Star className={`w-5 h-5 sm:w-5.5 sm:h-5.5 ${isFav ? 'fill-current' : ''}`} />
                             </button>
                           </div>
 
