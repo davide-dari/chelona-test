@@ -5,7 +5,7 @@ import {
   ShoppingCart, Check, Utensils, CheckCircle2, Eye,
   BookmarkCheck, Trash2, Plus, Link2, Edit3, ExternalLink, Users,
   Timer, Play, Pause, RotateCcw, ChevronLeft, Clock, Flame, ListOrdered,
-  Globe, Loader2, SlidersHorizontal, Filter, Smartphone
+  Globe, Loader2, SlidersHorizontal, Filter
 } from 'lucide-react';
 
 export const FALLBACK_RECIPE_IMAGE = 'https://images.unsplash.com/photo-1498837167922-ddd27525d352?w=800';
@@ -637,26 +637,8 @@ export function RecipesScreen({
           </div>
         </div>
 
-        {/* Tasto Crea App Indipendente */}
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={async () => {
-              try {
-                const { createSectionShortcut } = await import('../services/shortcutService');
-                const res = await createSectionShortcut('recipes');
-                showToast(res.message);
-              } catch {
-                showToast('Errore durante la creazione dell\'app');
-              }
-            }}
-            className="px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-2xl bg-[var(--card-bg)] border border-[var(--border)] hover:border-orange-500/50 text-[var(--text-muted)] hover:text-orange-500 transition-all cursor-pointer flex items-center gap-1.5 shadow-xs active:scale-95 text-xs font-bold"
-            title="Aggiungi Ricettario alla Schermata Home come App indipendente"
-          >
-            <Smartphone className="w-4 h-4 text-orange-500" />
-            <span className="hidden sm:inline">Crea App</span>
-          </button>
-        </div>
+        {/* Header pulito */}
+        <div className="flex items-center gap-2"></div>
       </header>
 
       {(() => {
@@ -669,13 +651,13 @@ export function RecipesScreen({
         return (
           <main className={`flex-1 flex flex-col ${
             !hasActiveResultsView 
-              ? 'h-full justify-start pt-10 sm:pt-14 items-center overflow-hidden px-4 pr-6 sm:px-6' 
+              ? 'h-full justify-center items-center overflow-hidden p-4 sm:p-6 pb-10 sm:pb-16' 
               : 'overflow-y-auto p-4 md:p-8 custom-scrollbar'
           }`}>
-            {/* HERO BARRA & TITOLO (Posizionato in alto e leggermente arretrato a sinistra) */}
+            {/* HERO BARRA & TITOLO (Perfettamente centrato) */}
             <div className={`w-full transition-all duration-200 ${
               !hasActiveResultsView 
-                ? 'max-w-xl mx-auto space-y-6 text-center -translate-x-1.5 sm:-translate-x-2' 
+                ? 'max-w-xl mx-auto space-y-6 text-center my-auto flex flex-col items-center' 
                 : 'max-w-3xl mx-auto space-y-3 mb-6 shrink-0'
             }`}>
               {/* TITOLO AL CENTRO */}
