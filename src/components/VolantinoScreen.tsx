@@ -280,6 +280,80 @@ function CapModal(props: {
 }
 
 /* ═══════════════════════════════════════════════════════════════════
+   RESILIENT FLYER COVER (Multi-CDN resolution with branding fallback)
+   ═══════════════════════════════════════════════════════════════════ */
+interface FlyerCardCoverProps {
+  flyer: VolantinoFlyer;
+  chain: VolantinoChain;
+}
+
+function FlyerCardCover({ flyer, chain }: FlyerCardCoverProps) {
+  const [candidateIndex, setCandidateIndex] = useState(0);
+  const [allFailed, setAllFailed] = useState(false);
+
+  const candidates = useMemo(() => {
+    const list: string[] = [];
+    if (flyer.coverUrl) list.push(flyer.coverUrl);
+    if (flyer.bkcode) {
+      const calameoCover = `https://www.calameo.com/books/social/cover/${flyer.bkcode}${flyer.authid ? `?authid=${flyer.authid}` : ''}`;
+      if (!list.includes(calameoCover)) list.push(calameoCover);
+    }
+    if (flyer.directUrl && flyer.directUrl.includes('cedigros.com')) {
+      const cedigrosCover = `https://www.cedigros.com/images/covers/cover-flyer_${flyer.id}.jpg`;
+      if (!list.includes(cedigrosCover)) list.push(cedigrosCover);
+    }
+    return list;
+  }, [flyer.coverUrl, flyer.bkcode, flyer.authid, flyer.directUrl, flyer.id]);
+
+  const currentSrc = candidates[candidateIndex];
+
+  const handleError = () => {
+    if (candidateIndex + 1 < candidates.length) {
+      setCandidateIndex((prev) => prev + 1);
+    } else {
+      setAllFailed(true);
+    }
+  };
+
+  if (!currentSrc || allFailed) {
+    return (
+      <div className="w-full h-full flex flex-col items-center justify-between p-3.5 text-center bg-gradient-to-br from-emerald-500/10 via-[var(--surface-variant)] to-emerald-500/5 select-none">
+        <div className="w-full flex justify-end">
+          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-600 dark:text-emerald-400">
+            Volantino
+          </span>
+        </div>
+        <div className="flex flex-col items-center gap-1.5 my-auto">
+          <div className="w-12 h-12 rounded-xl bg-white dark:bg-zinc-800 p-1.5 shadow-xs ring-1 ring-black/5 flex items-center justify-center">
+            <StoreLogo 
+              id={chain.slug} 
+              short={chain.name.slice(0, 2)} 
+              brandSlug={chain.slug.replace('md-discount', 'md').replace('-italia', '').replace('iper-', '').replace('-market', '')} 
+              size={36} 
+            />
+          </div>
+          <span className="text-xs font-black text-[var(--text-main)] line-clamp-1">{chain.name}</span>
+        </div>
+        <div className="w-full flex items-center justify-center gap-1 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
+          <BookOpen className="w-3 h-3" />
+          <span>Sfoglia offerte</span>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <img
+      src={currentSrc}
+      alt={flyer.title}
+      loading="lazy"
+      onError={handleError}
+      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+    />
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════════
    MAIN SCREEN COMPONENT (Unified, Minimalist Single-Screen Hub)
    ═══════════════════════════════════════════════════════════════════ */
 export default function VolantinoScreen({ 
@@ -361,6 +435,71 @@ export default function VolantinoScreen({
     }
     showToast(res.message);
   };
+
+  // Safety timeout for reader loading state
+  useEffect(() => {
+    if (!calameoFlyer) return;
+    const timer = setTimeout(() => {
+      setIframeLoading(false);
+    }, 7000);
+    return () => clearTimeout(timer);
+  }, [calameoFlyer]);
+
+  // Auto-sync on mount if needed
+  useEffect(() => {
+    const lastCheck = Number(localStorage.getItem('chelona_volantini_last_sync_check') || 0);
+    const now = Date.now();
+    const hasExpiredFlyers = db.chains.some(c =>
+      c.flyers.some(f => f.to && new Date(f.to).getTime() < now - 24 * 3600 * 1000)
+    );
+
+    if (now - lastCheck > 15 * 60 * 1000 || hasExpiredFlyers) {
+      localStorage.setItem('chelona_volantini_last_sync_check', String(now));
+      syncVolantiniRemote({ silent: true })
+        .then(res => {
+          if (res.updated) {
+            setDb(res.db);
+            showToast(`✨ Volantini aggiornati! (${res.db.chains.length} catene)`);
+          }
+        })
+        .catch(() => {});
+    }
+  }, []);
+
+  // Periodic background sync and on-resume sync
+  useEffect(() => {
+    const interval = setInterval(() => {
+      syncVolantiniRemote({ silent: true })
+        .then(res => {
+          if (res.updated) {
+            setDb(res.db);
+          }
+        })
+        .catch(() => {});
+    }, 30 * 60 * 1000);
+
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        const lastCheck = Number(localStorage.getItem('chelona_volantini_last_sync_check') || 0);
+        if (Date.now() - lastCheck > 20 * 60 * 1000) {
+          localStorage.setItem('chelona_volantini_last_sync_check', String(Date.now()));
+          syncVolantiniRemote({ silent: true })
+            .then(res => {
+              if (res.updated) {
+                setDb(res.db);
+              }
+            })
+            .catch(() => {});
+        }
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
+  }, []);
 
   // Maps integration for nearby supermarkets
   useEffect(() => {
@@ -773,11 +912,19 @@ export default function VolantinoScreen({
           })()}
 
           {/* Iframe Reader Container */}
-          <div className="flex-1 min-h-0 relative bg-zinc-950">
+          <div className="flex-1 min-h-0 relative bg-zinc-950 flex flex-col">
             {iframeLoading && (
-              <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-zinc-950/80 backdrop-blur-xs text-white">
+              <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-zinc-950/85 backdrop-blur-xs text-white p-4 text-center">
                 <RefreshCw className="w-6 h-6 animate-spin text-emerald-400" />
-                <p className="text-xs font-bold text-zinc-400">Caricamento volantino in corso…</p>
+                <p className="text-xs font-bold text-zinc-300">Caricamento volantino in corso…</p>
+                <button
+                  type="button"
+                  onClick={() => window.open(getBrowserUrl(calameoFlyer, calameoPage), '_blank')}
+                  className="mt-2 px-3.5 py-1.5 rounded-full bg-white/10 hover:bg-white/20 text-xs font-bold text-emerald-400 transition-colors flex items-center gap-1.5 cursor-pointer"
+                >
+                  <ExternalLink className="w-3.5 h-3.5" />
+                  <span>Apri nel browser</span>
+                </button>
               </div>
             )}
 
@@ -796,11 +943,24 @@ export default function VolantinoScreen({
               src={getFlyerUrl(calameoFlyer, calameoPage)}
               title={calameoFlyer.title}
               onLoad={() => setIframeLoading(false)}
-              className="w-full h-full border-0"
+              className="w-full flex-1 border-0"
               allow="fullscreen"
               sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-popups-to-escape-sandbox"
               referrerPolicy="no-referrer"
             />
+
+            {/* Bottom helper bar */}
+            <div className="shrink-0 px-3.5 py-1.5 bg-zinc-900 border-t border-zinc-800 flex items-center justify-between text-[11px] text-zinc-400 z-10">
+              <span className="truncate max-w-[60%] font-medium">{calameoFlyer.title}</span>
+              <button
+                type="button"
+                onClick={() => window.open(getBrowserUrl(calameoFlyer, calameoPage), '_blank')}
+                className="text-emerald-400 hover:text-emerald-300 font-bold flex items-center gap-1 cursor-pointer shrink-0 transition-colors"
+              >
+                <ExternalLink className="w-3 h-3" />
+                <span>Apri a schermo intero</span>
+              </button>
+            </div>
           </div>
         </div>
       ) : (
@@ -961,20 +1121,7 @@ export default function VolantinoScreen({
                                 className="group flex flex-col rounded-2xl bg-[var(--card-bg)] border border-[var(--border)] hover:border-emerald-500/50 hover:shadow-md transition-all overflow-hidden cursor-pointer active:scale-[0.98]"
                               >
                                 <div className="relative aspect-[3/4] w-full bg-[var(--surface-variant)] overflow-hidden">
-                                  {f.coverUrl && !isBroken ? (
-                                    <img
-                                      src={f.coverUrl}
-                                      alt={f.title}
-                                      loading="lazy"
-                                      onError={() => setBrokenImages(prev => new Set(prev).add(f.id))}
-                                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                                    />
-                                  ) : (
-                                    <div className="w-full h-full flex flex-col items-center justify-center p-3 text-center bg-gradient-to-br from-emerald-500/10 to-transparent">
-                                      <Store className="w-8 h-8 text-emerald-500 mb-2 opacity-50" />
-                                      <span className="text-xs font-bold text-[var(--text-main)]">{c.name}</span>
-                                    </div>
-                                  )}
+                                  <FlyerCardCover flyer={f} chain={c} />
 
                                   <div className="absolute top-2 left-2 z-10 w-7 h-7 rounded-lg bg-white ring-1 ring-black/10 flex items-center justify-center shadow-xs overflow-hidden">
                                     <StoreLogo 
@@ -1279,20 +1426,7 @@ export default function VolantinoScreen({
                           className="group flex flex-col rounded-2xl bg-[var(--card-bg)] border border-[var(--border)] hover:border-emerald-500/50 hover:shadow-md transition-all overflow-hidden cursor-pointer active:scale-[0.98]"
                         >
                           <div className="relative aspect-[3/4] w-full bg-[var(--surface-variant)] overflow-hidden">
-                            {f.coverUrl && !isBroken ? (
-                              <img
-                                src={f.coverUrl}
-                                alt={f.title}
-                                loading="lazy"
-                                onError={() => setBrokenImages(prev => new Set(prev).add(f.id))}
-                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                              />
-                            ) : (
-                              <div className="w-full h-full flex flex-col items-center justify-center p-3 text-center bg-gradient-to-br from-emerald-500/10 to-transparent">
-                                <Store className="w-8 h-8 text-emerald-500 mb-2 opacity-50" />
-                                <span className="text-xs font-bold text-[var(--text-main)]">{c.name}</span>
-                              </div>
-                            )}
+                            <FlyerCardCover flyer={f} chain={c} />
 
                             <div className="absolute top-2 left-2 z-10 w-7 h-7 rounded-lg bg-white ring-1 ring-black/10 flex items-center justify-center shadow-xs overflow-hidden">
                               <StoreLogo 

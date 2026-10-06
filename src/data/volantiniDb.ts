@@ -26,8 +26,8 @@ export interface VolantiniDb {
 }
 
 export const VOLANTINI_DB: VolantiniDb = {
-  "updatedAt": "2026-09-25T11:52:03.748Z",
-  "source": "centrovolantini.it",
+  "updatedAt": "2026-10-06T15:02:26.696Z",
+  "source": "CentroVolantini + Calaméo + CeDiGros",
   "chains": [
     {
       "slug": "aeo",
@@ -36,39 +36,23 @@ export const VOLANTINI_DB: VolantiniDb = {
       "flyers": [
         {
           "id": 517,
-          "title": "Volantino A&amp;O Lombardia",
-          "subtitle": "SUPER OFFERTE",
-          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/a_o_517.jpg",
-          "from": "2026-09-16T00:00:00+02:00",
-          "to": "2026-09-29T00:00:00+02:00",
-          "bkcode": "001066713d0680242a3d2",
-          "authid": "fXMW7FDQvBw6"
+          "title": "Volantino A&O Lombardia",
+          "subtitle": "SCONTI FINO AL 50%",
+          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/a_o_517_0.jpg",
+          "from": "2026-09-30T00:00:00+02:00",
+          "to": "2026-10-13T00:00:00+02:00",
+          "bkcode": "001066713fa5264498115",
+          "authid": "DW7nc9FrEHE7"
         },
         {
           "id": 176,
-          "title": "Volantino Super A&amp;O Emilia Romagna e Marche",
-          "subtitle": "SUPER OFFERTE",
-          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/a_o_176_0.jpg",
-          "from": "2026-09-16T00:00:00+02:00",
-          "to": "2026-09-29T00:00:00+02:00",
-          "bkcode": "00106671390d5695c9bd2",
-          "authid": "6cQBLmaLC3vL"
-        }
-      ]
-    },
-    {
-      "slug": "acqua-e-sapone",
-      "name": "Acqua e Sapone",
-      "logoId": "acqua-e-sapone",
-      "flyers": [
-        {
-          "id": 4536410,
-          "title": "Volantino Acqua & Sapone",
-          "subtitle": "Cura casa e bellezza",
-          "coverUrl": "https://www.calameo.com/books/social/cover/004536410e28ddc5391d3",
-          "from": "2026-09-15T00:00:00+02:00",
-          "to": "2026-10-05T00:00:00+02:00",
-          "bkcode": "004536410e28ddc5391d3"
+          "title": "Volantino Super A&O Emilia Romagna e Marche",
+          "subtitle": "SCONTI FINO AL 50%",
+          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/a_o_176.jpg",
+          "from": "2026-09-30T00:00:00+02:00",
+          "to": "2026-10-13T00:00:00+02:00",
+          "bkcode": "001066713a9c90c5bed76",
+          "authid": "JRksv9mKirVg"
         }
       ]
     },
@@ -78,24 +62,24 @@ export const VOLANTINI_DB: VolantiniDb = {
       "logoId": "aldi",
       "flyers": [
         {
-          "id": 2328,
-          "title": "Volantino Aldi: Anteprima",
-          "subtitle": "Prezzi Bassi",
-          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/aldi_it_2328.jpg",
-          "from": "2026-09-28T00:00:00+02:00",
-          "to": "2026-10-04T00:00:00+02:00",
-          "bkcode": "001066713f2cd14efbf0d",
-          "authid": "o6JQGJJ752kR"
-        },
-        {
           "id": 2213,
           "title": "Volantino Aldi",
-          "subtitle": "Prezzi Bassi",
-          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/aldi_it_2213_1.jpg",
-          "from": "2026-09-21T00:00:00+02:00",
-          "to": "2026-09-27T00:00:00+02:00",
-          "bkcode": "0010667138548cf757172",
-          "authid": "vuvwG40RKmQy"
+          "subtitle": "La Nostra Migliore Pubblicità E' Il Prezzo",
+          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/aldi_it_2213_0.jpg",
+          "from": "2026-10-05T00:00:00+02:00",
+          "to": "2026-10-11T00:00:00+02:00",
+          "bkcode": "0010667134bf7d3c7e31d",
+          "authid": "YUCB2SHCm6Lb"
+        },
+        {
+          "id": 2328,
+          "title": "Volantino Aldi: Anteprima",
+          "subtitle": "Prezzi bassi",
+          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/aldi_it_2328.jpg",
+          "from": "2026-10-12T00:00:00+02:00",
+          "to": "2026-10-18T00:00:00+02:00",
+          "bkcode": "0010667138fe01e5dce7d",
+          "authid": "yttH0k3e0TUM"
         }
       ]
     },
@@ -105,44 +89,34 @@ export const VOLANTINI_DB: VolantiniDb = {
       "logoId": "ali-supermercati",
       "flyers": [
         {
-          "id": 405,
-          "title": "Volantino Aliper",
-          "subtitle": "La spesa felice",
-          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/aliper_405.jpg",
-          "from": "2026-09-14T00:00:00+02:00",
-          "to": "2026-09-30T00:00:00+02:00",
-          "bkcode": "00106671316becfa65f99",
-          "authid": "GblJk4PLkPaN"
+          "id": 389,
+          "title": "Catalogo Aliper",
+          "subtitle": "Sconto fedeltà",
+          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/aliper_389_0.jpg",
+          "from": "2026-10-01T00:00:00+02:00",
+          "to": "2026-10-14T00:00:00+02:00",
+          "bkcode": "0010667131b326b4dbff2",
+          "authid": "glAAwT3LslmX"
         },
         {
           "id": 388,
           "title": "Volantino Aliper Speciale",
-          "subtitle": "Speciale colazione",
-          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/aliper_388_0.jpg",
-          "from": "2026-09-14T00:00:00+02:00",
-          "to": "2026-09-30T00:00:00+02:00",
-          "bkcode": "001066713e979bebe5d92",
-          "authid": "ZPCOXJOzZz58"
-        },
-        {
-          "id": 389,
-          "title": "Catalogo Aliper",
-          "subtitle": "Sconto fedeltà",
-          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/aliper_389.jpg",
-          "from": "2026-09-14T00:00:00+02:00",
-          "to": "2026-09-30T00:00:00+02:00",
-          "bkcode": "0010667132ec1fa9b60a7",
-          "authid": "sAnFkqlMtlbr"
+          "subtitle": "Dolcetto O Scherzetto",
+          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/aliper_388.jpg",
+          "from": "2026-10-01T00:00:00+02:00",
+          "to": "2026-10-14T00:00:00+02:00",
+          "bkcode": "0010667138ada6f03f4e8",
+          "authid": "5ycohPxARmuz"
         },
         {
           "id": 387,
           "title": "Volantino Ali e Aliper",
-          "subtitle": "Prezzi bassi",
-          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/aliper_387.jpg",
-          "from": "2026-09-14T00:00:00+02:00",
-          "to": "2026-10-07T00:00:00+02:00",
-          "bkcode": "001066713f6d3ba4ea01c",
-          "authid": "HwUVXrtKawVh"
+          "subtitle": "Prezzi Bassi",
+          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/aliper_387_0.jpg",
+          "from": "2026-10-01T00:00:00+02:00",
+          "to": "2026-10-14T00:00:00+02:00",
+          "bkcode": "001066713d35fcc380bf4",
+          "authid": "EmMYNmRjC0cr"
         }
       ]
     },
@@ -154,22 +128,22 @@ export const VOLANTINI_DB: VolantiniDb = {
         {
           "id": 1976,
           "title": "Volantino Basko Speciale",
-          "subtitle": "Speciale Uva",
-          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/basko_1976.jpg",
-          "from": "2026-09-22T00:00:00+02:00",
-          "to": "2026-10-05T00:00:00+02:00",
-          "bkcode": "001066713aec67c671253",
-          "authid": "cruLyTXFhGPW"
+          "subtitle": "Speciale Formaggi",
+          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/basko_1976_0.jpg",
+          "from": "2026-10-06T00:00:00+02:00",
+          "to": "2026-10-19T00:00:00+02:00",
+          "bkcode": "0010667137adbd0ff705c",
+          "authid": "21jvFWHLPHl7"
         },
         {
           "id": 588,
           "title": "Volantino Basko",
-          "subtitle": "Sconto 50%",
-          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/basko_588_0.jpg",
-          "from": "2026-09-15T00:00:00+02:00",
-          "to": "2026-09-28T00:00:00+02:00",
-          "bkcode": "001066713b0efbab1c898",
-          "authid": "UzhXd8WAcxc6"
+          "subtitle": "BASSO COSTO",
+          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/basko_588.jpg",
+          "from": "2026-09-28T00:00:00+02:00",
+          "to": "2026-10-12T00:00:00+02:00",
+          "bkcode": "0010667134569318f9e9a",
+          "authid": "skbteOB6biri"
         },
         {
           "id": 732,
@@ -192,11 +166,21 @@ export const VOLANTINI_DB: VolantiniDb = {
           "id": 1862,
           "title": "Volantino Bennet Ter",
           "subtitle": "Offerte Extra",
-          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/bennet_1862_0.jpg",
-          "from": "2026-09-24T00:00:00+02:00",
-          "to": "2026-10-04T00:00:00+02:00",
-          "bkcode": "001066713ffaf0705f390",
-          "authid": "wsYfzQQxfdfO"
+          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/bennet_1862_1.jpg",
+          "from": "2026-10-05T00:00:00+02:00",
+          "to": "2026-10-14T00:00:00+02:00",
+          "bkcode": "001066713c2f1673c8344",
+          "authid": "sGbXYBatdn3B"
+        },
+        {
+          "id": 100,
+          "title": "Volantino Bennet Bis",
+          "subtitle": "L'autunno In Tavola",
+          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/bennet_100_1.jpg",
+          "from": "2026-10-01T00:00:00+02:00",
+          "to": "2026-10-14T00:00:00+02:00",
+          "bkcode": "0010667134e1a0e939aae",
+          "authid": "mK3rBUosjX7u"
         },
         {
           "id": 101,
@@ -207,16 +191,43 @@ export const VOLANTINI_DB: VolantiniDb = {
           "to": "2026-10-07T00:00:00+02:00",
           "bkcode": "001066713138c86b98096",
           "authid": "zRZ5uSPn9SbK"
+        }
+      ]
+    },
+    {
+      "slug": "brico-io",
+      "name": "Brico Io",
+      "logoId": "brico-io",
+      "flyers": [
+        {
+          "id": 2368,
+          "title": "Catalogo BricoIo Bis",
+          "subtitle": "Catalogo Illuminazione",
+          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/brico_io_2368.jpg",
+          "from": "2026-10-01T00:00:00+02:00",
+          "to": "2027-01-31T00:00:00+01:00",
+          "bkcode": "0010667135d23f927fece",
+          "authid": "PLCTkgVsLDyi"
         },
         {
-          "id": 100,
-          "title": "Volantino Bennet Bis",
-          "subtitle": "Un mondo di bellezza",
-          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/bennet_100.jpg",
-          "from": "2026-09-17T00:00:00+02:00",
-          "to": "2026-09-30T00:00:00+02:00",
-          "bkcode": "001066713ad695271e817",
-          "authid": "2cYwJ5UKBfr7"
+          "id": 329,
+          "title": "Catalogo Brico Io: Speciale",
+          "subtitle": "Catalogo Riscaldamento",
+          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/brico_io_329_0.jpg",
+          "from": "2026-09-24T00:00:00+02:00",
+          "to": "2027-02-01T00:00:00+01:00",
+          "bkcode": "001066713e65f77c88228",
+          "authid": "hRFjQA58oQDh"
+        },
+        {
+          "id": 330,
+          "title": "Volantino Brico Io Bis",
+          "subtitle": "Catalogo Sistemazione",
+          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/brico_io_330_0.jpg",
+          "from": "2026-09-28T00:00:00+02:00",
+          "to": "2026-11-02T00:00:00+01:00",
+          "bkcode": "0010667139ff7209516a9",
+          "authid": "3EKGG13R8KbV"
         }
       ]
     },
@@ -229,7 +240,7 @@ export const VOLANTINI_DB: VolantiniDb = {
           "id": 2113,
           "title": "Catalogo Bricofer",
           "subtitle": "Benessere Che Ti Avvolege Ogni Giorno",
-          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/bricofer_2113.jpg",
+          "coverUrl": "https://www.calameo.com/books/social/cover/001066713172e9b06f868?authid=3VFPYbSNEHF3",
           "from": "2025-10-01T00:00:00+02:00",
           "to": "2026-12-31T00:00:00+01:00",
           "bkcode": "001066713172e9b06f868",
@@ -243,6 +254,36 @@ export const VOLANTINI_DB: VolantiniDb = {
       "logoId": "cc",
       "flyers": [
         {
+          "id": 433,
+          "title": "Volantino C+C",
+          "subtitle": "Promo Professionale",
+          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/c_c_433.jpg",
+          "from": "2026-10-05T00:00:00+02:00",
+          "to": "2026-10-18T00:00:00+02:00",
+          "bkcode": "001066713d75790891ac3",
+          "authid": "pmb6ApE7KcSq"
+        },
+        {
+          "id": 189,
+          "title": "Volantino C+C : Speciale",
+          "subtitle": "Buono Sconto 10% Su Tutta La Spesa Offerte Incluse Compresi I Prodotti In Offerta, Spesa Minima 400 Euro",
+          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/c_c_189_0.jpg",
+          "from": "2026-10-05T00:00:00+02:00",
+          "to": "2026-10-11T00:00:00+02:00",
+          "bkcode": "001066713f6bd335313e0",
+          "authid": "0hpNDa9MDls9"
+        },
+        {
+          "id": 190,
+          "title": "Volantino C+C Maxigross",
+          "subtitle": "Promozioni, Offerte Per Il Tuo Business",
+          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/c_c_190.jpg",
+          "from": "2026-10-05T00:00:00+02:00",
+          "to": "2026-10-18T00:00:00+02:00",
+          "bkcode": "001066713c083224b013e",
+          "authid": "CG5lMhjzBlJW"
+        },
+        {
           "id": 434,
           "title": "Volantino C+C ARCA",
           "subtitle": "Pizzeria",
@@ -251,36 +292,6 @@ export const VOLANTINI_DB: VolantiniDb = {
           "to": "2026-10-18T00:00:00+02:00",
           "bkcode": "001066713fe8bbef376ae",
           "authid": "GWBtEz6nySXW"
-        },
-        {
-          "id": 433,
-          "title": "Volantino C+C",
-          "subtitle": "Affari Speciali",
-          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/c_c_433_0.jpg",
-          "from": "2026-09-21T00:00:00+02:00",
-          "to": "2026-10-04T00:00:00+02:00",
-          "bkcode": "001066713a2c38d8e9496",
-          "authid": "eHof4WSldIEm"
-        },
-        {
-          "id": 190,
-          "title": "Volantino C+C Maxigross",
-          "subtitle": "Promozioni, Offerte Per Il Tuo Business",
-          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/c_c_190_0.jpg",
-          "from": "2026-09-21T00:00:00+02:00",
-          "to": "2026-10-04T00:00:00+02:00",
-          "bkcode": "001066713a1f7988436d1",
-          "authid": "ZtPVC827Ekb2"
-        },
-        {
-          "id": 189,
-          "title": "Volantino C+C : Speciale",
-          "subtitle": "Professional Ristoranti, Bar, Comunità, Hotel",
-          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/c_c_189.jpg",
-          "from": "2026-09-21T00:00:00+02:00",
-          "to": "2026-10-04T00:00:00+02:00",
-          "bkcode": "00106671363315aec60d5",
-          "authid": "FPxbktr1Pi2T"
         }
       ]
     },
@@ -290,20 +301,100 @@ export const VOLANTINI_DB: VolantiniDb = {
       "logoId": "carrefour",
       "flyers": [
         {
+          "id": 538,
+          "title": "Volantino Carrefour: Speciale",
+          "subtitle": "Catalogo casa",
+          "coverUrl": "https://www.calameo.com/books/social/cover/001066713ffc2a9c0f086?authid=UTVvXeowtTKY",
+          "from": "2026-10-07T00:00:00+02:00",
+          "to": "2026-11-10T00:00:00+01:00",
+          "bkcode": "001066713ffc2a9c0f086",
+          "authid": "UTVvXeowtTKY"
+        },
+        {
+          "id": 56,
+          "title": "Volantino Carrefour Express",
+          "subtitle": "Sconti fino al 40%",
+          "coverUrl": "https://www.calameo.com/books/social/cover/001066713cc8867605b05?authid=MfoihotfbJ2J",
+          "from": "2026-10-08T00:00:00+02:00",
+          "to": "2026-10-20T00:00:00+02:00",
+          "bkcode": "001066713cc8867605b05",
+          "authid": "MfoihotfbJ2J"
+        },
+        {
+          "id": 57,
+          "title": "Volantino Carrefour: Speciale",
+          "subtitle": "Catalogo vini",
+          "coverUrl": "https://www.calameo.com/books/social/cover/001066713dcd56de79a75?authid=wiQcyAankszn",
+          "from": "2026-10-05T00:00:00+02:00",
+          "to": "2026-11-08T00:00:00+01:00",
+          "bkcode": "001066713dcd56de79a75",
+          "authid": "wiQcyAankszn"
+        },
+        {
+          "id": 2305,
+          "title": "Volantino Carrefour Market Speciale Bis",
+          "subtitle": "Catalogo Vini",
+          "coverUrl": "https://www.calameo.com/books/social/cover/00106671376ea450b464b?authid=lJf0BAdam0WM",
+          "from": "2026-10-05T00:00:00+02:00",
+          "to": "2026-11-08T00:00:00+01:00",
+          "bkcode": "00106671376ea450b464b",
+          "authid": "lJf0BAdam0WM"
+        },
+        {
+          "id": 2103,
+          "title": "Volantino Carrefour Market Roma",
+          "subtitle": "50 prodotti al 50%",
+          "coverUrl": "https://www.calameo.com/books/social/cover/001066713b7e92a19a20f?authid=sEeGI4mbZKLg",
+          "from": "2026-09-29T00:00:00+02:00",
+          "to": "2026-10-12T00:00:00+02:00",
+          "bkcode": "001066713b7e92a19a20f",
+          "authid": "sEeGI4mbZKLg"
+        },
+        {
+          "id": 1975,
+          "title": "Volantino Carrefour Roma e Lazio",
+          "subtitle": "50 prodotti al 50%",
+          "coverUrl": "https://www.calameo.com/books/social/cover/001066713d62dc9c0cb88?authid=7m8NfUavV67U",
+          "from": "2026-09-29T00:00:00+02:00",
+          "to": "2026-10-12T00:00:00+02:00",
+          "bkcode": "001066713d62dc9c0cb88",
+          "authid": "7m8NfUavV67U"
+        },
+        {
           "id": 54,
           "title": "Volantino Carrefour",
           "subtitle": "50 prodotti al 50%",
-          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/carrefour_it_54_2.jpg",
+          "coverUrl": "https://www.calameo.com/books/social/cover/001066713d6ab1775c9cb?authid=32O1nN6RFCu3",
           "from": "2026-09-29T00:00:00+02:00",
           "to": "2026-10-12T00:00:00+02:00",
           "bkcode": "001066713d6ab1775c9cb",
           "authid": "32O1nN6RFCu3"
         },
         {
+          "id": 2307,
+          "title": "Catalogo Carrefour Iper: Speciale Bis",
+          "subtitle": "Punti Sprint Payback",
+          "coverUrl": "https://www.calameo.com/books/social/cover/00106671395ef1425b72b?authid=VfFPw72r9IFr",
+          "from": "2026-09-29T00:00:00+02:00",
+          "to": "2026-10-12T00:00:00+02:00",
+          "bkcode": "00106671395ef1425b72b",
+          "authid": "VfFPw72r9IFr"
+        },
+        {
+          "id": 2338,
+          "title": "Catalogo Carrefour Market Speciale",
+          "subtitle": "Punti Sprint Payback",
+          "coverUrl": "https://www.calameo.com/books/social/cover/001066713fe1fe1e3ec57?authid=aAvqtkNVK98R",
+          "from": "2026-09-29T00:00:00+02:00",
+          "to": "2026-10-12T00:00:00+02:00",
+          "bkcode": "001066713fe1fe1e3ec57",
+          "authid": "aAvqtkNVK98R"
+        },
+        {
           "id": 1986,
           "title": "Volantino Carrefour Speciale Ter",
           "subtitle": "Speciale Unilever",
-          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/carrefour_it_1986_0.jpg",
+          "coverUrl": "https://www.calameo.com/books/social/cover/0010667131e388d58d6c0?authid=mhBlQJNwPtnq",
           "from": "2026-09-24T00:00:00+02:00",
           "to": "2026-10-22T00:00:00+02:00",
           "bkcode": "0010667131e388d58d6c0",
@@ -323,7 +414,7 @@ export const VOLANTINI_DB: VolantiniDb = {
           "id": 2337,
           "title": "Volantino Carrefour Iper Speciale Bis",
           "subtitle": "Speciale Aia",
-          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/carrefour_it_2337_0.jpg",
+          "coverUrl": "https://www.calameo.com/books/social/cover/001066713f8df9097612a?authid=hycoslVG4ovM",
           "from": "2026-09-29T00:00:00+02:00",
           "to": "2026-11-15T00:00:00+01:00",
           "bkcode": "001066713f8df9097612a",
@@ -333,7 +424,7 @@ export const VOLANTINI_DB: VolantiniDb = {
           "id": 2341,
           "title": "Volantino Carrefour Express Speciale Bis",
           "subtitle": "Speciale Unilever",
-          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/carrefour_it_2341_0.jpg",
+          "coverUrl": "https://www.calameo.com/books/social/cover/0010667134ef4a6a5c9b3?authid=PJonOHAlvEos",
           "from": "2026-09-24T00:00:00+02:00",
           "to": "2026-10-20T00:00:00+02:00",
           "bkcode": "0010667134ef4a6a5c9b3",
@@ -343,7 +434,7 @@ export const VOLANTINI_DB: VolantiniDb = {
           "id": 55,
           "title": "Volantino Carrefour Express",
           "subtitle": "Prezzi imbattibili",
-          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/carrefour_it_55_0.jpg",
+          "coverUrl": "https://www.calameo.com/books/social/cover/00106671356697be2fc82?authid=58rfumNWFhW3",
           "from": "2026-09-24T00:00:00+02:00",
           "to": "2026-10-06T00:00:00+02:00",
           "bkcode": "00106671356697be2fc82",
@@ -358,56 +449,6 @@ export const VOLANTINI_DB: VolantiniDb = {
           "to": "2026-10-20T00:00:00+02:00",
           "bkcode": "0010667135d20cefdf5e0",
           "authid": "ez9rKUXWiRtP"
-        },
-        {
-          "id": 1975,
-          "title": "Volantino Carrefour Roma e Lazio",
-          "subtitle": "Grandi Marche",
-          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/carrefour_it_1975_0.jpg",
-          "from": "2026-09-15T00:00:00+02:00",
-          "to": "2026-09-25T00:00:00+02:00",
-          "bkcode": "001066713b9f51648fd2c",
-          "authid": "rLxNhsR63NRm"
-        },
-        {
-          "id": 2103,
-          "title": "Volantino Carrefour Market Roma",
-          "subtitle": "Grandi Marche",
-          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/carrefour_it_2103_0.jpg",
-          "from": "2026-09-15T00:00:00+02:00",
-          "to": "2026-09-25T00:00:00+02:00",
-          "bkcode": "001066713b8a19a6b15f5",
-          "authid": "Dsf9W3nf3iyc"
-        },
-        {
-          "id": 44,
-          "title": "Volantino Carrefour",
-          "subtitle": "Grandi Marche",
-          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/carrefour_it_44_0.jpg",
-          "from": "2026-09-15T00:00:00+02:00",
-          "to": "2026-09-25T00:00:00+02:00",
-          "bkcode": "001066713f9f9e615c8ff",
-          "authid": "nMkfNsXy40r8"
-        },
-        {
-          "id": 2307,
-          "title": "Catalogo Carrefour Iper: Speciale Bis",
-          "subtitle": "Punti Sprint Payback",
-          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/carrefour_it_2307.jpg",
-          "from": "2026-09-15T00:00:00+02:00",
-          "to": "2026-09-28T00:00:00+02:00",
-          "bkcode": "001066713d1dfc91201ca",
-          "authid": "FCA8zOxMbpHy"
-        },
-        {
-          "id": 2338,
-          "title": "Catalogo Carrefour Market Speciale",
-          "subtitle": "Punti Sprint Payback",
-          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/carrefour_it_2338_0.jpg",
-          "from": "2026-09-15T00:00:00+02:00",
-          "to": "2026-09-25T00:00:00+02:00",
-          "bkcode": "0010667132d3fefd5a575",
-          "authid": "6ZxcYL7Wj8lZ"
         },
         {
           "id": 2306,
@@ -430,16 +471,6 @@ export const VOLANTINI_DB: VolantiniDb = {
           "authid": "TuVmLINNgcDi"
         },
         {
-          "id": 566,
-          "title": "Volantino Carrefour Market",
-          "subtitle": "Grandi Marche",
-          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/carrefour_it_566_0.jpg",
-          "from": "2026-09-15T00:00:00+02:00",
-          "to": "2026-09-25T00:00:00+02:00",
-          "bkcode": "00106671340bafa3494cc",
-          "authid": "vG5uOZAbj12R"
-        },
-        {
           "id": 2340,
           "title": "Volantino Carrefour Express Speciale",
           "subtitle": "Speciale Coca-Cola",
@@ -452,12 +483,12 @@ export const VOLANTINI_DB: VolantiniDb = {
         {
           "id": 2027,
           "title": "Volantino Carrefour Sud",
-          "subtitle": "Grandi Marche",
-          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/carrefour_it_2027.jpg",
-          "from": "2026-09-15T00:00:00+02:00",
-          "to": "2026-09-25T00:00:00+02:00",
-          "bkcode": "001066713789928b71dab",
-          "authid": "7nx2ETZayZPD"
+          "subtitle": "50 prodotti al 50%",
+          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/carrefour_it_2027_0.jpg",
+          "from": "2026-09-29T00:00:00+02:00",
+          "to": "2026-10-12T00:00:00+02:00",
+          "bkcode": "00106671343b230b28dae",
+          "authid": "JvRwiqFqj3FF"
         }
       ]
     },
@@ -504,6 +535,46 @@ export const VOLANTINI_DB: VolantiniDb = {
       "logoId": "comet",
       "flyers": [
         {
+          "id": 169,
+          "title": "Volantino Comet",
+          "subtitle": "Piccoli Elettrodomestici",
+          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/comet_169_0.jpg",
+          "from": "2026-10-03T00:00:00+02:00",
+          "to": "2026-10-15T00:00:00+02:00",
+          "bkcode": "00106671350478c8c9f14",
+          "authid": "uU9MKsgd5ruj"
+        },
+        {
+          "id": 497,
+          "title": "Volantino Comet: Speciale Videogiochi",
+          "subtitle": "Audio E Video",
+          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/comet_497_0.jpg",
+          "from": "2026-10-03T00:00:00+02:00",
+          "to": "2026-10-07T00:00:00+02:00",
+          "bkcode": "0010667134337f457151f",
+          "authid": "zMG7nl7cGHek"
+        },
+        {
+          "id": 496,
+          "title": "Volantino Comet: Speciale",
+          "subtitle": "Grandi Elettrodomestici",
+          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/comet_496.jpg",
+          "from": "2026-09-26T00:00:00+02:00",
+          "to": "2026-10-08T00:00:00+02:00",
+          "bkcode": "001066713bd8965b50402",
+          "authid": "rDkQyPfyvpwQ"
+        },
+        {
+          "id": 475,
+          "title": "Volantino Comet: Speciale",
+          "subtitle": "Piccoli Elettrodomestici",
+          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/comet_475.jpg",
+          "from": "2026-09-26T00:00:00+02:00",
+          "to": "2026-10-07T00:00:00+02:00",
+          "bkcode": "001066713c04b24cdcc10",
+          "authid": "aSpzaK8qE6L0"
+        },
+        {
           "id": 457,
           "title": "Volantino Comet: Studio Luce",
           "subtitle": "Philips",
@@ -534,26 +605,6 @@ export const VOLANTINI_DB: VolantiniDb = {
           "authid": "k02s0f72zm6H"
         },
         {
-          "id": 169,
-          "title": "Volantino Comet",
-          "subtitle": "Grandi Elettrodomestici Da Incasso",
-          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/comet_169.jpg",
-          "from": "2026-09-17T00:00:00+02:00",
-          "to": "2026-09-30T00:00:00+02:00",
-          "bkcode": "001066713c72d2a8c4d71",
-          "authid": "OplJ82Gceq6k"
-        },
-        {
-          "id": 496,
-          "title": "Volantino Comet: Speciale",
-          "subtitle": "Roborock",
-          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/comet_496_0.jpg",
-          "from": "2026-09-16T00:00:00+02:00",
-          "to": "2026-09-28T00:00:00+02:00",
-          "bkcode": "00106671317dc771e031d",
-          "authid": "losQZ60lTwrc"
-        },
-        {
           "id": 467,
           "title": "Volantino Comet",
           "subtitle": "Pagamenti Elettronici",
@@ -571,120 +622,110 @@ export const VOLANTINI_DB: VolantiniDb = {
       "logoId": "conad",
       "flyers": [
         {
-          "id": 398,
-          "title": "Volantino Conad Adriatico: Abruzzo, Molise, Puglia, Marche, Basilicata",
-          "subtitle": "PREZZI FOLLI",
-          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/conad_398_1.jpg",
-          "from": "2026-09-25T00:00:00+02:00",
-          "to": "2026-10-06T00:00:00+02:00",
-          "bkcode": "0010667137abb3f63dbec",
-          "authid": "Ch1H62WfCrZu"
-        },
-        {
-          "id": 714,
-          "title": "Volantino Conad Veneto, Friuli, Marche, Romagna",
-          "subtitle": "BIS",
-          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/conad_714.jpg",
-          "from": "2026-09-25T00:00:00+02:00",
-          "to": "2026-10-01T00:00:00+02:00",
-          "bkcode": "0010667136649fa444b12",
-          "authid": "gnUGSQ1xdFUa"
-        },
-        {
-          "id": 723,
-          "title": "Volantino Spazio Conad Adriatico: Puglia, Abruzzo, Molise",
-          "subtitle": "GRANDI OFFERTE",
-          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/conad_723_0.jpg",
-          "from": "2026-09-24T00:00:00+02:00",
-          "to": "2026-09-30T00:00:00+02:00",
-          "bkcode": "00106671386d2ffab16b3",
-          "authid": "4lgmTMrf4usO"
-        },
-        {
           "id": 1852,
           "title": "Volantino Conad Superstore Lombardia ed Emilia",
-          "subtitle": "TRIS",
-          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/conad_1852.jpg",
-          "from": "2026-09-23T00:00:00+02:00",
-          "to": "2026-10-06T00:00:00+02:00",
-          "bkcode": "001066713cd209b660eb3",
-          "authid": "R1SGIc9C75jt"
+          "subtitle": "Prendi 2 Paghi 1",
+          "coverUrl": "https://www.calameo.com/books/social/cover/0010667133966a72a48d5?authid=POB9O2hm1H1l",
+          "from": "2026-10-07T00:00:00+02:00",
+          "to": "2026-10-20T00:00:00+02:00",
+          "bkcode": "0010667133966a72a48d5",
+          "authid": "POB9O2hm1H1l"
         },
         {
           "id": 344,
           "title": "Volantino Conad Superstore: Lazio e Campania",
-          "subtitle": "Grandi Marche fino al 50%",
-          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/conad_344.jpg",
-          "from": "2026-09-23T00:00:00+02:00",
-          "to": "2026-10-04T00:00:00+02:00",
-          "bkcode": "0010667139a9a99636153",
-          "authid": "i46vGPcNEG6P"
-        },
-        {
-          "id": 1891,
-          "title": "Volantino Spazio Conad Lazio",
-          "subtitle": "7 giorni di extra convenienza",
-          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/conad_1891_0.jpg",
-          "from": "2026-09-29T00:00:00+02:00",
-          "to": "2026-10-05T00:00:00+02:00",
-          "bkcode": "0010667139a23345b82b0",
-          "authid": "nCkjwjx1aiJ8"
+          "subtitle": "BIS - Prendi 2, Paghi 1",
+          "coverUrl": "https://www.calameo.com/books/social/cover/001066713e2b22dd695ae?authid=ZngQJWPdSpCS",
+          "from": "2026-10-07T00:00:00+02:00",
+          "to": "2026-10-18T00:00:00+02:00",
+          "bkcode": "001066713e2b22dd695ae",
+          "authid": "ZngQJWPdSpCS"
         },
         {
           "id": 715,
           "title": "Volantino Conad Sicilia",
-          "subtitle": "Grandi Marche fini al 50%",
-          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/conad_715.jpg",
-          "from": "2026-09-23T00:00:00+02:00",
-          "to": "2026-10-03T00:00:00+02:00",
-          "bkcode": "0010667133fed0d1cb594",
-          "authid": "YmNXORMocTKO"
+          "subtitle": "Bis",
+          "coverUrl": "https://www.calameo.com/books/social/cover/0010667131fc5dfcbb3de?authid=zR2rZsAHwh2B",
+          "from": "2026-10-07T00:00:00+02:00",
+          "to": "2026-10-18T00:00:00+02:00",
+          "bkcode": "0010667131fc5dfcbb3de",
+          "authid": "zR2rZsAHwh2B"
         },
         {
-          "id": 532,
-          "title": "Volantino Spazio Conad Lazio e Campania",
-          "subtitle": "1, 2, 3 euro",
-          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/conad_532_0.jpg",
-          "from": "2026-09-22T00:00:00+02:00",
-          "to": "2026-10-05T00:00:00+02:00",
-          "bkcode": "0010667130aca4dda69aa",
-          "authid": "oG6vx991VFh6"
+          "id": 1891,
+          "title": "Volantino Spazio Conad Lazio",
+          "subtitle": "Super Marche fino al 50%",
+          "coverUrl": "https://www.calameo.com/books/social/cover/0010667135a9fbc6a05fb?authid=j0e36jXJpF7T",
+          "from": "2026-10-06T00:00:00+02:00",
+          "to": "2026-10-19T00:00:00+02:00",
+          "bkcode": "0010667135a9fbc6a05fb",
+          "authid": "j0e36jXJpF7T"
+        },
+        {
+          "id": 714,
+          "title": "Volantino Conad Veneto, Friuli, Marche, Romagna",
+          "subtitle": "TAGLIO NETTO",
+          "coverUrl": "https://www.calameo.com/books/social/cover/001066713e868a3971a2a?authid=5xf2QcpbrxcT",
+          "from": "2026-10-02T00:00:00+02:00",
+          "to": "2026-10-08T00:00:00+02:00",
+          "bkcode": "001066713e868a3971a2a",
+          "authid": "5xf2QcpbrxcT"
+        },
+        {
+          "id": 723,
+          "title": "Volantino Spazio Conad Adriatico: Puglia, Abruzzo, Molise",
+          "subtitle": "SUPERMARCHE FINO AL 50%",
+          "coverUrl": "https://www.calameo.com/books/social/cover/001066713f2ce34843248?authid=8lK21zlkcqC0",
+          "from": "2026-10-01T00:00:00+02:00",
+          "to": "2026-10-14T00:00:00+02:00",
+          "bkcode": "001066713f2ce34843248",
+          "authid": "8lK21zlkcqC0"
+        },
+        {
+          "id": 398,
+          "title": "Volantino Conad Adriatico: Abruzzo, Molise, Puglia, Marche, Basilicata",
+          "subtitle": "BIS PRENDI 2, PAGHI 1",
+          "coverUrl": "https://www.calameo.com/books/social/cover/0010667135ce4a627806d?authid=7a66xKdIqYJZ",
+          "from": "2026-10-07T00:00:00+02:00",
+          "to": "2026-10-18T00:00:00+02:00",
+          "bkcode": "0010667135ce4a627806d",
+          "authid": "7a66xKdIqYJZ"
         },
         {
           "id": 81,
           "title": "Volantino Conad Lombardia ed Emilia",
-          "subtitle": "TRIS",
-          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/conad_81.jpg",
-          "from": "2026-09-23T00:00:00+02:00",
-          "to": "2026-10-06T00:00:00+02:00",
-          "bkcode": "0010667133d6a554af31d",
-          "authid": "823X373lm52g"
+          "subtitle": "Prendi 2 Paghi 1",
+          "coverUrl": "https://www.calameo.com/books/social/cover/001066713a88001562138?authid=0OQXwxdyrN0A",
+          "from": "2026-10-07T00:00:00+02:00",
+          "to": "2026-10-20T00:00:00+02:00",
+          "bkcode": "001066713a88001562138",
+          "authid": "0OQXwxdyrN0A"
         },
         {
           "id": 286,
           "title": "Volantino Margherita",
-          "subtitle": "TRIS - MARGHERITA LOMBARDIA",
-          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/conad_286_0.jpg",
-          "from": "2026-09-23T00:00:00+02:00",
-          "to": "2026-10-06T00:00:00+02:00",
-          "bkcode": "001066713aefee1ef2f55",
-          "authid": "q79DnvFiqVit"
+          "subtitle": "Il Tuo Miglior Vicino Di Casa",
+          "coverUrl": "https://www.calameo.com/books/social/cover/001066713e250c29319b5?authid=yfVr2XdR546S",
+          "from": "2026-10-07T00:00:00+02:00",
+          "to": "2026-10-20T00:00:00+02:00",
+          "bkcode": "001066713e250c29319b5",
+          "authid": "yfVr2XdR546S"
         },
         {
           "id": 342,
           "title": "Volantino Margherita: Lazio e Campania",
-          "subtitle": "Taglio Netto",
-          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/conad_342_0.jpg",
-          "from": "2026-09-23T00:00:00+02:00",
-          "to": "2026-10-04T00:00:00+02:00",
-          "bkcode": "00106671333d1efe03303",
-          "authid": "rgHVlHSg5ebu"
+          "subtitle": "Sottocosto",
+          "coverUrl": "https://www.calameo.com/books/social/cover/001066713037a6c547e2e?authid=TYLBHt2eQuQM",
+          "from": "2026-10-08T00:00:00+02:00",
+          "to": "2026-10-17T00:00:00+02:00",
+          "bkcode": "001066713037a6c547e2e",
+          "authid": "TYLBHt2eQuQM"
         },
         {
           "id": 424,
           "title": "Volantino Margherita Tirreno: Toscana, Lazio e Sardegna",
           "subtitle": "TAGLIO NETTO",
-          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/conad_424.jpg",
+          "coverUrl": "https://www.calameo.com/books/social/cover/00106671318c490fcf931?authid=R1GwWKAuzLwo",
           "from": "2026-09-23T00:00:00+02:00",
           "to": "2026-10-07T00:00:00+02:00",
           "bkcode": "00106671318c490fcf931",
@@ -693,62 +734,62 @@ export const VOLANTINI_DB: VolantiniDb = {
         {
           "id": 1943,
           "title": "Volantino Conad Tirreno: Toscana, Lazio e Sardegna",
-          "subtitle": "GRANDI MARCHE FINO AL 50%",
-          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/conad_1943.jpg",
-          "from": "2026-09-23T00:00:00+02:00",
-          "to": "2026-10-06T00:00:00+02:00",
-          "bkcode": "001066713481d360ede2e",
-          "authid": "OxGfT72lWLWS"
+          "subtitle": "BIS",
+          "coverUrl": "https://www.calameo.com/books/social/cover/001066713b103240bd8bf?authid=njwlWk6s3R7Y",
+          "from": "2026-10-07T00:00:00+02:00",
+          "to": "2026-10-20T00:00:00+02:00",
+          "bkcode": "001066713b103240bd8bf",
+          "authid": "njwlWk6s3R7Y"
         },
         {
           "id": 2148,
           "title": "Volantino Conad Campania",
-          "subtitle": "Grandi Marche fino al 50%",
-          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/conad_2148_0.jpg",
-          "from": "2026-09-23T00:00:00+02:00",
-          "to": "2026-10-04T00:00:00+02:00",
-          "bkcode": "0010667135cdf2b57df3c",
-          "authid": "SDdGieOM5xWa"
+          "subtitle": "BIS - Prendi 2, Paghi 1",
+          "coverUrl": "https://www.calameo.com/books/social/cover/00106671357f1fc0f61dc?authid=RlNpdZ6NxKQA",
+          "from": "2026-10-07T00:00:00+02:00",
+          "to": "2026-10-18T00:00:00+02:00",
+          "bkcode": "00106671357f1fc0f61dc",
+          "authid": "RlNpdZ6NxKQA"
         },
         {
           "id": 343,
           "title": "Volantino Conad: Lazio e Campania",
-          "subtitle": "Grandi Marche fino al 50%",
-          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/conad_343_0.jpg",
-          "from": "2026-09-23T00:00:00+02:00",
-          "to": "2026-10-04T00:00:00+02:00",
-          "bkcode": "001066713b1ff76628e43",
-          "authid": "sAkTqjxJMMp8"
+          "subtitle": "BIS - Prendi 2, Paghi 1",
+          "coverUrl": "https://www.calameo.com/books/social/cover/001066713dfee692c033e?authid=CiJ9TawNvYBE",
+          "from": "2026-10-07T00:00:00+02:00",
+          "to": "2026-10-18T00:00:00+02:00",
+          "bkcode": "001066713dfee692c033e",
+          "authid": "CiJ9TawNvYBE"
         },
         {
           "id": 82,
           "title": "Volantino Conad City Lombardia ed Emilia",
-          "subtitle": "TRIS",
-          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/conad_82_0.jpg",
-          "from": "2026-09-23T00:00:00+02:00",
-          "to": "2026-10-06T00:00:00+02:00",
-          "bkcode": "001066713f08827cd582c",
-          "authid": "KCHA4l6QOO1K"
+          "subtitle": "Persone Oltre Le Cose",
+          "coverUrl": "https://www.calameo.com/books/social/cover/001066713efbefb2a3605?authid=p3S7jX8R5Geq",
+          "from": "2026-10-07T00:00:00+02:00",
+          "to": "2026-10-20T00:00:00+02:00",
+          "bkcode": "001066713efbefb2a3605",
+          "authid": "p3S7jX8R5Geq"
         },
         {
           "id": 2149,
           "title": "Volantino Conad Superstore Campania",
-          "subtitle": "Grandi Marche fino al 50%",
-          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/conad_2149_0.jpg",
-          "from": "2026-09-23T00:00:00+02:00",
-          "to": "2026-10-04T00:00:00+02:00",
-          "bkcode": "001066713afa55610365f",
-          "authid": "Z9BrwHNyrcD7"
+          "subtitle": "BIS - Prendi 2, Paghi 1",
+          "coverUrl": "https://www.calameo.com/books/social/cover/001066713153be2a7699a?authid=SW003AGiAeCi",
+          "from": "2026-10-07T00:00:00+02:00",
+          "to": "2026-10-18T00:00:00+02:00",
+          "bkcode": "001066713153be2a7699a",
+          "authid": "SW003AGiAeCi"
         },
         {
           "id": 2147,
           "title": "Volantino Conad City Campania",
-          "subtitle": "Taglio Netto",
-          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/conad_2147_0.jpg",
-          "from": "2026-09-23T00:00:00+02:00",
-          "to": "2026-10-04T00:00:00+02:00",
-          "bkcode": "00106671308cd192f1a1f",
-          "authid": "PdMw8DJNPFCU"
+          "subtitle": "Sottocosto",
+          "coverUrl": "https://www.calameo.com/books/social/cover/0010667132887c0734010?authid=XH9nVCak1e95",
+          "from": "2026-10-08T00:00:00+02:00",
+          "to": "2026-10-17T00:00:00+02:00",
+          "bkcode": "0010667132887c0734010",
+          "authid": "XH9nVCak1e95"
         }
       ]
     },
@@ -757,6 +798,56 @@ export const VOLANTINI_DB: VolantiniDb = {
       "name": "Coop",
       "logoId": "coop",
       "flyers": [
+        {
+          "id": 345,
+          "title": "Volantino Ipercoop: Speciale",
+          "subtitle": "Aspettando l'inverno",
+          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/coop_345.jpg",
+          "from": "2026-10-08T00:00:00+02:00",
+          "to": "2026-11-04T00:00:00+01:00",
+          "bkcode": "0010667135b971dd456e7",
+          "authid": "uUAECG6inONe"
+        },
+        {
+          "id": 85,
+          "title": "Volantino Coop Lombardia",
+          "subtitle": "Extra Offerte",
+          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/coop_85_1.jpg",
+          "from": "2026-10-01T00:00:00+02:00",
+          "to": "2026-10-14T00:00:00+02:00",
+          "bkcode": "00106671380dedd7e52cb",
+          "authid": "rkjxtI2SKreY"
+        },
+        {
+          "id": 2159,
+          "title": "Volantino Coop Sicilia Bis",
+          "subtitle": "Offerte Che Parlano Chiaro",
+          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/coop_2159_1.jpg",
+          "from": "2026-10-02T00:00:00+02:00",
+          "to": "2026-10-12T00:00:00+02:00",
+          "bkcode": "001066713d7cb94574b5b",
+          "authid": "YSWitqcUG08V"
+        },
+        {
+          "id": 1941,
+          "title": "Volantino Ipercoop Sicilia",
+          "subtitle": "Shopping Senza Confini",
+          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/coop_1941_1.jpg",
+          "from": "2026-10-02T00:00:00+02:00",
+          "to": "2026-10-12T00:00:00+02:00",
+          "bkcode": "001066713f4279e00410b",
+          "authid": "mBeuztpNU2GP"
+        },
+        {
+          "id": 2300,
+          "title": "Volantino Speciale Coop Lombardia",
+          "subtitle": "Extra Offerte",
+          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/coop_2300_0.jpg",
+          "from": "2026-10-01T00:00:00+02:00",
+          "to": "2026-10-14T00:00:00+02:00",
+          "bkcode": "00106671300eb38f8cdd3",
+          "authid": "Bk2MZfzOGW2x"
+        },
         {
           "id": 1965,
           "title": "Volantino Coop Trento e Trentino",
@@ -810,42 +901,12 @@ export const VOLANTINI_DB: VolantiniDb = {
         {
           "id": 2366,
           "title": "Coop Lombardia Bis",
-          "subtitle": "Tendenze D&#039;Autunno",
+          "subtitle": "Tendenze D'Autunno",
           "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/coop_2366.jpg",
           "from": "2026-09-24T00:00:00+02:00",
           "to": "2026-10-21T00:00:00+02:00",
           "bkcode": "001066713323feea4f9a3",
           "authid": "yKKwSBIIUzJO"
-        },
-        {
-          "id": 2159,
-          "title": "Volantino Coop Sicilia Bis",
-          "subtitle": "Caspita Che Affari",
-          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/coop_2159_0.jpg",
-          "from": "2026-09-22T00:00:00+02:00",
-          "to": "2026-10-01T00:00:00+02:00",
-          "bkcode": "0010667130f95d24db7ac",
-          "authid": "ZTBcHBnDCt9K"
-        },
-        {
-          "id": 1941,
-          "title": "Volantino Ipercoop Sicilia",
-          "subtitle": "inflazione Zero",
-          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/coop_1941_0.jpg",
-          "from": "2026-09-21T00:00:00+02:00",
-          "to": "2026-10-01T00:00:00+02:00",
-          "bkcode": "001066713ec0bdb0e37dc",
-          "authid": "N3mOQNnveD3B"
-        },
-        {
-          "id": 85,
-          "title": "Volantino Coop Lombardia",
-          "subtitle": "Freschissime offerte",
-          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/coop_85_2.jpg",
-          "from": "2026-09-17T00:00:00+02:00",
-          "to": "2026-09-30T00:00:00+02:00",
-          "bkcode": "0010667138a403c73290b",
-          "authid": "LAIlVeH6MJCq"
         },
         {
           "id": 1967,
@@ -856,16 +917,6 @@ export const VOLANTINI_DB: VolantiniDb = {
           "to": "2026-10-07T00:00:00+02:00",
           "bkcode": "00106671303574b3557f3",
           "authid": "Ba7wCSOeIaqa"
-        },
-        {
-          "id": 2301,
-          "title": "Volantino Speciale Coop Lombardia Bis",
-          "subtitle": "Scuola",
-          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/coop_2301_0.jpg",
-          "from": "2026-08-27T00:00:00+02:00",
-          "to": "2026-10-04T00:00:00+02:00",
-          "bkcode": "001066713c521c8490ada",
-          "authid": "P9MGzHrpr3cw"
         },
         {
           "id": 377,
@@ -880,12 +931,12 @@ export const VOLANTINI_DB: VolantiniDb = {
         {
           "id": 2157,
           "title": "Volantino Coop Piemonte",
-          "subtitle": "Freschissime offerte",
-          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/coop_2157_2.jpg",
-          "from": "2026-09-17T00:00:00+02:00",
-          "to": "2026-09-30T00:00:00+02:00",
-          "bkcode": "001066713edd76a981b2e",
-          "authid": "RORLWKzcskzG"
+          "subtitle": "Extra Offerte",
+          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/coop_2157_1.jpg",
+          "from": "2026-10-01T00:00:00+02:00",
+          "to": "2026-10-14T00:00:00+02:00",
+          "bkcode": "00106671331b91febb72f",
+          "authid": "z1hLPK1BqmRW"
         },
         {
           "id": 495,
@@ -910,12 +961,12 @@ export const VOLANTINI_DB: VolantiniDb = {
         {
           "id": 2158,
           "title": "Volantino Coop Sicilia",
-          "subtitle": "Caspita Che Affari",
-          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/coop_2158_1.jpg",
-          "from": "2026-09-22T00:00:00+02:00",
-          "to": "2026-10-01T00:00:00+02:00",
-          "bkcode": "00106671395894fb2f443",
-          "authid": "HBxLK8KzENde"
+          "subtitle": "Offerte Che Parlano Chiaro",
+          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/coop_2158_0.jpg",
+          "from": "2026-10-02T00:00:00+02:00",
+          "to": "2026-10-12T00:00:00+02:00",
+          "bkcode": "001066713a9bd276d5bd8",
+          "authid": "DGS3UbEL3vJX"
         },
         {
           "id": 1867,
@@ -926,6 +977,16 @@ export const VOLANTINI_DB: VolantiniDb = {
           "to": "2026-10-07T00:00:00+02:00",
           "bkcode": "0010667131948c22f7602",
           "authid": "nReMZD7EN07k"
+        },
+        {
+          "id": 411,
+          "title": "Volantino IperCoop Speciale Ter",
+          "subtitle": "Aspettando l'inverno",
+          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/coop_411.jpg",
+          "from": "2026-10-08T00:00:00+02:00",
+          "to": "2026-11-04T00:00:00+01:00",
+          "bkcode": "001066713211375fb3df3",
+          "authid": "3B9EaMu55VUR"
         },
         {
           "id": 90,
@@ -940,43 +1001,18 @@ export const VOLANTINI_DB: VolantiniDb = {
       ]
     },
     {
-      "slug": "crai",
-      "name": "Crai",
-      "logoId": "crai",
-      "flyers": [
-        {
-          "id": 5042573,
-          "title": "Volantino Crai Codè Extra",
-          "subtitle": "Offerte nazionali",
-          "coverUrl": "https://www.calameo.com/books/social/cover/0050425736c3de75dabe5",
-          "from": "2026-09-17T00:00:00+02:00",
-          "to": "2026-09-30T00:00:00+02:00",
-          "bkcode": "0050425736c3de75dabe5"
-        }
-      ]
-    },
-    {
       "slug": "cts",
       "name": "CTS Supermercati (Gruppo Gros)",
       "logoId": "cts",
       "flyers": [
         {
-          "id": 268,
-          "title": "Volantino CTS",
-          "subtitle": "Dal 23 al 30 settembre 2026",
-          "coverUrl": "https://www.cedigros.com/images/covers/cover-flyer_268.jpg",
-          "directUrl": "https://www.cedigros.com/index.php?option=com_myegojwt&view=flyer&id=268&tmpl=component",
-          "from": "2026-09-23T00:00:00+02:00",
-          "to": "2026-09-30T23:59:59+02:00"
-        },
-        {
-          "id": 204,
-          "title": "Volantino CTS",
-          "subtitle": "Dal 23 al 30 settembre 2026",
-          "coverUrl": "https://www.cedigros.com/images/covers/cover-flyer_204.jpg",
-          "directUrl": "https://www.cedigros.com/index.php?option=com_myegojwt&view=flyer&id=204&tmpl=component",
-          "from": "2026-09-23T00:00:00+02:00",
-          "to": "2026-09-30T23:59:59+02:00"
+          "id": 10030,
+          "title": "Volantino CTS Supermercati",
+          "subtitle": "Dal 2 al 13 Ottobre 2026",
+          "coverUrl": "https://www.cedigros.com/images/covers/cover-flyer_10030.jpg",
+          "directUrl": "https://www.cedigros.com/index.php?option=com_myegojwt&view=flyer&id=10030&tmpl=component",
+          "from": "2026-10-02T00:00:00+02:00",
+          "to": "2026-10-13T23:59:59+02:00"
         }
       ]
     },
@@ -986,54 +1022,54 @@ export const VOLANTINI_DB: VolantiniDb = {
       "logoId": "deco",
       "flyers": [
         {
-          "id": 546,
-          "title": "Volantino Deco Maxistore",
-          "subtitle": "Super concorso",
-          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/deco_546_0.jpg",
-          "from": "2026-09-22T00:00:00+02:00",
-          "to": "2026-10-01T00:00:00+02:00",
-          "bkcode": "0010667139f438ee196e5",
-          "authid": "NTawM5FMJcZy"
+          "id": 547,
+          "title": "Volantino Deco",
+          "subtitle": "Sconto 10%",
+          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/deco_547.jpg",
+          "from": "2026-10-02T00:00:00+02:00",
+          "to": "2026-10-12T00:00:00+02:00",
+          "bkcode": "0010667139bd475514090",
+          "authid": "MwgEPAZUSnA3"
         },
         {
           "id": 2064,
           "title": "Volantino Decò Sicilia",
           "subtitle": "Super Concorso",
-          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/deco_2064_1.jpg",
-          "from": "2026-09-22T00:00:00+02:00",
-          "to": "2026-10-01T00:00:00+02:00",
-          "bkcode": "0010667134047cb7abdac",
-          "authid": "KHGgqfxVKFhN"
+          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/deco_2064.jpg",
+          "from": "2026-10-02T00:00:00+02:00",
+          "to": "2026-10-12T00:00:00+02:00",
+          "bkcode": "00106671361f970293cfd",
+          "authid": "uZN3AAjnu6G6"
+        },
+        {
+          "id": 546,
+          "title": "Volantino Deco Maxistore",
+          "subtitle": "Sconto 10%",
+          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/deco_546.jpg",
+          "from": "2026-10-02T00:00:00+02:00",
+          "to": "2026-10-12T00:00:00+02:00",
+          "bkcode": "0010667132786a0263cd9",
+          "authid": "ZFdUdRJaviC3"
         },
         {
           "id": 2182,
           "title": "Volantino Deco Market",
-          "subtitle": "Super concorso",
-          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/deco_2182_0.jpg",
-          "from": "2026-09-22T00:00:00+02:00",
-          "to": "2026-10-01T00:00:00+02:00",
-          "bkcode": "00106671359e8977061e2",
-          "authid": "BjCLms2Bvu45"
-        },
-        {
-          "id": 547,
-          "title": "Volantino Deco",
-          "subtitle": "Super concorso",
-          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/deco_547_0.jpg",
-          "from": "2026-09-22T00:00:00+02:00",
-          "to": "2026-10-01T00:00:00+02:00",
-          "bkcode": "001066713ecb65f0bd993",
-          "authid": "8Xjxts1rW1q1"
+          "subtitle": "Sconto 10%",
+          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/deco_2182.jpg",
+          "from": "2026-10-02T00:00:00+02:00",
+          "to": "2026-10-12T00:00:00+02:00",
+          "bkcode": "001066713eba495718c7a",
+          "authid": "UlN0hKtmHyGE"
         },
         {
           "id": 2190,
           "title": "Volantino Deco Superfreddo",
-          "subtitle": "Super concorso",
-          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/deco_2190.jpg",
-          "from": "2026-09-22T00:00:00+02:00",
-          "to": "2026-10-01T00:00:00+02:00",
-          "bkcode": "001066713701c0529987d",
-          "authid": "JoF4yo5gg9va"
+          "subtitle": "Sconto 10%",
+          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/deco_2190_0.jpg",
+          "from": "2026-10-02T00:00:00+02:00",
+          "to": "2026-10-12T00:00:00+02:00",
+          "bkcode": "0010667133238159f07d6",
+          "authid": "7VeAhE5rChkM"
         }
       ]
     },
@@ -1044,29 +1080,12 @@ export const VOLANTINI_DB: VolantiniDb = {
       "flyers": [
         {
           "id": 1308,
-          "title": "Volantino Dem",
-          "subtitle": "Dal 23 al 30 settembre 2026",
+          "title": "Volantino Dem Supermercati",
+          "subtitle": "Dal 2 al 13 Ottobre 2026",
           "coverUrl": "https://www.cedigros.com/images/covers/cover-flyer_1308.jpg",
           "directUrl": "https://www.cedigros.com/index.php?option=com_myegojwt&view=flyer&id=1308&tmpl=component",
-          "from": "2026-09-23T00:00:00+02:00",
-          "to": "2026-09-30T23:59:59+02:00"
-        }
-      ]
-    },
-    {
-      "slug": "despar",
-      "name": "Despar",
-      "logoId": "despar",
-      "flyers": [
-        {
-          "id": 2256,
-          "title": "Volantino Despar Sicilia",
-          "subtitle": "Raddoppia E Risparmia",
-          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/despar_2256_0.jpg",
-          "from": "2026-09-21T00:00:00+02:00",
-          "to": "2026-10-01T00:00:00+02:00",
-          "bkcode": "001066713fb6d17ebb739",
-          "authid": "XqShpqptXO8b"
+          "from": "2026-10-02T00:00:00+02:00",
+          "to": "2026-10-13T23:59:59+02:00"
         }
       ]
     },
@@ -1078,12 +1097,12 @@ export const VOLANTINI_DB: VolantiniDb = {
         {
           "id": 489,
           "title": "Volantino Dpiù",
-          "subtitle": "Prezzi Shock",
-          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/dpi_489.jpg",
-          "from": "2026-09-14T00:00:00+02:00",
-          "to": "2026-09-30T00:00:00+02:00",
-          "bkcode": "0010667137151c785032f",
-          "authid": "d6Mn8l19RrFh"
+          "subtitle": "Sotto Costo",
+          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/dpi_489_0.jpg",
+          "from": "2026-10-01T00:00:00+02:00",
+          "to": "2026-10-10T00:00:00+02:00",
+          "bkcode": "001066713cdb812300d8b",
+          "authid": "wHRq68lhs127"
         }
       ]
     },
@@ -1093,13 +1112,13 @@ export const VOLANTINI_DB: VolantiniDb = {
       "logoId": "effepiu",
       "flyers": [
         {
-          "id": 10032,
+          "id": 198,
           "title": "Volantino Effepiù",
-          "subtitle": "Dal 23 settembre al 1 ottobre 2026",
-          "coverUrl": "https://www.cedigros.com/images/covers/cover-flyer_10032.jpg",
-          "directUrl": "https://www.cedigros.com/index.php?option=com_myegojwt&view=flyer&id=10032&tmpl=component",
-          "from": "2026-09-23T00:00:00+02:00",
-          "to": "2026-10-01T23:59:59+02:00"
+          "subtitle": "Dal 2 al 13 Ottobre 2026",
+          "coverUrl": "https://www.cedigros.com/images/covers/cover-flyer_198.jpg",
+          "directUrl": "https://www.cedigros.com/index.php?option=com_myegojwt&view=flyer&id=198&tmpl=component",
+          "from": "2026-10-02T00:00:00+02:00",
+          "to": "2026-10-13T23:59:59+02:00"
         }
       ]
     },
@@ -1126,6 +1145,16 @@ export const VOLANTINI_DB: VolantiniDb = {
       "logoId": "esselunga",
       "flyers": [
         {
+          "id": 2360,
+          "title": "Catalogo Esselunga Speciale Bis",
+          "subtitle": "Elettrodomestici",
+          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/esselunga_2360_0.jpg",
+          "from": "2026-09-29T00:00:00+02:00",
+          "to": "2026-10-18T00:00:00+02:00",
+          "bkcode": "001066713f26c89c01202",
+          "authid": "eiDktWGZKd0u"
+        },
+        {
           "id": 789,
           "title": "Volantino Esselunga: Speciale Bis",
           "subtitle": "La Colazione Che è Già Una Hit",
@@ -1138,7 +1167,7 @@ export const VOLANTINI_DB: VolantiniDb = {
         {
           "id": 429,
           "title": "Volantino Esselunga: Speciale Ter",
-          "subtitle": "Sapori D&#039;Autunno",
+          "subtitle": "Sapori D'Autunno",
           "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/esselunga_429.jpg",
           "from": "2026-09-24T00:00:00+02:00",
           "to": "2026-10-07T00:00:00+02:00",
@@ -1184,16 +1213,6 @@ export const VOLANTINI_DB: VolantiniDb = {
           "to": "2026-12-31T00:00:00+01:00",
           "bkcode": "001066713d9f837b160cf",
           "authid": "rc0Q9GsSsIan"
-        },
-        {
-          "id": 616,
-          "title": "Volantino Esselunga Servizio Viaggi",
-          "subtitle": "Un Mare Di Offerte",
-          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/esselunga_616_1.jpg",
-          "from": "2026-05-01T00:00:00+02:00",
-          "to": "2026-09-30T00:00:00+02:00",
-          "bkcode": "001066713b9188353d514",
-          "authid": "BVWB8NZ70hlH"
         },
         {
           "id": 2138,
@@ -1281,16 +1300,6 @@ export const VOLANTINI_DB: VolantiniDb = {
           "to": "2026-10-07T00:00:00+02:00",
           "bkcode": "001066713878ec78b1df9",
           "authid": "IyRcEMC9pu71"
-        },
-        {
-          "id": 259,
-          "title": "Volantino Euronics (Gruppo Bruno): Sicilia",
-          "subtitle": "Per Quest&#039;Anno Non Pagare",
-          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/euronics_259.jpg",
-          "from": "2026-09-10T00:00:00+02:00",
-          "to": "2026-09-23T00:00:00+02:00",
-          "bkcode": "001066713e9f1aacfcdc9",
-          "authid": "Nvv9LULfbehK"
         }
       ]
     },
@@ -1302,42 +1311,52 @@ export const VOLANTINI_DB: VolantiniDb = {
         {
           "id": 105,
           "title": "Volantino Eurospin",
-          "subtitle": "BLUEY E SPECIALE HAMBURGER",
-          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/eurospin_105_0.jpg",
-          "from": "2026-09-24T00:00:00+02:00",
-          "to": "2026-10-04T00:00:00+02:00",
-          "bkcode": "001066713e9f8ed267eed",
-          "authid": "K08TEnV6FCiz"
+          "subtitle": "SPECIALE AMO ESSERE SENZA LATTOSIO, GLUTINE E HALLOWEEN",
+          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/eurospin_105.jpg",
+          "from": "2026-10-08T00:00:00+02:00",
+          "to": "2026-10-18T00:00:00+02:00",
+          "bkcode": "0010667135d11a2fed960",
+          "authid": "9fLRx6R4aPtq"
+        },
+        {
+          "id": 1959,
+          "title": "Volantino Eurospin Speciale",
+          "subtitle": "FRESCHE OFFERTE DELLA SETTIMANA",
+          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/eurospin_1959.jpg",
+          "from": "2026-10-05T00:00:00+02:00",
+          "to": "2026-10-11T00:00:00+02:00",
+          "bkcode": "0010667137101e6541e7a",
+          "authid": "otWSuuhobP26"
         },
         {
           "id": 1974,
           "title": "Volantino Eurospin Speciale Roma e Lazio",
-          "subtitle": "BLUEY E SPECIALE HAMBURGER",
-          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/eurospin_1974.jpg",
-          "from": "2026-09-24T00:00:00+02:00",
-          "to": "2026-10-04T00:00:00+02:00",
-          "bkcode": "001066713d2d9cc62c3a2",
-          "authid": "E3YngMsYB4Uv"
+          "subtitle": "SPECIALE AMO ESSERE SENZA LATTOSIO, GLUTINE E HALLOWEEN",
+          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/eurospin_1974_0.jpg",
+          "from": "2026-10-08T00:00:00+02:00",
+          "to": "2026-10-18T00:00:00+02:00",
+          "bkcode": "001066713f6a1edbe00f1",
+          "authid": "Fjq1oXJUwFMl"
         },
         {
           "id": 2154,
           "title": "Volantino Eurospin Sicilia",
-          "subtitle": "BLUEY E SPECIALE HAMBURGER",
-          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/eurospin_2154.jpg",
-          "from": "2026-09-24T00:00:00+02:00",
-          "to": "2026-10-04T00:00:00+02:00",
-          "bkcode": "001066713b46577b70f35",
-          "authid": "lMHEGTJINF5E"
+          "subtitle": "SPECIALE AMO ESSERE SENZA LATTOSIO, GLUTINE E HALLOWEEN",
+          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/eurospin_2154_0.jpg",
+          "from": "2026-10-08T00:00:00+02:00",
+          "to": "2026-10-18T00:00:00+02:00",
+          "bkcode": "001066713c3b3632d3f66",
+          "authid": "xY0x9460lstR"
         },
         {
           "id": 2153,
           "title": "Volantino Eurospin Toscana",
-          "subtitle": "BLUEY E SPECIALE HAMBURGER",
-          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/eurospin_2153.jpg",
-          "from": "2026-09-24T00:00:00+02:00",
-          "to": "2026-10-04T00:00:00+02:00",
-          "bkcode": "00106671320c894fdf957",
-          "authid": "Gc1dTe3CJFM7"
+          "subtitle": "SPECIALE AMO ESSERE SENZA LATTOSIO, GLUTINE E HALLOWEEN",
+          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/eurospin_2153_0.jpg",
+          "from": "2026-10-08T00:00:00+02:00",
+          "to": "2026-10-18T00:00:00+02:00",
+          "bkcode": "001066713a686b6f3ed43",
+          "authid": "E5Ao4jlFMoZJ"
         }
       ]
     },
@@ -1414,6 +1433,76 @@ export const VOLANTINI_DB: VolantiniDb = {
       "logoId": "famila",
       "flyers": [
         {
+          "id": 363,
+          "title": "Volantino Famila Superstore: Veneto",
+          "subtitle": "MA GUARDA CHE RISPARMIO",
+          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/famila_363_0.jpg",
+          "from": "2026-10-01T00:00:00+02:00",
+          "to": "2026-10-14T00:00:00+02:00",
+          "bkcode": "0010667136af4d26e054e",
+          "authid": "5dFiE3Zv5FXI"
+        },
+        {
+          "id": 511,
+          "title": "Volantino Famila Superstore Nord Italia",
+          "subtitle": "SCONTI FINO AL 50%",
+          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/famila_511_0.jpg",
+          "from": "2026-10-01T00:00:00+02:00",
+          "to": "2026-10-14T00:00:00+02:00",
+          "bkcode": "001066713d5ac4fe29e11",
+          "authid": "9bFSX8ZFwdCc"
+        },
+        {
+          "id": 108,
+          "title": "Volantino Famila: Lombardia ed Emilia",
+          "subtitle": "SCONTI FINO AL 50%",
+          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/famila_108.jpg",
+          "from": "2026-10-01T00:00:00+02:00",
+          "to": "2026-10-14T00:00:00+02:00",
+          "bkcode": "001066713ac0ee042cc86",
+          "authid": "SAVwGq8eD9Rd"
+        },
+        {
+          "id": 1968,
+          "title": "Volantino Famila Toscana e Umbria",
+          "subtitle": "SCONTI FINO AL 50%",
+          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/famila_1968_0.jpg",
+          "from": "2026-10-01T00:00:00+02:00",
+          "to": "2026-10-14T00:00:00+02:00",
+          "bkcode": "001066713391380def7bd",
+          "authid": "CMNnckaLjpIT"
+        },
+        {
+          "id": 394,
+          "title": "Volantino IperFamila: Catalogo Speciale",
+          "subtitle": "SEGRETI DI BELLEZZA",
+          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/famila_394.jpg",
+          "from": "2026-10-01T00:00:00+02:00",
+          "to": "2026-10-28T00:00:00+01:00",
+          "bkcode": "00106671321c213f75e29",
+          "authid": "ufl0NsYZ4Qyi"
+        },
+        {
+          "id": 107,
+          "title": "Volantino Famila Superstore",
+          "subtitle": "Spesa Difesa",
+          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/famila_107.jpg",
+          "from": "2026-10-01T00:00:00+02:00",
+          "to": "2026-10-28T00:00:00+01:00",
+          "bkcode": "0010667138c055b65ea05",
+          "authid": "OisHlI6V1koa"
+        },
+        {
+          "id": 364,
+          "title": "Volantino Famila: Piemonte",
+          "subtitle": "SCONTI FINO AL 50%",
+          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/famila_364.jpg",
+          "from": "2026-09-30T00:00:00+02:00",
+          "to": "2026-10-13T00:00:00+02:00",
+          "bkcode": "001066713ac307c554a3e",
+          "authid": "PfQ8KwWjHqqg"
+        },
+        {
           "id": 106,
           "title": "Volantino IperFamila: Speciale",
           "subtitle": "Sapori regionali",
@@ -1432,76 +1521,6 @@ export const VOLANTINI_DB: VolantiniDb = {
           "to": "2026-10-18T00:00:00+02:00",
           "bkcode": "001066713623f478e0033",
           "authid": "dkOui339nAtj"
-        },
-        {
-          "id": 363,
-          "title": "Volantino Famila Superstore: Veneto",
-          "subtitle": "Un carello di affari",
-          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/famila_363.jpg",
-          "from": "2026-09-17T00:00:00+02:00",
-          "to": "2026-09-30T00:00:00+02:00",
-          "bkcode": "0010667130e67a269f72a",
-          "authid": "7dyTcJsqpATE"
-        },
-        {
-          "id": 108,
-          "title": "Volantino Famila: Lombardia ed Emilia",
-          "subtitle": "SCONTI FINO AL 50%",
-          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/famila_108_0.jpg",
-          "from": "2026-09-17T00:00:00+02:00",
-          "to": "2026-09-30T00:00:00+02:00",
-          "bkcode": "0010667133ac9cf2f8e5b",
-          "authid": "y33w9dG9DjFx"
-        },
-        {
-          "id": 1968,
-          "title": "Volantino Famila Toscana e Umbria",
-          "subtitle": "Risparmio e qualità",
-          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/famila_1968.jpg",
-          "from": "2026-09-17T00:00:00+02:00",
-          "to": "2026-09-30T00:00:00+02:00",
-          "bkcode": "001066713d2a8522b87c7",
-          "authid": "Ge9wNmp7q52T"
-        },
-        {
-          "id": 110,
-          "title": "Volantino Famila Superstore Bis",
-          "subtitle": "CATALOGO RINNOVIAMO LA CASA",
-          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/famila_110_0.jpg",
-          "from": "2026-09-07T00:00:00+02:00",
-          "to": "2026-09-30T00:00:00+02:00",
-          "bkcode": "0010667136c79171d50b2",
-          "authid": "sqi63nttUkGx"
-        },
-        {
-          "id": 364,
-          "title": "Volantino Famila: Piemonte",
-          "subtitle": "SUPER OFFERTE",
-          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/famila_364_0.jpg",
-          "from": "2026-09-16T00:00:00+02:00",
-          "to": "2026-09-29T00:00:00+02:00",
-          "bkcode": "001066713ba5056eaaecc",
-          "authid": "TzmvCtu17pEv"
-        },
-        {
-          "id": 511,
-          "title": "Volantino Famila Superstore Nord Italia",
-          "subtitle": "SCONTI FINO AL 50%",
-          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/famila_511.jpg",
-          "from": "2026-09-17T00:00:00+02:00",
-          "to": "2026-09-30T00:00:00+02:00",
-          "bkcode": "001066713a7b7038dcc7d",
-          "authid": "MUMmHZeSVhfW"
-        },
-        {
-          "id": 2131,
-          "title": "Volantino Famila Emilia Romagna",
-          "subtitle": "STORE SELEX SETTEMBRE",
-          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/famila_2131.jpg",
-          "from": "2026-09-03T00:00:00+02:00",
-          "to": "2026-09-30T00:00:00+02:00",
-          "bkcode": "001066713ff4f7491387b",
-          "authid": "AnW08R0eAJVI"
         }
       ]
     },
@@ -1511,31 +1530,121 @@ export const VOLANTINI_DB: VolantiniDb = {
       "logoId": "gros",
       "flyers": [
         {
-          "id": 10050,
+          "id": 10034,
+          "title": "Volantino Pewex",
+          "subtitle": "Dal 2 al 13 Ottobre 2026",
+          "coverUrl": "https://www.cedigros.com/images/covers/cover-flyer_10034.jpg",
+          "directUrl": "https://www.cedigros.com/index.php?option=com_myegojwt&view=flyer&id=10034&tmpl=component",
+          "from": "2026-10-02T00:00:00+02:00",
+          "to": "2026-10-13T23:59:59+02:00"
+        },
+        {
+          "id": 10009,
+          "title": "Volantino Pim",
+          "subtitle": "Dal 2 al 13 Ottobre 2026",
+          "coverUrl": "https://www.cedigros.com/images/covers/cover-flyer_10009.jpg",
+          "directUrl": "https://www.cedigros.com/index.php?option=com_myegojwt&view=flyer&id=10009&tmpl=component",
+          "from": "2026-10-02T00:00:00+02:00",
+          "to": "2026-10-13T23:59:59+02:00"
+        },
+        {
+          "id": 1308,
+          "title": "Volantino Dem Supermercati",
+          "subtitle": "Dal 2 al 13 Ottobre 2026",
+          "coverUrl": "https://www.cedigros.com/images/covers/cover-flyer_1308.jpg",
+          "directUrl": "https://www.cedigros.com/index.php?option=com_myegojwt&view=flyer&id=1308&tmpl=component",
+          "from": "2026-10-02T00:00:00+02:00",
+          "to": "2026-10-13T23:59:59+02:00"
+        },
+        {
+          "id": 10007,
+          "title": "Volantino Il Castoro",
+          "subtitle": "Dal 2 al 13 Ottobre 2026",
+          "coverUrl": "https://www.cedigros.com/images/covers/cover-flyer_10007.jpg",
+          "directUrl": "https://www.cedigros.com/index.php?option=com_myegojwt&view=flyer&id=10007&tmpl=component",
+          "from": "2026-10-02T00:00:00+02:00",
+          "to": "2026-10-13T23:59:59+02:00"
+        },
+        {
+          "id": 10093,
           "title": "Volantino Ipertriscount",
-          "subtitle": "Dal 23 settembre al 1 ottobre 2026",
-          "coverUrl": "https://www.cedigros.com/images/covers/cover-flyer_10050.jpg",
-          "directUrl": "https://www.cedigros.com/index.php?option=com_myegojwt&view=flyer&id=10050&tmpl=component",
-          "from": "2026-09-23T00:00:00+02:00",
-          "to": "2026-10-01T23:59:59+02:00"
+          "subtitle": "Dal 2 al 13 Ottobre 2026",
+          "coverUrl": "https://www.cedigros.com/images/covers/cover-flyer_10093.jpg",
+          "directUrl": "https://www.cedigros.com/index.php?option=com_myegojwt&view=flyer&id=10093&tmpl=component",
+          "from": "2026-10-02T00:00:00+02:00",
+          "to": "2026-10-13T23:59:59+02:00"
         },
         {
-          "id": 10022,
-          "title": "Volantino MA",
-          "subtitle": "Dal 23 settembre al 1 ottobre 2026",
-          "coverUrl": "https://www.cedigros.com/images/covers/cover-flyer_10022.jpg",
-          "directUrl": "https://www.cedigros.com/index.php?option=com_myegojwt&view=flyer&id=10022&tmpl=component",
-          "from": "2026-09-23T00:00:00+02:00",
-          "to": "2026-10-01T23:59:59+02:00"
-        },
-        {
-          "id": 10048,
+          "id": 10014,
           "title": "Volantino Ipercarni",
-          "subtitle": "Dal 23 settembre al 1 ottobre 2026",
-          "coverUrl": "https://www.cedigros.com/images/covers/cover-flyer_10048.jpg",
-          "directUrl": "https://www.cedigros.com/index.php?option=com_myegojwt&view=flyer&id=10048&tmpl=component",
-          "from": "2026-09-23T00:00:00+02:00",
-          "to": "2026-10-01T23:59:59+02:00"
+          "subtitle": "Dal 2 al 13 Ottobre 2026",
+          "coverUrl": "https://www.cedigros.com/images/covers/cover-flyer_10014.jpg",
+          "directUrl": "https://www.cedigros.com/index.php?option=com_myegojwt&view=flyer&id=10014&tmpl=component",
+          "from": "2026-10-02T00:00:00+02:00",
+          "to": "2026-10-13T23:59:59+02:00"
+        },
+        {
+          "id": 10030,
+          "title": "Volantino CTS Supermercati",
+          "subtitle": "Dal 2 al 13 Ottobre 2026",
+          "coverUrl": "https://www.cedigros.com/images/covers/cover-flyer_10030.jpg",
+          "directUrl": "https://www.cedigros.com/index.php?option=com_myegojwt&view=flyer&id=10030&tmpl=component",
+          "from": "2026-10-02T00:00:00+02:00",
+          "to": "2026-10-13T23:59:59+02:00"
+        },
+        {
+          "id": 10040,
+          "title": "Volantino TOP Supermercati",
+          "subtitle": "Dal 2 al 12 Ottobre 2026",
+          "coverUrl": "https://www.cedigros.com/images/covers/cover-flyer_10040.jpg",
+          "directUrl": "https://www.cedigros.com/index.php?option=com_myegojwt&view=flyer&id=10040&tmpl=component",
+          "from": "2026-10-02T00:00:00+02:00",
+          "to": "2026-10-12T23:59:59+02:00"
+        },
+        {
+          "id": 198,
+          "title": "Volantino Effepiù",
+          "subtitle": "Dal 2 al 13 Ottobre 2026",
+          "coverUrl": "https://www.cedigros.com/images/covers/cover-flyer_198.jpg",
+          "directUrl": "https://www.cedigros.com/index.php?option=com_myegojwt&view=flyer&id=198&tmpl=component",
+          "from": "2026-10-02T00:00:00+02:00",
+          "to": "2026-10-13T23:59:59+02:00"
+        },
+        {
+          "id": 10038,
+          "title": "Volantino Sacoph",
+          "subtitle": "Dal 2 al 13 Ottobre 2026",
+          "coverUrl": "https://www.cedigros.com/images/covers/cover-flyer_10038.jpg",
+          "directUrl": "https://www.cedigros.com/index.php?option=com_myegojwt&view=flyer&id=10038&tmpl=component",
+          "from": "2026-10-02T00:00:00+02:00",
+          "to": "2026-10-13T23:59:59+02:00"
+        },
+        {
+          "id": 1440,
+          "title": "Volantino Idromarket",
+          "subtitle": "Dal 2 al 13 Ottobre 2026",
+          "coverUrl": "https://www.cedigros.com/images/covers/cover-flyer_1440.jpg",
+          "directUrl": "https://www.cedigros.com/index.php?option=com_myegojwt&view=flyer&id=1440&tmpl=component",
+          "from": "2026-10-02T00:00:00+02:00",
+          "to": "2026-10-13T23:59:59+02:00"
+        },
+        {
+          "id": 303,
+          "title": "Volantino Supermercati MA",
+          "subtitle": "Dal 2 al 13 Ottobre 2026",
+          "coverUrl": "https://www.cedigros.com/images/covers/cover-flyer_303.jpg",
+          "directUrl": "https://www.cedigros.com/index.php?option=com_myegojwt&view=flyer&id=303&tmpl=component",
+          "from": "2026-10-02T00:00:00+02:00",
+          "to": "2026-10-13T23:59:59+02:00"
+        },
+        {
+          "id": 10086,
+          "title": "Volantino Sir Market",
+          "subtitle": "Dal 2 al 13 Ottobre 2026",
+          "coverUrl": "https://www.cedigros.com/images/covers/cover-flyer_10086.jpg",
+          "directUrl": "https://www.cedigros.com/index.php?option=com_myegojwt&view=flyer&id=10086&tmpl=component",
+          "from": "2026-10-02T00:00:00+02:00",
+          "to": "2026-10-13T23:59:59+02:00"
         }
       ]
     },
@@ -1547,12 +1656,12 @@ export const VOLANTINI_DB: VolantiniDb = {
         {
           "id": 442,
           "title": "Volantino Hardis",
-          "subtitle": "La Spesa Di Fine Mese",
-          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/hardis_442_0.jpg",
-          "from": "2026-09-17T00:00:00+02:00",
-          "to": "2026-09-27T00:00:00+02:00",
-          "bkcode": "00106671319b164d6ab7e",
-          "authid": "dPG25SHIneZ6"
+          "subtitle": "Maxi Convenienza",
+          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/hardis_442.jpg",
+          "from": "2026-09-28T00:00:00+02:00",
+          "to": "2026-10-07T00:00:00+02:00",
+          "bkcode": "001066713dc868c2ba743",
+          "authid": "ASV0hCosXD5x"
         }
       ]
     },
@@ -1564,11 +1673,11 @@ export const VOLANTINI_DB: VolantiniDb = {
         {
           "id": 1440,
           "title": "Volantino Idromarket",
-          "subtitle": "Dal 23 al 30 settembre 2026",
+          "subtitle": "Dal 2 al 13 Ottobre 2026",
           "coverUrl": "https://www.cedigros.com/images/covers/cover-flyer_1440.jpg",
           "directUrl": "https://www.cedigros.com/index.php?option=com_myegojwt&view=flyer&id=1440&tmpl=component",
-          "from": "2026-09-23T00:00:00+02:00",
-          "to": "2026-09-30T23:59:59+02:00"
+          "from": "2026-10-02T00:00:00+02:00",
+          "to": "2026-10-13T23:59:59+02:00"
         }
       ]
     },
@@ -1578,31 +1687,13 @@ export const VOLANTINI_DB: VolantiniDb = {
       "logoId": "il-castoro",
       "flyers": [
         {
-          "id": 10008,
+          "id": 10007,
           "title": "Volantino Il Castoro",
-          "subtitle": "Dal 23 settembre al 1 ottobre 2026",
-          "coverUrl": "https://www.cedigros.com/images/covers/cover-flyer_10008.jpg",
-          "directUrl": "https://www.cedigros.com/index.php?option=com_myegojwt&view=flyer&id=10008&tmpl=component",
-          "from": "2026-09-23T00:00:00+02:00",
-          "to": "2026-10-01T23:59:59+02:00"
-        },
-        {
-          "id": 872,
-          "title": "Volantino Il Castoro",
-          "subtitle": "Dal 23 settembre al 1 ottobre 2026",
-          "coverUrl": "https://www.cedigros.com/images/covers/cover-flyer_872.jpg",
-          "directUrl": "https://www.cedigros.com/index.php?option=com_myegojwt&view=flyer&id=872&tmpl=component",
-          "from": "2026-09-23T00:00:00+02:00",
-          "to": "2026-10-01T23:59:59+02:00"
-        },
-        {
-          "id": 255,
-          "title": "Volantino Il Castoro",
-          "subtitle": "Dal 23 settembre al 1 ottobre 2026",
-          "coverUrl": "https://www.cedigros.com/images/covers/cover-flyer_255.jpg",
-          "directUrl": "https://www.cedigros.com/index.php?option=com_myegojwt&view=flyer&id=255&tmpl=component",
-          "from": "2026-09-23T00:00:00+02:00",
-          "to": "2026-10-01T23:59:59+02:00"
+          "subtitle": "Dal 2 al 13 Ottobre 2026",
+          "coverUrl": "https://www.cedigros.com/images/covers/cover-flyer_10007.jpg",
+          "directUrl": "https://www.cedigros.com/index.php?option=com_myegojwt&view=flyer&id=10007&tmpl=component",
+          "from": "2026-10-02T00:00:00+02:00",
+          "to": "2026-10-13T23:59:59+02:00"
         }
       ]
     },
@@ -1612,6 +1703,16 @@ export const VOLANTINI_DB: VolantiniDb = {
       "logoId": "il-gigante",
       "flyers": [
         {
+          "id": 58,
+          "title": "Volantino Il Gigante",
+          "subtitle": "Sottocosto",
+          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/il_gigante_58_0.jpg",
+          "from": "2026-10-01T00:00:00+02:00",
+          "to": "2026-10-10T00:00:00+02:00",
+          "bkcode": "00106671321f2c359d946",
+          "authid": "0iJZ4iEMTnfU"
+        },
+        {
           "id": 9,
           "title": "Volantino Il Gigante",
           "subtitle": "Assapora il mondo con Raimondo",
@@ -1620,26 +1721,6 @@ export const VOLANTINI_DB: VolantiniDb = {
           "to": "2026-10-11T00:00:00+02:00",
           "bkcode": "001066713f4b19edc6529",
           "authid": "WXQw052cAiWW"
-        },
-        {
-          "id": 58,
-          "title": "Volantino Il Gigante",
-          "subtitle": "Sconti giganteschi",
-          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/il_gigante_58.jpg",
-          "from": "2026-09-21T00:00:00+02:00",
-          "to": "2026-09-30T00:00:00+02:00",
-          "bkcode": "001066713930ec47a241c",
-          "authid": "n2EhX6BQ9dGQ"
-        },
-        {
-          "id": 59,
-          "title": "Catalogo Il Gigante",
-          "subtitle": "Catalogo Scuola",
-          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/il_gigante_59.jpg",
-          "from": "2026-08-06T00:00:00+02:00",
-          "to": "2026-09-30T00:00:00+02:00",
-          "bkcode": "00106671366c822b91831",
-          "authid": "Ike9lvOIhwzP"
         }
       ]
     },
@@ -1650,13 +1731,13 @@ export const VOLANTINI_DB: VolantiniDb = {
       "flyers": [
         {
           "id": 205,
-          "title": "Volantino iN&#039;s",
-          "subtitle": "La spesa ti sorride",
-          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/in_s_205.jpg",
-          "from": "2026-09-23T00:00:00+02:00",
-          "to": "2026-10-04T00:00:00+02:00",
-          "bkcode": "00106671321260f365908",
-          "authid": "mwUgV1vxLLmE"
+          "title": "Volantino iN's",
+          "subtitle": "Brividi Di Gusto",
+          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/in_s_205_0.jpg",
+          "from": "2026-10-07T00:00:00+02:00",
+          "to": "2026-10-18T00:00:00+02:00",
+          "bkcode": "001066713d3d002354c72",
+          "authid": "2jhonV4h2Y97"
         }
       ]
     },
@@ -1668,42 +1749,32 @@ export const VOLANTINI_DB: VolantiniDb = {
         {
           "id": 50,
           "title": "Volantino Iper, la grande i",
-          "subtitle": "OPERAZIONE IMBATTIBILI",
-          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/iper_la_grande_i_50_0.jpg",
-          "from": "2026-09-21T00:00:00+02:00",
-          "to": "2026-09-30T00:00:00+02:00",
-          "bkcode": "00106671363d51cdced14",
-          "authid": "072AjRoYEZqU"
+          "subtitle": "SOTTOCOSTO",
+          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/iper_la_grande_i_50.jpg",
+          "from": "2026-10-01T00:00:00+02:00",
+          "to": "2026-10-10T00:00:00+02:00",
+          "bkcode": "0010667133ffbd6e8a5d2",
+          "authid": "pgUEwiiBQOZu"
+        },
+        {
+          "id": 51,
+          "title": "Volantino Iper: Speciale",
+          "subtitle": "SPECIALE PET FOOD",
+          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/iper_la_grande_i_51_0.jpg",
+          "from": "2026-10-01T00:00:00+02:00",
+          "to": "2026-10-29T00:00:00+01:00",
+          "bkcode": "0010667136c5a86083f13",
+          "authid": "WtaytP59nNWb"
         },
         {
           "id": 2237,
           "title": "Catalogo Speciale Bis Iper la Grande i",
-          "subtitle": "BELLEZZA D&#039;AUTUNNO",
+          "subtitle": "BELLEZZA D'AUTUNNO",
           "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/iper_la_grande_i_2237_0.jpg",
           "from": "2026-09-21T00:00:00+02:00",
           "to": "2026-10-11T00:00:00+02:00",
           "bkcode": "00106671332eb16fbab30",
           "authid": "gMhKzLqG5fd0"
-        },
-        {
-          "id": 51,
-          "title": "Volantino Iper: Speciale",
-          "subtitle": "RISCOPRI IL BENESSERE",
-          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/iper_la_grande_i_51.jpg",
-          "from": "2026-09-11T00:00:00+02:00",
-          "to": "2026-09-24T00:00:00+02:00",
-          "bkcode": "0010667136ecafd34fc5e",
-          "authid": "pGeTFxFKxzUi"
-        },
-        {
-          "id": 2226,
-          "title": "Catalogo Iper la Grande I speciale",
-          "subtitle": "RISCOPRI IL BENESSERE",
-          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/iper_la_grande_i_2226.jpg",
-          "from": "2026-09-11T00:00:00+02:00",
-          "to": "2026-09-24T00:00:00+02:00",
-          "bkcode": "0010667136b3c3493c72b",
-          "authid": "A3XFWRl0Rs0P"
         },
         {
           "id": 506,
@@ -1716,54 +1787,44 @@ export const VOLANTINI_DB: VolantiniDb = {
           "authid": "EZmcbmgIZwRi"
         },
         {
-          "id": 1909,
-          "title": "Volantino Iper, la grande i: Speciale Bis",
-          "subtitle": "LA SCUOLA CHIAMA!",
-          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/iper_la_grande_i_1909_0.jpg",
-          "from": "2026-07-09T00:00:00+02:00",
-          "to": "2026-09-27T00:00:00+02:00",
-          "bkcode": "0010667136e3ea93b29eb",
-          "authid": "gekt7lXNvaK6"
-        },
-        {
           "id": 2240,
           "title": "Volantino Iper Busnago",
-          "subtitle": "OPERAZIONE IMBATTIBILI",
-          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/iper_la_grande_i_2240.jpg",
-          "from": "2026-09-21T00:00:00+02:00",
-          "to": "2026-09-30T00:00:00+02:00",
-          "bkcode": "0010667133254cdaa4008",
-          "authid": "oTCrdndDIjPG"
+          "subtitle": "SOTTOCOSTO",
+          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/iper_la_grande_i_2240_0.jpg",
+          "from": "2026-10-01T00:00:00+02:00",
+          "to": "2026-10-10T00:00:00+02:00",
+          "bkcode": "0010667130e388aa4c638",
+          "authid": "cIwoqk8d1fM5"
         },
         {
           "id": 412,
           "title": "Volantino Iper: Milano Portello",
-          "subtitle": "OPERAZIONE IMBATTIBILI",
-          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/iper_la_grande_i_412.jpg",
-          "from": "2026-09-21T00:00:00+02:00",
-          "to": "2026-09-30T00:00:00+02:00",
-          "bkcode": "0010667135d39315ed314",
-          "authid": "fvrSfgxhiMKi"
+          "subtitle": "SOTTOCOSTO",
+          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/iper_la_grande_i_412_0.jpg",
+          "from": "2026-10-01T00:00:00+02:00",
+          "to": "2026-10-10T00:00:00+02:00",
+          "bkcode": "00106671339f4c9a98f2d",
+          "authid": "rIIk3lns8HFj"
         },
         {
           "id": 2241,
           "title": "Volantino Iper Serravalle",
-          "subtitle": "OPERAZIONE IMBATTIBILI",
-          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/iper_la_grande_i_2241_0.jpg",
-          "from": "2026-09-21T00:00:00+02:00",
-          "to": "2026-09-30T00:00:00+02:00",
-          "bkcode": "001066713118570c5f900",
-          "authid": "g9t4x43JtMUK"
+          "subtitle": "SOTTOCOSTO",
+          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/iper_la_grande_i_2241.jpg",
+          "from": "2026-10-01T00:00:00+02:00",
+          "to": "2026-10-10T00:00:00+02:00",
+          "bkcode": "00106671350c03dc5ed9e",
+          "authid": "WFosJKAcm3vW"
         },
         {
           "id": 2359,
           "title": "Volantino Iper La Grande I Monza",
-          "subtitle": "OPERAZIONE IMBATTIBILI",
-          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/iper_la_grande_i_2359_0.jpg",
-          "from": "2026-09-21T00:00:00+02:00",
-          "to": "2026-09-30T00:00:00+02:00",
-          "bkcode": "001066713faf339da7f57",
-          "authid": "csguu9OgZjx4"
+          "subtitle": "SOTTOCOSTO",
+          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/iper_la_grande_i_2359.jpg",
+          "from": "2026-10-01T00:00:00+02:00",
+          "to": "2026-10-10T00:00:00+02:00",
+          "bkcode": "00106671382abac661b9a",
+          "authid": "mtoZo8wdpvVO"
         }
       ]
     },
@@ -1773,44 +1834,14 @@ export const VOLANTINI_DB: VolantiniDb = {
       "logoId": "iperal",
       "flyers": [
         {
-          "id": 1957,
-          "title": "Volantino Iperal Speciale Bis",
-          "subtitle": "Ancora più offerte",
-          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/iperal_1957_0.jpg",
-          "from": "2026-09-16T00:00:00+02:00",
-          "to": "2026-09-29T00:00:00+02:00",
-          "bkcode": "00106671384b905c0dad9",
-          "authid": "4yXV32tgxPKC"
-        },
-        {
-          "id": 579,
-          "title": "Volantino Iperal Speciale",
-          "subtitle": "Gratta... per vincere la spesa di un anno!",
-          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/iperal_579_0.jpg",
-          "from": "2026-09-16T00:00:00+02:00",
-          "to": "2026-09-29T00:00:00+02:00",
-          "bkcode": "0010667130c91b0f790ea",
-          "authid": "dh9RwVXZ1roQ"
-        },
-        {
           "id": 112,
           "title": "Volantino Iperal",
-          "subtitle": "50 prodotti al 50%",
-          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/iperal_112.jpg",
-          "from": "2026-09-16T00:00:00+02:00",
-          "to": "2026-09-29T00:00:00+02:00",
-          "bkcode": "00106671351ab499d7d3b",
-          "authid": "LSQLnY6eAS7e"
-        },
-        {
-          "id": 191,
-          "title": "Volantino Iperal Speciale",
-          "subtitle": "Igiene e Bellezza",
-          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/iperal_191_0.jpg",
-          "from": "2026-09-16T00:00:00+02:00",
-          "to": "2026-09-29T00:00:00+02:00",
-          "bkcode": "001066713d03ce3e49e27",
-          "authid": "RBiSVmJsrmMv"
+          "subtitle": "50 prodotti sconto 50%",
+          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/iperal_112_0.jpg",
+          "from": "2026-09-30T00:00:00+02:00",
+          "to": "2026-10-13T00:00:00+02:00",
+          "bkcode": "001066713ad69ebe3d804",
+          "authid": "rKfKoVgiM1K8"
         }
       ]
     },
@@ -1820,31 +1851,13 @@ export const VOLANTINI_DB: VolantiniDb = {
       "logoId": "ipercarni",
       "flyers": [
         {
-          "id": 10044,
+          "id": 10014,
           "title": "Volantino Ipercarni",
-          "subtitle": "Dal 23 settembre al 1 ottobre 2026",
-          "coverUrl": "https://www.cedigros.com/images/covers/cover-flyer_10044.jpg",
-          "directUrl": "https://www.cedigros.com/index.php?option=com_myegojwt&view=flyer&id=10044&tmpl=component",
-          "from": "2026-09-23T00:00:00+02:00",
-          "to": "2026-10-01T23:59:59+02:00"
-        },
-        {
-          "id": 10045,
-          "title": "Volantino Ipercarni",
-          "subtitle": "Dal 23 settembre al 1 ottobre 2026",
-          "coverUrl": "https://www.cedigros.com/images/covers/cover-flyer_10045.jpg",
-          "directUrl": "https://www.cedigros.com/index.php?option=com_myegojwt&view=flyer&id=10045&tmpl=component",
-          "from": "2026-09-23T00:00:00+02:00",
-          "to": "2026-10-01T23:59:59+02:00"
-        },
-        {
-          "id": 10046,
-          "title": "Volantino Ipercarni",
-          "subtitle": "Dal 23 settembre al 1 ottobre 2026",
-          "coverUrl": "https://www.cedigros.com/images/covers/cover-flyer_10046.jpg",
-          "directUrl": "https://www.cedigros.com/index.php?option=com_myegojwt&view=flyer&id=10046&tmpl=component",
-          "from": "2026-09-23T00:00:00+02:00",
-          "to": "2026-10-01T23:59:59+02:00"
+          "subtitle": "Dal 2 al 13 Ottobre 2026",
+          "coverUrl": "https://www.cedigros.com/images/covers/cover-flyer_10014.jpg",
+          "directUrl": "https://www.cedigros.com/index.php?option=com_myegojwt&view=flyer&id=10014&tmpl=component",
+          "from": "2026-10-02T00:00:00+02:00",
+          "to": "2026-10-13T23:59:59+02:00"
         }
       ]
     },
@@ -1854,31 +1867,13 @@ export const VOLANTINI_DB: VolantiniDb = {
       "logoId": "ipertriscount",
       "flyers": [
         {
-          "id": 10019,
+          "id": 10093,
           "title": "Volantino Ipertriscount",
-          "subtitle": "Dal 23 settembre al 1 ottobre 2026",
-          "coverUrl": "https://www.cedigros.com/images/covers/cover-flyer_10019.jpg",
-          "directUrl": "https://www.cedigros.com/index.php?option=com_myegojwt&view=flyer&id=10019&tmpl=component",
-          "from": "2026-09-23T00:00:00+02:00",
-          "to": "2026-10-01T23:59:59+02:00"
-        },
-        {
-          "id": 10020,
-          "title": "Volantino Ipertriscount",
-          "subtitle": "Dal 23 settembre al 1 ottobre 2026",
-          "coverUrl": "https://www.cedigros.com/images/covers/cover-flyer_10020.jpg",
-          "directUrl": "https://www.cedigros.com/index.php?option=com_myegojwt&view=flyer&id=10020&tmpl=component",
-          "from": "2026-09-23T00:00:00+02:00",
-          "to": "2026-10-01T23:59:59+02:00"
-        },
-        {
-          "id": 10050,
-          "title": "Volantino Ipertriscount",
-          "subtitle": "Dal 23 settembre al 1 ottobre 2026",
-          "coverUrl": "https://www.cedigros.com/images/covers/cover-flyer_10050.jpg",
-          "directUrl": "https://www.cedigros.com/index.php?option=com_myegojwt&view=flyer&id=10050&tmpl=component",
-          "from": "2026-09-23T00:00:00+02:00",
-          "to": "2026-10-01T23:59:59+02:00"
+          "subtitle": "Dal 2 al 13 Ottobre 2026",
+          "coverUrl": "https://www.cedigros.com/images/covers/cover-flyer_10093.jpg",
+          "directUrl": "https://www.cedigros.com/index.php?option=com_myegojwt&view=flyer&id=10093&tmpl=component",
+          "from": "2026-10-02T00:00:00+02:00",
+          "to": "2026-10-13T23:59:59+02:00"
         }
       ]
     },
@@ -1900,7 +1895,7 @@ export const VOLANTINI_DB: VolantiniDb = {
         {
           "id": 2260,
           "title": "Volantino Italmark",
-          "subtitle": "Tutto D&#039;Un Prezzo",
+          "subtitle": "Tutto D'Un Prezzo",
           "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/italmark_2260_1.jpg",
           "from": "2026-09-23T00:00:00+02:00",
           "to": "2026-10-06T00:00:00+02:00",
@@ -1910,52 +1905,75 @@ export const VOLANTINI_DB: VolantiniDb = {
       ]
     },
     {
-      "slug": "leroy-merlin",
-      "name": "Leroy Merlin",
-      "logoId": "leroy-merlin",
-      "flyers": [
-        {
-          "id": 589,
-          "title": "Volantino Leroy Merlin Bis",
-          "subtitle": "Catalogo Giardino 2026",
-          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/leroy_merlin_it_589.jpg",
-          "from": "2026-05-01T00:00:00+02:00",
-          "to": "2026-09-30T00:00:00+02:00",
-          "bkcode": "0010667138a06e59bcd55",
-          "authid": "zdhoMXvHpS7E"
-        }
-      ]
-    },
-    {
       "slug": "lidl",
       "name": "Lidl",
       "logoId": "lidl",
       "flyers": [
         {
-          "id": 559,
-          "title": "Volantino Lidl",
-          "subtitle": "Sotto Prezzi",
-          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/lidl_it_559_0.jpg",
-          "from": "2026-09-24T00:00:00+02:00",
-          "to": "2026-09-30T00:00:00+02:00",
-          "bkcode": "0010667139383b5fa2fe2",
-          "authid": "T520b7e4DEES"
-        },
-        {
           "id": 569,
           "title": "Volantino Anteprima Lidl",
-          "subtitle": "Sotto Prezzi",
-          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/lidl_it_569_1.jpg",
-          "from": "2026-09-24T00:00:00+02:00",
-          "to": "2026-09-30T00:00:00+02:00",
-          "bkcode": "00106671349a87193ac05",
-          "authid": "io49jSAiLida"
+          "subtitle": "Super Offerte",
+          "coverUrl": "https://www.calameo.com/books/social/cover/001066713a7ec00962fd3?authid=Rje67kYnb8Ev",
+          "from": "2026-10-08T00:00:00+02:00",
+          "to": "2026-10-14T00:00:00+02:00",
+          "bkcode": "001066713a7ec00962fd3",
+          "authid": "Rje67kYnb8Ev"
+        },
+        {
+          "id": 559,
+          "title": "Volantino Lidl",
+          "subtitle": "Grandi Offerte",
+          "coverUrl": "https://www.calameo.com/books/social/cover/00106671332f1f4bfb25c?authid=C33IA0Jyi1SW",
+          "from": "2026-10-01T00:00:00+02:00",
+          "to": "2026-10-07T00:00:00+02:00",
+          "bkcode": "00106671332f1f4bfb25c",
+          "authid": "C33IA0Jyi1SW"
+        },
+        {
+          "id": 1883,
+          "title": "Volantino Lidl Speciale",
+          "subtitle": "Sicilia",
+          "coverUrl": "https://www.calameo.com/books/social/cover/0010667132b7942b075f7?authid=NvAAcmWskt2K",
+          "from": "2026-10-01T00:00:00+02:00",
+          "to": "2026-10-07T00:00:00+02:00",
+          "bkcode": "0010667132b7942b075f7",
+          "authid": "NvAAcmWskt2K"
+        },
+        {
+          "id": 2122,
+          "title": "Volantino Lidl Speciali Bis",
+          "subtitle": "Sapori del sud Italia",
+          "coverUrl": "https://www.calameo.com/books/social/cover/00106671355f346739877?authid=LNBRHCH4rD8L",
+          "from": "2026-10-01T00:00:00+02:00",
+          "to": "2026-10-07T00:00:00+02:00",
+          "bkcode": "00106671355f346739877",
+          "authid": "LNBRHCH4rD8L"
+        },
+        {
+          "id": 2203,
+          "title": "Catalogo Lidl Speciale",
+          "subtitle": "Sapori del centro Italia",
+          "coverUrl": "https://www.calameo.com/books/social/cover/0010667137c2ba23d7fac?authid=IPErB5vHbdO5",
+          "from": "2026-10-01T00:00:00+02:00",
+          "to": "2026-10-07T00:00:00+02:00",
+          "bkcode": "0010667137c2ba23d7fac",
+          "authid": "IPErB5vHbdO5"
+        },
+        {
+          "id": 2068,
+          "title": "Volantino Lidl Speciale Bis",
+          "subtitle": "Fresca e conveniente",
+          "coverUrl": "https://www.calameo.com/books/social/cover/0010667132b7cbe9e0c9d?authid=0njR2Wa7UHcG",
+          "from": "2026-10-01T00:00:00+02:00",
+          "to": "2026-10-07T00:00:00+02:00",
+          "bkcode": "0010667132b7cbe9e0c9d",
+          "authid": "0njR2Wa7UHcG"
         },
         {
           "id": 754,
           "title": "Volantino Lidl Viaggi",
           "subtitle": "I viaggi del mese",
-          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/lidl_it_754.jpg",
+          "coverUrl": "https://www.calameo.com/books/social/cover/001066713d3934cdd8c61?authid=s8yUlmDxvJfM",
           "from": "2026-09-07T00:00:00+02:00",
           "to": "2026-10-31T00:00:00+01:00",
           "bkcode": "001066713d3934cdd8c61",
@@ -1965,45 +1983,11 @@ export const VOLANTINI_DB: VolantiniDb = {
           "id": 484,
           "title": "Volantino Lidl Bis",
           "subtitle": "Dal nostro assortimento",
-          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/lidl_it_484.jpg",
+          "coverUrl": "https://www.calameo.com/books/social/cover/0010667136550e81b6192?authid=mZl4cnRRxjPb",
           "from": "2026-04-29T00:00:00+02:00",
           "to": "2027-12-31T00:00:00+01:00",
           "bkcode": "0010667136550e81b6192",
           "authid": "mZl4cnRRxjPb"
-        }
-      ]
-    },
-    {
-      "slug": "ma",
-      "name": "MA Supermercati (Gruppo Gros)",
-      "logoId": "ma",
-      "flyers": [
-        {
-          "id": 10022,
-          "title": "Volantino MA",
-          "subtitle": "Dal 23 settembre al 1 ottobre 2026",
-          "coverUrl": "https://www.cedigros.com/images/covers/cover-flyer_10022.jpg",
-          "directUrl": "https://www.cedigros.com/index.php?option=com_myegojwt&view=flyer&id=10022&tmpl=component",
-          "from": "2026-09-23T00:00:00+02:00",
-          "to": "2026-10-01T23:59:59+02:00"
-        },
-        {
-          "id": 10024,
-          "title": "Volantino MA",
-          "subtitle": "Dal 23 settembre al 1 ottobre 2026",
-          "coverUrl": "https://www.cedigros.com/images/covers/cover-flyer_10024.jpg",
-          "directUrl": "https://www.cedigros.com/index.php?option=com_myegojwt&view=flyer&id=10024&tmpl=component",
-          "from": "2026-09-23T00:00:00+02:00",
-          "to": "2026-10-01T23:59:59+02:00"
-        },
-        {
-          "id": 10025,
-          "title": "Volantino MA",
-          "subtitle": "Dal 23 settembre al 1 ottobre 2026",
-          "coverUrl": "https://www.cedigros.com/images/covers/cover-flyer_10025.jpg",
-          "directUrl": "https://www.cedigros.com/index.php?option=com_myegojwt&view=flyer&id=10025&tmpl=component",
-          "from": "2026-09-23T00:00:00+02:00",
-          "to": "2026-10-01T23:59:59+02:00"
         }
       ]
     },
@@ -2033,21 +2017,21 @@ export const VOLANTINI_DB: VolantiniDb = {
           "id": 114,
           "title": "Volantino MD Discount",
           "subtitle": "Buona Spesa, Italia!",
-          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/md_discont_114_0.jpg",
-          "from": "2026-09-22T00:00:00+02:00",
-          "to": "2026-10-04T00:00:00+02:00",
-          "bkcode": "00106671390d74d496734",
-          "authid": "M2lhlAcjd7VD"
+          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/md_discont_114.jpg",
+          "from": "2026-10-06T00:00:00+02:00",
+          "to": "2026-10-18T00:00:00+02:00",
+          "bkcode": "001066713d9a16e0a0e03",
+          "authid": "Qgj8yH74a0Gb"
         },
         {
           "id": 246,
           "title": "Volantino MD Lombardia",
           "subtitle": "Buona Spesa, Italia!",
-          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/md_discont_246_0.jpg",
-          "from": "2026-09-22T00:00:00+02:00",
-          "to": "2026-10-04T00:00:00+02:00",
-          "bkcode": "001066713b654b634430e",
-          "authid": "JomhxKQP5beK"
+          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/md_discont_246.jpg",
+          "from": "2026-10-06T00:00:00+02:00",
+          "to": "2026-10-18T00:00:00+02:00",
+          "bkcode": "00106671358116945eabe",
+          "authid": "oGXVwUiKtXEF"
         }
       ]
     },
@@ -2057,6 +2041,26 @@ export const VOLANTINI_DB: VolantiniDb = {
       "logoId": "mediaworld-italia",
       "flyers": [
         {
+          "id": 370,
+          "title": "Volantino Mediaworld",
+          "subtitle": "Sottocosto",
+          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/mediaworld_370_0.jpg",
+          "from": "2026-10-06T00:00:00+02:00",
+          "to": "2026-10-18T00:00:00+02:00",
+          "bkcode": "001066713ac1e9c458fc8",
+          "authid": "tdYsJb2zE7z0"
+        },
+        {
+          "id": 157,
+          "title": "Volantino Mediaworld Bis",
+          "subtitle": "Road To Lucca Comics",
+          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/mediaworld_157.jpg",
+          "from": "2026-10-05T00:00:00+02:00",
+          "to": "2026-10-11T00:00:00+02:00",
+          "bkcode": "0010667133e8572530889",
+          "authid": "EYO6FgFOJAGf"
+        },
+        {
           "id": 278,
           "title": "Volantino Mediaworld Speciale",
           "subtitle": "Tecnologie da vivere per la tua casa",
@@ -2065,16 +2069,6 @@ export const VOLANTINI_DB: VolantiniDb = {
           "to": "2026-10-30T00:00:00+01:00",
           "bkcode": "001066713a1f1e30d4eb6",
           "authid": "EqgRDspv4gXQ"
-        },
-        {
-          "id": 370,
-          "title": "Volantino Mediaworld",
-          "subtitle": "Che Spettacolo Di Anniversario",
-          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/mediaworld_370_0.jpg",
-          "from": "2026-09-14T00:00:00+02:00",
-          "to": "2026-09-30T00:00:00+02:00",
-          "bkcode": "00106671362e50f5c22b8",
-          "authid": "mI1EbVnf5qnK"
         }
       ]
     },
@@ -2231,12 +2225,12 @@ export const VOLANTINI_DB: VolantiniDb = {
         {
           "id": 116,
           "title": "Volantino IperPan e SuperPan",
-          "subtitle": "La Sardegna da gustare",
-          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/iperpan_116_0.jpg",
-          "from": "2026-09-21T00:00:00+02:00",
-          "to": "2026-09-30T00:00:00+02:00",
-          "bkcode": "001066713187ca8d87b0e",
-          "authid": "nlk8QVV3gXpL"
+          "subtitle": "Sotto Costo",
+          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/iperpan_116.jpg",
+          "from": "2026-10-01T00:00:00+02:00",
+          "to": "2026-10-11T00:00:00+02:00",
+          "bkcode": "001066713f8c3787d743e",
+          "authid": "X6CsmdJC3CT5"
         }
       ]
     },
@@ -2290,22 +2284,13 @@ export const VOLANTINI_DB: VolantiniDb = {
       "logoId": "pewex",
       "flyers": [
         {
-          "id": 833,
-          "title": "Volantino Pewex City",
-          "subtitle": "Dal 23 settembre al 1 ottobre 2026",
-          "coverUrl": "https://www.cedigros.com/images/covers/cover-flyer_833.jpg",
-          "directUrl": "https://www.cedigros.com/index.php?option=com_myegojwt&view=flyer&id=833&tmpl=component",
-          "from": "2026-09-23T00:00:00+02:00",
-          "to": "2026-10-01T23:59:59+02:00"
-        },
-        {
-          "id": 254,
+          "id": 10034,
           "title": "Volantino Pewex",
-          "subtitle": "Dal 23 settembre al 1 ottobre 2026",
-          "coverUrl": "https://www.cedigros.com/images/covers/cover-flyer_254.jpg",
-          "directUrl": "https://www.cedigros.com/index.php?option=com_myegojwt&view=flyer&id=254&tmpl=component",
-          "from": "2026-09-23T00:00:00+02:00",
-          "to": "2026-10-01T23:59:59+02:00"
+          "subtitle": "Dal 2 al 13 Ottobre 2026",
+          "coverUrl": "https://www.cedigros.com/images/covers/cover-flyer_10034.jpg",
+          "directUrl": "https://www.cedigros.com/index.php?option=com_myegojwt&view=flyer&id=10034&tmpl=component",
+          "from": "2026-10-02T00:00:00+02:00",
+          "to": "2026-10-13T23:59:59+02:00"
         }
       ]
     },
@@ -2317,28 +2302,28 @@ export const VOLANTINI_DB: VolantiniDb = {
         {
           "id": 209,
           "title": "Volantino Picard",
-          "subtitle": "Settembre 2026",
-          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/picard_209.jpg",
-          "from": "2026-09-07T00:00:00+02:00",
-          "to": "2026-10-04T00:00:00+02:00",
-          "bkcode": "0010667131cec7c8415ff",
-          "authid": "9vf7CEfYHYqv"
+          "subtitle": "Ottobre 2026",
+          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/picard_209_0.jpg",
+          "from": "2026-10-05T00:00:00+02:00",
+          "to": "2026-10-31T00:00:00+01:00",
+          "bkcode": "001066713d84ac6aefea0",
+          "authid": "RXZLFA6u6VVr"
         }
       ]
     },
     {
       "slug": "pim",
-      "name": "Pim Supermercati (Gruppo Gros)",
+      "name": "Pim (Gruppo Gros)",
       "logoId": "pim",
       "flyers": [
         {
-          "id": 258,
-          "title": "Volantino Iperfamily - Pim - Agorà",
-          "subtitle": "Dal 23 al 30 settembre 2026",
-          "coverUrl": "https://www.cedigros.com/images/covers/cover-flyer_258.jpg",
-          "directUrl": "https://www.cedigros.com/index.php?option=com_myegojwt&view=flyer&id=258&tmpl=component",
-          "from": "2026-09-23T00:00:00+02:00",
-          "to": "2026-09-30T23:59:59+02:00"
+          "id": 10009,
+          "title": "Volantino Pim",
+          "subtitle": "Dal 2 al 13 Ottobre 2026",
+          "coverUrl": "https://www.cedigros.com/images/covers/cover-flyer_10009.jpg",
+          "directUrl": "https://www.cedigros.com/index.php?option=com_myegojwt&view=flyer&id=10009&tmpl=component",
+          "from": "2026-10-02T00:00:00+02:00",
+          "to": "2026-10-13T23:59:59+02:00"
         }
       ]
     },
@@ -2350,12 +2335,12 @@ export const VOLANTINI_DB: VolantiniDb = {
         {
           "id": 526,
           "title": "Volantino Prix",
-          "subtitle": "Maxi Formati",
-          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/prix_526_1.jpg",
-          "from": "2026-09-25T00:00:00+02:00",
-          "to": "2026-10-05T00:00:00+02:00",
-          "bkcode": "0010667133f182d7107a0",
-          "authid": "1rfCILTT9AfY"
+          "subtitle": "3X2",
+          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/prix_526_0.jpg",
+          "from": "2026-10-06T00:00:00+02:00",
+          "to": "2026-10-19T00:00:00+02:00",
+          "bkcode": "0010667134e4dd74bf55c",
+          "authid": "4C2IZs8fP7FM"
         }
       ]
     },
@@ -2382,31 +2367,13 @@ export const VOLANTINI_DB: VolantiniDb = {
       "logoId": "sacoph",
       "flyers": [
         {
-          "id": 256,
+          "id": 10038,
           "title": "Volantino Sacoph",
-          "subtitle": "Dal 23 al 30 settembre 2026",
-          "coverUrl": "https://www.cedigros.com/images/covers/cover-flyer_256.jpg",
-          "directUrl": "https://www.cedigros.com/index.php?option=com_myegojwt&view=flyer&id=256&tmpl=component",
-          "from": "2026-09-23T00:00:00+02:00",
-          "to": "2026-09-30T23:59:59+02:00"
-        },
-        {
-          "id": 263,
-          "title": "Volantino Sacoph",
-          "subtitle": "Dal 23 settembre al 1 ottobre 2026",
-          "coverUrl": "https://www.cedigros.com/images/covers/cover-flyer_263.jpg",
-          "directUrl": "https://www.cedigros.com/index.php?option=com_myegojwt&view=flyer&id=263&tmpl=component",
-          "from": "2026-09-23T00:00:00+02:00",
-          "to": "2026-10-01T23:59:59+02:00"
-        },
-        {
-          "id": 200,
-          "title": "Volantino Sacoph",
-          "subtitle": "Dal 23 settembre al 1 ottobre 2026",
-          "coverUrl": "https://www.cedigros.com/images/covers/cover-flyer_200.jpg",
-          "directUrl": "https://www.cedigros.com/index.php?option=com_myegojwt&view=flyer&id=200&tmpl=component",
-          "from": "2026-09-23T00:00:00+02:00",
-          "to": "2026-10-01T23:59:59+02:00"
+          "subtitle": "Dal 2 al 13 Ottobre 2026",
+          "coverUrl": "https://www.cedigros.com/images/covers/cover-flyer_10038.jpg",
+          "directUrl": "https://www.cedigros.com/index.php?option=com_myegojwt&view=flyer&id=10038&tmpl=component",
+          "from": "2026-10-02T00:00:00+02:00",
+          "to": "2026-10-13T23:59:59+02:00"
         }
       ]
     },
@@ -2416,22 +2383,29 @@ export const VOLANTINI_DB: VolantiniDb = {
       "logoId": "sir",
       "flyers": [
         {
-          "id": 10082,
+          "id": 10086,
           "title": "Volantino Sir Market",
-          "subtitle": "Dal 23 settembre al 1 ottobre 2026",
-          "coverUrl": "https://www.cedigros.com/images/covers/cover-flyer_10082.jpg",
-          "directUrl": "https://www.cedigros.com/index.php?option=com_myegojwt&view=flyer&id=10082&tmpl=component",
-          "from": "2026-09-23T00:00:00+02:00",
-          "to": "2026-10-01T23:59:59+02:00"
-        },
+          "subtitle": "Dal 2 al 13 Ottobre 2026",
+          "coverUrl": "https://www.cedigros.com/images/covers/cover-flyer_10086.jpg",
+          "directUrl": "https://www.cedigros.com/index.php?option=com_myegojwt&view=flyer&id=10086&tmpl=component",
+          "from": "2026-10-02T00:00:00+02:00",
+          "to": "2026-10-13T23:59:59+02:00"
+        }
+      ]
+    },
+    {
+      "slug": "ma",
+      "name": "Supermercati MA (Gruppo Gros)",
+      "logoId": "ma",
+      "flyers": [
         {
-          "id": 10083,
-          "title": "Volantino Sir Express",
-          "subtitle": "Dal 23 settembre al 1 ottobre 2026",
-          "coverUrl": "https://www.cedigros.com/images/covers/cover-flyer_10083.jpg",
-          "directUrl": "https://www.cedigros.com/index.php?option=com_myegojwt&view=flyer&id=10083&tmpl=component",
-          "from": "2026-09-23T00:00:00+02:00",
-          "to": "2026-10-01T23:59:59+02:00"
+          "id": 303,
+          "title": "Volantino Supermercati MA",
+          "subtitle": "Dal 2 al 13 Ottobre 2026",
+          "coverUrl": "https://www.cedigros.com/images/covers/cover-flyer_303.jpg",
+          "directUrl": "https://www.cedigros.com/index.php?option=com_myegojwt&view=flyer&id=303&tmpl=component",
+          "from": "2026-10-02T00:00:00+02:00",
+          "to": "2026-10-13T23:59:59+02:00"
         }
       ]
     },
@@ -2443,12 +2417,12 @@ export const VOLANTINI_DB: VolantiniDb = {
         {
           "id": 580,
           "title": "Volantino Tigotà",
-          "subtitle": "Settembre 2026",
-          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/tigot_580_0.jpg",
-          "from": "2026-09-01T00:00:00+02:00",
-          "to": "2026-09-30T00:00:00+02:00",
-          "bkcode": "0010667134c0f6a06318e",
-          "authid": "KaZynu4ZKohF"
+          "subtitle": "Ottobre 2026",
+          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/tigot_580.jpg",
+          "from": "2026-10-01T00:00:00+02:00",
+          "to": "2026-10-31T00:00:00+01:00",
+          "bkcode": "001066713102d4370eda2",
+          "authid": "lDASjv9br1aL"
         }
       ]
     },
@@ -2458,6 +2432,16 @@ export const VOLANTINI_DB: VolantiniDb = {
       "logoId": "tigre",
       "flyers": [
         {
+          "id": 549,
+          "title": "Volantino Tigre Amico",
+          "subtitle": "Super Offerte",
+          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/tigre_549_0.jpg",
+          "from": "2026-09-30T00:00:00+02:00",
+          "to": "2026-10-11T00:00:00+02:00",
+          "bkcode": "001066713fee37924c30d",
+          "authid": "app6u13P6MUi"
+        },
+        {
           "id": 548,
           "title": "Volantino Tigre",
           "subtitle": "Sotto Costo",
@@ -2466,16 +2450,6 @@ export const VOLANTINI_DB: VolantiniDb = {
           "to": "2026-10-07T00:00:00+02:00",
           "bkcode": "0010667139258423577bd",
           "authid": "Z9OsUBWSCupu"
-        },
-        {
-          "id": 549,
-          "title": "Volantino Tigre Amico",
-          "subtitle": "Super offerte",
-          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/tigre_549.jpg",
-          "from": "2026-09-23T00:00:00+02:00",
-          "to": "2026-09-27T00:00:00+02:00",
-          "bkcode": "001066713949efda9ddfa",
-          "authid": "KIASDi4PoOX3"
         }
       ]
     },
@@ -2485,6 +2459,26 @@ export const VOLANTINI_DB: VolantiniDb = {
       "logoId": "tigros",
       "flyers": [
         {
+          "id": 2367,
+          "title": "Catalogo Speciale tigros",
+          "subtitle": "PREZZI SPECIALI",
+          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/tigros_2367.jpg",
+          "from": "2026-10-01T00:00:00+02:00",
+          "to": "2026-10-12T00:00:00+02:00",
+          "bkcode": "001066713df41aa9d27cc",
+          "authid": "rnwVWpChB3XV"
+        },
+        {
+          "id": 265,
+          "title": "Volantino Tigros",
+          "subtitle": "SOTTOCOSTO",
+          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/tigros_265_0.jpg",
+          "from": "2026-10-01T00:00:00+02:00",
+          "to": "2026-10-12T00:00:00+02:00",
+          "bkcode": "001066713ca9f1d9e355c",
+          "authid": "LIBPpKN8AxNn"
+        },
+        {
           "id": 391,
           "title": "Catalogo Tigros: Speciale",
           "subtitle": "CURA E BELLEZZA",
@@ -2493,16 +2487,6 @@ export const VOLANTINI_DB: VolantiniDb = {
           "to": "2026-10-12T00:00:00+02:00",
           "bkcode": "0010667136d822573425b",
           "authid": "eS2qEpYTGyYr"
-        },
-        {
-          "id": 265,
-          "title": "Volantino Tigros",
-          "subtitle": "Cosa c&#039;è di nuovo no oggi?",
-          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/tigros_265.jpg",
-          "from": "2026-09-16T00:00:00+02:00",
-          "to": "2026-09-30T00:00:00+02:00",
-          "bkcode": "001066713e161dec958ed",
-          "authid": "0qwNZDBrSkO4"
         },
         {
           "id": 2365,
@@ -2517,45 +2501,18 @@ export const VOLANTINI_DB: VolantiniDb = {
       ]
     },
     {
-      "slug": "todis",
-      "name": "Todis",
-      "logoId": "todis",
-      "flyers": [
-        {
-          "id": 493,
-          "title": "Volantino Todis",
-          "subtitle": "Buongiorno Convenienza",
-          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/todis_493_1.jpg",
-          "from": "2026-09-17T00:00:00+02:00",
-          "to": "2026-09-30T00:00:00+02:00",
-          "bkcode": "00106671339e685a0e281",
-          "authid": "AMzyew2l5H5b"
-        },
-        {
-          "id": 2209,
-          "title": "Volantino Todis Campania",
-          "subtitle": "Buongiorno Convenienza",
-          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/todis_2209_0.jpg",
-          "from": "2026-09-17T00:00:00+02:00",
-          "to": "2026-09-30T00:00:00+02:00",
-          "bkcode": "00106671391aa5b09a68b",
-          "authid": "DTwwFfzWoma2"
-        }
-      ]
-    },
-    {
       "slug": "top",
-      "name": "Top Supermercati (Gruppo Gros)",
+      "name": "TOP Supermercati (Gruppo Gros)",
       "logoId": "top",
       "flyers": [
         {
-          "id": 253,
-          "title": "Volantino Top",
-          "subtitle": "Dal 23 settembre al 1 ottobre 2026",
-          "coverUrl": "https://www.cedigros.com/images/covers/cover-flyer_253.jpg",
-          "directUrl": "https://www.cedigros.com/index.php?option=com_myegojwt&view=flyer&id=253&tmpl=component",
-          "from": "2026-09-23T00:00:00+02:00",
-          "to": "2026-10-01T23:59:59+02:00"
+          "id": 10040,
+          "title": "Volantino TOP Supermercati",
+          "subtitle": "Dal 2 al 12 Ottobre 2026",
+          "coverUrl": "https://www.cedigros.com/images/covers/cover-flyer_10040.jpg",
+          "directUrl": "https://www.cedigros.com/index.php?option=com_myegojwt&view=flyer&id=10040&tmpl=component",
+          "from": "2026-10-02T00:00:00+02:00",
+          "to": "2026-10-12T23:59:59+02:00"
         }
       ]
     },
@@ -2565,24 +2522,24 @@ export const VOLANTINI_DB: VolantiniDb = {
       "logoId": "trony",
       "flyers": [
         {
-          "id": 145,
-          "title": "Volantino Trony: Province di Milano, Bergamo, Brescia, Verona, Cremona, Vercelli, Alessandria, Lodi, Mantova",
-          "subtitle": "Abbinata In Cucina",
-          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/trony_145_0.jpg",
-          "from": "2026-09-17T00:00:00+02:00",
-          "to": "2026-09-30T00:00:00+02:00",
-          "bkcode": "001066713e8bb69e1724a",
-          "authid": "ondvJz8TCesb"
-        },
-        {
           "id": 195,
           "title": "Volantino Trony Sardegna",
-          "subtitle": "Il Meglio A Tasso Zero",
-          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/trony_195.jpg",
-          "from": "2026-09-17T00:00:00+02:00",
-          "to": "2026-09-30T00:00:00+02:00",
-          "bkcode": "001066713888606b9e1d1",
-          "authid": "tlELHJH60yjr"
+          "subtitle": "Sconto IVA",
+          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/trony_195_0.jpg",
+          "from": "2026-10-01T00:00:00+02:00",
+          "to": "2026-10-15T00:00:00+02:00",
+          "bkcode": "001066713fa626fefdcfb",
+          "authid": "cPp45yDUtjsV"
+        },
+        {
+          "id": 145,
+          "title": "Volantino Trony: Province di Milano, Bergamo, Brescia, Verona, Cremona, Vercelli, Alessandria, Lodi, Mantova",
+          "subtitle": "Sconto IVA",
+          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/trony_145.jpg",
+          "from": "2026-10-01T00:00:00+02:00",
+          "to": "2026-10-15T00:00:00+02:00",
+          "bkcode": "001066713c69271780513",
+          "authid": "wWPBm5OhsSVQ"
         }
       ]
     },
@@ -2609,44 +2566,14 @@ export const VOLANTINI_DB: VolantiniDb = {
       "logoId": "unieuro",
       "flyers": [
         {
-          "id": 351,
-          "title": "Volantino Unieuro: Speciale Ter",
-          "subtitle": "Chromebook",
-          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/unieuro_351_1.jpg",
-          "from": "2026-09-18T00:00:00+02:00",
-          "to": "2026-10-04T00:00:00+02:00",
-          "bkcode": "0010667135287eb7cd1fc",
-          "authid": "rlJa2ZWRloJe"
-        },
-        {
           "id": 147,
           "title": "Volantino Unieuro",
-          "subtitle": "Passione Casa",
-          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/unieuro_147_0.jpg",
-          "from": "2026-09-18T00:00:00+02:00",
-          "to": "2026-10-04T00:00:00+02:00",
-          "bkcode": "001066713e031bb9cd727",
-          "authid": "E2UFFGaDT2oh"
-        },
-        {
-          "id": 143,
-          "title": "Volantino Unieuro: Speciale",
-          "subtitle": "Piccoli elettrodomestici",
-          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/unieuro_143_0.jpg",
-          "from": "2026-09-15T00:00:00+02:00",
-          "to": "2026-09-27T00:00:00+02:00",
-          "bkcode": "0010667134d6fb897c556",
-          "authid": "tKC5nlAiMOrn"
-        },
-        {
-          "id": 460,
-          "title": "Volantino Unieuro Ter",
-          "subtitle": "Electroline",
-          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/unieuro_460_0.jpg",
-          "from": "2026-09-01T00:00:00+02:00",
-          "to": "2026-09-30T00:00:00+02:00",
-          "bkcode": "0010667135d9a086fa7a2",
-          "authid": "sIdWB0gKkrJZ"
+          "subtitle": "Sottocosto",
+          "coverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/unieuro_147_1.jpg",
+          "from": "2026-10-02T00:00:00+02:00",
+          "to": "2026-10-11T00:00:00+02:00",
+          "bkcode": "0010667130caefcb0c5f7",
+          "authid": "sqmvM8winPRW"
         }
       ]
     }
