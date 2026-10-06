@@ -49,7 +49,8 @@ assert.strictEqual(isNative, false, 'Should be false in mock non-native environm
 assert(elapsedNative < 20, `checkNativeLlmAvailability must complete in < 20ms, got ${elapsedNative}ms`);
 console.log('✅ Native availability check passed');
 
-// 2. Direct queryChelonaAi latency test
+// 2. Direct queryChelonaAi latency test (warm-up ensures pure engine execution time without JIT module load)
+await queryChelonaAi('warmup', [], 'Davide');
 const start1 = performance.now();
 const res1 = await queryChelonaAi('Che spese ho questo mese?', [], 'Davide');
 const elapsed1 = performance.now() - start1;

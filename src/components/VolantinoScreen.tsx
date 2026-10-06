@@ -1,8 +1,8 @@
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { 
-  Store, Search, X, ChevronLeft, BarChart3, ExternalLink, 
+  ArrowLeft, Search, X, ChevronLeft, BarChart3, ExternalLink, 
   Star, Sparkles, MapPin, Clock, AlertTriangle, RefreshCw, CheckCircle2,
-  Plus, Check, ShoppingCart, Layers, BookOpen, ChevronRight, Navigation
+  Plus, Check, BookOpen, Store
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { StoreLogo } from './StoreLogo';
@@ -12,7 +12,7 @@ import { loadZone, saveZone, resolveCap, type VolantiniZone } from '../services/
 import { nearbySupermarketService } from '../services/nearbySupermarketService';
 import { 
   getLiveVolantiniDb, syncVolantiniRemote, formatUpdateDate, 
-  getFlyerExpiryInfo, type FlyerExpiryInfo 
+  getFlyerExpiryInfo 
 } from '../services/volantiniSync';
 import { detectSupermarketCategory } from '../services/mathLanguageEngine';
 import { VolantinoModule } from '../types';
@@ -53,17 +53,17 @@ function cleanTitle(title: string): string {
     .trim();
 }
 
-// ── Categorie filtri snelle e focalizzate ──
+// ── Categorie filtri veloci ──
 export const DC_INDEX_CATEGORIES = [
   { slug: 'all', name: 'Tutti', icon: '🛒' },
   { slug: 'fav', name: 'Preferiti', icon: '⭐' },
   { slug: 'nearby', name: 'Vicini a te', icon: '📍' },
   { slug: 'expiring', name: 'In scadenza', icon: '⏳' },
-  { slug: 'gros', name: 'Gruppo GROS', icon: '🏛️' },
   { slug: 'iper-e-super', name: 'Supermercati', icon: '🏪' },
   { slug: 'discount', name: 'Discount', icon: '🏷️' },
-  { slug: 'elettronica', name: 'Elettronica', icon: '📱' },
+  { slug: 'gros', name: 'Gruppo GROS', icon: '🏛️' },
   { slug: 'cura-casa-e-corpo', name: 'Casa & Cura', icon: '🧼' },
+  { slug: 'elettronica', name: 'Elettronica', icon: '📱' },
 ] as const;
 
 // ── Mappatura Catene → Categoria ──
@@ -142,14 +142,10 @@ const CHAIN_CATEGORY_MAP: Record<string, string> = {
   'tigota': 'cura-casa-e-corpo',
   'risparmiocasa': 'cura-casa-e-corpo',
   'magazzini-maurys': 'cura-casa-e-corpo',
-
-  // Bricolage
   'leroy-merlin': 'cura-casa-e-corpo',
   'tecnomat': 'cura-casa-e-corpo',
   'bricofer': 'cura-casa-e-corpo',
   'brico-io': 'cura-casa-e-corpo',
-
-  // Arredamento
   'mondo-convenienza': 'cura-casa-e-corpo',
 };
 
@@ -304,6 +300,7 @@ export default function VolantinoScreen({
   const [calameoChain, setCalameoChain] = useState<VolantinoChain | null>(null);
   const [calameoPage, setCalameoPage] = useState<number>(1);
   const [dismissExpiryAlert, setDismissExpiryAlert] = useState(false);
+  const [iframeLoading, setIframeLoading] = useState(true);
 
   // Best Offers filter state
   const [offersFavOnly, setOffersFavOnly] = useState(false);
@@ -319,7 +316,9 @@ export default function VolantinoScreen({
   const [zone, setZone] = useState<VolantiniZone | null>(() => loadZone());
   const [showCapModal, setShowCapModal] = useState<boolean>(false);
   const [nearbySlugs, setNearbySlugs] = useState<string[]>([]);
-  const [loadingNearby, setLoadingNearby] = useState<boolean>(false);
+
+  // Image load error cache
+  const [brokenImages, setBrokenImages] = useState<Set<number>>(new Set());
 
   // Favorites state
   const [favorites, setFavorites] = useState<string[]>(() => {
@@ -370,16 +369,14 @@ export default function VolantinoScreen({
       return;
     }
     let isCurrent = true;
-    setLoadingNearby(true);
     nearbySupermarketService.getNearbySupermarkets(zone)
       .then(res => {
         if (isCurrent) {
           setNearbySlugs(res.nearbySlugs);
-          setLoadingNearby(false);
         }
       })
       .catch(() => {
-        if (isCurrent) setLoadingNearby(false);
+        if (isCurrent) setNearbySlugs([]);
       });
 
     return () => { isCurrent = false; };
@@ -398,6 +395,10 @@ export default function VolantinoScreen({
   const allChains = useMemo(() => {
     return db.chains.filter(c => c.flyers.length > 0);
   }, [db]);
+
+  const totalFlyersCount = useMemo(() => {
+    return allChains.reduce((sum, c) => sum + c.flyers.length, 0);
+  }, [allChains]);
 
   const favChains = useMemo(() => {
     return allChains.filter(c => favorites.includes(c.slug));
@@ -458,6 +459,7 @@ export default function VolantinoScreen({
   // Direct flyer opener
   const openFlyer = useCallback((flyer: VolantinoFlyer, chain?: VolantinoChain, page: number = 1) => {
     const parentChain = chain || db.chains.find(c => c.flyers.some(f => f.id === flyer.id));
+    setIframeLoading(true);
     setCalameoFlyer(flyer);
     setCalameoChain(parentChain || null);
     setCalameoPage(page >= 1 ? page : 1);
@@ -510,7 +512,7 @@ export default function VolantinoScreen({
     return () => window.removeEventListener('open-flyer-offer', handleFlyerOffer);
   }, [findTargetFlyerAndChain, openFlyer]);
 
-  // Back handling
+  // Back handling (single unified exit path)
   const handleBack = useCallback(() => {
     if (calameoFlyer) {
       setCalameoFlyer(null);
@@ -521,8 +523,16 @@ export default function VolantinoScreen({
       setSelectedChainSlug(null);
       return;
     }
+    if (searchQuery) {
+      setSearchQuery('');
+      return;
+    }
+    if (activeCategory !== 'all') {
+      setActiveCategory('all');
+      return;
+    }
     onClose();
-  }, [calameoFlyer, selectedChainSlug, onClose]);
+  }, [calameoFlyer, selectedChainSlug, searchQuery, activeCategory, onClose]);
 
   // Listen to Android hardware back
   useEffect(() => {
@@ -567,7 +577,7 @@ export default function VolantinoScreen({
     return allChains.find(c => c.slug === selectedChainSlug) || null;
   }, [selectedChainSlug, allChains]);
 
-  // All active flyers in current category/chain view
+  // Display flyers
   const displayFlyers = useMemo(() => {
     if (activeSelectedChain) {
       return activeSelectedChain.flyers.map(f => ({ flyer: f, chain: activeSelectedChain }));
@@ -617,8 +627,11 @@ export default function VolantinoScreen({
     });
   }, [searchQuery, offersFavOnly, favorites.length, offersCategory, isStoreFav]);
 
+  // Is universal search active with a non-empty query?
+  const isSearching = searchQuery.trim().length > 0;
+
   // Add offer directly to Shopping List
-  const handleAddOfferToCart = useCallback((offer: OfferEntry, groupName: string) => {
+  const handleAddOfferToCart = useCallback((offer: OfferEntry, _groupName: string) => {
     const offerKey = `${offer.s}-${offer.n}-${offer.p}`;
     const itemName = `${offer.n}${offer.b && offer.b !== offer.s ? ` (${offer.b})` : ''} - ${offer.s}`;
     const qtyStr = `${offer.q} ${offer.u}`;
@@ -631,7 +644,6 @@ export default function VolantinoScreen({
         category: cat
       }]);
     } else {
-      // Fallback custom event
       window.dispatchEvent(new CustomEvent('chelona_add_shopping_items', {
         detail: [{ name: itemName, quantity: qtyStr, category: cat }]
       }));
@@ -649,7 +661,7 @@ export default function VolantinoScreen({
       className="fixed inset-0 z-[150] flex flex-col h-[100dvh] w-full bg-[var(--bg)] overflow-hidden"
     >
       {/* ═══════════════════════════════════════════════════════════════
-          STREAMLINED FLYER VIEWER (READER OVERLAY)
+          STREAMLINED FLYER VIEWER (IMMERSIVE READER OVERLAY)
           ═══════════════════════════════════════════════════════════════ */}
       {calameoFlyer ? (
         <div className="flex-1 flex flex-col h-full w-full bg-[var(--bg)] relative overflow-hidden">
@@ -668,10 +680,15 @@ export default function VolantinoScreen({
               <div className="flex items-center justify-center gap-2">
                 {calameoChain && (
                   <div className="w-5 h-5 rounded-md bg-white ring-1 ring-[var(--border)] flex items-center justify-center overflow-hidden shrink-0">
-                    <StoreLogo id={calameoChain.slug} short={calameoChain.name.slice(0, 2)} brandSlug={calameoChain.slug.replace('md-discount', 'md').replace('-italia', '').replace('iper-', '').replace('-market', '')} size={18} />
+                    <StoreLogo 
+                      id={calameoChain.slug} 
+                      short={calameoChain.name.slice(0, 2)} 
+                      brandSlug={calameoChain.slug.replace('md-discount', 'md').replace('-italia', '').replace('iper-', '').replace('-market', '')} 
+                      size={18} 
+                    />
                   </div>
                 )}
-                <h1 className="text-xs sm:text-sm font-black text-[var(--text-main)] truncate max-w-[220px] sm:max-w-md">
+                <h1 className="text-xs sm:text-sm font-black text-[var(--text-main)] truncate max-w-[200px] sm:max-w-md">
                   {cleanTitle(calameoFlyer.title)}
                 </h1>
               </div>
@@ -684,10 +701,10 @@ export default function VolantinoScreen({
               {calameoChain && (
                 <button
                   onClick={() => toggleFavorite(calameoChain.slug)}
-                  className={`p-2 rounded-full hover:bg-[var(--surface-variant)] transition-colors ${
+                  className={`p-2 rounded-full hover:bg-[var(--surface-variant)] transition-colors cursor-pointer ${
                     favorites.includes(calameoChain.slug) ? 'text-amber-500' : 'text-[var(--text-muted)] hover:text-amber-500'
                   }`}
-                  title="Preferito"
+                  title={favorites.includes(calameoChain.slug) ? 'Rimuovi dai preferiti' : 'Aggiungi ai preferiti'}
                 >
                   <Star className={`w-4 h-4 ${favorites.includes(calameoChain.slug) ? 'fill-amber-500' : ''}`} />
                 </button>
@@ -699,22 +716,22 @@ export default function VolantinoScreen({
                   const q = encodeURIComponent(`${targetName} supermercato ${loc}`.trim());
                   window.open(`https://www.google.com/maps/search/${q}`, '_blank');
                 }}
-                className="p-2 rounded-full hover:bg-[var(--surface-variant)] text-[var(--text-muted)] hover:text-emerald-500 transition-colors"
+                className="p-2 rounded-full hover:bg-[var(--surface-variant)] text-[var(--text-muted)] hover:text-emerald-500 transition-colors cursor-pointer"
                 title="Trova negozio su Google Maps"
               >
                 <MapPin className="w-4 h-4 text-emerald-500" />
               </button>
               <button
                 onClick={() => window.open(getBrowserUrl(calameoFlyer, calameoPage), '_blank')}
-                className="p-2 hover:bg-[var(--surface-variant)] rounded-full text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors"
+                className="p-2 hover:bg-[var(--surface-variant)] rounded-full text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors cursor-pointer"
                 title="Apri nel browser esterno"
               >
                 <ExternalLink className="w-4 h-4" />
               </button>
               <button
-                onClick={onClose}
+                onClick={() => { setCalameoFlyer(null); setCalameoPage(1); }}
                 className="p-2 hover:bg-rose-500/10 rounded-full text-[var(--text-muted)] hover:text-rose-500 transition-colors cursor-pointer"
-                title="Chiudi"
+                title="Chiudi lettore"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -744,7 +761,7 @@ export default function VolantinoScreen({
                   </div>
                   <button
                     onClick={() => setDismissExpiryAlert(true)}
-                    className="p-1 rounded-lg hover:bg-black/10 dark:hover:bg-white/10 shrink-0"
+                    className="p-1 rounded-lg hover:bg-black/10 dark:hover:bg-white/10 shrink-0 cursor-pointer"
                     title="Chiudi avviso"
                   >
                     <X className="w-3.5 h-3.5" />
@@ -755,8 +772,15 @@ export default function VolantinoScreen({
             return null;
           })()}
 
-          {/* Iframe Reader */}
+          {/* Iframe Reader Container */}
           <div className="flex-1 min-h-0 relative bg-zinc-950">
+            {iframeLoading && (
+              <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-zinc-950/80 backdrop-blur-xs text-white">
+                <RefreshCw className="w-6 h-6 animate-spin text-emerald-400" />
+                <p className="text-xs font-bold text-zinc-400">Caricamento volantino in corso…</p>
+              </div>
+            )}
+
             {calameoPage > 1 && (
               <div className="absolute top-3 left-1/2 -translate-x-1/2 z-20 pointer-events-none">
                 <span className="px-3.5 py-1.5 rounded-full bg-black/85 backdrop-blur-md text-white text-xs font-black shadow-lg border border-white/20 flex items-center gap-1.5">
@@ -766,34 +790,12 @@ export default function VolantinoScreen({
               </div>
             )}
 
-            {/* Smooth Page-Flip Floating Controls */}
-            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2 bg-black/85 backdrop-blur-md border border-white/20 px-3 py-1.5 rounded-full shadow-2xl">
-              <button
-                type="button"
-                onClick={() => setCalameoPage(p => Math.max(1, p - 1))}
-                className="px-2.5 py-1 rounded-full bg-white/10 hover:bg-white/20 text-white text-xs font-bold transition-all disabled:opacity-30 cursor-pointer"
-                disabled={calameoPage <= 1}
-                title="Pagina precedente"
-              >
-                ◀
-              </button>
-              <span className="text-xs font-black text-white px-2 tracking-wide">
-                Pagina {calameoPage}
-              </span>
-              <button
-                type="button"
-                onClick={() => setCalameoPage(p => p + 1)}
-                className="px-2.5 py-1 rounded-full bg-white/10 hover:bg-white/20 text-white text-xs font-bold transition-all cursor-pointer"
-                title="Pagina successiva"
-              >
-                ▶
-              </button>
-            </div>
-
+            {/* Stable Iframe (Key does NOT thrash DOM on internal page flips) */}
             <iframe
-              key={`flyer-frame-${calameoFlyer.id}-${calameoFlyer.bkcode || ''}-p${calameoPage}`}
+              key={`flyer-frame-${calameoFlyer.id}-${calameoFlyer.bkcode || ''}`}
               src={getFlyerUrl(calameoFlyer, calameoPage)}
               title={calameoFlyer.title}
+              onLoad={() => setIframeLoading(false)}
               className="w-full h-full border-0"
               allow="fullscreen"
               sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-popups-to-escape-sandbox"
@@ -803,39 +805,39 @@ export default function VolantinoScreen({
         </div>
       ) : (
         /* ═══════════════════════════════════════════════════════════════
-           MAIN UNIFIED MINIMAL HUB
+           MAIN UNIFIED MINIMAL HUB (Single-Screen, Zero Clutter)
            ═══════════════════════════════════════════════════════════════ */
         <div className="flex-1 flex flex-col h-full w-full overflow-hidden">
-          {/* ── Top Bar Minimal & Clean ── */}
-          <header className="flex items-center justify-between gap-2.5 pt-[max(env(safe-area-inset-top),14px)] px-4 pb-3 bg-[var(--card-bg)] border-b border-[var(--border)] shrink-0 z-20">
+          {/* ── Top Bar Minimal & Clean (Single Back Arrow, No Redundant X) ── */}
+          <header className="flex items-center justify-between gap-3 pt-[max(env(safe-area-inset-top),14px)] px-4 pb-3 bg-[var(--card-bg)] border-b border-[var(--border)] shrink-0 z-20">
             <div className="flex items-center gap-2.5 min-w-0">
               <button
                 onClick={handleBack}
-                className="p-2 -ml-1 rounded-full hover:bg-[var(--surface-variant)] text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors cursor-pointer"
-                title="Indietro"
+                className="p-2 -ml-2 rounded-full hover:bg-[var(--surface-variant)] text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors cursor-pointer shrink-0"
+                title="Torna indietro"
               >
-                <ChevronLeft className="w-5 h-5" />
+                <ArrowLeft className="w-5 h-5" />
               </button>
               <div className="min-w-0">
-                <h1 className="text-base font-black text-[var(--text-main)] flex items-center gap-1.5 leading-tight">
+                <h1 className="text-base sm:text-lg font-black text-[var(--text-main)] flex items-center gap-2 leading-tight">
                   <span>{module.title || 'Volantini'}</span>
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
                 </h1>
-                <p className="text-[10px] text-[var(--text-muted)] font-semibold truncate">
-                  {allChains.length} catene · {formatUpdateDate(db.updatedAt)}
+                <p className="text-[11px] text-[var(--text-muted)] font-medium truncate">
+                  {allChains.length} catene · {totalFlyersCount} volantini attivi
                 </p>
               </div>
             </div>
 
-            <div className="flex items-center gap-1.5 shrink-0">
+            <div className="flex items-center gap-2 shrink-0">
               {/* Location Badge (Tap to change CAP smoothly) */}
               <button
                 onClick={() => setShowCapModal(true)}
-                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/25 text-emerald-700 dark:text-emerald-300 text-xs font-bold hover:bg-emerald-500/20 active:scale-95 transition-all cursor-pointer"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/25 text-emerald-700 dark:text-emerald-300 text-xs font-bold hover:bg-emerald-500/20 active:scale-95 transition-all cursor-pointer"
                 title="Cambia CAP / Posizione"
               >
                 <MapPin className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                <span className="max-w-[85px] sm:max-w-[120px] truncate">
+                <span className="max-w-[85px] sm:max-w-[130px] truncate">
                   {zone?.city || (zone?.cap ? `CAP ${zone.cap}` : 'Tutta Italia')}
                 </span>
               </button>
@@ -844,308 +846,519 @@ export default function VolantinoScreen({
               <button
                 onClick={handleSync}
                 disabled={isSyncing}
-                className="p-2 rounded-xl bg-[var(--surface-variant)] hover:bg-[var(--border)] text-[var(--text-muted)] hover:text-[var(--text-main)] transition-all disabled:opacity-50 cursor-pointer"
+                className="p-2 rounded-full bg-[var(--surface-variant)] hover:bg-[var(--border)] text-[var(--text-muted)] hover:text-[var(--text-main)] transition-all disabled:opacity-50 cursor-pointer"
                 title="Verifica aggiornamenti online"
               >
                 <RefreshCw className={`w-4 h-4 text-emerald-600 ${isSyncing ? 'animate-spin' : ''}`} />
               </button>
-
-              {/* Close */}
-              <button
-                onClick={onClose}
-                className="p-2 rounded-xl hover:bg-rose-500/10 text-[var(--text-muted)] hover:text-rose-500 transition-colors cursor-pointer"
-                title="Chiudi"
-              >
-                <X className="w-4 h-4" />
-              </button>
             </div>
           </header>
 
-          {/* ── Subheader: Segmented Tabs & Universal Search Bar ── */}
-          <div className="px-4 pt-3 pb-2 space-y-2.5 bg-[var(--card-bg)]/80 backdrop-blur-md border-b border-[var(--border)] shrink-0 z-10 max-w-2xl mx-auto w-full">
-            {/* Segmented Tab Pill */}
-            <div className="flex p-1 rounded-2xl bg-[var(--surface-variant)] border border-[var(--border)] gap-1">
-              <button
-                onClick={() => { setTab('volantini'); setSelectedChainSlug(null); }}
-                className={`flex-1 py-2 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-2 cursor-pointer ${
-                  tab === 'volantini'
-                    ? 'bg-[var(--card-bg)] text-emerald-600 dark:text-emerald-400 shadow-sm border border-[var(--border)]'
-                    : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
-                }`}
-              >
-                <Store className="w-3.5 h-3.5" />
-                <span>Volantini</span>
-              </button>
-
-              <button
-                onClick={() => { setTab('offerte'); setSelectedChainSlug(null); }}
-                className={`flex-1 py-2 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-2 cursor-pointer ${
-                  tab === 'offerte'
-                    ? 'bg-[var(--card-bg)] text-amber-600 dark:text-amber-400 shadow-sm border border-[var(--border)]'
-                    : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
-                }`}
-              >
-                <Sparkles className="w-3.5 h-3.5" />
-                <span>Migliori Offerte</span>
-              </button>
-            </div>
-
-            {/* Clean Universal Search Bar */}
+          {/* ── Hero Search Bar (Universal: Finds Stores, Flyers, AND Discount Products) ── */}
+          <div className="px-4 pt-3 pb-2.5 bg-[var(--card-bg)]/80 backdrop-blur-md border-b border-[var(--border)] shrink-0 z-10 max-w-2xl mx-auto w-full space-y-2.5">
             <div className="relative">
               <Search className="w-4 h-4 text-[var(--text-muted)] absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
               <input
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
-                placeholder={
-                  tab === 'volantini'
-                    ? 'Cerca supermercato (es. Conad, Coop, Lidl, Eurospin…)'
-                    : 'Cerca prodotto in offerta (es. pasta, caffè, tonno…)'
-                }
-                className="w-full pl-10 pr-9 py-2.5 rounded-xl bg-[var(--surface-variant)] border border-[var(--border)] text-[var(--text-main)] font-semibold text-xs sm:text-sm outline-none focus:border-emerald-500 transition-colors"
+                placeholder="Cerca negozio o prodotto (es. Conad, pasta, caffè…)"
+                className="w-full pl-10 pr-9 py-2.5 rounded-2xl bg-[var(--surface-variant)] border border-[var(--border)] text-[var(--text-main)] font-semibold text-xs sm:text-sm outline-none focus:border-emerald-500 transition-colors placeholder:text-[var(--text-muted)]"
               />
               {searchQuery && (
                 <button
                   onClick={() => setSearchQuery('')}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors"
-                  title="Cancella"
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors cursor-pointer"
+                  title="Cancella ricerca"
                 >
                   <X className="w-3.5 h-3.5" />
                 </button>
               )}
             </div>
+
+            {/* When NOT searching: Segmented Tab Bar for Mode Switching */}
+            {!isSearching && (
+              <div className="flex p-1 rounded-2xl bg-[var(--surface-variant)] border border-[var(--border)] gap-1">
+                <button
+                  onClick={() => { setTab('volantini'); setSelectedChainSlug(null); }}
+                  className={`flex-1 py-1.5 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                    tab === 'volantini'
+                      ? 'bg-[var(--card-bg)] text-emerald-600 dark:text-emerald-400 shadow-xs border border-[var(--border)]'
+                      : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
+                  }`}
+                >
+                  <Store className="w-3.5 h-3.5" />
+                  <span>Volantini</span>
+                  <span className="text-[10px] font-semibold opacity-70">({displayFlyers.length})</span>
+                </button>
+
+                <button
+                  onClick={() => { setTab('offerte'); setSelectedChainSlug(null); }}
+                  className={`flex-1 py-1.5 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                    tab === 'offerte'
+                      ? 'bg-[var(--card-bg)] text-amber-600 dark:text-amber-400 shadow-xs border border-[var(--border)]'
+                      : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
+                  }`}
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>Migliori Offerte</span>
+                  <span className="text-[10px] font-semibold opacity-70">({filteredOfferGroups.length})</span>
+                </button>
+              </div>
+            )}
           </div>
 
-          {/* ── Main Scrollable Content ── */}
+          {/* ── Main Scrollable View ── */}
           <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain custom-scrollbar scroll-smooth px-4 py-3 max-w-2xl mx-auto w-full space-y-4 pb-[max(env(safe-area-inset-bottom),16px)]">
-            {tab === 'volantini' ? (
+            {isSearching ? (
               /* ═══════════════════════════════════════════════════════════
-                 TAB 1: VOLANTINI (Brands carousel + Visual Flyers Grid)
+                 SMART UNIFIED SEARCH RESULTS (Shows Flyers + Offers together)
                  ═══════════════════════════════════════════════════════════ */
-              <div className="space-y-4">
-                {/* Clean Horizontal Filter Chips */}
-                <div className="flex gap-1.5 overflow-x-auto custom-scrollbar pb-1 -mx-4 px-4">
-                  {DC_INDEX_CATEGORIES.map(cat => {
-                    const isActive = activeCategory === cat.slug;
-                    return (
-                      <button
-                        key={cat.slug}
-                        onClick={() => {
-                          setActiveCategory(cat.slug);
-                          setSelectedChainSlug(null);
-                        }}
-                        className={`shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
-                          isActive
-                            ? cat.slug === 'fav'
-                              ? 'bg-amber-500 text-white shadow-xs'
-                              : cat.slug === 'expiring'
-                                ? 'bg-orange-500 text-white shadow-xs'
-                                : 'bg-emerald-500 text-white shadow-xs'
-                            : 'bg-[var(--card-bg)] border border-[var(--border)] text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--surface-variant)]'
-                        }`}
-                      >
-                        <span className="text-xs">{cat.icon}</span>
-                        <span>{cat.name}</span>
-                      </button>
-                    );
-                  })}
+              <div className="space-y-5">
+                <div className="flex items-center justify-between text-xs font-bold text-[var(--text-muted)] border-b border-[var(--border)] pb-2">
+                  <span>Risultati per "{searchQuery}":</span>
+                  <span>{displayFlyers.length} volantini · {filteredOfferGroups.length} offerte</span>
                 </div>
 
-                {/* Horizontal Store Selector Carousel */}
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-black uppercase tracking-wider text-[var(--text-muted)]">
-                      Negozi & Supermercati ({filteredChains.length})
-                    </span>
-                    {selectedChainSlug && (
-                      <button
-                        onClick={() => setSelectedChainSlug(null)}
-                        className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 hover:underline cursor-pointer"
-                      >
-                        Mostra tutti
-                      </button>
-                    )}
+                {displayFlyers.length === 0 && filteredOfferGroups.length === 0 ? (
+                  <div className="py-16 flex flex-col items-center justify-center text-center px-4">
+                    <div className="w-16 h-16 rounded-full bg-emerald-500/10 flex items-center justify-center mb-3">
+                      <Search className="w-8 h-8 text-emerald-500 opacity-70" />
+                    </div>
+                    <h3 className="text-base font-bold text-[var(--text-main)] mb-1">
+                      Nessun risultato trovato
+                    </h3>
+                    <p className="text-xs text-[var(--text-muted)] max-w-xs mb-3">
+                      Non abbiamo trovato volantini o offerte per "{searchQuery}". Prova con un'altra parola chiave.
+                    </p>
+                    <button
+                      onClick={() => setSearchQuery('')}
+                      className="px-4 py-2 rounded-xl bg-[var(--surface-variant)] text-[var(--text-main)] text-xs font-bold hover:bg-[var(--border)] cursor-pointer"
+                    >
+                      Azzera ricerca
+                    </button>
                   </div>
+                ) : (
+                  <>
+                    {/* Section 1: Matching Flyers */}
+                    {displayFlyers.length > 0 && (
+                      <div className="space-y-2.5">
+                        <h2 className="text-xs font-black uppercase tracking-wider text-[var(--text-muted)] flex items-center gap-1.5">
+                          <Store className="w-3.5 h-3.5 text-emerald-600" />
+                          <span>Volantini Supermercati ({displayFlyers.length})</span>
+                        </h2>
 
-                  <div className="flex gap-2.5 overflow-x-auto custom-scrollbar pb-1.5 -mx-4 px-4 pt-0.5">
-                    {filteredChains.map(c => {
-                      const isSelected = selectedChainSlug === c.slug;
-                      const isFav = favorites.includes(c.slug);
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                          {displayFlyers.map(({ flyer: f, chain: c }) => {
+                            const expiry = getFlyerExpiryInfo(f);
+                            const isExpiringSoon = expiry.status === 'today' || expiry.status === 'tomorrow' || expiry.status === 'soon';
+                            const isFav = favorites.includes(c.slug);
+                            const isBroken = brokenImages.has(f.id);
+
+                            return (
+                              <div
+                                key={`search-flyer-${c.slug}-${f.id}`}
+                                onClick={() => openFlyer(f, c, 1)}
+                                className="group flex flex-col rounded-2xl bg-[var(--card-bg)] border border-[var(--border)] hover:border-emerald-500/50 hover:shadow-md transition-all overflow-hidden cursor-pointer active:scale-[0.98]"
+                              >
+                                <div className="relative aspect-[3/4] w-full bg-[var(--surface-variant)] overflow-hidden">
+                                  {f.coverUrl && !isBroken ? (
+                                    <img
+                                      src={f.coverUrl}
+                                      alt={f.title}
+                                      loading="lazy"
+                                      onError={() => setBrokenImages(prev => new Set(prev).add(f.id))}
+                                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                    />
+                                  ) : (
+                                    <div className="w-full h-full flex flex-col items-center justify-center p-3 text-center bg-gradient-to-br from-emerald-500/10 to-transparent">
+                                      <Store className="w-8 h-8 text-emerald-500 mb-2 opacity-50" />
+                                      <span className="text-xs font-bold text-[var(--text-main)]">{c.name}</span>
+                                    </div>
+                                  )}
+
+                                  <div className="absolute top-2 left-2 z-10 w-7 h-7 rounded-lg bg-white ring-1 ring-black/10 flex items-center justify-center shadow-xs overflow-hidden">
+                                    <StoreLogo 
+                                      id={c.slug} 
+                                      short={c.name.slice(0, 2)} 
+                                      brandSlug={c.slug.replace('md-discount', 'md').replace('-italia', '').replace('iper-', '').replace('-market', '')} 
+                                      size={22} 
+                                    />
+                                  </div>
+
+                                  {isExpiringSoon && (
+                                    <div className="absolute top-2 right-2 z-10">
+                                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-black border backdrop-blur-md shadow-xs ${expiry.badgeBg} ${expiry.textColor} ${expiry.borderColor}`}>
+                                        {expiry.iconType === 'alert' ? <AlertTriangle className="w-2.5 h-2.5" /> : <Clock className="w-2.5 h-2.5" />}
+                                        <span>{expiry.shortLabel}</span>
+                                      </span>
+                                    </div>
+                                  )}
+
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      toggleFavorite(c.slug);
+                                    }}
+                                    className={`absolute bottom-2 right-2 p-1.5 rounded-full backdrop-blur-md transition-all z-10 cursor-pointer ${
+                                      isFav ? 'bg-amber-500 text-white shadow-xs' : 'bg-black/40 text-white/80 hover:text-white'
+                                    }`}
+                                    title={isFav ? "Rimuovi preferito" : "Aggiungi preferito"}
+                                  >
+                                    <Star className={`w-3.5 h-3.5 ${isFav ? 'fill-current' : ''}`} />
+                                  </button>
+                                </div>
+
+                                <div className="p-2.5 flex-1 flex flex-col justify-between gap-1">
+                                  <div>
+                                    <p className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider truncate">
+                                      {c.name}
+                                    </p>
+                                    <p className="text-xs font-bold text-[var(--text-main)] line-clamp-1 group-hover:text-emerald-600 transition-colors">
+                                      {cleanTitle(f.title)}
+                                    </p>
+                                  </div>
+
+                                  <div className="flex items-center justify-between text-[10px] text-[var(--text-muted)] pt-1 border-t border-[var(--border)]">
+                                    <span className="font-semibold text-emerald-600 dark:text-emerald-400">
+                                      Sfoglia →
+                                    </span>
+                                    {f.to && (
+                                      <span className="truncate">
+                                        Fino al {new Date(f.to).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' })}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Section 2: Matching Offers in Supermarkets */}
+                    {filteredOfferGroups.length > 0 && (
+                      <div className="space-y-2.5 pt-2">
+                        <h2 className="text-xs font-black uppercase tracking-wider text-[var(--text-muted)] flex items-center gap-1.5">
+                          <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                          <span>Migliori Offerte a confronto ({filteredOfferGroups.length})</span>
+                        </h2>
+
+                        <div className="space-y-3">
+                          {filteredOfferGroups.map(g => {
+                            const bestOffer = g.o.reduce((a, b) => (unitPrice(b) < unitPrice(a) ? b : a), g.o[0]);
+                            const avgPrice = g.o.reduce((s, e) => s + unitPrice(e), 0) / g.o.length;
+
+                            return (
+                              <div
+                                key={`search-group-${g.id}`}
+                                className="rounded-2xl bg-[var(--card-bg)] border border-[var(--border)] overflow-hidden shadow-xs"
+                              >
+                                <div className="flex items-center justify-between gap-2 px-3.5 pt-3 pb-2 border-b border-[var(--border)]/60 bg-[var(--surface-variant)]/40">
+                                  <div className="flex items-center gap-2 min-w-0">
+                                    <span className="text-base leading-none">{g.e}</span>
+                                    <h3 className="font-black text-xs sm:text-sm text-[var(--text-main)] truncate">
+                                      {g.g}
+                                    </h3>
+                                  </div>
+                                  {g.o.length > 1 && (
+                                    <span className="text-[10px] font-bold text-amber-600 bg-amber-500/10 px-2 py-0.5 rounded-full shrink-0">
+                                      {Math.round((1 - unitPrice(bestOffer) / avgPrice) * 100)}% sotto la media
+                                    </span>
+                                  )}
+                                </div>
+
+                                <div className="divide-y divide-[var(--border)]/50">
+                                  {g.o.map((offer, idx) => {
+                                    const isBest = g.o.length > 1 && offer === bestOffer;
+                                    const offerKey = `${offer.s}-${offer.n}-${offer.p}`;
+                                    const isAdded = addedOfferIds.has(offerKey);
+                                    const targetPage = typeof offer.pg === 'number' ? offer.pg + 1 : 1;
+
+                                    return (
+                                      <div
+                                        key={`search-offer-${offer.s}-${idx}`}
+                                        className={`p-2.5 sm:p-3 flex items-center justify-between gap-3 transition-colors ${
+                                          isBest ? 'bg-emerald-500/[0.04]' : ''
+                                        }`}
+                                      >
+                                        <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                                          <div className="w-8 h-8 rounded-xl bg-white ring-1 ring-[var(--border)] flex items-center justify-center overflow-hidden shrink-0">
+                                            <StoreLogo
+                                              id={STORE_SLUG_MAP[offer.s] || offer.s.toLowerCase()}
+                                              short={offer.s.slice(0, 2)}
+                                              brandSlug={offer.s.toLowerCase().replace('md-discount', 'md')}
+                                              size={28}
+                                            />
+                                          </div>
+                                          <div className="min-w-0">
+                                            <div className="flex items-center gap-1.5 flex-wrap">
+                                              <span className="text-xs font-black text-[var(--text-main)] truncate">
+                                                {offer.s}
+                                              </span>
+                                              {offer.b && offer.b !== offer.s && (
+                                                <span className="text-[10px] font-semibold text-[var(--text-muted)] truncate">
+                                                  · {offer.b}
+                                                </span>
+                                              )}
+                                              {isBest && (
+                                                <span className="text-[9px] font-black uppercase px-1.5 py-0.2 rounded-md bg-emerald-500 text-white">
+                                                  Migliore
+                                                </span>
+                                              )}
+                                            </div>
+                                            <p className="text-[11px] text-[var(--text-muted)] font-medium truncate mt-0.5">
+                                              {offer.n}
+                                            </p>
+                                          </div>
+                                        </div>
+
+                                        <div className="text-right shrink-0">
+                                          <p className={`text-xs sm:text-sm font-black ${isBest ? 'text-emerald-600' : 'text-[var(--text-main)]'}`}>
+                                            {fmtPrice(offer.p)}
+                                          </p>
+                                          <p className="text-[9px] text-[var(--text-muted)] font-semibold">
+                                            {unitPrice(offer).toFixed(2).replace('.', ',')} {fmtUnit(offer.u)}
+                                          </p>
+                                        </div>
+
+                                        <div className="flex items-center gap-1 shrink-0">
+                                          <button
+                                            type="button"
+                                            onClick={() => handleAddOfferToCart(offer, g.g)}
+                                            className={`p-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                                              isAdded
+                                                ? 'bg-emerald-500 text-white'
+                                                : 'bg-[var(--surface-variant)] text-[var(--text-main)] hover:bg-emerald-500/15 hover:text-emerald-600'
+                                            }`}
+                                            title="Aggiungi alla Lista della Spesa"
+                                          >
+                                            {isAdded ? <Check className="w-3.5 h-3.5" /> : <Plus className="w-3.5 h-3.5" />}
+                                            <span className="hidden sm:inline">{isAdded ? 'Aggiunto' : 'Spesa'}</span>
+                                          </button>
+
+                                          <button
+                                            type="button"
+                                            onClick={() => {
+                                              const { chain: targetChain, flyer: targetFlyer } = findTargetFlyerAndChain(offer.fid, offer.s);
+                                              if (targetFlyer) {
+                                                openFlyer(targetFlyer, targetChain, targetPage);
+                                              }
+                                            }}
+                                            className="p-2 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 text-xs font-bold transition-all cursor-pointer flex items-center gap-1"
+                                            title={`Sfoglia volantino a Pag. ${targetPage}`}
+                                          >
+                                            <BookOpen className="w-3.5 h-3.5" />
+                                            <span className="text-[10px]">p.{targetPage}</span>
+                                          </button>
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            ) : tab === 'volantini' ? (
+              /* ═══════════════════════════════════════════════════════════
+                 TAB 1: VOLANTINI (Clean Filter Row + Store Chips + Grid)
+                 ═══════════════════════════════════════════════════════════ */
+              <div className="space-y-3.5">
+                {/* Unified Horizontal Filter Bar: Smart Filters + Store Brands */}
+                <div className="space-y-2">
+                  <div className="flex gap-1.5 overflow-x-auto custom-scrollbar pb-1 -mx-4 px-4">
+                    {DC_INDEX_CATEGORIES.map(cat => {
+                      const isActive = activeCategory === cat.slug;
                       return (
-                        <div
-                          key={`store-chip-${c.slug}`}
-                          onClick={() => setSelectedChainSlug(isSelected ? null : c.slug)}
-                          className={`shrink-0 flex flex-col items-center gap-1 p-2 rounded-2xl border transition-all cursor-pointer select-none w-20 text-center ${
-                            isSelected
-                              ? 'bg-emerald-500/10 border-emerald-500 ring-2 ring-emerald-500/30'
-                              : 'bg-[var(--card-bg)] border-[var(--border)] hover:border-emerald-500/40 hover:bg-[var(--surface-variant)]'
+                        <button
+                          key={cat.slug}
+                          onClick={() => {
+                            setActiveCategory(cat.slug);
+                            setSelectedChainSlug(null);
+                          }}
+                          className={`shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
+                            isActive
+                              ? cat.slug === 'fav'
+                                ? 'bg-amber-500 text-white shadow-xs'
+                                : cat.slug === 'expiring'
+                                  ? 'bg-orange-500 text-white shadow-xs'
+                                  : 'bg-emerald-500 text-white shadow-xs'
+                              : 'bg-[var(--card-bg)] border border-[var(--border)] text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--surface-variant)]'
                           }`}
                         >
-                          <div className="relative w-11 h-11 rounded-xl bg-white ring-1 ring-[var(--border)] flex items-center justify-center overflow-hidden">
-                            <StoreLogo id={c.slug} short={c.name.slice(0, 2)} brandSlug={c.slug.replace('md-discount', 'md').replace('-italia', '').replace('iper-', '').replace('-market', '')} size={36} />
-                            {isFav && (
-                              <div className="absolute top-0.5 right-0.5 bg-amber-500 text-white rounded-full p-0.5 shadow-xs">
-                                <Star className="w-2.5 h-2.5 fill-current" />
-                              </div>
-                            )}
+                          <span className="text-xs">{cat.icon}</span>
+                          <span>{cat.name}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Compact, Ergonomic Supermarket Brand Chips */}
+                  <div className="flex gap-1.5 overflow-x-auto custom-scrollbar pb-1 -mx-4 px-4 pt-0.5">
+                    {filteredChains.map(c => {
+                      const isSelected = selectedChainSlug === c.slug;
+                      return (
+                        <button
+                          key={`store-pill-${c.slug}`}
+                          onClick={() => setSelectedChainSlug(isSelected ? null : c.slug)}
+                          className={`shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-2xl border text-xs font-bold transition-all cursor-pointer select-none ${
+                            isSelected
+                              ? 'bg-emerald-500 text-white border-emerald-500 shadow-xs'
+                              : 'bg-[var(--card-bg)] border-[var(--border)] text-[var(--text-main)] hover:border-emerald-500/40 hover:bg-[var(--surface-variant)]'
+                          }`}
+                        >
+                          <div className="w-4 h-4 rounded-md bg-white ring-1 ring-black/10 flex items-center justify-center overflow-hidden shrink-0">
+                            <StoreLogo 
+                              id={c.slug} 
+                              short={c.name.slice(0, 2)} 
+                              brandSlug={c.slug.replace('md-discount', 'md').replace('-italia', '').replace('iper-', '').replace('-market', '')} 
+                              size={14} 
+                            />
                           </div>
-                          <span className="text-[10px] font-bold text-[var(--text-main)] truncate w-full">
-                            {c.name}
+                          <span>{c.name}</span>
+                          <span className={`text-[10px] ${isSelected ? 'text-white/80' : 'text-[var(--text-muted)]'}`}>
+                            {c.flyers.length}
                           </span>
-                          <span className="text-[9px] font-semibold text-[var(--text-muted)]">
-                            {c.flyers.length} vol.
-                          </span>
-                        </div>
+                          {isSelected && <X className="w-3 h-3 ml-0.5" />}
+                        </button>
                       );
                     })}
                   </div>
                 </div>
 
-                {/* Selected Chain Focus Indicator */}
-                {activeSelectedChain && (
-                  <div className="flex items-center justify-between p-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/25 animate-in fade-in">
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <div className="w-8 h-8 rounded-xl bg-white ring-1 ring-[var(--border)] flex items-center justify-center overflow-hidden shrink-0">
-                        <StoreLogo id={activeSelectedChain.slug} short={activeSelectedChain.name.slice(0, 2)} brandSlug={activeSelectedChain.slug.replace('md-discount', 'md').replace('-italia', '').replace('iper-', '').replace('-market', '')} size={28} />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-xs font-black text-[var(--text-main)] truncate">
-                          Volantini {activeSelectedChain.name}
-                        </p>
-                        <p className="text-[10px] text-emerald-700 dark:text-emerald-300 font-semibold truncate">
-                          {activeSelectedChain.flyers.length} volantini disponibili
-                        </p>
-                      </div>
-                    </div>
+                {/* Section Title */}
+                <div className="flex items-center justify-between pt-1">
+                  <span className="text-[11px] font-black uppercase tracking-wider text-[var(--text-muted)]">
+                    {activeSelectedChain 
+                      ? `Volantini di ${activeSelectedChain.name} (${displayFlyers.length})` 
+                      : `Tutti i Volantini Attivi (${displayFlyers.length})`}
+                  </span>
+                  {selectedChainSlug && (
                     <button
                       onClick={() => setSelectedChainSlug(null)}
-                      className="text-xs font-bold px-2.5 py-1 rounded-xl bg-white dark:bg-zinc-800 text-[var(--text-main)] border border-[var(--border)] hover:bg-[var(--surface-variant)] cursor-pointer"
+                      className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 hover:underline cursor-pointer"
                     >
                       Mostra tutti
                     </button>
-                  </div>
-                )}
-
-                {/* Active Flyers Grid */}
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-black uppercase tracking-wider text-[var(--text-muted)]">
-                      {activeSelectedChain 
-                        ? `Volantini di ${activeSelectedChain.name}` 
-                        : `Tutti i Volantini Attivi (${displayFlyers.length})`}
-                    </span>
-                  </div>
-
-                  {displayFlyers.length === 0 ? (
-                    <div className="py-16 text-center space-y-2">
-                      <Store className="w-10 h-10 text-[var(--text-muted)] mx-auto opacity-40" />
-                      <p className="text-xs font-bold text-[var(--text-muted)]">
-                        Nessun volantino trovato con i filtri attuali.
-                      </p>
-                      <button
-                        onClick={() => { setActiveCategory('all'); setSelectedChainSlug(null); setSearchQuery(''); }}
-                        className="px-3.5 py-1.5 rounded-xl bg-emerald-500 text-white text-xs font-bold cursor-pointer"
-                      >
-                        Azzera filtri
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                      {displayFlyers.map(({ flyer: f, chain: c }) => {
-                        const expiry = getFlyerExpiryInfo(f);
-                        const isExpiringSoon = expiry.status === 'today' || expiry.status === 'tomorrow' || expiry.status === 'soon';
-                        const isFav = favorites.includes(c.slug);
-
-                        return (
-                          <div
-                            key={`flyer-${c.slug}-${f.id}`}
-                            onClick={() => openFlyer(f, c, 1)}
-                            className="group flex flex-col rounded-2xl bg-[var(--card-bg)] border border-[var(--border)] hover:border-emerald-500/50 hover:shadow-md transition-all overflow-hidden cursor-pointer active:scale-[0.98]"
-                          >
-                            {/* Card Cover Preview */}
-                            <div className="relative aspect-[3/4] w-full bg-[var(--surface-variant)] overflow-hidden">
-                              {f.coverUrl ? (
-                                <img
-                                  src={f.coverUrl}
-                                  alt={f.title}
-                                  loading="lazy"
-                                  onError={(e) => { e.currentTarget.style.display = 'none'; }}
-                                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                                />
-                              ) : (
-                                <div className="w-full h-full flex flex-col items-center justify-center p-3 text-center bg-gradient-to-br from-emerald-500/10 to-transparent">
-                                  <Store className="w-8 h-8 text-emerald-500 mb-2 opacity-50" />
-                                  <span className="text-xs font-bold text-[var(--text-main)]">{c.name}</span>
-                                </div>
-                              )}
-
-                              {/* Store Logo Badge in Top Left */}
-                              <div className="absolute top-2 left-2 z-10 w-7 h-7 rounded-lg bg-white ring-1 ring-black/10 flex items-center justify-center shadow-xs overflow-hidden">
-                                <StoreLogo id={c.slug} short={c.name.slice(0, 2)} brandSlug={c.slug.replace('md-discount', 'md').replace('-italia', '').replace('iper-', '').replace('-market', '')} size={22} />
-                              </div>
-
-                              {/* Expiry Pill in Top Right */}
-                              {isExpiringSoon && (
-                                <div className="absolute top-2 right-2 z-10">
-                                  <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-black border backdrop-blur-md shadow-xs ${expiry.badgeBg} ${expiry.textColor} ${expiry.borderColor}`}>
-                                    {expiry.iconType === 'alert' ? <AlertTriangle className="w-2.5 h-2.5" /> : <Clock className="w-2.5 h-2.5" />}
-                                    <span>{expiry.shortLabel}</span>
-                                  </span>
-                                </div>
-                              )}
-
-                              {/* Quick Favorite Button in Bottom Right of Image */}
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  toggleFavorite(c.slug);
-                                }}
-                                className={`absolute bottom-2 right-2 p-1.5 rounded-full backdrop-blur-md transition-all z-10 ${
-                                  isFav
-                                    ? 'bg-amber-500 text-white shadow-xs'
-                                    : 'bg-black/40 text-white/80 hover:text-white'
-                                }`}
-                                title={isFav ? "Rimuovi preferito" : "Aggiungi preferito"}
-                              >
-                                <Star className={`w-3.5 h-3.5 ${isFav ? 'fill-current' : ''}`} />
-                              </button>
-                            </div>
-
-                            {/* Card Content Info */}
-                            <div className="p-2.5 flex-1 flex flex-col justify-between gap-1">
-                              <div>
-                                <p className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider truncate">
-                                  {c.name}
-                                </p>
-                                <p className="text-xs font-bold text-[var(--text-main)] line-clamp-1 group-hover:text-emerald-600 transition-colors">
-                                  {cleanTitle(f.title)}
-                                </p>
-                              </div>
-
-                              <div className="flex items-center justify-between text-[10px] text-[var(--text-muted)] pt-1 border-t border-[var(--border)]">
-                                <span className="font-semibold text-emerald-600 dark:text-emerald-400">
-                                  Sfoglia →
-                                </span>
-                                {f.to && (
-                                  <span className="truncate">
-                                    Fino al {new Date(f.to).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' })}
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
                   )}
                 </div>
+
+                {/* Flyers Grid */}
+                {displayFlyers.length === 0 ? (
+                  <div className="py-16 text-center space-y-2">
+                    <Store className="w-10 h-10 text-[var(--text-muted)] mx-auto opacity-40" />
+                    <p className="text-xs font-bold text-[var(--text-muted)]">
+                      Nessun volantino trovato con i filtri attuali.
+                    </p>
+                    <button
+                      onClick={() => { setActiveCategory('all'); setSelectedChainSlug(null); }}
+                      className="px-3.5 py-1.5 rounded-xl bg-emerald-500 text-white text-xs font-bold cursor-pointer"
+                    >
+                      Azzera filtri
+                    </button>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    {displayFlyers.map(({ flyer: f, chain: c }) => {
+                      const expiry = getFlyerExpiryInfo(f);
+                      const isExpiringSoon = expiry.status === 'today' || expiry.status === 'tomorrow' || expiry.status === 'soon';
+                      const isFav = favorites.includes(c.slug);
+                      const isBroken = brokenImages.has(f.id);
+
+                      return (
+                        <div
+                          key={`flyer-${c.slug}-${f.id}`}
+                          onClick={() => openFlyer(f, c, 1)}
+                          className="group flex flex-col rounded-2xl bg-[var(--card-bg)] border border-[var(--border)] hover:border-emerald-500/50 hover:shadow-md transition-all overflow-hidden cursor-pointer active:scale-[0.98]"
+                        >
+                          <div className="relative aspect-[3/4] w-full bg-[var(--surface-variant)] overflow-hidden">
+                            {f.coverUrl && !isBroken ? (
+                              <img
+                                src={f.coverUrl}
+                                alt={f.title}
+                                loading="lazy"
+                                onError={() => setBrokenImages(prev => new Set(prev).add(f.id))}
+                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                              />
+                            ) : (
+                              <div className="w-full h-full flex flex-col items-center justify-center p-3 text-center bg-gradient-to-br from-emerald-500/10 to-transparent">
+                                <Store className="w-8 h-8 text-emerald-500 mb-2 opacity-50" />
+                                <span className="text-xs font-bold text-[var(--text-main)]">{c.name}</span>
+                              </div>
+                            )}
+
+                            <div className="absolute top-2 left-2 z-10 w-7 h-7 rounded-lg bg-white ring-1 ring-black/10 flex items-center justify-center shadow-xs overflow-hidden">
+                              <StoreLogo 
+                                id={c.slug} 
+                                short={c.name.slice(0, 2)} 
+                                brandSlug={c.slug.replace('md-discount', 'md').replace('-italia', '').replace('iper-', '').replace('-market', '')} 
+                                size={22} 
+                              />
+                            </div>
+
+                            {isExpiringSoon && (
+                              <div className="absolute top-2 right-2 z-10">
+                                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-black border backdrop-blur-md shadow-xs ${expiry.badgeBg} ${expiry.textColor} ${expiry.borderColor}`}>
+                                  {expiry.iconType === 'alert' ? <AlertTriangle className="w-2.5 h-2.5" /> : <Clock className="w-2.5 h-2.5" />}
+                                  <span>{expiry.shortLabel}</span>
+                                </span>
+                              </div>
+                            )}
+
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toggleFavorite(c.slug);
+                              }}
+                              className={`absolute bottom-2 right-2 p-1.5 rounded-full backdrop-blur-md transition-all z-10 cursor-pointer ${
+                                isFav ? 'bg-amber-500 text-white shadow-xs' : 'bg-black/40 text-white/80 hover:text-white'
+                              }`}
+                              title={isFav ? "Rimuovi preferito" : "Aggiungi preferito"}
+                            >
+                              <Star className={`w-3.5 h-3.5 ${isFav ? 'fill-current' : ''}`} />
+                            </button>
+                          </div>
+
+                          <div className="p-2.5 flex-1 flex flex-col justify-between gap-1">
+                            <div>
+                              <p className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider truncate">
+                                {c.name}
+                              </p>
+                              <p className="text-xs font-bold text-[var(--text-main)] line-clamp-1 group-hover:text-emerald-600 transition-colors">
+                                {cleanTitle(f.title)}
+                              </p>
+                            </div>
+
+                            <div className="flex items-center justify-between text-[10px] text-[var(--text-muted)] pt-1 border-t border-[var(--border)]">
+                              <span className="font-semibold text-emerald-600 dark:text-emerald-400">
+                                Sfoglia →
+                              </span>
+                              {f.to && (
+                                <span className="truncate">
+                                  Fino al {new Date(f.to).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' })}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             ) : (
               /* ═══════════════════════════════════════════════════════════
-                 TAB 2: MIGLIORI OFFERTE & CONFRONTA PREZZI (Direct Add to List!)
+                 TAB 2: MIGLIORI OFFERTE & CONFRONTA PREZZI
                  ═══════════════════════════════════════════════════════════ */
               <div className="space-y-3">
-                {/* Secondary Filters */}
                 <div className="flex items-center justify-between gap-2 flex-wrap">
                   <div className="flex items-center gap-1.5">
                     <button
@@ -1211,7 +1424,6 @@ export default function VolantinoScreen({
                   {filteredOfferGroups.length} prodotti a confronto rilevati dai volantini nazionali ({OFFER_DATE})
                 </p>
 
-                {/* Offer Groups List */}
                 {filteredOfferGroups.length === 0 ? (
                   <div className="py-16 text-center space-y-2">
                     <BarChart3 className="w-10 h-10 text-[var(--text-muted)] mx-auto opacity-40" />
@@ -1230,7 +1442,6 @@ export default function VolantinoScreen({
                           key={`group-${g.id}`}
                           className="rounded-2xl bg-[var(--card-bg)] border border-[var(--border)] overflow-hidden shadow-xs"
                         >
-                          {/* Group Header */}
                           <div className="flex items-center justify-between gap-2 px-3.5 pt-3 pb-2 border-b border-[var(--border)]/60 bg-[var(--surface-variant)]/40">
                             <div className="flex items-center gap-2 min-w-0">
                               <span className="text-base leading-none">{g.e}</span>
@@ -1245,7 +1456,6 @@ export default function VolantinoScreen({
                             )}
                           </div>
 
-                          {/* Offers Items */}
                           <div className="divide-y divide-[var(--border)]/50">
                             {g.o.map((offer, idx) => {
                               const isBest = g.o.length > 1 && offer === bestOffer;
@@ -1260,7 +1470,6 @@ export default function VolantinoScreen({
                                     isBest ? 'bg-emerald-500/[0.04]' : ''
                                   }`}
                                 >
-                                  {/* Store info & product */}
                                   <div className="flex items-center gap-2.5 min-w-0 flex-1">
                                     <div className="w-8 h-8 rounded-xl bg-white ring-1 ring-[var(--border)] flex items-center justify-center overflow-hidden shrink-0">
                                       <StoreLogo
@@ -1297,7 +1506,6 @@ export default function VolantinoScreen({
                                     </div>
                                   </div>
 
-                                  {/* Price */}
                                   <div className="text-right shrink-0">
                                     <p className={`text-xs sm:text-sm font-black ${isBest ? 'text-emerald-600' : 'text-[var(--text-main)]'}`}>
                                       {fmtPrice(offer.p)}
@@ -1307,9 +1515,7 @@ export default function VolantinoScreen({
                                     </p>
                                   </div>
 
-                                  {/* Direct Actions: 1) Add to Shopping List, 2) Open Flyer at Page */}
                                   <div className="flex items-center gap-1 shrink-0">
-                                    {/* Add to List */}
                                     <button
                                       type="button"
                                       onClick={() => handleAddOfferToCart(offer, g.g)}
@@ -1320,15 +1526,10 @@ export default function VolantinoScreen({
                                       }`}
                                       title="Aggiungi alla Lista della Spesa"
                                     >
-                                      {isAdded ? (
-                                        <Check className="w-3.5 h-3.5" />
-                                      ) : (
-                                        <Plus className="w-3.5 h-3.5" />
-                                      )}
+                                      {isAdded ? <Check className="w-3.5 h-3.5" /> : <Plus className="w-3.5 h-3.5" />}
                                       <span className="hidden sm:inline">{isAdded ? 'Aggiunto' : 'Spesa'}</span>
                                     </button>
 
-                                    {/* Browse Flyer at exact page */}
                                     <button
                                       type="button"
                                       onClick={() => {
