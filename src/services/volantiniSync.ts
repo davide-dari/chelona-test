@@ -283,3 +283,55 @@ export async function syncVolantiniRemote(options: { silent?: boolean; force?: b
     syncInProgress = false;
   }
 }
+
+/**
+ * Restituisce l'URL corretto per il reader incorporato (Calaméo embed o CeDiGros).
+ * Costruisce i parametri query in modo robusto con `&`, evitando doppi '?' che causano "Incorrect parameter" su Calaméo.
+ */
+export function getFlyerUrl(f: VolantinoFlyer, page?: number): string {
+  const targetPage = typeof page === 'number' && page >= 1 ? Math.floor(page) : 1;
+  if (f.directUrl) {
+    if (targetPage > 1) {
+      const sep = f.directUrl.includes('?') ? '&' : '?';
+      return `${f.directUrl}${sep}page=${targetPage}#page/${targetPage}`;
+    }
+    return f.directUrl;
+  }
+  const cleanBkcode = (f.bkcode || '').trim();
+  const url = new URL('https://v.calameo.com/');
+  if (cleanBkcode) {
+    url.searchParams.set('bkcode', cleanBkcode);
+  }
+  if (f.authid && f.authid.trim()) {
+    url.searchParams.set('authid', f.authid.trim());
+  }
+  if (targetPage > 1) {
+    url.searchParams.set('page', String(targetPage));
+  }
+  return url.toString();
+}
+
+/**
+ * Restituisce l'URL per aprire il volantino nel browser esterno (Calaméo reader o CeDiGros).
+ */
+export function getBrowserUrl(f: VolantinoFlyer, page?: number): string {
+  const targetPage = typeof page === 'number' && page >= 1 ? Math.floor(page) : 1;
+  if (f.directUrl) {
+    if (targetPage > 1) {
+      const sep = f.directUrl.includes('?') ? '&' : '?';
+      return `${f.directUrl}${sep}page=${targetPage}#page/${targetPage}`;
+    }
+    return f.directUrl;
+  }
+  const cleanBkcode = (f.bkcode || '').trim();
+  const url = new URL(`https://www.calameo.com/read/${cleanBkcode}`);
+  if (f.authid && f.authid.trim()) {
+    url.searchParams.set('authid', f.authid.trim());
+  }
+  if (targetPage > 1) {
+    url.searchParams.set('page', String(targetPage));
+    url.searchParams.set('p', String(targetPage));
+    url.hash = `page/${targetPage}`;
+  }
+  return url.toString();
+}

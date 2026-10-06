@@ -12,7 +12,7 @@ import { loadZone, saveZone, resolveCap, type VolantiniZone } from '../services/
 import { nearbySupermarketService } from '../services/nearbySupermarketService';
 import { 
   getLiveVolantiniDb, syncVolantiniRemote, formatUpdateDate, 
-  getFlyerExpiryInfo 
+  getFlyerExpiryInfo, getFlyerUrl, getBrowserUrl 
 } from '../services/volantiniSync';
 import { detectSupermarketCategory } from '../services/mathLanguageEngine';
 import { VolantinoModule } from '../types';
@@ -149,45 +149,8 @@ const CHAIN_CATEGORY_MAP: Record<string, string> = {
   'mondo-convenienza': 'cura-casa-e-corpo',
 };
 
-// Calaméo Reader URL con salto a pagina
-export const getFlyerUrl = (f: VolantinoFlyer, page?: number) => {
-  const targetPage = typeof page === 'number' && page >= 1 ? Math.floor(page) : 1;
-  if (f.directUrl) {
-    if (targetPage > 1) {
-      const sep = f.directUrl.includes('?') ? '&' : '?';
-      return `${f.directUrl}${sep}page=${targetPage}#page/${targetPage}`;
-    }
-    return f.directUrl;
-  }
-  const params: string[] = [];
-  if (f.authid) params.push(`authid=${encodeURIComponent(f.authid)}`);
-  if (targetPage > 1) {
-    params.push(`page=${targetPage}`);
-  }
-  const queryString = params.length > 0 ? `?${params.join('&')}` : '';
-  // Calaméo dedicated embed player for iframe integration
-  return `https://v.calameo.com/?bkcode=${f.bkcode}${queryString}`;
-};
-
-export const getBrowserUrl = (f: VolantinoFlyer, page?: number) => {
-  const targetPage = typeof page === 'number' && page >= 1 ? Math.floor(page) : 1;
-  if (f.directUrl) {
-    if (targetPage > 1) {
-      const sep = f.directUrl.includes('?') ? '&' : '?';
-      return `${f.directUrl}${sep}page=${targetPage}#page/${targetPage}`;
-    }
-    return f.directUrl;
-  }
-  const params: string[] = [];
-  if (f.authid) params.push(`authid=${encodeURIComponent(f.authid)}`);
-  if (targetPage > 1) {
-    params.push(`page=${targetPage}`);
-    params.push(`p=${targetPage}`);
-  }
-  const queryString = params.length > 0 ? `?${params.join('&')}` : '';
-  const hashString = targetPage > 1 ? `#page/${targetPage}` : '';
-  return `https://www.calameo.com/read/${f.bkcode}${queryString}${hashString}`;
-};
+// Re-export getFlyerUrl e getBrowserUrl centralizzati e conformi agli standard Calaméo
+export { getFlyerUrl, getBrowserUrl } from '../services/volantiniSync';
 
 /* ═══════════════════════════════════════════════════════════════════
    CAP MODAL: Selezione CAP non invasiva

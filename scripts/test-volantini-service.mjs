@@ -7,7 +7,8 @@
 import assert from 'node:assert/strict';
 import { VOLANTINI_DB } from '../src/data/volantiniDb.js';
 import { 
-  getFlyerExpiryInfo, formatUpdateDate, getLiveVolantiniDb 
+  getFlyerExpiryInfo, formatUpdateDate, getLiveVolantiniDb,
+  getFlyerUrl, getBrowserUrl
 } from '../src/services/volantiniSync.js';
 
 console.log('🧪 === TEST VOLANTINI SERVICE & DATASET INTEGRITY ===');
@@ -93,12 +94,44 @@ assert.ok(formatted.length > 5, 'Formatted date must not be empty');
 assert.notEqual(formatted, 'Data non disponibile');
 console.log(`✓ formatUpdateDate produced: "${formatted}"`);
 
+// 4.1 Test getFlyerUrl & getBrowserUrl (No double '?' bug, correct parameter separation)
+console.log('4.1 Testing getFlyerUrl and getBrowserUrl URL generators...');
+const mockCalameoWithAuth = { id: 999, title: 'Test Flyer', bkcode: '001066713fa5264498115', authid: 'DW7nc9FrEHE7' };
+const mockCalameoNoAuth = { id: 998, title: 'Test Flyer 2', bkcode: '001066713fa5264498115' };
+const mockDirect = { id: 997, title: 'Direct Flyer', directUrl: 'https://volantini.cedigros.com/reader/pewex' };
+
+// Test with authid + page
+const urlWithAuthAndPage = getFlyerUrl(mockCalameoWithAuth, 3);
+assert.ok(!urlWithAuthAndPage.includes('?bkcode=001066713fa5264498115?'), 'URL must NOT contain double question mark');
+assert.ok(urlWithAuthAndPage.includes('bkcode=001066713fa5264498115'), 'URL must contain bkcode');
+assert.ok(urlWithAuthAndPage.includes('&authid=DW7nc9FrEHE7'), 'URL must use & for authid parameter');
+assert.ok(urlWithAuthAndPage.includes('&page=3'), 'URL must use & for page parameter');
+assert.equal(urlWithAuthAndPage.split('?').length, 2, 'URL must have exactly one question mark');
+
+// Test without authid + page
+const urlNoAuthWithPage = getFlyerUrl(mockCalameoNoAuth, 5);
+assert.ok(urlNoAuthWithPage.includes('bkcode=001066713fa5264498115'), 'URL must contain bkcode');
+assert.ok(urlNoAuthWithPage.includes('&page=5'), 'URL must use & for page parameter');
+assert.equal(urlNoAuthWithPage.split('?').length, 2, 'URL must have exactly one question mark');
+
+// Test directUrl
+const urlDirect = getFlyerUrl(mockDirect, 2);
+assert.ok(urlDirect.includes('page=2'), 'Direct URL must include page');
+
+// Test getBrowserUrl
+const browserUrl = getBrowserUrl(mockCalameoWithAuth, 4);
+assert.ok(browserUrl.includes('https://www.calameo.com/read/001066713fa5264498115'), 'Browser URL must point to calameo reader');
+assert.ok(browserUrl.includes('authid=DW7nc9FrEHE7'), 'Browser URL must include authid');
+assert.ok(browserUrl.includes('#page/4'), 'Browser URL must include page hash');
+
+console.log('✓ getFlyerUrl and getBrowserUrl generate valid standard URLs without incorrect parameter errors');
+
 // 5. Test Live HTTP sample reachability (Calaméo & CeDiGros)
 console.log('5. Testing Live HTTP sample reachability...');
 const sampleCalameo = VOLANTINI_DB.chains.find(c => c.slug === 'lidl')?.flyers[0];
 assert.ok(sampleCalameo, 'Lidl flyer must exist');
-const calameoReaderUrl = `https://www.calameo.com/read/${sampleCalameo.bkcode}${sampleCalameo.authid ? `?authid=${sampleCalameo.authid}` : ''}`;
-const calameoEmbedUrl = `https://v.calameo.com/?bkcode=${sampleCalameo.bkcode}${sampleCalameo.authid ? `&authid=${sampleCalameo.authid}` : ''}`;
+const calameoReaderUrl = getBrowserUrl(sampleCalameo);
+const calameoEmbedUrl = getFlyerUrl(sampleCalameo);
 const calameoRes = await fetch(calameoReaderUrl, { method: 'HEAD' });
 assert.equal(calameoRes.status, 200, 'Calameo reader URL must return HTTP 200');
 
