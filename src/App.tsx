@@ -981,8 +981,12 @@ export default function App() {
       m.biometricService.isSupported().then(setIsBioSupported);
     });
 
-    // Controllo automatico aggiornamenti all'avvio dell'app
-    handleCheckUpdate(true);
+    // Controllo automatico aggiornamenti all'avvio dell'app (una sola volta per sessione)
+    const sessionChecked = sessionStorage.getItem('chelona_update_auto_checked');
+    if (!sessionChecked) {
+      sessionStorage.setItem('chelona_update_auto_checked', 'true');
+      handleCheckUpdate(true);
+    }
 
     // Ascolta eventi manuali di aggiornamento
     const handleManualUpdate = (e: any) => {
@@ -6256,7 +6260,11 @@ export default function App() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="absolute inset-0 bg-black/60 backdrop-blur-md"
+              onClick={() => {
+                setAvailableUpdate(null);
+                setUpdateProgress(null);
+              }}
+              className="absolute inset-0 bg-black/60 backdrop-blur-md cursor-pointer"
             />
             <motion.div
               initial={{ scale: 0.9, opacity: 0, y: 20 }}
@@ -6264,6 +6272,20 @@ export default function App() {
               exit={{ scale: 0.9, opacity: 0, y: 20 }}
               className="relative w-full max-w-md bg-[var(--card-bg)] rounded-[2.5rem] shadow-2xl border border-[var(--border)] overflow-hidden flex flex-col max-h-[85vh]"
             >
+              {/* Bottone Chiudi X in alto a destra */}
+              <button
+                type="button"
+                onClick={() => {
+                  updateService.snoozeUpdate(availableUpdate.latestVersion, 24);
+                  setAvailableUpdate(null);
+                  setUpdateProgress(null);
+                }}
+                className="absolute top-4 right-4 p-2.5 rounded-full bg-[var(--card-bg)] text-[var(--text-muted)] hover:text-[var(--text-main)] border border-[var(--border)] shadow-sm hover:scale-105 active:scale-95 transition-all z-20 cursor-pointer"
+                title="Chiudi avviso"
+              >
+                <X className="w-4 h-4" />
+              </button>
+
               {/* Header */}
               <div className="bg-[var(--surface-variant)] p-8 text-center border-b border-[var(--border)] shrink-0">
                 <div className="w-16 h-16 bg-[var(--accent-container)] rounded-3xl flex items-center justify-center text-[var(--accent)] shadow-inner mx-auto mb-4">
@@ -6317,6 +6339,9 @@ export default function App() {
                           try {
                             setUpdateProgress(0);
                             await updateService.downloadAndInstall(availableUpdate, (p) => setUpdateProgress(p));
+                            showToast('Download completato. Apertura installazione in corso...', 'success');
+                            setAvailableUpdate(null);
+                            setUpdateProgress(null);
                           } catch (e: any) {
                             setUpdateProgress(null);
                             const errorMessage = e.message || JSON.stringify(e);
@@ -6324,7 +6349,7 @@ export default function App() {
                             console.error('[App] Download update failed:', e);
                           }
                         }}
-                      className="flex-[2] py-4 bg-[var(--accent)] text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:brightness-110 transition-all shadow-lg shadow-[var(--accent)]/30 active:scale-95 text-center"
+                      className="flex-[2] py-4 bg-[var(--accent)] text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:brightness-110 transition-all shadow-lg shadow-[var(--accent)]/30 active:scale-95 text-center cursor-pointer"
                     >
                       Installa Ora
                     </button>
@@ -6332,8 +6357,9 @@ export default function App() {
                       onClick={() => {
                         updateService.snoozeUpdate(availableUpdate.latestVersion, 24);
                         setAvailableUpdate(null);
+                        setUpdateProgress(null);
                       }}
-                      className="flex-1 px-4 py-4 bg-[var(--surface-variant)] text-[var(--text-muted)] rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-[var(--border)] transition-all"
+                      className="flex-1 px-4 py-4 bg-[var(--surface-variant)] text-[var(--text-muted)] rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-[var(--border)] transition-all cursor-pointer"
                     >
                       Dopo
                     </button>
@@ -6342,7 +6368,7 @@ export default function App() {
                 
                 <button 
                   onClick={() => window.open(availableUpdate.downloadUrl, '_system')}
-                  className="w-full text-[10px] font-bold text-[var(--accent)] hover:underline uppercase tracking-widest text-center py-2"
+                  className="w-full text-[10px] font-bold text-[var(--accent)] hover:underline uppercase tracking-widest text-center py-2 cursor-pointer"
                 >
                   Problemi col download? Scarica dal browser
                 </button>

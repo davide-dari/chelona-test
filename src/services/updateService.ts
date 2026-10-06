@@ -119,9 +119,10 @@ class UpdateService {
           assetApiUrl: validApkAsset.url
         };
       } else {
-        console.log('[UpdateService] App is up to date.');
+        console.log(`[UpdateService] App is up to date (current: ${this.currentVersion}, bundle: ${APP_VERSION}, latest: ${latestVersion}).`);
         localStorage.removeItem('chelona_update_snoozed_version');
         localStorage.removeItem('chelona_update_snoozed_until');
+        return null;
       }
     } catch (error: any) {
       console.error('[UpdateService] Error checking for updates:', error);
@@ -314,12 +315,16 @@ class UpdateService {
     }
   }
 
-  private compareVersions(v1: string, v2: string): number {
-    const cleanV1 = v1.replace(/[^0-9.]/g, '');
-    const cleanV2 = v2.replace(/[^0-9.]/g, '');
-    const parts1 = cleanV1.split('.').map(Number);
-    const parts2 = cleanV2.split('.').map(Number);
-    for (let i = 0; i < 3; i++) {
+  public compareVersions(v1: string, v2: string): number {
+    if (!v1 && !v2) return 0;
+    if (!v1) return -1;
+    if (!v2) return 1;
+    const cleanV1 = String(v1).replace(/[^0-9.]/g, '');
+    const cleanV2 = String(v2).replace(/[^0-9.]/g, '');
+    const parts1 = cleanV1.split('.').filter(Boolean).map(n => parseInt(n, 10) || 0);
+    const parts2 = cleanV2.split('.').filter(Boolean).map(n => parseInt(n, 10) || 0);
+    const maxLen = Math.max(parts1.length, parts2.length);
+    for (let i = 0; i < maxLen; i++) {
       const p1 = parts1[i] || 0;
       const p2 = parts2[i] || 0;
       if (p1 > p2) return 1;

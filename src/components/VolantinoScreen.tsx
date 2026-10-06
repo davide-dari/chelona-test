@@ -390,12 +390,6 @@ export default function VolantinoScreen({
   const [activeCategory, setActiveCategory] = useState<string>('all');
   const [selectedChainSlug, setSelectedChainSlug] = useState<string | null>(null);
 
-  // Reader state
-  const [calameoFlyer, setCalameoFlyer] = useState<VolantinoFlyer | null>(null);
-  const [calameoChain, setCalameoChain] = useState<VolantinoChain | null>(null);
-  const [calameoPage, setCalameoPage] = useState<number>(1);
-  const [dismissExpiryAlert, setDismissExpiryAlert] = useState(false);
-  const [iframeLoading, setIframeLoading] = useState(true);
 
   // Best Offers filter state
   const [offersFavOnly, setOffersFavOnly] = useState(false);
@@ -457,14 +451,6 @@ export default function VolantinoScreen({
     showToast(res.message);
   };
 
-  // Safety timeout for reader loading state
-  useEffect(() => {
-    if (!calameoFlyer) return;
-    const timer = setTimeout(() => {
-      setIframeLoading(false);
-    }, 5000);
-    return () => clearTimeout(timer);
-  }, [calameoFlyer]);
 
   // Auto-sync on mount if needed
   useEffect(() => {
@@ -618,14 +604,14 @@ export default function VolantinoScreen({
     return { chain: targetChain, flyer: targetFlyer };
   }, [db]);
 
-  // Direct flyer opener
-  const openFlyer = useCallback((flyer: VolantinoFlyer, chain?: VolantinoChain, page: number = 1) => {
-    const parentChain = chain || db.chains.find(c => c.flyers.some(f => f.id === flyer.id));
-    setIframeLoading(true);
-    setCalameoFlyer(flyer);
-    setCalameoChain(parentChain || null);
-    setCalameoPage(page >= 1 ? page : 1);
-  }, [db]);
+  // Direct flyer opener - opens immediately via external browser reader (just like the ExternalLink button in the top right)
+  const openFlyer = useCallback((flyer: VolantinoFlyer, _chain?: VolantinoChain, page: number = 1) => {
+    const targetPage = page >= 1 ? page : 1;
+    const url = getBrowserUrl(flyer, targetPage);
+    if (url) {
+      openExternalUrl(url);
+    }
+  }, []);
 
   // Direct offer / flyer launch from outside
   const handledInitialOfferRef = useRef<string | null>(null);
@@ -676,11 +662,6 @@ export default function VolantinoScreen({
 
   // Back handling (single unified exit path)
   const handleBack = useCallback(() => {
-    if (calameoFlyer) {
-      setCalameoFlyer(null);
-      setCalameoPage(1);
-      return;
-    }
     if (selectedChainSlug) {
       setSelectedChainSlug(null);
       return;
@@ -694,7 +675,7 @@ export default function VolantinoScreen({
       return;
     }
     onClose();
-  }, [calameoFlyer, selectedChainSlug, searchQuery, activeCategory, onClose]);
+  }, [selectedChainSlug, searchQuery, activeCategory, onClose]);
 
   // Listen to Android hardware back
   useEffect(() => {
@@ -702,11 +683,6 @@ export default function VolantinoScreen({
     window.addEventListener('volantino-back', handler);
     return () => window.removeEventListener('volantino-back', handler);
   }, [handleBack]);
-
-  // Reset expiry alert on flyer change
-  useEffect(() => {
-    setDismissExpiryAlert(false);
-  }, [calameoFlyer]);
 
   // Filtered Chains
   const filteredChains = useMemo(() => {
@@ -825,178 +801,9 @@ export default function VolantinoScreen({
       className="fixed inset-0 z-[150] flex flex-col h-[100dvh] w-full bg-[var(--bg)] overflow-hidden"
     >
       {/* ═══════════════════════════════════════════════════════════════
-          STREAMLINED FLYER VIEWER (IMMERSIVE READER OVERLAY)
+          MAIN UNIFIED MINIMAL HUB (Single-Screen, Zero Clutter)
           ═══════════════════════════════════════════════════════════════ */}
-      {calameoFlyer ? (
-        <div className="flex-1 flex flex-col h-full w-full bg-[var(--bg)] relative overflow-hidden">
-          {/* Reader Top Bar */}
-          <header className="flex items-center justify-between gap-3 pt-[max(env(safe-area-inset-top),12px)] px-3 pb-2.5 bg-[var(--card-bg)] border-b border-[var(--border)] shrink-0 z-30 shadow-xs">
-            <button
-              onClick={() => { setCalameoFlyer(null); setCalameoPage(1); }}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[var(--surface-variant)] text-[var(--text-main)] hover:bg-[var(--border)] text-xs font-bold transition-all cursor-pointer shrink-0"
-              title="Torna ai volantini"
-            >
-              <ChevronLeft className="w-4 h-4" />
-              <span>Volantini</span>
-            </button>
-
-            <div className="flex-1 min-w-0 text-center px-1">
-              <div className="flex items-center justify-center gap-2">
-                {calameoChain && (
-                  <div className="w-5 h-5 rounded-md bg-white ring-1 ring-[var(--border)] flex items-center justify-center overflow-hidden shrink-0">
-                    <StoreLogo 
-                      id={calameoChain.slug} 
-                      short={calameoChain.name.slice(0, 2)} 
-                      brandSlug={calameoChain.slug.replace('md-discount', 'md').replace('-italia', '').replace('iper-', '').replace('-market', '')} 
-                      size={18} 
-                    />
-                  </div>
-                )}
-                <h1 className="text-xs sm:text-sm font-black text-[var(--text-main)] truncate max-w-[200px] sm:max-w-md">
-                  {cleanTitle(calameoFlyer.title)}
-                </h1>
-              </div>
-              <p className="text-[10px] text-[var(--text-muted)] font-medium truncate mt-0.5">
-                {calameoChain?.name || 'Supermercato'} · Pagina {calameoPage}
-              </p>
-            </div>
-
-            <div className="flex items-center gap-1 shrink-0">
-              {calameoChain && (
-                <button
-                  type="button"
-                  onClick={() => toggleFavorite(calameoChain.slug)}
-                  className={`p-2 rounded-full hover:bg-[var(--surface-variant)] transition-all active:scale-90 cursor-pointer ${
-                    favorites.includes(calameoChain.slug) ? 'text-amber-500' : 'text-[var(--text-muted)] hover:text-amber-500'
-                  }`}
-                  title={favorites.includes(calameoChain.slug) ? 'Rimuovi dai preferiti' : 'Aggiungi ai preferiti'}
-                >
-                  <Star className={`w-5 h-5 ${favorites.includes(calameoChain.slug) ? 'fill-amber-500' : ''}`} />
-                </button>
-              )}
-              <button
-                onClick={() => {
-                  const targetName = calameoChain?.name || calameoFlyer.title.replace(/^Volantino\s+/i, '').split(' ')[0];
-                  const loc = zone?.city || (zone?.cap ? `CAP ${zone.cap}` : '');
-                  const q = encodeURIComponent(`${targetName} supermercato ${loc}`.trim());
-                  openExternalUrl(`https://www.google.com/maps/search/${q}`);
-                }}
-                className="p-2 rounded-full hover:bg-[var(--surface-variant)] text-[var(--text-muted)] hover:text-emerald-500 transition-colors cursor-pointer"
-                title="Trova negozio su Google Maps"
-              >
-                <MapPin className="w-4 h-4 text-emerald-500" />
-              </button>
-              <button
-                onClick={() => openExternalUrl(getBrowserUrl(calameoFlyer, calameoPage))}
-                className="p-2 hover:bg-[var(--surface-variant)] rounded-full text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors cursor-pointer"
-                title="Apri nel browser esterno"
-              >
-                <ExternalLink className="w-4 h-4" />
-              </button>
-              <button
-                onClick={() => { setCalameoFlyer(null); setCalameoPage(1); }}
-                className="p-2 hover:bg-rose-500/10 rounded-full text-[var(--text-muted)] hover:text-rose-500 transition-colors cursor-pointer"
-                title="Chiudi lettore"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-          </header>
-
-          {/* Expiry alert inside reader */}
-          {!dismissExpiryAlert && (() => {
-            const expiry = getFlyerExpiryInfo(calameoFlyer);
-            if (expiry.status === 'today' || expiry.status === 'tomorrow' || expiry.status === 'soon' || expiry.status === 'expired') {
-              return (
-                <div className={`px-3 py-1.5 flex items-center justify-between text-xs border-b shrink-0 transition-all ${expiry.badgeBg} ${expiry.textColor} ${expiry.borderColor}`}>
-                  <div className="flex items-center gap-2 min-w-0">
-                    {expiry.iconType === 'alert' ? (
-                      <AlertTriangle className="w-3.5 h-3.5 shrink-0 animate-bounce" />
-                    ) : (
-                      <Clock className="w-3.5 h-3.5 shrink-0 animate-pulse" />
-                    )}
-                    <p className="min-w-0 truncate text-[11px]">
-                      <span className="font-black uppercase tracking-wide mr-1.5 px-1.5 py-0.5 rounded-full bg-black/10 dark:bg-white/10">
-                        {expiry.shortLabel}
-                      </span>
-                      {calameoFlyer.to && (
-                        <span className="opacity-90">
-                          {expiry.status === 'expired'
-                            ? `Scaduto il ${new Date(calameoFlyer.to).toLocaleDateString('it-IT')}`
-                            : `Valido fino al ${new Date(calameoFlyer.to).toLocaleDateString('it-IT')}`}
-                        </span>
-                      )}
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => setDismissExpiryAlert(true)}
-                    className="p-1 rounded-lg hover:bg-black/10 dark:hover:bg-white/10 shrink-0 cursor-pointer"
-                    title="Chiudi avviso"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              );
-            }
-            return null;
-          })()}
-
-          {/* Iframe Reader Container */}
-          <div className="flex-1 min-h-0 relative bg-zinc-950 flex flex-col">
-            {iframeLoading && (
-              <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-zinc-950/85 backdrop-blur-xs text-white p-4 text-center">
-                <RefreshCw className="w-6 h-6 animate-spin text-emerald-400" />
-                <p className="text-xs font-bold text-zinc-300">Caricamento volantino in corso…</p>
-                <button
-                  type="button"
-                  onClick={() => openExternalUrl(getBrowserUrl(calameoFlyer, calameoPage))}
-                  className="mt-2 px-4 py-2 rounded-full bg-emerald-500 hover:bg-emerald-600 text-xs font-black text-white transition-all shadow-md flex items-center gap-1.5 cursor-pointer active:scale-95"
-                >
-                  <ExternalLink className="w-3.5 h-3.5" />
-                  <span>Apri nel browser esterno</span>
-                </button>
-              </div>
-            )}
-
-            {calameoPage > 1 && (
-              <div className="absolute top-3 left-1/2 -translate-x-1/2 z-20 pointer-events-none">
-                <span className="px-3.5 py-1.5 rounded-full bg-black/85 backdrop-blur-md text-white text-xs font-black shadow-lg border border-white/20 flex items-center gap-1.5">
-                  <span>📖</span>
-                  <span>Offerta a Pagina {calameoPage}</span>
-                </span>
-              </div>
-            )}
-
-            {/* Stable Iframe (No sandbox attribute to allow Calaméo embed player without 403 blocks) */}
-            <iframe
-              key={`flyer-frame-${calameoFlyer.id}-${calameoFlyer.bkcode || ''}`}
-              src={getFlyerUrl(calameoFlyer, calameoPage)}
-              title={calameoFlyer.title}
-              onLoad={() => setIframeLoading(false)}
-              onError={() => setIframeLoading(false)}
-              className="w-full flex-1 border-0"
-              allow="fullscreen; clipboard-write"
-            />
-
-            {/* Bottom helper bar */}
-            <div className="shrink-0 px-3.5 py-1.5 bg-zinc-900 border-t border-zinc-800 flex items-center justify-between text-[11px] text-zinc-400 z-10">
-              <span className="truncate max-w-[60%] font-medium">{calameoFlyer.title}</span>
-              <button
-                type="button"
-                onClick={() => openExternalUrl(getBrowserUrl(calameoFlyer, calameoPage))}
-                className="text-emerald-400 hover:text-emerald-300 font-bold flex items-center gap-1 cursor-pointer shrink-0 transition-colors"
-              >
-                <ExternalLink className="w-3 h-3" />
-                <span>Apri a schermo intero</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : (
-        /* ═══════════════════════════════════════════════════════════════
-           MAIN UNIFIED MINIMAL HUB (Single-Screen, Zero Clutter)
-           ═══════════════════════════════════════════════════════════════ */
-        <div className="flex-1 flex flex-col h-full w-full overflow-hidden">
+      <div className="flex-1 flex flex-col h-full w-full overflow-hidden">
           {/* ── Top Bar Minimal & Clean (Single Back Arrow, No Redundant X) ── */}
           <header className="flex items-center justify-between gap-3 pt-[max(env(safe-area-inset-top),14px)] px-4 pb-3 bg-[var(--card-bg)] border-b border-[var(--border)] shrink-0 z-20">
             <div className="flex items-center gap-2.5 min-w-0">
@@ -1200,8 +1007,9 @@ export default function VolantinoScreen({
                                   </div>
 
                                   <div className="flex items-center justify-between text-[10px] text-[var(--text-muted)] pt-1 border-t border-[var(--border)]">
-                                    <span className="font-semibold text-emerald-600 dark:text-emerald-400">
-                                      Sfoglia →
+                                    <span className="font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                                      <span>Sfoglia</span>
+                                      <ExternalLink className="w-3 h-3" />
                                     </span>
                                     {f.to && (
                                       <span className="truncate">
@@ -1329,7 +1137,7 @@ export default function VolantinoScreen({
                                             className="p-2 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 text-xs font-bold transition-all cursor-pointer flex items-center gap-1"
                                             title={`Sfoglia volantino a Pag. ${targetPage}`}
                                           >
-                                            <BookOpen className="w-3.5 h-3.5" />
+                                            <ExternalLink className="w-3.5 h-3.5" />
                                             <span className="text-[10px]">p.{targetPage}</span>
                                           </button>
                                         </div>
@@ -1505,8 +1313,9 @@ export default function VolantinoScreen({
                             </div>
 
                             <div className="flex items-center justify-between text-[10px] text-[var(--text-muted)] pt-1 border-t border-[var(--border)]">
-                              <span className="font-semibold text-emerald-600 dark:text-emerald-400">
-                                Sfoglia →
+                              <span className="font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                                <span>Sfoglia</span>
+                                <ExternalLink className="w-3 h-3" />
                               </span>
                               {f.to && (
                                 <span className="truncate">
@@ -1708,7 +1517,7 @@ export default function VolantinoScreen({
                                       className="p-2 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 text-xs font-bold transition-all cursor-pointer flex items-center gap-1"
                                       title={`Sfoglia volantino a Pag. ${targetPage}`}
                                     >
-                                      <BookOpen className="w-3.5 h-3.5" />
+                                      <ExternalLink className="w-3.5 h-3.5" />
                                       <span className="text-[10px]">p.{targetPage}</span>
                                     </button>
                                   </div>
@@ -1725,7 +1534,6 @@ export default function VolantinoScreen({
             )}
           </div>
         </div>
-      )}
 
       {/* Floating Toast Notification */}
       <AnimatePresence>
