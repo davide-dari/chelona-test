@@ -27,8 +27,8 @@ export interface VolantiniDb {
 }
 
 export const VOLANTINI_DB: VolantiniDb = {
-  "updatedAt": "2026-10-06T22:05:39.008Z",
-  "source": "CentroVolantini + Calaméo + CeDiGros",
+  "updatedAt": "2026-10-07T11:35:40.761Z",
+  "source": "CentroVolantini + Calaméo + CeDiGros + Orizzonte + SuperElite + Todis",
   "chains": [
     {
       "slug": "aeo",
@@ -519,35 +519,35 @@ export const VOLANTINI_DB: VolantiniDb = {
         {
           "id": 1929,
           "title": "Volantino Coal Il Market City",
-          "subtitle": "Tutto a 1€ 2€ 3€",
-          "coverUrl": "https://www.calameo.com/books/social/cover/001066713b108f935db81?authid=6JHKcuchK0t3",
-          "fallbackCoverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/coal_1929_0.jpg",
-          "from": "2026-09-24T00:00:00+02:00",
-          "to": "2026-10-07T00:00:00+02:00",
-          "bkcode": "001066713b108f935db81",
-          "authid": "6JHKcuchK0t3"
+          "subtitle": "Super Offerte",
+          "coverUrl": "https://www.calameo.com/books/social/cover/0010667139c9b8a073f5b?authid=2iM6CVARrUH5",
+          "fallbackCoverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/coal_1929.jpg",
+          "from": "2026-10-08T00:00:00+02:00",
+          "to": "2026-10-21T00:00:00+02:00",
+          "bkcode": "0010667139c9b8a073f5b",
+          "authid": "2iM6CVARrUH5"
         },
         {
           "id": 2193,
           "title": "Volantino Coal Market Plus",
-          "subtitle": "Tutto a 1€ 2€ 3€",
-          "coverUrl": "https://www.calameo.com/books/social/cover/0010667130309265618d7?authid=ZAQlEfXyXcYG",
-          "fallbackCoverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/coal_2193_0.jpg",
-          "from": "2026-09-24T00:00:00+02:00",
-          "to": "2026-10-07T00:00:00+02:00",
-          "bkcode": "0010667130309265618d7",
-          "authid": "ZAQlEfXyXcYG"
+          "subtitle": "Super Offerte",
+          "coverUrl": "https://www.calameo.com/books/social/cover/001066713c7b301499dc5?authid=LZQuqyWWAczQ",
+          "fallbackCoverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/coal_2193.jpg",
+          "from": "2026-10-08T00:00:00+02:00",
+          "to": "2026-10-21T00:00:00+02:00",
+          "bkcode": "001066713c7b301499dc5",
+          "authid": "LZQuqyWWAczQ"
         },
         {
           "id": 2194,
           "title": "Volantino Coal Il Market",
-          "subtitle": "Tutto a 1€ 2€ 3€",
-          "coverUrl": "https://www.calameo.com/books/social/cover/001066713db4a7e308543?authid=SGrWyNsnj9Cd",
-          "fallbackCoverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/coal_2194.jpg",
-          "from": "2026-09-24T00:00:00+02:00",
-          "to": "2026-10-07T00:00:00+02:00",
-          "bkcode": "001066713db4a7e308543",
-          "authid": "SGrWyNsnj9Cd"
+          "subtitle": "Super Offerte",
+          "coverUrl": "https://www.calameo.com/books/social/cover/0010667137b61a95ed554?authid=pmwxp8XxIf9Q",
+          "fallbackCoverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/coal_2194_0.jpg",
+          "from": "2026-10-08T00:00:00+02:00",
+          "to": "2026-10-21T00:00:00+02:00",
+          "bkcode": "0010667137b61a95ed554",
+          "authid": "pmwxp8XxIf9Q"
         }
       ]
     },
@@ -934,6 +934,61 @@ export const VOLANTINI_DB: VolantiniDb = {
       "logoId": "coop",
       "flyers": [
         {
+          "id": 86,
+          "title": "Volantino IperCoop: Lombardia",
+          "subtitle": "Scegli Tu Grandi Marche",
+          "coverUrl": "https://www.calameo.com/books/social/cover/0010667133f57db337360?authid=miAvFISvqFIO",
+          "fallbackCoverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/coop_86_0.jpg",
+          "from": "2026-10-08T00:00:00+02:00",
+          "to": "2026-10-21T00:00:00+02:00",
+          "bkcode": "0010667133f57db337360",
+          "authid": "miAvFISvqFIO"
+        },
+        {
+          "id": 373,
+          "title": "Volantino Coop: Speciale",
+          "subtitle": "Casa D'Autunno",
+          "coverUrl": "https://www.calameo.com/books/social/cover/001066713b19ef5ad8a73?authid=mI8xRi3PZh5m",
+          "fallbackCoverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/coop_373_0.jpg",
+          "from": "2026-10-08T00:00:00+02:00",
+          "to": "2026-11-04T00:00:00+01:00",
+          "bkcode": "001066713b19ef5ad8a73",
+          "authid": "mI8xRi3PZh5m"
+        },
+        {
+          "id": 2301,
+          "title": "Volantino Speciale Coop Lombardia Bis",
+          "subtitle": "Viaggio Nel Gusto",
+          "coverUrl": "https://www.calameo.com/books/social/cover/0010667137cbf7db215ed?authid=gbiHenYVKB64",
+          "fallbackCoverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/coop_2301.jpg",
+          "from": "2026-10-08T00:00:00+02:00",
+          "to": "2026-10-21T00:00:00+02:00",
+          "bkcode": "0010667137cbf7db215ed",
+          "authid": "gbiHenYVKB64"
+        },
+        {
+          "id": 2048,
+          "title": "Volantino Coop Firenze Speciale",
+          "subtitle": "La casa cambia stagione",
+          "coverUrl": "https://www.calameo.com/books/social/cover/001066713151198d4c646?authid=uwZeqbxJXm1I",
+          "fallbackCoverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/coop_2048_1.jpg",
+          "from": "2026-10-08T00:00:00+02:00",
+          "to": "2026-11-04T00:00:00+01:00",
+          "bkcode": "001066713151198d4c646",
+          "authid": "uwZeqbxJXm1I"
+        },
+        {
+          "id": 1969,
+          "title": "Volantino Supermercati Coop Firenze",
+          "subtitle": "La Toscana è Eccellenza",
+          "coverUrl": "https://www.calameo.com/books/social/cover/001066713149ad48dda15?authid=xyb9l9uhtZkU",
+          "fallbackCoverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/coop_1969_0.jpg",
+          "from": "2026-10-08T00:00:00+02:00",
+          "to": "2026-10-21T00:00:00+02:00",
+          "bkcode": "001066713149ad48dda15",
+          "authid": "xyb9l9uhtZkU"
+        },
+        {
           "id": 345,
           "title": "Volantino Ipercoop: Speciale",
           "subtitle": "Aspettando l'inverno",
@@ -1022,28 +1077,6 @@ export const VOLANTINI_DB: VolantiniDb = {
           "authid": "4eNq7hEhi3Nt"
         },
         {
-          "id": 86,
-          "title": "Volantino IperCoop: Lombardia",
-          "subtitle": "1+1",
-          "coverUrl": "https://www.calameo.com/books/social/cover/001066713a21929bc9c9b?authid=Hfwl5WIaXloX",
-          "fallbackCoverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/coop_86_1.jpg",
-          "from": "2026-09-24T00:00:00+02:00",
-          "to": "2026-10-07T00:00:00+02:00",
-          "bkcode": "001066713a21929bc9c9b",
-          "authid": "Hfwl5WIaXloX"
-        },
-        {
-          "id": 1969,
-          "title": "Volantino Supermercati Coop Firenze",
-          "subtitle": "Buono Sconto 5€",
-          "coverUrl": "https://www.calameo.com/books/social/cover/001066713940b8813b36e?authid=3Shpqt1UYapC",
-          "fallbackCoverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/coop_1969_1.jpg",
-          "from": "2026-09-24T00:00:00+02:00",
-          "to": "2026-10-07T00:00:00+02:00",
-          "bkcode": "001066713940b8813b36e",
-          "authid": "3Shpqt1UYapC"
-        },
-        {
           "id": 2366,
           "title": "Coop Lombardia Bis",
           "subtitle": "Tendenze D'Autunno",
@@ -1101,13 +1134,13 @@ export const VOLANTINI_DB: VolantiniDb = {
         {
           "id": 1913,
           "title": "Volantino Ipercoop Piemonte Novacoop",
-          "subtitle": "Extra Offerte",
-          "coverUrl": "https://www.calameo.com/books/social/cover/00106671384c703a18643?authid=WO2oiJCoYPoZ",
-          "fallbackCoverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/coop_1913_1.jpg",
-          "from": "2026-09-24T00:00:00+02:00",
-          "to": "2026-10-07T00:00:00+02:00",
-          "bkcode": "00106671384c703a18643",
-          "authid": "WO2oiJCoYPoZ"
+          "subtitle": "Scegli Tu Grandi Marche",
+          "coverUrl": "https://www.calameo.com/books/social/cover/0010667138ed8882dbcfe?authid=9eOJVQvqhKxk",
+          "fallbackCoverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/coop_1913.jpg",
+          "from": "2026-10-08T00:00:00+02:00",
+          "to": "2026-10-21T00:00:00+02:00",
+          "bkcode": "0010667138ed8882dbcfe",
+          "authid": "9eOJVQvqhKxk"
         },
         {
           "id": 2158,
@@ -1145,13 +1178,13 @@ export const VOLANTINI_DB: VolantiniDb = {
         {
           "id": 90,
           "title": "Volantino IperCoop Liguria",
-          "subtitle": "Extra Offerte",
-          "coverUrl": "https://www.calameo.com/books/social/cover/0010667131f501be57eab?authid=Vyfpdypm3ADw",
-          "fallbackCoverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/coop_90_1.jpg",
-          "from": "2026-09-24T00:00:00+02:00",
-          "to": "2026-10-07T00:00:00+02:00",
-          "bkcode": "0010667131f501be57eab",
-          "authid": "Vyfpdypm3ADw"
+          "subtitle": "Scegli Tu Grandi Marche",
+          "coverUrl": "https://www.calameo.com/books/social/cover/00106671381fa0fa66106?authid=yd81iz9hZJr8",
+          "fallbackCoverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/coop_90_0.jpg",
+          "from": "2026-10-08T00:00:00+02:00",
+          "to": "2026-10-21T00:00:00+02:00",
+          "bkcode": "00106671381fa0fa66106",
+          "authid": "yd81iz9hZJr8"
         }
       ]
     },
@@ -1280,6 +1313,72 @@ export const VOLANTINI_DB: VolantiniDb = {
           "directUrl": "https://www.cedigros.com/index.php?option=com_myegojwt&view=flyer&id=198&tmpl=component",
           "from": "2026-10-02T00:00:00+02:00",
           "to": "2026-10-13T23:59:59+02:00"
+        }
+      ]
+    },
+    {
+      "slug": "superelite",
+      "name": "Elite Supermercati (Roma & Lazio)",
+      "logoId": "superelite",
+      "flyers": [
+        {
+          "id": 20101,
+          "title": "Volantino Elite - 1+1 Uno lo Paghi e Uno è Gratis",
+          "subtitle": "valide dal 2 al 15 Ottobre 2026",
+          "coverUrl": "https://superelite.it/media/com_myegojwt/contents/flyers/20150/202610011148-page_01.jpg?mcb=5969808",
+          "directUrl": "https://www.superelite.it/promozioni/uno-lo-paghi-e-uno-e-gratis-4",
+          "from": "2026-10-02T00:00:00+02:00",
+          "to": "2026-10-15T23:59:59+02:00"
+        },
+        {
+          "id": 20102,
+          "title": "Volantino Elite - 1+1 Uno lo Paghi e Uno è Gratis",
+          "subtitle": "valide dal 2 al 14 Ottobre 2026",
+          "coverUrl": "https://superelite.it/media/com_myegojwt/contents/flyers/20164/202610020842-page_01.jpg?mcb=5969808",
+          "directUrl": "https://www.superelite.it/promozioni/uno-lo-paghi-e-uno-e-gratis-3",
+          "from": "2026-10-02T00:00:00+02:00",
+          "to": "2026-10-14T23:59:59+02:00"
+        },
+        {
+          "id": 20103,
+          "title": "Volantino Elite - 1+1 Uno lo Paghi e Uno è Gratis - Lariano",
+          "subtitle": "valide dal 2 al 14 Ottobre 2026",
+          "coverUrl": "https://superelite.it/media/com_myegojwt/contents/flyers/20207/202610011153-page_01.jpg?mcb=5969808",
+          "directUrl": "https://www.superelite.it/promozioni/uno-lo-paghi-e-uno-e-gratis-lariano",
+          "from": "2026-10-02T00:00:00+02:00",
+          "to": "2026-10-14T23:59:59+02:00"
+        },
+        {
+          "id": 20104,
+          "title": "Volantino Elite - 1+1 Uno lo Paghi e Uno è Gratis - Neruda",
+          "subtitle": "valide dal 2 al 14 Ottobre 2026",
+          "coverUrl": "https://superelite.it/media/com_myegojwt/contents/flyers/20208/202610011158-page_01.jpg?mcb=5969926",
+          "directUrl": "https://www.superelite.it/promozioni/uno-lo-paghi-e-uno-e-gratis-neruda",
+          "from": "2026-10-02T00:00:00+02:00",
+          "to": "2026-10-14T23:59:59+02:00"
+        },
+        {
+          "id": 20105,
+          "title": "Volantino Elite - Occasioni Autunnali",
+          "subtitle": "Dal 9 al 14 Ottobre 2026",
+          "coverUrl": "https://www.superelite.it/media/com_myegojwt/contents/flyers/20122/202610011208-page_01.jpg?mcb=5969664",
+          "directUrl": "https://www.superelite.it/promozioni/occasioni-autunnali",
+          "from": "2026-10-09T00:00:00+02:00",
+          "to": "2026-10-14T23:59:59+02:00"
+        },
+        {
+          "id": 20106,
+          "title": "Volantino Elite - Spesa Difesa Selex - Prezzi Bloccati - Settembre",
+          "subtitle": "dal 01/09/26 al 31/12/26",
+          "coverUrl": "https://www.superelite.it/media/com_myegojwt/contents/flyers/2538/202608191527-page_01.jpg?mcb=5965513",
+          "directUrl": "https://www.superelite.it/promozioni/spesa-difesa-selex-prezzi-bloccati-gennaio"
+        },
+        {
+          "id": 20107,
+          "title": "Volantino Elite - Tutti in Campo - Grande Raccolta Fila - 3 Puntata",
+          "subtitle": "Dal 28 Settembre all' 11 Ottobre 2026</div><div class=\"text-center option-font-bold PadV1x\" style=\"\"><span class=\"\" style=\"margin-right:0.5em;\"></div></div></div><div class=\"\" style=\"background-color:rgba(245, 245, 245, 1);position:relative;\"><style>.itm_spcl-top-divider {display: block;position:relative;;;width: 100%;height: 5px}.itm_spcl-top-divider .shape-divider {height:100%;width:100%;fill:rgba(0, 0, 0, 0.07)}</style><!-- DIVIDER top --><div class=\"itm_spcl-top-divider\"><svg xmlns=\"http://www.w3.org/2000/svg\" width=\"100%\" height=\"100%\" viewBox=\"0 0 16000 1000\" preserveAspectRatio=\"none\" style=\"position:absolute\" > <rect class=\"shape-divider\" x=\"0\" y=\"0\" width=\"16000\" height=\"1000\"/> </svg> </div><div class=\"\" style=\"\"><div class=\"container text-center PadB1x cdv-Pad1x cdv-p1\" style=\"\"><div style=\"display:inline-block;\"><h2 class=\"h3 text-center w100\" style=\"display:flex;align-items:center;\">La lista dei prodotti</h2></div><div class=\"\"><p>Seleziona un box per tutti i dettagli. Usa i filtri per affinare la ricerca. Esegui il login e aggiungi i prodotti alla tua lista preferita.</p></div></div> <style> .boxListContainer .flex-item {transition: opacity 0.3s ease, transform 0.3s ease;} .boxListContainer .flex-item.hiding {opacity: 0; transform: scale(0.95); } .filtersContainer>.flex-container {border-radius:1em;border:1px solid silver;overflow:hidden;} .boxListContainer .flex-item .listBox {display:flex;flex-flow:column;height:100%;overflow:hidden;border-radius:1em;border:1px solid silver;overflow:hidden;} .repCheckbox { width: 18px; height: 18px; cursor: pointer; accent-color: rgba(26, 84, 7, 0.7);margin-right: 0.3em;} .searchInput {box-sizing: border-box; -webkit-box-sizing: border-box; -moz-box-sizing: border-box; font-weight: 400; color: rgba(87, 87, 87, 0.8); border: 0; background-color: rgba(87, 87, 87, 0.05); font-size: 16px; padding: 9px 9px; margin: 0 0 5px 0; border-radius: 5px; -webkit-border-radius: 5px; -moz-border-radius: 5px; outline: none; width: 100%;} .filter-button,.pageSelect { color: rgba(87, 87, 87, 0.8); border: 0; background-color: rgba(87, 87, 87, 0.05); font-size: 16px; padding: 9px 9px; margin: 0 0 5px 0; border-radius: 5px; -webkit-border-radius: 5px; -moz-border-radius: 5px; outline: none; width: 95%; cursor:pointer;} .boxMainImageRow {background-size:contain;background-position:center center;background-repeat:no-repeat;min-height:100px;} .boxDepartmentRow span {display: inline-block; font-size: 0.8em; padding: 2px 8px; border-radius: 5px; line-height: 1em;} .boxDescriptionRow {font-size:1em; line-height:1.1em;min-height:4em;} .offersContainer {display:inline-flex;flex-flow:row;align-items:center;justify-content:flex-start;} .fidelityPointsRow span {display:inline-block;background-color:red;color:gold;font-size:1.2em;Padding:0.2em 0.5em;border-radius:50px; } .boxBrandsRow img {height:40px;width:auto;margin-right:10px;} .boxPeriodRow{margin-top:auto;} body.isPhone .pageSelect, body.isPhone .searchInput, body.isPhone .filter-button {width:100%;} #productPopupOverlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.15); display: flex; align-items: center; justify-content: center; z-index: 9999; } #productPopupContent { background-color: #ffffff; padding: 20px; max-width: 500px; width: 90%; box-shadow: 0 0 10px rgba(0,0,0,0.3); overflow-y: auto; max-height: 80vh; position: relative; border-radius:1em; } #productPopupContent .closePopup { position: absolute; top: 10px; right: 15px; cursor: pointer; font-weight: bold; font-size: 18px; } #productPopupContent .imageThumbnails { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 10px; } #productPopupContent .imageThumbnails .thumb { width: 80px; height: 80px; background-size: contain; background-position: center; background-repeat: no-repeat; border: 1px solid #ccc; cursor: pointer; } #productPopupContent .boxMainImageRow { min-height:230px; } #productPopupContent .boxDescriptionRow { min-height:1em; } .simple-popup-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 10000; } .simple-popup { background: #fff; padding: 1.5rem; border-radius: 5px; max-width: 90%; text-align: center; box-shadow: 0 2px 10px rgba(0,0,0,0.3); } .simple-popup button { margin-top: 1rem; padding: 0.5rem 1rem; cursor: pointer; } </style> <!-- Popup overlay --><div id=\"productPopupOverlay\" style=\"display:none;\"><div id=\"productPopupContent\"></div></div><div class=\"container\" id=\"searchDiv\"></div><div class=\"flex-container boxListContainer\"><div class=\"flex-item fbox PadHalf span-3 cdv-span-12 flex-grow-0\" data-pag=\"4\" data-rep=\"Scatolame Alimentare\" data-title=\"De Cecco Pasta di semola g 500 formati normali\" data-gallery=\"/images/smartflyer/59ee62dcd207891a1cf42b2c8db9db3a.jpg|/images/smartflyer/df6a00025a1bcb7cda1fb0b00d591173.jpg\" data-ean_list=\"8001250004840-8001250120069-8001250120076-8001250120106-8001250120113-8001250120120-8001250120137-8001250120151-8001250120182-8001250120236-8001250120243-8001250120267-8001250120342-8001250120397-8001250120403-8001250120410-8001250120427-8001250120465-8001250120496-8001250120502-8001250120526-8001250120571-8001250120618-8001250120656-8001250120694-8001250120786-8001250120809-8001250120885-8001250120939-8001250121202-8001250121219-8001250121363-8001250121417-8001250121509-8001250121585-8001250121592-8001250121707-8001250121721-8001250121790-8001250121813-8001250124128\" aria-label=\"Box 1, Pagina 4: Pagina 04\" ><div class=\"listBox bkg-white Pad1x\" /><div class=\"boxMainImageRow MarB1x\" style=\"background-image:url('/images/smartflyer/59ee62dcd207891a1cf42b2c8db9db3a.jpg');\"></div><div class=\"boxDepartmentRow\"><span class=\"option-font-bold bkg-red text-uppercase text-white\">Scatolame Alimentare</span></div><div class=\"boxDescriptionRow\"><span class=\"option-font text-black text-compact\">De Cecco Pasta di semola g 500 formati normali</span></div><div class=\"boxOffersRow \" style=\"padding-top:0.5em; padding-bottom:0.5em;\" aria-label=\"Offerta per tutti i clienti\"><div class=\"offersContainer \" style=\"background-color:rgba(30, 150, 100, 1);padding:5px 10px; border-radius:10px;height:40px;\"><div class=\"option-font\" style=\"background-color:;color:rgba(255, 255, 255, 1);margin-right:5px;\"></div><div class=\"option-font-bold\" style=\"background-color:;color:rgba(255, 255, 255, 1);\">€ 0,89</div></div><div class=\"text-small option-font text-compact\" style=\"color:rgba(30, 150, 100, 1);padding-left:10px;\">al Kg € 1,78</div></div><div class=\"boxPeriodRow text-extra-small text-left \">In offerta dal 28/09/26 al 11/10/26",
+          "coverUrl": "https://www.superelite.it/media/com_myegojwt/contents/flyers/20206/202610010958-page_01.jpg?mcb=5969471",
+          "directUrl": "https://www.superelite.it/promozioni/tutti-in-campo-grande-raccolta-fila-3-puntata-2"
         }
       ]
     },
@@ -1733,6 +1832,24 @@ export const VOLANTINI_DB: VolantiniDb = {
       ]
     },
     {
+      "slug": "futura-supermercati",
+      "name": "Futura Supermercati",
+      "logoId": "futura-supermercati",
+      "flyers": [
+        {
+          "id": 2012,
+          "title": "Volantino Futura Supermercati",
+          "subtitle": "Grandi Offerte",
+          "coverUrl": "https://www.calameo.com/books/social/cover/0010667136fb8b4f2da31?authid=hT69PkQpwVbv",
+          "fallbackCoverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/dpi_2012.jpg",
+          "from": "2026-10-01T00:00:00+02:00",
+          "to": "2026-10-28T00:00:00+01:00",
+          "bkcode": "0010667136fb8b4f2da31",
+          "authid": "hT69PkQpwVbv"
+        }
+      ]
+    },
+    {
       "slug": "gros",
       "name": "Gros - Maestri del Fresco",
       "logoId": "gros",
@@ -2099,6 +2216,24 @@ export const VOLANTINI_DB: VolantiniDb = {
       ]
     },
     {
+      "slug": "italmark",
+      "name": "Italmark",
+      "logoId": "italmark",
+      "flyers": [
+        {
+          "id": 2260,
+          "title": "Volantino Italmark",
+          "subtitle": "Le Mie Grandi Marche",
+          "coverUrl": "https://www.calameo.com/books/social/cover/00106671337eadbdb42ae?authid=tmH2fCRfJHw9",
+          "fallbackCoverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/italmark_2260.jpg",
+          "from": "2026-10-07T00:00:00+02:00",
+          "to": "2026-10-20T00:00:00+02:00",
+          "bkcode": "00106671337eadbdb42ae",
+          "authid": "tmH2fCRfJHw9"
+        }
+      ]
+    },
+    {
       "slug": "lidl",
       "name": "Lidl",
       "logoId": "lidl",
@@ -2126,17 +2261,6 @@ export const VOLANTINI_DB: VolantiniDb = {
           "authid": "C33IA0Jyi1SW"
         },
         {
-          "id": 1883,
-          "title": "Volantino Lidl Speciale",
-          "subtitle": "Sicilia",
-          "coverUrl": "https://www.calameo.com/books/social/cover/0010667132b7942b075f7?authid=NvAAcmWskt2K",
-          "fallbackCoverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/lidl_it_1883.jpg",
-          "from": "2026-10-01T00:00:00+02:00",
-          "to": "2026-10-07T00:00:00+02:00",
-          "bkcode": "0010667132b7942b075f7",
-          "authid": "NvAAcmWskt2K"
-        },
-        {
           "id": 2122,
           "title": "Volantino Lidl Speciali Bis",
           "subtitle": "Sapori del sud Italia",
@@ -2146,6 +2270,17 @@ export const VOLANTINI_DB: VolantiniDb = {
           "to": "2026-10-07T00:00:00+02:00",
           "bkcode": "00106671355f346739877",
           "authid": "LNBRHCH4rD8L"
+        },
+        {
+          "id": 1883,
+          "title": "Volantino Lidl Speciale",
+          "subtitle": "Sicilia",
+          "coverUrl": "https://www.calameo.com/books/social/cover/0010667132b7942b075f7?authid=NvAAcmWskt2K",
+          "fallbackCoverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/lidl_it_1883.jpg",
+          "from": "2026-10-01T00:00:00+02:00",
+          "to": "2026-10-07T00:00:00+02:00",
+          "bkcode": "0010667132b7942b075f7",
+          "authid": "NvAAcmWskt2K"
         },
         {
           "id": 2203,
@@ -2286,6 +2421,39 @@ export const VOLANTINI_DB: VolantiniDb = {
       "logoId": "migross",
       "flyers": [
         {
+          "id": 2252,
+          "title": "Volantino Migross Bis",
+          "subtitle": "Grandi Marche a piccoli prezzi",
+          "coverUrl": "https://www.calameo.com/books/social/cover/0010667130336f13b1309?authid=LBPFjm7CeBLM",
+          "fallbackCoverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/migross_2252_0.jpg",
+          "from": "2026-10-08T00:00:00+02:00",
+          "to": "2026-10-21T00:00:00+02:00",
+          "bkcode": "0010667130336f13b1309",
+          "authid": "LBPFjm7CeBLM"
+        },
+        {
+          "id": 2097,
+          "title": "Volantino Migross Superstore",
+          "subtitle": "Super Offerte",
+          "coverUrl": "https://www.calameo.com/books/social/cover/001066713bb2516830f16?authid=yXj6B5r39Hj3",
+          "fallbackCoverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/migross_2097.jpg",
+          "from": "2026-10-08T00:00:00+02:00",
+          "to": "2026-10-21T00:00:00+02:00",
+          "bkcode": "001066713bb2516830f16",
+          "authid": "yXj6B5r39Hj3"
+        },
+        {
+          "id": 2008,
+          "title": "Volantino Migross",
+          "subtitle": "Super Offerte",
+          "coverUrl": "https://www.calameo.com/books/social/cover/0010667132c96e1af9119?authid=VtFOj3pWpTGN",
+          "fallbackCoverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/migross_2008_0.jpg",
+          "from": "2026-10-08T00:00:00+02:00",
+          "to": "2026-10-21T00:00:00+02:00",
+          "bkcode": "0010667132c96e1af9119",
+          "authid": "VtFOj3pWpTGN"
+        },
+        {
           "id": 2253,
           "title": "Volantino Migross Speciale",
           "subtitle": "Le Nostre Linee Esclusive",
@@ -2295,39 +2463,6 @@ export const VOLANTINI_DB: VolantiniDb = {
           "to": "2026-10-21T00:00:00+02:00",
           "bkcode": "001066713d2f6ce5f79b6",
           "authid": "gbRSjpcdj7h7"
-        },
-        {
-          "id": 2252,
-          "title": "Volantino Migross Bis",
-          "subtitle": "Grandi Marche a piccoli prezzi",
-          "coverUrl": "https://www.calameo.com/books/social/cover/001066713262ac13e9bc5?authid=k6D7D41xW7n8",
-          "fallbackCoverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/migross_2252_1.jpg",
-          "from": "2026-09-24T00:00:00+02:00",
-          "to": "2026-10-07T00:00:00+02:00",
-          "bkcode": "001066713262ac13e9bc5",
-          "authid": "k6D7D41xW7n8"
-        },
-        {
-          "id": 2097,
-          "title": "Volantino Migross Superstore",
-          "subtitle": "Super Offerte",
-          "coverUrl": "https://www.calameo.com/books/social/cover/001066713186e4e193cc2?authid=WSc9U7ycqlS9",
-          "fallbackCoverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/migross_2097_1.jpg",
-          "from": "2026-09-24T00:00:00+02:00",
-          "to": "2026-10-07T00:00:00+02:00",
-          "bkcode": "001066713186e4e193cc2",
-          "authid": "WSc9U7ycqlS9"
-        },
-        {
-          "id": 2008,
-          "title": "Volantino Migross",
-          "subtitle": "Super Offerte",
-          "coverUrl": "https://www.calameo.com/books/social/cover/0010667136794f2af6715?authid=rNXDVkjvJyRW",
-          "fallbackCoverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/migross_2008_1.jpg",
-          "from": "2026-09-24T00:00:00+02:00",
-          "to": "2026-10-07T00:00:00+02:00",
-          "bkcode": "0010667136794f2af6715",
-          "authid": "rNXDVkjvJyRW"
         }
       ]
     },
@@ -2350,6 +2485,24 @@ export const VOLANTINI_DB: VolantiniDb = {
       ]
     },
     {
+      "slug": "naturasi",
+      "name": "NaturaSì",
+      "logoId": "naturasi",
+      "flyers": [
+        {
+          "id": 211,
+          "title": "Volantino NaturaSì",
+          "subtitle": "Ottobre 2026",
+          "coverUrl": "https://www.calameo.com/books/social/cover/001066713201162b22767?authid=qXYXU8kMe3kM",
+          "fallbackCoverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/naturas_211.jpg",
+          "from": "2026-10-07T00:00:00+02:00",
+          "to": "2026-11-03T00:00:00+01:00",
+          "bkcode": "001066713201162b22767",
+          "authid": "qXYXU8kMe3kM"
+        }
+      ]
+    },
+    {
       "slug": "oasi",
       "name": "Oasi",
       "logoId": "oasi",
@@ -2357,13 +2510,84 @@ export const VOLANTINI_DB: VolantiniDb = {
         {
           "id": 406,
           "title": "Volantino Oasi",
-          "subtitle": "Sconti Super",
-          "coverUrl": "https://www.calameo.com/books/social/cover/00106671303408d7aa037?authid=WUufxT9JP0tI",
-          "fallbackCoverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/oasi_406_1.jpg",
-          "from": "2026-09-25T00:00:00+02:00",
-          "to": "2026-10-07T00:00:00+02:00",
-          "bkcode": "00106671303408d7aa037",
-          "authid": "WUufxT9JP0tI"
+          "subtitle": "Prodotti Salva Spesa",
+          "coverUrl": "https://www.calameo.com/books/social/cover/0010667131b20563ce071?authid=1fmY5Ee0gHis",
+          "fallbackCoverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/oasi_406_0.jpg",
+          "from": "2026-10-08T00:00:00+02:00",
+          "to": "2026-10-21T00:00:00+02:00",
+          "bkcode": "0010667131b20563ce071",
+          "authid": "1fmY5Ee0gHis"
+        }
+      ]
+    },
+    {
+      "slug": "orizzonte",
+      "name": "Orizzonte (Grandi Magazzini)",
+      "logoId": "orizzonte",
+      "flyers": [
+        {
+          "id": 9801,
+          "title": "Volantino Orizzonte - Offerte del Mese",
+          "subtitle": "Grandi Magazzini Orizzonte Lazio",
+          "coverUrl": "https://www.calameo.com/books/social/cover/0057498848c8788bff538",
+          "fallbackCoverUrl": "https://p.calameoassets.com/0057498848c8788bff538/p1.large.jpg",
+          "bkcode": "0057498848c8788bff538"
+        },
+        {
+          "id": 9802,
+          "title": "Catalogo Scuola Orizzonte",
+          "subtitle": "Speciale Cartoleria e Zaini",
+          "coverUrl": "https://www.calameo.com/books/social/cover/00574988462882623185f",
+          "fallbackCoverUrl": "https://p.calameoassets.com/00574988462882623185f/p1.large.jpg",
+          "bkcode": "00574988462882623185f"
+        },
+        {
+          "id": 9803,
+          "title": "Catalogo Elettrodomestici Orizzonte",
+          "subtitle": "Grandi e Piccoli Elettrodomestici",
+          "coverUrl": "https://www.calameo.com/books/social/cover/005749884db38fe182331",
+          "fallbackCoverUrl": "https://p.calameoassets.com/005749884db38fe182331/p1.large.jpg",
+          "bkcode": "005749884db38fe182331"
+        },
+        {
+          "id": 9804,
+          "title": "Catalogo Bricolage Orizzonte",
+          "subtitle": "Fai da te, Ferramenta e Pittura",
+          "coverUrl": "https://www.calameo.com/books/social/cover/005749884dbad486faae1",
+          "fallbackCoverUrl": "https://p.calameoassets.com/005749884dbad486faae1/p1.large.jpg",
+          "bkcode": "005749884dbad486faae1"
+        },
+        {
+          "id": 9805,
+          "title": "Catalogo Mobile & Arredo Orizzonte",
+          "subtitle": "Arredo Casa e Complementi",
+          "coverUrl": "https://www.calameo.com/books/social/cover/00574988427e8a90e85c7",
+          "fallbackCoverUrl": "https://p.calameoassets.com/00574988427e8a90e85c7/p1.large.jpg",
+          "bkcode": "00574988427e8a90e85c7"
+        },
+        {
+          "id": 9806,
+          "title": "Catalogo Giardinaggio Orizzonte",
+          "subtitle": "Cura del Verde e Attrezzi",
+          "coverUrl": "https://www.calameo.com/books/social/cover/005749884a6d599c261f3",
+          "fallbackCoverUrl": "https://p.calameoassets.com/005749884a6d599c261f3/p1.large.jpg",
+          "bkcode": "005749884a6d599c261f3"
+        },
+        {
+          "id": 9807,
+          "title": "Catalogo Arredo Giardino Orizzonte",
+          "subtitle": "Salotti da Esterno e Terrazzo",
+          "coverUrl": "https://www.calameo.com/books/social/cover/005749884c6ff5fa05c17",
+          "fallbackCoverUrl": "https://p.calameoassets.com/005749884c6ff5fa05c17/p1.large.jpg",
+          "bkcode": "005749884c6ff5fa05c17"
+        },
+        {
+          "id": 9810,
+          "title": "Volantino Orizzonte Online",
+          "subtitle": "Catalogo e Offerte Orizzonte",
+          "coverUrl": "https://www.calameo.com/books/social/cover/00574988461ad44f2c3f5",
+          "fallbackCoverUrl": "https://p.calameoassets.com/00574988461ad44f2c3f5/p1.large.jpg",
+          "bkcode": "00574988461ad44f2c3f5"
         }
       ]
     },
@@ -2530,6 +2754,24 @@ export const VOLANTINI_DB: VolantiniDb = {
           "directUrl": "https://www.cedigros.com/index.php?option=com_myegojwt&view=flyer&id=10009&tmpl=component",
           "from": "2026-10-02T00:00:00+02:00",
           "to": "2026-10-13T23:59:59+02:00"
+        }
+      ]
+    },
+    {
+      "slug": "pi%C3%B9me",
+      "name": "PiùMe",
+      "logoId": "pi%C3%B9me",
+      "flyers": [
+        {
+          "id": 576,
+          "title": "Volantino Ipersoap",
+          "subtitle": "I Nuovi Colori Della Convenienza",
+          "coverUrl": "https://www.calameo.com/books/social/cover/001066713b429c6e0f52c?authid=aT1rDFhJkw24",
+          "fallbackCoverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/ipersoap_576.jpg",
+          "from": "2026-10-05T00:00:00+02:00",
+          "to": "2026-10-25T00:00:00+02:00",
+          "bkcode": "001066713b429c6e0f52c",
+          "authid": "aT1rDFhJkw24"
         }
       ]
     },
@@ -2716,6 +2958,21 @@ export const VOLANTINI_DB: VolantiniDb = {
       ]
     },
     {
+      "slug": "todis",
+      "name": "Todis (Buona Spesa)",
+      "logoId": "todis",
+      "flyers": [
+        {
+          "id": 9701,
+          "title": "Volantino Todis",
+          "subtitle": "Offerte e Convenienza Todis",
+          "coverUrl": "https://www.calameo.com/books/social/cover/004536410ac992cd63740",
+          "fallbackCoverUrl": "https://p.calameoassets.com/004536410ac992cd63740/p1.large.jpg",
+          "bkcode": "004536410ac992cd63740"
+        }
+      ]
+    },
+    {
       "slug": "top",
       "name": "TOP Supermercati (Gruppo Gros)",
       "logoId": "top",
@@ -2793,6 +3050,24 @@ export const VOLANTINI_DB: VolantiniDb = {
           "to": "2026-10-11T00:00:00+02:00",
           "bkcode": "0010667130caefcb0c5f7",
           "authid": "sqmvM8winPRW"
+        }
+      ]
+    },
+    {
+      "slug": "vobis",
+      "name": "Vobis",
+      "logoId": "vobis",
+      "flyers": [
+        {
+          "id": 222,
+          "title": "Volantino Vobis",
+          "subtitle": "Ottobre Novembre 2026",
+          "coverUrl": "https://www.calameo.com/books/social/cover/0010667139bd98a7dc4e1?authid=jjKQzQifJuKm",
+          "fallbackCoverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/vobis_222.jpg",
+          "from": "2026-10-01T00:00:00+02:00",
+          "to": "2026-11-30T00:00:00+01:00",
+          "bkcode": "0010667139bd98a7dc4e1",
+          "authid": "jjKQzQifJuKm"
         }
       ]
     }

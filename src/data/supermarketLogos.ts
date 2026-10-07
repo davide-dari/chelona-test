@@ -211,4 +211,7 @@ export const SUPER_LOGO_FALLBACKS: Record<string, { text: string; hex: string }>
   deco: { text: 'Decò', hex: '#15803D' },
   'risparmio-casa': { text: 'R. Casa', hex: '#EA580C' },
   ins: { text: "IN's", hex: '#1E40AF' },
+  orizzonte: { text: 'ORIZZONTE', hex: '#0A3B82' },
+  superelite: { text: 'ELITE', hex: '#096043' },
+  elite: { text: 'ELITE', hex: '#096043' },
 };

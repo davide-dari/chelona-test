@@ -168,7 +168,27 @@ console.log('7. Testing Multi-CDN Cover Candidate Resolution...');
 assert.ok(sampleCalameo.coverUrl.includes('calameo.com'), 'Calaméo flyer primary cover must be CDN cover');
 const sampleWithFallback = VOLANTINI_DB.chains.flatMap(c => c.flyers).find(f => f.fallbackCoverUrl);
 assert.ok(sampleWithFallback, 'Must have flyers with fallbackCoverUrl');
-assert.ok(sampleWithFallback.fallbackCoverUrl.includes('centrovolantini.it'), 'Fallback cover points to CV thumbnail');
+assert.ok(sampleWithFallback.fallbackCoverUrl.includes('centrovolantini.it') || sampleWithFallback.fallbackCoverUrl.includes('calameo'), 'Fallback cover points to valid CDN thumbnail');
 console.log('✓ Multi-candidate cover resolution (Calaméo CDN cover + fallbackCoverUrl) verified');
+
+// 8. Test Orizzonte, Super Elite, Todis & Lazio Chains Presence
+console.log('8. Testing Lazio Chains (Orizzonte, Super Elite, Todis, GROS)...');
+const orizzonte = VOLANTINI_DB.chains.find(c => c.slug === 'orizzonte');
+assert.ok(orizzonte, 'Orizzonte chain must be present in database');
+assert.ok(orizzonte.flyers.length >= 1, `Orizzonte must have flyers, found ${orizzonte?.flyers.length}`);
+
+const superElite = VOLANTINI_DB.chains.find(c => c.slug === 'superelite');
+assert.ok(superElite, 'Super Elite chain must be present in database');
+assert.ok(superElite.flyers.length >= 1, `Super Elite must have flyers, found ${superElite?.flyers.length}`);
+
+const todis = VOLANTINI_DB.chains.find(c => c.slug === 'todis');
+assert.ok(todis, 'Todis chain must be present in database');
+assert.ok(todis.flyers.length >= 1, `Todis must have flyers, found ${todis?.flyers.length}`);
+
+const gros = VOLANTINI_DB.chains.find(c => c.slug === 'gros');
+assert.ok(gros, 'Gros chain must be present in database');
+assert.ok(gros.flyers.length >= 10, `Gros must have aggregated flyers, found ${gros?.flyers.length}`);
+
+console.log(`✓ Lazio chains verified: Orizzonte (${orizzonte.flyers.length} flyers), Super Elite (${superElite.flyers.length} flyers), Todis (${todis.flyers.length} flyers), GROS (${gros.flyers.length} flyers)`);
 
 console.log('\n🎉 ALL VOLANTINI TESTS PASSED PERFECTLY (100% OPERATIONAL)!');

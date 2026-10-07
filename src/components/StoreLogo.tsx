@@ -195,6 +195,27 @@ export function StoreLogo({ id, short, size = 40, logo: logoUrl, hex, brandSlug 
         </>
       );
       break;
+    case 'orizzonte':
+      content = (
+        <>
+          <rect width="64" height="64" rx="14" fill="#0A3B82" />
+          <circle cx="32" cy="24" r="14" fill="#FFB703" />
+          <path d="M12 36 Q32 28 52 36 L52 40 L12 40 Z" fill="#FB8500" />
+          <text x="32" y="53" textAnchor="middle" fontFamily={F} fontWeight="900" fontSize="9.5" fill="#FFFFFF" letterSpacing="0.5">ORIZZONTE</text>
+        </>
+      );
+      break;
+    case 'superelite':
+    case 'elite':
+      content = (
+        <>
+          <rect width="64" height="64" rx="14" fill="#096043" />
+          <rect x="4" y="4" width="56" height="56" rx="10" fill="none" stroke="#FFFFFF" strokeWidth="1.5" opacity="0.3" />
+          <text x="32" y="39" textAnchor="middle" fontFamily={F} fontWeight="900" fontSize="16" fill="#FFFFFF" letterSpacing="1">ELITE</text>
+          <text x="32" y="51" textAnchor="middle" fontFamily={F} fontWeight="700" fontSize="7" fill="#86EFAC">SUPERMERCATI</text>
+        </>
+      );
+      break;
     default:
       content = (
         <>

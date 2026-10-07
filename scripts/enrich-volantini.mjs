@@ -112,6 +112,11 @@ const ALL_CV_CHAINS = [
   { slug: 'cc', name: 'C+C Cash & Carry' },
   { slug: 'hardis', name: 'HarDis' },
   { slug: 'picard', name: 'Picard Surgelati' },
+  { slug: 'futura-supermercati', name: 'Futura Supermercati' },
+  { slug: 'eleclerc', name: 'E.Leclerc' },
+  { slug: 'ld-market', name: 'LD Market' },
+  { slug: 'pi%C3%B9me', name: 'PiùMe' },
+  { slug: 'vobis', name: 'Vobis' },
 ];
 
 // ── Lista Catene CeDiGros (Gruppo GROS) ──
@@ -278,6 +283,198 @@ async function scrapeCedigrosFlyers() {
   return results;
 }
 
+// ── Scraping Orizzonte (Grandi Magazzini Orizzonte - Lazio) ──
+async function scrapeOrizzonteFlyers() {
+  console.log('\n--- Orizzonte (Grandi Magazzini Lazio) Scraping ---');
+  const baseCodes = [
+    { id: 9801, title: 'Volantino Orizzonte - Offerte del Mese', subtitle: 'Grandi Magazzini Orizzonte Lazio', bkcode: '0057498848c8788bff538' },
+    { id: 9802, title: 'Catalogo Scuola Orizzonte', subtitle: 'Speciale Cartoleria e Zaini', bkcode: '00574988462882623185f' },
+    { id: 9803, title: 'Catalogo Elettrodomestici Orizzonte', subtitle: 'Grandi e Piccoli Elettrodomestici', bkcode: '005749884db38fe182331' },
+    { id: 9804, title: 'Catalogo Bricolage Orizzonte', subtitle: 'Fai da te, Ferramenta e Pittura', bkcode: '005749884dbad486faae1' },
+    { id: 9805, title: 'Catalogo Mobile & Arredo Orizzonte', subtitle: 'Arredo Casa e Complementi', bkcode: '00574988427e8a90e85c7' },
+    { id: 9806, title: 'Catalogo Giardinaggio Orizzonte', subtitle: 'Cura del Verde e Attrezzi', bkcode: '005749884a6d599c261f3' },
+    { id: 9807, title: 'Catalogo Arredo Giardino Orizzonte', subtitle: 'Salotti da Esterno e Terrazzo', bkcode: '005749884c6ff5fa05c17' },
+  ];
+
+  // Prova anche a fare scraping live da orizzonteshop.it/pages/i-nostri-volantini-e-cataloghi
+  try {
+    const pageRes = await fetchWithRetry('https://www.orizzonteshop.it/pages/i-nostri-volantini-e-cataloghi');
+    if (pageRes && pageRes.ok) {
+      const pHtml = await pageRes.text();
+      const liveMatches = [...pHtml.matchAll(/calameo\.com\/read\/(005749884[a-z0-9]+)/gi)].map(m => m[1]);
+      let extraId = 9810;
+      for (const code of new Set(liveMatches)) {
+        if (!baseCodes.some(b => b.bkcode === code)) {
+          baseCodes.push({
+            id: extraId++,
+            title: 'Volantino Orizzonte Online',
+            subtitle: 'Catalogo e Offerte Orizzonte',
+            bkcode: code,
+          });
+        }
+      }
+    }
+  } catch {}
+
+  const verifiedFlyers = [];
+  for (const f of baseCodes) {
+    const readerUrl = `https://www.calameo.com/read/${f.bkcode}`;
+    const coverUrl = `https://www.calameo.com/books/social/cover/${f.bkcode}`;
+    const [rRes, cRes] = await Promise.all([
+      fetchWithRetry(readerUrl, { method: 'HEAD' }),
+      fetchWithRetry(coverUrl, { method: 'HEAD' }),
+    ]);
+
+    if (rRes && rRes.ok && cRes && cRes.ok) {
+      verifiedFlyers.push({
+        id: f.id,
+        title: f.title,
+        subtitle: f.subtitle,
+        coverUrl,
+        fallbackCoverUrl: `https://p.calameoassets.com/${f.bkcode}/p1.large.jpg`,
+        bkcode: f.bkcode,
+      });
+      console.log(`  ✓ [ORIZZONTE] ${f.title} attivo e verificato al 100%`);
+    }
+  }
+
+  if (verifiedFlyers.length === 0) return null;
+  return {
+    slug: 'orizzonte',
+    name: 'Orizzonte (Grandi Magazzini)',
+    logoId: 'orizzonte',
+    flyers: verifiedFlyers,
+  };
+}
+
+// ── Scraping Super Elite (Supermercati Elite - Roma & Lazio) ──
+async function scrapeSuperEliteFlyers() {
+  console.log('\n--- Super Elite (Supermercati Roma & Lazio) Scraping ---');
+  try {
+    const res = await fetchWithRetry('https://www.superelite.it/promozioni');
+    if (!res || !res.ok) return null;
+    const html = await res.text();
+    const flyerLinks = [...new Set([...html.matchAll(/href=\"(\/promozioni\/[a-z0-9\-]+)\"[^>]*>Sfoglia il volantino<\/a>/gi)].map(m => m[1]))];
+
+    const verifiedFlyers = [];
+    let flyerId = 20101;
+
+    for (const path of flyerLinks) {
+      try {
+        const pRes = await fetchWithRetry('https://www.superelite.it' + path);
+        if (!pRes || !pRes.ok) continue;
+        const pHtml = await pRes.text();
+        const titleM = /<title>([^<]+)<\/title>/i.exec(pHtml);
+        const dateM = pHtml.match(/(?:valido|valide)?\s*dal\s+(\d{1,2}[\s\S]*?(?:al\s+\d{1,2}[^<]*))/i);
+        const dates = dateM ? parseItalianDateRange(dateM[0]) : {};
+
+        // Filtra se già scaduto
+        if (dates.to) {
+          const d = new Date(dates.to).getTime();
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          if (d < today.getTime()) continue;
+        }
+
+        const itemsM = pHtml.match(/const items = \[(\{[\s\S]*?\})\];/);
+        let cover = '';
+        if (itemsM) {
+          const firstSrc = itemsM[1].match(/src:\s*'([^']+)'/);
+          if (firstSrc) cover = firstSrc[1];
+        }
+
+        const directUrl = 'https://www.superelite.it' + path;
+        if (cover) {
+          const cRes = await fetchWithRetry(cover, { method: 'HEAD' });
+          if (cRes && cRes.ok) {
+            const flyerTitle = titleM ? titleM[1].replace(' - Elite Supermercati', '').trim() : 'Volantino Super Elite';
+            verifiedFlyers.push({
+              id: flyerId++,
+              title: `Volantino Elite - ${flyerTitle}`,
+              subtitle: dateM ? dateM[0].replace(/\s+/g, ' ').trim() : 'Offerte Supermercati Elite',
+              coverUrl: cover,
+              directUrl,
+              from: dates.from,
+              to: dates.to,
+            });
+            console.log(`  ✓ [SUPER ELITE] ${flyerTitle} attivo e verificato al 100%`);
+          }
+        }
+      } catch {}
+    }
+
+    if (verifiedFlyers.length === 0) return null;
+    return {
+      slug: 'superelite',
+      name: 'Elite Supermercati (Roma & Lazio)',
+      logoId: 'superelite',
+      flyers: verifiedFlyers,
+    };
+  } catch (e) {
+    console.warn('  ✗ [SUPER ELITE] Errore:', e.message);
+    return null;
+  }
+}
+
+// ── Scraping Todis (Todis Supermercati - Lazio & Centro-Sud) ──
+async function scrapeTodisFlyers() {
+  console.log('\n--- Todis (Lazio & Centro-Sud) Scraping ---');
+  let todisBkcode = '004536410ac992cd63740'; // Fallback certificato
+  let todisDates = { from: '2026-10-01T00:00:00+02:00', to: '2026-10-14T23:59:59+02:00' };
+
+  try {
+    const sRes = await fetchWithRetry('https://www.sbirciaprezzo.com/?s=todis');
+    if (sRes && sRes.ok) {
+      const sHtml = await sRes.text();
+      const match = sHtml.match(/href=[\"'](https:\/\/www\.sbirciaprezzo\.com\/volantino-todis[^\"]*)[\"']/i);
+      if (match) {
+        const artRes = await fetchWithRetry(match[1]);
+        if (artRes && artRes.ok) {
+          const artHtml = await artRes.text();
+          const bkM = artHtml.match(/calameo\.com\/read\/([0-9a-f]+)/i);
+          if (bkM && bkM[1]) {
+            todisBkcode = bkM[1];
+          }
+          const dateMatch = match[1].match(/dal[l0-9\-]+-al-(\d{1,2}-[a-z]+-\d{4})/i);
+          if (dateMatch) {
+            todisDates = parseItalianDateRange(dateMatch[0].replace(/-/g, ' '));
+          }
+        }
+      }
+    }
+  } catch {}
+
+  const readerUrl = `https://www.calameo.com/read/${todisBkcode}`;
+  const coverUrl = `https://www.calameo.com/books/social/cover/${todisBkcode}`;
+  const [rRes, cRes] = await Promise.all([
+    fetchWithRetry(readerUrl, { method: 'HEAD' }),
+    fetchWithRetry(coverUrl, { method: 'HEAD' }),
+  ]);
+
+  if (rRes && rRes.ok && cRes && cRes.ok) {
+    console.log(`  ✓ [TODIS] Volantino #${todisBkcode} attivo e verificato al 100%`);
+    return {
+      slug: 'todis',
+      name: 'Todis (Buona Spesa)',
+      logoId: 'todis',
+      flyers: [
+        {
+          id: 9701,
+          title: 'Volantino Todis',
+          subtitle: 'Offerte e Convenienza Todis',
+          coverUrl,
+          fallbackCoverUrl: `https://p.calameoassets.com/${todisBkcode}/p1.large.jpg`,
+          bkcode: todisBkcode,
+          from: todisDates.from,
+          to: todisDates.to,
+        },
+      ],
+    };
+  }
+
+  return null;
+}
+
 async function verifyCalameoFlyer(flyer) {
   if (!flyer.bkcode) return null;
 
@@ -419,18 +616,28 @@ async function main() {
     }))
     .filter((c) => c.flyers.length > 0);
 
-  // 4. Scraping CeDiGros (Gruppo GROS)
+  // 4. Scraping CeDiGros (Gruppo GROS), Orizzonte, Super Elite e Todis
   const grosChains = await scrapeCedigrosFlyers();
+  const orizzonteChain = await scrapeOrizzonteFlyers();
+  const superEliteChain = await scrapeSuperEliteFlyers();
+  const todisChain = await scrapeTodisFlyers();
+
+  const extraChains = [
+    ...grosChains,
+    ...(orizzonteChain ? [orizzonteChain] : []),
+    ...(superEliteChain ? [superEliteChain] : []),
+    ...(todisChain ? [todisChain] : []),
+  ];
 
   // 5. Unione e ordinamento
-  const allFinalChains = [...validCvChains, ...grosChains];
+  const allFinalChains = [...validCvChains, ...extraChains];
   allFinalChains.sort((a, b) => a.name.localeCompare(b.name, 'it'));
 
   const totalFinalFlyers = allFinalChains.reduce((sum, c) => sum + c.flyers.length, 0);
 
   const db = {
     updatedAt: new Date().toISOString(),
-    source: 'CentroVolantini + Calaméo + CeDiGros',
+    source: 'CentroVolantini + Calaméo + CeDiGros + Orizzonte + SuperElite + Todis',
     chains: allFinalChains,
   };
 

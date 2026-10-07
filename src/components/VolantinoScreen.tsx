@@ -72,12 +72,38 @@ export const DC_INDEX_CATEGORIES = [
   { slug: 'fav', name: 'Preferiti', icon: '⭐' },
   { slug: 'nearby', name: 'Vicini a te', icon: '📍' },
   { slug: 'expiring', name: 'In scadenza', icon: '⏳' },
+  { slug: 'lazio', name: 'Lazio & Roma', icon: '🏛️' },
   { slug: 'iper-e-super', name: 'Supermercati', icon: '🏪' },
   { slug: 'discount', name: 'Discount', icon: '🏷️' },
-  { slug: 'gros', name: 'Gruppo GROS', icon: '🏛️' },
   { slug: 'cura-casa-e-corpo', name: 'Casa & Cura', icon: '🧼' },
   { slug: 'elettronica', name: 'Elettronica', icon: '📱' },
 ] as const;
+
+export const LAZIO_CHAIN_SLUGS = new Set([
+  'orizzonte',
+  'superelite',
+  'todis',
+  'gros',
+  'pewex',
+  'pim',
+  'dem',
+  'il-castoro',
+  'ipertriscount',
+  'ipercarni',
+  'cts',
+  'top',
+  'effepiu',
+  'sir',
+  'sacoph',
+  'idromarket',
+  'ma',
+  'magazzini-maurys',
+  'risparmiocasa',
+  'fresco-market',
+  'tuodi',
+  'superconti',
+  'ingrande',
+]);
 
 // ── Mappatura Catene → Categoria ──
 const CHAIN_CATEGORY_MAP: Record<string, string> = {
@@ -151,6 +177,7 @@ const CHAIN_CATEGORY_MAP: Record<string, string> = {
   'comet': 'elettronica',
 
   // Cura casa e corpo
+  'orizzonte': 'cura-casa-e-corpo',
   'acqua-e-sapone': 'cura-casa-e-corpo',
   'tigota': 'cura-casa-e-corpo',
   'risparmiocasa': 'cura-casa-e-corpo',
@@ -160,6 +187,19 @@ const CHAIN_CATEGORY_MAP: Record<string, string> = {
   'bricofer': 'cura-casa-e-corpo',
   'brico-io': 'cura-casa-e-corpo',
   'mondo-convenienza': 'cura-casa-e-corpo',
+  'pi%C3%B9me': 'cura-casa-e-corpo',
+  'piume': 'cura-casa-e-corpo',
+
+  // Iper e Super extra
+  'superelite': 'iper-e-super',
+  'futura-supermercati': 'iper-e-super',
+  'eleclerc': 'iper-e-super',
+
+  // Discount extra
+  'ld-market': 'discount',
+
+  // Elettronica extra
+  'vobis': 'elettronica',
 };
 
 // Re-export getFlyerUrl e getBrowserUrl centralizzati e conformi agli standard Calaméo
@@ -716,6 +756,8 @@ export default function VolantinoScreen({
       list = nearbyChains.length > 0 ? nearbyChains : allChains;
     } else if (activeCategory === 'expiring') {
       list = expiringChains;
+    } else if (activeCategory === 'lazio' || activeCategory === 'gros') {
+      list = allChains.filter(c => LAZIO_CHAIN_SLUGS.has(c.slug) || (CHAIN_CATEGORY_MAP[c.slug] || '') === 'gros');
     } else if (activeCategory && activeCategory !== 'all') {
       list = allChains.filter(c => (CHAIN_CATEGORY_MAP[c.slug] || 'iper-e-super') === activeCategory);
     }
@@ -724,10 +766,20 @@ export default function VolantinoScreen({
     if (!q) return list;
     return list.filter(c => {
       const catSlug = CHAIN_CATEGORY_MAP[c.slug] || '';
+      const isLazioChain = LAZIO_CHAIN_SLUGS.has(c.slug);
+      const isLazioQuery = (q.includes('lazio') || q.includes('roma')) && isLazioChain;
+      const isOrizzonteQuery = (q.includes('orizzonte') || q.includes('orrizzonte')) && c.slug === 'orizzonte';
+      const isEliteQuery = q.includes('elite') && c.slug === 'superelite';
+      const isGrosQuery = q.includes('gros') && (isLazioChain || c.slug === 'gros');
+
       return (
         c.name.toLowerCase().includes(q) ||
         c.slug.includes(q) ||
-        catSlug.includes(q)
+        catSlug.includes(q) ||
+        isLazioQuery ||
+        isOrizzonteQuery ||
+        isEliteQuery ||
+        isGrosQuery
       );
     });
   }, [activeCategory, allChains, favChains, nearbyChains, expiringChains, searchQuery]);
