@@ -3276,7 +3276,7 @@ export default function App() {
     if (typeof navigator !== 'undefined' && navigator.vibrate) {
       try { navigator.vibrate([60, 40, 80]); } catch {}
     }
-    showToast("🎤 'Ciao Chelona!' rilevato", 'info');
+    showToast("🎤 'Hey Chelona!' rilevato", 'info');
     setAiInitialVoiceMode(true);
     setIsAiOpen(true);
     setActiveNavTab('ai');
@@ -3297,7 +3297,7 @@ export default function App() {
       setIsWakeWordEnabled(next);
       showToast(
         next
-          ? "Comando vocale attivo! Di' 'Ciao Chelona' per parlare."
+          ? "Comando vocale attivo! Di' 'Hey Chelona' per parlare."
           : "Comando vocale disattivato.",
         next ? 'success' : 'info'
       );
@@ -3315,6 +3315,14 @@ export default function App() {
       wakeWordService.stop();
     };
   }, []);
+
+  useEffect(() => {
+    if (isWakeWordEnabled) {
+      wakeWordService.start(handleWakeWordTrigger);
+    } else {
+      wakeWordService.stop();
+    }
+  }, [handleWakeWordTrigger, isWakeWordEnabled]);
 
   useEffect(() => {
     if (!isWakeWordEnabled) return;

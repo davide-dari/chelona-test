@@ -1379,15 +1379,15 @@ export function ProfileScreen({
                 </motion.button>
               </div>
 
-              {/* Assistente Vocale "Ciao Chelona!" */}
+              {/* Assistente Vocale "Hey Chelona!" */}
               <div className="bg-[var(--card-bg)] rounded-[var(--radius-lg)] p-5 sm:p-6 border border-[var(--border)] shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div className="flex items-center gap-3 min-w-0">
                   <div className="w-10 h-10 rounded-2xl bg-amber-500/10 flex items-center justify-center text-amber-500 shrink-0">
                     <Mic className="w-5 h-5" />
                   </div>
                   <div className="min-w-0">
-                    <h3 className="text-base font-bold text-[var(--text-main)] leading-tight">Comando Vocale "Ciao Chelona!"</h3>
-                    <p className="text-xs text-[var(--text-muted)] font-medium mt-0.5">Attivazione a mani libere (100% on-device offline)</p>
+                    <h3 className="text-base font-bold text-[var(--text-main)] leading-tight">Comando Vocale "Hey Chelona!"</h3>
+                    <p className="text-xs text-[var(--text-muted)] font-medium mt-0.5">Attivazione a mani libere stile Hey Google (100% on-device offline)</p>
                   </div>
                 </div>
 

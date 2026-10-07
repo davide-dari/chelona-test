@@ -2,8 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { 
   Send, Mic, MicOff, Volume2, VolumeX, ArrowLeft, 
   ExternalLink, Check, Copy, X, Sparkles, ChevronRight, UtensilsCrossed, Flame,
-  Settings2, Sliders, Store, Calendar, Car, FileText, ShoppingBasket,
-  Navigation, Globe, Wallet, RefreshCw, Shuffle
+  Settings2, Sliders, Store, Calendar, Car, ShoppingBasket,
+  Navigation, Globe, RefreshCw, Shuffle
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Module } from '../types';
@@ -595,7 +595,7 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
       setIsWakeWordEnabled(next);
       showToast(
         next
-          ? 'Comando vocale attivo! Di\' "Ciao Chelona" per parlare.'
+          ? 'Comando vocale attivo! Di\' "Hey Chelona" per parlare.'
           : 'Comando vocale disattivato.',
         next ? 'success' : 'info'
       );
@@ -634,74 +634,6 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
     setTimeout(() => setIsCopied(false), 2000);
     showToast('Copiato!');
   };
-
-  // Categorie principali di Chelona per accesso rapido ("come la categoria lista della spesa ecc")
-  const primaryCategories = [
-    {
-      id: 'supermarket',
-      title: 'Lista della Spesa',
-      subtitle: 'Articoli, carrello e spesa da fare',
-      icon: ShoppingBasket,
-      color: 'from-emerald-500/20 to-teal-500/20 text-emerald-600 dark:text-emerald-400 border-emerald-500/30',
-      actionQuery: 'Cosa devo comprare nella lista della spesa?',
-    },
-    {
-      id: 'recipes',
-      title: 'Ricettario & Cucina',
-      subtitle: 'Idee piatti, calorie e procedimenti',
-      icon: UtensilsCrossed,
-      color: 'from-amber-500/20 to-orange-500/20 text-amber-600 dark:text-amber-400 border-amber-500/30',
-      actionQuery: 'Cosa posso cucinare oggi di buono?',
-    },
-    {
-      id: 'auto',
-      title: 'Auto & Mobilità',
-      subtitle: 'Scadenze, bollo, revisione e parcheggio',
-      icon: Car,
-      color: 'from-blue-500/20 to-indigo-500/20 text-blue-600 dark:text-blue-400 border-blue-500/30',
-      actionQuery: 'Qual è la situazione della mia auto e dove è parcheggiata?',
-    },
-    {
-      id: 'finances',
-      title: 'Finanze & Spese',
-      subtitle: 'Spese condivise, uscite e rate',
-      icon: Wallet,
-      color: 'from-purple-500/20 to-violet-500/20 text-purple-600 dark:text-purple-400 border-purple-500/30',
-      actionQuery: 'Fammi un riepilogo delle spese e dei conti',
-    },
-    {
-      id: 'volantini',
-      title: 'Volantini & Offerte',
-      subtitle: 'Promozioni supermercati e negozi attivi',
-      icon: Store,
-      color: 'from-red-500/20 to-rose-500/20 text-red-600 dark:text-red-400 border-red-500/30',
-      actionQuery: 'Quali volantini e offerte sono disponibili?',
-    },
-    {
-      id: 'travel',
-      title: 'Viaggi & Mete',
-      subtitle: 'Pianificazione itinerari, meteo e valigia',
-      icon: Globe,
-      color: 'from-sky-500/20 to-cyan-500/20 text-sky-600 dark:text-sky-400 border-sky-500/30',
-      actionQuery: 'Mostrami le mie mete di viaggio e meteo',
-    },
-    {
-      id: 'documents',
-      title: 'Documenti Personali',
-      subtitle: 'Tessere, contratti e note crittografate',
-      icon: FileText,
-      color: 'from-teal-500/20 to-emerald-500/20 text-teal-600 dark:text-teal-400 border-teal-500/30',
-      actionQuery: 'Quali documenti personali ho memorizzato?',
-    },
-    {
-      id: 'deadlines',
-      title: 'Scadenze Imminenti',
-      subtitle: 'Promemoria dei prossimi 60 giorni',
-      icon: Calendar,
-      color: 'from-amber-600/20 to-yellow-500/20 text-amber-700 dark:text-amber-300 border-amber-600/30',
-      actionQuery: 'Quali scadenze imminenti ho nelle prossime settimane?',
-    },
-  ];
 
   const quickPills = [
     { label: '🛒 Lista spesa', query: 'Cosa devo comprare nella lista della spesa?' },
@@ -843,6 +775,20 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
           <div className="flex items-center gap-2">
             <button
               type="button"
+              onClick={handleToggleWakeWord}
+              className={`px-3 py-1.5 rounded-2xl border text-xs font-bold flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer ${
+                isWakeWordEnabled
+                  ? 'bg-amber-500/15 border-amber-500/40 text-amber-600 dark:text-amber-400'
+                  : 'bg-[var(--surface-variant)] border-[var(--border)] text-[var(--text-muted)] hover:text-[var(--text-main)]'
+              }`}
+              title={isWakeWordEnabled ? 'Hey Chelona attivo (ascolto vocale continuo)' : 'Attiva comando vocale Hey Chelona'}
+            >
+              <span className={`w-2 h-2 rounded-full ${isWakeWordEnabled ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'}`} />
+              <span className="hidden sm:inline">Hey Chelona</span>
+            </button>
+
+            <button
+              type="button"
               onClick={toggleVoiceMode}
               className="px-3.5 py-2 rounded-2xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30 font-bold text-xs flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer"
               title="Modalità vocale a mani libere"
@@ -854,119 +800,205 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
         </header>
       )}
 
-      {/* ── CORPO PRINCIPALE SCROLLABILE (NO CHAT SYSTEM) ── */}
-      <main className="flex-1 overflow-y-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6 max-w-3xl w-full mx-auto custom-scrollbar">
-        
-        {/* 1. FRASE DINAMICA / ISPIRAZIONALE ("la schermata deve avere sempre una frase differente") */}
-        <div className="text-center space-y-2 pt-2 sm:pt-4">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 text-xs font-black uppercase tracking-wider shadow-2xs">
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>Assistente Intelligente</span>
-          </div>
+      {/* ── CORPO PRINCIPALE (CENTRATO STILE LISTA DELLA SPESA SENZA CATEGORIE) ── */}
+      {(() => {
+        const hasActiveView = !!activeResponse || isProcessing;
 
-          <div className="flex items-center justify-center gap-2">
-            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black text-[var(--text-main)] tracking-tight leading-tight max-w-xl">
-              {dynamicPhrase}
-            </h1>
-            <button
-              type="button"
-              onClick={handleNextPhrase}
-              className="p-2 rounded-xl text-[var(--text-muted)] hover:text-amber-500 hover:bg-amber-500/10 transition-colors shrink-0 cursor-pointer active:scale-90"
-              title="Cambia frase"
-            >
-              <Shuffle className="w-4 h-4" />
-            </button>
-          </div>
+        return (
+          <main className={`flex-1 flex flex-col ${
+            !hasActiveView
+              ? 'h-full justify-center items-center overflow-y-auto p-4 sm:p-6 pb-10 sm:pb-16 custom-scrollbar'
+              : 'overflow-y-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6 max-w-3xl w-full mx-auto custom-scrollbar'
+          }`}>
+            {/* HERO CENTRATO STILE LISTA DELLA SPESA */}
+            <div className={`w-full transition-all duration-200 ${
+              !hasActiveView
+                ? 'max-w-xl mx-auto space-y-6 text-center my-auto flex flex-col items-center'
+                : 'max-w-3xl mx-auto space-y-4 mb-3 shrink-0'
+            }`}>
+              
+              {/* 1. FRASE DINAMICA / ISPIRAZIONALE ("la schermata deve avere sempre una frase differente") */}
+              <div className="text-center space-y-2 w-full">
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 text-xs font-black uppercase tracking-wider shadow-2xs">
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>Assistente Intelligente</span>
+                </div>
 
-          <p className="text-xs sm:text-sm text-[var(--text-muted)] font-medium max-w-md mx-auto">
-            {username ? `Ciao ${username}! ` : ''}Chiedimi di trovare, calcolare, cucinare o ricordare qualcosa per te.
-          </p>
-        </div>
+                <div className="flex items-center justify-center gap-2">
+                  <h1 className={`font-black text-[var(--text-main)] tracking-tight leading-tight max-w-xl transition-all ${
+                    !hasActiveView ? 'text-2xl sm:text-3xl lg:text-4xl' : 'text-xl sm:text-2xl'
+                  }`}>
+                    {dynamicPhrase}
+                  </h1>
+                  <button
+                    type="button"
+                    onClick={handleNextPhrase}
+                    className="p-2 rounded-xl text-[var(--text-muted)] hover:text-amber-500 hover:bg-amber-500/10 transition-colors shrink-0 cursor-pointer active:scale-90"
+                    title="Cambia frase"
+                  >
+                    <Shuffle className="w-4 h-4" />
+                  </button>
+                </div>
 
-        {/* 2. BOX DI INPUT IN PRIMO PIANO ("e sotto il box di input") */}
-        <div className="w-full space-y-2">
-          {/* Feedback visivo se in ascolto vocale */}
-          {isListening && !isVoiceModeOpen && (
-            <div className="flex items-center justify-between px-4 py-2 rounded-2xl bg-amber-500/10 border border-amber-500/25 text-amber-600 dark:text-amber-400 text-xs font-semibold shadow-xs animate-pulse">
-              <div className="flex items-center gap-2 min-w-0">
-                <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-ping shrink-0" />
-                <span className="truncate">In ascolto... Parla pure, invio automatico a fine frase</span>
+                {!hasActiveView && (
+                  <p className="text-xs sm:text-sm text-[var(--text-muted)] font-medium max-w-md mx-auto">
+                    {username ? `Ciao ${username}! ` : ''}Chiedimi di trovare, calcolare, cucinare o ricordare qualcosa per te.
+                  </p>
+                )}
               </div>
-              <div className="flex items-center gap-2 shrink-0">
+
+              {/* 2. BOX DI INPUT IN PRIMO PIANO ("e sotto il box di input") */}
+              <div className="w-full space-y-2">
+                {/* Feedback visivo se in ascolto vocale */}
+                {isListening && !isVoiceModeOpen && (
+                  <div className="flex items-center justify-between px-4 py-2 rounded-2xl bg-amber-500/10 border border-amber-500/25 text-amber-600 dark:text-amber-400 text-xs font-semibold shadow-xs animate-pulse">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-ping shrink-0" />
+                      <span className="truncate">In ascolto... Parla pure, invio automatico a fine frase</span>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <button
+                        type="button"
+                        onClick={confirmVoiceRecognition}
+                        className="px-2.5 py-1 rounded-xl bg-amber-500 text-white text-[11px] font-bold hover:bg-amber-600 transition-colors cursor-pointer shadow-xs active:scale-95"
+                      >
+                        Invia
+                      </button>
+                      <button
+                        type="button"
+                        onClick={cancelVoiceRecognition}
+                        className="text-[11px] font-bold text-rose-500 hover:text-rose-600 px-1 py-1 cursor-pointer"
+                      >
+                        Annulla
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                <div className="relative group w-full">
+                  <div className="absolute inset-0 bg-gradient-to-r from-amber-500/20 via-orange-500/20 to-yellow-500/20 rounded-3xl blur-xl opacity-60 group-focus-within:opacity-100 transition-opacity duration-300 pointer-events-none" />
+                  
+                  <div className="relative flex items-center gap-2.5 bg-[var(--card-bg)] border-2 border-[var(--border)] focus-within:border-amber-500 rounded-3xl p-2 sm:p-2.5 shadow-xl transition-all">
+                    {/* Tasto Microfono Dettatura Vocale */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (isListening) {
+                          confirmVoiceRecognition();
+                        } else {
+                          startVoiceRecognition(false);
+                        }
+                      }}
+                      className={`p-3 rounded-2xl border transition-all shrink-0 active:scale-95 shadow-xs cursor-pointer ${
+                        isListening
+                          ? 'bg-amber-500 text-white border-amber-500 shadow-amber-500/30 animate-pulse'
+                          : 'bg-[var(--surface-variant)] hover:bg-[var(--border)] border-[var(--border)] text-amber-500'
+                      }`}
+                      title={isListening ? "Tocca per completare e inviare" : "Dettatura vocale (invio automatico)"}
+                    >
+                      {isListening ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
+                    </button>
+
+                    {/* Textarea Input */}
+                    <div className="flex-1 min-w-0">
+                      <textarea
+                        ref={textareaRef}
+                        rows={1}
+                        value={inputText}
+                        onChange={(e) => setInputText(e.target.value)}
+                        onKeyDown={handleKeyDown}
+                        placeholder={isListening ? "In ascolto... Parla ora..." : "Scrivi o chiedi qualsiasi cosa a Chelona..."}
+                        className="w-full bg-transparent border-0 focus:outline-none focus:ring-0 text-sm sm:text-base text-[var(--text-main)] placeholder-[var(--text-muted)] resize-none py-2 px-1 max-h-28 font-medium"
+                      />
+                    </div>
+
+                    {/* Tasto Invia */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (isListening) {
+                          confirmVoiceRecognition();
+                        } else {
+                          handleSend();
+                        }
+                      }}
+                      disabled={!inputText.trim() || isProcessing}
+                      className="p-3 rounded-2xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 disabled:opacity-30 text-white transition-all shrink-0 active:scale-95 shadow-md shadow-amber-500/20 cursor-pointer"
+                      title="Invia richiesta"
+                    >
+                      <Send className="w-5 h-5" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* 3. COMANDO VOCALE "HEY CHELONA" (Stile Hey Google) */}
+              <div className="w-full max-w-lg p-3.5 sm:p-4 rounded-3xl bg-[var(--card-bg)] border border-amber-500/30 shadow-md flex items-center justify-between gap-3 text-left transition-all">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className={`w-10 h-10 sm:w-11 sm:h-11 rounded-2xl flex items-center justify-center shrink-0 transition-all ${
+                    isWakeWordEnabled
+                      ? 'bg-amber-500 text-white shadow-md shadow-amber-500/30 animate-pulse'
+                      : 'bg-[var(--surface-variant)] text-[var(--text-muted)] border border-[var(--border)]'
+                  }`}>
+                    <Mic className="w-5 h-5" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <h4 className="text-xs sm:text-sm font-black text-[var(--text-main)] truncate">
+                        Comando Vocale "Hey Chelona"
+                      </h4>
+                      {isWakeWordEnabled ? (
+                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 text-[10px] font-black uppercase tracking-wider">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
+                          In Ascolto
+                        </span>
+                      ) : (
+                        <span className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider">
+                          Stile Hey Google
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-[var(--text-muted)] font-medium mt-0.5 leading-snug">
+                      {isWakeWordEnabled
+                        ? 'Pronuncia "Hey Chelona" in qualsiasi momento per attivarmi a mani libere.'
+                        : 'Attiva il comando vocale per risvegliare Chelona a mani libere con "Hey Chelona".'}
+                    </p>
+                  </div>
+                </div>
+
                 <button
                   type="button"
-                  onClick={confirmVoiceRecognition}
-                  className="px-2.5 py-1 rounded-xl bg-amber-500 text-white text-[11px] font-bold hover:bg-amber-600 transition-colors cursor-pointer shadow-xs active:scale-95"
+                  onClick={handleToggleWakeWord}
+                  className={`px-3.5 py-2 rounded-xl font-bold text-xs shrink-0 transition-all active:scale-95 cursor-pointer ${
+                    isWakeWordEnabled
+                      ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 hover:bg-amber-500/25'
+                      : 'bg-amber-500 hover:bg-amber-600 text-white shadow-md shadow-amber-500/20'
+                  }`}
                 >
-                  Invia
-                </button>
-                <button
-                  type="button"
-                  onClick={cancelVoiceRecognition}
-                  className="text-[11px] font-bold text-rose-500 hover:text-rose-600 px-1 py-1 cursor-pointer"
-                >
-                  Annulla
+                  {isWakeWordEnabled ? 'Disattiva' : 'Attiva'}
                 </button>
               </div>
-            </div>
-          )}
 
-          <div className="relative group">
-            <div className="absolute inset-0 bg-gradient-to-r from-amber-500/20 via-orange-500/20 to-yellow-500/20 rounded-3xl blur-xl opacity-60 group-focus-within:opacity-100 transition-opacity duration-300 pointer-events-none" />
-            
-            <div className="relative flex items-center gap-2.5 bg-[var(--card-bg)] border-2 border-[var(--border)] focus-within:border-amber-500 rounded-3xl p-2 sm:p-2.5 shadow-xl transition-all">
-              {/* Tasto Microfono Dettatura Vocale */}
-              <button
-                type="button"
-                onClick={() => {
-                  if (isListening) {
-                    confirmVoiceRecognition();
-                  } else {
-                    startVoiceRecognition(false);
-                  }
-                }}
-                className={`p-3 rounded-2xl border transition-all shrink-0 active:scale-95 shadow-xs cursor-pointer ${
-                  isListening
-                    ? 'bg-amber-500 text-white border-amber-500 shadow-amber-500/30 animate-pulse'
-                    : 'bg-[var(--surface-variant)] hover:bg-[var(--border)] border-[var(--border)] text-amber-500'
-                }`}
-                title={isListening ? "Tocca per completare e inviare" : "Dettatura vocale (invio automatico)"}
-              >
-                {isListening ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
-              </button>
-
-              {/* Textarea Input */}
-              <div className="flex-1 min-w-0">
-                <textarea
-                  ref={textareaRef}
-                  rows={1}
-                  value={inputText}
-                  onChange={(e) => setInputText(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  placeholder={isListening ? "In ascolto... Parla ora..." : "Scrivi o chiedi qualsiasi cosa a Chelona..."}
-                  className="w-full bg-transparent border-0 focus:outline-none focus:ring-0 text-sm sm:text-base text-[var(--text-main)] placeholder-[var(--text-muted)] resize-none py-2 px-1 max-h-28 font-medium"
-                />
+              {/* 4. SUGGERIMENTI RAPIDI A PILLOLA */}
+              <div className="w-full space-y-2">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-muted)] block text-center">
+                  Domande Rapide
+                </span>
+                <div className="flex flex-wrap justify-center gap-2 max-w-xl mx-auto">
+                  {quickPills.map((p, i) => (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={() => handleSend(p.query)}
+                      className="px-3.5 py-2 rounded-2xl bg-[var(--card-bg)] hover:bg-[var(--surface-variant)] border border-[var(--border)] hover:border-amber-500/40 text-xs font-bold text-[var(--text-main)] transition-all shadow-2xs active:scale-95 cursor-pointer"
+                    >
+                      {p.label}
+                    </button>
+                  ))}
+                </div>
               </div>
 
-              {/* Tasto Invia */}
-              <button
-                type="button"
-                onClick={() => {
-                  if (isListening) {
-                    confirmVoiceRecognition();
-                  } else {
-                    handleSend();
-                  }
-                }}
-                disabled={!inputText.trim() || isProcessing}
-                className="p-3 rounded-2xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 disabled:opacity-30 text-white transition-all shrink-0 active:scale-95 shadow-md shadow-amber-500/20 cursor-pointer"
-                title="Invia richiesta"
-              >
-                <Send className="w-5 h-5" />
-              </button>
             </div>
-          </div>
-        </div>
 
         {/* 3. RISPOSTA ATTIVA CORRENTE (90% UI + 10% TESTO, SENZA STORICO A CHAT) */}
         {isProcessing && (
@@ -1321,67 +1353,9 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
           </motion.div>
         )}
 
-        {/* 4. CATEGORIE PRINCIPALI ("come la categoria lista della spesa ecc") */}
-        <div className="space-y-3 pt-2">
-          <div className="flex items-center justify-between px-1">
-            <span className="text-xs font-black uppercase tracking-wider text-[var(--text-muted)] flex items-center gap-1.5">
-              <span>Esplora Categorie & Moduli</span>
-            </span>
-            <span className="text-[11px] font-bold text-[var(--text-muted)]">
-              Tocca per chiedere
-            </span>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-            {primaryCategories.map((cat) => {
-              const IconComp = cat.icon;
-              return (
-                <button
-                  key={cat.id}
-                  type="button"
-                  onClick={() => handleSend(cat.actionQuery)}
-                  className="p-3.5 rounded-3xl bg-[var(--card-bg)] hover:bg-[var(--surface-variant)] border border-[var(--border)] hover:border-amber-500/40 shadow-xs hover:shadow-md transition-all active:scale-[0.98] flex items-center justify-between gap-3 text-left group cursor-pointer"
-                >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className={`w-11 h-11 rounded-2xl bg-gradient-to-br ${cat.color} flex items-center justify-center shrink-0 border shadow-2xs`}>
-                      <IconComp className="w-5 h-5" />
-                    </div>
-                    <div className="min-w-0">
-                      <h3 className="text-sm font-extrabold text-[var(--text-main)] group-hover:text-amber-500 transition-colors truncate leading-tight">
-                        {cat.title}
-                      </h3>
-                      <p className="text-xs text-[var(--text-muted)] font-medium mt-0.5 truncate">
-                        {cat.subtitle}
-                      </p>
-                    </div>
-                  </div>
-                  <ChevronRight className="w-4 h-4 text-[var(--text-muted)] group-hover:text-amber-500 group-hover:translate-x-0.5 transition-all shrink-0" />
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* 5. SUGGERIMENTI RAPIDI A PILLOLA */}
-        <div className="space-y-2 pt-2 pb-6">
-          <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-muted)] px-1 block">
-            Domande Rapide
-          </span>
-          <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar -mx-1 px-1">
-            {quickPills.map((p, i) => (
-              <button
-                key={i}
-                type="button"
-                onClick={() => handleSend(p.query)}
-                className="px-3.5 py-2 rounded-2xl bg-[var(--card-bg)] hover:bg-[var(--surface-variant)] border border-[var(--border)] hover:border-amber-500/40 text-xs font-bold text-[var(--text-main)] shrink-0 transition-all shadow-2xs active:scale-95 cursor-pointer"
-              >
-                {p.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
       </main>
+    );
+  })()}
 
       {/* ── OVERLAY INTERAZIONE VOCALE A TUTTO SCHERMO (VOICE MODE) ── */}
       <AnimatePresence>

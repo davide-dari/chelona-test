@@ -3596,9 +3596,9 @@ async function _queryChelonaAiInner(
     }
 
     // Risposta mirata: Wake word vocale
-    if (lower.includes('wake word') || lower.includes('ciao chelona') || lower.includes('vocale') || lower.includes('voce')) {
+    if (lower.includes('wake word') || lower.includes('hey chelona') || lower.includes('ehi chelona') || lower.includes('ciao chelona') || lower.includes('vocale') || lower.includes('voce')) {
       return {
-        text: `🎙️ **Comando Vocale "Ciao Chelona":**\n\nStato attuale: ${k.profile.isWakeWordEnabled ? '✅ **Attivo**' : '⚪ **Disattivato**'}.\nQuando è attivo, puoi dire *"Ciao Chelona"* in qualsiasi momento per risvegliarmi a mani libere e chiedermi qualsiasi cosa. Puoi attivarlo o disattivarlo dal tuo profilo!`,
+        text: `🎙️ **Comando Vocale "Hey Chelona":**\n\nStato attuale: ${k.profile.isWakeWordEnabled ? '✅ **Attivo**' : '⚪ **Disattivato**'}.\nQuando è attivo, puoi dire *"Hey Chelona"* (stile Hey Google) in qualsiasi momento per risvegliarmi a mani libere e chiedermi qualsiasi cosa. Puoi attivarlo o disattivarlo in ogni momento!`,
         autoAction: { label: 'Impostazioni Voce', type: 'category', category: 'profile' },
         actions: [{ label: 'Apri Profilo', type: 'category', category: 'profile' }],
       };
@@ -3617,7 +3617,7 @@ async function _queryChelonaAiInner(
     text += `- 👤 Utente: **${k.profile.username}**\n`;
     text += `- 🔐 Crittografia: **Vault AES-256 locale** protetto da password/impronta digitale\n`;
     text += `- 📦 Backup: Supporto per esportazione **ZIP completa** e condivisione **QR Code crittografato**\n`;
-    text += `- 🎙️ Comando vocale: sveglia *"Ciao Chelona"* ${k.profile.isWakeWordEnabled ? '✅ **Attiva**' : '⚪ Disattivata'}\n`;
+    text += `- 🎙️ Comando vocale: sveglia *"Hey Chelona"* (stile Hey Google) ${k.profile.isWakeWordEnabled ? '✅ **Attiva**' : '⚪ Disattivata'}\n`;
     text += `- 🎨 Aspetto: Tema chiaro e scuro commutabile dal profilo\n\n`;
     text += `Puoi gestire biometria, backup, password e scorciatoie rapide direttamente nel tuo profilo.`;
 
@@ -3658,7 +3658,7 @@ async function _queryChelonaAiInner(
     out += `14. 📇 **Rubrica & Indirizzi**: Contatti, indirizzi memorizzati e recapiti rapidi\n`;
     out += `15. 📅 **Scadenze Aggregate**: Vista unificata di tutti i promemoria e avvisi urgenti\n`;
     out += `16. 🧰 **Strumenti & Utility**: Scanner Documenti, Aiuto Vinted, Calcolo %, Filtri Immagine, Galleria, PDF\n`;
-    out += `17. 🔒 **Profilo & Sicurezza**: Backup ZIP/QR, FaceID/impronta, vault AES-256 e comando "Ciao Chelona"\n\n`;
+    out += `17. 🔒 **Profilo & Sicurezza**: Backup ZIP/QR, FaceID/impronta, vault AES-256 e comando vocale "Hey Chelona"\n\n`;
     out += `💡 *Chiedimi pure qualsiasi cosa a voce o per iscritto, o usa "Ricordati che..." per farmi imparare informazioni personali!*`;
 
     return {

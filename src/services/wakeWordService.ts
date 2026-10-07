@@ -34,10 +34,15 @@ class WakeWordService {
   private engineType: 'web' | 'native' | null = null;
 
   constructor() {
-    this.isEnabled = false;
+    this.isEnabled = this.loadStoredEnabled();
   }
 
   private loadStoredEnabled(): boolean {
+    try {
+      if (typeof localStorage !== 'undefined') {
+        return localStorage.getItem(STORAGE_KEY_ENABLED) === 'true';
+      }
+    } catch {}
     return false;
   }
 
@@ -207,8 +212,8 @@ class WakeWordService {
       return true;
     }
 
-    // 2. STT fonetiche comuni in italiano
-    if (/\b(?:ciao|ehi|hey|ok|apri|salve|ascolta|attiva)\s*(?:chelona|che\s*lona|kelona|chilona|celona|colona)\b/i.test(clean)) {
+    // 2. STT fonetiche comuni in italiano ("hey chelona", "ehi chelona", "ok chelona", "ciao chelona")
+    if (/\b(?:hey|ehi|hei|ay|ei|hi|ok|ciao|apri|salve|ascolta|attiva)\s*(?:chelona|che\s*lona|kelona|chilona|celona|colona|corona)\b/i.test(clean)) {
       return true;
     }
 
