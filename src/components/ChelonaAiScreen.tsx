@@ -600,7 +600,7 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
         next ? 'success' : 'info'
       );
     } else {
-      showToast('Permesso microfono necessario per attivare il comando vocale.', 'error');
+      showToast('Permesso microfono non disponibile o non supportato.', 'error');
     }
   };
 

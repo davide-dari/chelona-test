@@ -264,12 +264,12 @@ export function ProfileScreen({
       setIsWakeWordEnabled(next);
       showToast(
         next
-          ? "Comando vocale attivo! Di' 'Ciao Chelona' per parlare."
+          ? "Comando vocale attivo! Di' 'Hey Chelona' per parlare."
           : "Comando vocale disattivato.",
         next ? 'success' : 'info'
       );
     } else {
-      showToast('Permesso microfono necessario per attivare il comando vocale.', 'error');
+      showToast('Permesso microfono non disponibile o non supportato.', 'error');
     }
   };
 

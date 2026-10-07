@@ -3285,13 +3285,11 @@ export default function App() {
     setSelectedType(null);
   }, [isAiOpen, showToast]);
 
+  const handleWakeWordTriggerRef = useRef(handleWakeWordTrigger);
+  handleWakeWordTriggerRef.current = handleWakeWordTrigger;
+
   const handleToggleWakeWord = async () => {
     const next = !isWakeWordEnabled;
-    if (next) {
-      wakeWordService.start(handleWakeWordTrigger);
-    } else {
-      wakeWordService.stop();
-    }
     const ok = await wakeWordService.setEnabled(next);
     if (ok) {
       setIsWakeWordEnabled(next);
@@ -3302,7 +3300,7 @@ export default function App() {
         next ? 'success' : 'info'
       );
     } else {
-      showToast('Permesso microfono necessario per attivare il comando vocale.', 'error');
+      showToast('Permesso microfono non disponibile o non supportato.', 'error');
     }
   };
 
@@ -3318,11 +3316,19 @@ export default function App() {
 
   useEffect(() => {
     if (isWakeWordEnabled) {
-      wakeWordService.start(handleWakeWordTrigger);
+      const timer = setTimeout(() => {
+        wakeWordService.start(() => {
+          handleWakeWordTriggerRef.current();
+        });
+      }, 800);
+      return () => {
+        clearTimeout(timer);
+        wakeWordService.stop();
+      };
     } else {
       wakeWordService.stop();
     }
-  }, [handleWakeWordTrigger, isWakeWordEnabled]);
+  }, [isWakeWordEnabled]);
 
   useEffect(() => {
     if (!isWakeWordEnabled) return;
