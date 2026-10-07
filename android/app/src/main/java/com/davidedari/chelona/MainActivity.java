@@ -48,6 +48,9 @@ public class MainActivity extends BridgeActivity {
                 webView.clearHistory();
                 // Disabilita overscroll (effetto rimbalzo ai bordi)
                 webView.setOverScrollMode(View.OVER_SCROLL_NEVER);
+                // Disabilita le barre di scorrimento laterali/inferiori visive mantenendo lo scorrimento
+                webView.setVerticalScrollBarEnabled(false);
+                webView.setHorizontalScrollBarEnabled(false);
             }
         });
 
