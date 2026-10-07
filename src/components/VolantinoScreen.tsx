@@ -1257,7 +1257,7 @@ export default function VolantinoScreen({
             </div>
           </header>
 
-          <main className="flex-1 flex flex-col overflow-y-auto p-4 md:p-8 custom-scrollbar overscroll-contain pb-[max(env(safe-area-inset-bottom),20px)]">
+          <main className="flex-1 flex flex-col overflow-y-auto overflow-x-hidden max-w-full p-3.5 sm:p-4 md:p-8 custom-scrollbar overscroll-contain pb-[max(env(safe-area-inset-bottom),20px)]">
             {/* HERO BARRA & TITOLO (Stabile in alto: zero salti o spostamenti della viewport su tastiera Android) */}
             <div className={`w-full transition-all duration-200 shrink-0 ${
               !hasActiveResultsView
@@ -1279,23 +1279,23 @@ export default function VolantinoScreen({
               </div>
 
               {/* BARRA DI RICERCA CON TASTO FILTRI E STELLA PREFERITI */}
-              <div className="w-full flex items-center gap-2 sm:gap-2.5">
-                <div className="relative flex-1 group">
+              <div className="w-full flex items-center gap-1.5 sm:gap-2.5 max-w-full">
+                <div className="relative flex-1 min-w-0 group">
                   <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/20 via-teal-500/20 to-amber-500/20 rounded-2xl sm:rounded-3xl blur-xl opacity-70 group-focus-within:opacity-100 transition-opacity duration-300 pointer-events-none" />
-                  <div className="relative flex items-center gap-2.5 sm:gap-3 bg-[var(--card-bg)] border-2 border-[var(--border)] focus-within:border-emerald-500 rounded-2xl sm:rounded-3xl px-3.5 sm:px-5 py-3 sm:py-4 shadow-lg transition-all">
+                  <div className="relative flex items-center gap-2 sm:gap-3 bg-[var(--card-bg)] border-2 border-[var(--border)] focus-within:border-emerald-500 rounded-2xl sm:rounded-3xl px-3 sm:px-5 py-2.5 sm:py-3.5 shadow-lg transition-all min-w-0">
                     <Search className="w-5 h-5 sm:w-6 sm:h-6 text-emerald-500 shrink-0" />
                     <input
                       type="text"
-                      placeholder="Cerca negozio o prodotto (es. Conad, pasta, caffè)..."
+                      placeholder="Cerca negozio o prodotto..."
                       value={searchQuery}
                       onChange={e => setSearchQuery(e.target.value)}
-                      className="flex-1 bg-transparent text-[var(--text-main)] placeholder-[var(--text-muted)] outline-none text-sm sm:text-base font-medium min-w-0"
+                      className="flex-1 min-w-0 bg-transparent text-[var(--text-main)] placeholder-[var(--text-muted)] outline-none text-sm sm:text-base font-medium"
                     />
                     {searchQuery && (
                       <button 
                         type="button" 
                         onClick={() => setSearchQuery('')} 
-                        className="p-1 rounded-full hover:bg-[var(--surface-variant)] text-[var(--text-muted)] cursor-pointer"
+                        className="p-1 rounded-full hover:bg-[var(--surface-variant)] text-[var(--text-muted)] cursor-pointer shrink-0"
                         title="Cancella ricerca"
                       >
                         <X className="w-4 h-4" />
@@ -1311,14 +1311,14 @@ export default function VolantinoScreen({
                 <button
                   type="button"
                   onClick={() => setIsFiltersSheetOpen(true)}
-                  className={`relative p-3 sm:p-4 rounded-2xl sm:rounded-3xl border-2 transition-all cursor-pointer shadow-md flex items-center justify-center shrink-0 active:scale-95 ${
+                  className={`relative w-11 h-11 sm:w-14 sm:h-14 rounded-2xl sm:rounded-3xl border-2 transition-all cursor-pointer shadow-md flex items-center justify-center shrink-0 active:scale-95 ${
                     hasActiveFilters
                       ? 'bg-emerald-500/15 border-emerald-500 text-emerald-600 shadow-emerald-500/20'
                       : 'bg-[var(--card-bg)] border-[var(--border)] hover:border-emerald-400 text-[var(--text-muted)] hover:text-emerald-500'
                   }`}
                   title="Filtri catene e categorie"
                 >
-                  <SlidersHorizontal className="w-5 h-5 sm:w-6 sm:h-6" />
+                  <SlidersHorizontal className="w-5 h-5 sm:w-6 sm:h-6 shrink-0" />
                   {activeFiltersCount > 0 && (
                     <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-emerald-500 text-white text-[10px] font-black flex items-center justify-center shadow-sm">
                       {activeFiltersCount}
@@ -1338,14 +1338,14 @@ export default function VolantinoScreen({
                       setSearchQuery('');
                     }
                   }}
-                  className={`p-3 sm:p-4 rounded-2xl sm:rounded-3xl border-2 transition-all cursor-pointer shadow-md flex items-center justify-center shrink-0 active:scale-95 ${
+                  className={`relative w-11 h-11 sm:w-14 sm:h-14 rounded-2xl sm:rounded-3xl border-2 transition-all cursor-pointer shadow-md flex items-center justify-center shrink-0 active:scale-95 ${
                     isFavoritesActive
                       ? 'bg-yellow-400/20 border-yellow-400 text-yellow-500 shadow-yellow-500/20'
                       : 'bg-[var(--card-bg)] border-[var(--border)] hover:border-yellow-400 text-[var(--text-muted)] hover:text-yellow-500'
                   }`}
                   title={isFavoritesActive ? 'Chiudi Preferiti' : 'I miei negozi preferiti'}
                 >
-                  <Star className={`w-5 h-5 sm:w-6 sm:h-6 ${isFavoritesActive ? 'fill-yellow-400 text-yellow-500' : 'text-[var(--text-muted)] hover:text-yellow-500'}`} />
+                  <Star className={`w-5 h-5 sm:w-6 sm:h-6 shrink-0 ${isFavoritesActive ? 'fill-yellow-400 text-yellow-500' : 'text-[var(--text-muted)] hover:text-yellow-500'}`} />
                 </button>
               </div>
 
