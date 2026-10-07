@@ -85,7 +85,7 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
     return INSPIRATIONAL_PHRASES[nextIndex];
   });
 
-  // Rotazione automatica della frase ogni 5 secondi
+  // Rotazione automatica della frase ogni 9 secondi
   useEffect(() => {
     const timer = setInterval(() => {
       setDynamicPhrase(prev => {
@@ -97,7 +97,7 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
         sessionStorage.setItem('chelona_last_phrase_idx', nextIndex.toString());
         return INSPIRATIONAL_PHRASES[nextIndex];
       });
-    }, 5000);
+    }, 9000);
     return () => clearInterval(timer);
   }, []);
 
@@ -739,9 +739,7 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
             </button>
 
             <div className="flex items-center gap-2.5">
-              <div className="w-9 h-9 lg:w-10 lg:h-10 rounded-2xl bg-gradient-to-tr from-amber-500 to-amber-600 p-1 flex items-center justify-center overflow-hidden shadow-sm shrink-0">
-                <img src="/chelona_logo.png" alt="Chelona" className="w-full h-full object-contain" />
-              </div>
+              <img src="/chelona_logo.png" alt="Chelona" className="w-9 h-9 lg:w-10 lg:h-10 object-contain shrink-0 drop-shadow-sm" />
               <div>
                 <h2 className="text-base lg:text-lg font-black text-[var(--text-main)] tracking-tight flex items-center gap-1.5 leading-tight">
                   Chelona AI
@@ -754,17 +752,7 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={toggleVoiceMode}
-              className="px-3.5 py-2 rounded-2xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30 font-bold text-xs flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer"
-              title="Modalità vocale a mani libere"
-            >
-              <Mic className="w-4 h-4" />
-              <span className="hidden sm:inline">Parla a Voce</span>
-            </button>
-          </div>
+          <div className="w-9 sm:w-10 shrink-0" />
         </header>
       )}
 
@@ -785,7 +773,7 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
                 : 'max-w-3xl mx-auto space-y-4 mb-3 shrink-0'
             }`}>
               
-              {/* 1. FRASE DINAMICA / ISPIRAZIONALE (cambia ad ogni apertura e ogni 5 secondi) */}
+              {/* 1. FRASE DINAMICA / ISPIRAZIONALE (cambia ad ogni apertura e ogni 9 secondi) */}
               <div className="text-center space-y-2.5 w-full">
                 <div className="flex items-center justify-center">
                   <h1 className={`font-black text-[var(--text-main)] tracking-tight leading-tight max-w-2xl transition-all duration-500 ${
@@ -794,12 +782,6 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
                     {dynamicPhrase}
                   </h1>
                 </div>
-
-                {!hasActiveView && (
-                  <p className="text-xs sm:text-sm text-[var(--text-muted)] font-medium max-w-lg mx-auto">
-                    {username ? `Ciao ${username}! ` : ''}Chiedimi di trovare, calcolare, cucinare o ricordare qualcosa per te.
-                  </p>
-                )}
               </div>
 
               {/* 2. BOX DI INPUT IN PRIMO PIANO - HERO GRANDE */}
@@ -854,7 +836,7 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
                       {isListening ? <MicOff className="w-5 h-5 sm:w-6 sm:h-6" /> : <Mic className="w-5 h-5 sm:w-6 sm:h-6" />}
                     </button>
 
-                    {/* Textarea Input Grande */}
+                    {/* Textarea Input Grande ad Alta Leggibilità */}
                     <div className="flex-1 min-w-0">
                       <textarea
                         ref={textareaRef}
@@ -862,8 +844,8 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
                         value={inputText}
                         onChange={(e) => setInputText(e.target.value)}
                         onKeyDown={handleKeyDown}
-                        placeholder={isListening ? "In ascolto... Parla ora..." : "Scrivi o chiedi qualsiasi cosa a Chelona..."}
-                        className="w-full bg-transparent border-0 focus:outline-none focus:ring-0 text-base sm:text-lg lg:text-xl text-[var(--text-main)] placeholder-[var(--text-muted)] resize-none py-2.5 sm:py-3.5 px-2 max-h-36 font-medium leading-relaxed"
+                        placeholder={isListening ? "In ascolto... Parla ora..." : "Cosa vuoi chiedere a Chelona?..."}
+                        className="w-full bg-transparent border-0 focus:outline-none focus:ring-0 text-base sm:text-lg lg:text-xl text-[var(--text-main)] placeholder-gray-500 dark:placeholder-gray-300 placeholder:opacity-90 placeholder:font-medium resize-none py-2.5 sm:py-3.5 px-2 max-h-36 font-semibold leading-relaxed"
                       />
                     </div>
 
