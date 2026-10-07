@@ -773,15 +773,22 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
                 : 'max-w-3xl mx-auto space-y-4 mb-3 shrink-0'
             }`}>
               
-              {/* 1. FRASE DINAMICA / ISPIRAZIONALE (cambia ad ogni apertura e ogni 9 secondi) */}
-              <div className="text-center space-y-2.5 w-full">
-                <div className="flex items-center justify-center">
-                  <h1 className={`font-black text-[var(--text-main)] tracking-tight leading-tight max-w-2xl transition-all duration-500 ${
-                    !hasActiveView ? 'text-2xl sm:text-3xl lg:text-4xl' : 'text-xl sm:text-2xl'
-                  }`}>
+              {/* 1. FRASE DINAMICA / ISPIRAZIONALE (cambia ad ogni apertura e ogni 9 secondi con animazione fluida) */}
+              <div className="text-center space-y-2.5 w-full min-h-[56px] sm:min-h-[72px] flex items-center justify-center overflow-hidden">
+                <AnimatePresence mode="wait">
+                  <motion.h1
+                    key={dynamicPhrase}
+                    initial={{ opacity: 0, y: 16, filter: 'blur(6px)', scale: 0.98 }}
+                    animate={{ opacity: 1, y: 0, filter: 'blur(0px)', scale: 1 }}
+                    exit={{ opacity: 0, y: -16, filter: 'blur(6px)', scale: 0.98 }}
+                    transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
+                    className={`font-black text-[var(--text-main)] tracking-tight leading-tight max-w-2xl ${
+                      !hasActiveView ? 'text-2xl sm:text-3xl lg:text-4xl' : 'text-xl sm:text-2xl'
+                    }`}
+                  >
                     {dynamicPhrase}
-                  </h1>
-                </div>
+                  </motion.h1>
+                </AnimatePresence>
               </div>
 
               {/* 2. BOX DI INPUT IN PRIMO PIANO - HERO GRANDE */}
@@ -836,7 +843,7 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
                       {isListening ? <MicOff className="w-5 h-5 sm:w-6 sm:h-6" /> : <Mic className="w-5 h-5 sm:w-6 sm:h-6" />}
                     </button>
 
-                    {/* Textarea Input Grande ad Alta Leggibilità */}
+                    {/* Textarea Input Grande Pulito Senza Placeholder Lungo */}
                     <div className="flex-1 min-w-0">
                       <textarea
                         ref={textareaRef}
@@ -844,8 +851,8 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
                         value={inputText}
                         onChange={(e) => setInputText(e.target.value)}
                         onKeyDown={handleKeyDown}
-                        placeholder={isListening ? "In ascolto... Parla ora..." : "Cosa vuoi chiedere a Chelona?..."}
-                        className="w-full bg-transparent border-0 focus:outline-none focus:ring-0 text-base sm:text-lg lg:text-xl text-[var(--text-main)] placeholder-gray-500 dark:placeholder-gray-300 placeholder:opacity-90 placeholder:font-medium resize-none py-2.5 sm:py-3.5 px-2 max-h-36 font-semibold leading-relaxed"
+                        placeholder={isListening ? "In ascolto... Parla ora..." : ""}
+                        className="w-full bg-transparent border-0 focus:outline-none focus:ring-0 text-base sm:text-lg lg:text-xl text-[var(--text-main)] resize-none py-2.5 sm:py-3.5 px-2 max-h-36 font-semibold leading-relaxed"
                       />
                     </div>
 
