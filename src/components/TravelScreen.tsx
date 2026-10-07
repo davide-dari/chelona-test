@@ -832,7 +832,7 @@ const DestModal: React.FC<{
             )}
 
             <button disabled={loading} type="submit" className="w-full py-4 bg-gradient-to-r from-blue-600 to-indigo-600 disabled:opacity-70 text-white rounded-2xl font-black text-sm uppercase tracking-widest shadow-lg shadow-blue-500/25 active:scale-[0.98] transition-all flex items-center justify-center gap-2">
-              {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : isEdit ? 'Salva Modifiche' : 'Aggiungi al Mappamondo'}
+              {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : isEdit ? 'Salva Modifiche' : 'Aggiungi Destinazione'}
             </button>
           </form>
         )}
@@ -2242,193 +2242,198 @@ export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onCl
             </div>
           </div>
 
-          {/* ── HERO TITLE & SEARCH BAR (Stile Ricette e Lista della Spesa) ── */}
-          <div className="space-y-4">
-            <div className="text-center space-y-1 pt-1">
-              <h2 className="font-black text-2xl sm:text-3xl text-[var(--text-main)] tracking-tight">
-                Cosa vuoi esplorare?
-              </h2>
-              <p className="text-xs sm:text-sm text-[var(--text-muted)] font-medium max-w-md mx-auto">
-                Organizza destinazioni, controlla il meteo, prepara la valigia e gestisci il budget
-              </p>
-            </div>
+          {/* ── ELEVATED TOOLS NAVIGATION (Mete, Meteo, Valigia, Budget, Vaccini, Emergenze) ── */}
+          <div className="bg-[var(--card-bg)]/90 backdrop-blur-xl border border-[var(--border)] p-1.5 sm:p-2 rounded-2xl sm:rounded-3xl shadow-sm flex items-center gap-1.5 overflow-x-auto no-scrollbar scroll-smooth">
+            <button
+              type="button"
+              onClick={() => setTravelActiveTab('destinations')}
+              className={`py-2.5 px-3.5 sm:px-4 text-xs sm:text-sm rounded-xl sm:rounded-2xl transition-all duration-150 flex items-center justify-center gap-2 cursor-pointer shrink-0 active:scale-95 ${
+                travelActiveTab === 'destinations'
+                  ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/25 font-black'
+                  : 'text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--surface-variant)]/60 font-semibold'
+              }`}
+            >
+              <MapPin className={`w-4 h-4 shrink-0 ${travelActiveTab === 'destinations' ? 'text-white' : 'text-blue-500'}`} />
+              <span>Mete</span>
+              <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-black ${
+                travelActiveTab === 'destinations' ? 'bg-white/25 text-white' : 'bg-[var(--surface-variant)] text-[var(--text-muted)]'
+              }`}>
+                {destinations.length}
+              </span>
+            </button>
 
-            {/* HERO SEARCH BAR + FILTERS */}
-            <div className="w-full flex items-center gap-2 sm:gap-2.5">
-              <div className="relative flex-1 group">
-                <div className="absolute inset-0 bg-gradient-to-r from-blue-500/20 via-indigo-500/20 to-sky-500/20 rounded-2xl sm:rounded-3xl blur-xl opacity-70 group-focus-within:opacity-100 transition-opacity duration-300 pointer-events-none" />
-                <div className="relative flex items-center gap-2.5 sm:gap-3 bg-[var(--card-bg)] border-2 border-[var(--border)] focus-within:border-blue-500 rounded-2xl sm:rounded-3xl px-3.5 sm:px-5 py-3 sm:py-3.5 shadow-lg transition-all">
-                  <Search className="w-5 h-5 sm:w-6 sm:h-6 text-blue-500 shrink-0" />
-                  <input
-                    type="text"
-                    placeholder="Cerca mete, città, paesi o note (es. Tokyo, Colosseo, Parigi)..."
-                    value={searchQuery}
-                    onChange={e => setSearchQuery(e.target.value)}
-                    className="flex-1 bg-transparent text-[var(--text-main)] placeholder-[var(--text-muted)] outline-none text-sm sm:text-base font-medium min-w-0"
-                  />
-                  {searchQuery && (
-                    <button
-                      type="button"
-                      onClick={() => setSearchQuery('')}
-                      className="p-1 rounded-full hover:bg-[var(--surface-variant)] text-[var(--text-muted)] cursor-pointer"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  )}
-                </div>
-              </div>
+            <button
+              type="button"
+              onClick={() => setTravelActiveTab('weather')}
+              className={`py-2.5 px-3.5 sm:px-4 text-xs sm:text-sm rounded-xl sm:rounded-2xl transition-all duration-150 flex items-center justify-center gap-2 cursor-pointer shrink-0 active:scale-95 ${
+                travelActiveTab === 'weather'
+                  ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-md shadow-amber-500/25 font-black'
+                  : 'text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--surface-variant)]/60 font-semibold'
+              }`}
+            >
+              <CloudSun className={`w-4 h-4 shrink-0 ${travelActiveTab === 'weather' ? 'text-white' : 'text-amber-500'}`} />
+              <span>Meteo</span>
+            </button>
 
-              {/* TASTO FILTRI SHEET */}
-              <button
-                type="button"
-                onClick={() => setIsFiltersSheetOpen(true)}
-                className={`relative p-3 sm:p-3.5 rounded-2xl sm:rounded-3xl border-2 transition-all cursor-pointer shadow-md flex items-center justify-center shrink-0 active:scale-95 ${
-                  hasActiveFilters
-                    ? 'bg-blue-500/15 border-blue-500 text-blue-500 shadow-blue-500/20'
-                    : 'bg-[var(--card-bg)] border-[var(--border)] hover:border-blue-400 text-[var(--text-muted)] hover:text-blue-500'
-                }`}
-                title="Filtri Nazioni & Destinazioni"
-              >
-                <SlidersHorizontal className="w-5 h-5 sm:w-6 sm:h-6" />
-                {activeFiltersCount > 0 && (
-                  <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-blue-500 text-white text-[10px] font-black flex items-center justify-center shadow-sm">
-                    {activeFiltersCount}
-                  </span>
-                )}
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={() => setTravelActiveTab('packing')}
+              className={`py-2.5 px-3.5 sm:px-4 text-xs sm:text-sm rounded-xl sm:rounded-2xl transition-all duration-150 flex items-center justify-center gap-2 cursor-pointer shrink-0 active:scale-95 ${
+                travelActiveTab === 'packing'
+                  ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-500/25 font-black'
+                  : 'text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--surface-variant)]/60 font-semibold'
+              }`}
+            >
+              <Luggage className={`w-4 h-4 shrink-0 ${travelActiveTab === 'packing' ? 'text-white' : 'text-emerald-500'}`} />
+              <span>Valigia</span>
+              <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-black ${
+                travelActiveTab === 'packing' ? 'bg-white/25 text-white' : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+              }`}>
+                {packingProgressPercent}%
+              </span>
+            </button>
 
-            {/* ACTIVE FILTER CHIPS (IF ANY) */}
-            {hasActiveFilters && (
-              <div className="flex items-center justify-center gap-2 pt-0.5 flex-wrap">
-                {selectedNation && (
-                  <button
-                    type="button"
-                    onClick={() => setSelectedNation(null)}
-                    className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-blue-500 text-white shadow-xs cursor-pointer active:scale-95"
-                  >
-                    <span>{getCountryEmoji(selectedNation)} {selectedNation}</span>
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                )}
-                {searchQuery.trim().length >= 2 && (
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-[var(--surface-variant)] text-[var(--text-main)] border border-[var(--border)] shadow-xs">
-                    <span>"{searchQuery}"</span>
-                    <button type="button" onClick={() => setSearchQuery('')} className="hover:text-red-500 cursor-pointer">
-                      <X className="w-3 h-3" />
-                    </button>
-                  </span>
-                )}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSelectedNation(null);
-                    setSearchQuery('');
-                  }}
-                  className="text-xs font-bold text-[var(--text-muted)] hover:text-blue-500 underline ml-1 cursor-pointer"
-                >
-                  Azzera filtri
-                </button>
-              </div>
-            )}
+            <button
+              type="button"
+              onClick={() => setTravelActiveTab('budget')}
+              className={`py-2.5 px-3.5 sm:px-4 text-xs sm:text-sm rounded-xl sm:rounded-2xl transition-all duration-150 flex items-center justify-center gap-2 cursor-pointer shrink-0 active:scale-95 ${
+                travelActiveTab === 'budget'
+                  ? 'bg-gradient-to-r from-purple-600 to-violet-600 text-white shadow-md shadow-purple-500/25 font-black'
+                  : 'text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--surface-variant)]/60 font-semibold'
+              }`}
+            >
+              <DollarSign className={`w-4 h-4 shrink-0 ${travelActiveTab === 'budget' ? 'text-white' : 'text-purple-500'}`} />
+              <span>Budget</span>
+              <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-black ${
+                travelActiveTab === 'budget' ? 'bg-white/25 text-white' : 'bg-purple-500/10 text-purple-600 dark:text-purple-400'
+              }`}>
+                {module.travelBudget?.currency || '€'}
+              </span>
+            </button>
 
-            {/* ── ELEVATED TOOLS NAVIGATION (Mete, Meteo, Valigia, Budget, Vaccini, Emergenze) ── */}
-            <div className="bg-[var(--card-bg)]/80 backdrop-blur-xl border border-[var(--border)] p-1.5 sm:p-2 rounded-2xl sm:rounded-3xl shadow-xs flex items-center gap-1.5 overflow-x-auto no-scrollbar scroll-smooth">
-              <button
-                type="button"
-                onClick={() => setTravelActiveTab('destinations')}
-                className={`py-2.5 px-3.5 sm:px-4 text-xs sm:text-sm rounded-xl sm:rounded-2xl transition-all duration-150 flex items-center justify-center gap-2 cursor-pointer shrink-0 active:scale-95 ${
-                  travelActiveTab === 'destinations'
-                    ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/25 font-extrabold'
-                    : 'text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--surface-variant)]/60 font-semibold'
-                }`}
-              >
-                <MapPin className={`w-4 h-4 shrink-0 ${travelActiveTab === 'destinations' ? 'text-white' : 'text-blue-500'}`} />
-                <span>Mete</span>
-                <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-black ${
-                  travelActiveTab === 'destinations' ? 'bg-white/25 text-white' : 'bg-[var(--surface-variant)] text-[var(--text-muted)]'
-                }`}>
-                  {displayDestinations.length}
-                </span>
-              </button>
+            <button
+              type="button"
+              onClick={() => setTravelActiveTab('vaccines')}
+              className={`py-2.5 px-3.5 sm:px-4 text-xs sm:text-sm rounded-xl sm:rounded-2xl transition-all duration-150 flex items-center justify-center gap-2 cursor-pointer shrink-0 active:scale-95 ${
+                travelActiveTab === 'vaccines'
+                  ? 'bg-gradient-to-r from-teal-600 to-cyan-700 text-white shadow-md shadow-teal-500/25 font-black'
+                  : 'text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--surface-variant)]/60 font-semibold'
+              }`}
+            >
+              <HeartPulse className={`w-4 h-4 shrink-0 ${travelActiveTab === 'vaccines' ? 'text-white' : 'text-teal-500'}`} />
+              <span>Vaccini</span>
+            </button>
 
-              <button
-                type="button"
-                onClick={() => setTravelActiveTab('weather')}
-                className={`py-2.5 px-3.5 sm:px-4 text-xs sm:text-sm rounded-xl sm:rounded-2xl transition-all duration-150 flex items-center justify-center gap-2 cursor-pointer shrink-0 active:scale-95 ${
-                  travelActiveTab === 'weather'
-                    ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-md shadow-amber-500/25 font-extrabold'
-                    : 'text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--surface-variant)]/60 font-semibold'
-                }`}
-              >
-                <CloudSun className={`w-4 h-4 shrink-0 ${travelActiveTab === 'weather' ? 'text-white' : 'text-amber-500'}`} />
-                <span>Meteo</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setTravelActiveTab('packing')}
-                className={`py-2.5 px-3.5 sm:px-4 text-xs sm:text-sm rounded-xl sm:rounded-2xl transition-all duration-150 flex items-center justify-center gap-2 cursor-pointer shrink-0 active:scale-95 ${
-                  travelActiveTab === 'packing'
-                    ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-500/25 font-extrabold'
-                    : 'text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--surface-variant)]/60 font-semibold'
-                }`}
-              >
-                <Luggage className={`w-4 h-4 shrink-0 ${travelActiveTab === 'packing' ? 'text-white' : 'text-emerald-500'}`} />
-                <span>Valigia</span>
-                <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-black ${
-                  travelActiveTab === 'packing' ? 'bg-white/25 text-white' : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
-                }`}>
-                  {packingProgressPercent}%
-                </span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setTravelActiveTab('budget')}
-                className={`py-2.5 px-3.5 sm:px-4 text-xs sm:text-sm rounded-xl sm:rounded-2xl transition-all duration-150 flex items-center justify-center gap-2 cursor-pointer shrink-0 active:scale-95 ${
-                  travelActiveTab === 'budget'
-                    ? 'bg-gradient-to-r from-purple-600 to-violet-600 text-white shadow-md shadow-purple-500/25 font-extrabold'
-                    : 'text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--surface-variant)]/60 font-semibold'
-                }`}
-              >
-                <DollarSign className={`w-4 h-4 shrink-0 ${travelActiveTab === 'budget' ? 'text-white' : 'text-purple-500'}`} />
-                <span>Budget</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setTravelActiveTab('vaccines')}
-                className={`py-2.5 px-3.5 sm:px-4 text-xs sm:text-sm rounded-xl sm:rounded-2xl transition-all duration-150 flex items-center justify-center gap-2 cursor-pointer shrink-0 active:scale-95 ${
-                  travelActiveTab === 'vaccines'
-                    ? 'bg-gradient-to-r from-teal-600 to-cyan-700 text-white shadow-md shadow-teal-500/25 font-extrabold'
-                    : 'text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--surface-variant)]/60 font-semibold'
-                }`}
-              >
-                <HeartPulse className={`w-4 h-4 shrink-0 ${travelActiveTab === 'vaccines' ? 'text-white' : 'text-teal-500'}`} />
-                <span>Vaccini</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setTravelActiveTab('emergency')}
-                className={`py-2.5 px-3.5 sm:px-4 text-xs sm:text-sm rounded-xl sm:rounded-2xl transition-all duration-150 flex items-center justify-center gap-2 cursor-pointer shrink-0 active:scale-95 ${
-                  travelActiveTab === 'emergency'
-                    ? 'bg-gradient-to-r from-rose-600 to-red-600 text-white shadow-md shadow-rose-500/25 font-extrabold'
-                    : 'text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--surface-variant)]/60 font-semibold'
-                }`}
-              >
-                <PhoneCall className={`w-4 h-4 shrink-0 ${travelActiveTab === 'emergency' ? 'text-white' : 'text-rose-500'}`} />
-                <span>Emergenze</span>
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={() => setTravelActiveTab('emergency')}
+              className={`py-2.5 px-3.5 sm:px-4 text-xs sm:text-sm rounded-xl sm:rounded-2xl transition-all duration-150 flex items-center justify-center gap-2 cursor-pointer shrink-0 active:scale-95 ${
+                travelActiveTab === 'emergency'
+                  ? 'bg-gradient-to-r from-rose-600 to-red-600 text-white shadow-md shadow-rose-500/25 font-black'
+                  : 'text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--surface-variant)]/60 font-semibold'
+              }`}
+            >
+              <PhoneCall className={`w-4 h-4 shrink-0 ${travelActiveTab === 'emergency' ? 'text-white' : 'text-rose-500'}`} />
+              <span>Emergenze</span>
+            </button>
           </div>
 
           {/* TAB 1: METE & NAZIONI */}
           {travelActiveTab === 'destinations' && (
-            <div className="space-y-5 animate-fade-in">
+            <div className="space-y-6 animate-fade-in">
+              {/* ── HERO TITLE & SEARCH BAR (Mete & Destinazioni) ── */}
+              <div className="space-y-4">
+                <div className="text-center space-y-1 pt-1">
+                  <h2 className="font-black text-2xl sm:text-3xl text-[var(--text-main)] tracking-tight">
+                    Cosa vuoi esplorare?
+                  </h2>
+                  <p className="text-xs sm:text-sm text-[var(--text-muted)] font-medium max-w-md mx-auto">
+                    Organizza destinazioni, itinerari, monumenti e tappe del tuo viaggio
+                  </p>
+                </div>
+
+                {/* HERO SEARCH BAR + FILTERS */}
+                <div className="w-full flex items-center gap-2 sm:gap-2.5">
+                  <div className="relative flex-1 group">
+                    <div className="absolute inset-0 bg-gradient-to-r from-blue-500/20 via-indigo-500/20 to-sky-500/20 rounded-2xl sm:rounded-3xl blur-xl opacity-70 group-focus-within:opacity-100 transition-opacity duration-300 pointer-events-none" />
+                    <div className="relative flex items-center gap-2.5 sm:gap-3 bg-[var(--card-bg)] border-2 border-[var(--border)] focus-within:border-blue-500 rounded-2xl sm:rounded-3xl px-3.5 sm:px-5 py-3 sm:py-3.5 shadow-lg transition-all">
+                      <Search className="w-5 h-5 sm:w-6 sm:h-6 text-blue-500 shrink-0" />
+                      <input
+                        type="text"
+                        placeholder="Cerca mete, città, paesi o note (es. Tokyo, Colosseo, Parigi)..."
+                        value={searchQuery}
+                        onChange={e => setSearchQuery(e.target.value)}
+                        className="flex-1 bg-transparent text-[var(--text-main)] placeholder-[var(--text-muted)] outline-none text-sm sm:text-base font-medium min-w-0"
+                      />
+                      {searchQuery && (
+                        <button
+                          type="button"
+                          onClick={() => setSearchQuery('')}
+                          className="p-1 rounded-full hover:bg-[var(--surface-variant)] text-[var(--text-muted)] cursor-pointer"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* TASTO FILTRI SHEET */}
+                  <button
+                    type="button"
+                    onClick={() => setIsFiltersSheetOpen(true)}
+                    className={`relative p-3 sm:p-3.5 rounded-2xl sm:rounded-3xl border-2 transition-all cursor-pointer shadow-md flex items-center justify-center shrink-0 active:scale-95 ${
+                      hasActiveFilters
+                        ? 'bg-blue-500/15 border-blue-500 text-blue-500 shadow-blue-500/20'
+                        : 'bg-[var(--card-bg)] border-[var(--border)] hover:border-blue-400 text-[var(--text-muted)] hover:text-blue-500'
+                    }`}
+                    title="Filtri Nazioni & Destinazioni"
+                  >
+                    <SlidersHorizontal className="w-5 h-5 sm:w-6 sm:h-6" />
+                    {activeFiltersCount > 0 && (
+                      <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-blue-500 text-white text-[10px] font-black flex items-center justify-center shadow-sm">
+                        {activeFiltersCount}
+                      </span>
+                    )}
+                  </button>
+                </div>
+
+                {/* ACTIVE FILTER CHIPS (IF ANY) */}
+                {hasActiveFilters && (
+                  <div className="flex items-center justify-center gap-2 pt-0.5 flex-wrap">
+                    {selectedNation && (
+                      <button
+                        type="button"
+                        onClick={() => setSelectedNation(null)}
+                        className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-blue-500 text-white shadow-xs cursor-pointer active:scale-95"
+                      >
+                        <span>{getCountryEmoji(selectedNation)} {selectedNation}</span>
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                    {searchQuery.trim().length >= 2 && (
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-[var(--surface-variant)] text-[var(--text-main)] border border-[var(--border)] shadow-xs">
+                        <span>"{searchQuery}"</span>
+                        <button type="button" onClick={() => setSearchQuery('')} className="hover:text-red-500 cursor-pointer">
+                          <X className="w-3 h-3" />
+                        </button>
+                      </span>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedNation(null);
+                        setSearchQuery('');
+                      }}
+                      className="text-xs font-bold text-[var(--text-muted)] hover:text-blue-500 underline ml-1 cursor-pointer"
+                    >
+                      Azzera filtri
+                    </button>
+                  </div>
+                )}
+              </div>
+
               {/* Country Filter Bar */}
-              <div className="space-y-2">
+              <div className="space-y-2.5">
                 <div className="flex items-center justify-between px-1">
                   <span className="text-[11px] font-extrabold uppercase tracking-wider text-[var(--text-muted)] flex items-center gap-1.5">
                     <Globe className="w-3.5 h-3.5 text-blue-500" />
@@ -2502,7 +2507,7 @@ export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onCl
 
               {/* Suggestions from Famous Places */}
               {suggestedFamousPlaces.length > 0 && (
-                <div className="p-4 rounded-2xl bg-gradient-to-r from-blue-500/10 via-indigo-500/10 to-transparent border border-blue-500/20 space-y-2">
+                <div className="p-4 rounded-3xl bg-gradient-to-r from-blue-500/10 via-indigo-500/10 to-transparent border border-blue-500/20 space-y-2.5">
                   <div className="flex items-center gap-2">
                     <Sparkles className="w-4 h-4 text-blue-500" />
                     <h4 className="text-xs font-black uppercase tracking-wider text-blue-600 dark:text-blue-400">
@@ -2513,7 +2518,7 @@ export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onCl
                     {suggestedFamousPlaces.map(p => (
                       <div
                         key={`sugg-${p.name}`}
-                        className="flex items-center justify-between p-2.5 rounded-xl bg-[var(--card-bg)] border border-[var(--border)] shadow-xs"
+                        className="flex items-center justify-between p-3 rounded-2xl bg-[var(--card-bg)] border border-[var(--border)] shadow-xs hover:border-blue-400/50 transition-colors"
                       >
                         <div className="min-w-0 pr-2">
                           <p className="text-xs font-bold text-[var(--text-main)] truncate">{p.name}</p>
@@ -2534,7 +2539,7 @@ export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onCl
                             });
                             setSearchQuery('');
                           }}
-                          className="px-2.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-bold flex items-center gap-1 shrink-0 cursor-pointer active:scale-95"
+                          className="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-bold flex items-center gap-1 shrink-0 cursor-pointer active:scale-95 shadow-xs"
                         >
                           <Plus className="w-3.5 h-3.5" />
                           <span>Aggiungi</span>
@@ -2549,14 +2554,14 @@ export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onCl
               <div className="space-y-4">
                 <div className="flex items-center justify-between px-1 pt-1">
                   <div className="flex items-center gap-2">
-                    <div className="w-2.5 h-2.5 rounded-full bg-blue-500" />
+                    <div className="w-2.5 h-2.5 rounded-full bg-blue-500 shadow-xs shadow-blue-500/50" />
                     <h3 className="text-xs font-black uppercase tracking-wider text-[var(--text-main)]">
                       {selectedNation 
                         ? `${getCountryEmoji(selectedNation)} ${selectedNation}`
                         : 'Tutte le Destinazioni'
                       }
                     </h3>
-                    <span className="text-[11px] font-bold text-[var(--text-muted)] bg-[var(--surface-variant)] px-2 py-0.5 rounded-full border border-[var(--border)]/50">
+                    <span className="text-[11px] font-bold text-[var(--text-muted)] bg-[var(--surface-variant)] px-2.5 py-0.5 rounded-full border border-[var(--border)]/50">
                       {displayDestinations.length}
                     </span>
                   </div>
@@ -2627,10 +2632,10 @@ export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onCl
                                   initial={{ opacity: 0, y: 10 }}
                                   animate={{ opacity: 1, y: 0 }}
                                   exit={{ opacity: 0, x: -20 }}
-                                  className={`rounded-2xl sm:rounded-3xl border transition-all duration-200 overflow-hidden group cursor-pointer ${
+                                  className={`rounded-3xl border transition-all duration-200 overflow-hidden group cursor-pointer ${
                                     isFocused
-                                      ? 'border-blue-500/80 bg-[var(--card-bg)] shadow-md shadow-blue-500/10 ring-2 ring-blue-500/25'
-                                      : 'border-[var(--border)] hover:border-blue-400/50 bg-[var(--card-bg)] shadow-xs hover:shadow-md'
+                                      ? 'border-blue-500 ring-2 ring-blue-500/25 bg-gradient-to-b from-blue-500/[0.04] to-transparent shadow-md shadow-blue-500/15'
+                                      : 'border-[var(--border)] hover:border-blue-400/60 bg-[var(--card-bg)] shadow-xs hover:shadow-lg'
                                   }`}
                                   onClick={(e) => {
                                     if ((e.target as HTMLElement).closest('button')) return;
@@ -2638,19 +2643,19 @@ export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onCl
                                     setFocusedDestId(dest.id);
                                   }}
                                 >
-                                  <div className="p-3.5 sm:p-4 hover:bg-[var(--surface-variant)]/40 transition-colors">
+                                  <div className="p-3.5 sm:p-4.5 hover:bg-[var(--surface-variant)]/30 transition-colors">
                                     <div className="flex items-start gap-3">
                                       {/* Icon Badge */}
                                       {dest.emoji ? (
-                                        <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl flex items-center justify-center shrink-0 bg-blue-500/10 text-xl border border-blue-500/20 shadow-2xs">
+                                        <div className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 bg-blue-500/10 text-2xl border border-blue-500/20 shadow-2xs">
                                           {dest.emoji}
                                         </div>
                                       ) : dest.type === 'itinerary' ? (
-                                        <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl flex items-center justify-center shrink-0 bg-gradient-to-br from-indigo-500/15 to-blue-500/15 text-indigo-600 dark:text-indigo-400 border border-indigo-500/25 shadow-2xs">
+                                        <div className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 bg-gradient-to-br from-indigo-500/15 to-blue-500/15 text-indigo-600 dark:text-indigo-400 border border-indigo-500/25 shadow-2xs">
                                           <Compass className="w-5 h-5" />
                                         </div>
                                       ) : (
-                                        <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl flex items-center justify-center shrink-0 bg-gradient-to-br from-blue-500/15 to-sky-500/15 text-blue-600 dark:text-blue-400 border border-blue-500/25 shadow-2xs">
+                                        <div className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 bg-gradient-to-br from-blue-500/15 to-sky-500/15 text-blue-600 dark:text-blue-400 border border-blue-500/25 shadow-2xs">
                                           <MapPin className="w-5 h-5" />
                                         </div>
                                       )}
@@ -2662,7 +2667,7 @@ export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onCl
                                             {dest.name}
                                           </h4>
                                           {isFocused && (
-                                            <span className="inline-flex items-center gap-1 text-[10px] font-black text-blue-600 dark:text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-full border border-blue-500/25 shrink-0 animate-pulse">
+                                            <span className="inline-flex items-center gap-1 text-[10px] font-black text-blue-600 dark:text-blue-400 bg-blue-500/10 px-2.5 py-0.5 rounded-full border border-blue-500/25 shrink-0 animate-pulse">
                                               <Globe className="w-3 h-3" />
                                               <span className="hidden sm:inline">Sul Globo</span>
                                             </span>
@@ -2672,26 +2677,26 @@ export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onCl
                                         {/* Metadata Row */}
                                         <div className="flex items-center gap-1.5 mt-1 flex-wrap">
                                           {nationVal && (
-                                            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-blue-600 dark:text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-lg border border-blue-500/15">
+                                            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-blue-600 dark:text-blue-400 bg-blue-500/10 px-2.5 py-0.5 rounded-lg border border-blue-500/15">
                                               {getCountryEmoji(nationVal)} {nationVal}
                                             </span>
                                           )}
                                           {cityVal && (
-                                            <span className="inline-flex items-center text-[11px] font-semibold text-[var(--text-muted)] bg-[var(--surface-variant)] px-2 py-0.5 rounded-lg border border-[var(--border)]">
+                                            <span className="inline-flex items-center text-[11px] font-semibold text-[var(--text-muted)] bg-[var(--surface-variant)] px-2.5 py-0.5 rounded-lg border border-[var(--border)]">
                                               {cityVal}
                                             </span>
                                           )}
-                                          <span className="text-[10px] font-medium text-[var(--text-muted)] flex items-center gap-1">
-                                            <Navigation className="w-2.5 h-2.5 text-blue-400" />
-                                            {dest.lat.toFixed(2)}°, {dest.lng.toFixed(2)}°
+                                          <span className="inline-flex items-center text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)] bg-[var(--surface-variant)]/60 px-2 py-0.5 rounded-lg border border-[var(--border)]/40">
+                                            {dest.type === 'itinerary' ? 'Itinerario' : 'Tappa'}
                                           </span>
                                         </div>
 
                                         {/* Notes snippet if present */}
                                         {dest.notes && (
-                                          <p className="text-xs text-[var(--text-muted)] mt-2 line-clamp-2 leading-relaxed bg-[var(--surface-variant)]/50 p-2.5 rounded-xl border border-[var(--border)]/40 font-medium">
-                                            {dest.notes}
-                                          </p>
+                                          <div className="mt-2.5 p-2.5 rounded-xl bg-[var(--surface-variant)]/40 border border-[var(--border)]/50 text-xs text-[var(--text-muted)] font-medium line-clamp-2 leading-relaxed flex items-start gap-1.5">
+                                            <FileText className="w-3.5 h-3.5 text-blue-500 shrink-0 mt-0.5" />
+                                            <span className="line-clamp-2">{dest.notes}</span>
+                                          </div>
                                         )}
                                       </div>
 
@@ -2768,7 +2773,7 @@ export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onCl
                                       </div>
 
                                       <div className="flex items-center gap-1 text-[11px] font-bold text-[var(--text-muted)] group-hover:text-blue-500 transition-colors ml-auto">
-                                        <span>{isExpanded ? 'Chiudi mappa' : 'Mappa 3D & Dettagli'}</span>
+                                        <span>{isExpanded ? 'Chiudi dettagli' : 'Dettagli & Mappa'}</span>
                                         <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${isExpanded ? 'rotate-180 text-blue-500' : ''}`} />
                                       </div>
                                     </div>
@@ -2839,7 +2844,7 @@ export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onCl
                                               }}
                                               className="text-blue-500 hover:text-blue-600 font-bold underline cursor-pointer"
                                             >
-                                              Centra sul Mappamondo ↑
+                                              Centra sul Globo ↑
                                             </button>
                                           </div>
                                         </div>
