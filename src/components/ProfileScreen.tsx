@@ -932,56 +932,6 @@ export function ProfileScreen({
             >
 
 
-              {/* Theme Toggle */}
-              <div className="flex items-center justify-between bg-[var(--card-bg)] rounded-2xl px-5 py-4 border border-[var(--border)] shadow-sm">
-                <div className="flex items-center gap-3">
-                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${
-                    theme === 'dark' ? 'bg-indigo-500/15 text-indigo-400' : 'bg-amber-500/15 text-amber-500'
-                  }`}>
-                    {theme === 'dark' ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
-                  </div>
-                  <div>
-                    <p className="text-sm font-bold text-[var(--text-main)]">{theme === 'dark' ? 'Modalità Scura' : 'Modalità Chiara'}</p>
-                    <p className="text-xs text-[var(--text-muted)]">{theme === 'dark' ? 'Tema notturno attivo' : 'Tema giorno attivo'}</p>
-                  </div>
-                </div>
-                <motion.button
-                  type="button"
-                  whileHover={{ scale: 1.08 }}
-                  whileTap={{ scale: 0.88 }}
-                  onClick={onToggleTheme}
-                  className={`w-11 h-11 rounded-2xl border flex items-center justify-center transition-all shadow-sm cursor-pointer ${
-                    theme === 'dark'
-                      ? 'bg-amber-500/15 border-amber-500/30 text-amber-300 hover:bg-amber-500/25'
-                      : 'bg-indigo-500/15 border-indigo-500/30 text-indigo-500 hover:bg-indigo-500/25'
-                  }`}
-                  title={theme === 'dark' ? 'Attiva modalità Chiara' : 'Attiva modalità Scura'}
-                >
-                  <AnimatePresence mode="wait">
-                    {theme === 'dark' ? (
-                      <motion.div
-                        key="sun"
-                        initial={{ rotate: -90, scale: 0.5, opacity: 0 }}
-                        animate={{ rotate: 0, scale: 1, opacity: 1 }}
-                        exit={{ rotate: 90, scale: 0.5, opacity: 0 }}
-                        transition={{ duration: 0.18 }}
-                      >
-                        <Sun className="w-5 h-5 text-amber-400" />
-                      </motion.div>
-                    ) : (
-                      <motion.div
-                        key="moon"
-                        initial={{ rotate: 90, scale: 0.5, opacity: 0 }}
-                        animate={{ rotate: 0, scale: 1, opacity: 1 }}
-                        exit={{ rotate: -90, scale: 0.5, opacity: 0 }}
-                        transition={{ duration: 0.18 }}
-                      >
-                        <Moon className="w-5 h-5 text-indigo-500" />
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </motion.button>
-              </div>
             </motion.div>
           )}
 
