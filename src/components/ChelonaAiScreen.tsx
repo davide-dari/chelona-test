@@ -3,7 +3,7 @@ import {
   Send, Mic, MicOff, Volume2, VolumeX, ArrowLeft, 
   ExternalLink, Check, Copy, X, Sparkles, ChevronRight, UtensilsCrossed, Flame,
   Settings2, Sliders, Store, Calendar, Car, ShoppingBasket,
-  Navigation, Globe, RefreshCw
+  Navigation, Globe, RefreshCw, AudioLines
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Module } from '../types';
@@ -59,6 +59,80 @@ interface ActiveResponse {
   engineUsed?: string;
   timestamp: number;
 }
+
+// Feedback aptico e chime sonoro armonico in stile Google Gemini
+const playGeminiChime = (type: 'start' | 'stop') => {
+  if (typeof window === 'undefined') return;
+  try {
+    const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioCtx) return;
+    const ctx = new AudioCtx();
+    const now = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    if (type === 'start') {
+      // Tono ascendente armonico in stile Gemini / Google Assistant (520Hz -> 880Hz)
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(520, now);
+      osc.frequency.exponentialRampToValueAtTime(880, now + 0.12);
+      gain.gain.setValueAtTime(0.001, now);
+      gain.gain.linearRampToValueAtTime(0.12, now + 0.03);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.23);
+      if (typeof navigator !== 'undefined' && navigator.vibrate) {
+        navigator.vibrate(25);
+      }
+    } else {
+      // Tono discendente morbido di chiusura / risoluzione (784Hz -> 440Hz)
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(784, now);
+      osc.frequency.exponentialRampToValueAtTime(440, now + 0.14);
+      gain.gain.setValueAtTime(0.001, now);
+      gain.gain.linearRampToValueAtTime(0.10, now + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.19);
+      if (typeof navigator !== 'undefined' && navigator.vibrate) {
+        navigator.vibrate(15);
+      }
+    }
+  } catch {}
+};
+
+// Componente Equalizzatore d'Onda Gemini a 4 barre dinamiche reattive al volume
+const GeminiWaveVisualizer: React.FC<{ volume: number; isActive: boolean; size?: 'sm' | 'md' }> = ({ volume, isActive, size = 'sm' }) => {
+  const bars = [
+    { baseH: 8, maxH: size === 'md' ? 32 : 22, factor: 0.8, color: 'from-amber-400 to-orange-500' },
+    { baseH: 14, maxH: size === 'md' ? 40 : 28, factor: 1.25, color: 'from-orange-500 to-rose-500' },
+    { baseH: 18, maxH: size === 'md' ? 44 : 32, factor: 1.45, color: 'from-amber-500 to-yellow-400' },
+    { baseH: 10, maxH: size === 'md' ? 34 : 24, factor: 0.95, color: 'from-amber-500 to-indigo-500' },
+  ];
+
+  return (
+    <div className="flex items-center justify-center gap-1 h-7 sm:h-8 px-1">
+      {bars.map((bar, i) => {
+        const height = isActive
+          ? Math.max(bar.baseH, Math.min(bar.maxH, bar.baseH + volume * (bar.maxH - bar.baseH) * bar.factor))
+          : 5;
+        return (
+          <motion.span
+            key={i}
+            animate={{ height }}
+            transition={{ type: 'spring', stiffness: 500, damping: 28 }}
+            className={`w-1 sm:w-1.5 rounded-full bg-gradient-to-t ${bar.color} shadow-xs`}
+            style={{ minHeight: '5px' }}
+          />
+        );
+      })}
+    </div>
+  );
+};
 
 export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
   modules,
@@ -480,6 +554,7 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
 
   const startVoiceRecognition = async (isVoiceSession = false) => {
     voiceRecognitionService.stop();
+    playGeminiChime('start');
 
     if (isVoiceSession) {
       setVoiceStatus('listening');
@@ -507,6 +582,7 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
         }
       },
       onResult: (finalText) => {
+        playGeminiChime('stop');
         setIsListening(false);
         setLiveVoiceTranscript(finalText);
         const trimmed = (finalText || '').trim();
@@ -540,6 +616,7 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
   };
 
   const cancelVoiceRecognition = () => {
+    playGeminiChime('stop');
     voiceRecognitionService.cancel();
     setIsListening(false);
     setLiveVoiceTranscript('');
@@ -553,6 +630,7 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
   };
 
   const confirmVoiceRecognition = () => {
+    playGeminiChime('stop');
     const textToSend = (liveVoiceTranscript || inputText).trim();
     voiceRecognitionService.stop();
     setIsListening(false);
@@ -564,6 +642,7 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
 
   const toggleVoiceMode = () => {
     if (!isVoiceModeOpen) {
+      playGeminiChime('start');
       setIsVoiceModeOpen(true);
       setShowVoiceSettings(false);
       setLastUserSpeech('');
@@ -576,6 +655,7 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
         }, 250);
       });
     } else {
+      playGeminiChime('stop');
       voiceRecognitionService.stop();
       stopSpeaking();
       setIsVoiceModeOpen(false);
@@ -791,39 +871,22 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
                 </AnimatePresence>
               </div>
 
-              {/* 2. BOX DI INPUT IN PRIMO PIANO - HERO GRANDE */}
+              {/* 2. BOX DI INPUT IN PRIMO PIANO - HERO GRANDE STILE GEMINI */}
               <div className="w-full space-y-2">
-                {/* Feedback visivo se in ascolto vocale */}
-                {isListening && !isVoiceModeOpen && (
-                  <div className="flex items-center justify-between px-4 py-2.5 rounded-2xl bg-amber-500/10 border border-amber-500/25 text-amber-600 dark:text-amber-400 text-xs font-semibold shadow-xs animate-pulse">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-ping shrink-0" />
-                      <span className="truncate">In ascolto... Parla pure, invio automatico a fine frase</span>
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <button
-                        type="button"
-                        onClick={confirmVoiceRecognition}
-                        className="px-2.5 py-1 rounded-xl bg-amber-500 text-white text-[11px] font-bold hover:bg-amber-600 transition-colors cursor-pointer shadow-xs active:scale-95"
-                      >
-                        Invia
-                      </button>
-                      <button
-                        type="button"
-                        onClick={cancelVoiceRecognition}
-                        className="text-[11px] font-bold text-rose-500 hover:text-rose-600 px-1 py-1 cursor-pointer"
-                      >
-                        Annulla
-                      </button>
-                    </div>
-                  </div>
-                )}
-
                 <div className="relative group w-full max-w-2xl sm:max-w-3xl mx-auto">
-                  <div className="absolute -inset-1 bg-gradient-to-r from-amber-500/25 via-orange-500/25 to-yellow-500/25 rounded-[34px] sm:rounded-[38px] blur-xl opacity-60 group-focus-within:opacity-100 transition-opacity duration-300 pointer-events-none" />
+                  {/* Aura luminosa circostante in stile Google Gemini */}
+                  <div className={`absolute -inset-1 rounded-[34px] sm:rounded-[38px] blur-xl transition-all duration-500 pointer-events-none ${
+                    isListening
+                      ? 'bg-gradient-to-r from-amber-500/50 via-purple-500/40 to-sky-500/50 opacity-100 animate-pulse'
+                      : 'bg-gradient-to-r from-amber-500/25 via-orange-500/25 to-yellow-500/25 opacity-60 group-focus-within:opacity-100'
+                  }`} />
                   
-                  <div className="relative flex items-center gap-3 bg-[var(--card-bg)] border-2 border-[var(--border)] focus-within:border-amber-500 rounded-[30px] sm:rounded-[36px] p-3 sm:p-4 shadow-2xl transition-all">
-                    {/* Tasto Microfono Dettatura Vocale Grande */}
+                  <div className={`relative flex items-center gap-2 sm:gap-3 bg-[var(--card-bg)] border-2 rounded-[30px] sm:rounded-[36px] p-2.5 sm:p-3.5 shadow-2xl transition-all ${
+                    isListening
+                      ? 'border-amber-500 shadow-amber-500/25 ring-2 ring-amber-500/30'
+                      : 'border-[var(--border)] focus-within:border-amber-500'
+                  }`}>
+                    {/* Tasto Microfono Dettatura Vocale con Equalizzatore d'Onda Gemini */}
                     <button
                       type="button"
                       onClick={() => {
@@ -833,17 +896,21 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
                           startVoiceRecognition(false);
                         }
                       }}
-                      className={`p-3.5 sm:p-4 rounded-2xl sm:rounded-3xl border transition-all shrink-0 active:scale-95 shadow-xs cursor-pointer ${
+                      className={`p-3 sm:p-3.5 rounded-2xl sm:rounded-3xl border transition-all shrink-0 active:scale-95 shadow-xs cursor-pointer ${
                         isListening
-                          ? 'bg-amber-500 text-white border-amber-500 shadow-amber-500/30 animate-pulse'
+                          ? 'bg-gradient-to-tr from-amber-500 to-amber-600 text-white border-amber-400 shadow-amber-500/40 ring-2 ring-amber-400/40'
                           : 'bg-[var(--surface-variant)] hover:bg-[var(--border)] border-[var(--border)] text-amber-500'
                       }`}
-                      title={isListening ? "Tocca per completare e inviare" : "Dettatura vocale (invio automatico)"}
+                      title={isListening ? "Tocca per completare e inviare" : "Dettatura vocale intelligente (stile Gemini)"}
                     >
-                      {isListening ? <MicOff className="w-5 h-5 sm:w-6 sm:h-6" /> : <Mic className="w-5 h-5 sm:w-6 sm:h-6" />}
+                      {isListening ? (
+                        <GeminiWaveVisualizer volume={liveAudioVolume} isActive={true} size="sm" />
+                      ) : (
+                        <Mic className="w-5 h-5 sm:w-6 sm:h-6" />
+                      )}
                     </button>
 
-                    {/* Textarea Input Grande Pulito Senza Placeholder Lungo */}
+                    {/* Textarea Input con placeholder 'Chiedi a Chelona' */}
                     <div className="flex-1 min-w-0">
                       <textarea
                         ref={textareaRef}
@@ -851,27 +918,59 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
                         value={inputText}
                         onChange={(e) => setInputText(e.target.value)}
                         onKeyDown={handleKeyDown}
-                        placeholder={isListening ? "In ascolto... Parla ora..." : ""}
-                        className="w-full bg-transparent border-0 focus:outline-none focus:ring-0 text-base sm:text-lg lg:text-xl text-[var(--text-main)] resize-none py-2.5 sm:py-3.5 px-2 max-h-36 font-semibold leading-relaxed"
+                        placeholder={isListening ? "In ascolto... Parla pure..." : "Chiedi a Chelona"}
+                        className="w-full bg-transparent border-0 focus:outline-none focus:ring-0 text-base sm:text-lg lg:text-xl text-[var(--text-main)] placeholder-gray-400 dark:placeholder-gray-500 placeholder:font-medium resize-none py-2.5 sm:py-3.5 px-2 max-h-36 font-semibold leading-relaxed"
                       />
                     </div>
 
-                    {/* Tasto Invia Grande */}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (isListening) {
-                          confirmVoiceRecognition();
-                        } else {
-                          handleSend();
-                        }
-                      }}
-                      disabled={!inputText.trim() || isProcessing}
-                      className="p-3.5 sm:p-4 rounded-2xl sm:rounded-3xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 disabled:opacity-30 text-white transition-all shrink-0 active:scale-95 shadow-md shadow-amber-500/20 cursor-pointer"
-                      title="Invia richiesta"
-                    >
-                      <Send className="w-5 h-5 sm:w-6 sm:h-6" />
-                    </button>
+                    {/* Controlli di Invio / Annullamento / Modalità Live */}
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      {isListening ? (
+                        <>
+                          <button
+                            type="button"
+                            onClick={cancelVoiceRecognition}
+                            className="p-2.5 sm:p-3 rounded-xl sm:rounded-2xl text-[var(--text-muted)] hover:text-rose-500 hover:bg-rose-500/10 transition-colors cursor-pointer active:scale-95"
+                            title="Annulla registrazione"
+                          >
+                            <X className="w-5 h-5" />
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={confirmVoiceRecognition}
+                            className="p-3 sm:p-3.5 rounded-2xl sm:rounded-3xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white transition-all active:scale-95 shadow-md shadow-amber-500/30 cursor-pointer animate-pulse"
+                            title="Invia subito"
+                          >
+                            <Send className="w-5 h-5 sm:w-5.5 sm:h-5.5" />
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          {/* Tasto 'Live' in stile Gemini Live (Conversazione continua a mani libere) */}
+                          <button
+                            type="button"
+                            onClick={toggleVoiceMode}
+                            className="flex items-center gap-1.5 px-2.5 sm:px-3 py-2 sm:py-2.5 rounded-xl sm:rounded-2xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/25 text-amber-500 transition-all active:scale-95 cursor-pointer shadow-xs"
+                            title="Conversazione Continua a Mani Libere (Gemini Live)"
+                          >
+                            <AudioLines className="w-4 h-4 sm:w-4.5 sm:h-4.5 animate-pulse" />
+                            <span className="text-xs sm:text-sm font-bold tracking-tight">Live</span>
+                          </button>
+
+                          {/* Tasto Invia Standard */}
+                          <button
+                            type="button"
+                            onClick={() => handleSend()}
+                            disabled={!inputText.trim() || isProcessing}
+                            className="p-3 sm:p-3.5 rounded-2xl sm:rounded-3xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 disabled:opacity-30 text-white transition-all shrink-0 active:scale-95 shadow-md shadow-amber-500/20 cursor-pointer"
+                            title="Invia richiesta"
+                          >
+                            <Send className="w-5 h-5 sm:w-5.5 sm:h-5.5" />
+                          </button>
+                        </>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1510,6 +1609,12 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
                     {voiceStatus === 'speaking' && '🔊 Chelona sta rispondendo...'}
                     {voiceStatus === 'idle' && 'Tocca il logo per parlare'}
                   </span>
+
+                  {voiceStatus === 'listening' && (
+                    <div className="flex justify-center py-1">
+                      <GeminiWaveVisualizer volume={liveAudioVolume} isActive={true} size="md" />
+                    </div>
+                  )}
 
                   <p className="text-sm text-[var(--text-main)] font-medium max-w-sm mx-auto line-clamp-3 leading-relaxed">
                     {liveVoiceTranscript 
