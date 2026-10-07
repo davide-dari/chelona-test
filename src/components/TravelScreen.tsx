@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { 
   ArrowLeft, Plus, X, MapPin, Globe, Compass, Navigation, Trash2, Check, 
   Loader2, Pencil, Search, CloudSun, Briefcase, DollarSign, PhoneCall, 
-  AlertTriangle, Shield, CheckCircle2, ChevronRight, Calculator, RefreshCw, 
+  AlertTriangle, Shield, CheckCircle2, ChevronRight, ChevronDown, Calculator, RefreshCw, 
   Luggage, Umbrella, Thermometer, Wind, Droplets, ExternalLink, PlusCircle,
   HeartPulse, Syringe, Sparkles, Sun, CloudRain, Snowflake, CloudLightning,
   ArrowDownUp, CheckCheck, Shirt, FileText, Smartphone, Coffee, AlertCircle, Info,
@@ -2206,18 +2206,20 @@ export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onCl
               />
             </div>
 
-            {/* Floating Globe Status & Controls */}
-            <div className="absolute top-3 left-3 z-20 flex items-center gap-1.5 bg-black/60 backdrop-blur-md border border-white/10 px-3 py-1.5 rounded-full text-xs font-bold text-white shadow-md pointer-events-none">
-              <Globe className="w-3.5 h-3.5 text-blue-400 shrink-0" />
-              <span className="truncate max-w-[140px] sm:max-w-[200px]">
-                {selectedNation ? `${getCountryEmoji(selectedNation)} ${selectedNation}` : 'Mappamondo 3D'}
-              </span>
-              {focusedDestId && (
-                <span className="text-blue-300 text-[10px] hidden sm:inline">
-                  · {destinations.find(d => d.id === focusedDestId)?.name}
+            {/* Floating Globe Status & Controls (Active Nation / Destination only, no generic "Mappamondo 3D" text) */}
+            {(selectedNation || focusedDestId) && (
+              <div className="absolute top-3 left-3 z-20 flex items-center gap-1.5 bg-black/70 backdrop-blur-md border border-white/15 px-3 py-1.5 rounded-full text-xs font-bold text-white shadow-lg pointer-events-none">
+                <Globe className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+                <span className="truncate max-w-[140px] sm:max-w-[220px]">
+                  {selectedNation ? `${getCountryEmoji(selectedNation)} ${selectedNation}` : ''}
+                  {focusedDestId && (
+                    <span className="text-blue-300 text-[11px] font-semibold">
+                      {selectedNation ? ' · ' : ''}{destinations.find(d => d.id === focusedDestId)?.name}
+                    </span>
+                  )}
                 </span>
-              )}
-            </div>
+              </div>
+            )}
 
             {/* Reset / Center Globe button */}
             {(selectedNation || focusedDestId) && (
@@ -2330,40 +2332,53 @@ export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onCl
               </div>
             )}
 
-            {/* ── SEGMENTED SUB-TABS (Mete, Meteo, Valigia, Budget, Vaccini, SOS) ── */}
-            <div className="flex bg-[var(--surface-variant)] p-1.5 rounded-2xl border border-[var(--border)] overflow-x-auto no-scrollbar gap-1 shadow-xs">
+            {/* ── ELEVATED TOOLS NAVIGATION (Mete, Meteo, Valigia, Budget, Vaccini, Emergenze) ── */}
+            <div className="bg-[var(--card-bg)]/80 backdrop-blur-xl border border-[var(--border)] p-1.5 sm:p-2 rounded-2xl sm:rounded-3xl shadow-xs flex items-center gap-1.5 overflow-x-auto no-scrollbar scroll-smooth">
               <button
                 type="button"
                 onClick={() => setTravelActiveTab('destinations')}
-                className={`py-2 px-3 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer shrink-0 ${
-                  travelActiveTab === 'destinations' ? 'bg-[var(--card-bg)] text-blue-500 shadow-sm' : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
+                className={`py-2.5 px-3.5 sm:px-4 text-xs sm:text-sm rounded-xl sm:rounded-2xl transition-all duration-150 flex items-center justify-center gap-2 cursor-pointer shrink-0 active:scale-95 ${
+                  travelActiveTab === 'destinations'
+                    ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/25 font-extrabold'
+                    : 'text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--surface-variant)]/60 font-semibold'
                 }`}
               >
-                <MapPin className="w-3.5 h-3.5" />
-                <span>Mete ({displayDestinations.length})</span>
+                <MapPin className={`w-4 h-4 shrink-0 ${travelActiveTab === 'destinations' ? 'text-white' : 'text-blue-500'}`} />
+                <span>Mete</span>
+                <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-black ${
+                  travelActiveTab === 'destinations' ? 'bg-white/25 text-white' : 'bg-[var(--surface-variant)] text-[var(--text-muted)]'
+                }`}>
+                  {displayDestinations.length}
+                </span>
               </button>
 
               <button
                 type="button"
                 onClick={() => setTravelActiveTab('weather')}
-                className={`py-2 px-3 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer shrink-0 ${
-                  travelActiveTab === 'weather' ? 'bg-[var(--card-bg)] text-amber-500 shadow-sm' : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
+                className={`py-2.5 px-3.5 sm:px-4 text-xs sm:text-sm rounded-xl sm:rounded-2xl transition-all duration-150 flex items-center justify-center gap-2 cursor-pointer shrink-0 active:scale-95 ${
+                  travelActiveTab === 'weather'
+                    ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-md shadow-amber-500/25 font-extrabold'
+                    : 'text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--surface-variant)]/60 font-semibold'
                 }`}
               >
-                <CloudSun className="w-3.5 h-3.5" />
-                <span>Meteo & Clima</span>
+                <CloudSun className={`w-4 h-4 shrink-0 ${travelActiveTab === 'weather' ? 'text-white' : 'text-amber-500'}`} />
+                <span>Meteo</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => setTravelActiveTab('packing')}
-                className={`py-2 px-3 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer shrink-0 ${
-                  travelActiveTab === 'packing' ? 'bg-[var(--card-bg)] text-emerald-500 shadow-sm' : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
+                className={`py-2.5 px-3.5 sm:px-4 text-xs sm:text-sm rounded-xl sm:rounded-2xl transition-all duration-150 flex items-center justify-center gap-2 cursor-pointer shrink-0 active:scale-95 ${
+                  travelActiveTab === 'packing'
+                    ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-500/25 font-extrabold'
+                    : 'text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--surface-variant)]/60 font-semibold'
                 }`}
               >
-                <Luggage className="w-3.5 h-3.5" />
+                <Luggage className={`w-4 h-4 shrink-0 ${travelActiveTab === 'packing' ? 'text-white' : 'text-emerald-500'}`} />
                 <span>Valigia</span>
-                <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-emerald-500/10 text-emerald-600 font-black">
+                <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-black ${
+                  travelActiveTab === 'packing' ? 'bg-white/25 text-white' : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+                }`}>
                   {packingProgressPercent}%
                 </span>
               </button>
@@ -2371,33 +2386,39 @@ export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onCl
               <button
                 type="button"
                 onClick={() => setTravelActiveTab('budget')}
-                className={`py-2 px-3 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer shrink-0 ${
-                  travelActiveTab === 'budget' ? 'bg-[var(--card-bg)] text-purple-500 shadow-sm' : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
+                className={`py-2.5 px-3.5 sm:px-4 text-xs sm:text-sm rounded-xl sm:rounded-2xl transition-all duration-150 flex items-center justify-center gap-2 cursor-pointer shrink-0 active:scale-95 ${
+                  travelActiveTab === 'budget'
+                    ? 'bg-gradient-to-r from-purple-600 to-violet-600 text-white shadow-md shadow-purple-500/25 font-extrabold'
+                    : 'text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--surface-variant)]/60 font-semibold'
                 }`}
               >
-                <DollarSign className="w-3.5 h-3.5" />
-                <span>Budget & Valute</span>
+                <DollarSign className={`w-4 h-4 shrink-0 ${travelActiveTab === 'budget' ? 'text-white' : 'text-purple-500'}`} />
+                <span>Budget</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => setTravelActiveTab('vaccines')}
-                className={`py-2 px-3 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer shrink-0 ${
-                  travelActiveTab === 'vaccines' ? 'bg-[var(--card-bg)] text-rose-500 shadow-sm' : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
+                className={`py-2.5 px-3.5 sm:px-4 text-xs sm:text-sm rounded-xl sm:rounded-2xl transition-all duration-150 flex items-center justify-center gap-2 cursor-pointer shrink-0 active:scale-95 ${
+                  travelActiveTab === 'vaccines'
+                    ? 'bg-gradient-to-r from-teal-600 to-cyan-700 text-white shadow-md shadow-teal-500/25 font-extrabold'
+                    : 'text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--surface-variant)]/60 font-semibold'
                 }`}
               >
-                <HeartPulse className="w-3.5 h-3.5" />
-                <span>Vaccini & Sanità</span>
+                <HeartPulse className={`w-4 h-4 shrink-0 ${travelActiveTab === 'vaccines' ? 'text-white' : 'text-teal-500'}`} />
+                <span>Vaccini</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => setTravelActiveTab('emergency')}
-                className={`py-2 px-3 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer shrink-0 ${
-                  travelActiveTab === 'emergency' ? 'bg-[var(--card-bg)] text-rose-500 shadow-sm' : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
+                className={`py-2.5 px-3.5 sm:px-4 text-xs sm:text-sm rounded-xl sm:rounded-2xl transition-all duration-150 flex items-center justify-center gap-2 cursor-pointer shrink-0 active:scale-95 ${
+                  travelActiveTab === 'emergency'
+                    ? 'bg-gradient-to-r from-rose-600 to-red-600 text-white shadow-md shadow-rose-500/25 font-extrabold'
+                    : 'text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--surface-variant)]/60 font-semibold'
                 }`}
               >
-                <PhoneCall className="w-3.5 h-3.5" />
+                <PhoneCall className={`w-4 h-4 shrink-0 ${travelActiveTab === 'emergency' ? 'text-white' : 'text-rose-500'}`} />
                 <span>Emergenze</span>
               </button>
             </div>
@@ -2405,21 +2426,50 @@ export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onCl
 
           {/* TAB 1: METE & NAZIONI */}
           {travelActiveTab === 'destinations' && (
-            <div className="space-y-4">
-              {/* Country Folders Horizontal Bar */}
-              <div className="px-1 pt-1">
-                <div className="flex gap-2 overflow-x-auto pb-2 custom-scrollbar snap-x">
+            <div className="space-y-5 animate-fade-in">
+              {/* Country Filter Bar */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between px-1">
+                  <span className="text-[11px] font-extrabold uppercase tracking-wider text-[var(--text-muted)] flex items-center gap-1.5">
+                    <Globe className="w-3.5 h-3.5 text-blue-500" />
+                    Filtra per Nazione
+                  </span>
+                  {selectedNation && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedNation(null);
+                        setFocusedDestId(null);
+                      }}
+                      className="text-[11px] font-bold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
+                    >
+                      Mostra tutte
+                    </button>
+                  )}
+                </div>
+
+                <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar snap-x scroll-smooth -mx-1 px-1">
                   <button
                     type="button"
                     onClick={() => {
                       setSelectedNation(null);
                       setFocusedDestId(null);
                     }}
-                    className={`px-4 py-2.5 rounded-2xl font-bold text-xs shrink-0 transition-all snap-start flex items-center gap-2 border cursor-pointer ${selectedNation === null ? 'bg-blue-600 border-blue-600 text-white shadow-md' : 'bg-[var(--card-bg)] border-[var(--border)] text-[var(--text-muted)] hover:bg-[var(--surface-variant)]'}`}
+                    className={`px-3.5 py-2 rounded-2xl font-bold text-xs shrink-0 transition-all snap-start flex items-center gap-2 cursor-pointer active:scale-95 border ${
+                      selectedNation === null
+                        ? 'bg-gradient-to-r from-blue-600 to-indigo-600 border-transparent text-white shadow-md shadow-blue-500/20'
+                        : 'bg-[var(--card-bg)] border-[var(--border)] text-[var(--text-main)] hover:border-blue-400 hover:bg-[var(--surface-variant)] shadow-2xs'
+                    }`}
                   >
-                    <span>🌐</span> Tutte le mete ({destinations.length})
+                    <span className="text-sm">🌐</span>
+                    <span>Tutte le mete</span>
+                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-black ${
+                      selectedNation === null ? 'bg-white/20 text-white' : 'bg-[var(--surface-variant)] text-[var(--text-muted)]'
+                    }`}>
+                      {destinations.length}
+                    </span>
                   </button>
-                  
+
                   {activeNations.map(natName => {
                     const count = destinations.filter(d => getDestNation(d, countryGroups) === natName).length;
                     const isSelected = selectedNation === natName;
@@ -2428,12 +2478,22 @@ export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onCl
                         key={natName}
                         type="button"
                         onClick={() => {
-                          setSelectedNation(natName);
+                          setSelectedNation(isSelected ? null : natName);
                           setFocusedDestId(null);
                         }}
-                        className={`px-4 py-2.5 rounded-2xl font-bold text-xs shrink-0 transition-all snap-start flex items-center gap-2 border cursor-pointer ${isSelected ? 'bg-blue-600 border-blue-600 text-white shadow-md' : 'bg-[var(--card-bg)] border-[var(--border)] text-[var(--text-muted)] hover:bg-[var(--surface-variant)]'}`}
+                        className={`px-3.5 py-2 rounded-2xl font-bold text-xs shrink-0 transition-all snap-start flex items-center gap-2 cursor-pointer active:scale-95 border ${
+                          isSelected
+                            ? 'bg-gradient-to-r from-blue-600 to-indigo-600 border-transparent text-white shadow-md shadow-blue-500/20'
+                            : 'bg-[var(--card-bg)] border-[var(--border)] text-[var(--text-main)] hover:border-blue-400 hover:bg-[var(--surface-variant)] shadow-2xs'
+                        }`}
                       >
-                        <span>{getCountryEmoji(natName)}</span> {natName} ({count})
+                        <span className="text-sm">{getCountryEmoji(natName)}</span>
+                        <span>{natName}</span>
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-black ${
+                          isSelected ? 'bg-white/20 text-white' : 'bg-[var(--surface-variant)] text-[var(--text-muted)]'
+                        }`}>
+                          {count}
+                        </span>
                       </button>
                     );
                   })}
@@ -2485,23 +2545,44 @@ export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onCl
                 </div>
               )}
 
-              <div>
-                <h3 className="text-xs font-black uppercase tracking-widest text-[var(--text-muted)] mb-3 px-1">
-                  {selectedNation 
-                    ? `${getCountryEmoji(selectedNation)} ${selectedNation}`
-                    : 'Tutte le Destinazioni'
-                  }
-                </h3>
+              {/* Destination List Section */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between px-1 pt-1">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2.5 h-2.5 rounded-full bg-blue-500" />
+                    <h3 className="text-xs font-black uppercase tracking-wider text-[var(--text-main)]">
+                      {selectedNation 
+                        ? `${getCountryEmoji(selectedNation)} ${selectedNation}`
+                        : 'Tutte le Destinazioni'
+                      }
+                    </h3>
+                    <span className="text-[11px] font-bold text-[var(--text-muted)] bg-[var(--surface-variant)] px-2 py-0.5 rounded-full border border-[var(--border)]/50">
+                      {displayDestinations.length}
+                    </span>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDestModalType('place');
+                      setShowAddModal(true);
+                    }}
+                    className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-600 dark:text-blue-400 hover:text-blue-700 bg-blue-500/10 hover:bg-blue-500/15 px-3 py-1.5 rounded-xl transition-all cursor-pointer active:scale-95"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Aggiungi Meta</span>
+                  </button>
+                </div>
 
                 {displayDestinations.length === 0 ? (
-                  <div className="flex flex-col items-center py-16 text-center max-w-sm mx-auto space-y-3">
+                  <div className="flex flex-col items-center py-16 text-center max-w-sm mx-auto space-y-3 bg-[var(--card-bg)]/50 border border-[var(--border)]/60 rounded-3xl p-6">
                     <div className="w-16 h-16 bg-blue-500/10 rounded-full flex items-center justify-center text-blue-500">
                       <Navigation className="w-8 h-8 opacity-70" />
                     </div>
                     <h3 className="text-base font-bold text-[var(--text-main)]">
                       {searchQuery ? 'Nessuna meta trovata' : 'Nessuna meta salvata'}
                     </h3>
-                    <p className="text-xs text-[var(--text-muted)]">
+                    <p className="text-xs text-[var(--text-muted)] leading-relaxed">
                       {searchQuery 
                         ? `Nessuna destinazione corrisponde a "${searchQuery}". Prova con un'altra parola o aggiungi un nuovo luogo.` 
                         : 'Inizia ad aggiungere i luoghi che vorresti visitare, hotel o tappe del tuo viaggio.'}
@@ -2519,56 +2600,125 @@ export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onCl
                     </button>
                   </div>
                 ) : (
-                  <div className="space-y-4">
-                      {Object.entries(destinationsByCity).map(([cityName, cityDests]) => (
-                        <div key={cityName} className="space-y-2">
-                          <h4 className="text-[10px] font-black uppercase tracking-widest text-blue-500 bg-blue-500/10 px-2.5 py-1.5 rounded-xl inline-flex items-center gap-1.5 ml-1 select-none">
-                            🏙️ {cityName}
+                  <div className="space-y-6">
+                    {Object.entries(destinationsByCity).map(([cityName, cityDests]) => (
+                      <div key={cityName} className="space-y-3">
+                        <div className="flex items-center gap-2 px-1">
+                          <span className="text-xs">🏙️</span>
+                          <h4 className="text-xs font-black uppercase tracking-wider text-[var(--text-main)]">
+                            {cityName}
                           </h4>
-                          
-                          <div className="space-y-2 pl-2 border-l-2 border-blue-500/20 ml-2">
-                            <AnimatePresence>
-                              {cityDests.map(dest => (
+                          <span className="text-[10px] font-bold text-[var(--text-muted)] bg-[var(--surface-variant)] px-2 py-0.5 rounded-full border border-[var(--border)]/50">
+                            {cityDests.length} {cityDests.length === 1 ? 'meta' : 'mete'}
+                          </span>
+                        </div>
+
+                        <div className="grid grid-cols-1 gap-3">
+                          <AnimatePresence>
+                            {cityDests.map(dest => {
+                              const isFocused = focusedDestId === dest.id;
+                              const isExpanded = expandedDestId === dest.id;
+                              const nationVal = getDestNation(dest, countryGroups);
+                              const cityVal = dest.city;
+
+                              return (
                                 <motion.div
                                   key={dest.id}
                                   initial={{ opacity: 0, y: 10 }}
                                   animate={{ opacity: 1, y: 0 }}
                                   exit={{ opacity: 0, x: -20 }}
-                                  className="bg-[var(--card-bg)] border border-[var(--border)] rounded-2xl overflow-hidden group cursor-pointer transition-all hover:border-blue-500/40 shadow-xs hover:shadow-md"
+                                  className={`rounded-2xl sm:rounded-3xl border transition-all duration-200 overflow-hidden group cursor-pointer ${
+                                    isFocused
+                                      ? 'border-blue-500/80 bg-[var(--card-bg)] shadow-md shadow-blue-500/10 ring-2 ring-blue-500/25'
+                                      : 'border-[var(--border)] hover:border-blue-400/50 bg-[var(--card-bg)] shadow-xs hover:shadow-md'
+                                  }`}
                                   onClick={(e) => {
-                                     if ((e.target as HTMLElement).closest('button')) return;
-                                     setExpandedDestId(prev => prev === dest.id ? null : dest.id);
-                                     setFocusedDestId(dest.id);
+                                    if ((e.target as HTMLElement).closest('button')) return;
+                                    setExpandedDestId(prev => prev === dest.id ? null : dest.id);
+                                    setFocusedDestId(dest.id);
                                   }}
                                 >
-                                  <div className="p-3.5 flex items-start gap-3 hover:bg-[var(--surface-variant)] transition-colors">
-                                    <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border bg-blue-500/10 border-blue-500/20 text-blue-500 shadow-inner">
-                                      📍
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                      <p className="text-sm font-bold text-[var(--text-main)] truncate">{dest.name}</p>
-                                      <div className="flex items-center gap-1.5 mt-0.5">
-                                        <p className="text-[10px] font-bold text-[var(--text-muted)]">
-                                          {dest.lat.toFixed(2)}, {dest.lng.toFixed(2)}
-                                        </p>
-                                        {(() => {
-                                          const nationVal = getDestNation(dest, countryGroups);
-                                          const cityVal = dest.city;
-                                          if (!nationVal && !cityVal) return null;
-                                          return (
-                                            <>
-                                              <span className="text-[8px] opacity-40">•</span>
-                                              <span className="text-[9px] font-black text-blue-500 bg-blue-500/10 px-1.5 py-0.5 rounded-md">
-                                                {getCountryEmoji(nationVal)} {nationVal}{cityVal ? ` · ${cityVal}` : ''}
-                                              </span>
-                                            </>
-                                          );
-                                        })()}
-                                      </div>
-                                      {dest.notes && (
-                                        <p className="text-xs text-[var(--text-muted)] mt-1 line-clamp-2">{dest.notes}</p>
+                                  <div className="p-3.5 sm:p-4 hover:bg-[var(--surface-variant)]/40 transition-colors">
+                                    <div className="flex items-start gap-3">
+                                      {/* Icon Badge */}
+                                      {dest.emoji ? (
+                                        <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl flex items-center justify-center shrink-0 bg-blue-500/10 text-xl border border-blue-500/20 shadow-2xs">
+                                          {dest.emoji}
+                                        </div>
+                                      ) : dest.type === 'itinerary' ? (
+                                        <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl flex items-center justify-center shrink-0 bg-gradient-to-br from-indigo-500/15 to-blue-500/15 text-indigo-600 dark:text-indigo-400 border border-indigo-500/25 shadow-2xs">
+                                          <Compass className="w-5 h-5" />
+                                        </div>
+                                      ) : (
+                                        <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl flex items-center justify-center shrink-0 bg-gradient-to-br from-blue-500/15 to-sky-500/15 text-blue-600 dark:text-blue-400 border border-blue-500/25 shadow-2xs">
+                                          <MapPin className="w-5 h-5" />
+                                        </div>
                                       )}
-                                      <div className="flex items-center gap-1.5 mt-2 flex-wrap">
+
+                                      {/* Content */}
+                                      <div className="flex-1 min-w-0">
+                                        <div className="flex items-start justify-between gap-2">
+                                          <h4 className="text-sm sm:text-base font-extrabold text-[var(--text-main)] group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors truncate tracking-tight">
+                                            {dest.name}
+                                          </h4>
+                                          {isFocused && (
+                                            <span className="inline-flex items-center gap-1 text-[10px] font-black text-blue-600 dark:text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-full border border-blue-500/25 shrink-0 animate-pulse">
+                                              <Globe className="w-3 h-3" />
+                                              <span className="hidden sm:inline">Sul Globo</span>
+                                            </span>
+                                          )}
+                                        </div>
+
+                                        {/* Metadata Row */}
+                                        <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                                          {nationVal && (
+                                            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-blue-600 dark:text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-lg border border-blue-500/15">
+                                              {getCountryEmoji(nationVal)} {nationVal}
+                                            </span>
+                                          )}
+                                          {cityVal && (
+                                            <span className="inline-flex items-center text-[11px] font-semibold text-[var(--text-muted)] bg-[var(--surface-variant)] px-2 py-0.5 rounded-lg border border-[var(--border)]">
+                                              {cityVal}
+                                            </span>
+                                          )}
+                                          <span className="text-[10px] font-medium text-[var(--text-muted)] flex items-center gap-1">
+                                            <Navigation className="w-2.5 h-2.5 text-blue-400" />
+                                            {dest.lat.toFixed(2)}°, {dest.lng.toFixed(2)}°
+                                          </span>
+                                        </div>
+
+                                        {/* Notes snippet if present */}
+                                        {dest.notes && (
+                                          <p className="text-xs text-[var(--text-muted)] mt-2 line-clamp-2 leading-relaxed bg-[var(--surface-variant)]/50 p-2.5 rounded-xl border border-[var(--border)]/40 font-medium">
+                                            {dest.notes}
+                                          </p>
+                                        )}
+                                      </div>
+
+                                      {/* Edit & Delete Action Buttons */}
+                                      <div className="flex items-center gap-0.5 shrink-0">
+                                        <button
+                                          type="button"
+                                          onClick={(e) => { e.stopPropagation(); setEditingDest(dest); }}
+                                          className="p-2 text-[var(--text-muted)] hover:text-blue-500 hover:bg-blue-500/10 rounded-xl transition-all cursor-pointer active:scale-95"
+                                          title="Modifica"
+                                        >
+                                          <Pencil className="w-4 h-4" />
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={(e) => { e.stopPropagation(); setDeletingId(dest.id); }}
+                                          className="p-2 text-[var(--text-muted)] hover:text-red-500 hover:bg-red-500/10 rounded-xl transition-all cursor-pointer active:scale-95"
+                                          title="Elimina"
+                                        >
+                                          <Trash2 className="w-4 h-4" />
+                                        </button>
+                                      </div>
+                                    </div>
+
+                                    {/* Bottom Integrated Toolbar */}
+                                    <div className="flex items-center justify-between gap-2 mt-3 pt-2.5 border-t border-[var(--border)]/60 flex-wrap">
+                                      <div className="flex items-center gap-1.5 flex-wrap">
                                         <button
                                           type="button"
                                           onClick={(e) => {
@@ -2578,105 +2728,136 @@ export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onCl
                                             fetchLiveWeather(targetCity);
                                             setTravelActiveTab('weather');
                                           }}
-                                          className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/20 transition-colors cursor-pointer"
+                                          className="inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/20 transition-all cursor-pointer active:scale-95"
                                         >
-                                          <CloudSun className="w-3 h-3" />
+                                          <CloudSun className="w-3.5 h-3.5" />
                                           <span>Meteo</span>
                                         </button>
-                                        {(() => {
-                                          const nationVal = getDestNation(dest, countryGroups);
-                                          if (!nationVal) return null;
-                                          return (
+
+                                        {nationVal && (
+                                          <button
+                                            type="button"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              setSelectedHealthCountry(nationVal);
+                                              setTravelActiveTab('vaccines');
+                                            }}
+                                            className="inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-xl bg-teal-500/10 hover:bg-teal-500/20 text-teal-600 dark:text-teal-400 border border-teal-500/20 transition-all cursor-pointer active:scale-95"
+                                          >
+                                            <HeartPulse className="w-3.5 h-3.5" />
+                                            <span>Vaccini</span>
+                                          </button>
+                                        )}
+
+                                        <button
+                                          type="button"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            const countryObj = countryGroups.find(g => g.id === dest.countryGroupId);
+                                            const queryParts = [dest.name];
+                                            if (countryObj) queryParts.push(countryObj.countryName);
+                                            const mapsQuery = encodeURIComponent(queryParts.join(', '));
+                                            window.open(`https://maps.google.com/?q=${mapsQuery}`, '_system');
+                                          }}
+                                          className="inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-xl bg-blue-500/10 hover:bg-blue-500/20 text-blue-600 dark:text-blue-400 border border-blue-500/20 transition-all cursor-pointer active:scale-95"
+                                          title="Apri in Google Maps"
+                                        >
+                                          <ExternalLink className="w-3.5 h-3.5" />
+                                          <span>Mappe</span>
+                                        </button>
+                                      </div>
+
+                                      <div className="flex items-center gap-1 text-[11px] font-bold text-[var(--text-muted)] group-hover:text-blue-500 transition-colors ml-auto">
+                                        <span>{isExpanded ? 'Chiudi mappa' : 'Mappa 3D & Dettagli'}</span>
+                                        <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${isExpanded ? 'rotate-180 text-blue-500' : ''}`} />
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  {/* Expanded Interactive Detail Section */}
+                                  <AnimatePresence>
+                                    {isExpanded && (
+                                      <motion.div
+                                        initial={{ height: 0, opacity: 0 }}
+                                        animate={{ height: 'auto', opacity: 1 }}
+                                        exit={{ height: 0, opacity: 0 }}
+                                        transition={{ duration: 0.2 }}
+                                        className="overflow-hidden bg-[var(--surface-variant)]/60 border-t border-[var(--border)]"
+                                      >
+                                        <div className="p-3.5 sm:p-4 space-y-3">
+                                          <div 
+                                            className="w-full h-40 sm:h-48 rounded-2xl overflow-hidden relative cursor-pointer border border-[var(--border)] shadow-inner group/map"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              const countryObj = countryGroups.find(g => g.id === dest.countryGroupId);
+                                              const queryParts = [dest.name];
+                                              if (countryObj) {
+                                                queryParts.push(countryObj.countryName);
+                                              }
+                                              const mapsQuery = encodeURIComponent(queryParts.join(', '));
+                                              window.open(`https://maps.google.com/?q=${mapsQuery}`, '_system');
+                                            }}
+                                          >
+                                            <iframe
+                                              width="100%"
+                                              height="100%"
+                                              style={{ border: 0, pointerEvents: 'none' }}
+                                              loading="lazy"
+                                              src={`https://maps.google.com/maps?q=${dest.lat},${dest.lng}&z=14&output=embed`}
+                                            />
+                                            <div className="absolute inset-0 bg-black/10 hover:bg-black/20 transition-colors flex items-center justify-center">
+                                              <div className="inline-flex items-center gap-2 bg-white/95 dark:bg-zinc-900/95 text-[var(--text-main)] px-3.5 py-1.5 rounded-full shadow-lg text-xs font-bold backdrop-blur-md opacity-90 group-hover/map:opacity-100 transition-opacity">
+                                                <MapPin className="w-4 h-4 text-blue-500" />
+                                                <span>Apri Navigatore Google Maps</span>
+                                                <ExternalLink className="w-3.5 h-3.5 text-[var(--text-muted)]" />
+                                              </div>
+                                            </div>
+                                          </div>
+
+                                          {dest.notes && (
+                                            <div className="p-3 rounded-xl bg-[var(--card-bg)] border border-[var(--border)]">
+                                              <span className="font-extrabold block mb-1 text-[var(--text-main)] text-[10px] uppercase tracking-wider">
+                                                Note di viaggio
+                                              </span>
+                                              <p className="text-xs text-[var(--text-muted)] leading-relaxed whitespace-pre-wrap">
+                                                {dest.notes}
+                                              </p>
+                                            </div>
+                                          )}
+
+                                          <div className="flex items-center justify-between text-[11px] text-[var(--text-muted)] pt-1">
+                                            <span className="flex items-center gap-1.5 font-medium">
+                                              <Globe className="w-3.5 h-3.5 text-blue-500" />
+                                              {dest.lat.toFixed(4)}, {dest.lng.toFixed(4)}
+                                            </span>
                                             <button
                                               type="button"
                                               onClick={(e) => {
                                                 e.stopPropagation();
-                                                setSelectedHealthCountry(nationVal);
-                                                setTravelActiveTab('vaccines');
+                                                setFocusedDestId(dest.id);
+                                                window.scrollTo({ top: 0, behavior: 'smooth' });
                                               }}
-                                              className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 border border-rose-500/20 transition-colors cursor-pointer"
+                                              className="text-blue-500 hover:text-blue-600 font-bold underline cursor-pointer"
                                             >
-                                              <HeartPulse className="w-3 h-3" />
-                                              <span>Vaccini</span>
+                                              Centra sul Mappamondo ↑
                                             </button>
-                                          );
-                                        })()}
-                                      </div>
-                                    </div>
-                                    <div className="flex items-center gap-1 shrink-0">
-                                      <button
-                                        onClick={(e) => { e.stopPropagation(); setEditingDest(dest); }}
-                                        className="p-1.5 text-[var(--text-muted)] hover:text-blue-500 hover:bg-blue-500/10 rounded-lg transition-all cursor-pointer"
-                                        title="Modifica"
-                                      >
-                                        <Pencil className="w-4 h-4" />
-                                      </button>
-                                      <button
-                                        onClick={(e) => { e.stopPropagation(); setDeletingId(dest.id); }}
-                                        className="p-1.5 text-[var(--text-muted)] hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-all cursor-pointer"
-                                        title="Elimina"
-                                      >
-                                        <Trash2 className="w-4 h-4" />
-                                      </button>
-                                    </div>
-                                  </div>
-
-                                  <AnimatePresence>
-                                    {expandedDestId === dest.id && (
-                                       <motion.div
-                                         initial={{ height: 0, opacity: 0 }}
-                                         animate={{ height: 'auto', opacity: 1 }}
-                                         exit={{ height: 0, opacity: 0 }}
-                                         className="overflow-hidden bg-[var(--surface-variant)]"
-                                       >
-                                          <div className="p-3.5 pt-0">
-                                             <div 
-                                                className="w-full h-32 rounded-xl overflow-hidden relative cursor-pointer border border-[var(--border)] shadow-inner group/map"
-                                                onClick={(e) => {
-                                                  e.stopPropagation();
-                                                  const countryObj = countryGroups.find(g => g.id === dest.countryGroupId);
-                                                  const queryParts = [dest.name];
-                                                  if (countryObj) {
-                                                    queryParts.push(countryObj.countryName);
-                                                  }
-                                                  const mapsQuery = encodeURIComponent(queryParts.join(', '));
-                                                  window.open(`https://maps.google.com/?q=${mapsQuery}`, '_system');
-                                                }}
-                                             >
-                                                <iframe
-                                                  width="100%"
-                                                  height="100%"
-                                                  style={{ border: 0, pointerEvents: 'none' }}
-                                                  loading="lazy"
-                                                  src={`https://maps.google.com/maps?q=${dest.lat},${dest.lng}&z=14&output=embed`}
-                                                />
-                                                <div className="absolute inset-0 bg-black/5 hover:bg-transparent transition-colors flex items-center justify-center group-hover/map:bg-black/10">
-                                                   <div className="w-10 h-10 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center opacity-0 group-hover/map:opacity-100 transition-opacity shadow-lg">
-                                                      <MapPin className="w-5 h-5 text-blue-500" />
-                                                   </div>
-                                                </div>
-                                             </div>
-                                             {dest.notes && (
-                                               <div className="mt-3 text-xs text-[var(--text-muted)]">
-                                                 <span className="font-bold block mb-1 text-[var(--text-main)] text-[10px] uppercase tracking-wider">Note</span>
-                                                 <p className="leading-relaxed whitespace-pre-wrap">{dest.notes}</p>
-                                               </div>
-                                             )}
                                           </div>
-                                       </motion.div>
+                                        </div>
+                                      </motion.div>
                                     )}
                                   </AnimatePresence>
                                 </motion.div>
-                              ))}
-                            </AnimatePresence>
-                          </div>
+                              );
+                            })}
+                          </AnimatePresence>
                         </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
-            )}
+            </div>
+          )}
 
             {/* TAB 2: METEO & CLIMA DESTINAZIONI (DUAL-MODE: LIVE OPEN-METEO + QUANDO ANDARE & CLIMA STAGIONALE) */}
             {travelActiveTab === 'weather' && (
