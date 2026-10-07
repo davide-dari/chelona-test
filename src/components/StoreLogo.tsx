@@ -216,14 +216,126 @@ export function StoreLogo({ id, short, size = 40, logo: logoUrl, hex, brandSlug 
         </>
       );
       break;
-    case 'saturn':
+    case 'satur':
       content = (
         <>
-          <rect width="64" height="64" rx="14" fill="#0B2341" />
-          {/* Saturn planet and rings */}
-          <circle cx="32" cy="24" r="11" fill="#FF6B00" />
-          <ellipse cx="32" cy="24" rx="20" ry="5.5" fill="none" stroke="#FF9E42" strokeWidth="2.5" transform="rotate(-18 32 24)" />
-          <text x="32" y="52" textAnchor="middle" fontFamily={F} fontWeight="900" fontSize="11" fill="#FFFFFF" letterSpacing="1">SATURN</text>
+          <rect width="64" height="64" rx="14" fill="#E11D48" />
+          <path d="M32 14 L46 25 L42 25 L42 41 L22 41 L22 25 L18 25 Z" fill="#FFFFFF" opacity="0.9" />
+          <text x="32" y="53" textAnchor="middle" fontFamily={F} fontWeight="900" fontSize="10.5" fill="#FFFFFF" letterSpacing="1">SATUR</text>
+        </>
+      );
+      break;
+    case 'kasanova':
+      content = (
+        <>
+          <rect width="64" height="64" rx="14" fill="#E11D48" />
+          <text x="32" y="37" textAnchor="middle" fontFamily={F} fontWeight="900" fontSize="10.5" fill="#FFFFFF" letterSpacing="0.5">KASANOVA</text>
+          <text x="32" y="49" textAnchor="middle" fontFamily={F} fontWeight="600" fontSize="6.5" fill="#FFE4E6" letterSpacing="0.5">CASA & CUCINA</text>
+        </>
+      );
+      break;
+    case 'happycasa':
+    case 'happy-casa':
+      content = (
+        <>
+          <rect width="64" height="64" rx="14" fill="#EA580C" />
+          <circle cx="32" cy="24" r="11" fill="#FEF08A" />
+          <circle cx="28" cy="22" r="1.5" fill="#EA580C" />
+          <circle cx="36" cy="22" r="1.5" fill="#EA580C" />
+          <path d="M27 27 Q32 32 37 27" fill="none" stroke="#EA580C" strokeWidth="1.5" strokeLinecap="round" />
+          <text x="32" y="52" textAnchor="middle" fontFamily={F} fontWeight="900" fontSize="9" fill="#FFFFFF">HAPPY CASA</text>
+        </>
+      );
+      break;
+    case 'obi':
+      content = (
+        <>
+          <rect width="64" height="64" rx="14" fill="#F97316" />
+          <text x="32" y="44" textAnchor="middle" fontFamily={F} fontWeight="900" fontSize="24" fill="#FFFFFF" letterSpacing="1">OBI</text>
+        </>
+      );
+      break;
+    case 'arcaplanet':
+      content = (
+        <>
+          <rect width="64" height="64" rx="14" fill="#EAB308" />
+          <ellipse cx="26" cy="22" rx="2.5" ry="3.5" fill="#1E293B" />
+          <ellipse cx="38" cy="22" rx="2.5" ry="3.5" fill="#1E293B" />
+          <ellipse cx="20" cy="28" rx="2.5" ry="3.5" fill="#1E293B" />
+          <ellipse cx="44" cy="28" rx="2.5" ry="3.5" fill="#1E293B" />
+          <path d="M26 34 C26 30 38 30 38 34 C38 38 26 38 26 34 Z" fill="#1E293B" />
+          <text x="32" y="53" textAnchor="middle" fontFamily={F} fontWeight="900" fontSize="7.5" fill="#1E293B" letterSpacing="0.5">ARCAPLANET</text>
+        </>
+      );
+      break;
+    case 'bricocenter':
+      content = (
+        <>
+          <rect width="64" height="64" rx="14" fill="#EA580C" />
+          <text x="32" y="38" textAnchor="middle" fontFamily={F} fontWeight="900" fontSize="8.5" fill="#FFFFFF">BRICOCENTER</text>
+          <text x="32" y="50" textAnchor="middle" fontFamily={F} fontWeight="700" fontSize="7" fill="#FED7AA">FAI DA TE</text>
+        </>
+      );
+      break;
+    case 'bricook':
+    case 'brico-ok':
+      content = (
+        <>
+          <rect width="64" height="64" rx="14" fill="#D97706" />
+          <text x="32" y="42" textAnchor="middle" fontFamily={F} fontWeight="900" fontSize="11" fill="#FFFFFF" letterSpacing="0.5">BRICO OK</text>
+        </>
+      );
+      break;
+    case 'prenatal':
+      content = (
+        <>
+          <rect width="64" height="64" rx="14" fill="#2563EB" />
+          <text x="32" y="42" textAnchor="middle" fontFamily={F} fontWeight="900" fontSize="10.5" fill="#FFFFFF" letterSpacing="0.5">PRÉNATAL</text>
+        </>
+      );
+      break;
+    case 'toyscenter':
+    case 'toys-center':
+      content = (
+        <>
+          <rect width="64" height="64" rx="14" fill="#DC2626" />
+          <text x="32" y="35" textAnchor="middle" fontFamily={F} fontWeight="900" fontSize="9" fill="#FEF08A">TOYS</text>
+          <text x="32" y="50" textAnchor="middle" fontFamily={F} fontWeight="900" fontSize="9" fill="#FFFFFF">CENTER</text>
+        </>
+      );
+      break;
+    case 'conforama':
+      content = (
+        <>
+          <rect width="64" height="64" rx="14" fill="#DC2626" />
+          <text x="32" y="42" textAnchor="middle" fontFamily={F} fontWeight="900" fontSize="9" fill="#FFFFFF" letterSpacing="0.5">CONFORAMA</text>
+        </>
+      );
+      break;
+    case 'caddys':
+    case 'caddy-s':
+      content = (
+        <>
+          <rect width="64" height="64" rx="14" fill="#0D9488" />
+          <text x="32" y="42" textAnchor="middle" fontFamily={F} fontWeight="900" fontSize="11" fill="#FFFFFF">CADDY'S</text>
+        </>
+      );
+      break;
+    case 'ekom':
+      content = (
+        <>
+          <rect width="64" height="64" rx="14" fill="#0284C7" />
+          <text x="32" y="43" textAnchor="middle" fontFamily={F} fontWeight="900" fontSize="15" fill="#FFFFFF">EKOM</text>
+        </>
+      );
+      break;
+    case 'bottegaverde':
+    case 'bottega-verde':
+      content = (
+        <>
+          <rect width="64" height="64" rx="14" fill="#15803D" />
+          <text x="32" y="37" textAnchor="middle" fontFamily={F} fontWeight="900" fontSize="9" fill="#FFFFFF">BOTTEGA</text>
+          <text x="32" y="49" textAnchor="middle" fontFamily={F} fontWeight="900" fontSize="9" fill="#BBF7D0">VERDE</text>
         </>
       );
       break;

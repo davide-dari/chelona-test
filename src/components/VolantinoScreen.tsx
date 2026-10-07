@@ -77,6 +77,8 @@ export const DC_INDEX_CATEGORIES = [
   { slug: 'discount', name: 'Discount', icon: '🏷️' },
   { slug: 'cura-casa-e-corpo', name: 'Casa & Cura', icon: '🧼' },
   { slug: 'elettronica', name: 'Elettronica', icon: '📱' },
+  { slug: 'brico-e-arredo', name: 'Brico & Fai da Te', icon: '🔨' },
+  { slug: 'pet-e-infanzia', name: 'Pet & Bimbi', icon: '🐾' },
 ] as const;
 
 export const LAZIO_CHAIN_SLUGS = new Set([
@@ -167,30 +169,51 @@ const CHAIN_CATEGORY_MAP: Record<string, string> = {
   'dpiu': 'discount',
   'prix': 'discount',
   'hardis': 'discount',
+  'ekom': 'discount',
 
   // Elettronica
   'mediaworld-italia': 'elettronica',
-  'saturn': 'elettronica',
   'unieuro': 'elettronica',
   'euronics': 'elettronica',
   'expert-italia': 'elettronica',
   'trony': 'elettronica',
   'comet': 'elettronica',
 
-  // Cura casa e corpo
+  // Casa, Casalinghi, Igiene & Cura Persona
+  'satur': 'cura-casa-e-corpo',
+  'kasanova': 'cura-casa-e-corpo',
+  'happycasa': 'cura-casa-e-corpo',
+  'happy-casa': 'cura-casa-e-corpo',
   'orizzonte': 'cura-casa-e-corpo',
   'acqua-e-sapone': 'cura-casa-e-corpo',
   'la-saponeria': 'cura-casa-e-corpo',
   'tigota': 'cura-casa-e-corpo',
   'risparmiocasa': 'cura-casa-e-corpo',
   'magazzini-maurys': 'cura-casa-e-corpo',
-  'leroy-merlin': 'cura-casa-e-corpo',
-  'tecnomat': 'cura-casa-e-corpo',
-  'bricofer': 'cura-casa-e-corpo',
-  'brico-io': 'cura-casa-e-corpo',
-  'mondo-convenienza': 'cura-casa-e-corpo',
+  'caddys': 'cura-casa-e-corpo',
+  'caddy-s': 'cura-casa-e-corpo',
+  'bottega-verde': 'cura-casa-e-corpo',
+  'bottegaverde': 'cura-casa-e-corpo',
   'pi%C3%B9me': 'cura-casa-e-corpo',
   'piume': 'cura-casa-e-corpo',
+
+  // Bricolage, Fai da Te & Arredamento
+  'bricocenter': 'brico-e-arredo',
+  'brico-ok': 'brico-e-arredo',
+  'bricook': 'brico-e-arredo',
+  'obi': 'brico-e-arredo',
+  'conforama': 'brico-e-arredo',
+  'leroy-merlin': 'brico-e-arredo',
+  'tecnomat': 'brico-e-arredo',
+  'bricofer': 'brico-e-arredo',
+  'brico-io': 'brico-e-arredo',
+  'mondo-convenienza': 'brico-e-arredo',
+
+  // Pet Care & Infanzia / Giocattoli
+  'arcaplanet': 'pet-e-infanzia',
+  'prenatal': 'pet-e-infanzia',
+  'toys-center': 'pet-e-infanzia',
+  'toyscenter': 'pet-e-infanzia',
 
   // Iper e Super extra
   'superelite': 'iper-e-super',
@@ -773,7 +796,7 @@ export default function VolantinoScreen({
       const isOrizzonteQuery = (q.includes('orizzonte') || q.includes('orrizzonte')) && c.slug === 'orizzonte';
       const isEliteQuery = q.includes('elite') && c.slug === 'superelite';
       const isGrosQuery = q.includes('gros') && (isLazioChain || c.slug === 'gros');
-      const isSaturnQuery = (q.includes('saturn') || q.includes('media-saturn') || q.includes('mediasaturn')) && (c.slug === 'saturn' || c.slug === 'mediaworld-italia');
+      const isSaturQuery = (q.includes('satur') || q.includes('passione casa')) && c.slug === 'satur';
       const isSaponeQuery = (q.includes('acqua') || q.includes('sapone')) && (c.slug === 'acqua-e-sapone' || c.slug === 'la-saponeria');
 
       return (
@@ -784,7 +807,7 @@ export default function VolantinoScreen({
         isOrizzonteQuery ||
         isEliteQuery ||
         isGrosQuery ||
-        isSaturnQuery ||
+        isSaturQuery ||
         isSaponeQuery
       );
     });

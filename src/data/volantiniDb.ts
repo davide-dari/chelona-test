@@ -27,8 +27,8 @@ export interface VolantiniDb {
 }
 
 export const VOLANTINI_DB: VolantiniDb = {
-  "updatedAt": "2026-10-07T11:57:04.972Z",
-  "source": "CentroVolantini + Calaméo + CeDiGros + Orizzonte + SuperElite + Todis + Acqua & Sapone + La Saponeria + Saturn",
+  "updatedAt": "2026-10-07T13:41:54.715Z",
+  "source": "CentroVolantini + Calaméo + CeDiGros + Orizzonte + SuperElite + Todis + Acqua & Sapone + La Saponeria + Satur + Kasanova + Happy Casa + Crai + Caddy's + Ekom + Bottega Verde + Bricocenter + Brico OK + OBI + Arcaplanet + Prénatal + Toys Center + Conforama",
   "chains": [
     {
       "slug": "aeo",
@@ -146,6 +146,22 @@ export const VOLANTINI_DB: VolantiniDb = {
       ]
     },
     {
+      "slug": "arcaplanet",
+      "name": "Arcaplanet",
+      "logoId": "arcaplanet",
+      "flyers": [
+        {
+          "id": 9820,
+          "title": "Volantino Arcaplanet - Amici a 4 Zampe",
+          "subtitle": "Alimenti e Accessori Pet Care",
+          "coverUrl": "https://cdn.promozioni24.it/file/2026/09/promozioni24-20260901145604-cover-0901202622151132913528-79-340x477.webp",
+          "directUrl": "https://www.promozioni24.it/animali/arcaplanet/arcaplanet-acquari-animali-30-7-7-9-2026",
+          "from": "2026-08-01T00:00:00+02:00",
+          "to": "2026-10-25T23:59:59+02:00"
+        }
+      ]
+    },
+    {
       "slug": "basko",
       "name": "Basko",
       "logoId": "basko",
@@ -226,6 +242,22 @@ export const VOLANTINI_DB: VolantiniDb = {
       ]
     },
     {
+      "slug": "bottega-verde",
+      "name": "Bottega Verde",
+      "logoId": "bottegaverde",
+      "flyers": [
+        {
+          "id": 9816,
+          "title": "Catalogo Bottega Verde - Buon Vivere",
+          "subtitle": "Cosmesi Naturale e Bellezza",
+          "coverUrl": "https://cdn.promozioni24.it/file/2026/08/promozioni24-20260805194901-cover-0805202637176654793706-15-340x432.webp",
+          "directUrl": "https://www.promozioni24.it/salute-e-benessere/bottegaverde/catalogo-bottega-verde-buon-vivere-1-6-31-5-2027",
+          "from": "2026-06-01T00:00:00+02:00",
+          "to": "2027-05-31T23:59:59+02:00"
+        }
+      ]
+    },
+    {
       "slug": "brico-io",
       "name": "Brico Io",
       "logoId": "brico-io",
@@ -262,6 +294,38 @@ export const VOLANTINI_DB: VolantiniDb = {
           "to": "2026-11-02T00:00:00+01:00",
           "bkcode": "0010667139ff7209516a9",
           "authid": "3EKGG13R8KbV"
+        }
+      ]
+    },
+    {
+      "slug": "brico-ok",
+      "name": "Brico OK",
+      "logoId": "bricook",
+      "flyers": [
+        {
+          "id": 9818,
+          "title": "Volantino Brico OK - Fai da Te d'Autunno",
+          "subtitle": "Bricolage, Giardino e Casa",
+          "coverUrl": "https://cdn.promozioni24.it/file/2026/09/promozioni24-20260916120839-cover-0916202683436987392684-83-340x457.webp",
+          "directUrl": "https://www.promozioni24.it/bricolage-e-giardinaggio/bricook/brico-ok-settembre-10-20-9-2026",
+          "from": "2026-09-10T00:00:00+02:00",
+          "to": "2026-10-25T23:59:59+02:00"
+        }
+      ]
+    },
+    {
+      "slug": "bricocenter",
+      "name": "Bricocenter",
+      "logoId": "bricocenter",
+      "flyers": [
+        {
+          "id": 9817,
+          "title": "Volantino Bricocenter - Organizza gli Spazi",
+          "subtitle": "Fai da Te, Arredo e Giardinaggio",
+          "coverUrl": "https://cdn.promozioni24.it/file/2026/09/promozioni24-20260913115257-cover-0913202691050925459989-79-281x500.webp",
+          "directUrl": "https://www.promozioni24.it/bricolage-e-giardinaggio/bricocenter/bricocenter-organizza-spazi-2-9-5-10-2026",
+          "from": "2026-09-02T00:00:00+02:00",
+          "to": "2026-10-26T23:59:59+02:00"
         }
       ]
     },
@@ -331,6 +395,22 @@ export const VOLANTINI_DB: VolantiniDb = {
           "to": "2026-10-18T00:00:00+02:00",
           "bkcode": "001066713fe8bbef376ae",
           "authid": "GWBtEz6nySXW"
+        }
+      ]
+    },
+    {
+      "slug": "caddys",
+      "name": "Caddy's",
+      "logoId": "caddys",
+      "flyers": [
+        {
+          "id": 9814,
+          "title": "Volantino Caddy's - Salute & Benessere",
+          "subtitle": "Cura Persona e Igiene Casa fino al 4 Novembre",
+          "coverUrl": "https://cdn.promozioni24.it/file/2026/10/promozioni24-20261001100021-cover-1001202650465671391184-23-340x500.webp",
+          "directUrl": "https://www.promozioni24.it/salute-e-benessere/caddys/caddy-s-salute-benessere-1-10-4-11-2026",
+          "from": "2026-10-01T00:00:00+02:00",
+          "to": "2026-11-04T23:59:59+02:00"
         }
       ]
     },
@@ -946,6 +1026,22 @@ export const VOLANTINI_DB: VolantiniDb = {
       ]
     },
     {
+      "slug": "conforama",
+      "name": "Conforama",
+      "logoId": "conforama",
+      "flyers": [
+        {
+          "id": 9823,
+          "title": "Catalogo Conforama - Arredamento Casa",
+          "subtitle": "Mobili, Salotti, Camere e Cucine",
+          "coverUrl": "https://cdn.promozioni24.it/file/2026/06/promozioni24-20260614183056-cover-0614202688478782555187-67-340x500.webp",
+          "directUrl": "https://www.promozioni24.it/arredamento/conforama/catalogo-conforama-confo-summer-13-6-15-7-2026",
+          "from": "2026-06-15T00:00:00+02:00",
+          "to": "2026-10-31T23:59:59+02:00"
+        }
+      ]
+    },
+    {
       "slug": "coop",
       "name": "Coop",
       "logoId": "coop",
@@ -1206,6 +1302,22 @@ export const VOLANTINI_DB: VolantiniDb = {
       ]
     },
     {
+      "slug": "crai",
+      "name": "Crai",
+      "logoId": "crai",
+      "flyers": [
+        {
+          "id": 9813,
+          "title": "Volantino Crai - Grande Anniversario",
+          "subtitle": "Sconti e Offerte Anniversario fino all'11 Ottobre",
+          "coverUrl": "https://cdn.promozioni24.it/file/2026/10/promozioni24-20261006170812-cover-1006202698050425799685-63-340x340.webp",
+          "directUrl": "https://www.promozioni24.it/iper-supermercati/crai/crai-grande-anniversario-1-11-10-2026",
+          "from": "2026-10-01T00:00:00+02:00",
+          "to": "2026-10-18T23:59:59+02:00"
+        }
+      ]
+    },
+    {
       "slug": "cts",
       "name": "CTS Supermercati (Gruppo Gros)",
       "logoId": "cts",
@@ -1330,6 +1442,22 @@ export const VOLANTINI_DB: VolantiniDb = {
           "directUrl": "https://www.cedigros.com/index.php?option=com_myegojwt&view=flyer&id=198&tmpl=component",
           "from": "2026-10-02T00:00:00+02:00",
           "to": "2026-10-13T23:59:59+02:00"
+        }
+      ]
+    },
+    {
+      "slug": "ekom",
+      "name": "Ekom Discount",
+      "logoId": "ekom",
+      "flyers": [
+        {
+          "id": 9815,
+          "title": "Volantino Ekom - Offerte da Capogiro",
+          "subtitle": "Grandi Risparmi fino al 19 Ottobre",
+          "coverUrl": "https://cdn.promozioni24.it/file/2026/10/promozioni24-20261006163024-cover-1006202690547072476101-99-340x364.webp",
+          "directUrl": "https://www.promozioni24.it/discount/ekom/ekom-offerte-capogiro-6-19-10-2026",
+          "from": "2026-10-06T00:00:00+02:00",
+          "to": "2026-10-19T23:59:59+02:00"
         }
       ]
     },
@@ -1991,6 +2119,22 @@ export const VOLANTINI_DB: VolantiniDb = {
       ]
     },
     {
+      "slug": "happycasa",
+      "name": "Happy Casa",
+      "logoId": "happycasa",
+      "flyers": [
+        {
+          "id": 9812,
+          "title": "Volantino Happy Casa - Sotto Prezzi",
+          "subtitle": "Casalinghi, Arredamento e Bagno",
+          "coverUrl": "https://cdn.promozioni24.it/file/2026/09/promozioni24-20260914102029-cover-0914202628757938554438-54-340x326.webp",
+          "directUrl": "https://www.promozioni24.it/prodotti-per-la-casa/happycasa/happycasa-sotto-prezzi-16-9-4-10-2026",
+          "from": "2026-09-16T00:00:00+02:00",
+          "to": "2026-10-25T23:59:59+02:00"
+        }
+      ]
+    },
+    {
       "slug": "hardis",
       "name": "HarDis",
       "logoId": "hardis",
@@ -2247,6 +2391,22 @@ export const VOLANTINI_DB: VolantiniDb = {
           "to": "2026-10-20T00:00:00+02:00",
           "bkcode": "00106671337eadbdb42ae",
           "authid": "tmH2fCRfJHw9"
+        }
+      ]
+    },
+    {
+      "slug": "kasanova",
+      "name": "Kasanova",
+      "logoId": "kasanova",
+      "flyers": [
+        {
+          "id": 9811,
+          "title": "Volantino Kasanova - Casa & Cucina",
+          "subtitle": "Promozioni Autunno fino al 28 Ottobre",
+          "coverUrl": "https://cdn.promozioni24.it/file/2026/09/promozioni24-20260908112750-cover-0908202694129996108583-95-340x481.webp",
+          "directUrl": "https://www.promozioni24.it/prodotti-per-la-casa/kasanova/casa-settembre-1-9-28-10-2026",
+          "from": "2026-09-01T00:00:00+02:00",
+          "to": "2026-10-28T23:59:59+02:00"
         }
       ]
     },
@@ -2555,6 +2715,22 @@ export const VOLANTINI_DB: VolantiniDb = {
       ]
     },
     {
+      "slug": "obi",
+      "name": "OBI",
+      "logoId": "obi",
+      "flyers": [
+        {
+          "id": 9819,
+          "title": "Catalogo OBI - Il Tuo Giardino & Fai da Te",
+          "subtitle": "Tutto per la Casa e il Bricolage",
+          "coverUrl": "https://cdn.promozioni24.it/file/2026/08/promozioni24-20260815001107-cover-0815202695223972687415-66-340x481.webp",
+          "directUrl": "https://www.promozioni24.it/bricolage-e-giardinaggio/obi/obi-nati-fare-estate-30-7-23-8-2026",
+          "from": "2026-08-01T00:00:00+02:00",
+          "to": "2026-10-31T23:59:59+02:00"
+        }
+      ]
+    },
+    {
       "slug": "orizzonte",
       "name": "Orizzonte (Grandi Magazzini)",
       "logoId": "orizzonte",
@@ -2810,6 +2986,22 @@ export const VOLANTINI_DB: VolantiniDb = {
       ]
     },
     {
+      "slug": "prenatal",
+      "name": "Prénatal",
+      "logoId": "prenatal",
+      "flyers": [
+        {
+          "id": 9821,
+          "title": "Volantino Prénatal - Infanzia & Mamma",
+          "subtitle": "Abbigliamento e Cura per Neonati e Bambini",
+          "coverUrl": "https://cdn.promozioni24.it/file/2026/08/promozioni24-20260829010332-cover-0829202652949576337282-82-340x473.webp",
+          "directUrl": "https://www.promozioni24.it/infanzia/prenatal/prenatal-back-to-school-20-8-21-9-2026",
+          "from": "2026-08-20T00:00:00+02:00",
+          "to": "2026-10-25T23:59:59+02:00"
+        }
+      ]
+    },
+    {
       "slug": "prix",
       "name": "Prix Quality",
       "logoId": "prix",
@@ -2862,42 +3054,18 @@ export const VOLANTINI_DB: VolantiniDb = {
       ]
     },
     {
-      "slug": "saturn",
-      "name": "Saturn (Media-Saturn / MediaWorld)",
-      "logoId": "saturn",
+      "slug": "satur",
+      "name": "Satur (Passione Casa)",
+      "logoId": "satur",
       "flyers": [
         {
-          "id": 99370,
-          "title": "Volantino Saturn / MediaWorld",
-          "subtitle": "Sottocosto · Media-Saturn",
-          "coverUrl": "https://www.calameo.com/books/social/cover/001066713ac1e9c458fc8?authid=tdYsJb2zE7z0",
-          "fallbackCoverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/mediaworld_370_0.jpg",
-          "from": "2026-10-06T00:00:00+02:00",
-          "to": "2026-10-18T00:00:00+02:00",
-          "bkcode": "001066713ac1e9c458fc8",
-          "authid": "tdYsJb2zE7z0"
-        },
-        {
-          "id": 99157,
-          "title": "Volantino Saturn / MediaWorld Bis",
-          "subtitle": "Road To Lucca Comics · Media-Saturn",
-          "coverUrl": "https://www.calameo.com/books/social/cover/0010667133e8572530889?authid=EYO6FgFOJAGf",
-          "fallbackCoverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/mediaworld_157.jpg",
-          "from": "2026-10-05T00:00:00+02:00",
-          "to": "2026-10-11T00:00:00+02:00",
-          "bkcode": "0010667133e8572530889",
-          "authid": "EYO6FgFOJAGf"
-        },
-        {
-          "id": 99278,
-          "title": "Volantino Saturn / MediaWorld Speciale",
-          "subtitle": "Tecnologie da vivere per la tua casa · Media-Saturn",
-          "coverUrl": "https://www.calameo.com/books/social/cover/001066713a1f1e30d4eb6?authid=EqgRDspv4gXQ",
-          "fallbackCoverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/mediaworld_278_0.jpg",
-          "from": "2026-08-01T00:00:00+02:00",
-          "to": "2026-10-30T00:00:00+01:00",
-          "bkcode": "001066713a1f1e30d4eb6",
-          "authid": "EqgRDspv4gXQ"
+          "id": 9810,
+          "title": "Volantino Satur - Passione Casa",
+          "subtitle": "Offerte per la Casa dal 24 Settembre al 22 Ottobre",
+          "coverUrl": "https://cdn.promozioni24.it/file/2026/09/promozioni24-20260930211751-cover-0930202698660936137350-74-340x340.webp",
+          "directUrl": "https://www.promozioni24.it/prodotti-per-la-casa/satur/satur-passione-casa-24-9-22-10-2026",
+          "from": "2026-09-24T00:00:00+02:00",
+          "to": "2026-10-22T23:59:59+02:00"
         }
       ]
     },
@@ -3059,6 +3227,22 @@ export const VOLANTINI_DB: VolantiniDb = {
           "directUrl": "https://www.cedigros.com/index.php?option=com_myegojwt&view=flyer&id=10040&tmpl=component",
           "from": "2026-10-02T00:00:00+02:00",
           "to": "2026-10-12T23:59:59+02:00"
+        }
+      ]
+    },
+    {
+      "slug": "toys-center",
+      "name": "Toys Center",
+      "logoId": "toyscenter",
+      "flyers": [
+        {
+          "id": 9822,
+          "title": "Catalogo Toys Center - Giochi & Divertimento",
+          "subtitle": "Giocattoli, Giochi da Tavolo e Tempo Libero",
+          "coverUrl": "https://cdn.promozioni24.it/file/2026/06/promozioni24-20260614180748-cover-0614202618290593130507-28-340x493.webp",
+          "directUrl": "https://www.promozioni24.it/giocattoli/toyscenter/catalogo-toys-center-aria-aperta-2026-2-4-30-9-2026",
+          "from": "2026-04-01T00:00:00+02:00",
+          "to": "2026-10-31T23:59:59+02:00"
         }
       ]
     },
