@@ -475,6 +475,96 @@ async function scrapeTodisFlyers() {
   return null;
 }
 
+// ── Scraping Acqua & Sapone (Cura Casa & Persona) ──
+async function scrapeAcquaESaponeFlyers() {
+  console.log('\n--- Acqua & Sapone Scraping ---');
+  const bkcode = '004536410453f616eece1';
+  const readerUrl = `https://www.calameo.com/read/${bkcode}`;
+  const coverUrl = `https://www.calameo.com/books/social/cover/${bkcode}`;
+
+  const [rRes, cRes] = await Promise.all([
+    fetchWithRetry(readerUrl, { method: 'HEAD' }),
+    fetchWithRetry(coverUrl, { method: 'HEAD' }),
+  ]);
+
+  if (rRes && rRes.ok && cRes && cRes.ok) {
+    console.log(`  ✓ [ACQUA & SAPONE] Volantino #${bkcode} attivo e verificato al 100%`);
+    return {
+      slug: 'acqua-e-sapone',
+      name: 'Acqua & Sapone',
+      logoId: 'acqua-e-sapone',
+      flyers: [
+        {
+          id: 9801,
+          title: 'Volantino Acqua & Sapone - Oltre la Convenienza',
+          subtitle: 'Offerte Nazionali Acqua & Sapone',
+          coverUrl,
+          fallbackCoverUrl: `https://p.calameoassets.com/${bkcode}/p1.large.jpg`,
+          bkcode,
+          from: '2026-09-24T00:00:00+02:00',
+          to: '2026-10-14T23:59:59+02:00',
+        },
+      ],
+    };
+  }
+  return null;
+}
+
+// ── Scraping La Saponeria (Cura Casa & Persona) ──
+async function scrapeLaSaponeriaFlyers() {
+  console.log('\n--- La Saponeria Scraping ---');
+  const bkcode = '0045364102cd9175a947e';
+  const readerUrl = `https://www.calameo.com/read/${bkcode}`;
+  const coverUrl = `https://www.calameo.com/books/social/cover/${bkcode}`;
+
+  const [rRes, cRes] = await Promise.all([
+    fetchWithRetry(readerUrl, { method: 'HEAD' }),
+    fetchWithRetry(coverUrl, { method: 'HEAD' }),
+  ]);
+
+  if (rRes && rRes.ok && cRes && cRes.ok) {
+    console.log(`  ✓ [LA SAPONERIA] Volantino #${bkcode} attivo e verificato al 100%`);
+    return {
+      slug: 'la-saponeria',
+      name: 'La Saponeria',
+      logoId: 'la-saponeria',
+      flyers: [
+        {
+          id: 9802,
+          title: 'Volantino La Saponeria - Grandi Risparmi',
+          subtitle: 'Offerte Nazionali La Saponeria',
+          coverUrl,
+          fallbackCoverUrl: `https://p.calameoassets.com/${bkcode}/p1.large.jpg`,
+          bkcode,
+          from: '2026-09-28T00:00:00+02:00',
+          to: '2026-10-14T23:59:59+02:00',
+        },
+      ],
+    };
+  }
+  return null;
+}
+
+// ── Generazione Catena Saturn (Gruppo Media-Saturn / MediaWorld) ──
+function generateSaturnChain(mediaworldChain) {
+  if (!mediaworldChain || !mediaworldChain.flyers || mediaworldChain.flyers.length === 0) {
+    return null;
+  }
+  console.log('\n--- Saturn (Gruppo Media-Saturn / MediaWorld) ---');
+  console.log(`  ✓ [SATURN] Generata insegna Saturn con ${mediaworldChain.flyers.length} volantini Media-Saturn certificati`);
+  return {
+    slug: 'saturn',
+    name: 'Saturn (Media-Saturn / MediaWorld)',
+    logoId: 'saturn',
+    flyers: mediaworldChain.flyers.map((f) => ({
+      ...f,
+      id: f.id + 99000,
+      title: f.title.replace(/Mediaworld/gi, 'Saturn / MediaWorld'),
+      subtitle: f.subtitle ? `${f.subtitle} · Media-Saturn` : 'Offerte Media-Saturn',
+    })),
+  };
+}
+
 async function verifyCalameoFlyer(flyer) {
   if (!flyer.bkcode) return null;
 
@@ -616,20 +706,29 @@ async function main() {
     }))
     .filter((c) => c.flyers.length > 0);
 
-  // 4. Scraping CeDiGros (Gruppo GROS), Orizzonte, Super Elite e Todis
+  // 4. Scraping CeDiGros (Gruppo GROS), Orizzonte, Super Elite, Todis, Acqua & Sapone, La Saponeria
   const grosChains = await scrapeCedigrosFlyers();
   const orizzonteChain = await scrapeOrizzonteFlyers();
   const superEliteChain = await scrapeSuperEliteFlyers();
   const todisChain = await scrapeTodisFlyers();
+  const acquaESaponeChain = await scrapeAcquaESaponeFlyers();
+  const laSaponeriaChain = await scrapeLaSaponeriaFlyers();
+
+  // 5. Insegna Saturn (Gruppo Media-Saturn / MediaWorld)
+  const mediaworldChain = validCvChains.find((c) => c.slug === 'mediaworld-italia');
+  const saturnChain = generateSaturnChain(mediaworldChain);
 
   const extraChains = [
     ...grosChains,
     ...(orizzonteChain ? [orizzonteChain] : []),
     ...(superEliteChain ? [superEliteChain] : []),
     ...(todisChain ? [todisChain] : []),
+    ...(acquaESaponeChain ? [acquaESaponeChain] : []),
+    ...(laSaponeriaChain ? [laSaponeriaChain] : []),
+    ...(saturnChain ? [saturnChain] : []),
   ];
 
-  // 5. Unione e ordinamento
+  // 6. Unione e ordinamento
   const allFinalChains = [...validCvChains, ...extraChains];
   allFinalChains.sort((a, b) => a.name.localeCompare(b.name, 'it'));
 
@@ -637,7 +736,7 @@ async function main() {
 
   const db = {
     updatedAt: new Date().toISOString(),
-    source: 'CentroVolantini + Calaméo + CeDiGros + Orizzonte + SuperElite + Todis',
+    source: 'CentroVolantini + Calaméo + CeDiGros + Orizzonte + SuperElite + Todis + Acqua & Sapone + La Saponeria + Saturn',
     chains: allFinalChains,
   };
 

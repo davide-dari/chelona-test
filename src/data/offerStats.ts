@@ -53,7 +53,11 @@ export const FIDELITY_CARDS: Record<string, string> = {
   "Acqua e Sapone": "Carta Club",
   "Tigotà": "Fidelity Tigotà",
   "Risparmio Casa": "Risparmio Card",
-  "C+C Cash & Carry": "C+C Card"
+  "C+C Cash & Carry": "C+C Card",
+  "Saturn": "MediaWorld Club / Saturn Card",
+  "Mediaworld": "MediaWorld Club",
+  "MediaWorld": "MediaWorld Club",
+  "La Saponeria": "Club La Saponeria"
 };
 
 /* Mappa nomi insegna (da confronto prezzi) → slug catena (volantiniDb) */
@@ -100,6 +104,7 @@ export const STORE_SLUG_MAP: Record<string, string> = {
   'Unes': 'unes',
   'Acqua e Sapone': 'acqua-e-sapone',
   'Acqua & Sapone': 'acqua-e-sapone',
+  'La Saponeria': 'la-saponeria',
   'Tigotà': 'tigota',
   'Risparmio Casa': 'risparmiocasa',
   'NaturaSì': 'naturasi',
@@ -113,6 +118,20 @@ export const STORE_SLUG_MAP: Record<string, string> = {
   'Italmark': 'italmark',
   'Prix': 'prix',
   'Metro': 'metro',
+  'Saturn': 'saturn',
+  'saturn': 'saturn',
+  'Media-Saturn': 'saturn',
+  'mediasaturn': 'saturn',
+  'Mediaworld': 'mediaworld-italia',
+  'MediaWorld': 'mediaworld-italia',
+  'Unieuro': 'unieuro',
+  'Euronics': 'euronics',
+  'Expert': 'expert-italia',
+  'Trony': 'trony',
+  'Comet': 'comet',
+  'Orizzonte': 'orizzonte',
+  'Super Elite': 'superelite',
+  'Elite': 'superelite',
 };
 
 /* Normalizza una stringa per il confronto (minuscole, senza accenti) */

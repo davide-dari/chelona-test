@@ -216,6 +216,29 @@ export function StoreLogo({ id, short, size = 40, logo: logoUrl, hex, brandSlug 
         </>
       );
       break;
+    case 'saturn':
+      content = (
+        <>
+          <rect width="64" height="64" rx="14" fill="#0B2341" />
+          {/* Saturn planet and rings */}
+          <circle cx="32" cy="24" r="11" fill="#FF6B00" />
+          <ellipse cx="32" cy="24" rx="20" ry="5.5" fill="none" stroke="#FF9E42" strokeWidth="2.5" transform="rotate(-18 32 24)" />
+          <text x="32" y="52" textAnchor="middle" fontFamily={F} fontWeight="900" fontSize="11" fill="#FFFFFF" letterSpacing="1">SATURN</text>
+        </>
+      );
+      break;
+    case 'la-saponeria':
+    case 'lasaponeria':
+      content = (
+        <>
+          <rect width="64" height="64" rx="14" fill="#E11D48" />
+          <circle cx="24" cy="22" r="7" fill="#FFFFFF" opacity="0.3" />
+          <circle cx="38" cy="18" r="5" fill="#FFFFFF" opacity="0.5" />
+          <circle cx="34" cy="26" r="4" fill="#FFFFFF" opacity="0.4" />
+          <text x="32" y="44" textAnchor="middle" fontFamily={F} fontWeight="900" fontSize="9" fill="#FFFFFF">LA SAPONERIA</text>
+        </>
+      );
+      break;
     default:
       content = (
         <>

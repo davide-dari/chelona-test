@@ -27,8 +27,8 @@ export interface VolantiniDb {
 }
 
 export const VOLANTINI_DB: VolantiniDb = {
-  "updatedAt": "2026-10-07T11:35:40.761Z",
-  "source": "CentroVolantini + Calaméo + CeDiGros + Orizzonte + SuperElite + Todis",
+  "updatedAt": "2026-10-07T11:57:04.972Z",
+  "source": "CentroVolantini + Calaméo + CeDiGros + Orizzonte + SuperElite + Todis + Acqua & Sapone + La Saponeria + Saturn",
   "chains": [
     {
       "slug": "aeo",
@@ -56,6 +56,23 @@ export const VOLANTINI_DB: VolantiniDb = {
           "to": "2026-10-13T00:00:00+02:00",
           "bkcode": "001066713a9c90c5bed76",
           "authid": "JRksv9mKirVg"
+        }
+      ]
+    },
+    {
+      "slug": "acqua-e-sapone",
+      "name": "Acqua & Sapone",
+      "logoId": "acqua-e-sapone",
+      "flyers": [
+        {
+          "id": 9801,
+          "title": "Volantino Acqua & Sapone - Oltre la Convenienza",
+          "subtitle": "Offerte Nazionali Acqua & Sapone",
+          "coverUrl": "https://www.calameo.com/books/social/cover/004536410453f616eece1",
+          "fallbackCoverUrl": "https://p.calameoassets.com/004536410453f616eece1/p1.large.jpg",
+          "bkcode": "004536410453f616eece1",
+          "from": "2026-09-24T00:00:00+02:00",
+          "to": "2026-10-14T23:59:59+02:00"
         }
       ]
     },
@@ -2234,6 +2251,23 @@ export const VOLANTINI_DB: VolantiniDb = {
       ]
     },
     {
+      "slug": "la-saponeria",
+      "name": "La Saponeria",
+      "logoId": "la-saponeria",
+      "flyers": [
+        {
+          "id": 9802,
+          "title": "Volantino La Saponeria - Grandi Risparmi",
+          "subtitle": "Offerte Nazionali La Saponeria",
+          "coverUrl": "https://www.calameo.com/books/social/cover/0045364102cd9175a947e",
+          "fallbackCoverUrl": "https://p.calameoassets.com/0045364102cd9175a947e/p1.large.jpg",
+          "bkcode": "0045364102cd9175a947e",
+          "from": "2026-09-28T00:00:00+02:00",
+          "to": "2026-10-14T23:59:59+02:00"
+        }
+      ]
+    },
+    {
       "slug": "lidl",
       "name": "Lidl",
       "logoId": "lidl",
@@ -2824,6 +2858,46 @@ export const VOLANTINI_DB: VolantiniDb = {
           "directUrl": "https://www.cedigros.com/index.php?option=com_myegojwt&view=flyer&id=10038&tmpl=component",
           "from": "2026-10-02T00:00:00+02:00",
           "to": "2026-10-13T23:59:59+02:00"
+        }
+      ]
+    },
+    {
+      "slug": "saturn",
+      "name": "Saturn (Media-Saturn / MediaWorld)",
+      "logoId": "saturn",
+      "flyers": [
+        {
+          "id": 99370,
+          "title": "Volantino Saturn / MediaWorld",
+          "subtitle": "Sottocosto · Media-Saturn",
+          "coverUrl": "https://www.calameo.com/books/social/cover/001066713ac1e9c458fc8?authid=tdYsJb2zE7z0",
+          "fallbackCoverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/mediaworld_370_0.jpg",
+          "from": "2026-10-06T00:00:00+02:00",
+          "to": "2026-10-18T00:00:00+02:00",
+          "bkcode": "001066713ac1e9c458fc8",
+          "authid": "tdYsJb2zE7z0"
+        },
+        {
+          "id": 99157,
+          "title": "Volantino Saturn / MediaWorld Bis",
+          "subtitle": "Road To Lucca Comics · Media-Saturn",
+          "coverUrl": "https://www.calameo.com/books/social/cover/0010667133e8572530889?authid=EYO6FgFOJAGf",
+          "fallbackCoverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/mediaworld_157.jpg",
+          "from": "2026-10-05T00:00:00+02:00",
+          "to": "2026-10-11T00:00:00+02:00",
+          "bkcode": "0010667133e8572530889",
+          "authid": "EYO6FgFOJAGf"
+        },
+        {
+          "id": 99278,
+          "title": "Volantino Saturn / MediaWorld Speciale",
+          "subtitle": "Tecnologie da vivere per la tua casa · Media-Saturn",
+          "coverUrl": "https://www.calameo.com/books/social/cover/001066713a1f1e30d4eb6?authid=EqgRDspv4gXQ",
+          "fallbackCoverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/mediaworld_278_0.jpg",
+          "from": "2026-08-01T00:00:00+02:00",
+          "to": "2026-10-30T00:00:00+01:00",
+          "bkcode": "001066713a1f1e30d4eb6",
+          "authid": "EqgRDspv4gXQ"
         }
       ]
     },

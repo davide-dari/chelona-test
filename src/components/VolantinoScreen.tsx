@@ -170,6 +170,7 @@ const CHAIN_CATEGORY_MAP: Record<string, string> = {
 
   // Elettronica
   'mediaworld-italia': 'elettronica',
+  'saturn': 'elettronica',
   'unieuro': 'elettronica',
   'euronics': 'elettronica',
   'expert-italia': 'elettronica',
@@ -179,6 +180,7 @@ const CHAIN_CATEGORY_MAP: Record<string, string> = {
   // Cura casa e corpo
   'orizzonte': 'cura-casa-e-corpo',
   'acqua-e-sapone': 'cura-casa-e-corpo',
+  'la-saponeria': 'cura-casa-e-corpo',
   'tigota': 'cura-casa-e-corpo',
   'risparmiocasa': 'cura-casa-e-corpo',
   'magazzini-maurys': 'cura-casa-e-corpo',
@@ -771,6 +773,8 @@ export default function VolantinoScreen({
       const isOrizzonteQuery = (q.includes('orizzonte') || q.includes('orrizzonte')) && c.slug === 'orizzonte';
       const isEliteQuery = q.includes('elite') && c.slug === 'superelite';
       const isGrosQuery = q.includes('gros') && (isLazioChain || c.slug === 'gros');
+      const isSaturnQuery = (q.includes('saturn') || q.includes('media-saturn') || q.includes('mediasaturn')) && (c.slug === 'saturn' || c.slug === 'mediaworld-italia');
+      const isSaponeQuery = (q.includes('acqua') || q.includes('sapone')) && (c.slug === 'acqua-e-sapone' || c.slug === 'la-saponeria');
 
       return (
         c.name.toLowerCase().includes(q) ||
@@ -779,7 +783,9 @@ export default function VolantinoScreen({
         isLazioQuery ||
         isOrizzonteQuery ||
         isEliteQuery ||
-        isGrosQuery
+        isGrosQuery ||
+        isSaturnQuery ||
+        isSaponeQuery
       );
     });
   }, [activeCategory, allChains, favChains, nearbyChains, expiringChains, searchQuery]);
@@ -1033,16 +1039,12 @@ export default function VolantinoScreen({
             </div>
           </header>
 
-          <main className={`flex-1 flex flex-col ${
-            !hasActiveResultsView
-              ? 'h-full justify-center items-center overflow-y-auto p-4 sm:p-6 pb-10 sm:pb-16 custom-scrollbar'
-              : 'overflow-y-auto p-4 md:p-8 custom-scrollbar overscroll-contain scroll-smooth pb-[max(env(safe-area-inset-bottom),16px)]'
-          }`}>
-            {/* HERO BARRA & TITOLO (Perfettamente centrato quando non c'è una ricerca attiva) */}
-            <div className={`w-full transition-all duration-200 ${
+          <main className="flex-1 flex flex-col overflow-y-auto p-4 md:p-8 custom-scrollbar overscroll-contain pb-[max(env(safe-area-inset-bottom),20px)]">
+            {/* HERO BARRA & TITOLO (Stabile in alto: zero salti o spostamenti della viewport su tastiera Android) */}
+            <div className={`w-full transition-all duration-200 shrink-0 ${
               !hasActiveResultsView
-                ? 'max-w-xl mx-auto space-y-6 text-center my-auto flex flex-col items-center'
-                : 'max-w-4xl mx-auto space-y-3 mb-5 shrink-0'
+                ? 'max-w-xl mx-auto space-y-4 text-center pt-2 sm:pt-4 pb-2 flex flex-col items-center'
+                : 'max-w-4xl mx-auto space-y-3 mb-5'
             }`}>
               {/* TITOLO AL CENTRO */}
               <div className="text-center space-y-1.5">
@@ -1220,13 +1222,13 @@ export default function VolantinoScreen({
                 </div>
               )}
 
-              {/* STATO CENTRATO ELEGANTE (IDENTICO A RICETTARIO E LISTA DELLA SPESA) */}
+              {/* STATO INIZIALE ELEGANTE (Stabile e armonico sotto la barra) */}
               {!hasActiveResultsView && (
                 <motion.div
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.3 }}
-                  className="pt-6 sm:pt-8 flex flex-col items-center justify-center text-center px-4 w-full"
+                  className="pt-3 sm:pt-5 flex flex-col items-center justify-center text-center px-4 w-full"
                 >
                   <div className="w-16 h-16 sm:w-20 sm:h-20 bg-emerald-500/10 rounded-full flex items-center justify-center mb-4 sm:mb-5 border border-emerald-500/20 shadow-xs">
                     <Store className="w-8 h-8 sm:w-10 sm:h-10 text-emerald-500" />

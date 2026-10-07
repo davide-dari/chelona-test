@@ -214,4 +214,6 @@ export const SUPER_LOGO_FALLBACKS: Record<string, { text: string; hex: string }>
   orizzonte: { text: 'ORIZZONTE', hex: '#0A3B82' },
   superelite: { text: 'ELITE', hex: '#096043' },
   elite: { text: 'ELITE', hex: '#096043' },
+  saturn: { text: 'SATURN', hex: '#0B2341' },
+  'la-saponeria': { text: 'Saponeria', hex: '#E11D48' },
 };
