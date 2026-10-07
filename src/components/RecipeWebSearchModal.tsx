@@ -14,6 +14,8 @@ import {
   saveUserRecipes,
   loadUserRecipes,
   formatSourceBadge,
+  translateUserRecipeToItalian,
+  needsItalianTranslation,
   type UserRecipeItem 
 } from '../services/userRecipesService';
 
@@ -429,19 +431,32 @@ export function RecipeWebSearchModal({
     return false;
   }, [savedUrls]);
 
+  const [isTranslatingPreview, setIsTranslatingPreview] = useState(false);
+
   // Apertura anteprima ricetta completa
   const handleOpenPreview = async (recipe: UserRecipeItem) => {
-    setPreviewRecipe(recipe);
-    setPreviewServings(recipe.servings || 4);
-    setSelectedPreviewIngredients(new Set(recipe.ingredients || []));
+    let initial = recipe;
+    if (needsItalianTranslation(initial)) {
+      try {
+        initial = await translateUserRecipeToItalian(initial);
+      } catch (e) {
+        console.warn('Auto translation preview error:', e);
+      }
+    }
+    setPreviewRecipe(initial);
+    setPreviewServings(initial.servings || 4);
+    setSelectedPreviewIngredients(new Set(initial.ingredients || []));
     setCartSuccessNotice(false);
     setStepTimers({});
 
     // Se mancano ancora ingredienti o passaggi, arricchisci subito in background
-    if (recipe.sourceUrl && (!recipe.ingredients?.length || !recipe.steps?.length)) {
+    if (initial.sourceUrl && (!initial.ingredients?.length || !initial.steps?.length)) {
       setIsPreviewLoading(true);
       try {
-        const enriched = await enrichRecipeDetail(recipe, 8000);
+        let enriched = await enrichRecipeDetail(initial, 8000);
+        if (needsItalianTranslation(enriched)) {
+          enriched = await translateUserRecipeToItalian(enriched);
+        }
         setPreviewRecipe(enriched);
         setPreviewServings(enriched.servings || 4);
         setSelectedPreviewIngredients(new Set(enriched.ingredients || []));
@@ -452,6 +467,23 @@ export function RecipeWebSearchModal({
       } finally {
         setIsPreviewLoading(false);
       }
+    }
+  };
+
+  const handleTranslatePreview = async () => {
+    if (!previewRecipe) return;
+    setIsTranslatingPreview(true);
+    try {
+      showToast('Traduzione ricetta in Italiano...');
+      const translated = await translateUserRecipeToItalian(previewRecipe);
+      setPreviewRecipe(translated);
+      setSelectedPreviewIngredients(new Set(translated.ingredients || []));
+      showToast('✓ Ricetta tradotta in Italiano con successo!');
+    } catch (e) {
+      console.error('Translation preview error:', e);
+      showToast('Errore durante la traduzione.');
+    } finally {
+      setIsTranslatingPreview(false);
     }
   };
 
@@ -1165,6 +1197,25 @@ export function RecipeWebSearchModal({
                         {previewRecipe.difficulty}
                       </span>
                     )}
+                    <button
+                      type="button"
+                      onClick={handleTranslatePreview}
+                      disabled={isTranslatingPreview}
+                      className="px-2.5 py-0.5 rounded-md bg-blue-600/80 hover:bg-blue-600 active:scale-95 text-white text-[11px] font-bold flex items-center gap-1 cursor-pointer transition-all disabled:opacity-50"
+                      title="Traduci ricetta completa in Italiano"
+                    >
+                      {isTranslatingPreview ? (
+                        <>
+                          <Loader2 className="w-3 h-3 animate-spin" />
+                          <span>Traduzione...</span>
+                        </>
+                      ) : (
+                        <>
+                          <span>🇮🇹</span>
+                          <span>Traduci</span>
+                        </>
+                      )}
+                    </button>
                   </div>
                   <h3 className="text-xl sm:text-2xl font-black leading-tight drop-shadow-md">
                     {previewRecipe.title}

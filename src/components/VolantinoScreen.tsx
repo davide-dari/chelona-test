@@ -452,9 +452,26 @@ export default function VolantinoScreen({
   // Main view state
   const [tab, setTab] = useState<TabType>('volantini');
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeCategory, setActiveCategory] = useState<string | null>(null);
+  const [activeCategory, setActiveCategory] = useState<string | null>('all');
   const [selectedChainSlug, setSelectedChainSlug] = useState<string | null>(null);
   const [isFiltersSheetOpen, setIsFiltersSheetOpen] = useState(false);
+
+  // In-App Web Viewer Modal state (apertura incorporata dentro l'app senza mai uscire)
+  const [inAppWebUrl, setInAppWebUrl] = useState<string | null>(null);
+  const [inAppWebTitle, setInAppWebTitle] = useState<string>('');
+  const [inAppWebKey, setInAppWebKey] = useState<number>(0);
+
+  const openInAppWeb = useCallback((rawUrl: string, title?: string) => {
+    if (!rawUrl) return;
+    let finalUrl = rawUrl;
+    // Se è un URL Calaméo www.calameo.com/read/XXXX, convertilo in v.calameo.com/?bkcode=XXXX per player iframe sicuro
+    const calameoMatch = rawUrl.match(/calameo\.com\/read\/([a-zA-Z0-9]+)/i);
+    if (calameoMatch && calameoMatch[1]) {
+      finalUrl = `https://v.calameo.com/?bkcode=${calameoMatch[1]}`;
+    }
+    setInAppWebUrl(finalUrl);
+    setInAppWebTitle(title || 'Volantino Ufficiale');
+  }, []);
 
   // In-app reader state (opens reader URL directly inside the app without leaving)
   const [activeReaderFlyer, setActiveReaderFlyer] = useState<VolantinoFlyer | null>(null);
@@ -779,6 +796,10 @@ export default function VolantinoScreen({
 
   // Back handling (single unified exit path)
   const handleBack = useCallback(() => {
+    if (inAppWebUrl !== null) {
+      setInAppWebUrl(null);
+      return;
+    }
     if (isFiltersSheetOpen) {
       setIsFiltersSheetOpen(false);
       return;
@@ -799,8 +820,8 @@ export default function VolantinoScreen({
       setSearchQuery('');
       return;
     }
-    if (activeCategory !== null) {
-      setActiveCategory(null);
+    if (activeCategory !== 'all') {
+      setActiveCategory('all');
       return;
     }
     if (tab !== 'volantini') {
@@ -808,7 +829,7 @@ export default function VolantinoScreen({
       return;
     }
     onClose();
-  }, [isFiltersSheetOpen, showCapModal, activeReaderFlyer, selectedChainSlug, searchQuery, activeCategory, tab, onClose]);
+  }, [inAppWebUrl, isFiltersSheetOpen, showCapModal, activeReaderFlyer, selectedChainSlug, searchQuery, activeCategory, tab, onClose]);
 
   // Listen to Android hardware back
   useEffect(() => {
@@ -1051,9 +1072,9 @@ export default function VolantinoScreen({
                 <MapPin className="w-4 h-4 text-emerald-500" />
               </button>
               <button
-                onClick={() => openExternalUrl(getBrowserUrl(activeReaderFlyer, currentReaderPage))}
-                className="p-2 hover:bg-[var(--surface-variant)] rounded-full text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors cursor-pointer"
-                title="Apri nel browser esterno"
+                onClick={() => openInAppWeb(getBrowserUrl(activeReaderFlyer, currentReaderPage), cleanTitle(activeReaderFlyer.title))}
+                className="p-2 hover:bg-[var(--surface-variant)] rounded-full text-[var(--text-muted)] hover:text-emerald-500 transition-colors cursor-pointer"
+                title="Apri volantino nell'app"
               >
                 <ExternalLink className="w-4 h-4" />
               </button>
@@ -1173,11 +1194,11 @@ export default function VolantinoScreen({
                 </p>
                 <button
                   type="button"
-                  onClick={() => openExternalUrl(getBrowserUrl(activeReaderFlyer, activeReaderPage))}
+                  onClick={() => openInAppWeb(getBrowserUrl(activeReaderFlyer, activeReaderPage), cleanTitle(activeReaderFlyer.title))}
                   className="w-full py-3 px-5 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:scale-98 text-white font-bold text-sm shadow-lg flex items-center justify-center gap-2 cursor-pointer transition-all"
                 >
                   <ExternalLink className="w-4 h-4" />
-                  <span>Apri Volantino Ufficiale</span>
+                  <span>Apri Volantino nell'App</span>
                 </button>
               </div>
             </div>
@@ -1331,7 +1352,7 @@ export default function VolantinoScreen({
                   type="button"
                   onClick={() => {
                     if (activeCategory === 'fav') {
-                      setActiveCategory(null);
+                      setActiveCategory('all');
                     } else {
                       setActiveCategory('fav');
                       setSelectedChainSlug(null);
@@ -1366,7 +1387,7 @@ export default function VolantinoScreen({
                     {activeCategory && activeCategory !== 'all' && activeCategory !== 'fav' && (
                       <button
                         type="button"
-                        onClick={() => setActiveCategory(null)}
+                        onClick={() => setActiveCategory('all')}
                         className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-500 text-white shadow-xs cursor-pointer active:scale-95"
                       >
                         <span>{DC_INDEX_CATEGORIES.find(c => c.slug === activeCategory)?.name || activeCategory}</span>
@@ -1376,35 +1397,27 @@ export default function VolantinoScreen({
                     {isFavoritesActive && (
                       <button
                         type="button"
-                        onClick={() => setActiveCategory(null)}
+                        onClick={() => setActiveCategory('all')}
                         className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-500 text-white shadow-xs cursor-pointer active:scale-95"
                       >
                         <span>⭐ Preferiti</span>
                         <X className="w-3.5 h-3.5" />
                       </button>
                     )}
-                    {activeCategory === 'all' && (
+                    {(selectedChainSlug || (activeCategory && activeCategory !== 'all') || searchQuery) && (
                       <button
                         type="button"
-                        onClick={() => setActiveCategory(null)}
-                        className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-500 text-white shadow-xs cursor-pointer active:scale-95"
+                        onClick={() => {
+                          setSelectedChainSlug(null);
+                          setActiveCategory('all');
+                          setSearchQuery('');
+                          setTab('volantini');
+                        }}
+                        className="text-[11px] font-bold text-[var(--text-muted)] hover:text-emerald-500 underline ml-1 cursor-pointer"
                       >
-                        <span>🛒 Tutti ({displayFlyers.length})</span>
-                        <X className="w-3.5 h-3.5" />
+                        Azzera filtri
                       </button>
                     )}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setSelectedChainSlug(null);
-                        setActiveCategory(null);
-                        setSearchQuery('');
-                        setTab('volantini');
-                      }}
-                      className="text-[11px] font-bold text-[var(--text-muted)] hover:text-emerald-500 underline ml-1 cursor-pointer"
-                    >
-                      Azzera filtri
-                    </button>
                   </div>
 
                   {/* Switcher Volantini / Offerte */}
@@ -2205,7 +2218,7 @@ export default function VolantinoScreen({
                         key={cat.slug}
                         type="button"
                         onClick={() => {
-                          setActiveCategory(isSelected ? null : cat.slug);
+                          setActiveCategory(isSelected ? 'all' : cat.slug);
                           if (selectedChainSlug) setSelectedChainSlug(null);
                         }}
                         className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-2xl text-xs font-bold transition-all cursor-pointer ${
@@ -2249,7 +2262,7 @@ export default function VolantinoScreen({
                         onClick={() => {
                           setSelectedChainSlug(isSelected ? null : c.slug);
                           if (!isSelected && activeCategory && activeCategory !== 'all') {
-                            setActiveCategory(null);
+                            setActiveCategory('all');
                           }
                         }}
                         className={`flex items-center gap-2 p-2 rounded-xl border text-left transition-all cursor-pointer ${
@@ -2279,7 +2292,7 @@ export default function VolantinoScreen({
                 <button
                   type="button"
                   onClick={() => {
-                    setActiveCategory(null);
+                    setActiveCategory('all');
                     setSelectedChainSlug(null);
                   }}
                   className="px-4 py-2.5 rounded-2xl bg-[var(--surface-variant)] hover:bg-[var(--border)] text-[var(--text-muted)] hover:text-[var(--text-main)] font-bold text-xs cursor-pointer transition-colors"
@@ -2296,6 +2309,85 @@ export default function VolantinoScreen({
                 </button>
               </div>
             </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ═══════════════════════════════════════════════════════════════════
+          IN-APP WEB VIEWER MODAL (Apre il link ufficiale del volantino dentro l'app)
+          ═══════════════════════════════════════════════════════════════════ */}
+      <AnimatePresence>
+        {inAppWebUrl && (
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 30 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 z-[260] bg-black/85 backdrop-blur-md flex flex-col overflow-hidden"
+          >
+            {/* Header In-App Browser */}
+            <header className="flex items-center justify-between px-3 sm:px-4 py-2.5 bg-zinc-900 border-b border-zinc-800 text-white shrink-0">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <button
+                  type="button"
+                  onClick={() => setInAppWebUrl(null)}
+                  className="p-2 rounded-full hover:bg-zinc-800 text-zinc-300 hover:text-white transition-colors cursor-pointer"
+                  title="Torna all'app"
+                >
+                  <ArrowLeft className="w-5 h-5" />
+                </button>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+                    <h3 className="text-xs sm:text-sm font-bold truncate text-white">
+                      {inAppWebTitle || 'Volantino Ufficiale'}
+                    </h3>
+                  </div>
+                  <p className="text-[10px] text-zinc-400 truncate font-mono">
+                    {inAppWebUrl.replace(/^https?:\/\//i, '').split('/')[0]}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-1 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setInAppWebKey(prev => prev + 1)}
+                  className="p-2 rounded-full hover:bg-zinc-800 text-zinc-300 hover:text-white transition-colors cursor-pointer"
+                  title="Ricarica volantino"
+                >
+                  <RefreshCw className="w-4 h-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => openExternalUrl(inAppWebUrl)}
+                  className="p-2 rounded-full hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 transition-colors cursor-pointer"
+                  title="Apri nel browser esterno"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setInAppWebUrl(null)}
+                  className="p-2 rounded-full hover:bg-rose-500/20 text-zinc-400 hover:text-rose-400 transition-colors cursor-pointer"
+                  title="Chiudi"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </header>
+
+            {/* Iframe Viewport incorporato */}
+            <div className="flex-1 w-full h-full relative bg-zinc-950">
+              <iframe
+                key={`inapp-web-frame-${inAppWebKey}`}
+                src={inAppWebUrl}
+                title={inAppWebTitle || 'Volantino Web'}
+                className="w-full h-full border-0"
+                allow="fullscreen; clipboard-read; clipboard-write; zoom"
+                sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-downloads"
+              />
+            </div>
           </motion.div>
         )}
       </AnimatePresence>

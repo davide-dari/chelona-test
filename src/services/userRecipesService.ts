@@ -6,6 +6,19 @@
 
 import { Capacitor, CapacitorHttp } from '@capacitor/core';
 import type { RecipeItem } from './menuPlannerService';
+import { 
+  translateUserRecipeToItalian, 
+  needsItalianTranslation, 
+  isItalianText, 
+  translateTextToItalian 
+} from './recipeTranslationService';
+
+export { 
+  translateUserRecipeToItalian, 
+  needsItalianTranslation, 
+  isItalianText, 
+  translateTextToItalian 
+} from './recipeTranslationService';
 
 export const USER_RECIPES_STORAGE_KEY = 'chelona_user_recipes';
 export const LEGACY_CUSTOM_RECIPES_KEY = 'chelona_custom_recipes';
@@ -1634,8 +1647,16 @@ export async function enrichRecipeDetail(
   recipe: UserRecipeItem,
   timeoutMs = 6000
 ): Promise<UserRecipeItem> {
-  if (!recipe.sourceUrl) return recipe;
+  if (!recipe.sourceUrl) {
+    if (needsItalianTranslation(recipe)) {
+      return await translateUserRecipeToItalian(recipe);
+    }
+    return recipe;
+  }
   if (recipe.ingredients && recipe.ingredients.length > 0 && recipe.steps && recipe.steps.length > 0) {
+    if (needsItalianTranslation(recipe)) {
+      return await translateUserRecipeToItalian(recipe);
+    }
     return recipe;
   }
 
@@ -1652,7 +1673,7 @@ export async function enrichRecipeDetail(
     }
 
     if (full) {
-      return {
+      const merged: UserRecipeItem = {
         ...recipe,
         title: full.title || recipe.title,
         ingredients: full.ingredients && full.ingredients.length > 0 ? full.ingredients : recipe.ingredients,
@@ -1670,6 +1691,11 @@ export async function enrichRecipeDetail(
         sourceName: full.sourceName || recipe.sourceName,
         sourceUrl: full.sourceUrl || recipe.sourceUrl,
       };
+
+      if (needsItalianTranslation(merged)) {
+        return await translateUserRecipeToItalian(merged);
+      }
+      return merged;
     }
   } catch (e) {
     console.warn(`[UserRecipesService] Impossibile arricchire ricetta "${recipe.title}":`, e);
@@ -1680,6 +1706,9 @@ export async function enrichRecipeDetail(
     }
   }
 
+  if (needsItalianTranslation(recipe)) {
+    return await translateUserRecipeToItalian(recipe);
+  }
   return recipe;
 }
 
@@ -1946,6 +1975,16 @@ export async function searchWebRecipes(
   if (allRecipes.length === 0) {
     if (results.every(r => r.status === 'rejected' || !r.value.html)) {
       throw new Error('Impossibile contattare il catalogo online. Verifica la connessione internet.');
+    }
+  }
+
+  // Se ci sono titoli stranieri nella ricerca, traducili automaticamente in italiano
+  for (let i = 0; i < allRecipes.length; i++) {
+    const r = allRecipes[i];
+    if (r.title && !isItalianText(r.title)) {
+      try {
+        r.title = await translateTextToItalian(r.title);
+      } catch {}
     }
   }
 

@@ -24,6 +24,8 @@ import {
   enrichRecipeDetail,
   saveUserRecipe,
   formatSourceBadge,
+  translateUserRecipeToItalian,
+  needsItalianTranslation,
   type UserRecipeItem 
 } from '../services/userRecipesService';
 
@@ -128,17 +130,64 @@ export function RecipesScreen({
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
+  const [isTranslatingRecipe, setIsTranslatingRecipe] = useState(false);
+
   const handleSelectOnlineRecipe = async (meal: UserRecipeItem) => {
-    if (meal.ingredients && meal.ingredients.length > 0 && meal.steps && meal.steps.length > 0) {
-      setSelectedMeal(meal);
+    let current = meal;
+    if (needsItalianTranslation(current)) {
+      try {
+        current = await translateUserRecipeToItalian(current);
+      } catch (e) {
+        console.warn('Auto translation online recipe error:', e);
+      }
+    }
+    if (current.ingredients && current.ingredients.length > 0 && current.steps && current.steps.length > 0) {
+      setSelectedMeal(current);
       return;
     }
     try {
       showToast('Caricamento dettagli ricetta...');
-      const enriched = await enrichRecipeDetail(meal, 7000);
+      let enriched = await enrichRecipeDetail(current, 7000);
+      if (needsItalianTranslation(enriched)) {
+        enriched = await translateUserRecipeToItalian(enriched);
+      }
       setSelectedMeal(enriched);
     } catch {
+      setSelectedMeal(current);
+    }
+  };
+
+  const handleSelectMeal = async (meal: RecipeItem | UserRecipeItem) => {
+    const userMeal = meal as UserRecipeItem;
+    if (needsItalianTranslation(userMeal)) {
+      setSelectedMeal(userMeal);
+      try {
+        const translated = await translateUserRecipeToItalian(userMeal);
+        setSelectedMeal(translated);
+      } catch (e) {
+        console.warn('Error auto-translating meal:', e);
+      }
+    } else {
       setSelectedMeal(meal);
+    }
+  };
+
+  const handleTranslateCurrentRecipe = async () => {
+    if (!selectedMeal) return;
+    setIsTranslatingRecipe(true);
+    try {
+      showToast('Traduzione ricetta in Italiano...');
+      const translated = await translateUserRecipeToItalian(selectedMeal);
+      setSelectedMeal(translated);
+      if (selectedMeal.isCustom) {
+        saveUserRecipe(translated);
+      }
+      showToast('✓ Ricetta tradotta in Italiano con successo!');
+    } catch (e) {
+      console.error('Translation error:', e);
+      showToast('Errore durante la traduzione della ricetta.');
+    } finally {
+      setIsTranslatingRecipe(false);
     }
   };
 
@@ -982,7 +1031,7 @@ export function RecipesScreen({
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ delay: idx * 0.02 > 0.5 ? 0 : idx * 0.02 }}
                     key={meal.id}
-                    onClick={() => setSelectedMeal(meal)}
+                    onClick={() => handleSelectMeal(meal)}
                     className="bg-[var(--card-bg)] border border-[var(--border)] rounded-3xl overflow-hidden cursor-pointer hover:shadow-xl hover:shadow-orange-500/10 hover:-translate-y-1 transition-all group flex flex-col relative"
                   >
                     <div className="relative aspect-[4/3] overflow-hidden shrink-0 bg-[var(--surface-variant)]">
@@ -1203,6 +1252,26 @@ export function RecipesScreen({
                         </button>
                       </>
                     )}
+                    {/* Pulsante Traduci in Italiano */}
+                    <button
+                      type="button"
+                      onClick={handleTranslateCurrentRecipe}
+                      disabled={isTranslatingRecipe}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-blue-500/10 hover:bg-blue-500/20 text-blue-600 dark:text-blue-400 font-bold text-xs border border-blue-500/25 transition-all cursor-pointer active:scale-95 disabled:opacity-50"
+                      title="Traduci tutta la ricetta (titolo, ingredienti, passaggi) in Italiano"
+                    >
+                      {isTranslatingRecipe ? (
+                        <>
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          <span>Traduzione...</span>
+                        </>
+                      ) : (
+                        <>
+                          <span>🇮🇹</span>
+                          <span>Traduci</span>
+                        </>
+                      )}
+                    </button>
                     <button 
                       onClick={handleBack}
                       className="w-10 h-10 bg-[var(--surface-variant)] rounded-full text-[var(--text-muted)] flex items-center justify-center hover:bg-[var(--border)] hidden md:flex shrink-0 cursor-pointer"
