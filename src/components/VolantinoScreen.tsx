@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { 
-  ArrowLeft, Search, X, ChevronLeft, BarChart3, ExternalLink, 
+  ArrowLeft, Search, X, ChevronLeft, ChevronRight, BarChart3, ExternalLink, 
   Star, Sparkles, MapPin, Clock, AlertTriangle, RefreshCw, CheckCircle2,
-  Plus, Check, BookOpen, Store, SlidersHorizontal
+  Plus, Check, BookOpen, Store, SlidersHorizontal, ZoomIn, ZoomOut, RotateCcw
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { StoreLogo } from './StoreLogo';
@@ -461,6 +461,49 @@ export default function VolantinoScreen({
   const [activeReaderChain, setActiveReaderChain] = useState<VolantinoChain | null>(null);
   const [activeReaderPage, setActiveReaderPage] = useState<number>(1);
   const [readerLoading, setReaderLoading] = useState<boolean>(true);
+  const [zoomLevel, setZoomLevel] = useState<number>(1);
+  const [iframeError, setIframeError] = useState<boolean>(false);
+  const touchStartXRef = useRef<number | null>(null);
+
+  const isKnownBlockedIframe = useMemo(() => {
+    if (!activeReaderFlyer?.directUrl) return false;
+    const u = activeReaderFlyer.directUrl.toLowerCase();
+    return u.includes('promozioni24.it') || u.includes('orizzonteshop.it');
+  }, [activeReaderFlyer]);
+
+  const hasNativePages = Boolean(activeReaderFlyer?.pages && activeReaderFlyer.pages.length > 0);
+  const totalReaderPages = hasNativePages ? (activeReaderFlyer?.pages?.length || 1) : 1;
+  const currentReaderPage = hasNativePages ? Math.min(Math.max(1, activeReaderPage), totalReaderPages) : activeReaderPage;
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartXRef.current = e.touches[0].clientX;
+  };
+  const handleTouchEnd = (e: React.TouchEvent, totalPages: number) => {
+    if (touchStartXRef.current === null) return;
+    const diff = touchStartXRef.current - e.changedTouches[0].clientX;
+    if (Math.abs(diff) > 40) {
+      if (diff > 0) {
+        // Swipe left -> next page
+        setActiveReaderPage(p => {
+          if (p < totalPages) {
+            setReaderLoading(true);
+            return p + 1;
+          }
+          return p;
+        });
+      } else {
+        // Swipe right -> prev page
+        setActiveReaderPage(p => {
+          if (p > 1) {
+            setReaderLoading(true);
+            return p - 1;
+          }
+          return p;
+        });
+      }
+    }
+    touchStartXRef.current = null;
+  };
 
   // Best Offers filter state
   const [offersFavOnly, setOffersFavOnly] = useState(false);
@@ -680,6 +723,8 @@ export default function VolantinoScreen({
     const parentChain = chain || db.chains.find(c => c.flyers.some(f => f.id === flyer.id)) || null;
     const targetPage = page >= 1 ? page : 1;
     setReaderLoading(true);
+    setZoomLevel(1);
+    setIframeError(false);
     setActiveReaderFlyer(flyer);
     setActiveReaderChain(parentChain);
     setActiveReaderPage(targetPage);
@@ -917,14 +962,14 @@ export default function VolantinoScreen({
       {activeReaderFlyer ? (
         <div className="flex-1 flex flex-col h-full w-full bg-[var(--bg)] relative overflow-hidden">
           {/* Reader Top Bar */}
-          <header className="flex items-center justify-between gap-3 pt-[max(env(safe-area-inset-top),12px)] px-3 pb-2.5 bg-[var(--card-bg)] border-b border-[var(--border)] shrink-0 z-30 shadow-xs">
+          <header className="flex items-center justify-between gap-2 sm:gap-3 pt-[max(env(safe-area-inset-top),12px)] px-3 pb-2.5 bg-[var(--card-bg)] border-b border-[var(--border)] shrink-0 z-30 shadow-xs">
             <button
               onClick={() => setActiveReaderFlyer(null)}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[var(--surface-variant)] text-[var(--text-main)] hover:bg-[var(--border)] text-xs font-bold transition-all cursor-pointer shrink-0 active:scale-95"
               title="Torna ai volantini"
             >
               <ArrowLeft className="w-4 h-4" />
-              <span>Volantini</span>
+              <span className="hidden sm:inline">Volantini</span>
             </button>
 
             <div className="flex-1 min-w-0 text-center px-1">
@@ -939,16 +984,48 @@ export default function VolantinoScreen({
                     />
                   </div>
                 )}
-                <h1 className="text-xs sm:text-sm font-black text-[var(--text-main)] truncate max-w-[200px] sm:max-w-md">
+                <h1 className="text-xs sm:text-sm font-black text-[var(--text-main)] truncate max-w-[180px] sm:max-w-md">
                   {cleanTitle(activeReaderFlyer.title)}
                 </h1>
               </div>
               <p className="text-[10px] text-[var(--text-muted)] font-medium truncate mt-0.5">
-                {activeReaderChain?.name || 'Supermercato'} · Pagina {activeReaderPage}
+                {activeReaderChain?.name || 'Supermercato'} {hasNativePages ? `· Pagina ${currentReaderPage} di ${totalReaderPages}` : (activeReaderPage > 1 ? `· Pagina ${activeReaderPage}` : '')}
               </p>
             </div>
 
             <div className="flex items-center gap-1 shrink-0">
+              {/* Zoom Controls for Native HD Page Reader */}
+              {hasNativePages && (
+                <div className="flex items-center gap-0.5 bg-[var(--surface-variant)] rounded-full p-0.5 mr-0.5 sm:mr-1">
+                  <button
+                    type="button"
+                    onClick={() => setZoomLevel(z => Math.max(1, +(z - 0.25).toFixed(2)))}
+                    disabled={zoomLevel <= 1}
+                    className="p-1.5 rounded-full hover:bg-[var(--card-bg)] text-[var(--text-muted)] hover:text-[var(--text-main)] disabled:opacity-30 disabled:hover:bg-transparent transition-all cursor-pointer"
+                    title="Riduci zoom"
+                  >
+                    <ZoomOut className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setZoomLevel(1)}
+                    className="px-1.5 py-0.5 text-[10px] font-bold text-[var(--text-muted)] hover:text-[var(--text-main)] cursor-pointer"
+                    title="Ripristina zoom (100%)"
+                  >
+                    {Math.round(zoomLevel * 100)}%
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setZoomLevel(z => Math.min(3, +(z + 0.25).toFixed(2)))}
+                    disabled={zoomLevel >= 3}
+                    className="p-1.5 rounded-full hover:bg-[var(--card-bg)] text-[var(--text-muted)] hover:text-[var(--text-main)] disabled:opacity-30 disabled:hover:bg-transparent transition-all cursor-pointer"
+                    title="Aumenta zoom"
+                  >
+                    <ZoomIn className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              )}
+
               {activeReaderChain && (
                 <button
                   type="button"
@@ -958,7 +1035,7 @@ export default function VolantinoScreen({
                   }`}
                   title={favorites.includes(activeReaderChain.slug) ? 'Rimuovi dai preferiti' : 'Aggiungi ai preferiti'}
                 >
-                  <Star className={`w-5 h-5 ${favorites.includes(activeReaderChain.slug) ? 'fill-amber-500' : ''}`} />
+                  <Star className={`w-4 h-4 ${favorites.includes(activeReaderChain.slug) ? 'fill-amber-500' : ''}`} />
                 </button>
               )}
               <button
@@ -974,7 +1051,7 @@ export default function VolantinoScreen({
                 <MapPin className="w-4 h-4 text-emerald-500" />
               </button>
               <button
-                onClick={() => openExternalUrl(getBrowserUrl(activeReaderFlyer, activeReaderPage))}
+                onClick={() => openExternalUrl(getBrowserUrl(activeReaderFlyer, currentReaderPage))}
                 className="p-2 hover:bg-[var(--surface-variant)] rounded-full text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors cursor-pointer"
                 title="Apri nel browser esterno"
               >
@@ -990,26 +1067,144 @@ export default function VolantinoScreen({
             </div>
           </header>
 
-          {/* Iframe In-App Reader Container */}
-          <div className="flex-1 min-h-0 relative bg-zinc-950 flex flex-col">
-            {readerLoading && (
-              <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-zinc-950/85 backdrop-blur-xs text-white p-4 text-center">
-                <RefreshCw className="w-6 h-6 animate-spin text-emerald-400" />
-                <p className="text-xs font-bold text-zinc-300">Caricamento volantino in corso…</p>
-              </div>
-            )}
+          {/* Reader Body: Native HD Page Reader or Branded Fallback Card or Iframe */}
+          {hasNativePages ? (
+            /* 1. Native In-App High-Definition Page Reader */
+            <div
+              className="flex-1 min-h-0 relative bg-zinc-950 flex flex-col items-center justify-center overflow-auto p-2 select-none"
+              onTouchStart={handleTouchStart}
+              onTouchEnd={(e) => handleTouchEnd(e, totalReaderPages)}
+            >
+              {readerLoading && (
+                <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-zinc-950/85 backdrop-blur-xs text-white p-4 text-center">
+                  <RefreshCw className="w-6 h-6 animate-spin text-emerald-400" />
+                  <p className="text-xs font-bold text-zinc-300">Caricamento pagina {currentReaderPage}…</p>
+                </div>
+              )}
 
-            {/* In-App Reader: loads getBrowserUrl inside app */}
-            <iframe
-              key={`inapp-reader-${activeReaderFlyer.id}-${activeReaderFlyer.bkcode || ''}-${activeReaderPage}`}
-              src={getBrowserUrl(activeReaderFlyer, activeReaderPage)}
-              title={activeReaderFlyer.title}
-              onLoad={() => setReaderLoading(false)}
-              onError={() => setReaderLoading(false)}
-              className="w-full flex-1 border-0"
-              allow="fullscreen; clipboard-write"
-            />
-          </div>
+              <div
+                className="relative flex items-center justify-center min-h-full transition-transform duration-150 ease-out origin-center"
+                style={{ transform: `scale(${zoomLevel})` }}
+              >
+                <img
+                  key={`page-${activeReaderFlyer.id}-${currentReaderPage}`}
+                  src={activeReaderFlyer.pages![currentReaderPage - 1]}
+                  alt={`${activeReaderFlyer.title} - Pagina ${currentReaderPage}`}
+                  onLoad={() => setReaderLoading(false)}
+                  onError={() => setReaderLoading(false)}
+                  className="max-h-[calc(100vh-140px)] w-auto max-w-full rounded-md shadow-2xl object-contain pointer-events-auto"
+                  draggable={false}
+                />
+              </div>
+
+              {/* Floating Prev/Next Navigation Chevrons */}
+              {currentReaderPage > 1 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setReaderLoading(true);
+                    setActiveReaderPage(p => Math.max(1, p - 1));
+                  }}
+                  className="absolute left-3 top-1/2 -translate-y-1/2 z-20 p-3 rounded-full bg-zinc-900/80 hover:bg-zinc-800 text-white backdrop-blur-md shadow-lg border border-white/10 active:scale-95 transition-all cursor-pointer"
+                  title="Pagina precedente"
+                >
+                  <ChevronLeft className="w-6 h-6" />
+                </button>
+              )}
+
+              {currentReaderPage < totalReaderPages && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setReaderLoading(true);
+                    setActiveReaderPage(p => Math.min(totalReaderPages, p + 1));
+                  }}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 z-20 p-3 rounded-full bg-zinc-900/80 hover:bg-zinc-800 text-white backdrop-blur-md shadow-lg border border-white/10 active:scale-95 transition-all cursor-pointer"
+                  title="Pagina successiva"
+                >
+                  <ChevronRight className="w-6 h-6" />
+                </button>
+              )}
+
+              {/* Floating Bottom Page Indicator */}
+              <div className="absolute bottom-4 inset-x-0 z-20 flex justify-center pointer-events-none">
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-zinc-900/90 backdrop-blur-md border border-white/10 text-white text-xs font-bold shadow-xl pointer-events-auto">
+                  <button
+                    disabled={currentReaderPage <= 1}
+                    onClick={() => {
+                      setReaderLoading(true);
+                      setActiveReaderPage(p => Math.max(1, p - 1));
+                    }}
+                    className="p-1 rounded-full hover:bg-white/10 disabled:opacity-30 disabled:hover:bg-transparent cursor-pointer transition-colors"
+                    title="Pagina precedente"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </button>
+                  <span className="tabular-nums px-1">{currentReaderPage} / {totalReaderPages}</span>
+                  <button
+                    disabled={currentReaderPage >= totalReaderPages}
+                    onClick={() => {
+                      setReaderLoading(true);
+                      setActiveReaderPage(p => Math.min(totalReaderPages, p + 1));
+                    }}
+                    className="p-1 rounded-full hover:bg-white/10 disabled:opacity-30 disabled:hover:bg-transparent cursor-pointer transition-colors"
+                    title="Pagina successiva"
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : (isKnownBlockedIframe || iframeError) ? (
+            /* 2. Branded Fallback Card for known blocked origins or iframe errors */
+            <div className="flex-1 min-h-0 bg-zinc-950 flex flex-col items-center justify-center p-6 text-center text-white">
+              <div className="max-w-md w-full bg-zinc-900/90 rounded-2xl p-6 border border-zinc-800 shadow-2xl flex flex-col items-center">
+                {activeReaderFlyer.coverUrl && (
+                  <img 
+                    src={activeReaderFlyer.coverUrl} 
+                    alt={activeReaderFlyer.title} 
+                    className="w-36 h-48 object-cover rounded-xl shadow-lg mb-4 border border-zinc-700" 
+                  />
+                )}
+                <h3 className="text-base font-black text-white mb-1">{cleanTitle(activeReaderFlyer.title)}</h3>
+                <p className="text-xs text-zinc-400 mb-4">{activeReaderChain?.name || 'Supermercato'} · Portale Ufficiale</p>
+                <p className="text-xs text-zinc-300 mb-6 leading-relaxed">
+                  Questo volantino è disponibile direttamente sul portale ufficiale per garantire la massima risoluzione e offerte sempre aggiornate.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => openExternalUrl(getBrowserUrl(activeReaderFlyer, activeReaderPage))}
+                  className="w-full py-3 px-5 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:scale-98 text-white font-bold text-sm shadow-lg flex items-center justify-center gap-2 cursor-pointer transition-all"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                  <span>Apri Volantino Ufficiale</span>
+                </button>
+              </div>
+            </div>
+          ) : (
+            /* 3. Embeddable Iframe Reader Container (e.g. Calaméo or CeDiGros embed) */
+            <div className="flex-1 min-h-0 relative bg-zinc-950 flex flex-col">
+              {readerLoading && (
+                <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-zinc-950/85 backdrop-blur-xs text-white p-4 text-center">
+                  <RefreshCw className="w-6 h-6 animate-spin text-emerald-400" />
+                  <p className="text-xs font-bold text-zinc-300">Caricamento volantino in corso…</p>
+                </div>
+              )}
+
+              <iframe
+                key={`inapp-reader-${activeReaderFlyer.id}-${activeReaderFlyer.bkcode || ''}-${activeReaderPage}`}
+                src={getFlyerUrl(activeReaderFlyer, activeReaderPage)}
+                title={activeReaderFlyer.title}
+                onLoad={() => setReaderLoading(false)}
+                onError={() => {
+                  setReaderLoading(false);
+                  setIframeError(true);
+                }}
+                className="w-full flex-1 border-0"
+                allow="fullscreen; clipboard-write"
+              />
+            </div>
+          )}
         </div>
       ) : (
         /* ═══════════════════════════════════════════════════════════════

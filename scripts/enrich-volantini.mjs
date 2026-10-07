@@ -545,466 +545,272 @@ async function scrapeLaSaponeriaFlyers() {
   return null;
 }
 
-// ── Scraping Satur (Passione Casa) ──
-async function scrapeSaturFlyers() {
-  console.log('\n--- Satur (Passione Casa) Scraping ---');
-  const readerUrl = 'https://www.promozioni24.it/prodotti-per-la-casa/satur/satur-passione-casa-24-9-22-10-2026';
-  const coverUrl = 'https://cdn.promozioni24.it/file/2026/09/promozioni24-20260930211751-cover-0930202698660936137350-74-340x340.webp';
+// ── Generic Scraper per Insegne Promozioni24 con Estrazione Pagine HD ──
+async function scrapePromozioni24Chain(opts) {
+  const { slug, name, logoId, id, title, subtitle, readerUrl, coverUrl, from, to } = opts;
+  console.log(`\n--- ${name} Scraping ---`);
+  try {
+    const [rRes, cRes] = await Promise.all([
+      fetchWithRetry(readerUrl),
+      fetchWithRetry(coverUrl, { method: 'HEAD' }),
+    ]);
 
-  const [rRes, cRes] = await Promise.all([
-    fetchWithRetry(readerUrl, { method: 'HEAD' }),
-    fetchWithRetry(coverUrl, { method: 'HEAD' }),
-  ]);
+    if (rRes && rRes.ok && cRes && cRes.ok) {
+      const html = await rRes.text();
+      const pages = [];
+      const re = /(?:data-src|src)=["'](https:\/\/it-pub\.promozioni24\.it\/volantino\/[^"']+)["']/g;
+      let m;
+      while ((m = re.exec(html)) !== null) {
+        if (!pages.includes(m[1])) pages.push(m[1]);
+      }
 
-  if (rRes && rRes.ok && cRes && cRes.ok) {
-    console.log(`  ✓ [SATUR] Volantino attivo e verificato al 100%`);
-    return {
-      slug: 'satur',
-      name: 'Satur (Passione Casa)',
-      logoId: 'satur',
-      flyers: [
-        {
-          id: 9810,
-          title: 'Volantino Satur - Passione Casa',
-          subtitle: 'Offerte per la Casa dal 24 Settembre al 22 Ottobre',
-          coverUrl,
-          directUrl: readerUrl,
-          from: '2026-09-24T00:00:00+02:00',
-          to: '2026-10-22T23:59:59+02:00',
-        },
-      ],
-    };
+      console.log(`  ✓ [${name.toUpperCase()}] Volantino attivo e verificato al 100% (${pages.length} pagine HD estratte)`);
+      return {
+        slug,
+        name,
+        logoId,
+        flyers: [
+          {
+            id,
+            title,
+            subtitle,
+            coverUrl,
+            directUrl: readerUrl,
+            from,
+            to,
+            pages: pages.length > 0 ? pages : undefined,
+          },
+        ],
+      };
+    }
+  } catch (err) {
+    console.warn(`  [${name}] Errore:`, err.message);
   }
   return null;
+}
+
+// ── Scraping Satur (Passione Casa) ──
+async function scrapeSaturFlyers() {
+  return scrapePromozioni24Chain({
+    slug: 'satur',
+    name: 'Satur (Passione Casa)',
+    logoId: 'satur',
+    id: 9810,
+    title: 'Volantino Satur - Passione Casa',
+    subtitle: 'Offerte per la Casa dal 24 Settembre al 22 Ottobre',
+    readerUrl: 'https://www.promozioni24.it/prodotti-per-la-casa/satur/satur-passione-casa-24-9-22-10-2026',
+    coverUrl: 'https://cdn.promozioni24.it/file/2026/09/promozioni24-20260930211751-cover-0930202698660936137350-74-340x340.webp',
+    from: '2026-09-24T00:00:00+02:00',
+    to: '2026-10-22T23:59:59+02:00',
+  });
 }
 
 // ── Scraping Kasanova (Casa & Cucina) ──
 async function scrapeKasanovaFlyers() {
-  console.log('\n--- Kasanova Scraping ---');
-  const readerUrl = 'https://www.promozioni24.it/prodotti-per-la-casa/kasanova/casa-settembre-1-9-28-10-2026';
-  const coverUrl = 'https://cdn.promozioni24.it/file/2026/09/promozioni24-20260908112750-cover-0908202694129996108583-95-340x481.webp';
-
-  const [rRes, cRes] = await Promise.all([
-    fetchWithRetry(readerUrl, { method: 'HEAD' }),
-    fetchWithRetry(coverUrl, { method: 'HEAD' }),
-  ]);
-
-  if (rRes && rRes.ok && cRes && cRes.ok) {
-    console.log(`  ✓ [KASANOVA] Volantino attivo e verificato al 100%`);
-    return {
-      slug: 'kasanova',
-      name: 'Kasanova',
-      logoId: 'kasanova',
-      flyers: [
-        {
-          id: 9811,
-          title: 'Volantino Kasanova - Casa & Cucina',
-          subtitle: 'Promozioni Autunno fino al 28 Ottobre',
-          coverUrl,
-          directUrl: readerUrl,
-          from: '2026-09-01T00:00:00+02:00',
-          to: '2026-10-28T23:59:59+02:00',
-        },
-      ],
-    };
-  }
-  return null;
+  return scrapePromozioni24Chain({
+    slug: 'kasanova',
+    name: 'Kasanova',
+    logoId: 'kasanova',
+    id: 9811,
+    title: 'Volantino Kasanova - Casa & Cucina',
+    subtitle: 'Promozioni Autunno fino al 28 Ottobre',
+    readerUrl: 'https://www.promozioni24.it/prodotti-per-la-casa/kasanova/casa-settembre-1-9-28-10-2026',
+    coverUrl: 'https://cdn.promozioni24.it/file/2026/09/promozioni24-20260908112750-cover-0908202694129996108583-95-340x481.webp',
+    from: '2026-09-01T00:00:00+02:00',
+    to: '2026-10-28T23:59:59+02:00',
+  });
 }
 
 // ── Scraping Happy Casa (Casalinghi, Arredamento & Bagno) ──
 async function scrapeHappyCasaFlyers() {
-  console.log('\n--- Happy Casa Scraping ---');
-  const readerUrl = 'https://www.promozioni24.it/prodotti-per-la-casa/happycasa/happycasa-sotto-prezzi-16-9-4-10-2026';
-  const coverUrl = 'https://cdn.promozioni24.it/file/2026/09/promozioni24-20260914102029-cover-0914202628757938554438-54-340x326.webp';
-
-  const [rRes, cRes] = await Promise.all([
-    fetchWithRetry(readerUrl, { method: 'HEAD' }),
-    fetchWithRetry(coverUrl, { method: 'HEAD' }),
-  ]);
-
-  if (rRes && rRes.ok && cRes && cRes.ok) {
-    console.log(`  ✓ [HAPPY CASA] Volantino attivo e verificato al 100%`);
-    return {
-      slug: 'happycasa',
-      name: 'Happy Casa',
-      logoId: 'happycasa',
-      flyers: [
-        {
-          id: 9812,
-          title: 'Volantino Happy Casa - Sotto Prezzi',
-          subtitle: 'Casalinghi, Arredamento e Bagno',
-          coverUrl,
-          directUrl: readerUrl,
-          from: '2026-09-16T00:00:00+02:00',
-          to: '2026-10-25T23:59:59+02:00',
-        },
-      ],
-    };
-  }
-  return null;
+  return scrapePromozioni24Chain({
+    slug: 'happycasa',
+    name: 'Happy Casa',
+    logoId: 'happycasa',
+    id: 9812,
+    title: 'Volantino Happy Casa - Sotto Prezzi',
+    subtitle: 'Casalinghi, Arredamento e Bagno',
+    readerUrl: 'https://www.promozioni24.it/prodotti-per-la-casa/happycasa/happycasa-sotto-prezzi-16-9-4-10-2026',
+    coverUrl: 'https://cdn.promozioni24.it/file/2026/09/promozioni24-20260914102029-cover-0914202628757938554438-54-340x326.webp',
+    from: '2026-09-16T00:00:00+02:00',
+    to: '2026-10-25T23:59:59+02:00',
+  });
 }
 
 // ── Scraping Crai (Supermercati) ──
 async function scrapeCraiFlyers() {
-  console.log('\n--- Crai Scraping ---');
-  const readerUrl = 'https://www.promozioni24.it/iper-supermercati/crai/crai-grande-anniversario-1-11-10-2026';
-  const coverUrl = 'https://cdn.promozioni24.it/file/2026/10/promozioni24-20261006170812-cover-1006202698050425799685-63-340x340.webp';
-
-  const [rRes, cRes] = await Promise.all([
-    fetchWithRetry(readerUrl, { method: 'HEAD' }),
-    fetchWithRetry(coverUrl, { method: 'HEAD' }),
-  ]);
-
-  if (rRes && rRes.ok && cRes && cRes.ok) {
-    console.log(`  ✓ [CRAI] Volantino attivo e verificato al 100%`);
-    return {
-      slug: 'crai',
-      name: 'Crai',
-      logoId: 'crai',
-      flyers: [
-        {
-          id: 9813,
-          title: 'Volantino Crai - Grande Anniversario',
-          subtitle: 'Sconti e Offerte Anniversario fino all\'11 Ottobre',
-          coverUrl,
-          directUrl: readerUrl,
-          from: '2026-10-01T00:00:00+02:00',
-          to: '2026-10-18T23:59:59+02:00',
-        },
-      ],
-    };
-  }
-  return null;
+  return scrapePromozioni24Chain({
+    slug: 'crai',
+    name: 'Crai',
+    logoId: 'crai',
+    id: 9813,
+    title: 'Volantino Crai - Grande Anniversario',
+    subtitle: 'Sconti e Offerte Anniversario',
+    readerUrl: 'https://www.promozioni24.it/iper-supermercati/crai/crai-grande-anniversario-1-11-10-2026',
+    coverUrl: 'https://cdn.promozioni24.it/file/2026/10/promozioni24-20261006170812-cover-1006202698050425799685-63-340x340.webp',
+    from: '2026-10-01T00:00:00+02:00',
+    to: '2026-10-18T23:59:59+02:00',
+  });
 }
 
-// ── Scraping Caddy\'s (Cura Casa & Persona) ──
+// ── Scraping Caddy's (Cura Casa & Persona) ──
 async function scrapeCaddysFlyers() {
-  console.log('\n--- Caddy\'s Scraping ---');
-  const readerUrl = 'https://www.promozioni24.it/salute-e-benessere/caddys/caddy-s-salute-benessere-1-10-4-11-2026';
-  const coverUrl = 'https://cdn.promozioni24.it/file/2026/10/promozioni24-20261001100021-cover-1001202650465671391184-23-340x500.webp';
-
-  const [rRes, cRes] = await Promise.all([
-    fetchWithRetry(readerUrl, { method: 'HEAD' }),
-    fetchWithRetry(coverUrl, { method: 'HEAD' }),
-  ]);
-
-  if (rRes && rRes.ok && cRes && cRes.ok) {
-    console.log(`  ✓ [CADDY\'S] Volantino attivo e verificato al 100%`);
-    return {
-      slug: 'caddys',
-      name: 'Caddy\'s',
-      logoId: 'caddys',
-      flyers: [
-        {
-          id: 9814,
-          title: 'Volantino Caddy\'s - Salute & Benessere',
-          subtitle: 'Cura Persona e Igiene Casa fino al 4 Novembre',
-          coverUrl,
-          directUrl: readerUrl,
-          from: '2026-10-01T00:00:00+02:00',
-          to: '2026-11-04T23:59:59+02:00',
-        },
-      ],
-    };
-  }
-  return null;
+  return scrapePromozioni24Chain({
+    slug: 'caddys',
+    name: "Caddy's",
+    logoId: 'caddys',
+    id: 9814,
+    title: "Volantino Caddy's - Salute e Benessere",
+    subtitle: 'Igiene Casa e Cura della Persona',
+    readerUrl: 'https://www.promozioni24.it/salute-e-benessere/caddys/caddy-s-salute-benessere-1-10-4-11-2026',
+    coverUrl: 'https://cdn.promozioni24.it/file/2026/10/promozioni24-20261001100021-cover-1001202650465671391184-23-340x500.webp',
+    from: '2026-10-01T00:00:00+02:00',
+    to: '2026-11-04T23:59:59+02:00',
+  });
 }
 
 // ── Scraping Ekom (Discount) ──
 async function scrapeEkomFlyers() {
-  console.log('\n--- Ekom Discount Scraping ---');
-  const readerUrl = 'https://www.promozioni24.it/discount/ekom/ekom-offerte-capogiro-6-19-10-2026';
-  const coverUrl = 'https://cdn.promozioni24.it/file/2026/10/promozioni24-20261006163024-cover-1006202690547072476101-99-340x364.webp';
-
-  const [rRes, cRes] = await Promise.all([
-    fetchWithRetry(readerUrl, { method: 'HEAD' }),
-    fetchWithRetry(coverUrl, { method: 'HEAD' }),
-  ]);
-
-  if (rRes && rRes.ok && cRes && cRes.ok) {
-    console.log(`  ✓ [EKOM] Volantino attivo e verificato al 100%`);
-    return {
-      slug: 'ekom',
-      name: 'Ekom Discount',
-      logoId: 'ekom',
-      flyers: [
-        {
-          id: 9815,
-          title: 'Volantino Ekom - Offerte da Capogiro',
-          subtitle: 'Grandi Risparmi fino al 19 Ottobre',
-          coverUrl,
-          directUrl: readerUrl,
-          from: '2026-10-06T00:00:00+02:00',
-          to: '2026-10-19T23:59:59+02:00',
-        },
-      ],
-    };
-  }
-  return null;
+  return scrapePromozioni24Chain({
+    slug: 'ekom',
+    name: 'Ekom Discount',
+    logoId: 'ekom',
+    id: 9815,
+    title: 'Volantino Ekom - Offerte da Capogiro',
+    subtitle: 'Grandi Risparmi fino al 19 Ottobre',
+    readerUrl: 'https://www.promozioni24.it/discount/ekom/ekom-offerte-capogiro-6-19-10-2026',
+    coverUrl: 'https://cdn.promozioni24.it/file/2026/10/promozioni24-20261006163024-cover-1006202690547072476101-99-340x364.webp',
+    from: '2026-10-06T00:00:00+02:00',
+    to: '2026-10-19T23:59:59+02:00',
+  });
 }
 
 // ── Scraping Bottega Verde (Bellezza & Cosmesi) ──
 async function scrapeBottegaVerdeFlyers() {
-  console.log('\n--- Bottega Verde Scraping ---');
-  const readerUrl = 'https://www.promozioni24.it/salute-e-benessere/bottegaverde/catalogo-bottega-verde-buon-vivere-1-6-31-5-2027';
-  const coverUrl = 'https://cdn.promozioni24.it/file/2026/08/promozioni24-20260805194901-cover-0805202637176654793706-15-340x432.webp';
-
-  const [rRes, cRes] = await Promise.all([
-    fetchWithRetry(readerUrl, { method: 'HEAD' }),
-    fetchWithRetry(coverUrl, { method: 'HEAD' }),
-  ]);
-
-  if (rRes && rRes.ok && cRes && cRes.ok) {
-    console.log(`  ✓ [BOTTEGA VERDE] Volantino attivo e verificato al 100%`);
-    return {
-      slug: 'bottega-verde',
-      name: 'Bottega Verde',
-      logoId: 'bottegaverde',
-      flyers: [
-        {
-          id: 9816,
-          title: 'Catalogo Bottega Verde - Buon Vivere',
-          subtitle: 'Cosmesi Naturale e Bellezza',
-          coverUrl,
-          directUrl: readerUrl,
-          from: '2026-06-01T00:00:00+02:00',
-          to: '2027-05-31T23:59:59+02:00',
-        },
-      ],
-    };
-  }
-  return null;
+  return scrapePromozioni24Chain({
+    slug: 'bottega-verde',
+    name: 'Bottega Verde',
+    logoId: 'bottegaverde',
+    id: 9816,
+    title: 'Catalogo Bottega Verde - Buon Vivere',
+    subtitle: 'Cosmesi Naturale e Bellezza',
+    readerUrl: 'https://www.promozioni24.it/salute-e-benessere/bottegaverde/catalogo-bottega-verde-buon-vivere-1-6-31-5-2027',
+    coverUrl: 'https://cdn.promozioni24.it/file/2026/08/promozioni24-20260805194901-cover-0805202637176654793706-15-340x432.webp',
+    from: '2026-06-01T00:00:00+02:00',
+    to: '2027-05-31T23:59:59+02:00',
+  });
 }
 
 // ── Scraping Bricocenter (Fai da Te, Arredo & Giardino) ──
 async function scrapeBricocenterFlyers() {
-  console.log('\n--- Bricocenter Scraping ---');
-  const readerUrl = 'https://www.promozioni24.it/bricolage-e-giardinaggio/bricocenter/bricocenter-organizza-spazi-2-9-5-10-2026';
-  const coverUrl = 'https://cdn.promozioni24.it/file/2026/09/promozioni24-20260913115257-cover-0913202691050925459989-79-281x500.webp';
-
-  const [rRes, cRes] = await Promise.all([
-    fetchWithRetry(readerUrl, { method: 'HEAD' }),
-    fetchWithRetry(coverUrl, { method: 'HEAD' }),
-  ]);
-
-  if (rRes && rRes.ok && cRes && cRes.ok) {
-    console.log(`  ✓ [BRICOCENTER] Volantino attivo e verificato al 100%`);
-    return {
-      slug: 'bricocenter',
-      name: 'Bricocenter',
-      logoId: 'bricocenter',
-      flyers: [
-        {
-          id: 9817,
-          title: 'Volantino Bricocenter - Organizza gli Spazi',
-          subtitle: 'Fai da Te, Arredo e Giardinaggio',
-          coverUrl,
-          directUrl: readerUrl,
-          from: '2026-09-02T00:00:00+02:00',
-          to: '2026-10-26T23:59:59+02:00',
-        },
-      ],
-    };
-  }
-  return null;
+  return scrapePromozioni24Chain({
+    slug: 'bricocenter',
+    name: 'Bricocenter',
+    logoId: 'bricocenter',
+    id: 9817,
+    title: 'Volantino Bricocenter - Organizza gli Spazi',
+    subtitle: 'Fai da Te, Arredo e Giardinaggio',
+    readerUrl: 'https://www.promozioni24.it/bricolage-e-giardinaggio/bricocenter/bricocenter-organizza-spazi-2-9-5-10-2026',
+    coverUrl: 'https://cdn.promozioni24.it/file/2026/09/promozioni24-20260913115257-cover-0913202691050925459989-79-281x500.webp',
+    from: '2026-09-02T00:00:00+02:00',
+    to: '2026-10-26T23:59:59+02:00',
+  });
 }
 
 // ── Scraping Brico OK (Bricolage & Fai da Te) ──
 async function scrapeBricoOkFlyers() {
-  console.log('\n--- Brico OK Scraping ---');
-  const readerUrl = 'https://www.promozioni24.it/bricolage-e-giardinaggio/bricook/brico-ok-settembre-10-20-9-2026';
-  const coverUrl = 'https://cdn.promozioni24.it/file/2026/09/promozioni24-20260916120839-cover-0916202683436987392684-83-340x457.webp';
-
-  const [rRes, cRes] = await Promise.all([
-    fetchWithRetry(readerUrl, { method: 'HEAD' }),
-    fetchWithRetry(coverUrl, { method: 'HEAD' }),
-  ]);
-
-  if (rRes && rRes.ok && cRes && cRes.ok) {
-    console.log(`  ✓ [BRICO OK] Volantino attivo e verificato al 100%`);
-    return {
-      slug: 'brico-ok',
-      name: 'Brico OK',
-      logoId: 'bricook',
-      flyers: [
-        {
-          id: 9818,
-          title: 'Volantino Brico OK - Fai da Te d\'Autunno',
-          subtitle: 'Bricolage, Giardino e Casa',
-          coverUrl,
-          directUrl: readerUrl,
-          from: '2026-09-10T00:00:00+02:00',
-          to: '2026-10-25T23:59:59+02:00',
-        },
-      ],
-    };
-  }
-  return null;
+  return scrapePromozioni24Chain({
+    slug: 'brico-ok',
+    name: 'Brico OK',
+    logoId: 'bricook',
+    id: 9818,
+    title: 'Volantino Brico OK - Fai da Te d\'Autunno',
+    subtitle: 'Bricolage, Giardino e Casa',
+    readerUrl: 'https://www.promozioni24.it/bricolage-e-giardinaggio/bricook/brico-ok-settembre-10-20-9-2026',
+    coverUrl: 'https://cdn.promozioni24.it/file/2026/09/promozioni24-20260916120839-cover-0916202683436987392684-83-340x457.webp',
+    from: '2026-09-10T00:00:00+02:00',
+    to: '2026-10-25T23:59:59+02:00',
+  });
 }
 
 // ── Scraping OBI (Bricolage & Giardinaggio) ──
 async function scrapeObiFlyers() {
-  console.log('\n--- OBI Scraping ---');
-  const readerUrl = 'https://www.promozioni24.it/bricolage-e-giardinaggio/obi/obi-nati-fare-estate-30-7-23-8-2026';
-  const coverUrl = 'https://cdn.promozioni24.it/file/2026/08/promozioni24-20260815001107-cover-0815202695223972687415-66-340x481.webp';
-
-  const [rRes, cRes] = await Promise.all([
-    fetchWithRetry(readerUrl, { method: 'HEAD' }),
-    fetchWithRetry(coverUrl, { method: 'HEAD' }),
-  ]);
-
-  if (rRes && rRes.ok && cRes && cRes.ok) {
-    console.log(`  ✓ [OBI] Volantino attivo e verificato al 100%`);
-    return {
-      slug: 'obi',
-      name: 'OBI',
-      logoId: 'obi',
-      flyers: [
-        {
-          id: 9819,
-          title: 'Catalogo OBI - Il Tuo Giardino & Fai da Te',
-          subtitle: 'Tutto per la Casa e il Bricolage',
-          coverUrl,
-          directUrl: readerUrl,
-          from: '2026-08-01T00:00:00+02:00',
-          to: '2026-10-31T23:59:59+02:00',
-        },
-      ],
-    };
-  }
-  return null;
+  return scrapePromozioni24Chain({
+    slug: 'obi',
+    name: 'OBI',
+    logoId: 'obi',
+    id: 9819,
+    title: 'Catalogo OBI - Il Tuo Giardino & Fai da Te',
+    subtitle: 'Tutto per la Casa e il Bricolage',
+    readerUrl: 'https://www.promozioni24.it/bricolage-e-giardinaggio/obi/obi-nati-fare-estate-30-7-23-8-2026',
+    coverUrl: 'https://cdn.promozioni24.it/file/2026/08/promozioni24-20260815001107-cover-0815202695223972687415-66-340x481.webp',
+    from: '2026-08-01T00:00:00+02:00',
+    to: '2026-10-31T23:59:59+02:00',
+  });
 }
 
 // ── Scraping Arcaplanet (Animali & Pet Care) ──
 async function scrapeArcaplanetFlyers() {
-  console.log('\n--- Arcaplanet Scraping ---');
-  const readerUrl = 'https://www.promozioni24.it/animali/arcaplanet/arcaplanet-acquari-animali-30-7-7-9-2026';
-  const coverUrl = 'https://cdn.promozioni24.it/file/2026/09/promozioni24-20260901145604-cover-0901202622151132913528-79-340x477.webp';
-
-  const [rRes, cRes] = await Promise.all([
-    fetchWithRetry(readerUrl, { method: 'HEAD' }),
-    fetchWithRetry(coverUrl, { method: 'HEAD' }),
-  ]);
-
-  if (rRes && rRes.ok && cRes && cRes.ok) {
-    console.log(`  ✓ [ARCAPLANET] Volantino attivo e verificato al 100%`);
-    return {
-      slug: 'arcaplanet',
-      name: 'Arcaplanet',
-      logoId: 'arcaplanet',
-      flyers: [
-        {
-          id: 9820,
-          title: 'Volantino Arcaplanet - Amici a 4 Zampe',
-          subtitle: 'Alimenti e Accessori Pet Care',
-          coverUrl,
-          directUrl: readerUrl,
-          from: '2026-08-01T00:00:00+02:00',
-          to: '2026-10-25T23:59:59+02:00',
-        },
-      ],
-    };
-  }
-  return null;
+  return scrapePromozioni24Chain({
+    slug: 'arcaplanet',
+    name: 'Arcaplanet',
+    logoId: 'arcaplanet',
+    id: 9820,
+    title: 'Volantino Arcaplanet - Amici a 4 Zampe',
+    subtitle: 'Alimenti e Accessori Pet Care',
+    readerUrl: 'https://www.promozioni24.it/animali/arcaplanet/arcaplanet-acquari-animali-30-7-7-9-2026',
+    coverUrl: 'https://cdn.promozioni24.it/file/2026/09/promozioni24-20260901145604-cover-0901202622151132913528-79-340x477.webp',
+    from: '2026-08-01T00:00:00+02:00',
+    to: '2026-10-25T23:59:59+02:00',
+  });
 }
 
 // ── Scraping Prénatal (Infanzia & Mamma) ──
 async function scrapePrenatalFlyers() {
-  console.log('\n--- Prénatal Scraping ---');
-  const readerUrl = 'https://www.promozioni24.it/infanzia/prenatal/prenatal-back-to-school-20-8-21-9-2026';
-  const coverUrl = 'https://cdn.promozioni24.it/file/2026/08/promozioni24-20260829010332-cover-0829202652949576337282-82-340x473.webp';
-
-  const [rRes, cRes] = await Promise.all([
-    fetchWithRetry(readerUrl, { method: 'HEAD' }),
-    fetchWithRetry(coverUrl, { method: 'HEAD' }),
-  ]);
-
-  if (rRes && rRes.ok && cRes && cRes.ok) {
-    console.log(`  ✓ [PRENATAL] Volantino attivo e verificato al 100%`);
-    return {
-      slug: 'prenatal',
-      name: 'Prénatal',
-      logoId: 'prenatal',
-      flyers: [
-        {
-          id: 9821,
-          title: 'Volantino Prénatal - Infanzia & Mamma',
-          subtitle: 'Abbigliamento e Cura per Neonati e Bambini',
-          coverUrl,
-          directUrl: readerUrl,
-          from: '2026-08-20T00:00:00+02:00',
-          to: '2026-10-25T23:59:59+02:00',
-        },
-      ],
-    };
-  }
-  return null;
+  return scrapePromozioni24Chain({
+    slug: 'prenatal',
+    name: 'Prénatal',
+    logoId: 'prenatal',
+    id: 9821,
+    title: 'Volantino Prénatal - Infanzia & Mamma',
+    subtitle: 'Abbigliamento e Cura per Neonati e Bambini',
+    readerUrl: 'https://www.promozioni24.it/infanzia/prenatal/prenatal-back-to-school-20-8-21-9-2026',
+    coverUrl: 'https://cdn.promozioni24.it/file/2026/08/promozioni24-20260829010332-cover-0829202652949576337282-82-340x473.webp',
+    from: '2026-08-20T00:00:00+02:00',
+    to: '2026-10-25T23:59:59+02:00',
+  });
 }
 
 // ── Scraping Toys Center (Giocattoli & Infanzia) ──
 async function scrapeToysCenterFlyers() {
-  console.log('\n--- Toys Center Scraping ---');
-  const readerUrl = 'https://www.promozioni24.it/giocattoli/toyscenter/catalogo-toys-center-aria-aperta-2026-2-4-30-9-2026';
-  const coverUrl = 'https://cdn.promozioni24.it/file/2026/06/promozioni24-20260614180748-cover-0614202618290593130507-28-340x493.webp';
-
-  const [rRes, cRes] = await Promise.all([
-    fetchWithRetry(readerUrl, { method: 'HEAD' }),
-    fetchWithRetry(coverUrl, { method: 'HEAD' }),
-  ]);
-
-  if (rRes && rRes.ok && cRes && cRes.ok) {
-    console.log(`  ✓ [TOYS CENTER] Volantino attivo e verificato al 100%`);
-    return {
-      slug: 'toys-center',
-      name: 'Toys Center',
-      logoId: 'toyscenter',
-      flyers: [
-        {
-          id: 9822,
-          title: 'Catalogo Toys Center - Giochi & Divertimento',
-          subtitle: 'Giocattoli, Giochi da Tavolo e Tempo Libero',
-          coverUrl,
-          directUrl: readerUrl,
-          from: '2026-04-01T00:00:00+02:00',
-          to: '2026-10-31T23:59:59+02:00',
-        },
-      ],
-    };
-  }
-  return null;
+  return scrapePromozioni24Chain({
+    slug: 'toys-center',
+    name: 'Toys Center',
+    logoId: 'toyscenter',
+    id: 9822,
+    title: 'Catalogo Toys Center - Giochi & Divertimento',
+    subtitle: 'Giocattoli, Giochi da Tavolo e Tempo Libero',
+    readerUrl: 'https://www.promozioni24.it/giocattoli/toyscenter/catalogo-toys-center-aria-aperta-2026-2-4-30-9-2026',
+    coverUrl: 'https://cdn.promozioni24.it/file/2026/06/promozioni24-20260614180748-cover-0614202618290593130507-28-340x493.webp',
+    from: '2026-04-01T00:00:00+02:00',
+    to: '2026-10-31T23:59:59+02:00',
+  });
 }
 
 // ── Scraping Conforama (Arredamento Casa) ──
 async function scrapeConforamaFlyers() {
-  console.log('\n--- Conforama Scraping ---');
-  const readerUrl = 'https://www.promozioni24.it/arredamento/conforama/catalogo-conforama-confo-summer-13-6-15-7-2026';
-  const coverUrl = 'https://cdn.promozioni24.it/file/2026/06/promozioni24-20260614183056-cover-0614202688478782555187-67-340x500.webp';
-
-  const [rRes, cRes] = await Promise.all([
-    fetchWithRetry(readerUrl, { method: 'HEAD' }),
-    fetchWithRetry(coverUrl, { method: 'HEAD' }),
-  ]);
-
-  if (rRes && rRes.ok && cRes && cRes.ok) {
-    console.log(`  ✓ [CONFORAMA] Volantino attivo e verificato al 100%`);
-    return {
-      slug: 'conforama',
-      name: 'Conforama',
-      logoId: 'conforama',
-      flyers: [
-        {
-          id: 9823,
-          title: 'Catalogo Conforama - Arredamento Casa',
-          subtitle: 'Mobili, Salotti, Camere e Cucine',
-          coverUrl,
-          directUrl: readerUrl,
-          from: '2026-06-15T00:00:00+02:00',
-          to: '2026-10-31T23:59:59+02:00',
-        },
-      ],
-    };
-  }
-  return null;
+  return scrapePromozioni24Chain({
+    slug: 'conforama',
+    name: 'Conforama',
+    logoId: 'conforama',
+    id: 9823,
+    title: 'Catalogo Conforama - Arredamento Casa',
+    subtitle: 'Mobili, Salotti, Camere e Cucine',
+    readerUrl: 'https://www.promozioni24.it/arredamento/conforama/catalogo-conforama-confo-summer-13-6-15-7-2026',
+    coverUrl: 'https://cdn.promozioni24.it/file/2026/06/promozioni24-20260614183056-cover-0614202688478782555187-67-340x500.webp',
+    from: '2026-06-15T00:00:00+02:00',
+    to: '2026-10-31T23:59:59+02:00',
+  });
 }
 
 async function verifyCalameoFlyer(flyer) {
@@ -1223,6 +1029,7 @@ export interface VolantinoFlyer {
   bkcode?: string;
   authid?: string;
   directUrl?: string;
+  pages?: string[];
 }
 
 export interface VolantinoChain {
