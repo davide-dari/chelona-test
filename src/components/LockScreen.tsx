@@ -25,15 +25,18 @@ export const LockScreen = ({ isVisible, onAuthenticated, onStartScan, onOpenTool
   const [profiles, setProfiles] = useState<ProfileConfig[]>(() => storage.loadProfiles());
   const [selectedProfile, setSelectedProfile] = useState<ProfileConfig | null>(() => {
     const loaded = storage.loadProfiles();
-    if (targetProfileId) {
-      return loaded.find(p => p.id === targetProfileId) || null;
+    const effectiveTargetId = targetProfileId || (typeof localStorage !== 'undefined' ? localStorage.getItem('chelona_active_profile_id') : null);
+    if (effectiveTargetId) {
+      const found = loaded.find(p => p.id === effectiveTargetId);
+      if (found) return found;
     }
     return loaded.length === 1 ? loaded[0] : null;
   });
   const [view, setView] = useState<'selector' | 'login' | 'setup'>(() => {
     const loaded = storage.loadProfiles();
     if (loaded.length === 0) return 'setup';
-    if (targetProfileId || loaded.length === 1) return 'login';
+    const effectiveTargetId = targetProfileId || (typeof localStorage !== 'undefined' ? localStorage.getItem('chelona_active_profile_id') : null);
+    if (effectiveTargetId || loaded.length === 1) return 'login';
     return 'selector';
   });
   
@@ -124,8 +127,9 @@ export const LockScreen = ({ isVisible, onAuthenticated, onStartScan, onOpenTool
       if (activeView === 'setup') {
         setView('selector');
       } else {
-        if (targetProfileId) {
-          const target = loadedProfiles.find(p => p.id === targetProfileId);
+        const effectiveTargetId = targetProfileId || (typeof localStorage !== 'undefined' ? localStorage.getItem('chelona_active_profile_id') : null);
+        if (effectiveTargetId) {
+          const target = loadedProfiles.find(p => p.id === effectiveTargetId);
           if (target) {
             setSelectedProfile(target);
             setView('login');
@@ -146,7 +150,7 @@ export const LockScreen = ({ isVisible, onAuthenticated, onStartScan, onOpenTool
       setError('');
       refreshProfiles();
     }
-  }, [isVisible]);
+  }, [isVisible, targetProfileId]);
 
   useEffect(() => {
     if (!window.crypto || !window.crypto.subtle || !window.isSecureContext) {

@@ -944,7 +944,7 @@ export default function App() {
 
         let loadedModules = saved.modules || [];
         
-        if (encryptionKey) {
+        if (isSensitiveUnlocked && encryptionKey) {
             try {
                 const fullState = await storage.loadState(encryptionKey, currentProfileId);
                 if (fullState && fullState.modules && fullState.modules.length > 0) {
@@ -1592,8 +1592,8 @@ export default function App() {
     
     await storage.savePublicState({ modules: publicModules, folders: newFolders }, currentProfileId);
     
-    // Save full data to private state if unlocked
-    if (encryptionKey) {
+    // Save full data to private state only if vault is actively unlocked
+    if (isSensitiveUnlocked && encryptionKey) {
         const privateModules = newModules.filter(m => m.type === 'auto' || m.type === 'document');
         await storage.savePrivateState(privateModules, encryptionKey, currentProfileId);
     }
@@ -1622,7 +1622,7 @@ export default function App() {
   };
 
   useEffect(() => {
-    if (!encryptionKey || modules.length === 0) return;
+    if (!isSensitiveUnlocked || !encryptionKey || modules.length === 0) return;
 
     const checkExpirations = async () => {
       const now = Date.now();
@@ -1643,7 +1643,7 @@ export default function App() {
     checkExpirations();
     const interval = setInterval(checkExpirations, 60000);
     return () => clearInterval(interval);
-  }, [modules, folders, encryptionKey]);
+  }, [modules, folders, encryptionKey, isSensitiveUnlocked]);
 
   const handleAddModule = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -2684,6 +2684,13 @@ export default function App() {
     if (!encryptionKey || !currentProfileId) return;
     setBioError(null);
 
+    const profiles = storage.loadProfiles();
+    const profile = profiles.find(p => p.id === currentProfileId);
+    if (profile?.hasPassword !== false && !isSensitiveUnlocked) {
+      unlockAndProceed(handleEnableBiometrics);
+      return;
+    }
+
     try {
       const m = await import('./services/biometricService');
       const supported = await m.biometricService.isSupported();
@@ -3418,6 +3425,7 @@ export default function App() {
         <LockScreen 
           mode="app-start"
           isVisible={isAppStartLocked}
+          targetProfileId={currentProfileId || undefined}
           onAuthenticated={(key, profileId) => {
             setEncryptionKey(key);
             setCurrentProfileId(profileId);
@@ -3506,7 +3514,7 @@ export default function App() {
                       setUsername(p.username);
                       setAvatar(p.avatar);
                       setIsBioEnabled(p.isBiometricEnabled || false);
-                      setIsSensitiveUnlocked(false);
+                      setIsSensitiveUnlocked(p.hasPassword === false);
                       setShowProfileSelectorModal(false);
                       setIsProfileOpen(false);
                       const pubKey = await storage.getPublicKey();
