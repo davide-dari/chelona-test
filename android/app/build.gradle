@@ -7,8 +7,8 @@ android {
         applicationId "com.davidedari.chelona"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 13178
-        versionName "1.30.178"
+        versionCode 13179
+        versionName "1.30.179"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -24,6 +24,8 @@ android {
             keyPassword System.getenv("RELEASE_KEY_PASSWORD") ?: "chelona2024"
             v1SigningEnabled true
             v2SigningEnabled true
+            enableV3Signing = true
+            enableV4Signing = true
         }
     }
     buildTypes {

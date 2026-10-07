@@ -6,7 +6,8 @@ import {
   AlertTriangle, Shield, CheckCircle2, ChevronRight, Calculator, RefreshCw, 
   Luggage, Umbrella, Thermometer, Wind, Droplets, ExternalLink, PlusCircle,
   HeartPulse, Syringe, Sparkles, Sun, CloudRain, Snowflake, CloudLightning,
-  ArrowDownUp, CheckCheck, Shirt, FileText, Smartphone, Coffee, AlertCircle, Info
+  ArrowDownUp, CheckCheck, Shirt, FileText, Smartphone, Coffee, AlertCircle, Info,
+  SlidersHorizontal, Star
 } from 'lucide-react';
 import ReactGlobe from 'react-globe.gl';
 import { TravelModule, TravelDestination, TravelCountryGroup, TravelNation } from '../types';
@@ -1381,6 +1382,8 @@ export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onCl
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
   const [selectedNation, setSelectedNation] = useState<string | null>(null);
   const [focusedDestId, setFocusedDestId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isFiltersSheetOpen, setIsFiltersSheetOpen] = useState(false);
 
   const [showAddModal, setShowAddModal] = useState(false);
   const [destModalType, setDestModalType] = useState<'place' | 'itinerary'>('place');
@@ -2014,102 +2017,334 @@ export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onCl
   };
 
   // Get all unique nations from active destinations (legacy fallback included!)
-  const activeNations = Array.from(new Set(destinations.map(d => getDestNation(d, countryGroups)).filter(Boolean))) as string[];
+  const activeNations = useMemo(() => {
+    return Array.from(new Set(destinations.map(d => getDestNation(d, countryGroups)).filter(Boolean))) as string[];
+  }, [destinations, countryGroups]);
 
   // Dynamically filter destinations based on selected country folder/nation
-  const filteredDestinations = selectedNation
-    ? destinations.filter(d => getDestNation(d, countryGroups) === selectedNation)
-    : destinations;
+  const filteredDestinations = useMemo(() => {
+    return selectedNation
+      ? destinations.filter(d => getDestNation(d, countryGroups) === selectedNation)
+      : destinations;
+  }, [destinations, selectedNation, countryGroups]);
 
-  // Group filteredDestinations by city (with fallback)
-  const destinationsByCity: Record<string, TravelDestination[]> = {};
-  filteredDestinations.forEach(dest => {
-    const cityKey = dest.city?.trim() || 'Altre località';
-    if (!destinationsByCity[cityKey]) {
-      destinationsByCity[cityKey] = [];
+  // Display destinations (including search query filter)
+  const displayDestinations = useMemo(() => {
+    let list = filteredDestinations;
+    if (searchQuery.trim().length >= 2) {
+      const q = searchQuery.toLowerCase().trim();
+      list = list.filter(d => 
+        d.name.toLowerCase().includes(q) ||
+        (d.city && d.city.toLowerCase().includes(q)) ||
+        (d.nation && d.nation.toLowerCase().includes(q)) ||
+        (d.notes && d.notes.toLowerCase().includes(q))
+      );
     }
-    destinationsByCity[cityKey].push(dest);
-  });
+    return list;
+  }, [filteredDestinations, searchQuery]);
+
+  // Suggestions from FAMOUS_PLACES_DB for easy 1-tap addition
+  const suggestedFamousPlaces = useMemo(() => {
+    if (!searchQuery.trim() || searchQuery.trim().length < 2) return [];
+    const q = searchQuery.toLowerCase().trim();
+    const existingNames = new Set(destinations.map(d => d.name.toLowerCase()));
+    return FAMOUS_PLACES_DB.filter(p => 
+      !existingNames.has(p.name.toLowerCase()) &&
+      (p.name.toLowerCase().includes(q) || p.city.toLowerCase().includes(q) || p.nation.toLowerCase().includes(q))
+    ).slice(0, 3);
+  }, [searchQuery, destinations]);
+
+  // Group displayDestinations by city (with fallback)
+  const destinationsByCity: Record<string, TravelDestination[]> = useMemo(() => {
+    const map: Record<string, TravelDestination[]> = {};
+    displayDestinations.forEach(dest => {
+      const cityKey = dest.city?.trim() || 'Altre località';
+      if (!map[cityKey]) {
+        map[cityKey] = [];
+      }
+      map[cityKey].push(dest);
+    });
+    return map;
+  }, [displayDestinations]);
+
+  const hasActiveFilters = Boolean(selectedNation || searchQuery.trim().length >= 2);
+  const activeFiltersCount = (selectedNation ? 1 : 0) + (searchQuery.trim().length >= 2 ? 1 : 0);
+
+  const handleBack = useCallback(() => {
+    if (isFiltersSheetOpen) {
+      setIsFiltersSheetOpen(false);
+      return;
+    }
+    if (showAddModal) {
+      setShowAddModal(false);
+      return;
+    }
+    if (editingDest) {
+      setEditingDest(null);
+      return;
+    }
+    if (showAddGroupModal) {
+      setShowAddGroupModal(false);
+      return;
+    }
+    if (showAddNationModal) {
+      setShowAddNationModal(false);
+      return;
+    }
+    if (activeGroupActionSheet) {
+      setActiveGroupActionSheet(null);
+      return;
+    }
+    if (searchQuery) {
+      setSearchQuery('');
+      return;
+    }
+    if (selectedNation) {
+      setSelectedNation(null);
+      return;
+    }
+    if (travelActiveTab !== 'destinations') {
+      setTravelActiveTab('destinations');
+      return;
+    }
+    onClose();
+  }, [
+    isFiltersSheetOpen,
+    showAddModal,
+    editingDest,
+    showAddGroupModal,
+    showAddNationModal,
+    activeGroupActionSheet,
+    searchQuery,
+    selectedNation,
+    travelActiveTab,
+    onClose
+  ]);
+
+  useEffect(() => {
+    const onTravelBack = () => handleBack();
+    window.addEventListener('travel-back', onTravelBack);
+    return () => window.removeEventListener('travel-back', onTravelBack);
+  }, [handleBack]);
 
   return (
     <motion.div
       initial={{ opacity: 0, x: 20 }}
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: 20 }}
-      className="fixed inset-0 z-[150] bg-[var(--bg)] flex flex-col"
+      className="fixed inset-0 z-[150] bg-[var(--bg)] flex flex-col overflow-hidden"
     >
-      {/* Header */}
-      <div className="bg-[var(--card-bg)] border-b border-[var(--border)] px-6 py-4 flex items-center justify-between shrink-0 relative z-30 shadow-sm">
-        <div className="flex items-center gap-4">
-          <button onClick={onClose} className="p-2 hover:bg-[var(--surface-variant)] rounded-xl transition-colors">
-            <ArrowLeft className="w-6 h-6 text-[var(--text-main)]" />
+      {/* ── UNIFIED TOP BAR (Stile Lista Spesa / Ricettario) ── */}
+      <header className="bg-[var(--card-bg)] border-b border-[var(--border)] px-4 py-3 sm:px-6 sm:py-3.5 flex items-center justify-between shrink-0 relative z-30 shadow-xs">
+        <div className="flex items-center gap-3 min-w-0">
+          <button
+            type="button"
+            onClick={handleBack}
+            className="p-2 sm:p-2.5 rounded-full border border-[var(--border)] bg-[var(--card-bg)] hover:bg-[var(--surface-variant)] active:scale-95 transition-all text-[var(--text-main)] shadow-xs shrink-0 cursor-pointer"
+            title="Indietro"
+          >
+            <ArrowLeft className="w-5 h-5 sm:w-6 sm:h-6" />
           </button>
-          <div>
-            <h2 className="text-lg font-black text-[var(--text-main)] uppercase tracking-tight leading-none">Viaggi</h2>
-            <p className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest mt-1">
-              {destinations.length} destinazioni {countryGroups.length > 0 && `· ${countryGroups.length} paesi`}
+          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-blue-500/10 border border-blue-500/20 text-blue-500 flex items-center justify-center shrink-0">
+            <Compass className="w-5 h-5" />
+          </div>
+          <div className="min-w-0">
+            <h1 className="text-lg sm:text-xl lg:text-2xl font-black text-[var(--text-main)] tracking-tight truncate leading-tight">
+              Viaggi & Mete
+            </h1>
+            <p className="text-[11px] text-[var(--text-muted)] font-semibold truncate hidden sm:block">
+              {destinations.length} mete salvate {activeNations.length > 0 ? `· ${activeNations.length} nazioni` : ''}
             </p>
           </div>
         </div>
-        <button
-          onClick={() => {
-            setDestModalType('place');
-            setShowAddModal(true);
-          }}
-          className="px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-500 hover:from-blue-700 hover:to-indigo-600 text-white rounded-xl font-bold text-xs uppercase tracking-wider flex items-center gap-2 shadow-md shadow-blue-500/25 active:scale-95 transition-all shrink-0"
-        >
-          <Plus className="w-4 h-4" /> Aggiungi Meta
-        </button>
-      </div>
 
-      <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
-        {/* Globe section - dynamically filtered! */}
-        <div className="relative w-full h-[320px] lg:h-full lg:flex-1 shrink-0 bg-[#060d1a] overflow-hidden z-10">
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_#0f2744_0%,_#060d1a_70%)]" />
-
-          {/* Stars */}
-          <div className="absolute inset-0 overflow-hidden pointer-events-none">
-            {Array.from({ length: 60 }).map((_, i) => (
-              <div
-                key={i}
-                className="absolute rounded-full bg-white"
-                style={{
-                  width: Math.random() > 0.7 ? 2 : 1,
-                  height: Math.random() > 0.7 ? 2 : 1,
-                  top: `${Math.random() * 100}%`,
-                  left: `${Math.random() * 100}%`,
-                  opacity: Math.random() * 0.6 + 0.2
-                }}
-              />
-            ))}
-          </div>
-
-          <div className="relative z-10 w-full h-full flex items-center justify-center">
-            <Globe3D 
-              destinations={filteredDestinations} 
-              selectedNation={selectedNation} 
-              focusedDestId={focusedDestId} 
-            />
-          </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            type="button"
+            onClick={() => {
+              setDestModalType('place');
+              setShowAddModal(true);
+            }}
+            className="px-3.5 sm:px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl sm:rounded-2xl font-black text-xs uppercase tracking-wider flex items-center gap-1.5 shadow-md shadow-blue-500/25 active:scale-95 transition-all cursor-pointer"
+          >
+            <Plus className="w-4 h-4" />
+            <span className="hidden sm:inline">Aggiungi</span> Meta
+          </button>
         </div>
+      </header>
 
-        {/* Travel Tools & Destinations Panel */}
-        <div className="flex-1 relative z-20 overflow-y-auto custom-scrollbar bg-[var(--bg)] pb-28 lg:pb-8 lg:max-w-md lg:border-l border-[var(--border)] shadow-2xl">
-          <div className="p-4 space-y-4">
+      {/* ── MAIN SCROLLABLE CONTAINER ── */}
+      <main className="flex-1 overflow-y-auto custom-scrollbar overscroll-contain scroll-smooth p-4 sm:p-6 md:p-8 space-y-6 pb-28">
+        <div className="max-w-4xl mx-auto w-full space-y-5">
+          {/* ── 3D EARTH GLOBE VIEWPORT ("sempre il pianeta terra sopra") ── */}
+          <div className="relative w-full h-[220px] sm:h-[260px] md:h-[290px] rounded-3xl overflow-hidden bg-[#060d1a] border border-blue-500/20 shadow-xl shadow-blue-950/20 shrink-0">
+            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_#0f2744_0%,_#060d1a_75%)] pointer-events-none" />
 
-            {/* Travel Tools Sub-tabs Bar */}
-            <div className="flex bg-[var(--surface-variant)] p-1.5 rounded-2xl border border-[var(--border)] overflow-x-auto no-scrollbar gap-1">
+            {/* Subtle Ambient Stars */}
+            <div className="absolute inset-0 overflow-hidden pointer-events-none opacity-70">
+              {Array.from({ length: 45 }).map((_, i) => (
+                <div
+                  key={`star-${i}`}
+                  className="absolute rounded-full bg-white"
+                  style={{
+                    width: i % 4 === 0 ? 2 : 1,
+                    height: i % 4 === 0 ? 2 : 1,
+                    top: `${(i * 19) % 100}%`,
+                    left: `${(i * 23) % 100}%`,
+                    opacity: 0.2 + ((i * 7) % 60) / 100
+                  }}
+                />
+              ))}
+            </div>
+
+            {/* 3D Interactive Planet Earth Canvas */}
+            <div className="relative z-10 w-full h-full flex items-center justify-center">
+              <Globe3D 
+                destinations={filteredDestinations} 
+                selectedNation={selectedNation} 
+                focusedDestId={focusedDestId} 
+              />
+            </div>
+
+            {/* Floating Globe Status & Controls */}
+            <div className="absolute top-3 left-3 z-20 flex items-center gap-1.5 bg-black/60 backdrop-blur-md border border-white/10 px-3 py-1.5 rounded-full text-xs font-bold text-white shadow-md pointer-events-none">
+              <Globe className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+              <span className="truncate max-w-[140px] sm:max-w-[200px]">
+                {selectedNation ? `${getCountryEmoji(selectedNation)} ${selectedNation}` : 'Mappamondo 3D'}
+              </span>
+              {focusedDestId && (
+                <span className="text-blue-300 text-[10px] hidden sm:inline">
+                  · {destinations.find(d => d.id === focusedDestId)?.name}
+                </span>
+              )}
+            </div>
+
+            {/* Reset / Center Globe button */}
+            {(selectedNation || focusedDestId) && (
               <button
+                type="button"
+                onClick={() => {
+                  setSelectedNation(null);
+                  setFocusedDestId(null);
+                }}
+                className="absolute top-3 right-3 z-20 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-blue-600/80 hover:bg-blue-600 text-white backdrop-blur-md text-xs font-bold shadow-md cursor-pointer active:scale-95 transition-all"
+                title="Torna alla vista globale"
+              >
+                <RefreshCw className="w-3 h-3" />
+                <span>Vista Globale</span>
+              </button>
+            )}
+
+            <div className="absolute bottom-2.5 right-3 z-20 text-[10px] font-medium text-white/50 bg-black/40 backdrop-blur-xs px-2 py-0.5 rounded-md pointer-events-none hidden sm:block">
+              Trascina per ruotare · Click card per centrare
+            </div>
+          </div>
+
+          {/* ── HERO TITLE & SEARCH BAR (Stile Ricette e Lista della Spesa) ── */}
+          <div className="space-y-4">
+            <div className="text-center space-y-1 pt-1">
+              <h2 className="font-black text-2xl sm:text-3xl text-[var(--text-main)] tracking-tight">
+                Cosa vuoi esplorare?
+              </h2>
+              <p className="text-xs sm:text-sm text-[var(--text-muted)] font-medium max-w-md mx-auto">
+                Organizza destinazioni, controlla il meteo, prepara la valigia e gestisci il budget
+              </p>
+            </div>
+
+            {/* HERO SEARCH BAR + FILTERS */}
+            <div className="w-full flex items-center gap-2 sm:gap-2.5">
+              <div className="relative flex-1 group">
+                <div className="absolute inset-0 bg-gradient-to-r from-blue-500/20 via-indigo-500/20 to-sky-500/20 rounded-2xl sm:rounded-3xl blur-xl opacity-70 group-focus-within:opacity-100 transition-opacity duration-300 pointer-events-none" />
+                <div className="relative flex items-center gap-2.5 sm:gap-3 bg-[var(--card-bg)] border-2 border-[var(--border)] focus-within:border-blue-500 rounded-2xl sm:rounded-3xl px-3.5 sm:px-5 py-3 sm:py-3.5 shadow-lg transition-all">
+                  <Search className="w-5 h-5 sm:w-6 sm:h-6 text-blue-500 shrink-0" />
+                  <input
+                    type="text"
+                    placeholder="Cerca mete, città, paesi o note (es. Tokyo, Colosseo, Parigi)..."
+                    value={searchQuery}
+                    onChange={e => setSearchQuery(e.target.value)}
+                    className="flex-1 bg-transparent text-[var(--text-main)] placeholder-[var(--text-muted)] outline-none text-sm sm:text-base font-medium min-w-0"
+                  />
+                  {searchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setSearchQuery('')}
+                      className="p-1 rounded-full hover:bg-[var(--surface-variant)] text-[var(--text-muted)] cursor-pointer"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* TASTO FILTRI SHEET */}
+              <button
+                type="button"
+                onClick={() => setIsFiltersSheetOpen(true)}
+                className={`relative p-3 sm:p-3.5 rounded-2xl sm:rounded-3xl border-2 transition-all cursor-pointer shadow-md flex items-center justify-center shrink-0 active:scale-95 ${
+                  hasActiveFilters
+                    ? 'bg-blue-500/15 border-blue-500 text-blue-500 shadow-blue-500/20'
+                    : 'bg-[var(--card-bg)] border-[var(--border)] hover:border-blue-400 text-[var(--text-muted)] hover:text-blue-500'
+                }`}
+                title="Filtri Nazioni & Destinazioni"
+              >
+                <SlidersHorizontal className="w-5 h-5 sm:w-6 sm:h-6" />
+                {activeFiltersCount > 0 && (
+                  <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-blue-500 text-white text-[10px] font-black flex items-center justify-center shadow-sm">
+                    {activeFiltersCount}
+                  </span>
+                )}
+              </button>
+            </div>
+
+            {/* ACTIVE FILTER CHIPS (IF ANY) */}
+            {hasActiveFilters && (
+              <div className="flex items-center justify-center gap-2 pt-0.5 flex-wrap">
+                {selectedNation && (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedNation(null)}
+                    className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-blue-500 text-white shadow-xs cursor-pointer active:scale-95"
+                  >
+                    <span>{getCountryEmoji(selectedNation)} {selectedNation}</span>
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+                {searchQuery.trim().length >= 2 && (
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-[var(--surface-variant)] text-[var(--text-main)] border border-[var(--border)] shadow-xs">
+                    <span>"{searchQuery}"</span>
+                    <button type="button" onClick={() => setSearchQuery('')} className="hover:text-red-500 cursor-pointer">
+                      <X className="w-3 h-3" />
+                    </button>
+                  </span>
+                )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedNation(null);
+                    setSearchQuery('');
+                  }}
+                  className="text-xs font-bold text-[var(--text-muted)] hover:text-blue-500 underline ml-1 cursor-pointer"
+                >
+                  Azzera filtri
+                </button>
+              </div>
+            )}
+
+            {/* ── SEGMENTED SUB-TABS (Mete, Meteo, Valigia, Budget, Vaccini, SOS) ── */}
+            <div className="flex bg-[var(--surface-variant)] p-1.5 rounded-2xl border border-[var(--border)] overflow-x-auto no-scrollbar gap-1 shadow-xs">
+              <button
+                type="button"
                 onClick={() => setTravelActiveTab('destinations')}
                 className={`py-2 px-3 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer shrink-0 ${
                   travelActiveTab === 'destinations' ? 'bg-[var(--card-bg)] text-blue-500 shadow-sm' : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
                 }`}
               >
                 <MapPin className="w-3.5 h-3.5" />
-                <span>Mete</span>
+                <span>Mete ({displayDestinations.length})</span>
               </button>
 
               <button
+                type="button"
                 onClick={() => setTravelActiveTab('weather')}
                 className={`py-2 px-3 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer shrink-0 ${
                   travelActiveTab === 'weather' ? 'bg-[var(--card-bg)] text-amber-500 shadow-sm' : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
@@ -2120,6 +2355,7 @@ export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onCl
               </button>
 
               <button
+                type="button"
                 onClick={() => setTravelActiveTab('packing')}
                 className={`py-2 px-3 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer shrink-0 ${
                   travelActiveTab === 'packing' ? 'bg-[var(--card-bg)] text-emerald-500 shadow-sm' : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
@@ -2127,9 +2363,13 @@ export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onCl
               >
                 <Luggage className="w-3.5 h-3.5" />
                 <span>Valigia</span>
+                <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-emerald-500/10 text-emerald-600 font-black">
+                  {packingProgressPercent}%
+                </span>
               </button>
 
               <button
+                type="button"
                 onClick={() => setTravelActiveTab('budget')}
                 className={`py-2 px-3 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer shrink-0 ${
                   travelActiveTab === 'budget' ? 'bg-[var(--card-bg)] text-purple-500 shadow-sm' : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
@@ -2140,6 +2380,7 @@ export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onCl
               </button>
 
               <button
+                type="button"
                 onClick={() => setTravelActiveTab('vaccines')}
                 className={`py-2 px-3 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer shrink-0 ${
                   travelActiveTab === 'vaccines' ? 'bg-[var(--card-bg)] text-rose-500 shadow-sm' : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
@@ -2150,6 +2391,7 @@ export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onCl
               </button>
 
               <button
+                type="button"
                 onClick={() => setTravelActiveTab('emergency')}
                 className={`py-2 px-3 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer shrink-0 ${
                   travelActiveTab === 'emergency' ? 'bg-[var(--card-bg)] text-rose-500 shadow-sm' : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
@@ -2159,67 +2401,125 @@ export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onCl
                 <span>Emergenze</span>
               </button>
             </div>
+          </div>
 
-            {/* TAB 1: METE & NAZIONI */}
-            {travelActiveTab === 'destinations' && (
-              <div className="space-y-4">
-                {/* Country Folders Horizontal Bar */}
-                <div className="px-1 pt-1">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)]">Nazioni</span>
+          {/* TAB 1: METE & NAZIONI */}
+          {travelActiveTab === 'destinations' && (
+            <div className="space-y-4">
+              {/* Country Folders Horizontal Bar */}
+              <div className="px-1 pt-1">
+                <div className="flex gap-2 overflow-x-auto pb-2 custom-scrollbar snap-x">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedNation(null);
+                      setFocusedDestId(null);
+                    }}
+                    className={`px-4 py-2.5 rounded-2xl font-bold text-xs shrink-0 transition-all snap-start flex items-center gap-2 border cursor-pointer ${selectedNation === null ? 'bg-blue-600 border-blue-600 text-white shadow-md' : 'bg-[var(--card-bg)] border-[var(--border)] text-[var(--text-muted)] hover:bg-[var(--surface-variant)]'}`}
+                  >
+                    <span>🌐</span> Tutte le mete ({destinations.length})
+                  </button>
+                  
+                  {activeNations.map(natName => {
+                    const count = destinations.filter(d => getDestNation(d, countryGroups) === natName).length;
+                    const isSelected = selectedNation === natName;
+                    return (
+                      <button
+                        key={natName}
+                        type="button"
+                        onClick={() => {
+                          setSelectedNation(natName);
+                          setFocusedDestId(null);
+                        }}
+                        className={`px-4 py-2.5 rounded-2xl font-bold text-xs shrink-0 transition-all snap-start flex items-center gap-2 border cursor-pointer ${isSelected ? 'bg-blue-600 border-blue-600 text-white shadow-md' : 'bg-[var(--card-bg)] border-[var(--border)] text-[var(--text-muted)] hover:bg-[var(--surface-variant)]'}`}
+                      >
+                        <span>{getCountryEmoji(natName)}</span> {natName} ({count})
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Suggestions from Famous Places */}
+              {suggestedFamousPlaces.length > 0 && (
+                <div className="p-4 rounded-2xl bg-gradient-to-r from-blue-500/10 via-indigo-500/10 to-transparent border border-blue-500/20 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-blue-500" />
+                    <h4 className="text-xs font-black uppercase tracking-wider text-blue-600 dark:text-blue-400">
+                      Attrazioni celebri per "{searchQuery}"
+                    </h4>
                   </div>
-                  <div className="flex gap-2 overflow-x-auto pb-2 custom-scrollbar snap-x">
-                    <button
-                      onClick={() => {
-                        setSelectedNation(null);
-                        setFocusedDestId(null);
-                      }}
-                      className={`px-4 py-2.5 rounded-2xl font-bold text-xs shrink-0 transition-all snap-start flex items-center gap-2 border cursor-pointer ${selectedNation === null ? 'bg-blue-600 border-blue-600 text-white shadow-md' : 'bg-[var(--card-bg)] border-[var(--border)] text-[var(--text-muted)] hover:bg-[var(--surface-variant)]'}`}
-                    >
-                      <span>🌐</span> Tutte le mete ({destinations.length})
-                    </button>
-                    
-                    {activeNations.map(natName => {
-                      const count = destinations.filter(d => getDestNation(d, countryGroups) === natName).length;
-                      const isSelected = selectedNation === natName;
-                      return (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {suggestedFamousPlaces.map(p => (
+                      <div
+                        key={`sugg-${p.name}`}
+                        className="flex items-center justify-between p-2.5 rounded-xl bg-[var(--card-bg)] border border-[var(--border)] shadow-xs"
+                      >
+                        <div className="min-w-0 pr-2">
+                          <p className="text-xs font-bold text-[var(--text-main)] truncate">{p.name}</p>
+                          <p className="text-[10px] text-[var(--text-muted)] font-medium">
+                            {getCountryEmoji(p.nation)} {p.city}, {p.nation}
+                          </p>
+                        </div>
                         <button
-                          key={natName}
+                          type="button"
                           onClick={() => {
-                            setSelectedNation(natName);
-                            setFocusedDestId(null);
+                            handleAdd({
+                              name: p.name,
+                              lat: p.lat,
+                              lng: p.lng,
+                              city: p.city,
+                              nation: p.nation,
+                              type: 'place'
+                            });
+                            setSearchQuery('');
                           }}
-                          className={`px-4 py-2.5 rounded-2xl font-bold text-xs shrink-0 transition-all snap-start flex items-center gap-2 border cursor-pointer ${isSelected ? 'bg-blue-600 border-blue-600 text-white shadow-md' : 'bg-[var(--card-bg)] border-[var(--border)] text-[var(--text-muted)] hover:bg-[var(--surface-variant)]'}`}
+                          className="px-2.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-bold flex items-center gap-1 shrink-0 cursor-pointer active:scale-95"
                         >
-                          <span>{getCountryEmoji(natName)}</span> {natName} ({count})
+                          <Plus className="w-3.5 h-3.5" />
+                          <span>Aggiungi</span>
                         </button>
-                      );
-                    })}
+                      </div>
+                    ))}
                   </div>
                 </div>
+              )}
 
-                <div className="h-px bg-[var(--border)]" />
+              <div>
+                <h3 className="text-xs font-black uppercase tracking-widest text-[var(--text-muted)] mb-3 px-1">
+                  {selectedNation 
+                    ? `${getCountryEmoji(selectedNation)} ${selectedNation}`
+                    : 'Tutte le Destinazioni'
+                  }
+                </h3>
 
-                <div>
-                  <h3 className="text-xs font-black uppercase tracking-widest text-[var(--text-muted)] mb-3 px-1">
-                    {selectedNation 
-                      ? `${getCountryEmoji(selectedNation)} ${selectedNation}`
-                      : 'Tutte le Destinazioni'
-                    }
-                  </h3>
-
-                  {filteredDestinations.length === 0 ? (
-                    <div className="flex flex-col items-center py-12 text-center">
-                      <div className="w-16 h-16 bg-blue-500/10 rounded-full flex items-center justify-center mb-4">
-                        <Navigation className="w-8 h-8 text-blue-400 opacity-60" />
-                      </div>
-                      <p className="text-sm font-bold text-[var(--text-muted)]">Nessuna meta</p>
-                      <p className="text-xs text-[var(--text-muted)] mt-1 opacity-70">
-                        Premi 'Aggiungi Meta' in alto per aggiungere un luogo {selectedGroupId && 'in questa cartella'}
-                      </p>
+                {displayDestinations.length === 0 ? (
+                  <div className="flex flex-col items-center py-16 text-center max-w-sm mx-auto space-y-3">
+                    <div className="w-16 h-16 bg-blue-500/10 rounded-full flex items-center justify-center text-blue-500">
+                      <Navigation className="w-8 h-8 opacity-70" />
                     </div>
-                  ) : (
-                    <div className="space-y-4">
+                    <h3 className="text-base font-bold text-[var(--text-main)]">
+                      {searchQuery ? 'Nessuna meta trovata' : 'Nessuna meta salvata'}
+                    </h3>
+                    <p className="text-xs text-[var(--text-muted)]">
+                      {searchQuery 
+                        ? `Nessuna destinazione corrisponde a "${searchQuery}". Prova con un'altra parola o aggiungi un nuovo luogo.` 
+                        : 'Inizia ad aggiungere i luoghi che vorresti visitare, hotel o tappe del tuo viaggio.'}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setDestModalType('place');
+                        setShowAddModal(true);
+                      }}
+                      className="px-4 py-2.5 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs uppercase tracking-wider flex items-center gap-2 shadow-md shadow-blue-500/25 active:scale-95 transition-all cursor-pointer"
+                    >
+                      <Plus className="w-4 h-4" />
+                      <span>Aggiungi Prima Meta</span>
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
                       {Object.entries(destinationsByCity).map(([cityName, cityDests]) => (
                         <div key={cityName} className="space-y-2">
                           <h4 className="text-[10px] font-black uppercase tracking-widest text-blue-500 bg-blue-500/10 px-2.5 py-1.5 rounded-xl inline-flex items-center gap-1.5 ml-1 select-none">
@@ -3402,9 +3702,155 @@ export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onCl
               </div>
             )}
 
-          </div>
         </div>
-      </div>
+      </main>
+
+      {/* ── FILTER BOTTOM SHEET MODAL (Stile Ricette / Volantini) ── */}
+      <AnimatePresence>
+        {isFiltersSheetOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[250] flex items-end sm:items-center justify-center p-0 sm:p-4"
+          >
+            <div 
+              className="absolute inset-0 bg-black/60 backdrop-blur-xs" 
+              onClick={() => setIsFiltersSheetOpen(false)} 
+            />
+            <motion.div
+              initial={{ y: '100%' }}
+              animate={{ y: 0 }}
+              exit={{ y: '100%' }}
+              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+              className="relative w-full max-w-lg bg-[var(--card-bg)] rounded-t-[2.5rem] sm:rounded-3xl border border-[var(--border)] shadow-2xl p-6 max-h-[85vh] overflow-y-auto custom-scrollbar space-y-5"
+            >
+              {/* Sheet Header */}
+              <div className="flex items-center justify-between border-b border-[var(--border)] pb-3">
+                <div className="flex items-center gap-2.5">
+                  <SlidersHorizontal className="w-5 h-5 text-blue-500" />
+                  <h3 className="text-base font-black text-[var(--text-main)]">
+                    Filtra Nazioni & Strumenti
+                  </h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsFiltersSheetOpen(false)}
+                  className="p-1.5 rounded-full hover:bg-[var(--surface-variant)] text-[var(--text-muted)] cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Nazioni Filter */}
+              <div className="space-y-2">
+                <span className="text-[10px] font-black uppercase tracking-wider text-[var(--text-muted)]">
+                  Nazioni con destinazioni ({activeNations.length})
+                </span>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedNation(null);
+                      setFocusedDestId(null);
+                    }}
+                    className={`p-3 rounded-2xl text-left border text-xs font-bold transition-all cursor-pointer flex items-center justify-between ${
+                      selectedNation === null
+                        ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
+                        : 'bg-[var(--surface-variant)] border-[var(--border)] text-[var(--text-main)] hover:bg-[var(--border)]'
+                    }`}
+                  >
+                    <span>🌐 Tutte le mete</span>
+                    <span className="text-[10px] opacity-80">{destinations.length}</span>
+                  </button>
+
+                  {activeNations.map(nat => {
+                    const isSel = selectedNation === nat;
+                    const count = destinations.filter(d => getDestNation(d, countryGroups) === nat).length;
+                    return (
+                      <button
+                        key={`sheet-nat-${nat}`}
+                        type="button"
+                        onClick={() => {
+                          setSelectedNation(isSel ? null : nat);
+                          setFocusedDestId(null);
+                        }}
+                        className={`p-3 rounded-2xl text-left border text-xs font-bold transition-all cursor-pointer flex items-center justify-between ${
+                          isSel
+                            ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
+                            : 'bg-[var(--surface-variant)] border-[var(--border)] text-[var(--text-main)] hover:bg-[var(--border)]'
+                        }`}
+                      >
+                        <span className="truncate pr-1">{getCountryEmoji(nat)} {nat}</span>
+                        <span className="text-[10px] opacity-80">{count}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Quick Tab Switcher */}
+              <div className="space-y-2 pt-2 border-t border-[var(--border)]">
+                <span className="text-[10px] font-black uppercase tracking-wider text-[var(--text-muted)]">
+                  Vai a Sezione
+                </span>
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { id: 'destinations', label: 'Mete', icon: MapPin },
+                    { id: 'weather', label: 'Meteo', icon: CloudSun },
+                    { id: 'packing', label: 'Valigia', icon: Luggage },
+                    { id: 'budget', label: 'Budget', icon: DollarSign },
+                    { id: 'vaccines', label: 'Sanità', icon: HeartPulse },
+                    { id: 'emergency', label: 'SOS', icon: PhoneCall },
+                  ].map(tabItem => {
+                    const IconComp = tabItem.icon;
+                    const isCur = travelActiveTab === tabItem.id;
+                    return (
+                      <button
+                        key={`sheet-tab-${tabItem.id}`}
+                        type="button"
+                        onClick={() => {
+                          setTravelActiveTab(tabItem.id as any);
+                          setIsFiltersSheetOpen(false);
+                        }}
+                        className={`p-2.5 rounded-xl border text-xs font-bold flex flex-col items-center justify-center gap-1 cursor-pointer transition-all ${
+                          isCur
+                            ? 'bg-blue-500/10 border-blue-500 text-blue-600'
+                            : 'bg-[var(--surface-variant)] border-[var(--border)] text-[var(--text-muted)] hover:text-[var(--text-main)]'
+                        }`}
+                      >
+                        <IconComp className="w-4 h-4" />
+                        <span>{tabItem.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Actions Footer */}
+              <div className="pt-2 flex items-center justify-between gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedNation(null);
+                    setSearchQuery('');
+                  }}
+                  className="px-4 py-2.5 text-xs font-bold text-[var(--text-muted)] hover:text-red-500 cursor-pointer"
+                >
+                  Azzera filtri
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsFiltersSheetOpen(false)}
+                  className="px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-md cursor-pointer active:scale-95"
+                >
+                  Applica
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* FAB Menu removed to avoid overlap */}
 
