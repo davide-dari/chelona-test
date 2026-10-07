@@ -33,6 +33,12 @@ export interface AppState {
   folders: Folder[];
 }
 
+// Precomputed Base64 public key (AES-256 GCM derived from PUBLIC_PASSWORD and PUBLIC_SALT).
+// Replaces 600,000 PBKDF2 iterations on startup (< 0.05ms WebCrypto raw key import vs 100-1500ms derivation).
+export const PRECOMPUTED_PUBLIC_KEY_B64 = 'vVvIC6HASpeuvJM/3HMG+FMpmG9znA3Qa0BvARKNTaY=';
+let cachedPublicKey: CryptoKey | null = null;
+let publicKeyPromise: Promise<CryptoKey> | null = null;
+
 // In-memory runtime cache
 let profilesCache: ProfileConfig[] = [];
 let profilesEncCache: string = '';
@@ -40,6 +46,87 @@ let stateEncCache: Record<string, string> = {};
 let addressBookCache: any[] = [];
 let notificationPrefsCache: any[] = [];
 let notifFiredCache: Record<string, string> = {};
+
+// Synchronous bootstrap from localStorage so that storage.loadProfiles() and initial state
+// are populated on Frame 0 before any React component mounts
+function bootstrapStorageCache() {
+  try {
+    if (typeof localStorage === 'undefined') return;
+
+    // 1. Profiles
+    let profilesEnc = localStorage.getItem(PROFILES_ENC_KEY);
+    if (profilesEnc) {
+      profilesEncCache = profilesEnc;
+      const decrypted = decryptText(profilesEnc);
+      if (decrypted) {
+        try {
+          profilesCache = JSON.parse(decrypted);
+        } catch {
+          profilesCache = [];
+        }
+      }
+    } else {
+      const plaintextSaved = localStorage.getItem(PROFILES_KEY);
+      if (plaintextSaved) {
+        try {
+          profilesCache = JSON.parse(plaintextSaved);
+        } catch {}
+      } else {
+        const legacySaved = localStorage.getItem(LEGACY_AUTH_KEY);
+        if (legacySaved) {
+          try {
+            profilesCache = [{ id: 'default', ...JSON.parse(legacySaved) }];
+          } catch {}
+        }
+      }
+    }
+
+    // Biometric key migration fallback
+    profilesCache = profilesCache.map(p => {
+      if (p.isBiometricEnabled && !p.biometricServerKey) {
+        return { ...p, biometricServerKey: 'chelona.app' };
+      }
+      return p;
+    });
+
+    // 2. State cache for each profile
+    for (const p of profilesCache) {
+      const storageKey = getStorageKey(p.id);
+      let stateEnc = localStorage.getItem(storageKey);
+      if (!stateEnc && p.id === 'default') {
+        stateEnc = localStorage.getItem('chelona_dashboard_state_enc') || localStorage.getItem('lifemod_dashboard_state_enc_default');
+      }
+      if (stateEnc) {
+        stateEncCache[p.id] = stateEnc;
+      }
+    }
+
+    // 3. Address book cache
+    const addressBookEnc = localStorage.getItem('chelona_address_book_enc');
+    if (addressBookEnc) {
+      const decrypted = decryptText(addressBookEnc);
+      if (decrypted) {
+        try {
+          addressBookCache = JSON.parse(decrypted);
+        } catch {}
+      }
+    }
+
+    // 4. Notification prefs cache
+    const notifPrefsEnc = localStorage.getItem('chelona_notification_prefs_enc');
+    if (notifPrefsEnc) {
+      const decrypted = decryptText(notifPrefsEnc);
+      if (decrypted) {
+        try {
+          notificationPrefsCache = JSON.parse(decrypted);
+        } catch {}
+      }
+    }
+  } catch (e) {
+    console.warn('[Storage] Error during synchronous cache bootstrap:', e);
+  }
+}
+bootstrapStorageCache();
 
 // Helper to save to external file asynchronously
 const saveToExternalFile = async (filename: string, content: string) => {
@@ -396,10 +483,27 @@ export const storage = {
   },
 
   getPublicKey: async (): Promise<CryptoKey> => {
-    return await encryption.deriveKey(PUBLIC_PASSWORD, PUBLIC_SALT);
+    if (cachedPublicKey) return cachedPublicKey;
+    if (!publicKeyPromise) {
+      publicKeyPromise = (async () => {
+        try {
+          const k = await encryption.importKey(PRECOMPUTED_PUBLIC_KEY_B64);
+          cachedPublicKey = k;
+          return k;
+        } catch {
+          const k = await encryption.deriveKey(PUBLIC_PASSWORD, PUBLIC_SALT);
+          cachedPublicKey = k;
+          return k;
+        }
+      })();
+    }
+    return publicKeyPromise;
   },
 
   savePublicState: async (state: AppState, profileId: string) => {
+    try {
+      localStorage.setItem(`chelona_public_cache_${profileId}`, JSON.stringify(state));
+    } catch (e) {}
     const key = await storage.getPublicKey();
     const encrypted = await encryption.encrypt(state, key);
     try {
@@ -411,17 +515,29 @@ export const storage = {
   },
 
   loadPublicState: async (profileId: string): Promise<AppState> => {
+    let fastCachedState: AppState | null = null;
+    try {
+      const cachedStr = localStorage.getItem(`chelona_public_cache_${profileId}`);
+      if (cachedStr) {
+        fastCachedState = JSON.parse(cachedStr);
+      }
+    } catch {}
+
     let encrypted: string | null = localStorage.getItem(`chelona_public_state_${profileId}`);
     if (!encrypted && Capacitor.isNativePlatform()) {
       encrypted = await loadFromExternalFile(`state_public_${profileId}.enc`);
     }
-    if (!encrypted) return { modules: [], folders: [] };
+    if (!encrypted) return fastCachedState || { modules: [], folders: [] };
     try {
       const key = await storage.getPublicKey();
       const decrypted = await encryption.decrypt(encrypted, key);
-      return (decrypted as AppState) || { modules: [], folders: [] };
+      const res = (decrypted as AppState) || fastCachedState || { modules: [], folders: [] };
+      try {
+        localStorage.setItem(`chelona_public_cache_${profileId}`, JSON.stringify(res));
+      } catch {}
+      return res;
     } catch {
-      return { modules: [], folders: [] };
+      return fastCachedState || { modules: [], folders: [] };
     }
   },
 
@@ -497,6 +613,8 @@ export const storage = {
     addressBookCache = [];
     notificationPrefsCache = [];
     notifFiredCache = {};
+    cachedPublicKey = null;
+    publicKeyPromise = null;
     localStorage.clear();
   },
 

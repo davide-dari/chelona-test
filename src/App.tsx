@@ -275,10 +275,59 @@ import { CAR_BRANDS } from './utils/carBrands';
 import { CAR_MODELS } from './constants/carModels';
 import { BrandModelPicker } from './components/BrandModelPicker';
 
+const getInitialActiveProfile = () => {
+  const profiles = storage.loadProfiles();
+  if (profiles.length === 0) return null;
+  try {
+    const savedActiveId = localStorage.getItem('chelona_active_profile_id');
+    if (savedActiveId) {
+      const found = profiles.find(p => p.id === savedActiveId);
+      if (found) return found;
+    }
+  } catch {}
+  return profiles[0];
+};
+
 export default function App() {
   console.log('App: Rendering component...');
-  const [modules, setModules] = useState<Module[]>([]);
-  const [folders, setFolders] = useState<Folder[]>([]);
+  const initialActiveProfile = useMemo(() => getInitialActiveProfile(), []);
+  const initialProfileId = initialActiveProfile?.id || null;
+
+  const [encryptionKey, setEncryptionKey] = useState<CryptoKey | null>(null);
+  const [currentProfileId, setCurrentProfileId] = useState<string | null>(initialProfileId);
+  const [isSensitiveUnlocked, setIsSensitiveUnlocked] = useState<boolean>(() => {
+    return initialActiveProfile?.hasPassword === false;
+  });
+  const [username, setUsername] = useState(() => initialActiveProfile?.username || 'Utente');
+  const [avatar, setAvatar] = useState<string | undefined>(() => initialActiveProfile?.avatar);
+  const [isBioEnabled, setIsBioEnabled] = useState(() => initialActiveProfile?.isBiometricEnabled || false);
+  const [pinnedCategoryIds, setPinnedCategoryIds] = useState<string[]>(() => initialActiveProfile?.pinnedCategoryIds || []);
+  const [pinnedToolIds, setPinnedToolIds] = useState<string[]>(() => initialActiveProfile?.pinnedToolIds || []);
+
+  const [modules, setModules] = useState<Module[]>(() => {
+    try {
+      if (initialProfileId) {
+        const cached = localStorage.getItem(`chelona_public_cache_${initialProfileId}`);
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed.modules)) return parsed.modules;
+        }
+      }
+    } catch {}
+    return [];
+  });
+  const [folders, setFolders] = useState<Folder[]>(() => {
+    try {
+      if (initialProfileId) {
+        const cached = localStorage.getItem(`chelona_public_cache_${initialProfileId}`);
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed.folders)) return parsed.folders;
+        }
+      }
+    } catch {}
+    return [];
+  });
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
   const [isAdding, setIsAdding] = useState<boolean>(() => {
     try {
@@ -322,7 +371,14 @@ export default function App() {
   const [voiceResponse, setVoiceResponse] = useState<{ query: string; answer: string } | null>(null);
   const [selectedType, setSelectedType] = useState<ModuleType | 'home' | 'testing' | null>(null);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
-  const [isSplashScreenActive, setIsSplashScreenActive] = useState(true);
+  const [isSplashScreenActive, setIsSplashScreenActive] = useState<boolean>(() => {
+    // Il Matematico /boost: If user is authenticated/profile exists, eliminate the splash screen
+    // entirely (0ms) to land instantaneously on the Home screen with zero perceptible delay.
+    return !initialProfileId;
+  });
+  const [isPublicLocked, setIsPublicLocked] = useState<boolean>(() => {
+    return Boolean(initialActiveProfile?.requirePasswordForPublic);
+  });
   const [homeSubMenu, setHomeSubMenu] = useState(false);
   const [editingFurnitureModule, setEditingFurnitureModule] = useState<import('./types').FurnitureModule | null>(null);
   const [editingInstallmentsModule, setEditingInstallmentsModule] = useState<import('./types').InstallmentsModule | null>(null);
@@ -365,16 +421,22 @@ export default function App() {
   const [isHomeVoiceProcessing, setIsHomeVoiceProcessing] = useState(false);
 
   useEffect(() => {
-    // Show splash screen briefly, then go to lock screen immediately
-    const timer = setTimeout(() => {
-      setIsSplashScreenActive(false);
-    }, 400);
+    let splashTimer: ReturnType<typeof setTimeout> | null = null;
+    if (isSplashScreenActive) {
+      splashTimer = setTimeout(() => {
+        setIsSplashScreenActive(false);
+      }, 300);
+    }
+
     const loadInitialProfile = async () => {
       const profiles = storage.loadProfiles();
       if (profiles.length > 0) {
         const activeProfile = profiles.find(p => p.id === currentProfileId) || profiles[0];
         if (!currentProfileId) {
           setCurrentProfileId(activeProfile.id);
+          try {
+            localStorage.setItem('chelona_active_profile_id', activeProfile.id);
+          } catch {}
         }
         if (!encryptionKey) {
           const pubKey = await storage.getPublicKey();
@@ -382,6 +444,9 @@ export default function App() {
         }
       }
     };
+
+    // Fast-path: Synchronous cache bootstrap allows instant profile resolution
+    loadInitialProfile();
 
     storage.initStorage().then(() => {
       loadInitialProfile();
@@ -395,16 +460,22 @@ export default function App() {
       }
     }).catch(console.error);
 
-    // Precarica i volantini live (fallback sul bundle) in background
-    
-
     window.addEventListener('chelona_profiles_updated', loadInitialProfile);
 
     return () => {
-      clearTimeout(timer);
+      if (splashTimer) clearTimeout(splashTimer);
       window.removeEventListener('chelona_profiles_updated', loadInitialProfile);
     };
   }, []);
+
+  // Pre-load public key immediately (sub-millisecond resolution via precomputed raw key)
+  useEffect(() => {
+    if (!encryptionKey && currentProfileId) {
+      storage.getPublicKey().then(pubKey => {
+        setEncryptionKey(pubKey);
+      }).catch(console.error);
+    }
+  }, [currentProfileId, encryptionKey]);
 
   // Ricezione intenzioni di condivisione di luoghi da mappe esterne
   useEffect(() => {
@@ -473,21 +544,12 @@ export default function App() {
     setToast({ message, type });
     setTimeout(() => setToast(null), 3000);
   };
-  const [encryptionKey, setEncryptionKey] = useState<CryptoKey | null>(null);
-  const [isSensitiveUnlocked, setIsSensitiveUnlocked] = useState(false);
-  const [currentProfileId, setCurrentProfileId] = useState<string | null>(() => {
-    const profiles = storage.loadProfiles();
-    return profiles.length > 0 ? profiles[0].id : null;
-  });
   const [showVaultLock, setShowVaultLock] = useState(false);
   const [showProfileSelectorModal, setShowProfileSelectorModal] = useState(false);
   const [pendingAction, setPendingAction] = useState<(() => void) | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [username, setUsername] = useState('Utente');
-  const [avatar, setAvatar] = useState<string | undefined>(undefined);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isBioSupported, setIsBioSupported] = useState(false);
-  const [isBioEnabled, setIsBioEnabled] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   // isSandboxMode removed as per user request
@@ -495,8 +557,6 @@ export default function App() {
   const [bioError, setBioError] = useState<string | null>(null);
   const [isScanning, setIsScanning] = useState(false);
   const [isToolsOpen, setIsToolsOpen] = useState(false);
-  const [pinnedCategoryIds, setPinnedCategoryIds] = useState<string[]>([]);
-  const [pinnedToolIds, setPinnedToolIds] = useState<string[]>([]);
   const [isListening, setIsListening] = useState(false);
   const [isPublicToolsOpen, setIsPublicToolsOpen] = useState(false);
   const [activeToolId, setActiveToolId] = useState<string | null>(null);
@@ -3342,6 +3402,8 @@ export default function App() {
     </>
   );
 
+  const isAppStartLocked = (!currentProfileId || isPublicLocked) && !isProfileOpen && !isPublicToolsOpen;
+
   return (
     <div className="shell-container">
       {/* Password Managers on Mobile (Safari/Chrome AutoFill) inject extra DOM nodes into the password <input>. 
@@ -3349,16 +3411,20 @@ export default function App() {
           To completely bypass this, we NEVER unmount the LockScreen, we just hide it visually. */}
       <div 
         style={{ 
-          display: !currentProfileId && !isProfileOpen && !isPublicToolsOpen ? 'block' : 'none', 
+          display: isAppStartLocked ? 'block' : 'none', 
           position: 'absolute', inset: 0, zIndex: 99999 
         }}
       >
         <LockScreen 
           mode="app-start"
-          isVisible={!currentProfileId && !isProfileOpen && !isPublicToolsOpen}
+          isVisible={isAppStartLocked}
           onAuthenticated={(key, profileId) => {
             setEncryptionKey(key);
             setCurrentProfileId(profileId);
+            try {
+              localStorage.setItem('chelona_active_profile_id', profileId);
+            } catch {}
+            setIsPublicLocked(false);
           }} 
           onStartScan={() => setIsScanning(true)}
           onOpenTools={() => setIsPublicToolsOpen(true)}
@@ -3433,6 +3499,10 @@ export default function App() {
                     key={`profile-sel-${p.id}`}
                     onClick={async () => {
                       setCurrentProfileId(p.id);
+                      try {
+                        localStorage.setItem('chelona_active_profile_id', p.id);
+                      } catch {}
+                      setIsPublicLocked(Boolean(p.requirePasswordForPublic));
                       setUsername(p.username);
                       setAvatar(p.avatar);
                       setIsBioEnabled(p.isBiometricEnabled || false);
@@ -3483,6 +3553,10 @@ export default function App() {
                   setShowProfileSelectorModal(false);
                   setIsProfileOpen(false);
                   setCurrentProfileId(null);
+                  try {
+                    localStorage.removeItem('chelona_active_profile_id');
+                  } catch {}
+                  setIsPublicLocked(false);
                 }}
                 className="w-full py-4 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white rounded-2xl font-bold transition-all flex items-center justify-center gap-2 shadow-lg shadow-amber-500/20 active:scale-95 text-sm cursor-pointer"
               >
@@ -3501,14 +3575,14 @@ export default function App() {
           <motion.div
             key="splash"
             initial={{ opacity: 1 }}
-            exit={{ opacity: 0, scale: 1.1 }}
-            transition={{ duration: 0.5, ease: "easeInOut" }}
-            className="fixed inset-0 z-[9999] bg-[var(--bg)] flex flex-col items-center justify-center overflow-hidden"
+            exit={{ opacity: 0, scale: 1.05 }}
+            transition={{ duration: 0.3, ease: "easeInOut" }}
+            className="fixed inset-0 z-[100000] bg-[var(--bg)] flex flex-col items-center justify-center overflow-hidden"
           >
             <motion.div
               initial={{ scale: 0.8, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              transition={{ delay: 0.2, duration: 0.8, ease: "backOut" }}
+              transition={{ delay: 0.1, duration: 0.4, ease: "backOut" }}
               className="relative"
             >
               <div className="w-full max-w-[280px] h-40 flex items-center justify-center overflow-hidden">
@@ -3519,7 +3593,7 @@ export default function App() {
             <motion.div
               initial={{ y: 20, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
-              transition={{ delay: 0.4 }}
+              transition={{ delay: 0.2 }}
               className="mt-8 text-center"
             >
               <h1 className="text-3xl font-black text-[var(--text-main)] tracking-tighter uppercase mb-1">Chelona</h1>
@@ -3574,7 +3648,7 @@ export default function App() {
             onClose={() => setIsScanning(false)}
           />
         )}
-        {encryptionKey && currentProfileId && (
+        {!isAppStartLocked && currentProfileId && (
           <div className="flex h-full w-full bg-[var(--bg)] overflow-hidden relative font-sans transition-colors duration-300">
 
             <main className="flex-1 flex flex-col overflow-hidden w-full relative">

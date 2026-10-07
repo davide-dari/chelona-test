@@ -22,9 +22,20 @@ interface LockScreenProps {
 }
 
 export const LockScreen = ({ isVisible, onAuthenticated, onStartScan, onOpenTools, onImportFile = () => {}, onOpenAddressBook, onCheckUpdate, mode = 'app-start', targetProfileId }: LockScreenProps) => {
-  const [profiles, setProfiles] = useState<ProfileConfig[]>([]);
-  const [selectedProfile, setSelectedProfile] = useState<ProfileConfig | null>(null);
-  const [view, setView] = useState<'selector' | 'login' | 'setup'>('selector');
+  const [profiles, setProfiles] = useState<ProfileConfig[]>(() => storage.loadProfiles());
+  const [selectedProfile, setSelectedProfile] = useState<ProfileConfig | null>(() => {
+    const loaded = storage.loadProfiles();
+    if (targetProfileId) {
+      return loaded.find(p => p.id === targetProfileId) || null;
+    }
+    return loaded.length === 1 ? loaded[0] : null;
+  });
+  const [view, setView] = useState<'selector' | 'login' | 'setup'>(() => {
+    const loaded = storage.loadProfiles();
+    if (loaded.length === 0) return 'setup';
+    if (targetProfileId || loaded.length === 1) return 'login';
+    return 'selector';
+  });
   
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
