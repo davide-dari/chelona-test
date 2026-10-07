@@ -558,10 +558,53 @@ async function scrapePromozioni24Chain(opts) {
     if (rRes && rRes.ok && cRes && cRes.ok) {
       const html = await rRes.text();
       const pages = [];
-      const re = /(?:data-src|src)=["'](https:\/\/it-pub\.promozioni24\.it\/volantino\/[^"']+)["']/g;
-      let m;
-      while ((m = re.exec(html)) !== null) {
-        if (!pages.includes(m[1])) pages.push(m[1]);
+
+      // Check declared page count in HTML (e.g. "16 pagine")
+      const pageMatch = html.match(/([0-9]+)\s*pagine/i);
+      const totalPages = pageMatch ? parseInt(pageMatch[1], 10) : 0;
+
+      // 1. Page 1: High-res cover image from promozioni24
+      const p1CoverMatch = html.match(/src="(https:\/\/cdn\.promozioni24\.it\/file\/[0-9]{4}\/[0-9]{2}\/[^"'\s]+-990x[0-9]+\.webp)"/i) ||
+                           html.match(/src="(https:\/\/cdn\.promozioni24\.it\/file\/[0-9]{4}\/[0-9]{2}\/[^"'\s]+cover-[^"'\s]+\.webp)"/i) ||
+                           html.match(/<section id="promozioni-zoomed"[^>]*>[\s\S]*?<img[^>]+src="([^"]+)"/i);
+      if (p1CoverMatch && p1CoverMatch[1]) {
+        pages.push(p1CoverMatch[1]);
+      } else if (coverUrl) {
+        pages.push(coverUrl);
+      }
+
+      // 2. Subpages: promozioni24 paginates the flyer across /2, /3, ... /totalPages
+      if (totalPages > 1) {
+        const subpagePromises = [];
+        for (let p = 2; p <= Math.min(totalPages, 60); p++) {
+          const subUrl = `${readerUrl}/${p}`;
+          subpagePromises.push(
+            fetchWithRetry(subUrl)
+              .then(res => res && res.ok ? res.text() : '')
+              .then(subHtml => {
+                if (!subHtml) return null;
+                const m = subHtml.match(/src="(https:\/\/it-pub\.promozioni24\.it\/volantino\/[0-9]{4}\/[0-9]{2}\/[^"'\s]+\.webp)"/i) ||
+                          subHtml.match(/src="(https:\/\/cdn\.promozioni24\.it\/file\/[0-9]{4}\/[0-9]{2}\/[^"'\s]+\.webp)"/i);
+                return { page: p, src: m ? m[1] : null };
+              })
+              .catch(() => null)
+          );
+        }
+
+        const subResults = await Promise.all(subpagePromises);
+        subResults.sort((a, b) => (a?.page || 0) - (b?.page || 0));
+        for (const sr of subResults) {
+          if (sr && sr.src && !pages.includes(sr.src)) {
+            pages.push(sr.src);
+          }
+        }
+      } else {
+        // Fallback: search any embedded it-pub images on page 1
+        const re = /(?:data-src|src)=["'](https:\/\/it-pub\.promozioni24\.it\/volantino\/[^"']+)["']/g;
+        let m;
+        while ((m = re.exec(html)) !== null) {
+          if (!pages.includes(m[1])) pages.push(m[1]);
+        }
       }
 
       console.log(`  ✓ [${name.toUpperCase()}] Volantino attivo e verificato al 100% (${pages.length} pagine HD estratte)`);
