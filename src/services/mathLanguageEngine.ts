@@ -522,7 +522,8 @@ const CONVERSATIONAL_FOOD_STOPWORDS = new Set([
   'sono', 'sei', 'e', 'ed', 'sia',
   'alcun', 'alcuno', 'alcuna', 'alcuni', 'alcune', 'tutto', 'tutta', 'tutti', 'tutte',
   'trova', 'cerca', 'cercami', 'mostra', 'mostrami', 'apri', 'vai',
-  'corrispondente', 'corrispondenti', 'simile', 'simili', 'affinita', 'affine', 'affini', 'tipo', 'come', 'quali', 'quale'
+  'corrispondente', 'corrispondenti', 'simile', 'simili', 'affinita', 'affine', 'affini', 'tipo', 'come', 'quali', 'quale',
+  'conto', 'conti', 'spesa', 'spese', 'soldi', 'costo', 'costi'
 ]);
 
 // ============================================================================

@@ -88,7 +88,10 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
 
   const handleNextPhrase = () => {
     const currentIndex = INSPIRATIONAL_PHRASES.indexOf(dynamicPhrase);
-    const nextIndex = (currentIndex + 1) % INSPIRATIONAL_PHRASES.length;
+    let nextIndex = Math.floor(Math.random() * INSPIRATIONAL_PHRASES.length);
+    if (nextIndex === currentIndex && INSPIRATIONAL_PHRASES.length > 1) {
+      nextIndex = (nextIndex + 1) % INSPIRATIONAL_PHRASES.length;
+    }
     setDynamicPhrase(INSPIRATIONAL_PHRASES[nextIndex]);
     sessionStorage.setItem('chelona_last_phrase_idx', nextIndex.toString());
   };
@@ -1295,6 +1298,26 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
                 </div>
               );
             })()}
+
+            {/* Tasto per chiudere / nuova richiesta */}
+            <div className="pt-3 flex items-center justify-between border-t border-[var(--border)]/60">
+              <span className="text-[11px] font-semibold text-[var(--text-muted)]">
+                Richiesta completata
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  stopSpeaking();
+                  setActiveResponse(null);
+                  textareaRef.current?.focus();
+                }}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[var(--surface-variant)] hover:bg-amber-500 hover:text-white border border-[var(--border)] text-xs font-bold text-[var(--text-main)] transition-all cursor-pointer active:scale-95 shadow-2xs"
+                title="Chiudi risposta e fai una nuova richiesta"
+              >
+                <RefreshCw className="w-3.5 h-3.5" />
+                <span>Chiudi / Nuova richiesta</span>
+              </button>
+            </div>
           </motion.div>
         )}
 

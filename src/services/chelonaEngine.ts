@@ -2484,6 +2484,9 @@ async function _queryChelonaAiInner(
     lower.includes('quanto ho speso') ||
     lower.includes('uscite mensili') ||
     lower.includes('totale spese') ||
+    lower.includes('riepilogo spese') ||
+    lower.includes('riepilogo delle spese') ||
+    lower.includes('dei conti') ||
     lower.includes('categoria di spesa') ||
     lower.includes('spese per categoria') ||
     (lower.includes('uscite') && !lower.includes('autostrada'))
