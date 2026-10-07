@@ -3,7 +3,7 @@ import {
   Send, Mic, MicOff, Volume2, VolumeX, ArrowLeft, 
   ExternalLink, Check, Copy, X, Sparkles, ChevronRight, UtensilsCrossed, Flame,
   Settings2, Sliders, Store, Calendar, Car, ShoppingBasket,
-  Navigation, Globe, RefreshCw, Shuffle
+  Navigation, Globe, RefreshCw
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Module } from '../types';
@@ -17,7 +17,6 @@ import {
   getVoiceFriendlyName
 } from '../utils/naturalSpeech';
 import { getSavedParking, getNavigationUrl } from '../services/parkingService';
-import { wakeWordService } from '../services/wakeWordService';
 import { voiceRecognitionService } from '../services/voiceService';
 
 interface ChelonaAiScreenProps {
@@ -75,7 +74,7 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
   onNavigate,
   activeSection,
 }) => {
-  // Frase dinamica che cambia sempre all'apertura dello schermo
+  // Frase dinamica che cambia sempre all'apertura dello schermo e ogni 5 secondi
   const [dynamicPhrase, setDynamicPhrase] = useState<string>(() => {
     const lastIndex = parseInt(sessionStorage.getItem('chelona_last_phrase_idx') || '-1', 10);
     let nextIndex = Math.floor(Math.random() * INSPIRATIONAL_PHRASES.length);
@@ -86,15 +85,21 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
     return INSPIRATIONAL_PHRASES[nextIndex];
   });
 
-  const handleNextPhrase = () => {
-    const currentIndex = INSPIRATIONAL_PHRASES.indexOf(dynamicPhrase);
-    let nextIndex = Math.floor(Math.random() * INSPIRATIONAL_PHRASES.length);
-    if (nextIndex === currentIndex && INSPIRATIONAL_PHRASES.length > 1) {
-      nextIndex = (nextIndex + 1) % INSPIRATIONAL_PHRASES.length;
-    }
-    setDynamicPhrase(INSPIRATIONAL_PHRASES[nextIndex]);
-    sessionStorage.setItem('chelona_last_phrase_idx', nextIndex.toString());
-  };
+  // Rotazione automatica della frase ogni 5 secondi
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setDynamicPhrase(prev => {
+        const currentIndex = INSPIRATIONAL_PHRASES.indexOf(prev);
+        let nextIndex = Math.floor(Math.random() * INSPIRATIONAL_PHRASES.length);
+        if (nextIndex === currentIndex && INSPIRATIONAL_PHRASES.length > 1) {
+          nextIndex = (nextIndex + 1) % INSPIRATIONAL_PHRASES.length;
+        }
+        sessionStorage.setItem('chelona_last_phrase_idx', nextIndex.toString());
+        return INSPIRATIONAL_PHRASES[nextIndex];
+      });
+    }, 5000);
+    return () => clearInterval(timer);
+  }, []);
 
   // Stato per la risposta attiva corrente (NO sistema a chat con bolle che si accumulano)
   const [activeResponse, setActiveResponse] = useState<ActiveResponse | null>(null);
@@ -579,30 +584,7 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
     }
   };
 
-  const [isWakeWordEnabled, setIsWakeWordEnabled] = useState<boolean>(() => wakeWordService.getEnabled());
   const initialVoiceTriggeredRef = useRef(false);
-
-  useEffect(() => {
-    return wakeWordService.subscribe((state) => {
-      setIsWakeWordEnabled(state.isEnabled);
-    });
-  }, []);
-
-  const handleToggleWakeWord = async () => {
-    const next = !isWakeWordEnabled;
-    const ok = await wakeWordService.setEnabled(next);
-    if (ok) {
-      setIsWakeWordEnabled(next);
-      showToast(
-        next
-          ? 'Comando vocale attivo! Di\' "Hey Chelona" per parlare.'
-          : 'Comando vocale disattivato.',
-        next ? 'success' : 'info'
-      );
-    } else {
-      showToast('Permesso microfono non disponibile o non supportato.', 'error');
-    }
-  };
 
   useEffect(() => {
     if (!initialVoiceMode) {
@@ -775,20 +757,6 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
           <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={handleToggleWakeWord}
-              className={`px-3 py-1.5 rounded-2xl border text-xs font-bold flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer ${
-                isWakeWordEnabled
-                  ? 'bg-amber-500/15 border-amber-500/40 text-amber-600 dark:text-amber-400'
-                  : 'bg-[var(--surface-variant)] border-[var(--border)] text-[var(--text-muted)] hover:text-[var(--text-main)]'
-              }`}
-              title={isWakeWordEnabled ? 'Hey Chelona attivo (ascolto vocale continuo)' : 'Attiva comando vocale Hey Chelona'}
-            >
-              <span className={`w-2 h-2 rounded-full ${isWakeWordEnabled ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'}`} />
-              <span className="hidden sm:inline">Hey Chelona</span>
-            </button>
-
-            <button
-              type="button"
               onClick={toggleVoiceMode}
               className="px-3.5 py-2 rounded-2xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30 font-bold text-xs flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer"
               title="Modalità vocale a mani libere"
@@ -817,41 +785,28 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
                 : 'max-w-3xl mx-auto space-y-4 mb-3 shrink-0'
             }`}>
               
-              {/* 1. FRASE DINAMICA / ISPIRAZIONALE ("la schermata deve avere sempre una frase differente") */}
-              <div className="text-center space-y-2 w-full">
-                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 text-xs font-black uppercase tracking-wider shadow-2xs">
-                  <Sparkles className="w-3.5 h-3.5" />
-                  <span>Assistente Intelligente</span>
-                </div>
-
-                <div className="flex items-center justify-center gap-2">
-                  <h1 className={`font-black text-[var(--text-main)] tracking-tight leading-tight max-w-xl transition-all ${
+              {/* 1. FRASE DINAMICA / ISPIRAZIONALE (cambia ad ogni apertura e ogni 5 secondi) */}
+              <div className="text-center space-y-2.5 w-full">
+                <div className="flex items-center justify-center">
+                  <h1 className={`font-black text-[var(--text-main)] tracking-tight leading-tight max-w-2xl transition-all duration-500 ${
                     !hasActiveView ? 'text-2xl sm:text-3xl lg:text-4xl' : 'text-xl sm:text-2xl'
                   }`}>
                     {dynamicPhrase}
                   </h1>
-                  <button
-                    type="button"
-                    onClick={handleNextPhrase}
-                    className="p-2 rounded-xl text-[var(--text-muted)] hover:text-amber-500 hover:bg-amber-500/10 transition-colors shrink-0 cursor-pointer active:scale-90"
-                    title="Cambia frase"
-                  >
-                    <Shuffle className="w-4 h-4" />
-                  </button>
                 </div>
 
                 {!hasActiveView && (
-                  <p className="text-xs sm:text-sm text-[var(--text-muted)] font-medium max-w-md mx-auto">
+                  <p className="text-xs sm:text-sm text-[var(--text-muted)] font-medium max-w-lg mx-auto">
                     {username ? `Ciao ${username}! ` : ''}Chiedimi di trovare, calcolare, cucinare o ricordare qualcosa per te.
                   </p>
                 )}
               </div>
 
-              {/* 2. BOX DI INPUT IN PRIMO PIANO ("e sotto il box di input") */}
+              {/* 2. BOX DI INPUT IN PRIMO PIANO - HERO GRANDE */}
               <div className="w-full space-y-2">
                 {/* Feedback visivo se in ascolto vocale */}
                 {isListening && !isVoiceModeOpen && (
-                  <div className="flex items-center justify-between px-4 py-2 rounded-2xl bg-amber-500/10 border border-amber-500/25 text-amber-600 dark:text-amber-400 text-xs font-semibold shadow-xs animate-pulse">
+                  <div className="flex items-center justify-between px-4 py-2.5 rounded-2xl bg-amber-500/10 border border-amber-500/25 text-amber-600 dark:text-amber-400 text-xs font-semibold shadow-xs animate-pulse">
                     <div className="flex items-center gap-2 min-w-0">
                       <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-ping shrink-0" />
                       <span className="truncate">In ascolto... Parla pure, invio automatico a fine frase</span>
@@ -875,11 +830,11 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
                   </div>
                 )}
 
-                <div className="relative group w-full">
-                  <div className="absolute inset-0 bg-gradient-to-r from-amber-500/20 via-orange-500/20 to-yellow-500/20 rounded-3xl blur-xl opacity-60 group-focus-within:opacity-100 transition-opacity duration-300 pointer-events-none" />
+                <div className="relative group w-full max-w-2xl sm:max-w-3xl mx-auto">
+                  <div className="absolute -inset-1 bg-gradient-to-r from-amber-500/25 via-orange-500/25 to-yellow-500/25 rounded-[34px] sm:rounded-[38px] blur-xl opacity-60 group-focus-within:opacity-100 transition-opacity duration-300 pointer-events-none" />
                   
-                  <div className="relative flex items-center gap-2.5 bg-[var(--card-bg)] border-2 border-[var(--border)] focus-within:border-amber-500 rounded-3xl p-2 sm:p-2.5 shadow-xl transition-all">
-                    {/* Tasto Microfono Dettatura Vocale */}
+                  <div className="relative flex items-center gap-3 bg-[var(--card-bg)] border-2 border-[var(--border)] focus-within:border-amber-500 rounded-[30px] sm:rounded-[36px] p-3 sm:p-4 shadow-2xl transition-all">
+                    {/* Tasto Microfono Dettatura Vocale Grande */}
                     <button
                       type="button"
                       onClick={() => {
@@ -889,17 +844,17 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
                           startVoiceRecognition(false);
                         }
                       }}
-                      className={`p-3 rounded-2xl border transition-all shrink-0 active:scale-95 shadow-xs cursor-pointer ${
+                      className={`p-3.5 sm:p-4 rounded-2xl sm:rounded-3xl border transition-all shrink-0 active:scale-95 shadow-xs cursor-pointer ${
                         isListening
                           ? 'bg-amber-500 text-white border-amber-500 shadow-amber-500/30 animate-pulse'
                           : 'bg-[var(--surface-variant)] hover:bg-[var(--border)] border-[var(--border)] text-amber-500'
                       }`}
                       title={isListening ? "Tocca per completare e inviare" : "Dettatura vocale (invio automatico)"}
                     >
-                      {isListening ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
+                      {isListening ? <MicOff className="w-5 h-5 sm:w-6 sm:h-6" /> : <Mic className="w-5 h-5 sm:w-6 sm:h-6" />}
                     </button>
 
-                    {/* Textarea Input */}
+                    {/* Textarea Input Grande */}
                     <div className="flex-1 min-w-0">
                       <textarea
                         ref={textareaRef}
@@ -908,11 +863,11 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
                         onChange={(e) => setInputText(e.target.value)}
                         onKeyDown={handleKeyDown}
                         placeholder={isListening ? "In ascolto... Parla ora..." : "Scrivi o chiedi qualsiasi cosa a Chelona..."}
-                        className="w-full bg-transparent border-0 focus:outline-none focus:ring-0 text-sm sm:text-base text-[var(--text-main)] placeholder-[var(--text-muted)] resize-none py-2 px-1 max-h-28 font-medium"
+                        className="w-full bg-transparent border-0 focus:outline-none focus:ring-0 text-base sm:text-lg lg:text-xl text-[var(--text-main)] placeholder-[var(--text-muted)] resize-none py-2.5 sm:py-3.5 px-2 max-h-36 font-medium leading-relaxed"
                       />
                     </div>
 
-                    {/* Tasto Invia */}
+                    {/* Tasto Invia Grande */}
                     <button
                       type="button"
                       onClick={() => {
@@ -923,60 +878,13 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
                         }
                       }}
                       disabled={!inputText.trim() || isProcessing}
-                      className="p-3 rounded-2xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 disabled:opacity-30 text-white transition-all shrink-0 active:scale-95 shadow-md shadow-amber-500/20 cursor-pointer"
+                      className="p-3.5 sm:p-4 rounded-2xl sm:rounded-3xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 disabled:opacity-30 text-white transition-all shrink-0 active:scale-95 shadow-md shadow-amber-500/20 cursor-pointer"
                       title="Invia richiesta"
                     >
-                      <Send className="w-5 h-5" />
+                      <Send className="w-5 h-5 sm:w-6 sm:h-6" />
                     </button>
                   </div>
                 </div>
-              </div>
-
-              {/* 3. COMANDO VOCALE "HEY CHELONA" (Stile Hey Google) */}
-              <div className="w-full max-w-lg p-3.5 sm:p-4 rounded-3xl bg-[var(--card-bg)] border border-amber-500/30 shadow-md flex items-center justify-between gap-3 text-left transition-all">
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className={`w-10 h-10 sm:w-11 sm:h-11 rounded-2xl flex items-center justify-center shrink-0 transition-all ${
-                    isWakeWordEnabled
-                      ? 'bg-amber-500 text-white shadow-md shadow-amber-500/30 animate-pulse'
-                      : 'bg-[var(--surface-variant)] text-[var(--text-muted)] border border-[var(--border)]'
-                  }`}>
-                    <Mic className="w-5 h-5" />
-                  </div>
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      <h4 className="text-xs sm:text-sm font-black text-[var(--text-main)] truncate">
-                        Comando Vocale "Hey Chelona"
-                      </h4>
-                      {isWakeWordEnabled ? (
-                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 text-[10px] font-black uppercase tracking-wider">
-                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
-                          In Ascolto
-                        </span>
-                      ) : (
-                        <span className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider">
-                          Stile Hey Google
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-[11px] text-[var(--text-muted)] font-medium mt-0.5 leading-snug">
-                      {isWakeWordEnabled
-                        ? 'Pronuncia "Hey Chelona" in qualsiasi momento per attivarmi a mani libere.'
-                        : 'Attiva il comando vocale per risvegliare Chelona a mani libere con "Hey Chelona".'}
-                    </p>
-                  </div>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={handleToggleWakeWord}
-                  className={`px-3.5 py-2 rounded-xl font-bold text-xs shrink-0 transition-all active:scale-95 cursor-pointer ${
-                    isWakeWordEnabled
-                      ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 hover:bg-amber-500/25'
-                      : 'bg-amber-500 hover:bg-amber-600 text-white shadow-md shadow-amber-500/20'
-                  }`}
-                >
-                  {isWakeWordEnabled ? 'Disattiva' : 'Attiva'}
-                </button>
               </div>
 
               {/* 4. SUGGERIMENTI RAPIDI A PILLOLA */}
@@ -1554,30 +1462,6 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
                 </div>
 
                 {/* Comando Vocale */}
-                <div className="bg-[var(--surface-variant)]/70 border border-[var(--border)] rounded-2xl p-3.5 space-y-2">
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <div className="w-8 h-8 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center shrink-0">
-                        <Mic className="w-4 h-4" />
-                      </div>
-                      <div className="min-w-0">
-                        <h5 className="text-xs font-bold text-[var(--text-main)] truncate">Comando Vocale "Ciao Chelona!"</h5>
-                        <p className="text-[10px] text-[var(--text-muted)] truncate">Attivazione vocale a mani libere</p>
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={handleToggleWakeWord}
-                      className={`px-3 py-1.5 rounded-xl font-bold text-xs transition-all active:scale-95 shrink-0 ${
-                        isWakeWordEnabled
-                          ? 'bg-amber-500 text-white shadow-md shadow-amber-500/20'
-                          : 'bg-[var(--card-bg)] text-[var(--text-muted)] border border-[var(--border)] hover:text-[var(--text-main)]'
-                      }`}
-                    >
-                      {isWakeWordEnabled ? 'Attivo' : 'Attiva'}
-                    </button>
-                  </div>
-                </div>
 
                 {/* Tasto Fine */}
                 <button

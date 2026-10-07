@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-10-07T14:27:19.167Z",
+  "updatedAt": "2026-10-07T22:10:04.492Z",
   "source": "CentroVolantini + Calaméo + CeDiGros + Orizzonte + SuperElite + Todis + Acqua & Sapone + La Saponeria + Satur + Kasanova + Happy Casa + Crai + Caddy's + Ekom + Bottega Verde + Bricocenter + Brico OK + OBI + Arcaplanet + Prénatal + Toys Center + Conforama",
   "chains": [
     {
@@ -213,17 +213,6 @@
           "to": "2026-10-14T00:00:00+02:00",
           "bkcode": "0010667134e1a0e939aae",
           "authid": "mK3rBUosjX7u"
-        },
-        {
-          "id": 101,
-          "title": "Volantino Bennet",
-          "subtitle": "14 Giorni Mai Visti",
-          "coverUrl": "https://www.calameo.com/books/social/cover/001066713138c86b98096?authid=zRZ5uSPn9SbK",
-          "fallbackCoverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/bennet_101.jpg",
-          "from": "2026-09-24T00:00:00+02:00",
-          "to": "2026-10-07T00:00:00+02:00",
-          "bkcode": "001066713138c86b98096",
-          "authid": "zRZ5uSPn9SbK"
         }
       ]
     },
@@ -398,6 +387,17 @@
       "logoId": "bricofer",
       "flyers": [
         {
+          "id": 2112,
+          "title": "Volantino Bricofer",
+          "subtitle": "Anniversario Bricofer",
+          "coverUrl": "https://www.calameo.com/books/social/cover/001066713c3f2d7f30354?authid=vSZfpjsRLZOq",
+          "fallbackCoverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/bricofer_2112.jpg",
+          "from": "2026-10-08T00:00:00+02:00",
+          "to": "2026-10-25T00:00:00+02:00",
+          "bkcode": "001066713c3f2d7f30354",
+          "authid": "vSZfpjsRLZOq"
+        },
+        {
           "id": 2113,
           "title": "Catalogo Bricofer",
           "subtitle": "Benessere Che Ti Avvolege Ogni Giorno",
@@ -566,17 +566,6 @@
           "authid": "32O1nN6RFCu3"
         },
         {
-          "id": 2338,
-          "title": "Catalogo Carrefour Market Speciale",
-          "subtitle": "Punti Sprint Payback",
-          "coverUrl": "https://www.calameo.com/books/social/cover/001066713fe1fe1e3ec57?authid=aAvqtkNVK98R",
-          "fallbackCoverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/carrefour_it_2338.jpg",
-          "from": "2026-09-29T00:00:00+02:00",
-          "to": "2026-10-12T00:00:00+02:00",
-          "bkcode": "001066713fe1fe1e3ec57",
-          "authid": "aAvqtkNVK98R"
-        },
-        {
           "id": 2307,
           "title": "Catalogo Carrefour Iper: Speciale Bis",
           "subtitle": "Punti Sprint Payback",
@@ -586,6 +575,17 @@
           "to": "2026-10-12T00:00:00+02:00",
           "bkcode": "00106671395ef1425b72b",
           "authid": "VfFPw72r9IFr"
+        },
+        {
+          "id": 2338,
+          "title": "Catalogo Carrefour Market Speciale",
+          "subtitle": "Punti Sprint Payback",
+          "coverUrl": "https://www.calameo.com/books/social/cover/001066713fe1fe1e3ec57?authid=aAvqtkNVK98R",
+          "fallbackCoverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/carrefour_it_2338.jpg",
+          "from": "2026-09-29T00:00:00+02:00",
+          "to": "2026-10-12T00:00:00+02:00",
+          "bkcode": "001066713fe1fe1e3ec57",
+          "authid": "aAvqtkNVK98R"
         },
         {
           "id": 1986,
@@ -734,17 +734,6 @@
           "authid": "uU9MKsgd5ruj"
         },
         {
-          "id": 497,
-          "title": "Volantino Comet: Speciale Videogiochi",
-          "subtitle": "Audio E Video",
-          "coverUrl": "https://www.calameo.com/books/social/cover/0010667134337f457151f?authid=zMG7nl7cGHek",
-          "fallbackCoverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/comet_497_0.jpg",
-          "from": "2026-10-03T00:00:00+02:00",
-          "to": "2026-10-07T00:00:00+02:00",
-          "bkcode": "0010667134337f457151f",
-          "authid": "zMG7nl7cGHek"
-        },
-        {
           "id": 496,
           "title": "Volantino Comet: Speciale",
           "subtitle": "Grandi Elettrodomestici",
@@ -754,61 +743,6 @@
           "to": "2026-10-08T00:00:00+02:00",
           "bkcode": "001066713bd8965b50402",
           "authid": "rDkQyPfyvpwQ"
-        },
-        {
-          "id": 475,
-          "title": "Volantino Comet: Speciale",
-          "subtitle": "Piccoli Elettrodomestici",
-          "coverUrl": "https://www.calameo.com/books/social/cover/001066713c04b24cdcc10?authid=aSpzaK8qE6L0",
-          "fallbackCoverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/comet_475.jpg",
-          "from": "2026-09-26T00:00:00+02:00",
-          "to": "2026-10-07T00:00:00+02:00",
-          "bkcode": "001066713c04b24cdcc10",
-          "authid": "aSpzaK8qE6L0"
-        },
-        {
-          "id": 457,
-          "title": "Volantino Comet: Studio Luce",
-          "subtitle": "Philips",
-          "coverUrl": "https://www.calameo.com/books/social/cover/001066713a17633a417b7?authid=m1FRohe8SnSH",
-          "fallbackCoverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/comet_457_1.jpg",
-          "from": "2026-09-25T00:00:00+02:00",
-          "to": "2026-10-07T00:00:00+02:00",
-          "bkcode": "001066713a17633a417b7",
-          "authid": "m1FRohe8SnSH"
-        },
-        {
-          "id": 456,
-          "title": "Volantino Comet",
-          "subtitle": "Piccoli Elettrodomestici",
-          "coverUrl": "https://www.calameo.com/books/social/cover/00106671319854afe1446?authid=eFxdk943rzHX",
-          "fallbackCoverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/comet_456.jpg",
-          "from": "2026-09-25T00:00:00+02:00",
-          "to": "2026-10-07T00:00:00+02:00",
-          "bkcode": "00106671319854afe1446",
-          "authid": "eFxdk943rzHX"
-        },
-        {
-          "id": 170,
-          "title": "Volantino Comet",
-          "subtitle": "Il Meno Caro Ti Costa La Metà",
-          "coverUrl": "https://www.calameo.com/books/social/cover/0010667137e79d0796e66?authid=k02s0f72zm6H",
-          "fallbackCoverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/comet_170.jpg",
-          "from": "2026-09-24T00:00:00+02:00",
-          "to": "2026-10-07T00:00:00+02:00",
-          "bkcode": "0010667137e79d0796e66",
-          "authid": "k02s0f72zm6H"
-        },
-        {
-          "id": 467,
-          "title": "Volantino Comet",
-          "subtitle": "Pagamenti Elettronici",
-          "coverUrl": "https://www.calameo.com/books/social/cover/0010667130ee8509dafa6?authid=ZHVNykPurmmM",
-          "fallbackCoverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/comet_467_0.jpg",
-          "from": "2026-09-10T00:00:00+02:00",
-          "to": "2026-10-07T00:00:00+02:00",
-          "bkcode": "0010667130ee8509dafa6",
-          "authid": "ZHVNykPurmmM"
         }
       ]
     },
@@ -817,6 +751,17 @@
       "name": "Conad",
       "logoId": "conad",
       "flyers": [
+        {
+          "id": 714,
+          "title": "Volantino Conad Veneto, Friuli, Marche, Romagna",
+          "subtitle": "SOTTOCOSTO",
+          "coverUrl": "https://www.calameo.com/books/social/cover/001066713a99c00831bcb?authid=uGpYjGOA2d8z",
+          "fallbackCoverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/conad_714.jpg",
+          "from": "2026-10-09T00:00:00+02:00",
+          "to": "2026-10-15T00:00:00+02:00",
+          "bkcode": "001066713a99c00831bcb",
+          "authid": "uGpYjGOA2d8z"
+        },
         {
           "id": 173,
           "title": "Volantino Conad Superstore Tirreno: Toscana, Lazio e Sardegna",
@@ -882,17 +827,6 @@
           "to": "2026-10-19T00:00:00+02:00",
           "bkcode": "0010667135a9fbc6a05fb",
           "authid": "j0e36jXJpF7T"
-        },
-        {
-          "id": 714,
-          "title": "Volantino Conad Veneto, Friuli, Marche, Romagna",
-          "subtitle": "TAGLIO NETTO",
-          "coverUrl": "https://www.calameo.com/books/social/cover/001066713e868a3971a2a?authid=5xf2QcpbrxcT",
-          "fallbackCoverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/conad_714_1.jpg",
-          "from": "2026-10-02T00:00:00+02:00",
-          "to": "2026-10-08T00:00:00+02:00",
-          "bkcode": "001066713e868a3971a2a",
-          "authid": "5xf2QcpbrxcT"
         },
         {
           "id": 723,
@@ -1288,39 +1222,6 @@
           "authid": "Bk2MZfzOGW2x"
         },
         {
-          "id": 1965,
-          "title": "Volantino Coop Trento e Trentino",
-          "subtitle": "Sconti -40%",
-          "coverUrl": "https://www.calameo.com/books/social/cover/001066713d9044ead0154?authid=sugn8MrhmULS",
-          "fallbackCoverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/coop_1965.jpg",
-          "from": "2026-09-24T00:00:00+02:00",
-          "to": "2026-10-07T00:00:00+02:00",
-          "bkcode": "001066713d9044ead0154",
-          "authid": "sugn8MrhmULS"
-        },
-        {
-          "id": 89,
-          "title": "Volantino Coop Adriatica - Ipercoop",
-          "subtitle": "Offerte per te",
-          "coverUrl": "https://www.calameo.com/books/social/cover/00106671393f371af96f0?authid=im8dTKJtFmoK",
-          "fallbackCoverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/coop_89_0.jpg",
-          "from": "2026-09-24T00:00:00+02:00",
-          "to": "2026-10-07T00:00:00+02:00",
-          "bkcode": "00106671393f371af96f0",
-          "authid": "im8dTKJtFmoK"
-        },
-        {
-          "id": 94,
-          "title": "Volantino Coop: Ipercoop Estense",
-          "subtitle": "Buono Sconto 5€",
-          "coverUrl": "https://www.calameo.com/books/social/cover/00106671388d74f22c31a?authid=4eNq7hEhi3Nt",
-          "fallbackCoverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/coop_94_0.jpg",
-          "from": "2026-09-24T00:00:00+02:00",
-          "to": "2026-10-07T00:00:00+02:00",
-          "bkcode": "00106671388d74f22c31a",
-          "authid": "4eNq7hEhi3Nt"
-        },
-        {
           "id": 2366,
           "title": "Coop Lombardia Bis",
           "subtitle": "Tendenze D'Autunno",
@@ -1332,28 +1233,6 @@
           "authid": "yKKwSBIIUzJO"
         },
         {
-          "id": 1967,
-          "title": "Volantino Coop Nordest (veneto, friuli, emilia romagna)",
-          "subtitle": "Buono Sconto 5€",
-          "coverUrl": "https://www.calameo.com/books/social/cover/00106671303574b3557f3?authid=Ba7wCSOeIaqa",
-          "fallbackCoverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/coop_1967_0.jpg",
-          "from": "2026-09-24T00:00:00+02:00",
-          "to": "2026-10-07T00:00:00+02:00",
-          "bkcode": "00106671303574b3557f3",
-          "authid": "Ba7wCSOeIaqa"
-        },
-        {
-          "id": 377,
-          "title": "Volantino IperCoop Speciale",
-          "subtitle": "Un rientro felice",
-          "coverUrl": "https://www.calameo.com/books/social/cover/0010667133c9283f4d362?authid=bx34BZJSkg6e",
-          "fallbackCoverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/coop_377.jpg",
-          "from": "2026-08-27T00:00:00+02:00",
-          "to": "2026-10-07T00:00:00+02:00",
-          "bkcode": "0010667133c9283f4d362",
-          "authid": "bx34BZJSkg6e"
-        },
-        {
           "id": 2157,
           "title": "Volantino Coop Piemonte",
           "subtitle": "Extra Offerte",
@@ -1363,17 +1242,6 @@
           "to": "2026-10-14T00:00:00+02:00",
           "bkcode": "00106671331b91febb72f",
           "authid": "z1hLPK1BqmRW"
-        },
-        {
-          "id": 495,
-          "title": "Volantino Coop: Ipercoop Nordest e TecnoStore",
-          "subtitle": "Offerte per te",
-          "coverUrl": "https://www.calameo.com/books/social/cover/0010667133d32db9b72b0?authid=a3jCnAfOqbdC",
-          "fallbackCoverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/coop_495.jpg",
-          "from": "2026-09-24T00:00:00+02:00",
-          "to": "2026-10-07T00:00:00+02:00",
-          "bkcode": "0010667133d32db9b72b0",
-          "authid": "a3jCnAfOqbdC"
         },
         {
           "id": 1913,
@@ -1396,17 +1264,6 @@
           "to": "2026-10-12T00:00:00+02:00",
           "bkcode": "001066713a9bd276d5bd8",
           "authid": "DGS3UbEL3vJX"
-        },
-        {
-          "id": 1867,
-          "title": "Volantino Coop: Ipercoop Estense Sud",
-          "subtitle": "Offerte per te",
-          "coverUrl": "https://www.calameo.com/books/social/cover/0010667131948c22f7602?authid=nReMZD7EN07k",
-          "fallbackCoverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/coop_1867_0.jpg",
-          "from": "2026-09-24T00:00:00+02:00",
-          "to": "2026-10-07T00:00:00+02:00",
-          "bkcode": "0010667131948c22f7602",
-          "authid": "nReMZD7EN07k"
         },
         {
           "id": 411,
@@ -1695,28 +1552,32 @@
       ]
     },
     {
-      "slug": "emisfero-ipermercati",
-      "name": "Emisfero Ipermercati",
-      "logoId": "emisfero-ipermercati",
-      "flyers": [
-        {
-          "id": 292,
-          "title": "Volantino Emisfero",
-          "subtitle": "Iper Affari",
-          "coverUrl": "https://www.calameo.com/books/social/cover/00106671337a614fb3698?authid=bnEWsIBkyKfT",
-          "fallbackCoverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/emisfero_292.jpg",
-          "from": "2026-09-24T00:00:00+02:00",
-          "to": "2026-10-07T00:00:00+02:00",
-          "bkcode": "00106671337a614fb3698",
-          "authid": "bnEWsIBkyKfT"
-        }
-      ]
-    },
-    {
       "slug": "esselunga",
       "name": "Esselunga",
       "logoId": "esselunga",
       "flyers": [
+        {
+          "id": 160,
+          "title": "Volantino Esselunga Superstore",
+          "subtitle": "Sconti Fino Al 50%",
+          "coverUrl": "https://www.calameo.com/books/social/cover/0010667136e6e4baeb8d1?authid=P9sy5kUrmKzJ",
+          "fallbackCoverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/esselunga_160_0.jpg",
+          "from": "2026-10-08T00:00:00+02:00",
+          "to": "2026-10-21T00:00:00+02:00",
+          "bkcode": "0010667136e6e4baeb8d1",
+          "authid": "P9sy5kUrmKzJ"
+        },
+        {
+          "id": 429,
+          "title": "Volantino Esselunga: Speciale Ter",
+          "subtitle": "Voglia Di Casa",
+          "coverUrl": "https://www.calameo.com/books/social/cover/00106671332872b23c799?authid=AvnunV1FSiI4",
+          "fallbackCoverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/esselunga_429_0.jpg",
+          "from": "2026-10-08T00:00:00+02:00",
+          "to": "2026-10-21T00:00:00+02:00",
+          "bkcode": "00106671332872b23c799",
+          "authid": "AvnunV1FSiI4"
+        },
         {
           "id": 2360,
           "title": "Catalogo Esselunga Speciale Bis",
@@ -1740,28 +1601,6 @@
           "authid": "sA7B3HWx0SDz"
         },
         {
-          "id": 429,
-          "title": "Volantino Esselunga: Speciale Ter",
-          "subtitle": "Sapori D'Autunno",
-          "coverUrl": "https://www.calameo.com/books/social/cover/0010667130f7ba5a9f8ff?authid=UVtDAIhDMjLt",
-          "fallbackCoverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/esselunga_429.jpg",
-          "from": "2026-09-24T00:00:00+02:00",
-          "to": "2026-10-07T00:00:00+02:00",
-          "bkcode": "0010667130f7ba5a9f8ff",
-          "authid": "UVtDAIhDMjLt"
-        },
-        {
-          "id": 160,
-          "title": "Volantino Esselunga Superstore",
-          "subtitle": "Grandi Marche Fino Al 50%",
-          "coverUrl": "https://www.calameo.com/books/social/cover/0010667135b2e5e73fb2e?authid=zUmGYvHQ6Soy",
-          "fallbackCoverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/esselunga_160.jpg",
-          "from": "2026-09-24T00:00:00+02:00",
-          "to": "2026-10-07T00:00:00+02:00",
-          "bkcode": "0010667135b2e5e73fb2e",
-          "authid": "zUmGYvHQ6Soy"
-        },
-        {
           "id": 2304,
           "title": "Catalogo Esselunga Speciale",
           "subtitle": "La Collezione Che è Già una Hit",
@@ -1773,17 +1612,6 @@
           "authid": "OLiCUknHHlcs"
         },
         {
-          "id": 2141,
-          "title": "Volantino Esselunga Toscana",
-          "subtitle": "Grandi Marche Fino Al 50%",
-          "coverUrl": "https://www.calameo.com/books/social/cover/001066713d81b0e4dd5d5?authid=nsy54PAanWrf",
-          "fallbackCoverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/esselunga_2141.jpg",
-          "from": "2026-09-24T00:00:00+02:00",
-          "to": "2026-10-07T00:00:00+02:00",
-          "bkcode": "001066713d81b0e4dd5d5",
-          "authid": "nsy54PAanWrf"
-        },
-        {
           "id": 79,
           "title": "Volantino Esselunga: Speciale",
           "subtitle": "Freschi E Convenienti Sempre",
@@ -1793,101 +1621,6 @@
           "to": "2026-12-31T00:00:00+01:00",
           "bkcode": "001066713d9f837b160cf",
           "authid": "rc0Q9GsSsIan"
-        },
-        {
-          "id": 2138,
-          "title": "Volantino Esselunga Emilia Romagna",
-          "subtitle": "Grandi Marche Fino Al 50%",
-          "coverUrl": "https://www.calameo.com/books/social/cover/0010667133cf25a85d96a?authid=LUZxVHkPv3xY",
-          "fallbackCoverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/esselunga_2138.jpg",
-          "from": "2026-09-24T00:00:00+02:00",
-          "to": "2026-10-07T00:00:00+02:00",
-          "bkcode": "0010667133cf25a85d96a",
-          "authid": "LUZxVHkPv3xY"
-        },
-        {
-          "id": 2139,
-          "title": "Volantino Esselunga Lazio",
-          "subtitle": "Grandi Marche Fino Al 50%",
-          "coverUrl": "https://www.calameo.com/books/social/cover/0010667134c9e6a5fc643?authid=CQXHFaXv7SPK",
-          "fallbackCoverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/esselunga_2139_0.jpg",
-          "from": "2026-09-24T00:00:00+02:00",
-          "to": "2026-10-07T00:00:00+02:00",
-          "bkcode": "0010667134c9e6a5fc643",
-          "authid": "CQXHFaXv7SPK"
-        },
-        {
-          "id": 2140,
-          "title": "Volantino Esselunga Piemonte",
-          "subtitle": "Grandi Marche Fino Al 50%",
-          "coverUrl": "https://www.calameo.com/books/social/cover/0010667133ea9a176ed62?authid=uYpGo7pYu3KX",
-          "fallbackCoverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/esselunga_2140_0.jpg",
-          "from": "2026-09-24T00:00:00+02:00",
-          "to": "2026-10-07T00:00:00+02:00",
-          "bkcode": "0010667133ea9a176ed62",
-          "authid": "uYpGo7pYu3KX"
-        }
-      ]
-    },
-    {
-      "slug": "euronics",
-      "name": "Euronics",
-      "logoId": "euronics",
-      "flyers": [
-        {
-          "id": 154,
-          "title": "Volantino Euronics (Gruppo Tufano): Lazio, Campania, Calabria",
-          "subtitle": "-70%",
-          "coverUrl": "https://www.calameo.com/books/social/cover/0010667139ae6780617a5?authid=Jn7G9EVyKdox",
-          "fallbackCoverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/euronics_154.jpg",
-          "from": "2026-09-24T00:00:00+02:00",
-          "to": "2026-10-07T00:00:00+02:00",
-          "bkcode": "0010667139ae6780617a5",
-          "authid": "Jn7G9EVyKdox"
-        },
-        {
-          "id": 149,
-          "title": "Volantino Euronics CDS Butali: Toscana, Marche, Umbria, Lazio, Emilia Romagna",
-          "subtitle": "Facciamo A Metà",
-          "coverUrl": "https://www.calameo.com/books/social/cover/0010667138ce5ccb67c88?authid=TmU540fTRQnZ",
-          "fallbackCoverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/euronics_149_0.jpg",
-          "from": "2026-09-24T00:00:00+02:00",
-          "to": "2026-10-07T00:00:00+02:00",
-          "bkcode": "0010667138ce5ccb67c88",
-          "authid": "TmU540fTRQnZ"
-        },
-        {
-          "id": 151,
-          "title": "Volantino Euronics (Gruppo Dimo)",
-          "subtitle": "Black Star",
-          "coverUrl": "https://www.calameo.com/books/social/cover/001066713b07c080e7f31?authid=5ujBvZMlgvwm",
-          "fallbackCoverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/euronics_151_0.jpg",
-          "from": "2026-09-24T00:00:00+02:00",
-          "to": "2026-10-07T00:00:00+02:00",
-          "bkcode": "001066713b07c080e7f31",
-          "authid": "5ujBvZMlgvwm"
-        },
-        {
-          "id": 536,
-          "title": "Volantino Euronics (Gruppo La Via Lattea): Sicilia",
-          "subtitle": "Black Star",
-          "coverUrl": "https://www.calameo.com/books/social/cover/00106671304c5ace55f78?authid=2MBge7tSNZbz",
-          "fallbackCoverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/euronics_536.jpg",
-          "from": "2026-09-24T00:00:00+02:00",
-          "to": "2026-10-07T00:00:00+02:00",
-          "bkcode": "00106671304c5ace55f78",
-          "authid": "2MBge7tSNZbz"
-        },
-        {
-          "id": 152,
-          "title": "Volantino Euronics (Gruppo Siem): Abruzzo, Molise, Campania, Puglia, Basilicata, Calabria",
-          "subtitle": "Black Star",
-          "coverUrl": "https://www.calameo.com/books/social/cover/001066713878ec78b1df9?authid=IyRcEMC9pu71",
-          "fallbackCoverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/euronics_152.jpg",
-          "from": "2026-09-24T00:00:00+02:00",
-          "to": "2026-10-07T00:00:00+02:00",
-          "bkcode": "001066713878ec78b1df9",
-          "authid": "IyRcEMC9pu71"
         }
       ]
     },
@@ -1959,70 +1692,15 @@
       "logoId": "expert-italia",
       "flyers": [
         {
-          "id": 1945,
-          "title": "Volantino Gruppo Gaer",
-          "subtitle": "Grandi Marche",
-          "coverUrl": "https://www.calameo.com/books/social/cover/001066713c0b93f244abb?authid=xLTZmUZ2t341",
-          "fallbackCoverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/expert_it_1945.jpg",
-          "from": "2026-09-24T00:00:00+02:00",
-          "to": "2026-10-07T00:00:00+02:00",
-          "bkcode": "001066713c0b93f244abb",
-          "authid": "xLTZmUZ2t341"
-        },
-        {
-          "id": 1863,
-          "title": "Volantino Expert DG group",
-          "subtitle": "GRANDI MARCHE",
-          "coverUrl": "https://www.calameo.com/books/social/cover/0010667134bef5093645a?authid=vOz3JucTTY5z",
-          "fallbackCoverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/expert_it_1863_0.jpg",
-          "from": "2026-09-24T00:00:00+02:00",
-          "to": "2026-10-07T00:00:00+02:00",
-          "bkcode": "0010667134bef5093645a",
-          "authid": "vOz3JucTTY5z"
-        },
-        {
-          "id": 473,
-          "title": "Volantino Expert (Gruppo Somma): Campania",
-          "subtitle": "Sconti Fino Al 25%",
-          "coverUrl": "https://www.calameo.com/books/social/cover/001066713efc37c4bc92d?authid=xhbLtTQVUlLw",
-          "fallbackCoverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/expert_it_473_0.jpg",
-          "from": "2026-09-24T00:00:00+02:00",
-          "to": "2026-10-07T00:00:00+02:00",
-          "bkcode": "001066713efc37c4bc92d",
-          "authid": "xhbLtTQVUlLw"
-        },
-        {
           "id": 551,
           "title": "Volantino Expert Mallardo",
-          "subtitle": "Grandi Marche A Tasso Zero",
-          "coverUrl": "https://www.calameo.com/books/social/cover/0010667131fc83375d163?authid=tw0AAMVMpVhs",
-          "fallbackCoverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/expert_it_551_0.jpg",
-          "from": "2026-09-24T00:00:00+02:00",
-          "to": "2026-10-07T00:00:00+02:00",
-          "bkcode": "0010667131fc83375d163",
-          "authid": "tw0AAMVMpVhs"
-        },
-        {
-          "id": 529,
-          "title": "Volantino Expert Teverola Di Lella",
-          "subtitle": "Grandi Marche Piccole Rate",
-          "coverUrl": "https://www.calameo.com/books/social/cover/001066713b30ca835dbf1?authid=pBYots65Z0G8",
-          "fallbackCoverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/expert_it_529_0.jpg",
-          "from": "2026-09-24T00:00:00+02:00",
-          "to": "2026-10-07T00:00:00+02:00",
-          "bkcode": "001066713b30ca835dbf1",
-          "authid": "pBYots65Z0G8"
-        },
-        {
-          "id": 654,
-          "title": "Volantino Expert Calabria",
-          "subtitle": "GRANDI MARCHE",
-          "coverUrl": "https://www.calameo.com/books/social/cover/0010667139eaabaf67128?authid=gEE6ic3IFRdt",
-          "fallbackCoverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/expert_it_654.jpg",
-          "from": "2026-09-24T00:00:00+02:00",
-          "to": "2026-10-07T00:00:00+02:00",
-          "bkcode": "0010667139eaabaf67128",
-          "authid": "gEE6ic3IFRdt"
+          "subtitle": "Sotto Costo",
+          "coverUrl": "https://www.calameo.com/books/social/cover/00106671340103194bb44?authid=kEkOBqlBTfHc",
+          "fallbackCoverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/expert_it_551.jpg",
+          "from": "2026-10-08T00:00:00+02:00",
+          "to": "2026-10-21T00:00:00+02:00",
+          "bkcode": "00106671340103194bb44",
+          "authid": "kEkOBqlBTfHc"
         }
       ]
     },
@@ -2118,17 +1796,6 @@
           "to": "2026-10-13T00:00:00+02:00",
           "bkcode": "001066713ac307c554a3e",
           "authid": "PfQ8KwWjHqqg"
-        },
-        {
-          "id": 106,
-          "title": "Volantino IperFamila: Speciale",
-          "subtitle": "Sapori regionali",
-          "coverUrl": "https://www.calameo.com/books/social/cover/001066713c0c335a5b678?authid=Pus2I950wvvf",
-          "fallbackCoverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/famila_106.jpg",
-          "from": "2026-09-21T00:00:00+02:00",
-          "to": "2026-10-07T00:00:00+02:00",
-          "bkcode": "001066713c0c335a5b678",
-          "authid": "Pus2I950wvvf"
         },
         {
           "id": 109,
@@ -2661,6 +2328,17 @@
       "logoId": "lidl",
       "flyers": [
         {
+          "id": 559,
+          "title": "Volantino Lidl",
+          "subtitle": "Super Offerte",
+          "coverUrl": "https://www.calameo.com/books/social/cover/0010667134f2ebd724531?authid=yqDlLP9m2col",
+          "fallbackCoverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/lidl_it_559_0.jpg",
+          "from": "2026-10-08T00:00:00+02:00",
+          "to": "2026-10-14T00:00:00+02:00",
+          "bkcode": "0010667134f2ebd724531",
+          "authid": "yqDlLP9m2col"
+        },
+        {
           "id": 569,
           "title": "Volantino Anteprima Lidl",
           "subtitle": "Super Offerte",
@@ -2670,61 +2348,6 @@
           "to": "2026-10-14T00:00:00+02:00",
           "bkcode": "001066713a7ec00962fd3",
           "authid": "Rje67kYnb8Ev"
-        },
-        {
-          "id": 559,
-          "title": "Volantino Lidl",
-          "subtitle": "Grandi Offerte",
-          "coverUrl": "https://www.calameo.com/books/social/cover/00106671332f1f4bfb25c?authid=C33IA0Jyi1SW",
-          "fallbackCoverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/lidl_it_559_1.jpg",
-          "from": "2026-10-01T00:00:00+02:00",
-          "to": "2026-10-07T00:00:00+02:00",
-          "bkcode": "00106671332f1f4bfb25c",
-          "authid": "C33IA0Jyi1SW"
-        },
-        {
-          "id": 1883,
-          "title": "Volantino Lidl Speciale",
-          "subtitle": "Sicilia",
-          "coverUrl": "https://www.calameo.com/books/social/cover/0010667132b7942b075f7?authid=NvAAcmWskt2K",
-          "fallbackCoverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/lidl_it_1883.jpg",
-          "from": "2026-10-01T00:00:00+02:00",
-          "to": "2026-10-07T00:00:00+02:00",
-          "bkcode": "0010667132b7942b075f7",
-          "authid": "NvAAcmWskt2K"
-        },
-        {
-          "id": 2122,
-          "title": "Volantino Lidl Speciali Bis",
-          "subtitle": "Sapori del sud Italia",
-          "coverUrl": "https://www.calameo.com/books/social/cover/00106671355f346739877?authid=LNBRHCH4rD8L",
-          "fallbackCoverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/lidl_it_2122.jpg",
-          "from": "2026-10-01T00:00:00+02:00",
-          "to": "2026-10-07T00:00:00+02:00",
-          "bkcode": "00106671355f346739877",
-          "authid": "LNBRHCH4rD8L"
-        },
-        {
-          "id": 2203,
-          "title": "Catalogo Lidl Speciale",
-          "subtitle": "Sapori del centro Italia",
-          "coverUrl": "https://www.calameo.com/books/social/cover/0010667137c2ba23d7fac?authid=IPErB5vHbdO5",
-          "fallbackCoverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/lidl_it_2203_0.jpg",
-          "from": "2026-10-01T00:00:00+02:00",
-          "to": "2026-10-07T00:00:00+02:00",
-          "bkcode": "0010667137c2ba23d7fac",
-          "authid": "IPErB5vHbdO5"
-        },
-        {
-          "id": 2068,
-          "title": "Volantino Lidl Speciale Bis",
-          "subtitle": "Fresca e conveniente",
-          "coverUrl": "https://www.calameo.com/books/social/cover/0010667132b7cbe9e0c9d?authid=0njR2Wa7UHcG",
-          "fallbackCoverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/lidl_it_2068.jpg",
-          "from": "2026-10-01T00:00:00+02:00",
-          "to": "2026-10-07T00:00:00+02:00",
-          "bkcode": "0010667132b7cbe9e0c9d",
-          "authid": "0njR2Wa7UHcG"
         },
         {
           "id": 754,
@@ -3057,37 +2680,15 @@
       "logoId": "pam",
       "flyers": [
         {
-          "id": 275,
-          "title": "Volantino PAM",
-          "subtitle": "Occasioni Extra",
-          "coverUrl": "https://www.calameo.com/books/social/cover/0010667137b04bf835e0e?authid=9iYJ1CTt89K5",
-          "fallbackCoverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/pam_275.jpg",
-          "from": "2026-09-24T00:00:00+02:00",
-          "to": "2026-10-07T00:00:00+02:00",
-          "bkcode": "0010667137b04bf835e0e",
-          "authid": "9iYJ1CTt89K5"
-        },
-        {
           "id": 2030,
           "title": "Volantino Pam Superstore",
-          "subtitle": "Tante Offerte A 1€ 2€ 3€",
-          "coverUrl": "https://www.calameo.com/books/social/cover/00106671305e8d54b8dfa?authid=f8iSt5x354WF",
-          "fallbackCoverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/pam_2030_0.jpg",
-          "from": "2026-09-24T00:00:00+02:00",
-          "to": "2026-10-07T00:00:00+02:00",
-          "bkcode": "00106671305e8d54b8dfa",
-          "authid": "f8iSt5x354WF"
-        },
-        {
-          "id": 378,
-          "title": "Volantino PAM Speciale",
-          "subtitle": "Occasioni Extra",
-          "coverUrl": "https://www.calameo.com/books/social/cover/00106671393e900b36063?authid=cPmLUG2GJo22",
-          "fallbackCoverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/pam_378.jpg",
-          "from": "2026-09-24T00:00:00+02:00",
-          "to": "2026-10-07T00:00:00+02:00",
-          "bkcode": "00106671393e900b36063",
-          "authid": "cPmLUG2GJo22"
+          "subtitle": "Fai Scorta Di Convenienza",
+          "coverUrl": "https://www.calameo.com/books/social/cover/00106671343fcb3f08cff?authid=SBkDDwFC1es6",
+          "fallbackCoverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/pam_2030.jpg",
+          "from": "2026-10-08T00:00:00+02:00",
+          "to": "2026-10-21T00:00:00+02:00",
+          "bkcode": "00106671343fcb3f08cff",
+          "authid": "SBkDDwFC1es6"
         },
         {
           "id": 404,
@@ -3117,53 +2718,6 @@
           "to": "2026-10-11T00:00:00+02:00",
           "bkcode": "001066713f8c3787d743e",
           "authid": "X6CsmdJC3CT5"
-        }
-      ]
-    },
-    {
-      "slug": "panorama",
-      "name": "Panorama",
-      "logoId": "panorama",
-      "flyers": [
-        {
-          "id": 545,
-          "title": "Volantino Panorama",
-          "subtitle": "Tante Offerte A 1€ 2€ 3€",
-          "coverUrl": "https://www.calameo.com/books/social/cover/001066713b66b83ca4ff6?authid=42YNrXbVVy3m",
-          "fallbackCoverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/panorama_545_0.jpg",
-          "from": "2026-09-24T00:00:00+02:00",
-          "to": "2026-10-07T00:00:00+02:00",
-          "bkcode": "001066713b66b83ca4ff6",
-          "authid": "42YNrXbVVy3m"
-        },
-        {
-          "id": 318,
-          "title": "Volantino Panorama",
-          "subtitle": "Occasioni Extra",
-          "coverUrl": "https://www.calameo.com/books/social/cover/001066713cc70a68e0bf0?authid=Uri46cjlqkP1",
-          "fallbackCoverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/panorama_318.jpg",
-          "from": "2026-09-24T00:00:00+02:00",
-          "to": "2026-10-07T00:00:00+02:00",
-          "bkcode": "001066713cc70a68e0bf0",
-          "authid": "Uri46cjlqkP1"
-        }
-      ]
-    },
-    {
-      "slug": "penny-market",
-      "name": "Penny Market",
-      "logoId": "penny-market",
-      "flyers": [
-        {
-          "id": 69,
-          "title": "Volantino Penny Market",
-          "subtitle": "Promozioni",
-          "coverUrl": "https://www.calameo.com/books/social/cover/001066713485a832eb3d9?authid=EU6l8gRSIIMe",
-          "fallbackCoverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/penny_market_69_0.jpg",
-          "from": "2026-09-24T00:00:00+02:00",
-          "to": "2026-10-07T00:00:00+02:00",
-          "bkcode": "001066713485a832eb3d9",
-          "authid": "EU6l8gRSIIMe"
         }
       ]
     },
@@ -3424,17 +2978,6 @@
           "to": "2026-10-11T00:00:00+02:00",
           "bkcode": "001066713fee37924c30d",
           "authid": "app6u13P6MUi"
-        },
-        {
-          "id": 548,
-          "title": "Volantino Tigre",
-          "subtitle": "Sotto Costo",
-          "coverUrl": "https://www.calameo.com/books/social/cover/0010667139258423577bd?authid=Z9OsUBWSCupu",
-          "fallbackCoverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/tigre_548_1.jpg",
-          "from": "2026-09-25T00:00:00+02:00",
-          "to": "2026-10-07T00:00:00+02:00",
-          "bkcode": "0010667139258423577bd",
-          "authid": "Z9OsUBWSCupu"
         }
       ]
     },
@@ -3624,24 +3167,6 @@
           "to": "2026-10-15T00:00:00+02:00",
           "bkcode": "001066713c69271780513",
           "authid": "wWPBm5OhsSVQ"
-        }
-      ]
-    },
-    {
-      "slug": "unes",
-      "name": "Unes",
-      "logoId": "unes",
-      "flyers": [
-        {
-          "id": 269,
-          "title": "Volantino Unes",
-          "subtitle": "Grandi Occasioni",
-          "coverUrl": "https://www.calameo.com/books/social/cover/001066713c0490e6c67ae?authid=U9Nd3mT33ei3",
-          "fallbackCoverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/unes_269.jpg",
-          "from": "2026-09-23T00:00:00+02:00",
-          "to": "2026-10-07T00:00:00+02:00",
-          "bkcode": "001066713c0490e6c67ae",
-          "authid": "U9Nd3mT33ei3"
         }
       ]
     },

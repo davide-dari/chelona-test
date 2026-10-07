@@ -2176,27 +2176,8 @@ export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onCl
       {/* ── MAIN SCROLLABLE CONTAINER ── */}
       <main className="flex-1 overflow-y-auto custom-scrollbar overscroll-contain scroll-smooth p-4 sm:p-6 md:p-8 space-y-6 pb-28">
         <div className="max-w-4xl mx-auto w-full space-y-5">
-          {/* ── 3D EARTH GLOBE VIEWPORT ("sempre il pianeta terra sopra") ── */}
-          <div className="relative w-full h-[340px] sm:h-[400px] md:h-[460px] rounded-3xl overflow-hidden bg-[#060d1a] border border-blue-500/20 shadow-2xl shadow-blue-950/30 shrink-0">
-            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_#0f2744_0%,_#060d1a_75%)] pointer-events-none" />
-
-            {/* Subtle Ambient Stars */}
-            <div className="absolute inset-0 overflow-hidden pointer-events-none opacity-70">
-              {Array.from({ length: 45 }).map((_, i) => (
-                <div
-                  key={`star-${i}`}
-                  className="absolute rounded-full bg-white"
-                  style={{
-                    width: i % 4 === 0 ? 2 : 1,
-                    height: i % 4 === 0 ? 2 : 1,
-                    top: `${(i * 19) % 100}%`,
-                    left: `${(i * 23) % 100}%`,
-                    opacity: 0.2 + ((i * 7) % 60) / 100
-                  }}
-                />
-              ))}
-            </div>
-
+          {/* ── 3D EARTH GLOBE VIEWPORT SENZA SFONDO ── */}
+          <div className="relative w-full h-[340px] sm:h-[400px] md:h-[460px] overflow-hidden shrink-0 flex items-center justify-center">
             {/* 3D Interactive Planet Earth Canvas */}
             <div className="relative z-10 w-full h-full flex items-center justify-center">
               <Globe3D 
@@ -2208,12 +2189,12 @@ export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onCl
 
             {/* Floating Globe Status & Controls */}
             {(selectedNation || focusedDestId) && (
-              <div className="absolute top-3 left-3 z-20 flex items-center gap-1.5 bg-black/70 backdrop-blur-md border border-white/15 px-3 py-1.5 rounded-full text-xs font-bold text-white shadow-lg pointer-events-none">
-                <Globe className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+              <div className="absolute top-3 left-3 z-20 flex items-center gap-1.5 bg-[var(--card-bg)]/85 backdrop-blur-md border border-[var(--border)] px-3 py-1.5 rounded-full text-xs font-bold text-[var(--text-main)] shadow-lg pointer-events-none">
+                <Globe className="w-3.5 h-3.5 text-blue-500 shrink-0" />
                 <span className="truncate max-w-[140px] sm:max-w-[220px]">
                   {selectedNation ? `${getCountryEmoji(selectedNation)} ${selectedNation}` : ''}
                   {focusedDestId && (
-                    <span className="text-blue-300 text-[11px] font-semibold">
+                    <span className="text-blue-500 dark:text-blue-400 text-[11px] font-semibold">
                       {selectedNation ? ' · ' : ''}{destinations.find(d => d.id === focusedDestId)?.name}
                     </span>
                   )}
@@ -2229,7 +2210,7 @@ export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onCl
                   setSelectedNation(null);
                   setFocusedDestId(null);
                 }}
-                className="absolute top-3 right-3 z-20 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-blue-600/80 hover:bg-blue-600 text-white backdrop-blur-md text-xs font-bold shadow-md cursor-pointer active:scale-95 transition-all"
+                className="absolute top-3 right-3 z-20 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-blue-600/85 hover:bg-blue-600 text-white backdrop-blur-md text-xs font-bold shadow-md cursor-pointer active:scale-95 transition-all"
                 title="Torna alla vista globale"
               >
                 <RefreshCw className="w-3 h-3" />
