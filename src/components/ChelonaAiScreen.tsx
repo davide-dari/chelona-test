@@ -1,17 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
-  Send, Mic, MicOff, Volume2, VolumeX, Trash2, Menu, Trash, ArrowLeft, 
-  ExternalLink, Check, Copy, Plus, X, Zap, ChevronRight, UtensilsCrossed, Flame,
-  Settings2, Sliders, Play, Store, Tag, Calendar, Car, FileText, ShoppingBasket,
-  MapPin, Clock, FileSignature, Wallet, CheckSquare, Sparkles, Navigation, Globe, BookOpen
+  Send, Mic, MicOff, Volume2, VolumeX, ArrowLeft, 
+  ExternalLink, Check, Copy, X, Sparkles, ChevronRight, UtensilsCrossed, Flame,
+  Settings2, Sliders, Store, Calendar, Car, FileText, ShoppingBasket,
+  Navigation, Globe, Wallet, RefreshCw, Shuffle
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Module } from '../types';
-import { 
-  AiMessage, AiAction, getChatHistory, saveChatHistory, 
-  queryChelonaAi
-} from '../services/chelonaEngine';
-import { queryGemma2, preloadEngine } from '../services/gemma2Engine';
+import { AiAction, queryChelonaAi } from '../services/chelonaEngine';
+import { queryGemma2, preloadEngine, Gemma2Response } from '../services/gemma2Engine';
 import {
   prepareNaturalSpeech,
   splitIntoSentences,
@@ -36,66 +33,35 @@ interface ChelonaAiScreenProps {
   initialVoiceMode?: boolean;
   initialDictationMode?: boolean;
   onNavigate?: (action: AiAction) => void;
-  activeSection?: string; // Sezione corrente dell'app per il contesto AI
+  activeSection?: string;
 }
 
-function formatDate(dateStr?: string): string {
-  if (!dateStr) return 'N/D';
-  try {
-    const d = new Date(dateStr);
-    if (isNaN(d.getTime())) return dateStr;
-    return d.toLocaleDateString('it-IT', { day: '2-digit', month: 'short', year: 'numeric' });
-  } catch {
-    return dateStr;
-  }
+// ---- Dynamic Inspirational Phrases ----
+const INSPIRATIONAL_PHRASES = [
+  "Cosa c'è da segnare nella lista della spesa?",
+  "Cosa ti va di cucinare oggi?",
+  "Vuoi controllare le scadenze o l'auto?",
+  "Hai una spesa o un conto da calcolare?",
+  "Quali volantini e offerte vuoi scoprire?",
+  "Dove vuoi andare o cosa vuoi pianificare?",
+  "Cosa posso fare per te oggi?",
+  "Hai bisogno di un'idea per il pranzo o la cena?",
+  "Vuoi verificare dove hai parcheggiato la macchina?",
+  "Come posso semplificarti la giornata?",
+  "Chiedimi qualsiasi cosa sui tuoi documenti o note.",
+  "Quali impegni o pagamenti devi saldare presto?",
+  "Cosa vuoi che ricordi o organizzi per te?"
+];
+
+interface ActiveResponse {
+  query: string;
+  text: string;
+  actions?: AiAction[];
+  engineUsed?: string;
+  timestamp: number;
 }
 
-
-// ---- Conversation History Types ----
-interface ChatConversation {
-  id: string;
-  title: string;
-  messages: AiMessage[];
-  createdAt: number;
-  updatedAt: number;
-}
-
-const CONV_STORAGE_KEY = 'chelona_conversations';
-const MAX_CONVERSATIONS = 50;
-
-function loadConversations(): ChatConversation[] {
-  try {
-    const raw = localStorage.getItem(CONV_STORAGE_KEY);
-    return raw ? JSON.parse(raw) : [];
-  } catch { return []; }
-}
-
-function saveConversations(convs: ChatConversation[]) {
-  try {
-    const trimmed = convs.slice(0, MAX_CONVERSATIONS);
-    localStorage.setItem(CONV_STORAGE_KEY, JSON.stringify(trimmed));
-  } catch {}
-}
-
-function makeConvTitle(text: string): string {
-  const clean = text.replace(/\*|#|_/g, '').trim();
-  return clean.length > 42 ? clean.slice(0, 42).trimEnd() + '…' : clean;
-}
-
-function formatRelativeTime(ts: number): string {
-  const diff = Date.now() - ts;
-  const m = Math.floor(diff / 60000);
-  if (m < 1) return 'Adesso';
-  if (m < 60) return `${m} min fa`;
-  const h = Math.floor(m / 60);
-  if (h < 24) return `${h} ore fa`;
-  const d = Math.floor(h / 24);
-  if (d < 7) return `${d} giorni fa`;
-  return new Date(ts).toLocaleDateString('it-IT', { day: '2-digit', month: 'short' });
-}
-
-export const ChelonaAiScreen
-: React.FC<ChelonaAiScreenProps> = ({
+export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
   modules,
   username,
   onClose,
@@ -106,128 +72,31 @@ export const ChelonaAiScreen
   onAddModule,
   onOpenParking,
   initialVoiceMode = false,
-  initialDictationMode = false,
   onNavigate,
   activeSection,
 }) => {
-  const [conversations, setConversations] = useState<ChatConversation[]>(() => loadConversations());
-  const [activeConvId, setActiveConvId] = useState<string | null>(() => {
-    const convs = loadConversations();
-    return convs.length > 0 ? convs[0].id : null;
+  // Frase dinamica che cambia sempre all'apertura dello schermo
+  const [dynamicPhrase, setDynamicPhrase] = useState<string>(() => {
+    const lastIndex = parseInt(sessionStorage.getItem('chelona_last_phrase_idx') || '-1', 10);
+    let nextIndex = Math.floor(Math.random() * INSPIRATIONAL_PHRASES.length);
+    if (nextIndex === lastIndex && INSPIRATIONAL_PHRASES.length > 1) {
+      nextIndex = (nextIndex + 1) % INSPIRATIONAL_PHRASES.length;
+    }
+    sessionStorage.setItem('chelona_last_phrase_idx', nextIndex.toString());
+    return INSPIRATIONAL_PHRASES[nextIndex];
   });
-  const [messages, setMessages] = useState<AiMessage[]>(() => {
-    const convs = loadConversations();
-    if (convs.length > 0 && convs[0].messages.length > 0) return convs[0].messages;
-    return [
-      {
-        id: 'msg_welcome_' + Date.now(),
-        sender: 'assistant',
-        text: `Ciao ${username || ''}! Come posso aiutarti oggi? Conosco tutte le sezioni di Chelona. Chiedimi qualsiasi cosa!`,
-        timestamp: Date.now(),
-      }
-    ];
-  });
-  const [showHistoryDrawer, setShowHistoryDrawer] = useState(false);
-  const firstUserMsgSentRef = useRef(false);
 
-  // Sync to localStorage when conversations change
-  useEffect(() => {
-    saveConversations(conversations);
-  }, [conversations]);
-
-  // Aggiorna o crea conversazione quando arrivano nuovi messaggi
-  const updateConversationWithMessages = (newMessages: AiMessage[]) => {
-    setMessages(newMessages);
-    const hasUser = newMessages.some(m => m.sender === 'user');
-    if (!hasUser) return;
-
-    const firstUserMsg = newMessages.find(m => m.sender === 'user');
-    const autoTitle = firstUserMsg ? makeConvTitle(firstUserMsg.text) : 'Nuova Chat';
-
-    let targetId = activeConvId;
-    if (!targetId) {
-      targetId = 'conv_' + Date.now();
-      setActiveConvId(targetId);
-      const newConv: ChatConversation = {
-        id: targetId,
-        title: autoTitle,
-        messages: newMessages,
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
-      };
-      setConversations(prev => [newConv, ...prev]);
-    } else {
-      setConversations(prev => {
-        const found = prev.some(c => c.id === targetId);
-        if (found) {
-          return prev.map(c => {
-            if (c.id === targetId) {
-              const title = c.title === 'Nuova Chat' || !c.title ? autoTitle : c.title;
-              return { ...c, title, messages: newMessages, updatedAt: Date.now() };
-            }
-            return c;
-          });
-        } else {
-          return [{
-            id: targetId!,
-            title: autoTitle,
-            messages: newMessages,
-            createdAt: Date.now(),
-            updatedAt: Date.now(),
-          }, ...prev];
-        }
-      });
-    }
+  const handleNextPhrase = () => {
+    const currentIndex = INSPIRATIONAL_PHRASES.indexOf(dynamicPhrase);
+    const nextIndex = (currentIndex + 1) % INSPIRATIONAL_PHRASES.length;
+    setDynamicPhrase(INSPIRATIONAL_PHRASES[nextIndex]);
+    sessionStorage.setItem('chelona_last_phrase_idx', nextIndex.toString());
   };
 
-  const handleNewConversation = () => {
-    setActiveConvId(null);
-    setMessages([
-      {
-        id: 'msg_welcome_' + Date.now(),
-        sender: 'assistant',
-        text: `Ciao ${username || ''}! Come posso aiutarti oggi? Conosco tutte le sezioni di Chelona. Chiedimi qualsiasi cosa!`,
-        timestamp: Date.now(),
-      }
-    ]);
-    setShowHistoryDrawer(false);
-  };
+  // Stato per la risposta attiva corrente (NO sistema a chat con bolle che si accumulano)
+  const [activeResponse, setActiveResponse] = useState<ActiveResponse | null>(null);
 
-  const handleSwitchConversation = (id: string) => {
-    setActiveConvId(id);
-    const conv = conversations.find(c => c.id === id);
-    if (conv) {
-      setMessages(conv.messages);
-    }
-    setShowHistoryDrawer(false);
-  };
-
-  const handleDeleteConversation = (id: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (confirm('Vuoi davvero eliminare questa conversazione?')) {
-      const remaining = conversations.filter(c => c.id !== id);
-      setConversations(remaining);
-      saveConversations(remaining);
-      if (activeConvId === id) {
-        handleNewConversation();
-      }
-      showToast('Conversazione eliminata.', 'info');
-    }
-  };
-
-  const handleDeleteCurrentConversation = () => {
-    if (confirm('Vuoi eliminare la conversazione corrente?')) {
-      if (activeConvId) {
-        const remaining = conversations.filter(c => c.id !== activeConvId);
-        setConversations(remaining);
-        saveConversations(remaining);
-      }
-      handleNewConversation();
-      showToast('Conversazione eliminata.', 'info');
-    }
-  };
-
-  // Warm-up e precaricamento background del motore AI per azzerare i tempi della prima risposta
+  // Warm-up e precaricamento background del motore AI
   useEffect(() => {
     preloadEngine(modules, username);
   }, [modules, username]);
@@ -237,10 +106,10 @@ export const ChelonaAiScreen
   const [isListening, setIsListening] = useState(false);
   const [liveVoiceTranscript, setLiveVoiceTranscript] = useState('');
   const [liveAudioVolume, setLiveAudioVolume] = useState(0.2);
-  const [speakingMessageId, setSpeakingMessageId] = useState<string | null>(null);
-  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [isSpeakingActive, setIsSpeakingActive] = useState(false);
+  const [isCopied, setIsCopied] = useState(false);
 
-  // Voci di sintesi vocale e preferenze umane
+  // Voci di sintesi vocale
   const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>([]);
   const [selectedVoice, setSelectedVoice] = useState<SpeechSynthesisVoice | null>(null);
   const [speechRate, setSpeechRate] = useState<number>(() => {
@@ -256,7 +125,7 @@ export const ChelonaAiScreen
 
   const cancelSpeechRef = useRef(false);
   const speechSessionIdRef = useRef(0);
-  const webSpeechRecRef = useRef<any>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Modalità interazione vocale a tutto schermo (Voice Mode)
   const [isVoiceModeOpen, setIsVoiceModeOpen] = useState(false);
@@ -266,20 +135,7 @@ export const ChelonaAiScreen
   const [lastUserSpeech, setLastUserSpeech] = useState<string>('');
   const [lastAiSpeech, setLastAiSpeech] = useState<string>('');
 
-  const chatEndRef = useRef<HTMLDivElement>(null);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-
   const isEmbedded = mode === 'embedded';
-
-  // Auto-scroll in basso nella chat
-  useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, isProcessing]);
-
-  // Salva cronologia quando cambia
-  useEffect(() => {
-    saveChatHistory(messages);
-  }, [messages]);
 
   // Rilevamento e aggiornamento voci di sistema
   useEffect(() => {
@@ -300,9 +156,7 @@ export const ChelonaAiScreen
       }
 
       const best = getBestItalianVoice(pool);
-      if (best) {
-        setSelectedVoice(best);
-      }
+      if (best) setSelectedVoice(best);
     };
 
     updateVoices();
@@ -340,16 +194,10 @@ export const ChelonaAiScreen
         window.speechSynthesis.cancel();
       } catch {}
     }
-    if (webSpeechRecRef.current) {
-      try {
-        webSpeechRecRef.current.abort();
-      } catch {}
-      webSpeechRecRef.current = null;
-    }
     (window as any).__activeUtterance = null;
     setVoiceStatus('idle');
     setIsListening(false);
-    setSpeakingMessageId(null);
+    setIsSpeakingActive(false);
     setPreviewingVoiceUri(null);
   };
 
@@ -364,10 +212,10 @@ export const ChelonaAiScreen
     cancelSpeechRef.current = false;
     const currentSessionId = ++speechSessionIdRef.current;
 
-    // Normalizza il testo rendendolo fluido e naturale in italiano parlato
     const naturalText = prepareNaturalSpeech(text);
     if (!naturalText) {
       setVoiceStatus('idle');
+      setIsSpeakingActive(false);
       if (onEndCallback && !cancelSpeechRef.current && speechSessionIdRef.current === currentSessionId) {
         onEndCallback();
       }
@@ -377,6 +225,7 @@ export const ChelonaAiScreen
     const sentences = splitIntoSentences(naturalText);
     if (sentences.length === 0) {
       setVoiceStatus('idle');
+      setIsSpeakingActive(false);
       if (onEndCallback && !cancelSpeechRef.current && speechSessionIdRef.current === currentSessionId) {
         onEndCallback();
       }
@@ -384,12 +233,14 @@ export const ChelonaAiScreen
     }
 
     setVoiceStatus('speaking');
+    setIsSpeakingActive(true);
     let idx = 0;
     const currentVoice = overrideVoice || selectedVoice;
 
     const speakNext = () => {
       if (cancelSpeechRef.current || speechSessionIdRef.current !== currentSessionId || idx >= sentences.length) {
         setVoiceStatus('idle');
+        setIsSpeakingActive(false);
         (window as any).__activeUtterance = null;
         if (onEndCallback && !cancelSpeechRef.current && speechSessionIdRef.current === currentSessionId) {
           onEndCallback();
@@ -425,10 +276,10 @@ export const ChelonaAiScreen
       utterance.onend = () => {
         if (cancelSpeechRef.current || speechSessionIdRef.current !== currentSessionId) {
           setVoiceStatus('idle');
+          setIsSpeakingActive(false);
           (window as any).__activeUtterance = null;
           return;
         }
-        // Piccola pausa naturale tra frasi
         setTimeout(() => {
           if (!cancelSpeechRef.current && speechSessionIdRef.current === currentSessionId) {
             speakNext();
@@ -439,10 +290,10 @@ export const ChelonaAiScreen
       utterance.onerror = (e: any) => {
         if (e?.error === 'canceled' || e?.error === 'interrupted' || cancelSpeechRef.current || speechSessionIdRef.current !== currentSessionId) {
           setVoiceStatus('idle');
+          setIsSpeakingActive(false);
           (window as any).__activeUtterance = null;
           return;
         }
-        console.warn('Speech sentence warning:', e);
         if (!cancelSpeechRef.current && idx < sentences.length) {
           setTimeout(() => {
             if (!cancelSpeechRef.current && speechSessionIdRef.current === currentSessionId) {
@@ -451,6 +302,7 @@ export const ChelonaAiScreen
           }, 50);
         } else {
           setVoiceStatus('idle');
+          setIsSpeakingActive(false);
           (window as any).__activeUtterance = null;
           if (onEndCallback && !cancelSpeechRef.current && speechSessionIdRef.current === currentSessionId) {
             onEndCallback();
@@ -493,53 +345,39 @@ export const ChelonaAiScreen
     );
   };
 
+  // Invio query: sostituisce la risposta attiva direttamente nella schermata
   const handleSend = async (customQuery?: string, isVoiceSession = false, shouldSpeak = false) => {
     const queryToSend = (customQuery || inputText).trim();
     if (!queryToSend || isProcessing) return;
 
-    const userMsg: AiMessage = {
-      id: 'msg_' + Date.now(),
-      sender: 'user',
-      text: queryToSend,
-      timestamp: Date.now(),
-    };
-
-    const msgsWithUser = [...messages, userMsg];
-    const assistantMsgId = 'msg_ai_' + (Date.now() + 1);
-    let accumulatedText = '';
-
-    // Creiamo subito il messaggio assistant a schermo vuoto per lo streaming progressivo!
-    const placeholderAssistantMsg: AiMessage = {
-      id: assistantMsgId,
-      sender: 'assistant',
-      text: '',
-      timestamp: Date.now(),
-    };
-
-    const msgsWithPlaceholder = [...msgsWithUser, placeholderAssistantMsg];
-    updateConversationWithMessages(msgsWithPlaceholder);
     setInputText('');
     setIsProcessing(true);
+    stopSpeaking();
 
     if (isVoiceSession) {
       setLastUserSpeech(queryToSend);
       setVoiceStatus('thinking');
     }
 
+    // Impostiamo la query attiva con testo temporaneo
+    setActiveResponse({
+      query: queryToSend,
+      text: '',
+      timestamp: Date.now()
+    });
+
+    let accumulatedText = '';
     let isFinished = false;
-    // Callback di streaming dei token in tempo reale
+
     const onToken = (token: string) => {
       if (isFinished) return;
       accumulatedText += token;
-      setMessages(prev =>
-        prev.map(m => (m.id === assistantMsgId ? { ...m, text: accumulatedText } : m))
-      );
+      setActiveResponse(prev => prev ? { ...prev, text: accumulatedText } : null);
     };
 
-    const queryStartTime = performance.now();
     try {
       const queryPromise = queryGemma2(queryToSend, modules, username, onToken, activeSection);
-      const safetyTimeout = new Promise<import('../services/gemma2Engine').Gemma2Response>((resolve) => {
+      const safetyTimeout = new Promise<Gemma2Response>((resolve) => {
         setTimeout(async () => {
           try {
             const fallbackRes = await queryChelonaAi(queryToSend, modules, username, activeSection);
@@ -551,7 +389,7 @@ export const ChelonaAiScreen
               engineUsed: 'chelona-engine',
             });
           } catch {
-            const defaultTxt = `Eccomi ${username}! Sono pronta ad aiutarti con qualsiasi richiesta.`;
+            const defaultTxt = `Eccomi ${username}! Ho elaborato la tua richiesta.`;
             if (!accumulatedText) onToken(defaultTxt);
             resolve({
               text: defaultTxt,
@@ -563,23 +401,17 @@ export const ChelonaAiScreen
 
       const response = await Promise.race([queryPromise, safetyTimeout]);
       isFinished = true;
-      const totalElapsed = Math.round(performance.now() - queryStartTime);
       const finalText = response.text || accumulatedText;
 
-      const assistantMsg: AiMessage = {
-        id: assistantMsgId,
-        sender: 'assistant',
+      const newResponse: ActiveResponse = {
+        query: queryToSend,
         text: finalText,
-        timestamp: Date.now(),
         actions: response.actions,
-        learnedFact: response.learnedFact,
-        isCached: response.cached,
         engineUsed: response.engineUsed,
-        latencyMs: response.latencyMs !== undefined ? response.latencyMs : totalElapsed,
+        timestamp: Date.now(),
       };
 
-      const msgsWithAssistant = [...msgsWithUser, assistantMsg];
-      updateConversationWithMessages(msgsWithAssistant);
+      setActiveResponse(newResponse);
 
       if (response.createdModule && onAddModule) {
         onAddModule(response.createdModule);
@@ -598,11 +430,11 @@ export const ChelonaAiScreen
           onNavigate(autoAct);
         }, delay);
       }
+
       if (mustSpeak) {
         if (isVoiceSession) {
           setLastAiSpeech(response.text);
           speakText(response.text, () => {
-            // Quando ha finito di parlare, riattiva automaticamente l'ascolto per dialogo continuo!
             if (isVoiceModeOpenRef.current) {
               setTimeout(() => {
                 if (isVoiceModeOpenRef.current) {
@@ -612,43 +444,19 @@ export const ChelonaAiScreen
             }
           });
         } else {
-          // Input vocale da microfono in chat standard: parla la risposta ad alta voce
-          setSpeakingMessageId(assistantMsg.id);
-          speakText(response.text, () => {
-            setSpeakingMessageId(null);
-          });
+          speakText(response.text);
         }
       }
     } catch (e) {
       console.error('AI query error', e);
       const errMsg = `Scusami, si è verificato un piccolo errore. Riprova tra un attimo.`;
-      const errId = 'msg_err_' + Date.now();
-      const msgsWithError: AiMessage[] = [
-        ...msgsWithUser,
-        {
-          id: errId,
-          sender: 'assistant',
-          text: errMsg,
-          timestamp: Date.now(),
-        }
-      ];
-      updateConversationWithMessages(msgsWithError);
-      const mustSpeak = isVoiceSession || shouldSpeak;
-      if (mustSpeak) {
-        if (isVoiceSession) {
-          speakText(errMsg, () => {
-            if (isVoiceModeOpenRef.current) {
-              setTimeout(() => {
-                if (isVoiceModeOpenRef.current) {
-                  startVoiceRecognition(true);
-                }
-              }, 400);
-            }
-          });
-        } else {
-          setSpeakingMessageId(errId);
-          speakText(errMsg, () => setSpeakingMessageId(null));
-        }
+      setActiveResponse({
+        query: queryToSend,
+        text: errMsg,
+        timestamp: Date.now()
+      });
+      if (isVoiceSession || shouldSpeak) {
+        speakText(errMsg);
       }
     } finally {
       setIsProcessing(false);
@@ -807,80 +615,193 @@ export const ChelonaAiScreen
     }
   }, [initialVoiceMode, isVoiceModeOpen]);
 
-  const handleSpeak = (msgId: string, text: string) => {
-    if (!('speechSynthesis' in window)) {
-      showToast('Sintesi vocale non supportata.', 'error');
-      return;
-    }
-
-    if (speakingMessageId === msgId) {
+  const handleToggleSpeakCurrent = () => {
+    if (!activeResponse || !activeResponse.text) return;
+    if (isSpeakingActive) {
       stopSpeaking();
-      return;
+    } else {
+      speakText(activeResponse.text);
     }
-
-    stopSpeaking();
-    setSpeakingMessageId(msgId);
-    speakText(text, () => setSpeakingMessageId(null));
   };
 
-  const handleCopy = (id: string, text: string) => {
-    navigator.clipboard.writeText(text);
-    setCopiedId(id);
-    setTimeout(() => setCopiedId(null), 2000);
+  const handleCopyCurrent = () => {
+    if (!activeResponse || !activeResponse.text) return;
+    navigator.clipboard.writeText(activeResponse.text);
+    setIsCopied(true);
+    setTimeout(() => setIsCopied(false), 2000);
     showToast('Copiato!');
   };
 
-  const handleDeleteMessage = (msgId: string) => {
-    setMessages(prev => prev.filter(m => m.id !== msgId));
-    if (activeConvId) {
-      setConversations(prev => prev.map(c => {
-        if (c.id === activeConvId) {
-          return { ...c, messages: c.messages.filter(m => m.id !== msgId), updatedAt: Date.now() };
-        }
-        return c;
-      }));
-    }
-    showToast('Messaggio rimosso');
-  };
-
-  const handleClearChat = () => {
-    if (confirm('Vuoi cancellare la conversazione?')) {
-      const resetMsg: AiMessage[] = [
-        {
-          id: 'msg_welcome_' + Date.now(),
-          sender: 'assistant',
-          text: `Chat cancellata. Sono qui se hai bisogno!`,
-          timestamp: Date.now(),
-        }
-      ];
-      setMessages(resetMsg);
-      saveChatHistory(resetMsg);
-      showToast('Conversazione cancellata.');
-    }
-  };
-
-  const quickPrompts = [
-    { label: '🚗 La mia auto', query: 'Fammi un riepilogo della mia auto, scadenze e km' },
-    { label: '📅 Scadenze', query: 'Quali scadenze imminenti ho nei prossimi 60 giorni?' },
-    { label: '📍 Dov\'è l\'auto?', query: 'Dove ho parcheggiato la mia auto?' },
-    { label: '📄 Documenti', query: 'Quali documenti personali ho salvato?' },
-    { label: '👥 Spese Split', query: 'Chi deve a chi nei gruppi di spese condivise?' },
-    { label: '💳 Spese del mese', query: 'Quanto ho speso questo mese e quali sono le ultime uscite?' },
-    { label: '🗓️ Rate attive', query: 'Quando scade la prossima rata e quanto manca da pagare?' },
-    { label: '🛒 Offerte & Volantini', query: 'Mostrami le offerte e i volantini disponibili' },
-    { label: '📝 Lista Spesa', query: 'Cosa devo comprare nella lista della spesa?' },
-    { label: '🍲 Ricette & Cucina', query: 'Cosa posso cucinare oggi con gli ingredienti che ho?' },
-    { label: '🏋️ Fitness & Dieta', query: 'Qual è la mia scheda di allenamento e calorie target?' },
-    { label: '✈️ Viaggi & Itinerari', query: 'Quali mete di viaggio e tappe ho programmato?' },
-    { label: '🏠 Casa & Arredo', query: 'Riepilogo delle stanze, arredi e preventivi' },
-    { label: '✍️ Note & Appunti', query: 'Quali note e appunti ho salvato?' },
-    { label: '📇 Rubrica Indirizzi', query: 'Quali indirizzi e recapiti ho memorizzato?' },
-    { label: '📑 Scanner & PDF', query: 'Apri lo scanner e gli strumenti PDF' },
-    { label: '🧰 Strumenti & Utility', query: 'Quali strumenti e utility sono disponibili?' },
-    { label: '🔒 Profilo & Sicurezza', query: 'Stato profilo, backup crittografato e comando Ciao Chelona' },
-    { label: '🧠 Cosa sai di me?', query: 'Cosa sai su di me e cosa hai imparato finora?' },
-    { label: '❓ Cosa puoi fare?', query: 'Mostrami tutte le sezioni e le cose che puoi fare' },
+  // Categorie principali di Chelona per accesso rapido ("come la categoria lista della spesa ecc")
+  const primaryCategories = [
+    {
+      id: 'supermarket',
+      title: 'Lista della Spesa',
+      subtitle: 'Articoli, carrello e spesa da fare',
+      icon: ShoppingBasket,
+      color: 'from-emerald-500/20 to-teal-500/20 text-emerald-600 dark:text-emerald-400 border-emerald-500/30',
+      actionQuery: 'Cosa devo comprare nella lista della spesa?',
+    },
+    {
+      id: 'recipes',
+      title: 'Ricettario & Cucina',
+      subtitle: 'Idee piatti, calorie e procedimenti',
+      icon: UtensilsCrossed,
+      color: 'from-amber-500/20 to-orange-500/20 text-amber-600 dark:text-amber-400 border-amber-500/30',
+      actionQuery: 'Cosa posso cucinare oggi di buono?',
+    },
+    {
+      id: 'auto',
+      title: 'Auto & Mobilità',
+      subtitle: 'Scadenze, bollo, revisione e parcheggio',
+      icon: Car,
+      color: 'from-blue-500/20 to-indigo-500/20 text-blue-600 dark:text-blue-400 border-blue-500/30',
+      actionQuery: 'Qual è la situazione della mia auto e dove è parcheggiata?',
+    },
+    {
+      id: 'finances',
+      title: 'Finanze & Spese',
+      subtitle: 'Spese condivise, uscite e rate',
+      icon: Wallet,
+      color: 'from-purple-500/20 to-violet-500/20 text-purple-600 dark:text-purple-400 border-purple-500/30',
+      actionQuery: 'Fammi un riepilogo delle spese e dei conti',
+    },
+    {
+      id: 'volantini',
+      title: 'Volantini & Offerte',
+      subtitle: 'Promozioni supermercati e negozi attivi',
+      icon: Store,
+      color: 'from-red-500/20 to-rose-500/20 text-red-600 dark:text-red-400 border-red-500/30',
+      actionQuery: 'Quali volantini e offerte sono disponibili?',
+    },
+    {
+      id: 'travel',
+      title: 'Viaggi & Mete',
+      subtitle: 'Pianificazione itinerari, meteo e valigia',
+      icon: Globe,
+      color: 'from-sky-500/20 to-cyan-500/20 text-sky-600 dark:text-sky-400 border-sky-500/30',
+      actionQuery: 'Mostrami le mie mete di viaggio e meteo',
+    },
+    {
+      id: 'documents',
+      title: 'Documenti Personali',
+      subtitle: 'Tessere, contratti e note crittografate',
+      icon: FileText,
+      color: 'from-teal-500/20 to-emerald-500/20 text-teal-600 dark:text-teal-400 border-teal-500/30',
+      actionQuery: 'Quali documenti personali ho memorizzato?',
+    },
+    {
+      id: 'deadlines',
+      title: 'Scadenze Imminenti',
+      subtitle: 'Promemoria dei prossimi 60 giorni',
+      icon: Calendar,
+      color: 'from-amber-600/20 to-yellow-500/20 text-amber-700 dark:text-amber-300 border-amber-600/30',
+      actionQuery: 'Quali scadenze imminenti ho nelle prossime settimane?',
+    },
   ];
+
+  const quickPills = [
+    { label: '🛒 Lista spesa', query: 'Cosa devo comprare nella lista della spesa?' },
+    { label: '🍲 Cosa cucino oggi?', query: 'Cosa posso cucinare oggi?' },
+    { label: '📍 Dov\'è l\'auto?', query: 'Dove ho parcheggiato la mia auto?' },
+    { label: '💳 Spese del mese', query: 'Quanto ho speso questo mese?' },
+    { label: '📅 Scadenze', query: 'Quali scadenze ho nei prossimi 60 giorni?' },
+    { label: '🚗 La mia auto', query: 'Riepilogo scadenze e dati della mia auto' },
+    { label: '🏪 Volantini attivi', query: 'Mostrami i volantini e le offerte disponibili' },
+  ];
+
+  const handleActionClick = (act: AiAction) => {
+    if (act.type === 'save_parking' || act.type === 'parking' || act.category === 'mobility' || act.category === 'parking') {
+      if (onNavigate) {
+        onNavigate(act);
+        return;
+      }
+      if (onOpenParking) {
+        onOpenParking();
+        if (!isEmbedded) onClose();
+        return;
+      }
+    }
+    if (act.type === 'navigate_parking') {
+      if (act.url) {
+        window.open(act.url, '_blank');
+      } else {
+        const p = getSavedParking();
+        if (p) window.open(getNavigationUrl(p.latitude, p.longitude), '_blank');
+      }
+      return;
+    }
+    if (act.type === 'doctor') {
+      window.dispatchEvent(new CustomEvent('notificationRouteReceived', { detail: { route: 'doctor' } }));
+      if (!isEmbedded) onClose();
+      return;
+    }
+    if (act.type === 'recesso') {
+      window.dispatchEvent(new CustomEvent('notificationRouteReceived', { detail: { route: 'recesso' } }));
+      if (!isEmbedded) onClose();
+      return;
+    }
+    if (act.type === 'deadlines') {
+      window.dispatchEvent(new CustomEvent('notificationRouteReceived', { detail: { route: 'deadlines' } }));
+      if (!isEmbedded) onClose();
+      return;
+    }
+    if (act.type === 'add_shopping_items' && act.items && act.items.length > 0) {
+      const existingSupermarket = modules.find(m => m.type === 'supermarket') as any;
+      if (existingSupermarket && onAddModule) {
+        const newItems = act.items.map(it => ({
+          id: Math.random().toString(36).substr(2, 9),
+          name: it.name,
+          checked: false,
+          quantity: it.quantity || '1',
+          category: it.category || 'Altro'
+        }));
+        const updated = {
+          ...existingSupermarket,
+          items: [...(existingSupermarket.items || []), ...newItems]
+        };
+        onAddModule(updated);
+        showToast(`Aggiunti ${newItems.length} prodotti alla Lista della Spesa!`, 'success');
+      } else {
+        showToast('Aggiunto alla Lista della Spesa!', 'success');
+      }
+      return;
+    }
+    if (onNavigate) {
+      onNavigate(act);
+      return;
+    }
+    if (act.type === 'parking' && onOpenParking) {
+      onOpenParking();
+      if (!isEmbedded) onClose();
+    } else if (act.type === 'volantino') {
+      if (act.page || act.flyerId) {
+        window.dispatchEvent(new CustomEvent('open-flyer-offer', {
+          detail: {
+            fid: act.flyerId,
+            page: act.page,
+            pg: typeof act.page === 'number' ? act.page - 1 : 0,
+            store: act.storeName || act.chainSlug
+          }
+        }));
+      } else {
+        window.dispatchEvent(new CustomEvent('open-volantino', { 
+          detail: { 
+            chain: act.chainSlug || act.storeName,
+            slug: act.chainSlug,
+            store: act.storeName 
+          } 
+        }));
+      }
+      if (!isEmbedded) onClose();
+    } else if (act.type === 'module' && act.module) {
+      onOpenModule(act.module);
+      if (!isEmbedded) onClose();
+    } else if (act.type === 'category' && act.category) {
+      onOpenCategory(act.category);
+      if (!isEmbedded) onClose();
+    }
+  };
 
   return (
     <div className={
@@ -888,657 +809,98 @@ export const ChelonaAiScreen
         ? "flex flex-col h-full w-full bg-[var(--bg)] font-sans relative transition-colors duration-300"
         : "fixed inset-x-0 top-0 bottom-20 md:bottom-0 z-[120] bg-[var(--bg)] flex flex-col overflow-hidden font-sans transition-colors duration-300"
     }>
-      {/* HEADER PULITO CON LOGO CHELONA E MENU STORICO - SOLO IN FULLSCREEN */}
+      {/* ── TOP HEADER MINIMALE ── */}
       {!isEmbedded && (
-        <header className="h-16 lg:h-20 border-b border-[var(--border)] bg-[var(--header-bg)] backdrop-blur-2xl px-4 lg:px-8 flex items-center justify-between shrink-0 z-20 safe-area-header shadow-sm">
+        <header className="h-16 lg:h-20 border-b border-[var(--border)] bg-[var(--header-bg)] backdrop-blur-2xl px-4 lg:px-8 flex items-center justify-between shrink-0 z-20 safe-area-header shadow-xs">
           <div className="flex items-center gap-3">
             <button
-              onClick={() => setShowHistoryDrawer(true)}
-              className="p-2 hover:bg-[var(--surface-variant)] rounded-2xl text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors active:scale-95"
-              title="Storico Conversazioni"
-            >
-              <Menu className="w-5 h-5 lg:w-6 lg:h-6" />
-            </button>
-            <button
               onClick={onClose}
-              className="p-2 hover:bg-[var(--surface-variant)] rounded-2xl text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors active:scale-95"
+              className="p-2 sm:p-2.5 rounded-2xl bg-[var(--card-bg)] border border-[var(--border)] hover:bg-[var(--surface-variant)] text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors active:scale-95 cursor-pointer shadow-2xs"
               title="Torna indietro"
             >
               <ArrowLeft className="w-5 h-5 lg:w-6 lg:h-6" />
             </button>
 
-            <div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <h2 className="text-base lg:text-lg font-black text-[var(--text-main)] tracking-tight">
-                  {activeConvId ? conversations.find(c => c.id === activeConvId)?.title || 'Nuova Chat' : 'Nuova Chat'}
+            <div className="flex items-center gap-2.5">
+              <div className="w-9 h-9 lg:w-10 lg:h-10 rounded-2xl bg-gradient-to-tr from-amber-500 to-amber-600 p-1 flex items-center justify-center overflow-hidden shadow-sm shrink-0">
+                <img src="/chelona_logo.png" alt="Chelona" className="w-full h-full object-contain" />
+              </div>
+              <div>
+                <h2 className="text-base lg:text-lg font-black text-[var(--text-main)] tracking-tight flex items-center gap-1.5 leading-tight">
+                  Chelona AI
+                  <Sparkles className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
                 </h2>
+                <p className="text-[11px] text-[var(--text-muted)] font-semibold truncate hidden sm:block">
+                  Assistente on-device 100% offline
+                </p>
               </div>
             </div>
           </div>
-          <div className="flex items-center gap-1.5">
+
+          <div className="flex items-center gap-2">
             <button
-              onClick={handleDeleteCurrentConversation}
-              disabled={messages.length <= 1 && !activeConvId}
-              className={`p-2 rounded-2xl transition-colors active:scale-95 ${
-                messages.length <= 1 && !activeConvId
-                  ? 'text-[var(--text-muted)]/30 cursor-not-allowed'
-                  : 'hover:bg-rose-500/10 text-[var(--text-muted)] hover:text-rose-500 cursor-pointer'
-              }`}
-              title="Elimina conversazione corrente"
+              type="button"
+              onClick={toggleVoiceMode}
+              className="px-3.5 py-2 rounded-2xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30 font-bold text-xs flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer"
+              title="Modalità vocale a mani libere"
             >
-              <Trash2 className="w-5 h-5 lg:w-6 lg:h-6" />
-            </button>
-            <button
-              onClick={handleNewConversation}
-              className="p-2 hover:bg-[var(--surface-variant)] rounded-2xl text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors active:scale-95"
-              title="Nuova conversazione"
-            >
-              <Plus className="w-5 h-5 lg:w-6 lg:h-6" />
+              <Mic className="w-4 h-4" />
+              <span className="hidden sm:inline">Parla a Voce</span>
             </button>
           </div>
         </header>
       )}
 
-      {/* CHAT MESSAGES BODY */}
-      <main className="flex-1 overflow-y-auto px-4 lg:px-8 py-5 space-y-5 max-w-3xl w-full mx-auto custom-scrollbar">
-          {messages.map((msg) => {
-            const isUser = msg.sender === 'user';
-            return (
-              <motion.div
-                key={msg.id}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                className={`flex flex-col ${isUser ? 'items-end' : 'items-start'}`}
-              >
-                <div className={`flex items-start gap-2.5 max-w-[94%] sm:max-w-[85%] ${isUser ? 'flex-row-reverse' : 'flex-row'}`}>
-                  {!isUser ? (
-                    <div className="w-8 h-8 rounded-xl bg-amber-500/10 border border-amber-500/20 p-0.5 flex items-center justify-center shrink-0 mt-1 shadow-sm overflow-hidden">
-                      <img src="/chelona_logo.png" alt="Chelona" className="w-full h-full object-contain" />
-                    </div>
-                  ) : null}
+      {/* ── CORPO PRINCIPALE SCROLLABILE (NO CHAT SYSTEM) ── */}
+      <main className="flex-1 overflow-y-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6 max-w-3xl w-full mx-auto custom-scrollbar">
+        
+        {/* 1. FRASE DINAMICA / ISPIRAZIONALE ("la schermata deve avere sempre una frase differente") */}
+        <div className="text-center space-y-2 pt-2 sm:pt-4">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 text-xs font-black uppercase tracking-wider shadow-2xs">
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>Assistente Intelligente</span>
+          </div>
 
-                  <div
-                    className={`rounded-2xl px-4 py-3 text-sm leading-relaxed transition-all ${
-                      isUser
-                        ? 'bg-[var(--accent)] text-white rounded-tr-none shadow-sm'
-                        : 'bg-[var(--card-bg)] text-[var(--text-main)] border border-[var(--border)] rounded-tl-none shadow-sm'
-                    }`}
-                  >
-
-                    {!msg.text && isProcessing ? (
-                      <div className="flex items-center gap-1.5 py-1 text-[var(--text-muted)]">
-                        <span className="w-2 h-2 rounded-full bg-[var(--accent)] animate-bounce" style={{ animationDelay: '0ms' }} />
-                        <span className="w-2 h-2 rounded-full bg-[var(--accent)] animate-bounce" style={{ animationDelay: '150ms' }} />
-                        <span className="w-2 h-2 rounded-full bg-[var(--accent)] animate-bounce" style={{ animationDelay: '300ms' }} />
-                      </div>
-                    ) : (
-                      <div className="whitespace-pre-line text-inherit text-[13.5px]">
-                        {msg.text}
-                      </div>
-                    )}
-
-                    {msg.actions && msg.actions.length > 0 && (() => {
-                      const recipeActions = msg.actions.filter(a => a.type === 'recipes' && a.recipe);
-                      const volantinoActions = msg.actions.filter(a => a.type === 'volantino');
-                      const moduleActions = msg.actions.filter(a => a.type === 'module' && a.module);
-                      const categoryActions = msg.actions.filter(a => a.type === 'category' && a.category);
-                      const parkingActions = msg.actions.filter(a => a.type === 'parking' || a.type === 'save_parking' || a.type === 'navigate_parking');
-                      const doctorActions = msg.actions.filter(a => a.type === 'doctor');
-                      const recessoActions = msg.actions.filter(a => a.type === 'recesso');
-                      const deadlinesActions = msg.actions.filter(a => a.type === 'deadlines');
-                      const shoppingActions = msg.actions.filter(a => a.type === 'add_shopping_items');
-                      const otherActions = msg.actions.filter(a => 
-                        !(a.type === 'recipes' && a.recipe) &&
-                        a.type !== 'volantino' &&
-                        !(a.type === 'module' && a.module) &&
-                        !(a.type === 'category' && a.category) &&
-                        a.type !== 'parking' && a.type !== 'save_parking' && a.type !== 'navigate_parking' &&
-                        a.type !== 'doctor' &&
-                        a.type !== 'recesso' &&
-                        a.type !== 'deadlines' &&
-                        a.type !== 'add_shopping_items'
-                      );
-
-                      const handleActionClick = (act: AiAction) => {
-                        if (act.type === 'save_parking' || act.type === 'parking' || act.category === 'mobility' || act.category === 'parking') {
-                          if (onNavigate) {
-                            onNavigate(act);
-                            return;
-                          }
-                          if (onOpenParking) {
-                            onOpenParking();
-                            if (!isEmbedded) onClose();
-                            return;
-                          }
-                        }
-                        if (act.type === 'navigate_parking') {
-                          if (act.url) {
-                            window.open(act.url, '_blank');
-                          } else {
-                            const p = getSavedParking();
-                            if (p) window.open(getNavigationUrl(p.latitude, p.longitude), '_blank');
-                          }
-                          return;
-                        }
-                        if (act.type === 'doctor') {
-                          window.dispatchEvent(new CustomEvent('notificationRouteReceived', { detail: { route: 'doctor' } }));
-                          if (!isEmbedded) onClose();
-                          return;
-                        }
-                        if (act.type === 'recesso') {
-                          window.dispatchEvent(new CustomEvent('notificationRouteReceived', { detail: { route: 'recesso' } }));
-                          if (!isEmbedded) onClose();
-                          return;
-                        }
-                        if (act.type === 'deadlines') {
-                          window.dispatchEvent(new CustomEvent('notificationRouteReceived', { detail: { route: 'deadlines' } }));
-                          if (!isEmbedded) onClose();
-                          return;
-                        }
-                        if (act.type === 'add_shopping_items' && act.items && act.items.length > 0) {
-                          const existingSupermarket = modules.find(m => m.type === 'supermarket') as any;
-                          if (existingSupermarket && onAddModule) {
-                            const newItems = act.items.map(it => ({
-                              id: Math.random().toString(36).substr(2, 9),
-                              name: it.name,
-                              checked: false,
-                              quantity: it.quantity || '1',
-                              category: it.category || 'Altro'
-                            }));
-                            const updated = {
-                              ...existingSupermarket,
-                              items: [...(existingSupermarket.items || []), ...newItems]
-                            };
-                            onAddModule(updated);
-                            showToast(`Aggiunti ${newItems.length} prodotti alla Lista della Spesa!`, 'success');
-                          } else {
-                            showToast('Aggiunto alla Lista della Spesa!', 'success');
-                          }
-                          return;
-                        }
-                        if (onNavigate) {
-                          onNavigate(act);
-                          return;
-                        }
-                        if (act.type === 'parking' && onOpenParking) {
-                          onOpenParking();
-                          if (!isEmbedded) onClose();
-                        } else if (act.type === 'volantino') {
-                          if (act.page || act.flyerId) {
-                            window.dispatchEvent(new CustomEvent('open-flyer-offer', {
-                              detail: {
-                                fid: act.flyerId,
-                                page: act.page,
-                                pg: typeof act.page === 'number' ? act.page - 1 : 0,
-                                store: act.storeName || act.chainSlug
-                              }
-                            }));
-                          } else {
-                            window.dispatchEvent(new CustomEvent('open-volantino', { 
-                              detail: { 
-                                chain: act.chainSlug || act.storeName,
-                                slug: act.chainSlug,
-                                store: act.storeName 
-                              } 
-                            }));
-                          }
-                          if (!isEmbedded) onClose();
-                        } else if (act.type === 'module' && act.module) {
-                          onOpenModule(act.module);
-                          if (!isEmbedded) onClose();
-                        } else if (act.type === 'category' && act.category) {
-                          onOpenCategory(act.category);
-                          if (!isEmbedded) onClose();
-                        }
-                      };
-
-                      return (
-                        <div className="mt-3.5 pt-3 border-t border-[var(--border)]/50 space-y-3">
-                          {/* 1. Volantini & Offerte Card Widget */}
-                          {volantinoActions.length > 0 && (
-                            <div className="space-y-2">
-                              <div className="flex items-center gap-1.5 text-[11px] font-bold text-amber-500 uppercase tracking-wider">
-                                <Store className="w-3.5 h-3.5" />
-                                <span>Volantini & Offerte</span>
-                              </div>
-                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                {volantinoActions.map((act, i) => (
-                                  <button
-                                    key={`volantino-${i}`}
-                                    onClick={() => handleActionClick(act)}
-                                    className="w-full text-left p-3 rounded-2xl bg-gradient-to-br from-[var(--surface-variant)] to-[var(--card-bg)] border border-amber-500/30 hover:border-amber-500 shadow-xs hover:shadow-md transition-all active:scale-[0.98] flex items-center justify-between gap-3 group cursor-pointer"
-                                  >
-                                    <div className="flex items-center gap-2.5 min-w-0">
-                                      <div className="w-10 h-10 rounded-xl bg-amber-500/15 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0 border border-amber-500/20 shadow-inner">
-                                        <Store className="w-5 h-5" />
-                                      </div>
-                                      <div className="min-w-0">
-                                        <div className="flex items-center gap-1.5 mb-0.5">
-                                          <span className="text-[9px] font-black uppercase tracking-wider px-1.5 py-0.2 rounded-md bg-amber-500/15 text-amber-600 dark:text-amber-400">
-                                            {act.storeName || act.chainSlug || 'Volantino'}
-                                          </span>
-                                          {act.page && (
-                                            <span className="text-[9px] font-bold px-1.5 py-0.2 rounded-md bg-blue-500/15 text-blue-600 dark:text-blue-400">
-                                              📄 Pag. {act.page}
-                                            </span>
-                                          )}
-                                        </div>
-                                        <h4 className="text-xs font-bold text-[var(--text-main)] group-hover:text-amber-500 transition-colors truncate">
-                                          {act.label}
-                                        </h4>
-                                      </div>
-                                    </div>
-                                    <div className="p-2 rounded-xl bg-amber-500/10 text-amber-500 group-hover:bg-amber-500 group-hover:text-white transition-all shrink-0">
-                                      <ChevronRight className="w-4 h-4" />
-                                    </div>
-                                  </button>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-
-                          {/* 2. Schede ricette interattive */}
-                          {recipeActions.length > 0 && (
-                            <div className="space-y-2">
-                              <div className="flex items-center gap-1.5 text-[11px] font-bold text-orange-500 uppercase tracking-wider">
-                                <UtensilsCrossed className="w-3.5 h-3.5" />
-                                <span>Ricette Consigliate</span>
-                              </div>
-                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                {recipeActions.map((act, i) => {
-                                  const r = act.recipe;
-                                  return (
-                                    <button
-                                      key={`recipe-${i}`}
-                                      onClick={() => handleActionClick(act)}
-                                      className="w-full text-left p-2.5 rounded-2xl bg-[var(--surface-variant)]/70 hover:bg-[var(--surface-variant)] border border-[var(--border)] hover:border-amber-500/40 shadow-xs hover:shadow-md transition-all active:scale-[0.98] flex items-center gap-3 group cursor-pointer"
-                                    >
-                                      <div className="w-12 h-12 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center shrink-0 border border-amber-500/20 overflow-hidden relative">
-                                        <UtensilsCrossed className="w-5 h-5 absolute" />
-                                        {r?.image && (
-                                          <img
-                                            src={r.image}
-                                            alt={r.title || act.label}
-                                            className="w-full h-full object-cover relative z-10"
-                                            onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
-                                          />
-                                        )}
-                                      </div>
-
-                                      <div className="flex-1 min-w-0">
-                                        <div className="flex items-center gap-1.5 flex-wrap mb-0.5">
-                                          {r?.category && (
-                                            <span className="text-[9.5px] font-bold uppercase tracking-wider px-1.5 py-0.2 rounded-md bg-amber-500/10 text-amber-600 dark:text-amber-400">
-                                              {r.category}
-                                            </span>
-                                          )}
-                                          {r?.calories && (
-                                            <span className="text-[10px] font-semibold text-[var(--text-muted)] flex items-center gap-0.5">
-                                              <Flame className="w-3 h-3 text-orange-500" />
-                                              {r.calories} kcal
-                                            </span>
-                                          )}
-                                        </div>
-                                        <h4 className="text-xs font-bold text-[var(--text-main)] group-hover:text-amber-500 transition-colors truncate">
-                                          {r?.title || act.label}
-                                        </h4>
-                                      </div>
-
-                                      <div className="p-1.5 rounded-xl bg-[var(--card-bg)] text-[var(--text-muted)] group-hover:text-amber-500 group-hover:bg-amber-500/10 transition-colors shrink-0">
-                                        <ChevronRight className="w-4 h-4" />
-                                      </div>
-                                    </button>
-                                  );
-                                })}
-                              </div>
-                            </div>
-                          )}
-
-                          {/* 3. Schede Modulo Personale Preview */}
-                          {moduleActions.length > 0 && (
-                            <div className="space-y-2">
-                              <div className="flex items-center gap-1.5 text-[11px] font-bold text-indigo-500 uppercase tracking-wider">
-                                <Sparkles className="w-3.5 h-3.5" />
-                                <span>I Tuoi Contenuti Chelona</span>
-                              </div>
-                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                {moduleActions.map((act, i) => {
-                                  const m = act.module;
-                                  const isAuto = m?.type === 'auto';
-                                  const isDoc = m?.type === 'document';
-                                  const isSplit = m?.type === 'split' || m?.type === 'single-expense' || m?.type === 'installments';
-                                  const IconComponent = isAuto ? Car : isDoc ? FileText : isSplit ? Wallet : Sparkles;
-                                  const colorClass = isAuto ? 'text-rose-500 bg-rose-500/10 border-rose-500/20' : isDoc ? 'text-blue-500 bg-blue-500/10 border-blue-500/20' : isSplit ? 'text-purple-500 bg-purple-500/10 border-purple-500/20' : 'text-indigo-500 bg-indigo-500/10 border-indigo-500/20';
-
-                                  return (
-                                    <button
-                                      key={`mod-${i}`}
-                                      onClick={() => handleActionClick(act)}
-                                      className="w-full text-left p-3 rounded-2xl bg-[var(--card-bg)] hover:bg-[var(--surface-variant)] border border-[var(--border)] hover:border-indigo-500/40 shadow-xs hover:shadow-md transition-all active:scale-[0.98] flex items-center justify-between gap-3 group cursor-pointer"
-                                    >
-                                      <div className="flex items-center gap-2.5 min-w-0">
-                                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border ${colorClass}`}>
-                                          <IconComponent className="w-5 h-5" />
-                                        </div>
-                                        <div className="min-w-0">
-                                          <div className="text-[9px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
-                                            {m?.type === 'auto' ? 'Veicolo' : m?.type === 'document' ? 'Documento' : m?.type === 'split' ? 'Finanze' : 'Scheda'}
-                                          </div>
-                                          <h4 className="text-xs font-bold text-[var(--text-main)] group-hover:text-indigo-500 transition-colors truncate">
-                                            {m?.title || act.label}
-                                          </h4>
-                                        </div>
-                                      </div>
-                                      <div className="p-1.5 rounded-xl bg-[var(--surface-variant)] text-[var(--text-muted)] group-hover:text-indigo-500 transition-colors shrink-0">
-                                        <ChevronRight className="w-4 h-4" />
-                                      </div>
-                                    </button>
-                                  );
-                                })}
-                              </div>
-                            </div>
-                          )}
-
-                          {/* 4. Categorie Navigabili */}
-                          {categoryActions.length > 0 && (
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                              {categoryActions.map((act, i) => (
-                                <button
-                                  key={`cat-${i}`}
-                                  onClick={() => handleActionClick(act)}
-                                  className="w-full text-left p-3 rounded-2xl bg-[var(--surface-variant)]/60 hover:bg-[var(--surface-variant)] border border-[var(--border)] hover:border-indigo-500/40 transition-all flex items-center justify-between gap-3 group cursor-pointer shadow-xs active:scale-[0.98]"
-                                >
-                                  <div className="flex items-center gap-2.5">
-                                    <div className="w-8 h-8 rounded-xl bg-indigo-500/10 text-indigo-500 flex items-center justify-center shrink-0">
-                                      <Globe className="w-4 h-4" />
-                                    </div>
-                                    <span className="text-xs font-bold text-[var(--text-main)] group-hover:text-indigo-500 transition-colors">
-                                      {act.label}
-                                    </span>
-                                  </div>
-                                  <ChevronRight className="w-4 h-4 text-[var(--text-muted)] group-hover:text-indigo-500 transition-colors" />
-                                </button>
-                              ))}
-                            </div>
-                          )}
-
-                          {/* 5. Studio Medico Widget */}
-                          {doctorActions.length > 0 && (
-                            <div className="p-3.5 rounded-2xl bg-teal-500/10 border border-teal-500/20 text-[var(--text-main)] space-y-2.5">
-                              <div className="flex items-center gap-2">
-                                <div className="w-8 h-8 rounded-xl bg-teal-500/20 text-teal-600 dark:text-teal-400 flex items-center justify-center font-bold">
-                                  🩺
-                                </div>
-                                <div>
-                                  <h4 className="text-xs font-black uppercase tracking-wider text-teal-700 dark:text-teal-300">Studio Medico Curante</h4>
-                                  <p className="text-[10px] text-[var(--text-muted)]">Orari di ricevimento e prescrizioni ricette</p>
-                                </div>
-                              </div>
-                              <div className="flex gap-2">
-                                {doctorActions.map((act, i) => (
-                                  <button
-                                    key={`doc-${i}`}
-                                    onClick={() => handleActionClick(act)}
-                                    className="flex-1 py-2 px-3 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-all cursor-pointer"
-                                  >
-                                    <ExternalLink className="w-3.5 h-3.5" />
-                                    <span>{act.label}</span>
-                                  </button>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-
-                          {/* 6. Disdetta PEC Widget */}
-                          {recessoActions.length > 0 && (
-                            <div className="p-3.5 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-[var(--text-main)] space-y-2.5">
-                              <div className="flex items-center gap-2">
-                                <div className="w-8 h-8 rounded-xl bg-rose-500/20 text-rose-600 dark:text-rose-400 flex items-center justify-center">
-                                  <FileSignature className="w-4 h-4" />
-                                </div>
-                                <div>
-                                  <h4 className="text-xs font-black uppercase tracking-wider text-rose-700 dark:text-rose-300">Disdetta Legale PEC</h4>
-                                  <p className="text-[10px] text-[var(--text-muted)]">Modello pronto e certificato per recesso contrattuale</p>
-                                </div>
-                              </div>
-                              <div className="flex gap-2">
-                                {recessoActions.map((act, i) => (
-                                  <button
-                                    key={`rec-${i}`}
-                                    onClick={() => handleActionClick(act)}
-                                    className="flex-1 py-2 px-3 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-all cursor-pointer"
-                                  >
-                                    <FileSignature className="w-3.5 h-3.5" />
-                                    <span>{act.label}</span>
-                                  </button>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-
-                          {/* 7. Mobilità & Parcheggio Widget */}
-                          {parkingActions.length > 0 && (
-                            <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-[var(--text-main)] space-y-2.5">
-                              <div className="flex items-center gap-2">
-                                <div className="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center">
-                                  <Car className="w-4 h-4" />
-                                </div>
-                                <div>
-                                  <h4 className="text-xs font-black uppercase tracking-wider text-amber-700 dark:text-amber-300">Mobilità & Posizioni</h4>
-                                  <p className="text-[10px] text-[var(--text-muted)]">Navigazione GPS e posizione auto salvata</p>
-                                </div>
-                              </div>
-                              <div className="flex flex-wrap gap-2">
-                                {parkingActions.map((act, i) => (
-                                  <button
-                                    key={`park-${i}`}
-                                    onClick={() => handleActionClick(act)}
-                                    className="flex-1 min-w-[130px] py-2 px-3 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-all cursor-pointer"
-                                  >
-                                    <Navigation className="w-3.5 h-3.5" />
-                                    <span>{act.label}</span>
-                                  </button>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-
-                          {/* 8. Scadenze Promemoria Widget */}
-                          {deadlinesActions.length > 0 && (
-                            <div className="p-3.5 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-[var(--text-main)] space-y-2">
-                              <div className="flex items-center gap-2">
-                                <Calendar className="w-4 h-4 text-indigo-500" />
-                                <h4 className="text-xs font-black uppercase tracking-wider text-indigo-700 dark:text-indigo-300">Scadenze & Promemoria</h4>
-                              </div>
-                              {deadlinesActions.map((act, i) => (
-                                <button
-                                  key={`dead-${i}`}
-                                  onClick={() => handleActionClick(act)}
-                                  className="w-full py-2 px-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-all cursor-pointer"
-                                >
-                                  <Calendar className="w-3.5 h-3.5" />
-                                  <span>{act.label}</span>
-                                </button>
-                              ))}
-                            </div>
-                          )}
-
-                          {/* 9. Aggiungi a Lista della Spesa Widget */}
-                          {shoppingActions.length > 0 && (
-                            <div className="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-[var(--text-main)] space-y-2">
-                              <div className="flex items-center gap-2">
-                                <ShoppingBasket className="w-4 h-4 text-emerald-500" />
-                                <h4 className="text-xs font-black uppercase tracking-wider text-emerald-700 dark:text-emerald-300">Lista della Spesa</h4>
-                              </div>
-                              {shoppingActions.map((act, i) => (
-                                <button
-                                  key={`shop-${i}`}
-                                  onClick={() => handleActionClick(act)}
-                                  className="w-full py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-all cursor-pointer"
-                                >
-                                  <Plus className="w-3.5 h-3.5" />
-                                  <span>{act.label}</span>
-                                </button>
-                              ))}
-                            </div>
-                          )}
-
-                          {/* 10. Altre azioni secondarie discrete */}
-                          {otherActions.length > 0 && (
-                            <div className="flex flex-wrap gap-1.5 pt-1">
-                              {otherActions.map((act, i) => (
-                                <button
-                                  key={`other-${i}`}
-                                  onClick={() => handleActionClick(act)}
-                                  className="px-3 py-1.5 rounded-xl bg-[var(--surface-variant)] hover:bg-[var(--accent)] hover:text-white border border-[var(--border)] text-xs font-semibold text-[var(--text-main)] transition-all flex items-center gap-1.5 active:scale-95 shadow-xs cursor-pointer"
-                                >
-                                  <ExternalLink className="w-3 h-3" />
-                                  <span>{act.label}</span>
-                                </button>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })()}
-
-                    {!isUser && (
-                      <div className="mt-3 pt-2 border-t border-[var(--border)]/60 flex items-center justify-between gap-2 text-xs text-[var(--text-muted)]">
-                        <button
-                          type="button"
-                          onClick={() => handleSpeak(msg.id, msg.text)}
-                          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-bold text-xs transition-all cursor-pointer shadow-xs active:scale-95 ${
-                            speakingMessageId === msg.id
-                              ? 'bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30 animate-pulse'
-                              : 'bg-[var(--surface-variant)] hover:bg-amber-500/10 text-[var(--text-main)] hover:text-amber-600 dark:hover:text-amber-400 border border-[var(--border)]'
-                          }`}
-                          title={speakingMessageId === msg.id ? 'Interrompi audio' : 'Ascolta risposta a voce'}
-                        >
-                          {speakingMessageId === msg.id ? (
-                            <>
-                              <VolumeX className="w-4 h-4 text-rose-500" />
-                              <span>Interrompi</span>
-                            </>
-                          ) : (
-                            <>
-                              <Volume2 className="w-4 h-4 text-amber-500" />
-                              <span>Ascolta</span>
-                            </>
-                          )}
-                        </button>
-
-                        <div className="flex items-center gap-1">
-                          <button
-                            type="button"
-                            onClick={() => handleCopy(msg.id, msg.text)}
-                            className="p-1.5 rounded-lg hover:bg-[var(--surface-variant)] text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors cursor-pointer"
-                            title="Copia risposta"
-                          >
-                            {copiedId === msg.id ? (
-                              <Check className="w-4 h-4 text-emerald-500" />
-                            ) : (
-                              <Copy className="w-4 h-4" />
-                            )}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleDeleteMessage(msg.id)}
-                            className="p-1.5 rounded-lg hover:bg-rose-500/10 text-[var(--text-muted)] hover:text-rose-500 transition-colors cursor-pointer"
-                            title="Elimina risposta"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </motion.div>
-            );
-          })}
-
-          {isProcessing && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="flex items-center gap-2 text-xs text-[var(--text-muted)] pl-10"
+          <div className="flex items-center justify-center gap-2">
+            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black text-[var(--text-main)] tracking-tight leading-tight max-w-xl">
+              {dynamicPhrase}
+            </h1>
+            <button
+              type="button"
+              onClick={handleNextPhrase}
+              className="p-2 rounded-xl text-[var(--text-muted)] hover:text-amber-500 hover:bg-amber-500/10 transition-colors shrink-0 cursor-pointer active:scale-90"
+              title="Cambia frase"
             >
-              <div className="flex gap-1">
-                {[0, 1, 2].map(i => (
-                  <motion.div
-                    key={i}
-                    animate={{ scale: [1, 1.4, 1], opacity: [0.3, 1, 0.3] }}
-                    transition={{ repeat: Infinity, duration: 0.9, delay: i * 0.15 }}
-                    className="w-1.5 h-1.5 rounded-full bg-amber-500"
-                  />
-                ))}
-              </div>
-              <span>Chelona sta scrivendo...</span>
-            </motion.div>
-          )}
+              <Shuffle className="w-4 h-4" />
+            </button>
+          </div>
 
-          <div ref={chatEndRef} />
-        </main>
+          <p className="text-xs sm:text-sm text-[var(--text-muted)] font-medium max-w-md mx-auto">
+            {username ? `Ciao ${username}! ` : ''}Chiedimi di trovare, calcolare, cucinare o ricordare qualcosa per te.
+          </p>
+        </div>
 
-      {/* QUICK SUGGESTIONS DISCRETE */}
-      <div className="px-4 lg:px-8 py-2 max-w-3xl w-full mx-auto overflow-x-auto no-scrollbar flex items-center gap-2 shrink-0">
-        {quickPrompts.map((p, i) => (
-          <button
-            key={i}
-            onClick={() => handleSend(p.query)}
-            disabled={isProcessing}
-            className="shrink-0 px-3 py-1 rounded-full bg-[var(--card-bg)] hover:bg-[var(--surface-variant)] border border-[var(--border)] text-xs font-medium text-[var(--text-muted)] hover:text-[var(--text-main)] transition-all shadow-xs active:scale-95 disabled:opacity-50"
-          >
-            {p.label}
-          </button>
-        ))}
-      </div>
-
-      {/* INPUT FOOTER PULITO */}
-      <footer className={`p-3 lg:px-8 lg:py-4 shrink-0 safe-area-inset-bottom ${!isEmbedded ? 'border-t border-[var(--border)] bg-[var(--card-bg)]/80 backdrop-blur-xl' : 'bg-transparent'}`}>
-        <div className="max-w-3xl mx-auto flex flex-col gap-2.5">
-          {isEmbedded && (
-            <div className="flex items-center justify-end gap-2 px-1">
-              <button
-                type="button"
-                onClick={() => setShowHistoryDrawer(true)}
-                className="px-3 py-1.5 rounded-2xl bg-[var(--surface-variant)] hover:bg-[var(--border)] text-[var(--text-main)] text-xs font-bold transition-all flex items-center gap-1.5 border border-[var(--border)] active:scale-95 shadow-sm"
-              >
-                <Menu className="w-3.5 h-3.5 text-amber-500" />
-                <span>Storico</span>
-              </button>
-              <button
-                type="button"
-                onClick={handleNewConversation}
-                className="px-3 py-1.5 rounded-2xl bg-[var(--surface-variant)] hover:bg-[var(--border)] text-[var(--text-main)] text-xs font-bold transition-all flex items-center gap-1.5 border border-[var(--border)] active:scale-95 shadow-sm"
-              >
-                <Plus className="w-3.5 h-3.5 text-amber-500" />
-                <span>Nuova</span>
-              </button>
-            </div>
-          )}
-
-          {/* Semplice feedback visivo quando il microfono è in ascolto */}
+        {/* 2. BOX DI INPUT IN PRIMO PIANO ("e sotto il box di input") */}
+        <div className="w-full space-y-2">
+          {/* Feedback visivo se in ascolto vocale */}
           {isListening && !isVoiceModeOpen && (
-            <div className="flex items-center justify-between px-3.5 py-1.5 mb-2 rounded-2xl bg-amber-500/10 border border-amber-500/25 text-amber-600 dark:text-amber-400 text-xs font-semibold shadow-xs">
+            <div className="flex items-center justify-between px-4 py-2 rounded-2xl bg-amber-500/10 border border-amber-500/25 text-amber-600 dark:text-amber-400 text-xs font-semibold shadow-xs animate-pulse">
               <div className="flex items-center gap-2 min-w-0">
                 <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-ping shrink-0" />
-                <span className="truncate">
-                  In ascolto... Invio automatico appena finisci di parlare
-                </span>
+                <span className="truncate">In ascolto... Parla pure, invio automatico a fine frase</span>
               </div>
               <div className="flex items-center gap-2 shrink-0">
                 <button
                   type="button"
                   onClick={confirmVoiceRecognition}
-                  className="px-2.5 py-0.5 rounded-lg bg-amber-500 text-white text-[11px] font-bold hover:bg-amber-600 transition-colors cursor-pointer shadow-xs active:scale-95"
+                  className="px-2.5 py-1 rounded-xl bg-amber-500 text-white text-[11px] font-bold hover:bg-amber-600 transition-colors cursor-pointer shadow-xs active:scale-95"
                 >
                   Invia
                 </button>
                 <button
                   type="button"
                   onClick={cancelVoiceRecognition}
-                  className="text-[11px] font-bold text-rose-500 hover:text-rose-600 px-1 py-0.5 cursor-pointer"
+                  className="text-[11px] font-bold text-rose-500 hover:text-rose-600 px-1 py-1 cursor-pointer"
                 >
                   Annulla
                 </button>
@@ -1546,65 +908,459 @@ export const ChelonaAiScreen
             </div>
           )}
 
-          <div className="flex items-end gap-2.5">
-            <button
-              type="button"
-              onClick={() => {
-                if (isListening) {
-                  const speech = (liveVoiceTranscript || inputText).trim();
-                  if (speech.length > 0) {
+          <div className="relative group">
+            <div className="absolute inset-0 bg-gradient-to-r from-amber-500/20 via-orange-500/20 to-yellow-500/20 rounded-3xl blur-xl opacity-60 group-focus-within:opacity-100 transition-opacity duration-300 pointer-events-none" />
+            
+            <div className="relative flex items-center gap-2.5 bg-[var(--card-bg)] border-2 border-[var(--border)] focus-within:border-amber-500 rounded-3xl p-2 sm:p-2.5 shadow-xl transition-all">
+              {/* Tasto Microfono Dettatura Vocale */}
+              <button
+                type="button"
+                onClick={() => {
+                  if (isListening) {
                     confirmVoiceRecognition();
                   } else {
-                    cancelVoiceRecognition();
+                    startVoiceRecognition(false);
                   }
-                } else {
-                  startVoiceRecognition(false);
-                }
-              }}
-              className={`p-3 rounded-2xl border transition-all shrink-0 active:scale-95 shadow-xs cursor-pointer ${
-                isListening
-                  ? 'bg-amber-500 text-white border-amber-500 shadow-amber-500/30 animate-pulse'
-                  : 'bg-[var(--surface-variant)] hover:bg-[var(--border)] border-[var(--border)] text-amber-500'
-              }`}
-              title={isListening ? "Tocca per completare e inviare" : "Dettatura vocale"}
-            >
-              {isListening ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
-            </button>
+                }}
+                className={`p-3 rounded-2xl border transition-all shrink-0 active:scale-95 shadow-xs cursor-pointer ${
+                  isListening
+                    ? 'bg-amber-500 text-white border-amber-500 shadow-amber-500/30 animate-pulse'
+                    : 'bg-[var(--surface-variant)] hover:bg-[var(--border)] border-[var(--border)] text-amber-500'
+                }`}
+                title={isListening ? "Tocca per completare e inviare" : "Dettatura vocale (invio automatico)"}
+              >
+                {isListening ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
+              </button>
 
-            <div className={`flex-1 bg-[var(--surface-variant)] rounded-2xl border transition-all p-1.5 flex items-center ${
-              isListening ? 'border-amber-500/60 ring-2 ring-amber-500/20' : 'border-[var(--border)] focus-within:border-amber-500 focus-within:ring-2 focus-within:ring-amber-500/20'
-            }`}>
-              <textarea
-                ref={textareaRef}
-                rows={1}
-                value={inputText}
-                onChange={(e) => setInputText(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder={isListening ? "In ascolto... Parla pure (invio auto)..." : "Scrivi a Chelona o insegna qualcosa..."}
-                className="w-full bg-transparent border-0 focus:outline-none focus:ring-0 text-sm text-[var(--text-main)] placeholder-[var(--text-muted)] resize-none py-1.5 px-2 max-h-28"
-              />
+              {/* Textarea Input */}
+              <div className="flex-1 min-w-0">
+                <textarea
+                  ref={textareaRef}
+                  rows={1}
+                  value={inputText}
+                  onChange={(e) => setInputText(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  placeholder={isListening ? "In ascolto... Parla ora..." : "Scrivi o chiedi qualsiasi cosa a Chelona..."}
+                  className="w-full bg-transparent border-0 focus:outline-none focus:ring-0 text-sm sm:text-base text-[var(--text-main)] placeholder-[var(--text-muted)] resize-none py-2 px-1 max-h-28 font-medium"
+                />
+              </div>
+
+              {/* Tasto Invia */}
+              <button
+                type="button"
+                onClick={() => {
+                  if (isListening) {
+                    confirmVoiceRecognition();
+                  } else {
+                    handleSend();
+                  }
+                }}
+                disabled={!inputText.trim() || isProcessing}
+                className="p-3 rounded-2xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 disabled:opacity-30 text-white transition-all shrink-0 active:scale-95 shadow-md shadow-amber-500/20 cursor-pointer"
+                title="Invia richiesta"
+              >
+                <Send className="w-5 h-5" />
+              </button>
             </div>
-
-            <button
-              type="button"
-              onClick={() => {
-                if (isListening) {
-                  confirmVoiceRecognition();
-                } else {
-                  handleSend();
-                }
-              }}
-              disabled={!inputText.trim() || isProcessing}
-              className="p-3 rounded-2xl bg-amber-500 hover:bg-amber-600 disabled:opacity-40 text-white transition-all shrink-0 active:scale-95 shadow-md shadow-amber-500/20 cursor-pointer"
-              title="Invia messaggio"
-            >
-              <Send className="w-5 h-5" />
-            </button>
           </div>
         </div>
-      </footer>
 
-      {/* OVERLAY INTERAZIONE VOCALE A TUTTO SCHERMO (VOICE MODE) */}
+        {/* 3. RISPOSTA ATTIVA CORRENTE (90% UI + 10% TESTO, SENZA STORICO A CHAT) */}
+        {isProcessing && (
+          <div className="p-6 rounded-3xl bg-[var(--card-bg)] border border-amber-500/30 shadow-lg flex items-center justify-center gap-3 text-amber-500 animate-pulse">
+            <div className="w-5 h-5 border-2 border-amber-500 border-t-transparent rounded-full animate-spin shrink-0" />
+            <span className="text-sm font-bold text-[var(--text-main)]">
+              Chelona sta elaborando la richiesta...
+            </span>
+          </div>
+        )}
+
+        {activeResponse && !isProcessing && (
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="p-5 sm:p-6 rounded-3xl bg-[var(--card-bg)] border-2 border-amber-500/30 shadow-xl space-y-4"
+          >
+            {/* Header Risposta con Query e Tasto Chiudi */}
+            <div className="flex items-center justify-between pb-3 border-b border-[var(--border)]">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="w-8 h-8 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center shrink-0 border border-amber-500/20 font-bold">
+                  ✨
+                </div>
+                <div className="min-w-0">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-[var(--text-muted)] block">
+                    Risposta per:
+                  </span>
+                  <h4 className="text-xs sm:text-sm font-bold text-[var(--text-main)] truncate">
+                    "{activeResponse.query}"
+                  </h4>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-1.5 shrink-0">
+                {/* Tasto Ascolta TTS */}
+                <button
+                  type="button"
+                  onClick={handleToggleSpeakCurrent}
+                  className={`px-3 py-1.5 rounded-xl font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95 ${
+                    isSpeakingActive
+                      ? 'bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30 animate-pulse'
+                      : 'bg-[var(--surface-variant)] hover:bg-amber-500/15 text-[var(--text-main)] hover:text-amber-600 dark:hover:text-amber-400 border border-[var(--border)]'
+                  }`}
+                  title={isSpeakingActive ? "Ferma riproduzione vocale" : "Ascolta risposta a voce"}
+                >
+                  {isSpeakingActive ? <VolumeX className="w-3.5 h-3.5 text-rose-500" /> : <Volume2 className="w-3.5 h-3.5 text-amber-500" />}
+                  <span>{isSpeakingActive ? 'Stop' : 'Ascolta'}</span>
+                </button>
+
+                {/* Copia */}
+                <button
+                  type="button"
+                  onClick={handleCopyCurrent}
+                  className="p-2 rounded-xl bg-[var(--surface-variant)] hover:bg-[var(--border)] text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors cursor-pointer"
+                  title="Copia testo"
+                >
+                  {isCopied ? <Check className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}
+                </button>
+
+                {/* Chiudi / Reset */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    stopSpeaking();
+                    setActiveResponse(null);
+                  }}
+                  className="p-2 rounded-xl bg-[var(--surface-variant)] hover:bg-rose-500/10 text-[var(--text-muted)] hover:text-rose-500 transition-colors cursor-pointer"
+                  title="Chiudi risultato"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* Testo Risposta (10% Testo) */}
+            {activeResponse.text && (
+              <p className="text-sm sm:text-base text-[var(--text-main)] leading-relaxed font-medium whitespace-pre-line">
+                {activeResponse.text}
+              </p>
+            )}
+
+            {/* Azioni & Widget Visivi (90% UI) */}
+            {activeResponse.actions && activeResponse.actions.length > 0 && (() => {
+              const recipeActions = activeResponse.actions.filter(a => a.type === 'recipes' && a.recipe);
+              const volantinoActions = activeResponse.actions.filter(a => a.type === 'volantino');
+              const moduleActions = activeResponse.actions.filter(a => a.type === 'module' && a.module);
+              const categoryActions = activeResponse.actions.filter(a => a.type === 'category' && a.category);
+              const parkingActions = activeResponse.actions.filter(a => a.type === 'parking' || a.type === 'save_parking' || a.type === 'navigate_parking');
+              const doctorActions = activeResponse.actions.filter(a => a.type === 'doctor');
+              const recessoActions = activeResponse.actions.filter(a => a.type === 'recesso');
+              const deadlinesActions = activeResponse.actions.filter(a => a.type === 'deadlines');
+              const shoppingActions = activeResponse.actions.filter(a => a.type === 'add_shopping_items');
+              const otherActions = activeResponse.actions.filter(a => 
+                !(a.type === 'recipes' && a.recipe) &&
+                a.type !== 'volantino' &&
+                !(a.type === 'module' && a.module) &&
+                !(a.type === 'category' && a.category) &&
+                a.type !== 'parking' && a.type !== 'save_parking' && a.type !== 'navigate_parking' &&
+                a.type !== 'doctor' &&
+                a.type !== 'recesso' &&
+                a.type !== 'deadlines' &&
+                a.type !== 'add_shopping_items'
+              );
+
+              return (
+                <div className="pt-2 space-y-3">
+                  {/* Volantini */}
+                  {volantinoActions.length > 0 && (
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-1.5 text-xs font-bold text-amber-500 uppercase tracking-wider">
+                        <Store className="w-3.5 h-3.5" />
+                        <span>Volantini & Offerte</span>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {volantinoActions.map((act, i) => (
+                          <button
+                            key={`volantino-${i}`}
+                            onClick={() => handleActionClick(act)}
+                            className="w-full text-left p-3 rounded-2xl bg-[var(--surface-variant)] hover:bg-[var(--surface-variant)]/80 border border-amber-500/30 hover:border-amber-500 shadow-xs transition-all active:scale-[0.98] flex items-center justify-between gap-3 group cursor-pointer"
+                          >
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <div className="w-10 h-10 rounded-xl bg-amber-500/15 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0 border border-amber-500/20">
+                                <Store className="w-5 h-5" />
+                              </div>
+                              <div className="min-w-0">
+                                <div className="flex items-center gap-1.5 mb-0.5">
+                                  <span className="text-[9px] font-black uppercase tracking-wider px-1.5 py-0.2 rounded-md bg-amber-500/15 text-amber-600 dark:text-amber-400">
+                                    {act.storeName || act.chainSlug || 'Volantino'}
+                                  </span>
+                                  {act.page && (
+                                    <span className="text-[9px] font-bold px-1.5 py-0.2 rounded-md bg-blue-500/15 text-blue-600 dark:text-blue-400">
+                                      📄 Pag. {act.page}
+                                    </span>
+                                  )}
+                                </div>
+                                <h4 className="text-xs font-bold text-[var(--text-main)] group-hover:text-amber-500 transition-colors truncate">
+                                  {act.label}
+                                </h4>
+                              </div>
+                            </div>
+                            <ChevronRight className="w-4 h-4 text-amber-500 shrink-0" />
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Ricette */}
+                  {recipeActions.length > 0 && (
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-1.5 text-xs font-bold text-orange-500 uppercase tracking-wider">
+                        <UtensilsCrossed className="w-3.5 h-3.5" />
+                        <span>Ricette Consigliate</span>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {recipeActions.map((act, i) => {
+                          const r = act.recipe;
+                          return (
+                            <button
+                              key={`recipe-${i}`}
+                              onClick={() => handleActionClick(act)}
+                              className="w-full text-left p-2.5 rounded-2xl bg-[var(--surface-variant)] hover:bg-[var(--surface-variant)]/80 border border-[var(--border)] hover:border-amber-500/40 shadow-xs transition-all active:scale-[0.98] flex items-center gap-3 group cursor-pointer"
+                            >
+                              <div className="w-12 h-12 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center shrink-0 border border-amber-500/20 overflow-hidden relative">
+                                <UtensilsCrossed className="w-5 h-5 absolute" />
+                                {r?.image && (
+                                  <img
+                                    src={r.image}
+                                    alt={r.title || act.label}
+                                    className="w-full h-full object-cover relative z-10"
+                                    onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
+                                  />
+                                )}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-1.5 flex-wrap mb-0.5">
+                                  {r?.category && (
+                                    <span className="text-[9.5px] font-bold uppercase tracking-wider px-1.5 py-0.2 rounded-md bg-amber-500/10 text-amber-600 dark:text-amber-400">
+                                      {r.category}
+                                    </span>
+                                  )}
+                                  {r?.calories && (
+                                    <span className="text-[10px] font-semibold text-[var(--text-muted)] flex items-center gap-0.5">
+                                      <Flame className="w-3 h-3 text-orange-500" />
+                                      {r.calories} kcal
+                                    </span>
+                                  )}
+                                </div>
+                                <h4 className="text-xs font-bold text-[var(--text-main)] group-hover:text-amber-500 transition-colors truncate">
+                                  {r?.title || act.label}
+                                </h4>
+                              </div>
+                              <ChevronRight className="w-4 h-4 text-[var(--text-muted)] group-hover:text-amber-500 transition-colors shrink-0" />
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Moduli Personali */}
+                  {moduleActions.length > 0 && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {moduleActions.map((act, i) => (
+                        <button
+                          key={`mod-${i}`}
+                          onClick={() => handleActionClick(act)}
+                          className="w-full text-left p-3 rounded-2xl bg-[var(--surface-variant)] hover:bg-[var(--surface-variant)]/80 border border-[var(--border)] hover:border-indigo-500/40 shadow-xs transition-all active:scale-[0.98] flex items-center justify-between gap-3 group cursor-pointer"
+                        >
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <div className="w-9 h-9 rounded-xl bg-indigo-500/10 text-indigo-500 flex items-center justify-center shrink-0 border border-indigo-500/20">
+                              <Sparkles className="w-4 h-4" />
+                            </div>
+                            <div className="min-w-0">
+                              <span className="text-[9px] font-bold uppercase tracking-wider text-[var(--text-muted)] block">
+                                Scheda Chelona
+                              </span>
+                              <h4 className="text-xs font-bold text-[var(--text-main)] group-hover:text-indigo-500 transition-colors truncate">
+                                {act.label}
+                              </h4>
+                            </div>
+                          </div>
+                          <ChevronRight className="w-4 h-4 text-[var(--text-muted)] group-hover:text-indigo-500 transition-colors shrink-0" />
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Categorie */}
+                  {categoryActions.length > 0 && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {categoryActions.map((act, i) => (
+                        <button
+                          key={`cat-${i}`}
+                          onClick={() => handleActionClick(act)}
+                          className="w-full text-left p-3 rounded-2xl bg-[var(--surface-variant)] hover:bg-[var(--surface-variant)]/80 border border-[var(--border)] hover:border-amber-500/40 transition-all flex items-center justify-between gap-3 group cursor-pointer shadow-xs active:scale-[0.98]"
+                        >
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-8 h-8 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center shrink-0">
+                              <Globe className="w-4 h-4" />
+                            </div>
+                            <span className="text-xs font-bold text-[var(--text-main)] group-hover:text-amber-500 transition-colors">
+                              {act.label}
+                            </span>
+                          </div>
+                          <ChevronRight className="w-4 h-4 text-[var(--text-muted)] group-hover:text-amber-500 transition-colors" />
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Parcheggio & Mobilità */}
+                  {parkingActions.length > 0 && (
+                    <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/25 space-y-2">
+                      <div className="flex items-center gap-2">
+                        <Car className="w-4 h-4 text-amber-500" />
+                        <h4 className="text-xs font-black uppercase tracking-wider text-amber-700 dark:text-amber-300">Mobilità & Posizioni</h4>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {parkingActions.map((act, i) => (
+                          <button
+                            key={`park-${i}`}
+                            onClick={() => handleActionClick(act)}
+                            className="flex-1 min-w-[130px] py-2 px-3 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-all cursor-pointer"
+                          >
+                            <Navigation className="w-3.5 h-3.5" />
+                            <span>{act.label}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Aggiunta a Spesa */}
+                  {shoppingActions.length > 0 && (
+                    <div className="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/25 space-y-2">
+                      <div className="flex items-center gap-2">
+                        <ShoppingBasket className="w-4 h-4 text-emerald-500" />
+                        <h4 className="text-xs font-black uppercase tracking-wider text-emerald-700 dark:text-emerald-300">Lista della Spesa</h4>
+                      </div>
+                      {shoppingActions.map((act, i) => (
+                        <button
+                          key={`shop-${i}`}
+                          onClick={() => handleActionClick(act)}
+                          className="w-full py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-all cursor-pointer"
+                        >
+                          <ShoppingBasket className="w-3.5 h-3.5" />
+                          <span>{act.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Scadenze */}
+                  {deadlinesActions.length > 0 && (
+                    <div className="p-3.5 rounded-2xl bg-indigo-500/10 border border-indigo-500/25 space-y-2">
+                      <div className="flex items-center gap-2">
+                        <Calendar className="w-4 h-4 text-indigo-500" />
+                        <h4 className="text-xs font-black uppercase tracking-wider text-indigo-700 dark:text-indigo-300">Scadenze & Promemoria</h4>
+                      </div>
+                      {deadlinesActions.map((act, i) => (
+                        <button
+                          key={`dead-${i}`}
+                          onClick={() => handleActionClick(act)}
+                          className="w-full py-2 px-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-all cursor-pointer"
+                        >
+                          <Calendar className="w-3.5 h-3.5" />
+                          <span>{act.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Altre azioni */}
+                  {otherActions.length > 0 && (
+                    <div className="flex flex-wrap gap-2 pt-1">
+                      {otherActions.map((act, i) => (
+                        <button
+                          key={`other-${i}`}
+                          onClick={() => handleActionClick(act)}
+                          className="px-3 py-1.5 rounded-xl bg-[var(--surface-variant)] hover:bg-amber-500 hover:text-white border border-[var(--border)] text-xs font-bold text-[var(--text-main)] transition-all flex items-center gap-1.5 active:scale-95 shadow-xs cursor-pointer"
+                        >
+                          <ExternalLink className="w-3 h-3" />
+                          <span>{act.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+          </motion.div>
+        )}
+
+        {/* 4. CATEGORIE PRINCIPALI ("come la categoria lista della spesa ecc") */}
+        <div className="space-y-3 pt-2">
+          <div className="flex items-center justify-between px-1">
+            <span className="text-xs font-black uppercase tracking-wider text-[var(--text-muted)] flex items-center gap-1.5">
+              <span>Esplora Categorie & Moduli</span>
+            </span>
+            <span className="text-[11px] font-bold text-[var(--text-muted)]">
+              Tocca per chiedere
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            {primaryCategories.map((cat) => {
+              const IconComp = cat.icon;
+              return (
+                <button
+                  key={cat.id}
+                  type="button"
+                  onClick={() => handleSend(cat.actionQuery)}
+                  className="p-3.5 rounded-3xl bg-[var(--card-bg)] hover:bg-[var(--surface-variant)] border border-[var(--border)] hover:border-amber-500/40 shadow-xs hover:shadow-md transition-all active:scale-[0.98] flex items-center justify-between gap-3 text-left group cursor-pointer"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className={`w-11 h-11 rounded-2xl bg-gradient-to-br ${cat.color} flex items-center justify-center shrink-0 border shadow-2xs`}>
+                      <IconComp className="w-5 h-5" />
+                    </div>
+                    <div className="min-w-0">
+                      <h3 className="text-sm font-extrabold text-[var(--text-main)] group-hover:text-amber-500 transition-colors truncate leading-tight">
+                        {cat.title}
+                      </h3>
+                      <p className="text-xs text-[var(--text-muted)] font-medium mt-0.5 truncate">
+                        {cat.subtitle}
+                      </p>
+                    </div>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-[var(--text-muted)] group-hover:text-amber-500 group-hover:translate-x-0.5 transition-all shrink-0" />
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* 5. SUGGERIMENTI RAPIDI A PILLOLA */}
+        <div className="space-y-2 pt-2 pb-6">
+          <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-muted)] px-1 block">
+            Domande Rapide
+          </span>
+          <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar -mx-1 px-1">
+            {quickPills.map((p, i) => (
+              <button
+                key={i}
+                type="button"
+                onClick={() => handleSend(p.query)}
+                className="px-3.5 py-2 rounded-2xl bg-[var(--card-bg)] hover:bg-[var(--surface-variant)] border border-[var(--border)] hover:border-amber-500/40 text-xs font-bold text-[var(--text-main)] shrink-0 transition-all shadow-2xs active:scale-95 cursor-pointer"
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+      </main>
+
+      {/* ── OVERLAY INTERAZIONE VOCALE A TUTTO SCHERMO (VOICE MODE) ── */}
       <AnimatePresence>
         {isVoiceModeOpen && (
           <motion.div
@@ -1656,7 +1412,7 @@ export const ChelonaAiScreen
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.95 }}
-                className="w-full max-w-md mx-auto my-auto bg-[var(--surface)] border border-[var(--border)] rounded-3xl p-5 lg:p-6 shadow-2xl space-y-4 overflow-y-auto max-h-[70vh]"
+                className="w-full max-w-md mx-auto my-auto bg-[var(--card-bg)] border border-[var(--border)] rounded-3xl p-5 lg:p-6 shadow-2xl space-y-4 overflow-y-auto max-h-[70vh]"
               >
                 <div className="flex items-center justify-between border-b border-[var(--border)] pb-3">
                   <div className="flex items-center gap-2">
@@ -1716,11 +1472,6 @@ export const ChelonaAiScreen
                                       HD
                                     </span>
                                   )}
-                                  {v.default && (
-                                    <span className="text-sky-500 bg-sky-500/10 px-1 rounded font-bold text-[9px]">
-                                      Default
-                                    </span>
-                                  )}
                                 </div>
                               </div>
                             </div>
@@ -1734,7 +1485,7 @@ export const ChelonaAiScreen
                               className={`p-1.5 rounded-xl border transition-colors shrink-0 ${
                                 isPreviewing
                                   ? 'bg-amber-500 text-white border-amber-500 animate-pulse'
-                                  : 'bg-[var(--surface)] text-[var(--text-muted)] hover:text-amber-500 border-[var(--border)]'
+                                  : 'bg-[var(--card-bg)] text-[var(--text-muted)] hover:text-amber-500 border-[var(--border)]'
                               }`}
                               title="Ascolta anteprima voce"
                             >
@@ -1805,7 +1556,7 @@ export const ChelonaAiScreen
                   </div>
                 </div>
 
-                {/* Sezione Comando Vocale "Ciao Chelona!" */}
+                {/* Comando Vocale */}
                 <div className="bg-[var(--surface-variant)]/70 border border-[var(--border)] rounded-2xl p-3.5 space-y-2">
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center gap-2.5 min-w-0">
@@ -1823,15 +1574,12 @@ export const ChelonaAiScreen
                       className={`px-3 py-1.5 rounded-xl font-bold text-xs transition-all active:scale-95 shrink-0 ${
                         isWakeWordEnabled
                           ? 'bg-amber-500 text-white shadow-md shadow-amber-500/20'
-                          : 'bg-[var(--surface)] text-[var(--text-muted)] border border-[var(--border)] hover:text-[var(--text-main)]'
+                          : 'bg-[var(--card-bg)] text-[var(--text-muted)] border border-[var(--border)] hover:text-[var(--text-main)]'
                       }`}
                     >
                       {isWakeWordEnabled ? 'Attivo' : 'Attiva'}
                     </button>
                   </div>
-                  <p className="text-[10.5px] text-[var(--text-muted)] leading-relaxed">
-                    Pronuncia <strong className="text-amber-500 font-semibold">"Ciao Chelona!"</strong>, <strong className="text-amber-500 font-semibold">"Ehi Chelona!"</strong> o <strong className="text-amber-500 font-semibold">"Chelona"</strong> con l'app aperta per avviare subito la conversazione vocale. 100% on-device.
-                  </p>
                 </div>
 
                 {/* Tasto Fine */}
@@ -1846,7 +1594,6 @@ export const ChelonaAiScreen
             ) : (
               <div className="flex flex-col items-center justify-center my-auto space-y-6 w-full max-w-md mx-auto text-center">
                 <div className="relative w-44 h-44 flex items-center justify-center">
-                  {/* Onde concentriche animate con volume RMS reale */}
                   <motion.div
                     animate={{
                       scale: voiceStatus === 'listening' 
@@ -1863,13 +1610,6 @@ export const ChelonaAiScreen
                   <motion.div
                     role="button"
                     tabIndex={0}
-                    aria-label={
-                      voiceStatus === 'listening'
-                        ? 'Pausa ascolto'
-                        : voiceStatus === 'speaking'
-                        ? 'Interrompi e parla'
-                        : 'Inizia ad ascoltare'
-                    }
                     onClick={() => {
                       if (voiceStatus === 'speaking') {
                         stopSpeaking();
@@ -1893,41 +1633,24 @@ export const ChelonaAiScreen
                   </motion.div>
                 </div>
 
-                {/* Badge Voce Attiva (Cliccabile per aprire le impostazioni) */}
-                <button
-                  type="button"
-                  onClick={() => setShowVoiceSettings(true)}
-                  className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[var(--surface-variant)]/90 hover:bg-[var(--surface-variant)] border border-[var(--border)] text-xs text-[var(--text-muted)] hover:text-amber-500 transition-all shadow-xs active:scale-95 cursor-pointer"
-                >
-                  <Volume2 className="w-3.5 h-3.5 text-amber-500" />
-                  <span className="font-semibold text-[var(--text-main)]">
-                    {selectedVoice ? getVoiceFriendlyName(selectedVoice) : 'Voce Naturale'}
-                  </span>
-                  <span className="text-[10px] text-amber-500 bg-amber-500/10 px-1.5 py-0.5 rounded-md font-mono font-bold">
-                    {speechRate.toFixed(2)}x
-                  </span>
-                </button>
-
-                {/* Stato vocale testuale */}
                 <div className="space-y-2">
                   <span className="text-xs font-black uppercase tracking-widest text-amber-500">
                     {voiceStatus === 'listening' && '🎙️ Ti ascolto... Parla ora'}
                     {voiceStatus === 'thinking' && '✨ Sto pensando...'}
                     {voiceStatus === 'speaking' && '🔊 Chelona sta rispondendo...'}
-                    {voiceStatus === 'idle' && 'Tocca il logo o il microfono per parlare'}
+                    {voiceStatus === 'idle' && 'Tocca il logo per parlare'}
                   </span>
 
-                  {/* Trascrizione in tempo reale */}
                   <p className="text-sm text-[var(--text-main)] font-medium max-w-sm mx-auto line-clamp-3 leading-relaxed">
                     {liveVoiceTranscript 
                       ? `"${liveVoiceTranscript}"` 
-                      : (lastAiSpeech || lastUserSpeech || 'Di\' qualcosa come: "Quando mi scade l\'assicurazione?"')}
+                      : (lastAiSpeech || lastUserSpeech || 'Di\' qualcosa come: "Cosa ho da comprare nella lista spesa?"')}
                   </p>
                 </div>
               </div>
             )}
 
-            {/* Controlli inferiori della modalità vocale */}
+            {/* Controlli inferiori */}
             <div className="flex items-center justify-center gap-6 w-full max-w-sm mx-auto">
               {voiceStatus === 'speaking' && (
                 <button
@@ -1959,128 +1682,12 @@ export const ChelonaAiScreen
                     ? 'bg-rose-500 text-white shadow-rose-500/30 animate-pulse'
                     : 'bg-amber-500 text-white shadow-amber-500/30 hover:scale-105'
                 }`}
-                title={
-                  voiceStatus === 'listening'
-                    ? 'Pausa ascolto'
-                    : voiceStatus === 'speaking'
-                    ? 'Interrompi e parla'
-                    : 'Inizia ad ascoltare'
-                }
+                title={voiceStatus === 'listening' ? 'Pausa ascolto' : 'Inizia ad ascoltare'}
               >
                 {voiceStatus === 'listening' ? <MicOff className="w-7 h-7" /> : <Mic className="w-7 h-7" />}
               </button>
             </div>
           </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* DRAWER STORICO CONVERSAZIONI (ChatGPT / Gemini style) */}
-      <AnimatePresence>
-        {showHistoryDrawer && (
-          <div className="fixed inset-0 z-[150] flex justify-start">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setShowHistoryDrawer(false)}
-              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-            />
-
-            <motion.div
-              initial={{ x: '-100%' }}
-              animate={{ x: 0 }}
-              exit={{ x: '-100%' }}
-              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="relative w-full max-w-xs bg-[var(--bg)] h-full border-r border-[var(--border)] shadow-2xl flex flex-col z-10 safe-area-inset"
-            >
-              {/* Header Drawer */}
-              <div className="h-16 lg:h-20 border-b border-[var(--border)] px-5 flex items-center justify-between shrink-0 bg-[var(--header-bg)]">
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-xl bg-amber-500/10 border border-amber-500/20 p-1 flex items-center justify-center overflow-hidden">
-                    <img src="/chelona_logo.png" alt="Chelona" className="w-full h-full object-contain" />
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-bold text-[var(--text-main)]">Cronologia Chat</h3>
-                    <p className="text-[10px] text-[var(--text-muted)]">I tuoi dialoghi salvati</p>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setShowHistoryDrawer(false)}
-                  className="p-2 hover:bg-[var(--surface-variant)] rounded-xl text-[var(--text-muted)] transition-colors"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              {/* Nuova chat button */}
-              <div className="p-3 border-b border-[var(--border)]">
-                <button
-                  type="button"
-                  onClick={handleNewConversation}
-                  className="w-full py-2.5 px-3 rounded-xl bg-[var(--surface-variant)] hover:bg-[var(--border)] text-[var(--text-main)] text-xs font-bold border border-[var(--border)] flex items-center justify-center gap-2 transition-all active:scale-95 shadow-xs"
-                >
-                  <Plus className="w-4 h-4 text-amber-500" />
-                  <span>Nuova Conversazione</span>
-                </button>
-              </div>
-
-              {/* Lista conversazioni */}
-              <div className="flex-1 overflow-y-auto p-3 space-y-1.5 custom-scrollbar">
-                {conversations.length === 0 ? (
-                  <p className="text-xs text-[var(--text-muted)] text-center py-8">Nessuna conversazione salvata.</p>
-                ) : (
-                  conversations.map((conv) => {
-                    const isActive = conv.id === activeConvId;
-                    return (
-                      <div
-                        key={conv.id}
-                        onClick={() => handleSwitchConversation(conv.id)}
-                        className={`group p-2.5 rounded-xl text-xs flex items-center justify-between gap-2 cursor-pointer transition-all border ${
-                          isActive
-                            ? 'bg-amber-500/10 border-amber-500/30 text-[var(--text-main)] font-semibold shadow-xs'
-                            : 'bg-[var(--card-bg)] border-[var(--border)] text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--surface-variant)]'
-                        }`}
-                      >
-                        <div className="flex-1 min-w-0">
-                          <p className="truncate text-xs">{conv.title}</p>
-                          <p className="text-[10px] text-[var(--text-muted)] mt-0.5">{formatRelativeTime(conv.updatedAt)}</p>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={(e) => handleDeleteConversation(conv.id, e)}
-                          className="p-1.5 text-[var(--text-muted)] hover:text-rose-500 hover:bg-rose-500/10 transition-all rounded-lg shrink-0 cursor-pointer"
-                          title="Elimina conversazione"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    );
-                  })
-                )}
-              </div>
-
-              {/* Elimina tutte le conversazioni */}
-              {conversations.length > 0 && (
-                <div className="p-3 border-t border-[var(--border)] shrink-0">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (confirm('Vuoi eliminare tutte le conversazioni salvate?')) {
-                        setConversations([]);
-                        handleNewConversation();
-                        showToast('Tutte le conversazioni sono state eliminate.', 'info');
-                      }
-                    }}
-                    className="w-full py-2.5 px-3 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 text-xs font-bold border border-rose-500/20 flex items-center justify-center gap-2 transition-all active:scale-95 cursor-pointer"
-                  >
-                    <Trash className="w-4 h-4" />
-                    <span>Elimina tutte le conversazioni</span>
-                  </button>
-                </div>
-              )}
-            </motion.div>
-          </div>
         )}
       </AnimatePresence>
 
