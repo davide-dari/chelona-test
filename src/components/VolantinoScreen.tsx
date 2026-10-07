@@ -1,8 +1,8 @@
-import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { 
   ArrowLeft, Search, X, ChevronLeft, BarChart3, ExternalLink, 
   Star, Sparkles, MapPin, Clock, AlertTriangle, RefreshCw, CheckCircle2,
-  Plus, Check, BookOpen, Store
+  Plus, Check, BookOpen, Store, SlidersHorizontal
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { StoreLogo } from './StoreLogo';
@@ -387,8 +387,9 @@ export default function VolantinoScreen({
   // Main view state
   const [tab, setTab] = useState<TabType>('volantini');
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeCategory, setActiveCategory] = useState<string>('all');
+  const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [selectedChainSlug, setSelectedChainSlug] = useState<string | null>(null);
+  const [isFiltersSheetOpen, setIsFiltersSheetOpen] = useState(false);
 
   // In-app reader state (opens reader URL directly inside the app without leaving)
   const [activeReaderFlyer, setActiveReaderFlyer] = useState<VolantinoFlyer | null>(null);
@@ -668,6 +669,14 @@ export default function VolantinoScreen({
 
   // Back handling (single unified exit path)
   const handleBack = useCallback(() => {
+    if (isFiltersSheetOpen) {
+      setIsFiltersSheetOpen(false);
+      return;
+    }
+    if (showCapModal) {
+      setShowCapModal(false);
+      return;
+    }
     if (activeReaderFlyer) {
       setActiveReaderFlyer(null);
       return;
@@ -680,12 +689,16 @@ export default function VolantinoScreen({
       setSearchQuery('');
       return;
     }
-    if (activeCategory !== 'all') {
-      setActiveCategory('all');
+    if (activeCategory !== null) {
+      setActiveCategory(null);
+      return;
+    }
+    if (tab !== 'volantini') {
+      setTab('volantini');
       return;
     }
     onClose();
-  }, [activeReaderFlyer, selectedChainSlug, searchQuery, activeCategory, onClose]);
+  }, [isFiltersSheetOpen, showCapModal, activeReaderFlyer, selectedChainSlug, searchQuery, activeCategory, tab, onClose]);
 
   // Listen to Android hardware back
   useEffect(() => {
@@ -703,7 +716,7 @@ export default function VolantinoScreen({
       list = nearbyChains.length > 0 ? nearbyChains : allChains;
     } else if (activeCategory === 'expiring') {
       list = expiringChains;
-    } else if (activeCategory !== 'all') {
+    } else if (activeCategory && activeCategory !== 'all') {
       list = allChains.filter(c => (CHAIN_CATEGORY_MAP[c.slug] || 'iper-e-super') === activeCategory);
     }
 
@@ -802,6 +815,13 @@ export default function VolantinoScreen({
     setAddedOfferIds(prev => new Set(prev).add(offerKey));
     showToast(`Aggiunto "${offer.n}" alla Lista della Spesa!`);
   }, [onAddToShoppingList, showToast]);
+
+  // Computed filter flags (Identical UX to RecipesScreen & SupermarketScreen)
+  const hasActiveFilters = Boolean((activeCategory && activeCategory !== 'all' && activeCategory !== 'fav') || selectedChainSlug);
+  const isFavoritesActive = activeCategory === 'fav';
+  const isSearchActive = searchQuery.trim().length >= 2;
+  const hasActiveResultsView = isSearchActive || isFavoritesActive || hasActiveFilters || activeCategory === 'all' || tab === 'offerte';
+  const activeFiltersCount = (selectedChainSlug ? 1 : 0) + (activeCategory && activeCategory !== 'all' && activeCategory !== 'fav' ? 1 : 0);
 
   return (
     <motion.div
@@ -915,30 +935,29 @@ export default function VolantinoScreen({
            MAIN UNIFIED MINIMAL HUB (Single-Screen, Zero Clutter)
            ═══════════════════════════════════════════════════════════════ */
         <div className="flex-1 flex flex-col h-full w-full overflow-hidden">
-          {/* ── Top Bar Minimal & Clean (Single Back Arrow, No Redundant X) ── */}
-          <header className="flex items-center justify-between gap-3 pt-[max(env(safe-area-inset-top),14px)] px-4 pb-3 bg-[var(--card-bg)] border-b border-[var(--border)] shrink-0 z-20">
-            <div className="flex items-center gap-2.5 min-w-0">
-              <button
-                onClick={handleBack}
-                className="p-2 -ml-2 rounded-full hover:bg-[var(--surface-variant)] text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors cursor-pointer shrink-0"
+          {/* ═══════ HEADER (Identico a Lista della Spesa e Ricettario) ═══════ */}
+          <header className="flex items-center justify-between pt-[max(env(safe-area-inset-top),16px)] px-4 pb-3 bg-[var(--card-bg)] border-b border-[var(--border)] shrink-0 z-30">
+            <div className="flex items-center gap-3 min-w-0">
+              <button 
+                type="button" 
+                onClick={handleBack} 
+                className="p-2.5 -ml-2 hover:bg-[var(--surface-variant)] rounded-full text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors shrink-0 cursor-pointer"
                 title="Torna indietro"
               >
-                <ArrowLeft className="w-5 h-5" />
+                <ArrowLeft className="w-6 h-6" />
               </button>
-              <div className="min-w-0">
-                <h1 className="text-base sm:text-lg font-black text-[var(--text-main)] flex items-center gap-2 leading-tight">
-                  <span>{module.title || 'Volantini'}</span>
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                </h1>
-                <p className="text-[11px] text-[var(--text-muted)] font-medium truncate">
-                  {allChains.length} catene · {totalFlyersCount} volantini attivi
-                </p>
+              <div className="flex items-center gap-2 min-w-0">
+                <div className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-950/40 text-emerald-600 flex items-center justify-center shrink-0">
+                  <Store className="w-5 h-5" />
+                </div>
+                <h1 className="text-xl lg:text-2xl font-bold text-[var(--text-main)] truncate">{module.title || 'Volantini'}</h1>
               </div>
             </div>
 
             <div className="flex items-center gap-2 shrink-0">
               {/* Location Badge (Tap to change CAP smoothly) */}
               <button
+                type="button"
                 onClick={() => setShowCapModal(true)}
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/25 text-emerald-700 dark:text-emerald-300 text-xs font-bold hover:bg-emerald-500/20 active:scale-95 transition-all cursor-pointer"
                 title="Cambia CAP / Posizione"
@@ -951,75 +970,295 @@ export default function VolantinoScreen({
 
               {/* Quick Sync */}
               <button
+                type="button"
                 onClick={handleSync}
                 disabled={isSyncing}
-                className="p-2 rounded-full bg-[var(--surface-variant)] hover:bg-[var(--border)] text-[var(--text-muted)] hover:text-[var(--text-main)] transition-all disabled:opacity-50 cursor-pointer"
+                className="p-2.5 rounded-2xl bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20 disabled:opacity-40 transition-colors cursor-pointer"
                 title="Verifica aggiornamenti online"
               >
-                <RefreshCw className={`w-4 h-4 text-emerald-600 ${isSyncing ? 'animate-spin' : ''}`} />
+                <RefreshCw className={`w-5 h-5 text-emerald-600 ${isSyncing ? 'animate-spin' : ''}`} />
               </button>
             </div>
           </header>
 
-          {/* ── Hero Search Bar (Universal: Finds Stores, Flyers, AND Discount Products) ── */}
-          <div className="px-4 pt-3.5 pb-3 bg-[var(--card-bg)]/90 backdrop-blur-md border-b border-[var(--border)] shrink-0 z-10 max-w-2xl mx-auto w-full space-y-3">
-            <div className="relative group">
-              <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/15 via-teal-500/15 to-amber-500/15 rounded-2xl sm:rounded-3xl blur-md opacity-60 group-focus-within:opacity-100 transition-opacity pointer-events-none" />
-              <div className="relative flex items-center bg-[var(--card-bg)] border-2 border-[var(--border)] focus-within:border-emerald-500 rounded-2xl sm:rounded-3xl shadow-sm transition-all px-3.5 sm:px-4 py-3 sm:py-3.5">
-                <Search className="w-5 h-5 sm:w-6 sm:h-6 text-emerald-500 shrink-0 mr-3 pointer-events-none" />
-                <input
-                  value={searchQuery}
-                  onChange={e => setSearchQuery(e.target.value)}
-                  placeholder="Cerca negozio o prodotto (es. Conad, pasta, caffè…)"
-                  className="w-full bg-transparent text-[var(--text-main)] font-semibold text-sm sm:text-base outline-none placeholder:text-[var(--text-muted)] placeholder:font-normal"
-                />
-                {searchQuery && (
-                  <button
-                    type="button"
-                    onClick={() => setSearchQuery('')}
-                    className="p-1 rounded-full hover:bg-[var(--surface-variant)] text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors cursor-pointer ml-1 shrink-0"
-                    title="Cancella ricerca"
-                  >
-                    <X className="w-4 h-4 sm:w-5 sm:h-5" />
-                  </button>
+          <main className={`flex-1 flex flex-col ${
+            !hasActiveResultsView
+              ? 'h-full justify-center items-center overflow-y-auto p-4 sm:p-6 pb-10 sm:pb-16 custom-scrollbar'
+              : 'overflow-y-auto p-4 md:p-8 custom-scrollbar overscroll-contain scroll-smooth pb-[max(env(safe-area-inset-bottom),16px)]'
+          }`}>
+            {/* HERO BARRA & TITOLO (Perfettamente centrato quando non c'è una ricerca attiva) */}
+            <div className={`w-full transition-all duration-200 ${
+              !hasActiveResultsView
+                ? 'max-w-xl mx-auto space-y-6 text-center my-auto flex flex-col items-center'
+                : 'max-w-4xl mx-auto space-y-3 mb-5 shrink-0'
+            }`}>
+              {/* TITOLO AL CENTRO */}
+              <div className="text-center space-y-1.5">
+                <h2 className={`font-black text-[var(--text-main)] tracking-tight transition-all ${
+                  !hasActiveResultsView ? 'text-3xl sm:text-4xl' : 'text-xl sm:text-2xl'
+                }`}>
+                  {hasActiveResultsView && activeSelectedChain ? activeSelectedChain.name : 'Cosa stai cercando?'}
+                </h2>
+                {!hasActiveResultsView && (
+                  <p className="text-xs sm:text-sm text-[var(--text-muted)] font-medium max-w-sm mx-auto">
+                    Sfoglia i volantini e scopri le migliori offerte dei supermercati vicino a te
+                  </p>
                 )}
               </div>
-            </div>
 
-            {/* When NOT searching: Segmented Tab Bar for Mode Switching */}
-            {!isSearching && (
-              <div className="flex p-1 rounded-2xl bg-[var(--surface-variant)] border border-[var(--border)] gap-1">
+              {/* BARRA DI RICERCA CON TASTO FILTRI E STELLA PREFERITI */}
+              <div className="w-full flex items-center gap-2 sm:gap-2.5">
+                <div className="relative flex-1 group">
+                  <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/20 via-teal-500/20 to-amber-500/20 rounded-2xl sm:rounded-3xl blur-xl opacity-70 group-focus-within:opacity-100 transition-opacity duration-300 pointer-events-none" />
+                  <div className="relative flex items-center gap-2.5 sm:gap-3 bg-[var(--card-bg)] border-2 border-[var(--border)] focus-within:border-emerald-500 rounded-2xl sm:rounded-3xl px-3.5 sm:px-5 py-3 sm:py-4 shadow-lg transition-all">
+                    <Search className="w-5 h-5 sm:w-6 sm:h-6 text-emerald-500 shrink-0" />
+                    <input
+                      type="text"
+                      placeholder="Cerca negozio o prodotto (es. Conad, pasta, caffè)..."
+                      value={searchQuery}
+                      onChange={e => setSearchQuery(e.target.value)}
+                      className="flex-1 bg-transparent text-[var(--text-main)] placeholder-[var(--text-muted)] outline-none text-sm sm:text-base font-medium min-w-0"
+                    />
+                    {searchQuery && (
+                      <button 
+                        type="button" 
+                        onClick={() => setSearchQuery('')} 
+                        className="p-1 rounded-full hover:bg-[var(--surface-variant)] text-[var(--text-muted)] cursor-pointer"
+                        title="Cancella ricerca"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    )}
+                    <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-wider px-2 py-0.5 sm:py-1 rounded-lg bg-emerald-500/15 text-emerald-600 border border-emerald-500/20 shrink-0 hidden sm:inline-block">
+                      Volantini
+                    </span>
+                  </div>
+                </div>
+
+                {/* TASTO FILTRI ELEGANTE (CON BADGE SE ATTIVO) */}
                 <button
-                  onClick={() => { setTab('volantini'); setSelectedChainSlug(null); }}
-                  className={`flex-1 py-1.5 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                    tab === 'volantini'
-                      ? 'bg-[var(--card-bg)] text-emerald-600 dark:text-emerald-400 shadow-xs border border-[var(--border)]'
-                      : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
+                  type="button"
+                  onClick={() => setIsFiltersSheetOpen(true)}
+                  className={`relative p-3 sm:p-4 rounded-2xl sm:rounded-3xl border-2 transition-all cursor-pointer shadow-md flex items-center justify-center shrink-0 active:scale-95 ${
+                    hasActiveFilters
+                      ? 'bg-emerald-500/15 border-emerald-500 text-emerald-600 shadow-emerald-500/20'
+                      : 'bg-[var(--card-bg)] border-[var(--border)] hover:border-emerald-400 text-[var(--text-muted)] hover:text-emerald-500'
                   }`}
+                  title="Filtri catene e categorie"
                 >
-                  <Store className="w-3.5 h-3.5" />
-                  <span>Volantini</span>
-                  <span className="text-[10px] font-semibold opacity-70">({displayFlyers.length})</span>
+                  <SlidersHorizontal className="w-5 h-5 sm:w-6 sm:h-6" />
+                  {activeFiltersCount > 0 && (
+                    <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-emerald-500 text-white text-[10px] font-black flex items-center justify-center shadow-sm">
+                      {activeFiltersCount}
+                    </span>
+                  )}
                 </button>
 
+                {/* SOLO LA STELLA COME PREFERITI ACCANTO ALLA BARRA */}
                 <button
-                  onClick={() => { setTab('offerte'); setSelectedChainSlug(null); }}
-                  className={`flex-1 py-1.5 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                    tab === 'offerte'
-                      ? 'bg-[var(--card-bg)] text-amber-600 dark:text-amber-400 shadow-xs border border-[var(--border)]'
-                      : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
+                  type="button"
+                  onClick={() => {
+                    if (activeCategory === 'fav') {
+                      setActiveCategory(null);
+                    } else {
+                      setActiveCategory('fav');
+                      setSelectedChainSlug(null);
+                      setSearchQuery('');
+                    }
+                  }}
+                  className={`p-3 sm:p-4 rounded-2xl sm:rounded-3xl border-2 transition-all cursor-pointer shadow-md flex items-center justify-center shrink-0 active:scale-95 ${
+                    isFavoritesActive
+                      ? 'bg-yellow-400/20 border-yellow-400 text-yellow-500 shadow-yellow-500/20'
+                      : 'bg-[var(--card-bg)] border-[var(--border)] hover:border-yellow-400 text-[var(--text-muted)] hover:text-yellow-500'
                   }`}
+                  title={isFavoritesActive ? 'Chiudi Preferiti' : 'I miei negozi preferiti'}
                 >
-                  <Sparkles className="w-3.5 h-3.5" />
-                  <span>Migliori Offerte</span>
-                  <span className="text-[10px] font-semibold opacity-70">({filteredOfferGroups.length})</span>
+                  <Star className={`w-5 h-5 sm:w-6 sm:h-6 ${isFavoritesActive ? 'fill-yellow-400 text-yellow-500' : 'text-[var(--text-muted)] hover:text-yellow-500'}`} />
                 </button>
               </div>
-            )}
-          </div>
 
-          {/* ── Main Scrollable View ── */}
-          <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain custom-scrollbar scroll-smooth px-4 py-3 max-w-2xl mx-auto w-full space-y-4 pb-[max(env(safe-area-inset-bottom),16px)]">
+              {/* CHIP ATTIVI SE RISULTATI ATTIVI */}
+              {hasActiveResultsView && (
+                <div className="flex items-center justify-between gap-2 pt-1 flex-wrap w-full">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {selectedChainSlug && activeSelectedChain && (
+                      <button
+                        type="button"
+                        onClick={() => setSelectedChainSlug(null)}
+                        className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-500 text-white shadow-xs cursor-pointer active:scale-95"
+                      >
+                        <span>{activeSelectedChain.name}</span>
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                    {activeCategory && activeCategory !== 'all' && activeCategory !== 'fav' && (
+                      <button
+                        type="button"
+                        onClick={() => setActiveCategory(null)}
+                        className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-500 text-white shadow-xs cursor-pointer active:scale-95"
+                      >
+                        <span>{DC_INDEX_CATEGORIES.find(c => c.slug === activeCategory)?.name || activeCategory}</span>
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                    {isFavoritesActive && (
+                      <button
+                        type="button"
+                        onClick={() => setActiveCategory(null)}
+                        className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-500 text-white shadow-xs cursor-pointer active:scale-95"
+                      >
+                        <span>⭐ Preferiti</span>
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                    {activeCategory === 'all' && (
+                      <button
+                        type="button"
+                        onClick={() => setActiveCategory(null)}
+                        className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-500 text-white shadow-xs cursor-pointer active:scale-95"
+                      >
+                        <span>🛒 Tutti ({displayFlyers.length})</span>
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedChainSlug(null);
+                        setActiveCategory(null);
+                        setSearchQuery('');
+                        setTab('volantini');
+                      }}
+                      className="text-[11px] font-bold text-[var(--text-muted)] hover:text-emerald-500 underline ml-1 cursor-pointer"
+                    >
+                      Azzera filtri
+                    </button>
+                  </div>
+
+                  {/* Switcher Volantini / Offerte */}
+                  <div className="flex p-0.5 rounded-xl bg-[var(--surface-variant)] border border-[var(--border)] shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => setTab('volantini')}
+                      className={`py-1 px-2.5 rounded-lg text-xs font-black transition-all flex items-center gap-1 cursor-pointer ${
+                        tab === 'volantini'
+                          ? 'bg-[var(--card-bg)] text-emerald-600 dark:text-emerald-400 shadow-xs'
+                          : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
+                      }`}
+                    >
+                      <Store className="w-3.5 h-3.5" />
+                      <span>Volantini</span>
+                      <span className="text-[10px] opacity-70">({displayFlyers.length})</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setTab('offerte')}
+                      className={`py-1 px-2.5 rounded-lg text-xs font-black transition-all flex items-center gap-1 cursor-pointer ${
+                        tab === 'offerte'
+                          ? 'bg-[var(--card-bg)] text-amber-600 dark:text-amber-400 shadow-xs'
+                          : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
+                      }`}
+                    >
+                      <Sparkles className="w-3.5 h-3.5" />
+                      <span>Offerte</span>
+                      <span className="text-[10px] opacity-70">({filteredOfferGroups.length})</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* STATO CENTRATO ELEGANTE (IDENTICO A RICETTARIO E LISTA DELLA SPESA) */}
+              {!hasActiveResultsView && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3 }}
+                  className="pt-6 sm:pt-8 flex flex-col items-center justify-center text-center px-4 w-full"
+                >
+                  <div className="w-16 h-16 sm:w-20 sm:h-20 bg-emerald-500/10 rounded-full flex items-center justify-center mb-4 sm:mb-5 border border-emerald-500/20 shadow-xs">
+                    <Store className="w-8 h-8 sm:w-10 sm:h-10 text-emerald-500" />
+                  </div>
+                  <h3 className="text-lg sm:text-xl font-bold text-[var(--text-main)] mb-1.5 sm:mb-2">
+                    Tutti i volantini a portata di mano
+                  </h3>
+                  <p className="text-xs sm:text-sm text-[var(--text-muted)] max-w-xs leading-relaxed mb-6">
+                    Cerca un supermercato o prodotto nella barra, usa i filtri o tocca la <b className="text-yellow-500 font-semibold">stella</b> per vedere i preferiti.
+                  </p>
+
+                  {/* BOTTONI DI AZIONE RAPIDA CENTRATI */}
+                  <div className="flex flex-wrap items-center justify-center gap-2 max-w-md">
+                    <button
+                      type="button"
+                      onClick={() => setActiveCategory('all')}
+                      className="px-4 py-2.5 rounded-2xl bg-[var(--card-bg)] border border-[var(--border)] hover:border-emerald-500 text-xs font-bold text-[var(--text-main)] shadow-xs transition-all active:scale-95 flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <span>🛒</span>
+                      <span>Sfoglia tutti i volantini</span>
+                      <span className="text-[10px] text-emerald-600 bg-emerald-500/10 px-1.5 py-0.5 rounded-full font-bold">
+                        {totalFlyersCount}
+                      </span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setTab('offerte')}
+                      className="px-4 py-2.5 rounded-2xl bg-[var(--card-bg)] border border-[var(--border)] hover:border-amber-500 text-xs font-bold text-[var(--text-main)] shadow-xs transition-all active:scale-95 flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <span>✨</span>
+                      <span>Migliori Offerte</span>
+                      <span className="text-[10px] text-amber-600 bg-amber-500/10 px-1.5 py-0.5 rounded-full font-bold">
+                        {filteredOfferGroups.length}
+                      </span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setActiveCategory('expiring')}
+                      className="px-4 py-2.5 rounded-2xl bg-[var(--card-bg)] border border-[var(--border)] hover:border-orange-500 text-xs font-bold text-[var(--text-main)] shadow-xs transition-all active:scale-95 flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <span>⏳</span>
+                      <span>In scadenza</span>
+                    </button>
+                  </div>
+
+                  {/* POPULAR SUPERMARKET CHIPS */}
+                  <div className="pt-6 w-full max-w-md">
+                    <p className="text-[11px] font-bold text-[var(--text-muted)] uppercase tracking-wider mb-2.5">
+                      Catene più consultate
+                    </p>
+                    <div className="flex flex-wrap items-center justify-center gap-2">
+                      {['conad', 'coop', 'lidl', 'eurospin', 'carrefour', 'md-discount', 'esselunga', 'todis'].map(slug => {
+                        const chain = allChains.find(c => c.slug === slug);
+                        if (!chain) return null;
+                        return (
+                          <button
+                            key={slug}
+                            type="button"
+                            onClick={() => setSelectedChainSlug(slug)}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[var(--surface-variant)] hover:bg-[var(--border)] text-xs font-bold text-[var(--text-main)] transition-all cursor-pointer active:scale-95"
+                          >
+                            <div className="w-4 h-4 rounded-md bg-white ring-1 ring-black/10 flex items-center justify-center overflow-hidden shrink-0">
+                              <StoreLogo 
+                                id={chain.slug} 
+                                short={chain.name.slice(0, 2)} 
+                                brandSlug={chain.slug.replace('md-discount', 'md').replace('-italia', '').replace('iper-', '').replace('-market', '')} 
+                                size={14} 
+                              />
+                            </div>
+                            <span>{chain.name}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </div>
+
+            {/* ── Main Results View (Only when hasActiveResultsView is true) ── */}
+            {hasActiveResultsView && (
+              <div className="max-w-4xl mx-auto w-full space-y-4">
             {isSearching ? (
               /* ═══════════════════════════════════════════════════════════
                  SMART UNIFIED SEARCH RESULTS (Shows Flyers + Offers together)
@@ -1270,36 +1509,7 @@ export default function VolantinoScreen({
                  TAB 1: VOLANTINI (Clean Filter Row + Store Chips + Grid)
                  ═══════════════════════════════════════════════════════════ */
               <div className="space-y-3.5">
-                {/* Unified Horizontal Filter Bar: Smart Filters + Store Brands */}
-                <div className="space-y-2">
-                  <div className="flex gap-1.5 overflow-x-auto custom-scrollbar pb-1 -mx-4 px-4">
-                    {DC_INDEX_CATEGORIES.map(cat => {
-                      const isActive = activeCategory === cat.slug;
-                      return (
-                        <button
-                          key={cat.slug}
-                          onClick={() => {
-                            setActiveCategory(cat.slug);
-                            setSelectedChainSlug(null);
-                          }}
-                          className={`shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
-                            isActive
-                              ? cat.slug === 'fav'
-                                ? 'bg-amber-500 text-white shadow-xs'
-                                : cat.slug === 'expiring'
-                                  ? 'bg-orange-500 text-white shadow-xs'
-                                  : 'bg-emerald-500 text-white shadow-xs'
-                              : 'bg-[var(--card-bg)] border border-[var(--border)] text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--surface-variant)]'
-                          }`}
-                        >
-                          <span className="text-xs">{cat.icon}</span>
-                          <span>{cat.name}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-
-                  {/* Compact, Ergonomic Supermarket Brand Chips */}
+                {/* Compact, Ergonomic Supermarket Brand Chips */}
                   <div className="flex gap-1.5 overflow-x-auto custom-scrollbar pb-1 -mx-4 px-4 pt-0.5">
                     {filteredChains.map(c => {
                       const isSelected = selectedChainSlug === c.slug;
@@ -1330,7 +1540,6 @@ export default function VolantinoScreen({
                       );
                     })}
                   </div>
-                </div>
 
                 {/* Section Title */}
                 <div className="flex items-center justify-between pt-1">
@@ -1643,7 +1852,9 @@ export default function VolantinoScreen({
                 )}
               </div>
             )}
-          </div>
+              </div>
+            )}
+          </main>
         </div>
       )}
 
@@ -1669,6 +1880,153 @@ export default function VolantinoScreen({
         onSave={handleSaveZone}
         onClose={() => setShowCapModal(false)}
       />
+
+      {/* ═══════════════════════════════════════════════════════════════════
+          MODAL FILTRI (CATENE & TIPOLOGIE) - STILE RICETTARIO
+          ═══════════════════════════════════════════════════════════════════ */}
+      <AnimatePresence>
+        {isFiltersSheetOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[200] bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4"
+            onClick={() => setIsFiltersSheetOpen(false)}
+          >
+            <motion.div
+              initial={{ y: 80, scale: 0.98 }}
+              animate={{ y: 0, scale: 1 }}
+              exit={{ y: 80, scale: 0.98 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full sm:max-w-lg bg-[var(--card-bg)] border border-[var(--border)] rounded-t-[2.5rem] sm:rounded-3xl shadow-2xl p-6 sm:p-7 space-y-5 max-h-[85vh] overflow-y-auto custom-scrollbar"
+            >
+              {/* Header Modal Filtri */}
+              <div className="flex items-center justify-between border-b border-[var(--border)] pb-4">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center">
+                    <SlidersHorizontal className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-black text-lg text-[var(--text-main)]">Filtri Volantini</h3>
+                    <p className="text-xs text-[var(--text-muted)]">Filtra per tipologia o seleziona una catena</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsFiltersSheetOpen(false)}
+                  className="p-2 rounded-full hover:bg-[var(--surface-variant)] text-[var(--text-muted)] transition-colors cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Tipologia Negozio */}
+              <div className="space-y-2.5">
+                <h4 className="text-xs font-black uppercase tracking-wider text-[var(--text-muted)]">
+                  Tipologia Negozio
+                </h4>
+                <div className="flex flex-wrap gap-2">
+                  {DC_INDEX_CATEGORIES.map(cat => {
+                    const isSelected = activeCategory === cat.slug;
+                    return (
+                      <button
+                        key={cat.slug}
+                        type="button"
+                        onClick={() => {
+                          setActiveCategory(isSelected ? null : cat.slug);
+                          if (selectedChainSlug) setSelectedChainSlug(null);
+                        }}
+                        className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-2xl text-xs font-bold transition-all cursor-pointer ${
+                          isSelected
+                            ? 'bg-emerald-500 text-white shadow-xs'
+                            : 'bg-[var(--surface-variant)] text-[var(--text-main)] hover:bg-[var(--border)]'
+                        }`}
+                      >
+                        <span>{cat.icon}</span>
+                        <span>{cat.name}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Seleziona Catena Supermercato */}
+              <div className="space-y-2.5 pt-2 border-t border-[var(--border)]">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-black uppercase tracking-wider text-[var(--text-muted)]">
+                    Catene Supermercato ({allChains.length})
+                  </h4>
+                  {selectedChainSlug && (
+                    <button
+                      type="button"
+                      onClick={() => setSelectedChainSlug(null)}
+                      className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 hover:underline cursor-pointer"
+                    >
+                      Deseleziona
+                    </button>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-56 overflow-y-auto custom-scrollbar pr-1">
+                  {allChains.map(c => {
+                    const isSelected = selectedChainSlug === c.slug;
+                    return (
+                      <button
+                        key={`filter-store-${c.slug}`}
+                        type="button"
+                        onClick={() => {
+                          setSelectedChainSlug(isSelected ? null : c.slug);
+                          if (!isSelected && activeCategory && activeCategory !== 'all') {
+                            setActiveCategory(null);
+                          }
+                        }}
+                        className={`flex items-center gap-2 p-2 rounded-xl border text-left transition-all cursor-pointer ${
+                          isSelected
+                            ? 'bg-emerald-500/15 border-emerald-500 text-emerald-700 dark:text-emerald-300 font-bold'
+                            : 'bg-[var(--surface-variant)]/60 border-[var(--border)] hover:bg-[var(--surface-variant)] text-[var(--text-main)] font-medium'
+                        }`}
+                      >
+                        <div className="w-5 h-5 rounded-md bg-white ring-1 ring-black/10 flex items-center justify-center overflow-hidden shrink-0">
+                          <StoreLogo 
+                            id={c.slug} 
+                            short={c.name.slice(0, 2)} 
+                            brandSlug={c.slug.replace('md-discount', 'md').replace('-italia', '').replace('iper-', '').replace('-market', '')} 
+                            size={16} 
+                          />
+                        </div>
+                        <span className="text-xs truncate flex-1">{c.name}</span>
+                        <span className="text-[10px] text-[var(--text-muted)] font-mono">{c.flyers.length}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Pulsanti Azione */}
+              <div className="flex items-center justify-between gap-3 pt-3 border-t border-[var(--border)]">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveCategory(null);
+                    setSelectedChainSlug(null);
+                  }}
+                  className="px-4 py-2.5 rounded-2xl bg-[var(--surface-variant)] hover:bg-[var(--border)] text-[var(--text-muted)] hover:text-[var(--text-main)] font-bold text-xs cursor-pointer transition-colors"
+                >
+                  Azzera filtri
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setIsFiltersSheetOpen(false)}
+                  className="flex-1 py-2.5 rounded-2xl bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs shadow-md shadow-emerald-500/20 active:scale-98 transition-all cursor-pointer text-center"
+                >
+                  Applica Filtri
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }
