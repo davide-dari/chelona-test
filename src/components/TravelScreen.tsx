@@ -50,7 +50,7 @@ const Globe3D: React.FC<{
     if (globeEl.current) {
       globeEl.current.controls().autoRotate = true;
       globeEl.current.controls().autoRotateSpeed = 0.5;
-      globeEl.current.pointOfView({ altitude: 1.5 });
+      globeEl.current.pointOfView({ altitude: 1.35 });
     }
   }, [dimensions.width]);
 
@@ -80,7 +80,7 @@ const Globe3D: React.FC<{
       globeEl.current.controls().autoRotate = false;
     } else {
       // 3) No selection — clean globe with auto-rotation
-      globeEl.current.pointOfView({ altitude: 1.5 }, 1200);
+      globeEl.current.pointOfView({ altitude: 1.35 }, 1200);
       globeEl.current.controls().autoRotate = true;
       globeEl.current.controls().autoRotateSpeed = 0.5;
     }
@@ -2177,7 +2177,7 @@ export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onCl
       <main className="flex-1 overflow-y-auto custom-scrollbar overscroll-contain scroll-smooth p-4 sm:p-6 md:p-8 space-y-6 pb-28">
         <div className="max-w-4xl mx-auto w-full space-y-5">
           {/* ── 3D EARTH GLOBE VIEWPORT ("sempre il pianeta terra sopra") ── */}
-          <div className="relative w-full h-[220px] sm:h-[260px] md:h-[290px] rounded-3xl overflow-hidden bg-[#060d1a] border border-blue-500/20 shadow-xl shadow-blue-950/20 shrink-0">
+          <div className="relative w-full h-[340px] sm:h-[400px] md:h-[460px] rounded-3xl overflow-hidden bg-[#060d1a] border border-blue-500/20 shadow-2xl shadow-blue-950/30 shrink-0">
             <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_#0f2744_0%,_#060d1a_75%)] pointer-events-none" />
 
             {/* Subtle Ambient Stars */}
@@ -2206,7 +2206,7 @@ export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onCl
               />
             </div>
 
-            {/* Floating Globe Status & Controls (Active Nation / Destination only, no generic "Mappamondo 3D" text) */}
+            {/* Floating Globe Status & Controls */}
             {(selectedNation || focusedDestId) && (
               <div className="absolute top-3 left-3 z-20 flex items-center gap-1.5 bg-black/70 backdrop-blur-md border border-white/15 px-3 py-1.5 rounded-full text-xs font-bold text-white shadow-lg pointer-events-none">
                 <Globe className="w-3.5 h-3.5 text-blue-400 shrink-0" />
@@ -2236,10 +2236,100 @@ export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onCl
                 <span>Vista Globale</span>
               </button>
             )}
+          </div>
 
-            <div className="absolute bottom-2.5 right-3 z-20 text-[10px] font-medium text-white/50 bg-black/40 backdrop-blur-xs px-2 py-0.5 rounded-md pointer-events-none hidden sm:block">
-              Trascina per ruotare · Click card per centrare
+          {/* ── HERO TITLE & SEARCH BAR ("Cosa vuoi esplorare?") ── */}
+          <div className="space-y-4 pt-1 sm:pt-2">
+            <div className="text-center space-y-1.5">
+              <h2 className="font-black text-2xl sm:text-3xl md:text-4xl text-[var(--text-main)] tracking-tight">
+                Cosa vuoi esplorare?
+              </h2>
+              <p className="text-xs sm:text-sm text-[var(--text-muted)] font-medium max-w-md mx-auto">
+                Organizza mete, itinerari e tappe del tuo viaggio nel mondo
+              </p>
             </div>
+
+            {/* HERO SEARCH BAR + FILTERS */}
+            <div className="w-full flex items-center gap-2.5 sm:gap-3">
+              <div className="relative flex-1 group">
+                <div className="absolute inset-0 bg-gradient-to-r from-blue-500/20 via-indigo-500/20 to-sky-500/20 rounded-2xl sm:rounded-3xl blur-xl opacity-70 group-focus-within:opacity-100 transition-opacity duration-300 pointer-events-none" />
+                <div className="relative flex items-center gap-3 bg-[var(--card-bg)] border-2 border-[var(--border)] focus-within:border-blue-500 rounded-2xl sm:rounded-3xl px-4 sm:px-6 py-3.5 sm:py-4 shadow-xl transition-all">
+                  <Search className="w-6 h-6 text-blue-500 shrink-0" />
+                  <input
+                    type="text"
+                    placeholder="Cerca mete, città, paesi o note (es. Tokyo, Colosseo, Parigi)..."
+                    value={searchQuery}
+                    onChange={e => {
+                      setSearchQuery(e.target.value);
+                      if (travelActiveTab !== 'destinations') setTravelActiveTab('destinations');
+                    }}
+                    className="flex-1 bg-transparent text-[var(--text-main)] placeholder-[var(--text-muted)] outline-none text-base sm:text-lg font-medium min-w-0"
+                  />
+                  {searchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setSearchQuery('')}
+                      className="p-1 rounded-full hover:bg-[var(--surface-variant)] text-[var(--text-muted)] hover:text-[var(--text-main)] cursor-pointer"
+                    >
+                      <X className="w-4 h-4 sm:w-5 sm:h-5" />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* TASTO FILTRI SHEET */}
+              <button
+                type="button"
+                onClick={() => setIsFiltersSheetOpen(true)}
+                className={`relative p-3.5 sm:p-4 rounded-2xl sm:rounded-3xl border-2 transition-all cursor-pointer shadow-lg flex items-center justify-center shrink-0 active:scale-95 ${
+                  hasActiveFilters
+                    ? 'bg-blue-500/15 border-blue-500 text-blue-500 shadow-blue-500/20'
+                    : 'bg-[var(--card-bg)] border-[var(--border)] hover:border-blue-400 text-[var(--text-muted)] hover:text-blue-500'
+                }`}
+                title="Filtri Nazioni & Destinazioni"
+              >
+                <SlidersHorizontal className="w-5 h-5 sm:w-6 sm:h-6" />
+                {activeFiltersCount > 0 && (
+                  <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-blue-500 text-white text-[10px] font-black flex items-center justify-center shadow-sm">
+                    {activeFiltersCount}
+                  </span>
+                )}
+              </button>
+            </div>
+
+            {/* ACTIVE FILTER CHIPS (IF ANY) */}
+            {hasActiveFilters && (
+              <div className="flex items-center justify-center gap-2 pt-0.5 flex-wrap">
+                {selectedNation && (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedNation(null)}
+                    className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-blue-500 text-white shadow-xs cursor-pointer active:scale-95"
+                  >
+                    <span>{getCountryEmoji(selectedNation)} {selectedNation}</span>
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+                {searchQuery.trim().length >= 2 && (
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-[var(--surface-variant)] text-[var(--text-main)] border border-[var(--border)] shadow-xs">
+                    <span>"{searchQuery}"</span>
+                    <button type="button" onClick={() => setSearchQuery('')} className="hover:text-red-500 cursor-pointer">
+                      <X className="w-3 h-3" />
+                    </button>
+                  </span>
+                )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedNation(null);
+                    setSearchQuery('');
+                  }}
+                  className="text-xs font-bold text-[var(--text-muted)] hover:text-blue-500 underline ml-1 cursor-pointer"
+                >
+                  Azzera filtri
+                </button>
+              </div>
+            )}
           </div>
 
           {/* ── ELEVATED TOOLS NAVIGATION (Mete, Meteo, Valigia, Budget, Vaccini, Emergenze) ── */}
@@ -2341,168 +2431,57 @@ export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onCl
           {/* TAB 1: METE & NAZIONI */}
           {travelActiveTab === 'destinations' && (
             <div className="space-y-6 animate-fade-in">
-              {/* ── HERO TITLE & SEARCH BAR (Mete & Destinazioni) ── */}
-              <div className="space-y-4">
-                <div className="text-center space-y-1 pt-1">
-                  <h2 className="font-black text-2xl sm:text-3xl text-[var(--text-main)] tracking-tight">
-                    Cosa vuoi esplorare?
-                  </h2>
-                  <p className="text-xs sm:text-sm text-[var(--text-muted)] font-medium max-w-md mx-auto">
-                    Organizza destinazioni, itinerari, monumenti e tappe del tuo viaggio
-                  </p>
-                </div>
-
-                {/* HERO SEARCH BAR + FILTERS */}
-                <div className="w-full flex items-center gap-2 sm:gap-2.5">
-                  <div className="relative flex-1 group">
-                    <div className="absolute inset-0 bg-gradient-to-r from-blue-500/20 via-indigo-500/20 to-sky-500/20 rounded-2xl sm:rounded-3xl blur-xl opacity-70 group-focus-within:opacity-100 transition-opacity duration-300 pointer-events-none" />
-                    <div className="relative flex items-center gap-2.5 sm:gap-3 bg-[var(--card-bg)] border-2 border-[var(--border)] focus-within:border-blue-500 rounded-2xl sm:rounded-3xl px-3.5 sm:px-5 py-3 sm:py-3.5 shadow-lg transition-all">
-                      <Search className="w-5 h-5 sm:w-6 sm:h-6 text-blue-500 shrink-0" />
-                      <input
-                        type="text"
-                        placeholder="Cerca mete, città, paesi o note (es. Tokyo, Colosseo, Parigi)..."
-                        value={searchQuery}
-                        onChange={e => setSearchQuery(e.target.value)}
-                        className="flex-1 bg-transparent text-[var(--text-main)] placeholder-[var(--text-muted)] outline-none text-sm sm:text-base font-medium min-w-0"
-                      />
-                      {searchQuery && (
-                        <button
-                          type="button"
-                          onClick={() => setSearchQuery('')}
-                          className="p-1 rounded-full hover:bg-[var(--surface-variant)] text-[var(--text-muted)] cursor-pointer"
-                        >
-                          <X className="w-4 h-4" />
-                        </button>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* TASTO FILTRI SHEET */}
-                  <button
-                    type="button"
-                    onClick={() => setIsFiltersSheetOpen(true)}
-                    className={`relative p-3 sm:p-3.5 rounded-2xl sm:rounded-3xl border-2 transition-all cursor-pointer shadow-md flex items-center justify-center shrink-0 active:scale-95 ${
-                      hasActiveFilters
-                        ? 'bg-blue-500/15 border-blue-500 text-blue-500 shadow-blue-500/20'
-                        : 'bg-[var(--card-bg)] border-[var(--border)] hover:border-blue-400 text-[var(--text-muted)] hover:text-blue-500'
-                    }`}
-                    title="Filtri Nazioni & Destinazioni"
-                  >
-                    <SlidersHorizontal className="w-5 h-5 sm:w-6 sm:h-6" />
-                    {activeFiltersCount > 0 && (
-                      <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-blue-500 text-white text-[10px] font-black flex items-center justify-center shadow-sm">
-                        {activeFiltersCount}
-                      </span>
-                    )}
-                  </button>
-                </div>
-
-                {/* ACTIVE FILTER CHIPS (IF ANY) */}
-                {hasActiveFilters && (
-                  <div className="flex items-center justify-center gap-2 pt-0.5 flex-wrap">
-                    {selectedNation && (
-                      <button
-                        type="button"
-                        onClick={() => setSelectedNation(null)}
-                        className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-blue-500 text-white shadow-xs cursor-pointer active:scale-95"
-                      >
-                        <span>{getCountryEmoji(selectedNation)} {selectedNation}</span>
-                        <X className="w-3.5 h-3.5" />
-                      </button>
-                    )}
-                    {searchQuery.trim().length >= 2 && (
-                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-[var(--surface-variant)] text-[var(--text-main)] border border-[var(--border)] shadow-xs">
-                        <span>"{searchQuery}"</span>
-                        <button type="button" onClick={() => setSearchQuery('')} className="hover:text-red-500 cursor-pointer">
-                          <X className="w-3 h-3" />
-                        </button>
-                      </span>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setSelectedNation(null);
-                        setSearchQuery('');
-                      }}
-                      className="text-xs font-bold text-[var(--text-muted)] hover:text-blue-500 underline ml-1 cursor-pointer"
-                    >
-                      Azzera filtri
-                    </button>
-                  </div>
-                )}
-              </div>
 
               {/* Country Filter Bar */}
-              <div className="space-y-2.5">
-                <div className="flex items-center justify-between px-1">
-                  <span className="text-[11px] font-extrabold uppercase tracking-wider text-[var(--text-muted)] flex items-center gap-1.5">
-                    <Globe className="w-3.5 h-3.5 text-blue-500" />
-                    Filtra per Nazione
+              <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar snap-x scroll-smooth -mx-1 px-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedNation(null);
+                    setFocusedDestId(null);
+                  }}
+                  className={`px-3.5 py-2 rounded-2xl font-bold text-xs shrink-0 transition-all snap-start flex items-center gap-2 cursor-pointer active:scale-95 border ${
+                    selectedNation === null
+                      ? 'bg-gradient-to-r from-blue-600 to-indigo-600 border-transparent text-white shadow-md shadow-blue-500/20'
+                      : 'bg-[var(--card-bg)] border-[var(--border)] text-[var(--text-main)] hover:border-blue-400 hover:bg-[var(--surface-variant)] shadow-2xs'
+                  }`}
+                >
+                  <span className="text-sm">🌐</span>
+                  <span>Tutte le mete</span>
+                  <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-black ${
+                    selectedNation === null ? 'bg-white/20 text-white' : 'bg-[var(--surface-variant)] text-[var(--text-muted)]'
+                  }`}>
+                    {destinations.length}
                   </span>
-                  {selectedNation && (
+                </button>
+
+                {activeNations.map(natName => {
+                  const count = destinations.filter(d => getDestNation(d, countryGroups) === natName).length;
+                  const isSelected = selectedNation === natName;
+                  return (
                     <button
+                      key={natName}
                       type="button"
                       onClick={() => {
-                        setSelectedNation(null);
+                        setSelectedNation(isSelected ? null : natName);
                         setFocusedDestId(null);
                       }}
-                      className="text-[11px] font-bold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
+                      className={`px-3.5 py-2 rounded-2xl font-bold text-xs shrink-0 transition-all snap-start flex items-center gap-2 cursor-pointer active:scale-95 border ${
+                        isSelected
+                          ? 'bg-gradient-to-r from-blue-600 to-indigo-600 border-transparent text-white shadow-md shadow-blue-500/20'
+                          : 'bg-[var(--card-bg)] border-[var(--border)] text-[var(--text-main)] hover:border-blue-400 hover:bg-[var(--surface-variant)] shadow-2xs'
+                      }`}
                     >
-                      Mostra tutte
+                      <span className="text-sm">{getCountryEmoji(natName)}</span>
+                      <span>{natName}</span>
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-black ${
+                        isSelected ? 'bg-white/20 text-white' : 'bg-[var(--surface-variant)] text-[var(--text-muted)]'
+                      }`}>
+                        {count}
+                      </span>
                     </button>
-                  )}
-                </div>
-
-                <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar snap-x scroll-smooth -mx-1 px-1">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSelectedNation(null);
-                      setFocusedDestId(null);
-                    }}
-                    className={`px-3.5 py-2 rounded-2xl font-bold text-xs shrink-0 transition-all snap-start flex items-center gap-2 cursor-pointer active:scale-95 border ${
-                      selectedNation === null
-                        ? 'bg-gradient-to-r from-blue-600 to-indigo-600 border-transparent text-white shadow-md shadow-blue-500/20'
-                        : 'bg-[var(--card-bg)] border-[var(--border)] text-[var(--text-main)] hover:border-blue-400 hover:bg-[var(--surface-variant)] shadow-2xs'
-                    }`}
-                  >
-                    <span className="text-sm">🌐</span>
-                    <span>Tutte le mete</span>
-                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-black ${
-                      selectedNation === null ? 'bg-white/20 text-white' : 'bg-[var(--surface-variant)] text-[var(--text-muted)]'
-                    }`}>
-                      {destinations.length}
-                    </span>
-                  </button>
-
-                  {activeNations.map(natName => {
-                    const count = destinations.filter(d => getDestNation(d, countryGroups) === natName).length;
-                    const isSelected = selectedNation === natName;
-                    return (
-                      <button
-                        key={natName}
-                        type="button"
-                        onClick={() => {
-                          setSelectedNation(isSelected ? null : natName);
-                          setFocusedDestId(null);
-                        }}
-                        className={`px-3.5 py-2 rounded-2xl font-bold text-xs shrink-0 transition-all snap-start flex items-center gap-2 cursor-pointer active:scale-95 border ${
-                          isSelected
-                            ? 'bg-gradient-to-r from-blue-600 to-indigo-600 border-transparent text-white shadow-md shadow-blue-500/20'
-                            : 'bg-[var(--card-bg)] border-[var(--border)] text-[var(--text-main)] hover:border-blue-400 hover:bg-[var(--surface-variant)] shadow-2xs'
-                        }`}
-                      >
-                        <span className="text-sm">{getCountryEmoji(natName)}</span>
-                        <span>{natName}</span>
-                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-black ${
-                          isSelected ? 'bg-white/20 text-white' : 'bg-[var(--surface-variant)] text-[var(--text-muted)]'
-                        }`}>
-                          {count}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
+                  );
+                })}
               </div>
 
               {/* Suggestions from Famous Places */}
@@ -2552,31 +2531,17 @@ export const TravelScreen: React.FC<TravelScreenProps> = ({ module, onSave, onCl
 
               {/* Destination List Section */}
               <div className="space-y-4">
-                <div className="flex items-center justify-between px-1 pt-1">
-                  <div className="flex items-center gap-2">
-                    <div className="w-2.5 h-2.5 rounded-full bg-blue-500 shadow-xs shadow-blue-500/50" />
-                    <h3 className="text-xs font-black uppercase tracking-wider text-[var(--text-main)]">
-                      {selectedNation 
-                        ? `${getCountryEmoji(selectedNation)} ${selectedNation}`
-                        : 'Tutte le Destinazioni'
-                      }
-                    </h3>
-                    <span className="text-[11px] font-bold text-[var(--text-muted)] bg-[var(--surface-variant)] px-2.5 py-0.5 rounded-full border border-[var(--border)]/50">
-                      {displayDestinations.length}
-                    </span>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setDestModalType('place');
-                      setShowAddModal(true);
-                    }}
-                    className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-600 dark:text-blue-400 hover:text-blue-700 bg-blue-500/10 hover:bg-blue-500/15 px-3 py-1.5 rounded-xl transition-all cursor-pointer active:scale-95"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    <span>Aggiungi Meta</span>
-                  </button>
+                <div className="flex items-center gap-2 px-1 pt-1">
+                  <div className="w-2.5 h-2.5 rounded-full bg-blue-500 shadow-xs shadow-blue-500/50" />
+                  <h3 className="text-xs font-black uppercase tracking-wider text-[var(--text-main)]">
+                    {selectedNation 
+                      ? `${getCountryEmoji(selectedNation)} ${selectedNation}`
+                      : 'Tutte le Destinazioni'
+                    }
+                  </h3>
+                  <span className="text-[11px] font-bold text-[var(--text-muted)] bg-[var(--surface-variant)] px-2.5 py-0.5 rounded-full border border-[var(--border)]/50">
+                    {displayDestinations.length}
+                  </span>
                 </div>
 
                 {displayDestinations.length === 0 ? (
