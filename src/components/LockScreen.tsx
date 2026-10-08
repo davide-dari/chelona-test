@@ -269,7 +269,7 @@ export const LockScreen = ({ isVisible, onAuthenticated, onStartScan, onOpenTool
 
     setIsLoading(true);
     try {
-      if (selectedProfile.hasPassword === false) {
+      if (selectedProfile.hasPassword === false || !selectedProfile.passwordHash) {
         const pubKey = await storage.getPublicKey();
         setPassword('');
         setError('');
@@ -279,7 +279,7 @@ export const LockScreen = ({ isVisible, onAuthenticated, onStartScan, onOpenTool
 
       const pwdToTry = customPassword !== undefined ? customPassword : password;
       
-      // 1. Try standard password hash match
+      // Try standard password hash match
       const hash = await encryption.hashPassword(pwdToTry, selectedProfile.salt);
       if (hash === selectedProfile.passwordHash) {
         const key = await encryption.deriveKey(pwdToTry, selectedProfile.salt);
@@ -287,32 +287,6 @@ export const LockScreen = ({ isVisible, onAuthenticated, onStartScan, onOpenTool
         setError('');
         onAuthenticated(key, selectedProfile.id);
         return;
-      }
-
-      // 2. Try public fallback key
-      const pubKey = await storage.getPublicKey();
-      const publicPass = 'chelona_public_vault_key_2026';
-      const pubHash = await encryption.hashPassword(publicPass, selectedProfile.salt);
-      if (hash === pubHash || pwdToTry === publicPass || !selectedProfile.passwordHash) {
-        setPassword('');
-        setError('');
-        onAuthenticated(pubKey, selectedProfile.id);
-        return;
-      }
-
-      // 3. Try biometric key if enabled
-      if (selectedProfile.isBiometricEnabled) {
-        try {
-          const bioPass = await biometricService.getMasterKey(selectedProfile.id, selectedProfile.biometricServerKey);
-          if (bioPass) {
-            // Raw AES export: reimport, non riderevazione PBKDF2
-            const key = await encryption.importKey(bioPass);
-            setPassword('');
-            setError('');
-            onAuthenticated(key, selectedProfile.id);
-            return;
-          }
-        } catch (bioErr) {}
       }
 
       setError('Password errata.');
@@ -347,9 +321,11 @@ export const LockScreen = ({ isVisible, onAuthenticated, onStartScan, onOpenTool
       if (masterKeyStr) {
         const masterKey = await encryption.importKey(masterKeyStr);
         onAuthenticated(masterKey, selectedProfile.id);
-      } else {
+      } else if (selectedProfile.hasPassword === false || !selectedProfile.passwordHash) {
         const pubKey = await storage.getPublicKey();
         onAuthenticated(pubKey, selectedProfile.id);
+      } else {
+        setError('Chiave biometrica non trovata. Accedi con la password.');
       }
     } catch (err: any) {
       console.error('[LockScreen] Biometric login error:', err);
