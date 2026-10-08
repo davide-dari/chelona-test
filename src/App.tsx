@@ -23,6 +23,7 @@ import { APP_VERSION } from './constants/version';
 import { queryChelonaAi, type AiAction } from './services/chelonaEngine';
 import { getSavedParking, getNavigationUrl } from './services/parkingService';
 import { getAutoDeadlineTargetDate } from './utils/autoDeadlines';
+import { resolveLatestModule } from './utils/moduleResolution';
 import { indexModulesIntoRAG } from './services/ragEngine';
 
 import { motion, AnimatePresence } from 'motion/react';
@@ -413,6 +414,16 @@ export default function App() {
     setEditingModuleId(null);
     setIsAdding(false);
   }, []);
+
+  // Fix "Auto & Mobilità vuota alla prima apertura": i dati del veicolo (bollo, assicurazione,
+  // revisione, km, manutenzioni) vivono nel vault cifrato e arrivano in `modules` solo dopo lo
+  // sblocco, in modo asincrono. `editingAutoModule` può quindi restare la copia pubblica ridotta
+  // (solo id/titolo): qui risolviamo sempre il veicolo più aggiornato dall'elenco corrente, così la
+  // schermata si popola appena lo stato completo è disponibile, senza dover riaprire la sezione.
+  const activeAutoModule = useMemo(
+    () => resolveLatestModule(editingAutoModule, modules),
+    [editingAutoModule, modules]
+  );
 
   // Homepage Voice Assistant Direct State (Ascolto vocale rapido direttamente dalla home)
   const [isHomeVoiceListening, setIsHomeVoiceListening] = useState(false);
@@ -6477,9 +6488,9 @@ export default function App() {
       {/* Document Archive View */}
       <React.Suspense fallback={null}>
       <AnimatePresence>
-        {editingAutoModule && (
+        {activeAutoModule && (
           <AutoManagementScreen 
-            module={editingAutoModule} 
+            module={activeAutoModule} 
             onSave={handleSaveAutoEdit} 
             onAutoSave={(updated) => {
               updateModuleDirect(updated);
