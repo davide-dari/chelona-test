@@ -761,17 +761,6 @@ export const VOLANTINI_DB: VolantiniDb = {
           "to": "2026-10-15T00:00:00+02:00",
           "bkcode": "00106671350478c8c9f14",
           "authid": "uU9MKsgd5ruj"
-        },
-        {
-          "id": 496,
-          "title": "Volantino Comet: Speciale",
-          "subtitle": "Grandi Elettrodomestici",
-          "coverUrl": "https://www.calameo.com/books/social/cover/001066713bd8965b50402?authid=rDkQyPfyvpwQ",
-          "fallbackCoverUrl": "https://www.centrovolantini.it/sites/default/files/styles/thumb_copertina/public/comet_496.jpg",
-          "from": "2026-09-26T00:00:00+02:00",
-          "to": "2026-10-08T00:00:00+02:00",
-          "bkcode": "001066713bd8965b50402",
-          "authid": "rDkQyPfyvpwQ"
         }
       ]
     },

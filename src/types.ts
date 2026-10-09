@@ -38,6 +38,7 @@ export interface DocumentModule extends BaseModule {
   issuedBy?: string;
   pdfAttachment?: string; // base64 encoded PDF
   selfDestructAt?: number; // timestamp in ms
+  content?: string; // optional notes/text content
 }
 
 export interface AutoMaintenanceRecord {

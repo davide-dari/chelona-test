@@ -2,10 +2,10 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   ArrowLeft, MapPin, Plus, Navigation, Trash2, Edit2, X, Share2, 
-  Car, Clock, AlertCircle, RefreshCw, Check, ExternalLink, Timer, 
-  Edit3, Bell, Coins, Search, QrCode, Bookmark, ChevronRight,
-  ShieldCheck, AlertTriangle, Play, CheckCircle2, RotateCcw,
-  LocateFixed, Satellite, Crosshair, Compass
+  Car, Clock, RefreshCw, Check, ExternalLink, Timer, 
+  Edit3, Bell, Coins, Search, QrCode, Bookmark,
+  AlertTriangle, CheckCircle2, LocateFixed, Satellite, Crosshair,
+  Camera, Home, Briefcase, Star, Copy, Image as ImageIcon
 } from 'lucide-react';
 import { generateUUID } from '../utils/uuid';
 import { Share } from '@capacitor/share';
@@ -24,6 +24,8 @@ export interface Address {
   id: string;
   title: string;
   query: string;
+  notes?: string;
+  category?: 'home' | 'work' | 'favorite' | 'other';
 }
 
 export interface AddressAndParkingScreenProps {
@@ -46,14 +48,18 @@ export const AddressAndParkingScreen: React.FC<AddressAndParkingScreenProps> = (
   // ----------------------------------------------------
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [searchAddrQuery, setSearchAddrQuery] = useState('');
+  const [addrCategoryFilter, setAddrCategoryFilter] = useState<'all' | 'home' | 'work' | 'favorite' | 'other'>('all');
   const [isAddingAddr, setIsAddingAddr] = useState(false);
   const [editingAddr, setEditingAddr] = useState<Address | null>(null);
   const [newTitle, setNewTitle] = useState('');
   const [newQuery, setNewQuery] = useState('');
+  const [newNotes, setNewNotes] = useState('');
+  const [newCategory, setNewCategory] = useState<'home' | 'work' | 'favorite' | 'other'>('other');
   const [isGettingAddrGps, setIsGettingAddrGps] = useState(false);
   const [isScanningQr, setIsScanningQr] = useState(false);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [sharingAddr, setSharingAddr] = useState<Address | null>(null);
+  const [navModalTarget, setNavModalTarget] = useState<{ query: string; lat?: number; lon?: number; title: string } | null>(null);
 
   // ----------------------------------------------------
   // STATO PARCHEGGIO & PARCHIMETRO
@@ -64,32 +70,25 @@ export const AddressAndParkingScreen: React.FC<AddressAndParkingScreenProps> = (
   const [isEditingNotes, setIsEditingNotes] = useState(false);
   const [notesText, setNotesText] = useState('');
   const [now, setNow] = useState<number>(Date.now());
+  const [viewFullPhoto, setViewFullPhoto] = useState(false);
 
-  // Configurazione Nuovo Parcheggio (Setup)
+  // Setup Nuovo Parcheggio
   const [locationMode, setLocationMode] = useState<'gps' | 'manual'>('gps');
   const [manualAddressInput, setManualAddressInput] = useState('');
-  const [selectedAddressFromBook, setSelectedAddressFromBook] = useState<Address | null>(null);
   const [vehicleNameInput, setVehicleNameInput] = useState('');
-  
-  // Parchimetro Setup (Stile EasyPark / parchimetro vero) - disattivato di default
   const [isMeterEnabled, setIsMeterEnabled] = useState(false);
-  const [meterDurationMinutes, setMeterDurationMinutes] = useState<number>(60); // 1 ora di default
-  const [hourlyRate, setHourlyRate] = useState<number>(1.50); // 1.50 €/h tipico
-  const [customRateInput, setCustomRateInput] = useState('1.50');
-  const [manualEndTimeInput, setManualEndTimeInput] = useState<string>(''); // formato HH:mm
+  const [meterDurationMinutes, setMeterDurationMinutes] = useState<number>(60);
+  const [hourlyRate, setHourlyRate] = useState<number>(1.50);
+  const [manualEndTimeInput, setManualEndTimeInput] = useState<string>('');
+  const [parkingPhotoUrl, setParkingPhotoUrl] = useState<string | null>(null);
 
-  // Assicura che il parchimetro sia disattivato di default quando si entra nella sezione parcheggio senza un parcheggio attivo
-  useEffect(() => {
-    if (activeTab === 'parking' && !parking) {
-      setIsMeterEnabled(false);
-    }
-  }, [activeTab, parking]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Modal / Selettore per scegliere indirizzo da rubrica come parcheggio
+  // Modal helpers
   const [isAddressPickerOpen, setIsAddressPickerOpen] = useState(false);
-  // Modal modifica manuale orario parcheggio attivo
   const [isExtendingManualModalOpen, setIsExtendingManualModalOpen] = useState(false);
   const [extendTimeInput, setExtendTimeInput] = useState('');
+  const [showClearParkingConfirm, setShowClearParkingConfirm] = useState(false);
 
   // ----------------------------------------------------
   // RILEVAMENTO GPS AUTOMATICO CON ANIMAZIONE RADAR
@@ -100,6 +99,12 @@ export const AddressAndParkingScreen: React.FC<AddressAndParkingScreenProps> = (
   const [acquiredCoords, setAcquiredCoords] = useState<{ latitude: number; longitude: number; accuracy?: number } | null>(null);
   const [gpsErrorMsg, setGpsErrorMsg] = useState<string | null>(null);
 
+  // Costo stimato parchimetro in setup
+  const estimatedMeterCost = useMemo(() => {
+    if (!isMeterEnabled || hourlyRate <= 0) return 0;
+    return Math.round((meterDurationMinutes / 60) * hourlyRate * 100) / 100;
+  }, [isMeterEnabled, meterDurationMinutes, hourlyRate]);
+
   const triggerGpsAutoSave = async () => {
     setIsAcquiringGpsParking(true);
     setGpsAcquisitionStep('locating');
@@ -108,16 +113,13 @@ export const AddressAndParkingScreen: React.FC<AddressAndParkingScreenProps> = (
     setAcquiredCoords(null);
 
     try {
-      // Step 1: Coordinate GPS
       setGpsAcquisitionStep('locating');
       const pos = await getCurrentGpsPosition();
       setAcquiredCoords(pos);
 
-      // Step 2: Risoluzione Indirizzo
       setGpsAcquisitionStep('geocoding');
       const geo = await reverseGeocodeCoordinates(pos.latitude, pos.longitude);
 
-      // Step 3: Salvataggio Parcheggio
       setGpsAcquisitionStep('saving');
       let expiresAt: number | undefined = undefined;
       let duration: number | undefined = undefined;
@@ -140,7 +142,13 @@ export const AddressAndParkingScreen: React.FC<AddressAndParkingScreenProps> = (
         cost
       );
 
-      setAcquiredAddress(saved.address);
+      // Allega foto se scattata in fase di setup
+      if (parkingPhotoUrl) {
+        saved.photoUrl = parkingPhotoUrl;
+        saveParking(saved);
+      }
+
+      setAcquiredAddress(saved.address || 'Posizione GPS');
       setGpsAcquisitionStep('success');
 
       if (typeof navigator !== 'undefined' && navigator.vibrate) {
@@ -154,16 +162,15 @@ export const AddressAndParkingScreen: React.FC<AddressAndParkingScreenProps> = (
       setTimeout(() => {
         setParking(saved);
         setIsAcquiringGpsParking(false);
-      }, 1200);
+      }, 1000);
 
     } catch (err: any) {
       console.error('Error auto-saving parking GPS', err);
       setGpsAcquisitionStep('error');
-      setGpsErrorMsg(err?.message || 'Impossibile rilevare la posizione GPS. Assicurati che i permessi di geolocalizzazione siano concessi.');
+      setGpsErrorMsg(err?.message || 'Impossibile rilevare la posizione GPS. Verifica i permessi di localizzazione.');
     }
   };
 
-  // Se aperto con initialAutoSave (es. da comando Chelona AI), attiva subito il rilevamento
   useEffect(() => {
     if (initialAutoSave) {
       setActiveTab('parking');
@@ -171,13 +178,13 @@ export const AddressAndParkingScreen: React.FC<AddressAndParkingScreenProps> = (
     }
   }, [initialAutoSave]);
 
-  // Aggiornamento tempo ogni secondo per il parchimetro live
+  // Aggiornamento tempo ogni secondo per il countdown
   useEffect(() => {
     const timer = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(timer);
   }, []);
 
-  // Ascolta aggiornamenti del parcheggio da altri componenti o da Chelona AI
+  // Ascolta aggiornamenti del parcheggio esterni o da Chelona AI
   useEffect(() => {
     const handleUpdate = (e: any) => {
       setParking(e.detail || getSavedParking());
@@ -186,7 +193,7 @@ export const AddressAndParkingScreen: React.FC<AddressAndParkingScreenProps> = (
     return () => window.removeEventListener(PARKING_EVENT, handleUpdate);
   }, []);
 
-  // Caricamento iniziale Rubrica Indirizzi
+  // Caricamento rubrica
   useEffect(() => {
     const loaded = storage.loadAddressBook();
     setAddresses(loaded);
@@ -195,12 +202,14 @@ export const AddressAndParkingScreen: React.FC<AddressAndParkingScreenProps> = (
     }
   }, []);
 
-  // Ascolta intent esterno per aggiungere indirizzo
+  // Intent esterno per aggiungere indirizzo
   useEffect(() => {
     const handleOpenAdd = (e: any) => {
       if (e.detail) {
         setNewTitle(e.detail.title || '');
         setNewQuery(e.detail.query || '');
+        setNewNotes(e.detail.notes || '');
+        setNewCategory(e.detail.category || 'other');
         setEditingAddr(null);
         setIsAddingAddr(true);
         setActiveTab('addresses');
@@ -210,7 +219,7 @@ export const AddressAndParkingScreen: React.FC<AddressAndParkingScreenProps> = (
     return () => window.removeEventListener('open-address-book-add', handleOpenAdd);
   }, []);
 
-  // Calcola distanza live dall'auto se parcheggiata
+  // Calcola distanza dall'auto live
   useEffect(() => {
     if (!parking || (parking.latitude === 0 && parking.longitude === 0)) {
       setDistanceToCar(null);
@@ -232,7 +241,7 @@ export const AddressAndParkingScreen: React.FC<AddressAndParkingScreenProps> = (
       });
   }, [parking, now]);
 
-  // Aggiorna campo orario HH:mm quando cambia la durata del parchimetro in setup
+  // Aggiorna orario HH:mm fine sosta setup
   useEffect(() => {
     const targetDate = new Date(Date.now() + meterDurationMinutes * 60 * 1000);
     const hh = String(targetDate.getHours()).padStart(2, '0');
@@ -256,22 +265,40 @@ export const AddressAndParkingScreen: React.FC<AddressAndParkingScreenProps> = (
     if (!newTitle.trim() || !newQuery.trim()) return;
 
     if (editingAddr) {
-      const updated = addresses.map(a => a.id === editingAddr.id ? { ...a, title: newTitle.trim(), query: newQuery.trim() } : a);
+      const updated = addresses.map(a => 
+        a.id === editingAddr.id 
+          ? { 
+              ...a, 
+              title: newTitle.trim(), 
+              query: newQuery.trim(),
+              notes: newNotes.trim() || undefined,
+              category: newCategory
+            } 
+          : a
+      );
       saveAddresses(updated);
       setEditingAddr(null);
-      if (showToast) showToast('Indirizzo aggiornato con successo!', 'success');
+      if (showToast) showToast('Luogo aggiornato!', 'success');
     } else {
-      const updated = [
-        { id: generateUUID(), title: newTitle.trim(), query: newQuery.trim() },
+      const updated: Address[] = [
+        { 
+          id: generateUUID(), 
+          title: newTitle.trim(), 
+          query: newQuery.trim(),
+          notes: newNotes.trim() || undefined,
+          category: newCategory
+        },
         ...addresses
       ];
       saveAddresses(updated);
-      if (showToast) showToast('Nuovo indirizzo salvato!', 'success');
+      if (showToast) showToast('Nuovo luogo salvato!', 'success');
     }
     
     setIsAddingAddr(false);
     setNewTitle('');
     setNewQuery('');
+    setNewNotes('');
+    setNewCategory('other');
   };
 
   const handleGetGpsForNewAddress = async () => {
@@ -281,7 +308,7 @@ export const AddressAndParkingScreen: React.FC<AddressAndParkingScreenProps> = (
       const geo = await reverseGeocodeCoordinates(pos.latitude, pos.longitude);
       setNewQuery(geo.address || `${pos.latitude.toFixed(6)}, ${pos.longitude.toFixed(6)}`);
       if (!newTitle) {
-        setNewTitle(geo.city ? `Posizione a ${geo.city}` : 'Mia Posizione');
+        setNewTitle(geo.city ? `Luogo a ${geo.city}` : 'Mia Posizione');
       }
       if (showToast) showToast('Posizione attuale rilevata!', 'success');
     } catch (e: any) {
@@ -294,24 +321,30 @@ export const AddressAndParkingScreen: React.FC<AddressAndParkingScreenProps> = (
   const handleScanAddressQr = (data: string) => {
     setIsScanningQr(false);
     try {
-      let parsed = JSON.parse(data);
+      const parsed = JSON.parse(data);
       if (parsed.t === 'shared_address' || parsed.type === 'shared_address') {
         const addressData = parsed.d || parsed.data;
         if (addressData && addressData.title && addressData.query) {
-          const updated = [
-            { id: generateUUID(), title: addressData.title.trim(), query: addressData.query.trim() },
+          const updated: Address[] = [
+            { 
+              id: generateUUID(), 
+              title: addressData.title.trim(), 
+              query: addressData.query.trim(),
+              notes: addressData.notes || undefined,
+              category: addressData.category || 'other'
+            },
             ...addresses
           ];
           saveAddresses(updated);
-          if (showToast) showToast(`Indirizzo "${addressData.title}" importato!`, 'success');
+          if (showToast) showToast(`Luogo "${addressData.title}" importato!`, 'success');
         } else {
-          alert('Dati indirizzo non validi nel QR code.');
+          if (showToast) showToast('Dati non validi nel QR code', 'error');
         }
       } else {
-        alert('Questo QR code non contiene un indirizzo Chelona valido.');
+        if (showToast) showToast('QR code non riconosciuto come indirizzo Chelona', 'error');
       }
     } catch {
-      alert('Errore nella lettura del QR code.');
+      if (showToast) showToast('Errore lettura QR code', 'error');
     }
   };
 
@@ -323,41 +356,96 @@ export const AddressAndParkingScreen: React.FC<AddressAndParkingScreenProps> = (
     if (deleteConfirmId) {
       saveAddresses(addresses.filter(a => a.id !== deleteConfirmId));
       setDeleteConfirmId(null);
-      if (showToast) showToast('Indirizzo eliminato', 'info');
+      if (showToast) showToast('Luogo rimosso', 'info');
     }
   };
 
-  const handleNavigateAddress = (query: string) => {
-    const mapUrl = `https://maps.google.com/?q=${encodeURIComponent(query)}`;
-    window.open(mapUrl, '_blank', 'noopener,noreferrer');
+  const handleCopyText = (text: string, label: string) => {
+    navigator.clipboard.writeText(text);
+    if (showToast) showToast(`${label} copiato negli appunti!`, 'success');
   };
 
   const handleParkAtAddress = (addr: Address) => {
-    setSelectedAddressFromBook(addr);
-    setManualAddressInput(`${addr.title}: ${addr.query}`);
+    setManualAddressInput(addr.query ? `${addr.title}: ${addr.query}` : addr.title);
     setLocationMode('manual');
     setActiveTab('parking');
     if (showToast) showToast(`Impostato come parcheggio: ${addr.title}`, 'info');
   };
 
-  // Indirizzi filtrati da ricerca
+  // Indirizzi filtrati per ricerca e categoria
   const filteredAddresses = useMemo(() => {
-    if (!searchAddrQuery.trim()) return addresses;
+    let list = addresses;
+    if (addrCategoryFilter !== 'all') {
+      list = list.filter(a => (a.category || 'other') === addrCategoryFilter);
+    }
+    if (!searchAddrQuery.trim()) return list;
     const q = searchAddrQuery.toLowerCase();
-    return addresses.filter(a => a.title.toLowerCase().includes(q) || a.query.toLowerCase().includes(q));
-  }, [addresses, searchAddrQuery]);
+    return list.filter(a => 
+      a.title.toLowerCase().includes(q) || 
+      a.query.toLowerCase().includes(q) ||
+      (a.notes && a.notes.toLowerCase().includes(q))
+    );
+  }, [addresses, searchAddrQuery, addrCategoryFilter]);
+
+  // ----------------------------------------------------
+  // GESTIONE FOTO POSTO AUTO
+  // ----------------------------------------------------
+  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const maxDim = 900;
+        let { width, height } = img;
+        if (width > maxDim || height > maxDim) {
+          if (width > height) {
+            height = Math.round((height * maxDim) / width);
+            width = maxDim;
+          } else {
+            width = Math.round((width * maxDim) / height);
+            height = maxDim;
+          }
+        }
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, width, height);
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.82);
+          if (parking) {
+            const updated = { ...parking, photoUrl: dataUrl };
+            saveParking(updated);
+            setParking(updated);
+            if (showToast) showToast('Foto posto auto salvata! 📸', 'success');
+          } else {
+            setParkingPhotoUrl(dataUrl);
+            if (showToast) showToast('Foto allegata alla nuova sosta! 📸', 'success');
+          }
+        }
+      };
+      img.src = event.target?.result as string;
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemovePhoto = () => {
+    if (parking) {
+      const updated = { ...parking, photoUrl: undefined };
+      saveParking(updated);
+      setParking(updated);
+      if (showToast) showToast('Foto rimossa', 'info');
+    } else {
+      setParkingPhotoUrl(null);
+    }
+  };
 
   // ----------------------------------------------------
   // GESTIONE PARCHEGGIO & PARCHIMETRO
   // ----------------------------------------------------
-
-  // Calcolo costo stimato in setup
-  const estimatedMeterCost = useMemo(() => {
-    if (!isMeterEnabled || hourlyRate <= 0) return 0;
-    return Math.round((meterDurationMinutes / 60) * hourlyRate * 100) / 100;
-  }, [isMeterEnabled, meterDurationMinutes, hourlyRate]);
-
-  // Inserimento manuale ora fine sosta (da timepicker input)
   const handleManualTimeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
     setManualEndTimeInput(val);
@@ -370,8 +458,6 @@ export const AddressAndParkingScreen: React.FC<AddressAndParkingScreenProps> = (
 
     const targetDate = new Date();
     targetDate.setHours(hh, mm, 0, 0);
-
-    // Se l'orario scelto è già passato oggi, intendiamo domani
     if (targetDate.getTime() <= Date.now()) {
       targetDate.setDate(targetDate.getDate() + 1);
     }
@@ -380,15 +466,10 @@ export const AddressAndParkingScreen: React.FC<AddressAndParkingScreenProps> = (
     setMeterDurationMinutes(diffMinutes);
   };
 
-  // Regolazione rapida minuti parchimetro (-15, +15, +30, +60, ecc.)
   const adjustMeterMinutes = (delta: number) => {
-    setMeterDurationMinutes(prev => {
-      const next = Math.max(5, prev + delta);
-      return next;
-    });
+    setMeterDurationMinutes(prev => Math.max(5, prev + delta));
   };
 
-  // Salva il nuovo parcheggio
   const handleConfirmAndSaveParking = async () => {
     if (locationMode === 'gps') {
       triggerGpsAutoSave();
@@ -420,29 +501,26 @@ export const AddressAndParkingScreen: React.FC<AddressAndParkingScreenProps> = (
         estimatedCost: cost,
       });
 
-      const wasMeterEnabled = isMeterEnabled;
+      if (parkingPhotoUrl) {
+        saved.photoUrl = parkingPhotoUrl;
+        saveParking(saved);
+      }
+
       setParking(saved);
       setIsEditingNotes(false);
       setIsMeterEnabled(false);
+      setParkingPhotoUrl(null);
+
       if (showToast) {
-        showToast(
-          wasMeterEnabled 
-            ? `🅿️ Parcheggio attivato! Parchimetro impostato per ${formatMinutesHuman(meterDurationMinutes)}.`
-            : '📍 Posizione auto salvata con successo!', 
-          'success'
-        );
+        showToast('📍 Posizione auto memorizzata!', 'success');
       }
     } catch (e: any) {
-      console.error('Errore salvataggio parcheggio', e);
-      if (showToast) {
-        showToast(e.message || 'Errore durante il salvataggio del parcheggio.', 'error');
-      }
+      if (showToast) showToast(e.message || 'Errore salvataggio parcheggio', 'error');
     } finally {
       setIsLoadingGps(false);
     }
   };
 
-  // Prolunga sosta dal vivo (+15m, +30m, +1h) come nelle app di sosta
   const handleExtendParkingLive = (additionalMinutes: number) => {
     const updated = extendParkingMeter(additionalMinutes);
     if (updated) {
@@ -453,7 +531,6 @@ export const AddressAndParkingScreen: React.FC<AddressAndParkingScreenProps> = (
     }
   };
 
-  // Imposta orario di fine manuale sul parcheggio attivo
   const handleApplyManualEndTimeLive = () => {
     if (!extendTimeInput || !parking) return;
     const [hhStr, mmStr] = extendTimeInput.split(':');
@@ -472,39 +549,32 @@ export const AddressAndParkingScreen: React.FC<AddressAndParkingScreenProps> = (
       setParking(updated);
       setIsExtendingManualModalOpen(false);
       if (showToast) {
-        showToast(`⏱️ Orario di fine sosta aggiornato alle ${extendTimeInput}!`, 'success');
+        showToast(`⏱️ Fine sosta aggiornata alle ${extendTimeInput}!`, 'success');
       }
     }
   };
 
-  // Salva solo le note aggiornate
   const handleSaveNotes = () => {
     if (!parking) return;
-    const updated: SavedParking = {
-      ...parking,
-      notes: notesText,
-    };
+    const updated: SavedParking = { ...parking, notes: notesText };
     saveParking(updated);
     setParking(updated);
     setIsEditingNotes(false);
-    if (showToast) showToast('Note parcheggio aggiornate', 'success');
+    if (showToast) showToast('Note aggiornate!', 'success');
   };
 
-  // Termina sosta / Ho ripreso l'auto
-  const handleClearParking = () => {
-    if (confirm("Hai ripreso l'auto? Vuoi terminare la sosta e azzerare il parchimetro?")) {
-      clearSavedParking();
-      setParking(null);
-      setDistanceToCar(null);
-      setNotesText('');
-      setManualAddressInput('');
-      setSelectedAddressFromBook(null);
-      setIsMeterEnabled(false);
-      if (showToast) showToast("Sosta terminata. Posizione rimossa.", 'info');
-    }
+  const confirmClearParking = () => {
+    clearSavedParking();
+    setParking(null);
+    setDistanceToCar(null);
+    setNotesText('');
+    setManualAddressInput('');
+    setIsMeterEnabled(false);
+    setParkingPhotoUrl(null);
+    setShowClearParkingConfirm(false);
+    if (showToast) showToast("Sosta terminata. Auto ripresa! 🚗✨", 'info');
   };
 
-  // Condivisione posizione auto
   const handleShareParking = async () => {
     if (!parking) return;
     const mapLink = (parking.latitude !== 0 && parking.longitude !== 0)
@@ -525,11 +595,36 @@ export const AddressAndParkingScreen: React.FC<AddressAndParkingScreenProps> = (
     }
   };
 
-  // Navigazione all'auto a piedi
-  const handleNavigateToCar = () => {
-    if (!parking) return;
-    const url = getNavigationUrl(parking.latitude, parking.longitude, parking.address);
-    window.open(url, '_blank');
+  const openNavigation = (app: 'google' | 'apple' | 'waze', target: { query?: string; lat?: number; lon?: number }) => {
+    const lat = target.lat;
+    const lon = target.lon;
+    const q = target.query || '';
+
+    let url = '';
+    if (app === 'google') {
+      if (lat && lon && lat !== 0 && lon !== 0) {
+        url = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lon}&travelmode=walking`;
+      } else {
+        url = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(q)}&travelmode=walking`;
+      }
+    } else if (app === 'apple') {
+      if (lat && lon && lat !== 0 && lon !== 0) {
+        url = `maps://maps.apple.com/?daddr=${lat},${lon}&dirflg=w`;
+      } else {
+        url = `maps://maps.apple.com/?daddr=${encodeURIComponent(q)}&dirflg=w`;
+      }
+    } else if (app === 'waze') {
+      if (lat && lon && lat !== 0 && lon !== 0) {
+        url = `https://waze.com/ul?ll=${lat},${lon}&navigate=yes`;
+      } else {
+        url = `https://waze.com/ul?q=${encodeURIComponent(q)}&navigate=yes`;
+      }
+    }
+
+    if (url) {
+      window.open(url, '_blank');
+      setNavModalTarget(null);
+    }
   };
 
   // Calcolo tempo e stato del parchimetro attivo in tempo reale
@@ -548,7 +643,6 @@ export const AddressAndParkingScreen: React.FC<AddressAndParkingScreenProps> = (
     const endDate = new Date(parking.expiresAt);
     const endFormatted = `${String(endDate.getHours()).padStart(2, '0')}:${String(endDate.getMinutes()).padStart(2, '0')}`;
 
-    // Percentuale progresso se disponibile durata totale
     let percentRemaining = 0;
     if (parking.meterStartedAt && parking.expiresAt > parking.meterStartedAt) {
       const totalSpan = parking.expiresAt - parking.meterStartedAt;
@@ -558,7 +652,7 @@ export const AddressAndParkingScreen: React.FC<AddressAndParkingScreenProps> = (
       percentRemaining = isExpired ? 0 : 50;
     }
 
-    const isUrgent = !isExpired && diffMs < 15 * 60 * 1000; // meno di 15 min
+    const isUrgent = !isExpired && diffMs < 15 * 60 * 1000;
 
     return {
       isExpired,
@@ -578,103 +672,138 @@ export const AddressAndParkingScreen: React.FC<AddressAndParkingScreenProps> = (
     return `${h}h ${m}m`;
   }
 
+  const getCategoryBadge = (cat?: string) => {
+    switch (cat) {
+      case 'home':
+        return { label: 'Casa', icon: Home, color: 'text-amber-500 bg-amber-500/10 border-amber-500/20' };
+      case 'work':
+        return { label: 'Lavoro', icon: Briefcase, color: 'text-blue-500 bg-blue-500/10 border-blue-500/20' };
+      case 'favorite':
+        return { label: 'Preferito', icon: Star, color: 'text-rose-500 bg-rose-500/10 border-rose-500/20' };
+      default:
+        return { label: 'Luogo', icon: MapPin, color: 'text-indigo-500 bg-indigo-500/10 border-indigo-500/20' };
+    }
+  };
+
   return (
-    <div className="fixed inset-0 z-[130] bg-[var(--bg)] flex flex-col h-[100dvh] overflow-hidden font-sans transition-colors duration-300">
-      {/* HEADER PRINCIPALE */}
-      <header className="h-16 lg:h-20 border-b border-[var(--border)] bg-[var(--header-bg)] backdrop-blur-2xl px-4 lg:px-8 flex items-center justify-between shrink-0 z-20 safe-area-header shadow-sm">
-        <div className="flex items-center gap-3">
-          <button
-            onClick={onClose}
-            className="p-2 hover:bg-[var(--surface-variant)] rounded-2xl text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors active:scale-95"
+    <motion.div 
+      initial={{ opacity: 0, y: 16 }} 
+      animate={{ opacity: 1, y: 0 }} 
+      className="fixed inset-0 z-[150] flex flex-col h-[100dvh] w-full bg-[var(--bg)] overflow-hidden"
+    >
+      {/* Hidden file input for camera/photo */}
+      <input 
+        type="file" 
+        ref={fileInputRef} 
+        onChange={handlePhotoUpload} 
+        accept="image/*" 
+        capture="environment" 
+        className="hidden" 
+      />
+
+      {/* ═══════ HEADER (Identico a Lista della Spesa, Ricettario, Volantini) ═══════ */}
+      <header className="flex items-center justify-between pt-[max(env(safe-area-inset-top),16px)] px-4 pb-3 bg-[var(--card-bg)] border-b border-[var(--border)] shrink-0 z-30">
+        <div className="flex items-center gap-3 min-w-0">
+          <button 
+            type="button" 
+            onClick={onClose} 
+            className="p-2.5 -ml-2 hover:bg-[var(--surface-variant)] rounded-full text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors shrink-0 cursor-pointer"
             title="Torna indietro"
           >
-            <ArrowLeft className="w-5 h-5 lg:w-6 lg:h-6" />
+            <ArrowLeft className="w-6 h-6" />
           </button>
-
-          <div className="w-10 h-10 lg:w-11 lg:h-11 rounded-2xl bg-gradient-to-tr from-indigo-500/15 via-rose-500/10 to-amber-500/15 border border-indigo-500/20 p-2 flex items-center justify-center shrink-0 shadow-sm text-indigo-500">
-            {activeTab === 'parking' ? (
-              <Car className="w-6 h-6 text-amber-500" />
-            ) : (
-              <MapPin className="w-6 h-6 text-indigo-500" />
-            )}
-          </div>
-
-          <div>
-            <h2 className="text-base lg:text-lg font-black text-[var(--text-main)] tracking-tight">
-              Mobilità & Posizioni
-            </h2>
-            <p className="text-xs text-[var(--text-muted)] font-medium">
-              {activeTab === 'parking' ? 'Trova auto, GPS parcheggio & parchimetro' : 'I miei luoghi, indirizzi e posizioni preferite'}
-            </p>
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
+              {activeTab === 'parking' ? (
+                <Car className="w-5 h-5" />
+              ) : (
+                <MapPin className="w-5 h-5" />
+              )}
+            </div>
+            <h1 className="text-xl lg:text-2xl font-bold text-[var(--text-main)] truncate">Mobilità & Posizioni</h1>
           </div>
         </div>
 
-        {/* Azioni rapide Header */}
-        <div className="flex items-center gap-2">
-          {activeTab === 'addresses' ? (
-            <>
-              <button
-                onClick={() => setIsScanningQr(true)}
-                className="p-2.5 rounded-2xl bg-[var(--surface-variant)] hover:bg-[var(--border)] text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors border border-[var(--border)] active:scale-95"
-                title="Scansiona QR Code indirizzo"
-              >
-                <QrCode className="w-5 h-5" />
-              </button>
-              <button
-                onClick={() => {
-                  setEditingAddr(null);
-                  setNewTitle('');
-                  setNewQuery('');
-                  setIsAddingAddr(true);
-                }}
-                className="p-2.5 rounded-2xl bg-indigo-500 text-white hover:bg-indigo-600 transition-colors shadow-md shadow-indigo-500/20 active:scale-95 flex items-center gap-1.5"
-                title="Nuovo Indirizzo"
-              >
-                <Plus className="w-5 h-5" />
-                <span className="text-xs font-bold hidden sm:inline">Nuovo</span>
-              </button>
-            </>
-          ) : (
-            parking && (
+        {/* Pulsanti Azione Header */}
+        <div className="flex items-center gap-2 shrink-0">
+          {activeTab === 'parking' ? (
+            parking ? (
               <>
                 <button
+                  type="button"
                   onClick={handleShareParking}
-                  className="p-2.5 rounded-2xl bg-[var(--surface-variant)] hover:bg-[var(--border)] text-[var(--text-muted)] hover:text-indigo-500 transition-colors border border-[var(--border)] active:scale-95"
+                  className="p-2.5 rounded-2xl bg-[var(--surface-variant)] hover:bg-[var(--border)] text-[var(--text-muted)] hover:text-blue-500 transition-colors border border-[var(--border)] cursor-pointer"
                   title="Condividi posizione auto"
                 >
                   <Share2 className="w-5 h-5" />
                 </button>
                 <button
-                  onClick={handleClearParking}
-                  className="p-2.5 rounded-2xl bg-[var(--surface-variant)] hover:bg-rose-500/10 text-[var(--text-muted)] hover:text-rose-500 transition-colors border border-[var(--border)] active:scale-95"
-                  title="Termina sosta / Cancella"
+                  type="button"
+                  onClick={() => setShowClearParkingConfirm(true)}
+                  className="p-2.5 rounded-2xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 border border-rose-500/20 transition-colors cursor-pointer"
+                  title="Termina sosta / Ho ripreso l'auto"
                 >
                   <Trash2 className="w-5 h-5" />
                 </button>
               </>
+            ) : (
+              <button
+                type="button"
+                onClick={triggerGpsAutoSave}
+                disabled={isAcquiringGpsParking}
+                className="px-3.5 py-2 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm active:scale-95 transition-all cursor-pointer disabled:opacity-50"
+              >
+                <LocateFixed className="w-4 h-4" />
+                <span>Salva Qui</span>
+              </button>
             )
+          ) : (
+            <>
+              <button
+                type="button"
+                onClick={() => setIsScanningQr(true)}
+                className="p-2.5 rounded-2xl bg-[var(--surface-variant)] hover:bg-[var(--border)] text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors border border-[var(--border)] cursor-pointer"
+                title="Scansiona QR Code luogo"
+              >
+                <QrCode className="w-5 h-5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setEditingAddr(null);
+                  setNewTitle('');
+                  setNewQuery('');
+                  setNewNotes('');
+                  setNewCategory('other');
+                  setIsAddingAddr(true);
+                }}
+                className="px-3.5 py-2 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm active:scale-95 transition-all cursor-pointer"
+                title="Nuovo Luogo"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Nuovo</span>
+              </button>
+            </>
           )}
         </div>
       </header>
 
-      {/* CONTROLLO A SCHEDE (SEGMENTED CONTROL M3) */}
-      <div className="px-4 pt-3 pb-1 shrink-0 bg-[var(--bg)] border-b border-[var(--border)]/60">
-        <div className="flex bg-[var(--surface-variant)] p-1 rounded-2xl border border-[var(--border)] max-w-lg mx-auto w-full relative">
+      {/* ═══════ CLEAN SEGMENTED TAB CONTROL ═══════ */}
+      <div className="px-4 py-2 bg-[var(--card-bg)] border-b border-[var(--border)] shrink-0 z-20">
+        <div className="flex bg-[var(--surface-variant)] p-1 rounded-2xl max-w-lg mx-auto w-full">
           <button
-            onClick={() => {
-              setActiveTab('parking');
-              if (!parking) setIsMeterEnabled(false);
-            }}
-            className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs sm:text-sm font-bold transition-all relative z-10 ${
+            type="button"
+            onClick={() => setActiveTab('parking')}
+            className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
               activeTab === 'parking'
-                ? 'bg-[var(--surface)] text-indigo-500 shadow-sm'
+                ? 'bg-[var(--card-bg)] text-blue-600 dark:text-blue-400 shadow-sm'
                 : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
             }`}
           >
             <Car className="w-4 h-4" />
-            <span>🚗 Trova & Salva Auto</span>
+            <span>🚗 Auto & Parcheggio</span>
             {parking && (
-              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 text-[10px] font-black border border-emerald-500/20">
+              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-black border border-emerald-500/20">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                 {meterLiveStatus ? meterLiveStatus.endFormatted : 'Attivo'}
               </span>
@@ -682,17 +811,18 @@ export const AddressAndParkingScreen: React.FC<AddressAndParkingScreenProps> = (
           </button>
 
           <button
+            type="button"
             onClick={() => setActiveTab('addresses')}
-            className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs sm:text-sm font-bold transition-all relative z-10 ${
+            className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
               activeTab === 'addresses'
-                ? 'bg-[var(--surface)] text-[var(--text-main)] shadow-sm'
+                ? 'bg-[var(--card-bg)] text-blue-600 dark:text-blue-400 shadow-sm'
                 : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
             }`}
           >
-            <MapPin className="w-4 h-4 text-indigo-500" />
-            <span>📍 I Miei Luoghi & Indirizzi</span>
+            <MapPin className="w-4 h-4" />
+            <span>📍 I Miei Luoghi</span>
             {addresses.length > 0 && (
-              <span className="px-1.5 py-0.5 bg-[var(--surface-variant)] text-[10px] font-black rounded-full border border-[var(--border)]">
+              <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-[var(--surface-variant)] text-[var(--text-muted)] border border-[var(--border)] font-bold">
                 {addresses.length}
               </span>
             )}
@@ -700,513 +830,353 @@ export const AddressAndParkingScreen: React.FC<AddressAndParkingScreenProps> = (
         </div>
       </div>
 
-      {/* CONTENUTO SCORREVOLE */}
-      <div className="flex-1 overflow-y-auto custom-scrollbar p-4 lg:p-8 max-w-3xl mx-auto w-full pb-24">
-        {activeTab === 'addresses' ? (
+      {/* ═══════ CONTENUTO SCORREVOLE ═══════ */}
+      <main className="flex-1 overflow-y-auto custom-scrollbar p-4 md:p-6 max-w-3xl mx-auto w-full pb-[max(env(safe-area-inset-bottom),24px)]">
+        {activeTab === 'parking' ? (
           /* ============================================================ */
-          /* SCHERMATA: RUBRICA INDIRIZZI                                */
+          /* SCHERMATA: PARCHEGGIO & AUTO                                */
           /* ============================================================ */
           <div className="space-y-4">
-            {/* Barra di Ricerca */}
-            <div className="relative">
-              <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" />
-              <input
-                type="text"
-                value={searchAddrQuery}
-                onChange={(e) => setSearchAddrQuery(e.target.value)}
-                placeholder="Cerca per titolo, via o città..."
-                className="w-full bg-[var(--surface-variant)] border border-[var(--border)] rounded-2xl pl-10 pr-4 py-2.5 text-sm text-[var(--text-main)] placeholder-[var(--text-muted)] focus:outline-none focus:border-indigo-500"
-              />
-              {searchAddrQuery && (
-                <button 
-                  onClick={() => setSearchAddrQuery('')}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] hover:text-[var(--text-main)]"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              )}
-            </div>
-
-            {/* Lista Indirizzi */}
-            {filteredAddresses.length > 0 ? (
-              <div className="grid grid-cols-1 gap-3">
-                {filteredAddresses.map((addr) => (
-                  <div
-                    key={addr.id}
-                    className="p-4 rounded-3xl bg-[var(--surface)] border border-[var(--border)] hover:border-indigo-500/30 transition-all shadow-sm space-y-3"
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex items-start gap-3 min-w-0">
-                        <div className="p-2.5 rounded-2xl bg-indigo-500/10 text-indigo-500 border border-indigo-500/20 shrink-0 mt-0.5">
-                          <MapPin className="w-5 h-5" />
-                        </div>
-                        <div className="min-w-0">
-                          <h4 className="text-base font-bold text-[var(--text-main)] truncate">
-                            {addr.title}
-                          </h4>
-                          <p className="text-xs text-[var(--text-muted)] break-words line-clamp-2">
-                            {addr.query}
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-1 shrink-0">
-                        <button
-                          onClick={() => {
-                            setEditingAddr(addr);
-                            setNewTitle(addr.title);
-                            setNewQuery(addr.query);
-                            setIsAddingAddr(true);
-                          }}
-                          className="p-2 rounded-xl text-[var(--text-muted)] hover:text-indigo-500 hover:bg-[var(--surface-variant)] transition-colors"
-                          title="Modifica"
-                        >
-                          <Edit2 className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => handleDeleteAddress(addr.id)}
-                          className="p-2 rounded-xl text-[var(--text-muted)] hover:text-rose-500 hover:bg-rose-500/10 transition-colors"
-                          title="Elimina"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Azioni Rapide su ciascun indirizzo */}
-                    <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-[var(--border)]/60">
-                      <button
-                        onClick={() => handleNavigateAddress(addr.query)}
-                        className="flex-1 min-w-[120px] py-2 px-3 rounded-xl bg-indigo-500 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-all"
-                      >
-                        <Navigation className="w-3.5 h-3.5" />
-                        <span>Naviga (Maps)</span>
-                      </button>
-
-                      <button
-                        onClick={() => handleParkAtAddress(addr)}
-                        className="py-2 px-3 rounded-xl bg-[var(--surface-variant)] hover:bg-[var(--border)] text-indigo-500 font-bold text-xs flex items-center gap-1.5 border border-[var(--border)] active:scale-95 transition-all"
-                        title="Imposta questo luogo come parcheggio auto"
-                      >
-                        <Car className="w-3.5 h-3.5" />
-                        <span>Parcheggia qui</span>
-                      </button>
-
-                      <button
-                        onClick={() => setSharingAddr(addr)}
-                        className="p-2 rounded-xl bg-[var(--surface-variant)] hover:bg-[var(--border)] text-[var(--text-muted)] hover:text-[var(--text-main)] border border-[var(--border)] active:scale-95 transition-all"
-                        title="Condividi via QR Code"
-                      >
-                        <QrCode className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              /* Empty state Rubrica */
-              <div className="py-14 text-center space-y-4">
-                <div className="w-20 h-20 rounded-full bg-indigo-500/10 text-indigo-500 flex items-center justify-center mx-auto border border-indigo-500/20">
-                  <MapPin className="w-10 h-10" />
-                </div>
-                <div className="space-y-1 max-w-sm mx-auto">
-                  <h3 className="text-lg font-bold text-[var(--text-main)]">Nessun Indirizzo Salvato</h3>
-                  <p className="text-xs text-[var(--text-muted)]">
-                    Salva i tuoi luoghi preferiti (casa, lavoro, clienti, palestre) per aprirli in Google Maps o selezionarli al volo come parcheggio.
-                  </p>
-                </div>
-                <button
-                  onClick={() => {
-                    setEditingAddr(null);
-                    setNewTitle('');
-                    setNewQuery('');
-                    setIsAddingAddr(true);
-                  }}
-                  className="py-3 px-6 rounded-2xl bg-indigo-500 text-white font-bold text-sm inline-flex items-center gap-2 shadow-md shadow-indigo-500/20 active:scale-95"
-                >
-                  <Plus className="w-4 h-4" />
-                  <span>Aggiungi il Primo Indirizzo</span>
-                </button>
-              </div>
-            )}
-          </div>
-        ) : (
-          /* ============================================================ */
-          /* SCHERMATA: PARCHEGGIO & PARCHIMETRO                          */
-          /* ============================================================ */
-          <div className="space-y-6">
+            {/* STATO 1: RILEVAMENTO GPS IN CORSO CON RADAR PULITO */}
             {isAcquiringGpsParking ? (
-              /* ANIMAZIONE CARICAMENTO GPS RILEVAMENTO POSIZIONE - SLEEK, REFINED & TRULY MINIMAL */
               <motion.div
-                initial={{ opacity: 0, scale: 0.98 }}
+                initial={{ opacity: 0, scale: 0.96 }}
                 animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.98 }}
-                className="p-8 sm:p-10 rounded-[2.5rem] bg-[var(--surface)] border border-indigo-500/20 dark:border-indigo-400/20 shadow-2xl relative overflow-hidden text-center space-y-6 my-2"
+                exit={{ opacity: 0, scale: 0.96 }}
+                className="p-6 sm:p-8 rounded-3xl bg-[var(--card-bg)] border border-blue-500/20 shadow-xl text-center space-y-5 my-2"
               >
-                {/* Glow di sfondo radiale soft */}
-                <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_rgba(99,102,241,0.1)_0%,_transparent_70%)] pointer-events-none" />
+                {/* Visual reticle */}
+                <div className="relative w-36 h-36 mx-auto flex items-center justify-center">
+                  <div className="absolute w-36 h-36 rounded-full border border-blue-500/20 animate-ping opacity-25" />
+                  <div className="absolute w-28 h-28 rounded-full border border-blue-500/30" />
+                  <div className="absolute w-20 h-20 rounded-full border border-dashed border-blue-500/40" />
 
-                {/* Status chip minimale */}
-                <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-500 dark:text-indigo-400 text-xs font-semibold">
-                  <span className={`w-2 h-2 rounded-full ${
-                    gpsAcquisitionStep === 'error' 
-                      ? 'bg-rose-500' 
-                      : gpsAcquisitionStep === 'success' 
-                      ? 'bg-emerald-500' 
-                      : 'bg-indigo-500 animate-pulse'
-                  }`} />
-                  <span className="font-medium tracking-wide">
-                    {gpsAcquisitionStep === 'success' 
-                      ? 'Posizione Acquisita' 
-                      : gpsAcquisitionStep === 'error' 
-                      ? 'Errore Geolocalizzazione' 
-                      : 'Acquisizione GPS in Corso'}
-                  </span>
-                </div>
-
-                {/* Minimalist Radar Viewport */}
-                <div className="relative w-56 h-56 mx-auto flex items-center justify-center my-4 select-none">
-                  {/* Concentric rings: Outer hairline, Mid subtle dashed, Inner guide */}
-                  <div className="absolute w-52 h-52 rounded-full border border-indigo-500/15 dark:border-indigo-400/15 pointer-events-none" />
-                  <div className="absolute w-36 h-36 rounded-full border border-dashed border-indigo-500/25 dark:border-indigo-400/20 pointer-events-none" />
-                  <div className="absolute w-24 h-24 rounded-full border border-indigo-500/30 dark:border-indigo-400/25 pointer-events-none" />
-
-                  {/* Cardinal Precision Hairline Ticks (North, South, East, West) */}
-                  <div className="absolute top-1 left-1/2 -translate-x-1/2 w-0.5 h-2 bg-indigo-400/50 rounded-full pointer-events-none" />
-                  <div className="absolute bottom-1 left-1/2 -translate-x-1/2 w-0.5 h-2 bg-indigo-400/50 rounded-full pointer-events-none" />
-                  <div className="absolute left-1 top-1/2 -translate-y-1/2 h-0.5 w-2 bg-indigo-400/50 rounded-full pointer-events-none" />
-                  <div className="absolute right-1 top-1/2 -translate-y-1/2 h-0.5 w-2 bg-indigo-400/50 rounded-full pointer-events-none" />
-
-                  {/* Smooth, elegant sonar pulse wave */}
-                  {gpsAcquisitionStep !== 'error' && (
-                    <motion.div
-                      animate={{
-                        scale: [0.9, 2.2],
-                        opacity: [0.4, 0],
-                      }}
-                      transition={{
-                        repeat: Infinity,
-                        duration: 2.2,
-                        ease: [0.16, 1, 0.3, 1],
-                      }}
-                      className="absolute w-24 h-24 rounded-full border border-indigo-500/40 bg-indigo-500/5 pointer-events-none"
-                    />
-                  )}
-
-                  {/* Soft subtle radar scan sweep */}
-                  {gpsAcquisitionStep !== 'error' && gpsAcquisitionStep !== 'success' && (
-                    <motion.div
-                      animate={{ rotate: 360 }}
-                      transition={{ repeat: Infinity, duration: 3.5, ease: 'linear' }}
-                      className="absolute w-52 h-52 rounded-full pointer-events-none"
-                      style={{
-                        background: 'conic-gradient(from 0deg, transparent 0deg, transparent 280deg, rgba(99, 102, 241, 0.02) 310deg, rgba(99, 102, 241, 0.22) 360deg)',
-                      }}
-                    />
-                  )}
-
-                  {/* Central Glassmorphic Circular Reticle Core */}
-                  <div className={`relative z-10 w-20 h-20 rounded-full flex items-center justify-center transition-all duration-500 border backdrop-blur-md ${
+                  <div className={`relative z-10 w-16 h-16 rounded-full flex items-center justify-center shadow-lg transition-all ${
                     gpsAcquisitionStep === 'success'
-                      ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/30 border-emerald-400/50 scale-105'
+                      ? 'bg-emerald-500 text-white'
                       : gpsAcquisitionStep === 'error'
-                      ? 'bg-rose-500 text-white shadow-lg shadow-rose-500/30 border-rose-400/50'
-                      : 'bg-indigo-600/90 dark:bg-indigo-500/90 text-white shadow-xl shadow-indigo-500/30 border-white/25'
+                      ? 'bg-rose-500 text-white'
+                      : 'bg-blue-600 text-white'
                   }`}>
                     {gpsAcquisitionStep === 'success' ? (
-                      <motion.div
-                        initial={{ scale: 0, rotate: -20 }}
-                        animate={{ scale: 1, rotate: 0 }}
-                        transition={{ type: 'spring', stiffness: 350, damping: 20 }}
-                      >
-                        <Check className="w-10 h-10 text-white stroke-[2.75]" />
-                      </motion.div>
+                      <Check className="w-8 h-8" />
                     ) : gpsAcquisitionStep === 'error' ? (
-                      <motion.div initial={{ scale: 0.8 }} animate={{ scale: 1 }}>
-                        <AlertTriangle className="w-9 h-9 text-white stroke-[2.2]" />
-                      </motion.div>
+                      <AlertTriangle className="w-8 h-8" />
                     ) : (
-                      <motion.div
-                        animate={{ scale: [1, 1.08, 1] }}
-                        transition={{ repeat: Infinity, duration: 2, ease: 'easeInOut' }}
-                        className="flex items-center justify-center"
-                      >
-                        <LocateFixed className="w-9 h-9 text-white stroke-[2.2]" />
-                      </motion.div>
+                      <LocateFixed className="w-8 h-8 animate-pulse" />
                     )}
                   </div>
                 </div>
 
-                {/* Dynamic Titles and Status */}
-                <div className="space-y-2 max-w-md mx-auto">
-                  <h3 className="text-xl font-black text-[var(--text-main)] tracking-tight">
-                    {gpsAcquisitionStep === 'success' ? (
-                      <span className="text-emerald-500">Posizione Salvata! 🎉</span>
-                    ) : gpsAcquisitionStep === 'error' ? (
-                      <span className="text-rose-500">Geolocalizzazione non riuscita</span>
-                    ) : (
-                      <span>Rilevamento Posizione GPS...</span>
-                    )}
+                <div className="space-y-1.5">
+                  <h3 className="text-lg font-bold text-[var(--text-main)]">
+                    {gpsAcquisitionStep === 'success' && 'Posizione Salvata! 🎉'}
+                    {gpsAcquisitionStep === 'error' && 'Errore Rilevamento GPS'}
+                    {gpsAcquisitionStep === 'locating' && 'Sincronizzazione Satelliti GPS...'}
+                    {gpsAcquisitionStep === 'geocoding' && 'Riconoscimento Indirizzo Civico...'}
+                    {gpsAcquisitionStep === 'saving' && 'Memorizzazione Parcheggio...'}
                   </h3>
-
-                  <p className="text-xs sm:text-sm text-[var(--text-muted)] font-medium leading-relaxed">
-                    {gpsAcquisitionStep === 'locating' && 'Sincronizzazione satelliti GPS ad alta precisione in corso...'}
-                    {gpsAcquisitionStep === 'geocoding' && 'Riconoscimento indirizzo civico OpenStreetMap in corso...'}
-                    {gpsAcquisitionStep === 'saving' && 'Memorizzazione sicura della posizione in Chelona...'}
-                    {gpsAcquisitionStep === 'success' && (acquiredAddress ? `Posizione memorizzata: ${acquiredAddress}` : 'Coordinate GPS salvate con successo')}
+                  <p className="text-xs text-[var(--text-muted)] max-w-sm mx-auto">
+                    {gpsAcquisitionStep === 'success' && (acquiredAddress || 'Coordinate registrate con successo')}
                     {gpsAcquisitionStep === 'error' && (gpsErrorMsg || 'Assicurati che i permessi di geolocalizzazione siano concessi.')}
+                    {gpsAcquisitionStep === 'locating' && 'Calcolo coordinate ad alta precisione senza latenza'}
+                    {gpsAcquisitionStep === 'geocoding' && 'Rilevamento via e numero civico'}
+                    {gpsAcquisitionStep === 'saving' && 'Salvataggio on-device protetto'}
                   </p>
 
-                  {/* Monospace Live Coordinates Pill */}
                   {acquiredCoords && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 4 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className="pt-1 flex items-center justify-center"
-                    >
-                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[var(--surface-variant)] text-[var(--text-main)] font-mono text-xs font-semibold border border-[var(--border)] shadow-xs">
-                        <Satellite className="w-3.5 h-3.5 text-indigo-500" />
-                        <span>{acquiredCoords.latitude.toFixed(5)}°, {acquiredCoords.longitude.toFixed(5)}°</span>
-                        {acquiredCoords.accuracy && (
-                          <span className="text-[var(--text-muted)] font-sans text-[11px]">
-                            (±{Math.round(acquiredCoords.accuracy)}m)
-                          </span>
-                        )}
-                      </span>
-                    </motion.div>
+                    <p className="font-mono text-xs text-blue-600 dark:text-blue-400 font-bold pt-1">
+                      {acquiredCoords.latitude.toFixed(5)}°, {acquiredCoords.longitude.toFixed(5)}°
+                      {acquiredCoords.accuracy && ` (±${Math.round(acquiredCoords.accuracy)}m)`}
+                    </p>
                   )}
                 </div>
 
-                {/* 3-Step Minimal Progression Dots */}
-                {gpsAcquisitionStep !== 'error' && (
-                  <div className="flex items-center justify-center gap-2 pt-1 max-w-xs mx-auto">
-                    {/* Step 1 */}
-                    <div className={`flex items-center gap-1.5 px-3 py-1 rounded-xl text-[11px] font-bold border transition-all ${
-                      gpsAcquisitionStep === 'locating'
-                        ? 'bg-indigo-500/10 text-indigo-500 border-indigo-500/30'
-                        : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
-                    }`}>
-                      {gpsAcquisitionStep === 'locating' ? (
-                        <span className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />
-                      ) : (
-                        <Check className="w-3 h-3 text-emerald-500 stroke-[2.5]" />
-                      )}
-                      <span>Satelliti</span>
-                    </div>
-
-                    <div className="w-2 h-[1px] bg-[var(--border)]" />
-
-                    {/* Step 2 */}
-                    <div className={`flex items-center gap-1.5 px-3 py-1 rounded-xl text-[11px] font-bold border transition-all ${
-                      gpsAcquisitionStep === 'geocoding'
-                        ? 'bg-indigo-500/10 text-indigo-500 border-indigo-500/30'
-                        : gpsAcquisitionStep === 'saving' || gpsAcquisitionStep === 'success'
-                        ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
-                        : 'bg-[var(--surface-variant)] text-[var(--text-muted)] opacity-50 border-[var(--border)]'
-                    }`}>
-                      {gpsAcquisitionStep === 'geocoding' ? (
-                        <span className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />
-                      ) : gpsAcquisitionStep === 'saving' || gpsAcquisitionStep === 'success' ? (
-                        <Check className="w-3 h-3 text-emerald-500 stroke-[2.5]" />
-                      ) : (
-                        <span className="w-1.5 h-1.5 rounded-full bg-[var(--text-muted)]" />
-                      )}
-                      <span>Indirizzo</span>
-                    </div>
-
-                    <div className="w-2 h-[1px] bg-[var(--border)]" />
-
-                    {/* Step 3 */}
-                    <div className={`flex items-center gap-1.5 px-3 py-1 rounded-xl text-[11px] font-bold border transition-all ${
-                      gpsAcquisitionStep === 'saving'
-                        ? 'bg-indigo-500/10 text-indigo-500 border-indigo-500/30'
-                        : gpsAcquisitionStep === 'success'
-                        ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
-                        : 'bg-[var(--surface-variant)] text-[var(--text-muted)] opacity-50 border-[var(--border)]'
-                    }`}>
-                      {gpsAcquisitionStep === 'saving' ? (
-                        <span className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />
-                      ) : gpsAcquisitionStep === 'success' ? (
-                        <Check className="w-3 h-3 text-emerald-500 stroke-[2.5]" />
-                      ) : (
-                        <span className="w-1.5 h-1.5 rounded-full bg-[var(--text-muted)]" />
-                      )}
-                      <span>Salva</span>
-                    </div>
-                  </div>
-                )}
-
-                {/* Error Action Buttons */}
-                {gpsAcquisitionStep === 'error' && (
-                  <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
+                {gpsAcquisitionStep === 'error' ? (
+                  <div className="flex gap-2 justify-center pt-2">
                     <button
+                      type="button"
                       onClick={triggerGpsAutoSave}
-                      className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-indigo-500 text-white font-bold text-sm flex items-center justify-center gap-2 shadow-md shadow-indigo-500/20 active:scale-95"
+                      className="px-4 py-2.5 rounded-xl bg-blue-600 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm active:scale-95"
                     >
                       <RefreshCw className="w-4 h-4" />
                       <span>Riprova GPS</span>
                     </button>
                     <button
+                      type="button"
                       onClick={() => {
                         setIsAcquiringGpsParking(false);
                         setLocationMode('manual');
                       }}
-                      className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-[var(--surface-variant)] text-[var(--text-main)] border border-[var(--border)] font-bold text-sm flex items-center justify-center gap-2 active:scale-95"
+                      className="px-4 py-2.5 rounded-xl bg-[var(--surface-variant)] text-[var(--text-main)] font-bold text-xs border border-[var(--border)]"
                     >
-                      <span>Inserisci a Mano</span>
+                      Inserisci Manuale
                     </button>
                   </div>
-                )}
-
-                {/* Cancel button if taking too long */}
-                {gpsAcquisitionStep !== 'error' && gpsAcquisitionStep !== 'success' && (
-                  <div className="pt-2">
-                    <button
-                      onClick={() => setIsAcquiringGpsParking(false)}
-                      className="text-xs font-semibold text-[var(--text-muted)] hover:text-[var(--text-main)] underline underline-offset-2 transition-colors"
-                    >
-                      Annulla rilevamento automatico
-                    </button>
-                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setIsAcquiringGpsParking(false)}
+                    className="text-xs text-[var(--text-muted)] hover:underline pt-1"
+                  >
+                    Annulla
+                  </button>
                 )}
               </motion.div>
             ) : parking ? (
-              /* PARCHEGGIO ATTIVO */
-              <div className="space-y-5 animate-fade-in">
-                {/* 1. SEZIONE PARCHIMETRO DIGITALE LIVE (Se impostato) */}
+              /* STATO 2: PARCHEGGIO ATTIVO */
+              <div className="space-y-4 animate-fade-in">
+                {/* 1. HERO CARD PARCHEGGIO */}
+                <div className="p-5 rounded-3xl bg-[var(--card-bg)] border border-[var(--border)] shadow-sm space-y-4">
+                  {/* Badge riga superiore */}
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <div className="flex items-center gap-2">
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs font-bold">
+                        <Car className="w-3.5 h-3.5" />
+                        <span>Auto Parcheggiata</span>
+                      </span>
+                      <span className="text-xs text-[var(--text-muted)] font-medium">
+                        {formatElapsedParkingTime(parking.timestamp)}
+                      </span>
+                    </div>
+
+                    {distanceToCar !== null && (
+                      <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 text-xs font-bold">
+                        <span>🚶 {formatDistance(distanceToCar)}</span>
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Indirizzo grande */}
+                  <div>
+                    <h2 className="text-lg sm:text-xl font-black text-[var(--text-main)] leading-snug">
+                      {parking.address || 'Posizione registrata'}
+                    </h2>
+                    {parking.vehicleName && (
+                      <p className="text-xs text-blue-600 dark:text-blue-400 font-bold mt-0.5">
+                        🚗 Veicolo: {parking.vehicleName}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Note posto / piano */}
+                  <div className="pt-2 border-t border-[var(--border)]/70">
+                    {isEditingNotes ? (
+                      <div className="space-y-2">
+                        <label className="text-[11px] font-bold uppercase text-[var(--text-muted)]">
+                          Note posto auto (Piano, Settore, Pilastro)
+                        </label>
+                        <input
+                          type="text"
+                          value={notesText}
+                          onChange={(e) => setNotesText(e.target.value)}
+                          placeholder="Es. Piano -2, Pilastro D14..."
+                          className="w-full bg-[var(--surface-variant)] border border-[var(--border)] rounded-xl px-3 py-2 text-sm text-[var(--text-main)] focus:outline-none focus:border-blue-500"
+                        />
+                        <div className="flex justify-end gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setIsEditingNotes(false)}
+                            className="px-3 py-1.5 text-xs text-[var(--text-muted)] hover:bg-[var(--surface-variant)] rounded-lg"
+                          >
+                            Annulla
+                          </button>
+                          <button
+                            type="button"
+                            onClick={handleSaveNotes}
+                            className="px-4 py-1.5 text-xs font-bold text-white bg-blue-600 rounded-lg shadow-sm"
+                          >
+                            Salva
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="text-[11px] font-bold text-[var(--text-muted)] uppercase">Piano & Note</p>
+                          <p className="text-xs text-[var(--text-main)] font-medium truncate">
+                            {parking.notes || <span className="text-[var(--text-muted)] italic">Nessuna nota aggiuntiva</span>}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setNotesText(parking.notes || '');
+                            setIsEditingNotes(true);
+                          }}
+                          className="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-blue-500 hover:bg-[var(--surface-variant)] transition-colors"
+                          title="Modifica note"
+                        >
+                          <Edit3 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Foto posto auto */}
+                  {parking.photoUrl ? (
+                    <div className="pt-2 border-t border-[var(--border)]/70">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-[11px] font-bold uppercase text-[var(--text-muted)]">Foto Posto Auto</span>
+                        <button
+                          type="button"
+                          onClick={handleRemovePhoto}
+                          className="text-[11px] text-rose-500 font-bold hover:underline"
+                        >
+                          Rimuovi Foto
+                        </button>
+                      </div>
+                      <div 
+                        onClick={() => setViewFullPhoto(true)}
+                        className="relative w-full h-36 rounded-2xl overflow-hidden border border-[var(--border)] cursor-pointer group"
+                      >
+                        <img 
+                          src={parking.photoUrl} 
+                          alt="Foto posto auto" 
+                          className="w-full h-full object-cover group-hover:scale-102 transition-transform duration-200" 
+                        />
+                        <div className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-white text-xs font-bold">
+                          Tocca per ingrandire
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="pt-2 border-t border-[var(--border)]/70 flex justify-between items-center">
+                      <span className="text-xs text-[var(--text-muted)]">Hai una foto del posto?</span>
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[var(--surface-variant)] hover:bg-[var(--border)] text-xs font-bold text-blue-600 dark:text-blue-400 border border-[var(--border)] transition-colors cursor-pointer"
+                      >
+                        <Camera className="w-3.5 h-3.5" />
+                        <span>Aggiungi Foto</span>
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Pulsante Naviga all'auto */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2 border-t border-[var(--border)]/70">
+                    <button
+                      type="button"
+                      onClick={() => setNavModalTarget({ 
+                        query: parking.address || '', 
+                        lat: parking.latitude, 
+                        lon: parking.longitude,
+                        title: 'La tua Auto' 
+                      })}
+                      className="py-3 px-4 rounded-2xl bg-blue-600 hover:bg-blue-700 active:scale-98 text-white font-bold text-sm flex items-center justify-center gap-2 shadow-md shadow-blue-500/20 transition-all cursor-pointer"
+                    >
+                      <Navigation className="w-4 h-4" />
+                      <span>Guidami all'Auto</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setShowClearParkingConfirm(true)}
+                      className="py-3 px-4 rounded-2xl bg-rose-500/10 hover:bg-rose-500/20 active:scale-98 text-rose-600 dark:text-rose-400 border border-rose-500/20 font-bold text-sm flex items-center justify-center gap-2 transition-all cursor-pointer"
+                    >
+                      <CheckCircle2 className="w-4 h-4" />
+                      <span>Ho Ripreso l'Auto</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* 2. PARCHIMETRO & DISCO ORARIO LIVE */}
                 {meterLiveStatus ? (
-                  <div className={`p-6 rounded-3xl border shadow-sm relative overflow-hidden transition-all ${
+                  <div className={`p-5 rounded-3xl border shadow-xs space-y-4 ${
                     meterLiveStatus.isExpired 
                       ? 'bg-rose-500/10 border-rose-500/40' 
-                      : meterLiveStatus.isUrgent
-                      ? 'bg-amber-500/10 border-amber-500/40'
-                      : 'bg-indigo-500/10 border-indigo-500/30'
+                      : meterLiveStatus.isUrgent 
+                      ? 'bg-amber-500/10 border-amber-500/40' 
+                      : 'bg-blue-500/5 border-blue-500/20'
                   }`}>
-                    {/* Badge Stato */}
-                    <div className="flex items-center justify-between gap-3 mb-4">
+                    <div className="flex items-center justify-between gap-3">
                       <div className="flex items-center gap-2">
-                        <span className={`p-2 rounded-xl text-white font-bold text-xs flex items-center gap-1.5 shadow-sm ${
-                          meterLiveStatus.isExpired ? 'bg-rose-500' : meterLiveStatus.isUrgent ? 'bg-amber-500 animate-pulse' : 'bg-emerald-500'
-                        }`}>
-                          <Timer className="w-4 h-4" />
-                          <span>
-                            {meterLiveStatus.isExpired ? 'Sosta Scaduta' : meterLiveStatus.isUrgent ? 'In Scadenza a Breve' : 'Sosta Regolare'}
-                          </span>
-                        </span>
+                        <Timer className={`w-5 h-5 ${
+                          meterLiveStatus.isExpired ? 'text-rose-500' : meterLiveStatus.isUrgent ? 'text-amber-500' : 'text-blue-600'
+                        }`} />
+                        <div>
+                          <p className="text-xs font-black uppercase tracking-wider text-[var(--text-main)]">
+                            {meterLiveStatus.isExpired ? '🚨 Sosta Scaduta' : meterLiveStatus.isUrgent ? '⚠️ In Scadenza' : '⏱️ Parchimetro Attivo'}
+                          </p>
+                          <p className="text-[11px] text-[var(--text-muted)]">
+                            Scadenza prevista: ore <strong>{meterLiveStatus.endFormatted}</strong>
+                          </p>
+                        </div>
                       </div>
 
                       <div className="text-right">
-                        <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">Fine Sosta</p>
-                        <p className="text-sm font-black text-[var(--text-main)]">
-                          Ore {meterLiveStatus.endFormatted}
-                        </p>
+                        <span className="font-mono text-xl sm:text-2xl font-black text-[var(--text-main)]">
+                          {meterLiveStatus.formattedTime}
+                        </span>
                       </div>
                     </div>
 
-                    {/* GRANDE QUADRANTE COUNTDOWN LIVE */}
-                    <div className="flex flex-col items-center justify-center my-4 py-2">
-                      <div className="relative flex items-center justify-center">
-                        {/* Cerchio di sfondo */}
-                        <svg className="w-48 h-48 -rotate-90">
-                          <circle
-                            cx="96"
-                            cy="96"
-                            r="82"
-                            stroke="currentColor"
-                            strokeWidth="10"
-                            className="text-[var(--border)] opacity-40 fill-transparent"
-                          />
-                          <circle
-                            cx="96"
-                            cy="96"
-                            r="82"
-                            stroke="currentColor"
-                            strokeWidth="10"
-                            strokeDasharray={2 * Math.PI * 82}
-                            strokeDashoffset={(2 * Math.PI * 82) * (1 - meterLiveStatus.percentRemaining / 100)}
-                            strokeLinecap="round"
-                            className={`fill-transparent transition-all duration-1000 ${
-                              meterLiveStatus.isExpired 
-                                ? 'text-rose-500' 
-                                : meterLiveStatus.isUrgent 
-                                ? 'text-amber-500' 
-                                : 'text-indigo-500'
-                            }`}
-                          />
-                        </svg>
-
-                        {/* Testo Centrale Countdown */}
-                        <div className="absolute flex flex-col items-center justify-center text-center">
-                          <Clock className={`w-5 h-5 mb-1 ${
-                            meterLiveStatus.isExpired ? 'text-rose-500 animate-bounce' : 'text-indigo-500'
-                          }`} />
-                          <span className="font-mono text-3xl font-black text-[var(--text-main)] tracking-wider">
-                            {meterLiveStatus.formattedTime}
-                          </span>
-                          <span className="text-[11px] font-bold text-[var(--text-muted)] uppercase tracking-wider mt-0.5">
-                            {meterLiveStatus.isExpired ? 'Tempo di ritardo' : 'Tempo residuo'}
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Costo Stimato se calcolato */}
-                      {parking.estimatedCost !== undefined && parking.estimatedCost > 0 && (
-                        <div className="mt-3 flex items-center gap-2 text-xs font-semibold px-3 py-1 rounded-full bg-[var(--surface)] border border-[var(--border)] text-[var(--text-main)]">
-                          <Coins className="w-3.5 h-3.5 text-amber-500" />
-                          <span>Costo sosta stimato: <strong>€ {parking.estimatedCost.toFixed(2)}</strong></span>
-                          {parking.hourlyRate ? (
-                            <span className="text-[var(--text-muted)]">({parking.hourlyRate.toFixed(2)} €/h)</span>
-                          ) : null}
-                        </div>
-                      )}
+                    {/* Barra di progresso sosta */}
+                    <div className="w-full bg-[var(--border)] h-2 rounded-full overflow-hidden">
+                      <div 
+                        className={`h-full transition-all duration-1000 ${
+                          meterLiveStatus.isExpired 
+                            ? 'bg-rose-500 w-full' 
+                            : meterLiveStatus.isUrgent 
+                            ? 'bg-amber-500' 
+                            : 'bg-blue-600'
+                        }`}
+                        style={{ width: meterLiveStatus.isExpired ? '100%' : `${meterLiveStatus.percentRemaining}%` }}
+                      />
                     </div>
 
-                    {/* PULSANTI RAPIDI "PROLUNGA SOSTA" (COME NELLE VERE APP DI PARCHEGGIO) */}
-                    <div className="pt-2 border-t border-[var(--border)]/60">
-                      <p className="text-[11px] font-bold uppercase text-[var(--text-muted)] tracking-wider text-center mb-2.5">
-                        Prolunga Parchimetro
-                      </p>
-                      <div className="grid grid-cols-4 gap-2">
-                        {[15, 30, 60, 120].map(mins => (
-                          <button
-                            key={mins}
-                            type="button"
-                            onClick={() => handleExtendParkingLive(mins)}
-                            className="py-2.5 px-2 bg-[var(--surface)] hover:bg-[var(--border)] active:scale-95 border border-[var(--border)] rounded-2xl text-xs font-black text-indigo-500 flex items-center justify-center gap-1 shadow-sm transition-all"
-                          >
-                            <span>+{mins < 60 ? `${mins}m` : `${mins / 60}h`}</span>
-                          </button>
-                        ))}
-                      </div>
-
-                      <div className="mt-2 text-center">
+                    {/* Prolunga rapida */}
+                    <div className="space-y-2 pt-1">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-bold uppercase text-[var(--text-muted)]">Prolunga Sosta</span>
                         <button
                           type="button"
                           onClick={() => {
                             setExtendTimeInput(meterLiveStatus.endFormatted);
                             setIsExtendingManualModalOpen(true);
                           }}
-                          className="text-xs font-bold text-indigo-500 hover:underline inline-flex items-center gap-1"
+                          className="text-[11px] font-bold text-blue-600 dark:text-blue-400 hover:underline"
                         >
-                          <Edit3 className="w-3.5 h-3.5" />
-                          <span>Inserisci orario fine personalizzato</span>
+                          Orario personalizzato
                         </button>
                       </div>
+
+                      <div className="grid grid-cols-4 gap-2">
+                        {[15, 30, 60, 120].map(mins => (
+                          <button
+                            key={mins}
+                            type="button"
+                            onClick={() => handleExtendParkingLive(mins)}
+                            className="py-2 rounded-xl bg-[var(--card-bg)] hover:bg-[var(--border)] border border-[var(--border)] text-xs font-bold text-blue-600 dark:text-blue-400 active:scale-95 transition-all shadow-2xs cursor-pointer"
+                          >
+                            +{mins < 60 ? `${mins}m` : `${mins / 60}h`}
+                          </button>
+                        ))}
+                      </div>
                     </div>
+
+                    {parking.estimatedCost !== undefined && parking.estimatedCost > 0 && (
+                      <div className="flex items-center justify-between text-xs pt-1 border-t border-[var(--border)]/60 text-[var(--text-muted)]">
+                        <span>Tariffa: {parking.hourlyRate ? `${parking.hourlyRate.toFixed(2)} €/h` : 'Variabile'}</span>
+                        <span className="font-bold text-[var(--text-main)]">Totale: € {parking.estimatedCost.toFixed(2)}</span>
+                      </div>
+                    )}
                   </div>
                 ) : (
-                  /* Parchimetro non attivo per questo parcheggio */
-                  <div className="p-4 rounded-3xl bg-[var(--surface)] border border-[var(--border)] flex items-center justify-between gap-3">
+                  /* Parchimetro disattivato */
+                  <div className="p-4 rounded-3xl bg-[var(--card-bg)] border border-[var(--border)] flex items-center justify-between gap-3 shadow-2xs">
                     <div className="flex items-center gap-3">
-                      <div className="p-2.5 rounded-2xl bg-indigo-500/10 text-indigo-500">
+                      <div className="p-2.5 rounded-2xl bg-blue-500/10 text-blue-600 dark:text-blue-400">
                         <Clock className="w-5 h-5" />
                       </div>
                       <div>
-                        <p className="text-xs font-bold text-[var(--text-main)]">Parchimetro Non Impostato</p>
-                        <p className="text-[11px] text-[var(--text-muted)]">Nessuna scadenza o disco orario attivo</p>
+                        <p className="text-xs font-bold text-[var(--text-main)]">Parchimetro / Disco Orario</p>
+                        <p className="text-[11px] text-[var(--text-muted)]">Nessuna scadenza impostata</p>
                       </div>
                     </div>
                     <button
+                      type="button"
                       onClick={() => {
                         const target = new Date(Date.now() + 60 * 60 * 1000);
                         const hh = String(target.getHours()).padStart(2, '0');
@@ -1214,16 +1184,16 @@ export const AddressAndParkingScreen: React.FC<AddressAndParkingScreenProps> = (
                         setExtendTimeInput(`${hh}:${mm}`);
                         setIsExtendingManualModalOpen(true);
                       }}
-                      className="py-2 px-3 rounded-xl bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-500 text-xs font-bold transition-all"
+                      className="py-2 px-3.5 rounded-xl bg-blue-500/10 hover:bg-blue-500/20 text-blue-600 dark:text-blue-400 text-xs font-bold transition-all cursor-pointer"
                     >
-                      + Attiva Parchimetro
+                      + Attiva Timer
                     </button>
                   </div>
                 )}
 
-                {/* 2. MAPPA ANTEPRIMA & POSIZIONE AUTO */}
-                <div className="w-full h-64 sm:h-72 rounded-3xl overflow-hidden border border-[var(--border)] shadow-md bg-[var(--surface-variant)] relative group">
-                  {parking.latitude !== 0 && parking.longitude !== 0 ? (
+                {/* 3. ANTEPRIMA MAPPA */}
+                {parking.latitude !== 0 && parking.longitude !== 0 && (
+                  <div className="rounded-3xl overflow-hidden border border-[var(--border)] shadow-xs bg-[var(--surface-variant)] h-56 relative group">
                     <iframe
                       title="Mappa Parcheggio"
                       width="100%"
@@ -1233,353 +1203,173 @@ export const AddressAndParkingScreen: React.FC<AddressAndParkingScreenProps> = (
                       src={`https://maps.google.com/maps?q=${parking.latitude},${parking.longitude}&t=&z=16&ie=UTF8&iwloc=&output=embed`}
                       className="w-full h-full border-0 pointer-events-none sm:pointer-events-auto"
                     />
-                  ) : (
-                    <div className="w-full h-full flex flex-col items-center justify-center p-6 text-center space-y-2">
-                      <MapPin className="w-10 h-10 text-indigo-500" />
-                      <p className="text-sm font-bold text-[var(--text-main)]">{parking.address}</p>
-                      <p className="text-xs text-[var(--text-muted)]">Posizione inserita manualmente</p>
+                    <div className="absolute top-3 left-3 bg-[var(--card-bg)]/90 backdrop-blur-md border border-[var(--border)] px-3 py-1 rounded-full flex items-center gap-1.5 text-xs font-bold text-blue-600 dark:text-blue-400 shadow-sm pointer-events-none">
+                      <Car className="w-3.5 h-3.5" />
+                      <span>Posizione GPS Auto</span>
                     </div>
-                  )}
-
-                  <div className="absolute top-3 left-3 bg-[var(--bg)]/90 backdrop-blur-md border border-[var(--border)] px-3 py-1.5 rounded-full flex items-center gap-2 text-xs font-bold text-indigo-500 shadow-sm pointer-events-none">
-                    <Car className="w-3.5 h-3.5" />
-                    <span>Auto Parcheggiata</span>
-                    {parking.accuracy && (
-                      <span className="text-[10px] text-[var(--text-muted)] font-mono">
-                        ±{Math.round(parking.accuracy)}m
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                {/* 3. SCHEDA DETTAGLI INDIRIZZO E DISTANZA */}
-                <div className="bg-[var(--surface)] border border-[var(--border)] rounded-3xl p-5 lg:p-6 shadow-sm space-y-4">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="space-y-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 text-[11px] font-bold">
-                          Parcheggiata
-                        </span>
-                        <span className="text-xs text-[var(--text-muted)] font-medium">
-                          {formatElapsedParkingTime(parking.timestamp)}
-                        </span>
-                      </div>
-                      <h3 className="text-lg lg:text-xl font-black text-[var(--text-main)] break-words">
-                        {parking.address || 'Posizione registrata'}
-                      </h3>
-                      {parking.vehicleName && (
-                        <p className="text-xs text-indigo-500 font-bold">
-                          🚗 Veicolo: {parking.vehicleName}
-                        </p>
-                      )}
-                    </div>
-
-                    {/* Badge distanza live */}
-                    {distanceToCar !== null && (
-                      <div className="bg-indigo-500/10 border border-indigo-500/20 rounded-2xl p-3 text-center shrink-0">
-                        <p className="text-[10px] uppercase font-bold text-indigo-500 tracking-wider">A Piedi</p>
-                        <p className="text-base lg:text-lg font-black text-indigo-500">
-                          {formatDistance(distanceToCar)}
-                        </p>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Note e dettagli (piano, pilastro) */}
-                  <div className="pt-2 border-t border-[var(--border)]">
-                    {isEditingNotes ? (
-                      <div className="space-y-3">
-                        <label className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider">
-                          Note Parcheggio (Piano, Pilastro, Posto)
-                        </label>
-                        <textarea
-                          value={notesText}
-                          onChange={(e) => setNotesText(e.target.value)}
-                          placeholder="Es. Piano -2, Pilastro D14, vicino all'ascensore..."
-                          className="w-full bg-[var(--surface-variant)] border border-[var(--border)] rounded-2xl p-3 text-sm text-[var(--text-main)] placeholder-[var(--text-muted)] focus:outline-none focus:border-indigo-500"
-                          rows={2}
-                        />
-                        <div className="flex justify-end gap-2">
-                          <button
-                            onClick={() => setIsEditingNotes(false)}
-                            className="px-4 py-2 rounded-xl text-xs font-bold text-[var(--text-muted)] hover:bg-[var(--surface-variant)]"
-                          >
-                            Annulla
-                          </button>
-                          <button
-                            onClick={handleSaveNotes}
-                            className="px-4 py-2 rounded-xl bg-indigo-500 text-white text-xs font-bold hover:bg-indigo-600 transition-colors shadow-sm"
-                          >
-                            Salva Note
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="flex items-center justify-between">
-                        <div className="space-y-0.5">
-                          <p className="text-[11px] font-bold uppercase text-[var(--text-muted)] tracking-wider">
-                            Dettagli & Note
-                          </p>
-                          <p className="text-sm text-[var(--text-main)] font-medium">
-                            {parking.notes || <span className="text-[var(--text-muted)] italic">Nessuna nota aggiuntiva (es. piano o pilastro)</span>}
-                          </p>
-                        </div>
-                        <button
-                          onClick={() => {
-                            setNotesText(parking.notes || '');
-                            setIsEditingNotes(true);
-                          }}
-                          className="p-2 rounded-xl text-[var(--text-muted)] hover:text-indigo-500 hover:bg-[var(--surface-variant)] transition-colors"
-                          title="Modifica note"
-                        >
-                          <Edit3 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Pulsanti di Azione */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
                     <button
-                      onClick={handleNavigateToCar}
-                      className="py-4 px-6 rounded-2xl bg-indigo-500 hover:bg-indigo-600 active:scale-98 text-white font-bold text-sm flex items-center justify-center gap-2.5 transition-all shadow-lg shadow-indigo-500/25"
+                      type="button"
+                      onClick={() => setNavModalTarget({ 
+                        query: parking.address || '', 
+                        lat: parking.latitude, 
+                        lon: parking.longitude,
+                        title: 'La tua Auto' 
+                      })}
+                      className="absolute bottom-3 right-3 bg-[var(--card-bg)]/95 hover:bg-[var(--card-bg)] border border-[var(--border)] px-3 py-1.5 rounded-xl text-xs font-bold text-[var(--text-main)] shadow-sm flex items-center gap-1 cursor-pointer"
                     >
-                      <Navigation className="w-5 h-5" />
-                      <span>Naviga all'Auto a Piedi</span>
-                    </button>
-
-                    <button
-                      onClick={handleClearParking}
-                      className="py-4 px-6 rounded-2xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 border border-rose-500/30 active:scale-98 font-bold text-sm flex items-center justify-center gap-2.5 transition-all"
-                    >
-                      <CheckCircle2 className="w-5 h-5" />
-                      <span>Termina Sosta (Ho Ripreso l'Auto)</span>
+                      <ExternalLink className="w-3.5 h-3.5" />
+                      <span>Apri Mappe</span>
                     </button>
                   </div>
+                )}
 
-                  {/* Pulsante rapido per aggiornare / registrare nuova posizione GPS */}
-                  <button
-                    onClick={triggerGpsAutoSave}
-                    className="w-full py-3.5 px-4 rounded-2xl bg-indigo-500/5 hover:bg-indigo-500/10 active:scale-98 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-xs"
-                  >
-                    <Crosshair className="w-4 h-4 text-indigo-500" />
-                    <span>Registra Nuova Posizione GPS</span>
-                  </button>
-                </div>
+                {/* Aggiorna posizione GPS */}
+                <button
+                  type="button"
+                  onClick={triggerGpsAutoSave}
+                  className="w-full py-3 px-4 rounded-2xl bg-[var(--surface-variant)] hover:bg-[var(--border)] text-[var(--text-main)] border border-[var(--border)] font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer"
+                >
+                  <Crosshair className="w-4 h-4 text-blue-600" />
+                  <span>Aggiorna Posizione GPS Auto</span>
+                </button>
               </div>
             ) : (
-              /* NESSUN PARCHEGGIO SALVATO: SCHERMATA DI SETUP COMPLETA CON PARCHIMETRO REALE */
-              <div className="space-y-6">
-                <div className="p-5 lg:p-6 rounded-3xl bg-[var(--surface)] border border-[var(--border)] shadow-sm space-y-6">
-                  {/* Intestazione Sezione */}
-                  <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-500 flex items-center justify-center shrink-0">
-                      {locationMode === 'gps' ? (
-                        <LocateFixed className="w-6 h-6" />
-                      ) : (
-                        <Car className="w-6 h-6" />
-                      )}
-                    </div>
-                    <div>
-                      <h3 className="text-lg font-black text-[var(--text-main)]">Nuova Sosta Auto</h3>
-                      <p className="text-xs text-[var(--text-muted)] font-medium">
-                        Memorizza dove hai parcheggiato e imposta il parchimetro
-                      </p>
-                    </div>
+              /* STATO 3: NESSUN PARCHEGGIO SALVATO - HERO PULITO CON 1-TAP */
+              <div className="space-y-4 animate-fade-in">
+                {/* Hero Centrato */}
+                <div className="text-center space-y-2 py-4 sm:py-6">
+                  <div className="w-16 h-16 rounded-full bg-blue-100 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 flex items-center justify-center mx-auto shadow-sm">
+                    <Car className="w-8 h-8" />
                   </div>
+                  <h2 className="text-2xl sm:text-3xl font-black text-[var(--text-main)] tracking-tight">
+                    Dove hai parcheggiato?
+                  </h2>
+                  <p className="text-xs sm:text-sm text-[var(--text-muted)] max-w-sm mx-auto font-medium">
+                    Memorizza la posizione della tua auto con 1 tocco per ritrovarla senza stress.
+                  </p>
+                </div>
 
-                  {/* 1. SELETTORE MODALITÀ POSIZIONE: GPS VS MANUALE */}
-                  <div className="space-y-3">
-                    <label className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider block">
-                      1. Posizione del Parcheggio
-                    </label>
-                    <div className="grid grid-cols-2 gap-2 p-1 bg-[var(--surface-variant)] rounded-2xl border border-[var(--border)]">
-                      <button
-                        type="button"
-                        onClick={() => setLocationMode('gps')}
-                        className={`py-2.5 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all ${
-                          locationMode === 'gps'
-                            ? 'bg-[var(--surface)] text-indigo-500 shadow-sm'
-                            : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
-                        }`}
-                      >
-                        <LocateFixed className="w-4 h-4" />
-                        <span>GPS Attuale</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setLocationMode('manual')}
-                        className={`py-2.5 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all ${
-                          locationMode === 'manual'
-                            ? 'bg-[var(--surface)] text-indigo-500 shadow-sm'
-                            : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
-                        }`}
-                      >
-                        <Edit3 className="w-4 h-4" />
-                        <span>Inserisci Manuale</span>
-                      </button>
-                    </div>
+                {/* 1-TAP SALVA POSIZIONE GPS ORA */}
+                <button
+                  type="button"
+                  onClick={triggerGpsAutoSave}
+                  disabled={isLoadingGps}
+                  className="w-full py-4 px-6 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 active:scale-[0.99] text-white font-bold text-base flex items-center justify-center gap-2.5 shadow-lg shadow-blue-500/25 transition-all cursor-pointer"
+                >
+                  <Crosshair className="w-5 h-5 animate-pulse" />
+                  <span>Salva Posizione GPS Qui (1-Tap)</span>
+                </button>
 
-                    {locationMode === 'manual' ? (
-                      <div className="space-y-2 pt-1 animate-fade-in">
-                        <div className="flex gap-2">
-                          <input
-                            type="text"
-                            value={manualAddressInput}
-                            onChange={(e) => setManualAddressInput(e.target.value)}
-                            placeholder="Es. Via Roma 42, o Garage Centrale"
-                            className="flex-1 bg-[var(--surface-variant)] border border-[var(--border)] rounded-2xl px-4 py-3 text-sm text-[var(--text-main)] placeholder-[var(--text-muted)] focus:outline-none focus:border-indigo-500"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => setIsAddressPickerOpen(true)}
-                            className="px-4 py-3 rounded-2xl bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-500 font-bold text-xs shrink-0 flex items-center gap-1.5 border border-indigo-500/20 transition-all active:scale-95"
-                            title="Seleziona dalla rubrica indirizzi"
-                          >
-                            <Bookmark className="w-4 h-4" />
-                            <span className="hidden sm:inline">Dalla Rubrica</span>
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="p-4 rounded-2xl bg-gradient-to-br from-[var(--surface-variant)] to-[var(--surface)] border border-indigo-500/25 flex flex-col sm:flex-row items-center justify-between gap-3 animate-fade-in shadow-xs">
-                        <div className="flex items-center gap-3">
-                          <div className="relative flex items-center justify-center w-11 h-11 rounded-2xl bg-indigo-500/10 text-indigo-500 border border-indigo-500/20 shrink-0">
-                            <LocateFixed className="w-5 h-5" />
-                            <span className="absolute w-2.5 h-2.5 rounded-full bg-indigo-500 animate-ping opacity-60" />
-                          </div>
-                          <div>
-                            <p className="text-xs font-bold text-[var(--text-main)]">Rilevamento GPS Satellitare</p>
-                            <p className="text-[11px] text-[var(--text-muted)]">Coordinate live ad alta precisione & civico automatico</p>
-                          </div>
-                        </div>
-
+                {/* MODALITÀ OPZIONALI & PARCHIMETRO */}
+                <div className="p-5 rounded-3xl bg-[var(--card-bg)] border border-[var(--border)] shadow-xs space-y-5">
+                  {/* Switch GPS vs Manuale */}
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold uppercase text-[var(--text-muted)] tracking-wider">
+                        Modalità Inserimento
+                      </span>
+                      <div className="flex bg-[var(--surface-variant)] p-0.5 rounded-xl border border-[var(--border)]">
                         <button
                           type="button"
-                          onClick={triggerGpsAutoSave}
-                          className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-indigo-500 hover:bg-indigo-600 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md shadow-indigo-500/25 active:scale-95 transition-all"
+                          onClick={() => setLocationMode('gps')}
+                          className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                            locationMode === 'gps'
+                              ? 'bg-[var(--card-bg)] text-blue-600 dark:text-blue-400 shadow-2xs'
+                              : 'text-[var(--text-muted)]'
+                          }`}
                         >
-                          <Crosshair className="w-4 h-4" />
-                          <span>Acquisisci Posizione Ora</span>
+                          GPS
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setLocationMode('manual')}
+                          className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                            locationMode === 'manual'
+                              ? 'bg-[var(--card-bg)] text-blue-600 dark:text-blue-400 shadow-2xs'
+                              : 'text-[var(--text-muted)]'
+                          }`}
+                        >
+                          Manuale
+                        </button>
+                      </div>
+                    </div>
+
+                    {locationMode === 'manual' && (
+                      <div className="flex gap-2 pt-1 animate-fade-in">
+                        <input
+                          type="text"
+                          value={manualAddressInput}
+                          onChange={(e) => setManualAddressInput(e.target.value)}
+                          placeholder="Es. Via Roma 42, Garage Centrale..."
+                          className="flex-1 bg-[var(--surface-variant)] border border-[var(--border)] rounded-2xl px-3.5 py-2.5 text-sm text-[var(--text-main)] focus:outline-none focus:border-blue-500"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setIsAddressPickerOpen(true)}
+                          className="px-3 py-2.5 rounded-2xl bg-[var(--surface-variant)] hover:bg-[var(--border)] text-blue-600 dark:text-blue-400 font-bold text-xs border border-[var(--border)] shrink-0 flex items-center gap-1 cursor-pointer"
+                          title="Scegli dalla rubrica"
+                        >
+                          <Bookmark className="w-4 h-4" />
+                          <span className="hidden sm:inline">Rubrica</span>
                         </button>
                       </div>
                     )}
                   </div>
 
-                  {/* 2. IL PARCHIMETRO REALE (STILE EASYPARK CON INSERIMENTO MANUALE) */}
-                  <div className="space-y-4 pt-2 border-t border-[var(--border)]">
+                  {/* PARCHIMETRO & DISCO ORARIO (Opzionale) */}
+                  <div className="pt-3 border-t border-[var(--border)]/70 space-y-3">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <Timer className="w-5 h-5 text-indigo-500" />
+                        <Timer className="w-5 h-5 text-blue-600" />
                         <div>
-                          <label className="text-xs font-black text-[var(--text-main)] uppercase tracking-wider block">
-                            Parchimetro / Disco Orario
-                          </label>
-                          <p className="text-[11px] text-[var(--text-muted)]">
-                            Regola la durata o imposta l'orario di fine esatto
-                          </p>
+                          <p className="text-xs font-bold text-[var(--text-main)]">Parchimetro / Disco Orario</p>
+                          <p className="text-[11px] text-[var(--text-muted)]">Promemoria e notifica prima della scadenza</p>
                         </div>
                       </div>
 
-                      {/* Switch Attiva/Disattiva */}
                       <button
                         type="button"
                         role="switch"
                         aria-checked={isMeterEnabled}
-                        aria-label="Parchimetro o disco orario"
                         onClick={() => setIsMeterEnabled(!isMeterEnabled)}
-                        className={`w-12 h-6 rounded-full transition-colors relative p-0.5 border cursor-pointer ${
-                          isMeterEnabled ? 'bg-indigo-500 border-indigo-600' : 'bg-[var(--border)] border-[var(--border)]'
+                        className={`w-11 h-6 rounded-full transition-colors relative p-0.5 border cursor-pointer ${
+                          isMeterEnabled ? 'bg-blue-600 border-blue-700' : 'bg-[var(--border)] border-[var(--border)]'
                         }`}
                       >
                         <div className={`w-5 h-5 rounded-full bg-white transition-transform ${
-                          isMeterEnabled ? 'translate-x-6' : 'translate-x-0'
+                          isMeterEnabled ? 'translate-x-5' : 'translate-x-0'
                         }`} />
                       </button>
                     </div>
 
                     {isMeterEnabled && (
-                      <div className="p-4 sm:p-5 rounded-3xl bg-[var(--surface-variant)] border border-[var(--border)] space-y-5 animate-fade-in">
-                        {/* QUADRANTE PARCHIMETRO DIGITALE */}
-                        <div className="flex flex-col items-center justify-center text-center">
-                          <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
-                            Fine Sosta Prevista
-                          </p>
-
-                          <div className="my-2 flex items-center justify-center gap-3">
-                            <span className="font-mono text-4xl sm:text-5xl font-black text-indigo-500">
+                      <div className="p-4 rounded-2xl bg-[var(--surface-variant)] border border-[var(--border)] space-y-4 animate-fade-in">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <span className="text-[10px] font-bold uppercase text-[var(--text-muted)]">Fine sosta</span>
+                            <p className="font-mono text-2xl font-black text-blue-600 dark:text-blue-400">
                               {manualEndTimeInput}
-                            </span>
+                            </p>
                           </div>
-
-                          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[var(--surface)] border border-[var(--border)] text-xs font-bold text-[var(--text-main)]">
-                            <Clock className="w-3.5 h-3.5 text-indigo-500" />
-                            <span>Durata sosta: <strong>{formatMinutesHuman(meterDurationMinutes)}</strong></span>
-                          </div>
-                        </div>
-
-                        {/* MANOPOLA E STEPPERS PARCHIMETRO (-30m, -15m, +15m, +30m, +1h) */}
-                        <div className="space-y-2">
-                          <label className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-muted)] block text-center">
-                            Regolazione Rapida Minuti
-                          </label>
-                          <div className="grid grid-cols-4 gap-2">
-                            <button
-                              type="button"
-                              onClick={() => adjustMeterMinutes(-30)}
-                              className="py-2.5 rounded-xl bg-[var(--surface)] hover:bg-[var(--border)] border border-[var(--border)] font-black text-xs text-[var(--text-main)] active:scale-95"
-                            >
-                              -30m
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => adjustMeterMinutes(-15)}
-                              className="py-2.5 rounded-xl bg-[var(--surface)] hover:bg-[var(--border)] border border-[var(--border)] font-black text-xs text-[var(--text-main)] active:scale-95"
-                            >
-                              -15m
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => adjustMeterMinutes(15)}
-                              className="py-2.5 rounded-xl bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-500 border border-indigo-500/20 font-black text-xs active:scale-95"
-                            >
-                              +15m
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => adjustMeterMinutes(30)}
-                              className="py-2.5 rounded-xl bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-500 border border-indigo-500/20 font-black text-xs active:scale-95"
-                            >
-                              +30m
-                            </button>
+                          <div className="text-right">
+                            <span className="text-[10px] font-bold uppercase text-[var(--text-muted)]">Durata</span>
+                            <p className="text-sm font-bold text-[var(--text-main)]">
+                              {formatMinutesHuman(meterDurationMinutes)}
+                            </p>
                           </div>
                         </div>
 
-                        {/* INSERIMENTO MANUALE ESATTO DELL'ORARIO DI FINE (IL VERO PARCHIMETRO) */}
-                        <div className="p-3.5 rounded-2xl bg-[var(--surface)] border border-[var(--border)] flex items-center justify-between gap-3">
-                          <div className="space-y-0.5">
-                            <p className="text-xs font-bold text-[var(--text-main)]">Inserimento Orario Esatto</p>
-                            <p className="text-[11px] text-[var(--text-muted)]">Paga o sosta fino alle ore:</p>
-                          </div>
-                          <input
-                            type="time"
-                            value={manualEndTimeInput}
-                            onChange={handleManualTimeChange}
-                            className="bg-[var(--surface-variant)] border border-[var(--border)] rounded-xl px-3 py-2 font-mono font-bold text-sm text-[var(--text-main)] focus:outline-none focus:border-indigo-500"
-                          />
-                        </div>
-
-                        {/* PRESETS DI DURATA */}
+                        {/* Presets rapidi durata */}
                         <div className="flex flex-wrap gap-1.5">
-                          {[30, 60, 90, 120, 180, 240].map(mins => (
+                          {[30, 60, 90, 120, 180].map(mins => (
                             <button
                               key={mins}
                               type="button"
                               onClick={() => setMeterDurationMinutes(mins)}
-                              className={`py-1.5 px-3 rounded-xl text-xs font-bold transition-all border ${
+                              className={`py-1.5 px-3 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
                                 meterDurationMinutes === mins
-                                  ? 'bg-indigo-500 text-white border-indigo-500 shadow-sm'
-                                  : 'bg-[var(--surface)] text-[var(--text-muted)] hover:text-[var(--text-main)] border-[var(--border)]'
+                                  ? 'bg-blue-600 text-white border-blue-600 shadow-2xs'
+                                  : 'bg-[var(--card-bg)] text-[var(--text-muted)] hover:text-[var(--text-main)] border-[var(--border)]'
                               }`}
                             >
                               {mins < 60 ? `${mins}m` : `${mins / 60}h`}
@@ -1587,165 +1377,373 @@ export const AddressAndParkingScreen: React.FC<AddressAndParkingScreenProps> = (
                           ))}
                         </div>
 
-                        {/* TARIFFA ORARIA E CALCOLO COSTO (OPZIONALE) */}
-                        <div className="space-y-2 pt-2 border-t border-[var(--border)]/60">
-                          <label className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-muted)] block">
-                            Tariffa Oraria (Strisce Blu / Parcheggio a Pagamento)
-                          </label>
-                          <div className="grid grid-cols-4 gap-1.5">
-                            {[
-                              { label: 'Gratis', rate: 0 },
-                              { label: '1,00 €', rate: 1.0 },
-                              { label: '1,50 €', rate: 1.5 },
-                              { label: '2,00 €', rate: 2.0 },
-                            ].map(t => (
-                              <button
-                                key={t.label}
-                                type="button"
-                                onClick={() => {
-                                  setHourlyRate(t.rate);
-                                  setCustomRateInput(String(t.rate));
-                                }}
-                                className={`py-2 px-1 text-center rounded-xl text-xs font-bold border transition-all ${
-                                  hourlyRate === t.rate
-                                    ? 'bg-indigo-500 text-white border-indigo-500 shadow-sm'
-                                    : 'bg-[var(--surface)] text-[var(--text-muted)] border-[var(--border)]'
-                                }`}
-                              >
-                                {t.label}
-                              </button>
-                            ))}
-                          </div>
+                        {/* Orario esatto */}
+                        <div className="flex items-center justify-between p-2.5 rounded-xl bg-[var(--card-bg)] border border-[var(--border)]">
+                          <span className="text-xs font-medium text-[var(--text-muted)]">O imposta orario fine esatto:</span>
+                          <input
+                            type="time"
+                            value={manualEndTimeInput}
+                            onChange={handleManualTimeChange}
+                            className="bg-[var(--surface-variant)] border border-[var(--border)] rounded-lg px-2.5 py-1 font-mono font-bold text-xs text-[var(--text-main)]"
+                          />
+                        </div>
 
-                          {/* Riepilogo Costo e Notifica Promemoria */}
-                          <div className="p-3 rounded-2xl bg-[var(--surface)] border border-[var(--border)] flex items-center justify-between gap-3 text-xs">
-                            <div className="flex items-center gap-2">
-                              <Bell className="w-4 h-4 text-indigo-500 shrink-0" />
-                              <span className="text-[var(--text-muted)]">
-                                Notifica allarme a <strong>-10 min</strong>
-                              </span>
-                            </div>
-
-                            {hourlyRate > 0 && (
-                              <div className="font-bold text-[var(--text-main)]">
-                                Totale: <span className="text-indigo-500 text-sm font-black">€ {estimatedMeterCost.toFixed(2)}</span>
-                              </div>
-                            )}
-                          </div>
+                        {/* Tariffa oraria */}
+                        <div className="flex items-center justify-between text-xs pt-1 border-t border-[var(--border)]/60">
+                          <span className="text-[var(--text-muted)]">Tariffa: 1.50 €/h</span>
+                          <span className="font-bold text-[var(--text-main)]">
+                            Stima: € {estimatedMeterCost.toFixed(2)}
+                          </span>
                         </div>
                       </div>
                     )}
                   </div>
 
-                  {/* 3. NOTE E DETTAGLI VEICOLO (PIANO, POSTO, TARGA) */}
-                  <div className="space-y-3 pt-2 border-t border-[var(--border)]">
-                    <label className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider block">
-                      3. Dettagli Opzionali
-                    </label>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {/* NOTE POSTO, VEICOLO & FOTO (Opzionale) */}
+                  <div className="pt-3 border-t border-[var(--border)]/70 space-y-3">
+                    <span className="text-xs font-bold uppercase text-[var(--text-muted)] tracking-wider block">
+                      Dettagli Aggiuntivi (Opzionale)
+                    </span>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                       <input
                         type="text"
                         value={notesText}
                         onChange={(e) => setNotesText(e.target.value)}
                         placeholder="Note posto (es. Piano -1, Pilastro B)"
-                        className="w-full bg-[var(--surface-variant)] border border-[var(--border)] rounded-2xl p-3 text-sm text-[var(--text-main)] placeholder-[var(--text-muted)] focus:outline-none focus:border-indigo-500"
+                        className="bg-[var(--surface-variant)] border border-[var(--border)] rounded-xl px-3.5 py-2.5 text-xs text-[var(--text-main)] focus:outline-none focus:border-blue-500"
                       />
                       <input
                         type="text"
                         value={vehicleNameInput}
                         onChange={(e) => setVehicleNameInput(e.target.value)}
-                        placeholder="Nome veicolo o Targa (opzionale)"
-                        className="w-full bg-[var(--surface-variant)] border border-[var(--border)] rounded-2xl p-3 text-sm text-[var(--text-main)] placeholder-[var(--text-muted)] focus:outline-none focus:border-indigo-500"
+                        placeholder="Nome veicolo o targa"
+                        className="bg-[var(--surface-variant)] border border-[var(--border)] rounded-xl px-3.5 py-2.5 text-xs text-[var(--text-main)] focus:outline-none focus:border-blue-500"
                       />
+                    </div>
+
+                    {/* Foto posto */}
+                    <div className="flex items-center justify-between pt-1">
+                      {parkingPhotoUrl ? (
+                        <div className="flex items-center gap-2">
+                          <img src={parkingPhotoUrl} alt="Foto posto" className="w-10 h-10 rounded-xl object-cover border border-[var(--border)]" />
+                          <span className="text-xs text-emerald-600 font-bold">Foto allegata</span>
+                          <button
+                            type="button"
+                            onClick={handleRemovePhoto}
+                            className="text-xs text-rose-500 font-bold hover:underline"
+                          >
+                            Rimuovi
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => fileInputRef.current?.click()}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[var(--surface-variant)] hover:bg-[var(--border)] text-xs font-bold text-blue-600 dark:text-blue-400 border border-[var(--border)] transition-colors cursor-pointer"
+                        >
+                          <Camera className="w-3.5 h-3.5" />
+                          <span>Scatta o Allega Foto Posto</span>
+                        </button>
+                      )}
                     </div>
                   </div>
 
-                  {/* PULSANTE CONFERMA E ATTIVAZIONE PARCHEGGIO */}
-                  <button
-                    onClick={handleConfirmAndSaveParking}
-                    disabled={isLoadingGps}
-                    className="w-full py-4 px-6 rounded-2xl bg-indigo-500 hover:bg-indigo-600 active:scale-98 text-white font-bold text-base flex items-center justify-center gap-2.5 transition-all shadow-xl shadow-indigo-500/30 disabled:opacity-50"
-                  >
-                    {isLoadingGps ? (
-                      <>
-                        <RefreshCw className="w-5 h-5 animate-spin" />
-                        <span>Rilevamento coordinate in corso...</span>
-                      </>
-                    ) : locationMode === 'gps' ? (
-                      <>
-                        <LocateFixed className="w-5 h-5" />
-                        <span>Registra Posizione GPS Auto</span>
-                      </>
-                    ) : (
-                      <>
-                        <Car className="w-5 h-5" />
-                        <span>Conferma e Salva Parcheggio</span>
-                      </>
-                    )}
-                  </button>
+                  {/* Pulsante conferma per inserimento manuale */}
+                  {locationMode === 'manual' && (
+                    <button
+                      type="button"
+                      onClick={handleConfirmAndSaveParking}
+                      disabled={isLoadingGps || !manualAddressInput.trim()}
+                      className="w-full py-3.5 px-4 rounded-2xl bg-blue-600 hover:bg-blue-700 active:scale-98 text-white font-bold text-sm shadow-md transition-all cursor-pointer disabled:opacity-50"
+                    >
+                      Conferma Parcheggio Manuale
+                    </button>
+                  )}
                 </div>
               </div>
             )}
           </div>
-        )}
-      </div>
+        ) : (
+          /* ============================================================ */
+          /* SCHERMATA: I MIEI LUOGHI & INDIRIZZI                        */
+          /* ============================================================ */
+          <div className="space-y-4">
+            {/* BARRA DI RICERCA */}
+            <div className="relative group">
+              <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" />
+              <input
+                type="text"
+                value={searchAddrQuery}
+                onChange={(e) => setSearchAddrQuery(e.target.value)}
+                placeholder="Cerca per titolo, via o note..."
+                className="w-full bg-[var(--card-bg)] border border-[var(--border)] rounded-2xl pl-10 pr-9 py-2.5 text-sm text-[var(--text-main)] placeholder-[var(--text-muted)] focus:outline-none focus:border-blue-500 shadow-2xs transition-all"
+              />
+              {searchAddrQuery && (
+                <button 
+                  type="button"
+                  onClick={() => setSearchAddrQuery('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] hover:text-[var(--text-main)] cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+            </div>
 
-      {/* ============================================================ */}
-      {/* MODAL: AGGIUNGI / MODIFICA INDIRIZZO                         */}
-      {/* ============================================================ */}
+            {/* FILTRI CATEGORIA RAPIDI */}
+            <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+              {[
+                { id: 'all', label: 'Tutti' },
+                { id: 'home', label: '🏠 Casa' },
+                { id: 'work', label: '💼 Lavoro' },
+                { id: 'favorite', label: '⭐ Preferiti' },
+                { id: 'other', label: '📍 Altro' },
+              ].map(f => (
+                <button
+                  key={f.id}
+                  type="button"
+                  onClick={() => setAddrCategoryFilter(f.id as any)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold shrink-0 transition-all cursor-pointer border ${
+                    addrCategoryFilter === f.id
+                      ? 'bg-blue-600 text-white border-blue-600 shadow-2xs'
+                      : 'bg-[var(--card-bg)] text-[var(--text-muted)] hover:text-[var(--text-main)] border-[var(--border)]'
+                  }`}
+                >
+                  {f.label}
+                </button>
+              ))}
+            </div>
+
+            {/* LISTA LUOGHI */}
+            {filteredAddresses.length > 0 ? (
+              <div className="grid grid-cols-1 gap-3">
+                {filteredAddresses.map((addr) => {
+                  const badge = getCategoryBadge(addr.category);
+                  const BadgeIcon = badge.icon;
+
+                  return (
+                    <div
+                      key={addr.id}
+                      className="p-4 rounded-3xl bg-[var(--card-bg)] border border-[var(--border)] hover:border-blue-500/30 transition-all shadow-2xs space-y-3"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-start gap-3 min-w-0">
+                          <div className={`p-2.5 rounded-2xl ${badge.color} border shrink-0 mt-0.5`}>
+                            <BadgeIcon className="w-5 h-5" />
+                          </div>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2">
+                              <h4 className="text-base font-bold text-[var(--text-main)] truncate">
+                                {addr.title}
+                              </h4>
+                              {addr.category && (
+                                <span className="text-[10px] uppercase font-bold text-[var(--text-muted)] px-1.5 py-0.2 rounded-md bg-[var(--surface-variant)]">
+                                  {badge.label}
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-xs text-[var(--text-muted)] break-words line-clamp-2 mt-0.5">
+                              {addr.query}
+                            </p>
+                            {addr.notes && (
+                              <p className="text-[11px] text-blue-600 dark:text-blue-400 mt-1 italic">
+                                Note: {addr.notes}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-1 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditingAddr(addr);
+                              setNewTitle(addr.title);
+                              setNewQuery(addr.query);
+                              setNewNotes(addr.notes || '');
+                              setNewCategory(addr.category || 'other');
+                              setIsAddingAddr(true);
+                            }}
+                            className="p-2 rounded-xl text-[var(--text-muted)] hover:text-blue-500 hover:bg-[var(--surface-variant)] transition-colors cursor-pointer"
+                            title="Modifica"
+                          >
+                            <Edit2 className="w-4 h-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteAddress(addr.id)}
+                            className="p-2 rounded-xl text-[var(--text-muted)] hover:text-rose-500 hover:bg-rose-500/10 transition-colors cursor-pointer"
+                            title="Elimina"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Azioni rapide luogo */}
+                      <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-[var(--border)]/70">
+                        <button
+                          type="button"
+                          onClick={() => setNavModalTarget({ query: addr.query, title: addr.title })}
+                          className="flex-1 min-w-[110px] py-2 px-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-2xs active:scale-95 transition-all cursor-pointer"
+                        >
+                          <Navigation className="w-3.5 h-3.5" />
+                          <span>Naviga</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => handleParkAtAddress(addr)}
+                          className="py-2 px-3 rounded-xl bg-[var(--surface-variant)] hover:bg-[var(--border)] text-blue-600 dark:text-blue-400 font-bold text-xs flex items-center gap-1.5 border border-[var(--border)] active:scale-95 transition-all cursor-pointer"
+                          title="Imposta questo luogo come parcheggio auto"
+                        >
+                          <Car className="w-3.5 h-3.5" />
+                          <span>Parcheggia qui</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => handleCopyText(addr.query, 'Indirizzo')}
+                          className="p-2 rounded-xl bg-[var(--surface-variant)] hover:bg-[var(--border)] text-[var(--text-muted)] hover:text-[var(--text-main)] border border-[var(--border)] active:scale-95 transition-all cursor-pointer"
+                          title="Copia indirizzo"
+                        >
+                          <Copy className="w-3.5 h-3.5" />
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setSharingAddr(addr)}
+                          className="p-2 rounded-xl bg-[var(--surface-variant)] hover:bg-[var(--border)] text-[var(--text-muted)] hover:text-[var(--text-main)] border border-[var(--border)] active:scale-95 transition-all cursor-pointer"
+                          title="Condividi via QR Code"
+                        >
+                          <QrCode className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              /* Empty state Luoghi */
+              <div className="py-12 text-center space-y-3">
+                <div className="w-16 h-16 rounded-full bg-blue-100 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 flex items-center justify-center mx-auto">
+                  <MapPin className="w-8 h-8" />
+                </div>
+                <div className="space-y-1 max-w-sm mx-auto">
+                  <h3 className="text-base font-bold text-[var(--text-main)]">
+                    {searchAddrQuery ? 'Nessun luogo trovato' : 'Nessun Luogo Salvato'}
+                  </h3>
+                  <p className="text-xs text-[var(--text-muted)]">
+                    {searchAddrQuery 
+                      ? 'Nessun indirizzo corrisponde alla ricerca inserita.' 
+                      : 'Salva i tuoi luoghi del cuore (Casa, Lavoro, Palestra, Famiglia) per aprirli al volo con il navigatore o impostarli come posto auto.'}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditingAddr(null);
+                    setNewTitle('');
+                    setNewQuery('');
+                    setNewNotes('');
+                    setNewCategory('other');
+                    setIsAddingAddr(true);
+                  }}
+                  className="py-2.5 px-5 rounded-2xl bg-blue-600 text-white font-bold text-xs inline-flex items-center gap-1.5 shadow-sm active:scale-95 cursor-pointer"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Aggiungi Luogo</span>
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+      </main>
+
+      {/* ═══════ MODAL: AGGIUNGI / MODIFICA LUOGO ═══════ */}
       <AnimatePresence>
         {isAddingAddr && (
-          <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md">
+          <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
             <motion.div
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-[var(--surface)] border border-[var(--border)] rounded-3xl p-6 w-full max-w-md shadow-2xl space-y-5"
+              className="bg-[var(--card-bg)] border border-[var(--border)] rounded-3xl p-6 w-full max-w-md shadow-2xl space-y-4"
             >
               <div className="flex items-center justify-between">
-                <h3 className="text-lg font-black text-[var(--text-main)]">
-                  {editingAddr ? 'Modifica Indirizzo' : 'Nuovo Indirizzo'}
+                <h3 className="text-lg font-bold text-[var(--text-main)]">
+                  {editingAddr ? 'Modifica Luogo' : 'Nuovo Luogo'}
                 </h3>
                 <button
+                  type="button"
                   onClick={() => setIsAddingAddr(false)}
-                  className="p-2 rounded-full hover:bg-[var(--surface-variant)] text-[var(--text-muted)]"
+                  className="p-2 rounded-full hover:bg-[var(--surface-variant)] text-[var(--text-muted)] cursor-pointer"
                 >
                   <X className="w-5 h-5" />
                 </button>
               </div>
 
-              <form onSubmit={handleAddOrEditAddress} className="space-y-4">
+              {/* Selettore categoria rapida */}
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-bold uppercase text-[var(--text-muted)]">Categoria</label>
+                <div className="grid grid-cols-4 gap-1.5">
+                  {[
+                    { id: 'home', label: 'Casa', icon: Home },
+                    { id: 'work', label: 'Lavoro', icon: Briefcase },
+                    { id: 'favorite', label: 'Preferito', icon: Star },
+                    { id: 'other', label: 'Altro', icon: MapPin },
+                  ].map(c => {
+                    const CIcon = c.icon;
+                    return (
+                      <button
+                        key={c.id}
+                        type="button"
+                        onClick={() => setNewCategory(c.id as any)}
+                        className={`py-2 px-1.5 rounded-xl text-xs font-bold flex flex-col items-center gap-1 border transition-all cursor-pointer ${
+                          newCategory === c.id
+                            ? 'bg-blue-600 text-white border-blue-600 shadow-2xs'
+                            : 'bg-[var(--surface-variant)] text-[var(--text-muted)] border-[var(--border)]'
+                        }`}
+                      >
+                        <CIcon className="w-4 h-4" />
+                        <span>{c.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <form onSubmit={handleAddOrEditAddress} className="space-y-3.5">
                 <div>
-                  <label className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider block mb-1.5">
-                    Nome / Titolo
+                  <label className="text-[11px] font-bold uppercase text-[var(--text-muted)] block mb-1">
+                    Titolo / Nome Luogo
                   </label>
                   <input
                     type="text"
                     value={newTitle}
                     onChange={(e) => setNewTitle(e.target.value)}
-                    placeholder="Es. Casa, Ufficio, Dentista..."
+                    placeholder="Es. Casa, Ufficio, Palestra..."
                     required
-                    className="w-full bg-[var(--surface-variant)] border border-[var(--border)] rounded-2xl px-4 py-3 text-sm text-[var(--text-main)] placeholder-[var(--text-muted)] focus:outline-none focus:border-indigo-500"
+                    className="w-full bg-[var(--surface-variant)] border border-[var(--border)] rounded-2xl px-4 py-2.5 text-sm text-[var(--text-main)] placeholder-[var(--text-muted)] focus:outline-none focus:border-blue-500"
                   />
                 </div>
 
                 <div>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <label className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider">
-                      Indirizzo o Coordinate
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-[11px] font-bold uppercase text-[var(--text-muted)]">
+                      Indirizzo
                     </label>
                     <button
                       type="button"
                       onClick={handleGetGpsForNewAddress}
                       disabled={isGettingAddrGps}
-                      className="text-xs font-bold text-indigo-500 hover:underline flex items-center gap-1.5 transition-all"
+                      className="text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1 cursor-pointer"
                     >
                       {isGettingAddrGps ? (
-                        <RefreshCw className="w-3.5 h-3.5 animate-spin text-indigo-500" />
+                        <RefreshCw className="w-3.5 h-3.5 animate-spin" />
                       ) : (
                         <LocateFixed className="w-3.5 h-3.5" />
                       )}
-                      <span>{isGettingAddrGps ? 'Rilevamento GPS...' : 'Usa Posizione GPS'}</span>
+                      <span>{isGettingAddrGps ? 'GPS...' : 'Usa GPS'}</span>
                     </button>
                   </div>
                   <input
@@ -1754,23 +1752,36 @@ export const AddressAndParkingScreen: React.FC<AddressAndParkingScreenProps> = (
                     onChange={(e) => setNewQuery(e.target.value)}
                     placeholder="Es. Via Garibaldi 12, Milano"
                     required
-                    className="w-full bg-[var(--surface-variant)] border border-[var(--border)] rounded-2xl px-4 py-3 text-sm text-[var(--text-main)] placeholder-[var(--text-muted)] focus:outline-none focus:border-indigo-500"
+                    className="w-full bg-[var(--surface-variant)] border border-[var(--border)] rounded-2xl px-4 py-2.5 text-sm text-[var(--text-main)] placeholder-[var(--text-muted)] focus:outline-none focus:border-blue-500"
                   />
                 </div>
 
-                <div className="flex items-center justify-end gap-2 pt-2">
+                <div>
+                  <label className="text-[11px] font-bold uppercase text-[var(--text-muted)] block mb-1">
+                    Note Aggiuntive (Citofono, Scala, Codice)
+                  </label>
+                  <input
+                    type="text"
+                    value={newNotes}
+                    onChange={(e) => setNewNotes(e.target.value)}
+                    placeholder="Es. Citofono 14, Scala B, Piano 3..."
+                    className="w-full bg-[var(--surface-variant)] border border-[var(--border)] rounded-2xl px-4 py-2.5 text-sm text-[var(--text-main)] placeholder-[var(--text-muted)] focus:outline-none focus:border-blue-500"
+                  />
+                </div>
+
+                <div className="flex items-center justify-end gap-2 pt-2 border-t border-[var(--border)]/70">
                   <button
                     type="button"
                     onClick={() => setIsAddingAddr(false)}
-                    className="px-5 py-3 rounded-2xl text-xs font-bold text-[var(--text-muted)] hover:bg-[var(--surface-variant)]"
+                    className="px-4 py-2 rounded-xl text-xs font-bold text-[var(--text-muted)] hover:bg-[var(--surface-variant)] cursor-pointer"
                   >
                     Annulla
                   </button>
                   <button
                     type="submit"
-                    className="px-6 py-3 rounded-2xl bg-indigo-500 text-white font-bold text-xs hover:bg-indigo-600 transition-colors shadow-md shadow-indigo-500/20"
+                    className="px-5 py-2 rounded-xl bg-blue-600 text-white font-bold text-xs hover:bg-blue-700 transition-colors shadow-sm cursor-pointer"
                   >
-                    {editingAddr ? 'Aggiorna' : 'Salva Indirizzo'}
+                    {editingAddr ? 'Aggiorna' : 'Salva'}
                   </button>
                 </div>
               </form>
@@ -1779,26 +1790,79 @@ export const AddressAndParkingScreen: React.FC<AddressAndParkingScreenProps> = (
         )}
       </AnimatePresence>
 
-      {/* ============================================================ */}
-      {/* MODAL: SELETTORE INDIRIZZO DALLA RUBRICA PER PARCHEGGIO     */}
-      {/* ============================================================ */}
+      {/* ═══════ MODAL: SCEGLI NAVIGATORE (Google / Apple / Waze) ═══════ */}
       <AnimatePresence>
-        {isAddressPickerOpen && (
-          <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md">
+        {navModalTarget && (
+          <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
             <motion.div
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-[var(--surface)] border border-[var(--border)] rounded-3xl p-6 w-full max-w-md shadow-2xl space-y-4 max-h-[80vh] flex flex-col"
+              className="bg-[var(--card-bg)] border border-[var(--border)] rounded-3xl p-6 w-full max-w-sm shadow-2xl space-y-4 text-center"
+            >
+              <div className="flex items-center justify-between">
+                <h3 className="text-base font-bold text-[var(--text-main)]">Scegli Navigatore</h3>
+                <button
+                  type="button"
+                  onClick={() => setNavModalTarget(null)}
+                  className="p-2 rounded-full hover:bg-[var(--surface-variant)] text-[var(--text-muted)] cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <p className="text-xs text-[var(--text-muted)] truncate">
+                Destinazione: <strong>{navModalTarget.title}</strong>
+              </p>
+
+              <div className="grid grid-cols-1 gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => openNavigation('google', navModalTarget)}
+                  className="w-full py-3 px-4 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-sm cursor-pointer"
+                >
+                  <Navigation className="w-4 h-4" />
+                  <span>Google Maps (A piedi / Auto)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => openNavigation('apple', navModalTarget)}
+                  className="w-full py-3 px-4 rounded-2xl bg-[var(--surface-variant)] hover:bg-[var(--border)] text-[var(--text-main)] font-bold text-xs border border-[var(--border)] flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <span>Apple Maps</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => openNavigation('waze', navModalTarget)}
+                  className="w-full py-3 px-4 rounded-2xl bg-[var(--surface-variant)] hover:bg-[var(--border)] text-[var(--text-main)] font-bold text-xs border border-[var(--border)] flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <span>Waze</span>
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* ═══════ MODAL: SELETTORE INDIRIZZO DA RUBRICA PER PARCHEGGIO ═══════ */}
+      <AnimatePresence>
+        {isAddressPickerOpen && (
+          <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-[var(--card-bg)] border border-[var(--border)] rounded-3xl p-6 w-full max-w-md shadow-2xl space-y-4 max-h-[80vh] flex flex-col"
             >
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="text-lg font-black text-[var(--text-main)]">Scegli da Rubrica</h3>
-                  <p className="text-xs text-[var(--text-muted)]">Seleziona un indirizzo salvato come posto auto</p>
+                  <h3 className="text-base font-bold text-[var(--text-main)]">Scegli da Rubrica</h3>
+                  <p className="text-xs text-[var(--text-muted)]">Imposta un luogo salvato come parcheggio</p>
                 </div>
                 <button
+                  type="button"
                   onClick={() => setIsAddressPickerOpen(false)}
-                  className="p-2 rounded-full hover:bg-[var(--surface-variant)] text-[var(--text-muted)]"
+                  className="p-2 rounded-full hover:bg-[var(--surface-variant)] text-[var(--text-muted)] cursor-pointer"
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -1811,13 +1875,12 @@ export const AddressAndParkingScreen: React.FC<AddressAndParkingScreenProps> = (
                       key={a.id}
                       type="button"
                       onClick={() => {
-                        setSelectedAddressFromBook(a);
-                        setManualAddressInput(`${a.title}: ${a.query}`);
+                        setManualAddressInput(a.query ? `${a.title}: ${a.query}` : a.title);
                         setIsAddressPickerOpen(false);
                       }}
-                      className="w-full p-3.5 rounded-2xl bg-[var(--surface-variant)] hover:bg-[var(--border)] border border-[var(--border)] text-left flex items-start gap-3 transition-colors"
+                      className="w-full p-3 rounded-2xl bg-[var(--surface-variant)] hover:bg-[var(--border)] border border-[var(--border)] text-left flex items-start gap-3 transition-colors cursor-pointer"
                     >
-                      <MapPin className="w-5 h-5 text-indigo-500 shrink-0 mt-0.5" />
+                      <MapPin className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
                       <div className="min-w-0">
                         <p className="text-sm font-bold text-[var(--text-main)] truncate">{a.title}</p>
                         <p className="text-xs text-[var(--text-muted)] truncate">{a.query}</p>
@@ -1826,7 +1889,7 @@ export const AddressAndParkingScreen: React.FC<AddressAndParkingScreenProps> = (
                   ))
                 ) : (
                   <p className="text-xs text-[var(--text-muted)] text-center py-6">
-                    Nessun indirizzo in rubrica. Aggiungine uno nella scheda "Rubrica Indirizzi".
+                    Nessun luogo in rubrica. Aggiungine uno nella scheda "I miei Luoghi".
                   </p>
                 )}
               </div>
@@ -1835,40 +1898,39 @@ export const AddressAndParkingScreen: React.FC<AddressAndParkingScreenProps> = (
         )}
       </AnimatePresence>
 
-      {/* ============================================================ */}
-      {/* MODAL: MODIFICA MANUALE ORARIO FINE SOSTA SUL PARCHEGGIO LIVE */}
-      {/* ============================================================ */}
+      {/* ═══════ MODAL: MODIFICA ORARIO FINE SOSTA ═══════ */}
       <AnimatePresence>
         {isExtendingManualModalOpen && (
-          <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md">
+          <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
             <motion.div
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-[var(--surface)] border border-[var(--border)] rounded-3xl p-6 w-full max-w-sm shadow-2xl space-y-5"
+              className="bg-[var(--card-bg)] border border-[var(--border)] rounded-3xl p-6 w-full max-w-sm shadow-2xl space-y-4"
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Clock className="w-5 h-5 text-indigo-500" />
-                  <h3 className="text-base font-black text-[var(--text-main)]">Modifica Fine Sosta</h3>
+                  <Clock className="w-5 h-5 text-blue-600" />
+                  <h3 className="text-base font-bold text-[var(--text-main)]">Modifica Fine Sosta</h3>
                 </div>
                 <button
+                  type="button"
                   onClick={() => setIsExtendingManualModalOpen(false)}
-                  className="p-2 rounded-full hover:bg-[var(--surface-variant)] text-[var(--text-muted)]"
+                  className="p-2 rounded-full hover:bg-[var(--surface-variant)] text-[var(--text-muted)] cursor-pointer"
                 >
                   <X className="w-5 h-5" />
                 </button>
               </div>
 
-              <div className="space-y-3">
-                <label className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider block">
+              <div className="space-y-2">
+                <label className="text-[11px] font-bold uppercase text-[var(--text-muted)] block">
                   Imposta nuova ora di fine:
                 </label>
                 <input
                   type="time"
                   value={extendTimeInput}
                   onChange={(e) => setExtendTimeInput(e.target.value)}
-                  className="w-full bg-[var(--surface-variant)] border border-[var(--border)] rounded-2xl p-4 font-mono font-bold text-2xl text-center text-[var(--text-main)] focus:outline-none focus:border-indigo-500"
+                  className="w-full bg-[var(--surface-variant)] border border-[var(--border)] rounded-2xl p-3 font-mono font-bold text-2xl text-center text-[var(--text-main)] focus:outline-none focus:border-blue-500"
                 />
               </div>
 
@@ -1876,14 +1938,14 @@ export const AddressAndParkingScreen: React.FC<AddressAndParkingScreenProps> = (
                 <button
                   type="button"
                   onClick={() => setIsExtendingManualModalOpen(false)}
-                  className="px-4 py-2.5 rounded-xl text-xs font-bold text-[var(--text-muted)] hover:bg-[var(--surface-variant)]"
+                  className="px-4 py-2 rounded-xl text-xs font-bold text-[var(--text-muted)] hover:bg-[var(--surface-variant)] cursor-pointer"
                 >
                   Annulla
                 </button>
                 <button
                   type="button"
                   onClick={handleApplyManualEndTimeLive}
-                  className="px-5 py-2.5 rounded-xl bg-indigo-500 text-white font-bold text-xs hover:bg-indigo-600 transition-colors shadow-md shadow-indigo-500/20"
+                  className="px-5 py-2 rounded-xl bg-blue-600 text-white font-bold text-xs hover:bg-blue-700 transition-colors shadow-sm cursor-pointer"
                 >
                   Salva Orario
                 </button>
@@ -1893,43 +1955,74 @@ export const AddressAndParkingScreen: React.FC<AddressAndParkingScreenProps> = (
         )}
       </AnimatePresence>
 
-      {/* ============================================================ */}
-      {/* MODAL: CONDIVISIONE QR CODE INDIRIZZO                       */}
-      {/* ============================================================ */}
+      {/* ═══════ MODAL: INGRANDIMENTO FOTO POSTO AUTO ═══════ */}
+      <AnimatePresence>
+        {viewFullPhoto && parking?.photoUrl && (
+          <div 
+            onClick={() => setViewFullPhoto(false)}
+            className="fixed inset-0 z-[220] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md cursor-pointer"
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="relative max-w-lg w-full rounded-3xl overflow-hidden shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <img src={parking.photoUrl} alt="Foto posto auto" className="w-full h-auto max-h-[80vh] object-contain rounded-3xl" />
+              <button
+                type="button"
+                onClick={() => setViewFullPhoto(false)}
+                className="absolute top-3 right-3 p-2 rounded-full bg-black/60 text-white hover:bg-black/80 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* ═══════ MODAL: CONDIVISIONE QR CODE LUOGO ═══════ */}
       <AnimatePresence>
         {sharingAddr && (
-          <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md">
+          <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
             <motion.div
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-[var(--surface)] border border-[var(--border)] rounded-3xl p-6 w-full max-w-sm shadow-2xl text-center space-y-4"
+              className="bg-[var(--card-bg)] border border-[var(--border)] rounded-3xl p-6 w-full max-w-sm shadow-2xl text-center space-y-4"
             >
               <div className="flex items-center justify-between">
-                <h3 className="text-base font-black text-[var(--text-main)]">Condividi Indirizzo</h3>
+                <h3 className="text-base font-bold text-[var(--text-main)]">Condividi Luogo</h3>
                 <button
+                  type="button"
                   onClick={() => setSharingAddr(null)}
-                  className="p-2 rounded-full hover:bg-[var(--surface-variant)] text-[var(--text-muted)]"
+                  className="p-2 rounded-full hover:bg-[var(--surface-variant)] text-[var(--text-muted)] cursor-pointer"
                 >
                   <X className="w-5 h-5" />
                 </button>
               </div>
 
               <p className="text-xs text-[var(--text-muted)]">
-                Fai scansionare questo QR Code per importare l'indirizzo direttamente in Chelona.
+                Scansiona questo QR Code per importare il luogo in Chelona.
               </p>
 
               <div className="bg-white p-4 rounded-2xl inline-block mx-auto shadow-sm border border-[var(--border)]">
                 <QRCodeSVG
                   value={JSON.stringify({
                     t: 'shared_address',
-                    d: { title: sharingAddr.title, query: sharingAddr.query }
+                    d: { 
+                      title: sharingAddr.title, 
+                      query: sharingAddr.query,
+                      notes: sharingAddr.notes,
+                      category: sharingAddr.category
+                    }
                   })}
-                  size={200}
+                  size={190}
                 />
               </div>
 
-              <div className="space-y-1">
+              <div className="space-y-0.5">
                 <p className="text-sm font-bold text-[var(--text-main)]">{sharingAddr.title}</p>
                 <p className="text-xs text-[var(--text-muted)] truncate">{sharingAddr.query}</p>
               </div>
@@ -1937,7 +2030,7 @@ export const AddressAndParkingScreen: React.FC<AddressAndParkingScreenProps> = (
               <button
                 type="button"
                 onClick={() => setSharingAddr(null)}
-                className="w-full py-3 rounded-2xl bg-[var(--surface-variant)] hover:bg-[var(--border)] font-bold text-xs text-[var(--text-main)]"
+                className="w-full py-2.5 rounded-2xl bg-[var(--surface-variant)] hover:bg-[var(--border)] font-bold text-xs text-[var(--text-main)] cursor-pointer"
               >
                 Chiudi
               </button>
@@ -1946,9 +2039,7 @@ export const AddressAndParkingScreen: React.FC<AddressAndParkingScreenProps> = (
         )}
       </AnimatePresence>
 
-      {/* ============================================================ */}
-      {/* SCANNER QR CODE                                              */}
-      {/* ============================================================ */}
+      {/* ═══════ SCANNER QR CODE ═══════ */}
       {isScanningQr && (
         <QrScanner
           onScan={handleScanAddressQr}
@@ -1956,18 +2047,27 @@ export const AddressAndParkingScreen: React.FC<AddressAndParkingScreenProps> = (
         />
       )}
 
-      {/* ============================================================ */}
-      {/* DIALOG CONFERMA ELIMINAZIONE INDIRIZZO                       */}
-      {/* ============================================================ */}
+      {/* ═══════ CONFIRM DIALOG ELIMINAZIONE INDIRIZZO ═══════ */}
       <ConfirmDialog
         isOpen={!!deleteConfirmId}
-        title="Elimina Indirizzo"
-        message="Vuoi davvero eliminare questo indirizzo dalla tua rubrica?"
+        title="Elimina Luogo"
+        message="Vuoi davvero eliminare questo luogo dalla tua rubrica?"
         onConfirm={confirmDeleteAddress}
         onCancel={() => setDeleteConfirmId(null)}
         confirmText="Elimina"
         cancelText="Annulla"
       />
-    </div>
+
+      {/* ═══════ CONFIRM DIALOG TERMINA SOSTA ═══════ */}
+      <ConfirmDialog
+        isOpen={showClearParkingConfirm}
+        title="Hai ripreso l'auto?"
+        message="La posizione del parcheggio e l'eventuale parchimetro attivo verranno azzerati."
+        onConfirm={confirmClearParking}
+        onCancel={() => setShowClearParkingConfirm(false)}
+        confirmText="Sì, ho ripreso l'auto"
+        cancelText="Annulla"
+      />
+    </motion.div>
   );
 };

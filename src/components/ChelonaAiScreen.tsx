@@ -2,8 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { 
   Send, Mic, MicOff, Volume2, VolumeX, ArrowLeft, 
   ExternalLink, Check, Copy, X, Sparkles, ChevronRight, UtensilsCrossed, Flame,
-  Settings2, Sliders, Store, Calendar, Car, ShoppingBasket,
-  Navigation, Globe, RefreshCw, AudioLines
+  Store, Calendar, Car, ShoppingBasket,
+  Navigation, Globe, RefreshCw
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Module } from '../types';
@@ -29,8 +29,6 @@ interface ChelonaAiScreenProps {
   mode?: 'embedded' | 'fullscreen';
   onAddModule?: (module: Module) => void;
   onOpenParking?: () => void;
-  initialVoiceMode?: boolean;
-  initialDictationMode?: boolean;
   onNavigate?: (action: AiAction) => void;
   activeSection?: string;
 }
@@ -144,7 +142,6 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
   mode = 'fullscreen',
   onAddModule,
   onOpenParking,
-  initialVoiceMode = false,
   onNavigate,
   activeSection,
 }) => {
@@ -202,20 +199,10 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
     const saved = localStorage.getItem('chelona_speech_pitch');
     return saved ? parseFloat(saved) : 1.0;
   });
-  const [showVoiceSettings, setShowVoiceSettings] = useState(false);
-  const [previewingVoiceUri, setPreviewingVoiceUri] = useState<string | null>(null);
 
   const cancelSpeechRef = useRef(false);
   const speechSessionIdRef = useRef(0);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-
-  // Modalità interazione vocale a tutto schermo (Voice Mode)
-  const [isVoiceModeOpen, setIsVoiceModeOpen] = useState(false);
-  const isVoiceModeOpenRef = useRef(false);
-  isVoiceModeOpenRef.current = isVoiceModeOpen;
-  const [voiceStatus, setVoiceStatus] = useState<'idle' | 'listening' | 'thinking' | 'speaking'>('idle');
-  const [lastUserSpeech, setLastUserSpeech] = useState<string>('');
-  const [lastAiSpeech, setLastAiSpeech] = useState<string>('');
 
   const isEmbedded = mode === 'embedded';
 
@@ -277,10 +264,8 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
       } catch {}
     }
     (window as any).__activeUtterance = null;
-    setVoiceStatus('idle');
     setIsListening(false);
     setIsSpeakingActive(false);
-    setPreviewingVoiceUri(null);
   };
 
   const speakText = (text: string, onEndCallback?: () => void, overrideVoice?: SpeechSynthesisVoice) => {
@@ -296,7 +281,6 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
 
     const naturalText = prepareNaturalSpeech(text);
     if (!naturalText) {
-      setVoiceStatus('idle');
       setIsSpeakingActive(false);
       if (onEndCallback && !cancelSpeechRef.current && speechSessionIdRef.current === currentSessionId) {
         onEndCallback();
@@ -306,7 +290,6 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
 
     const sentences = splitIntoSentences(naturalText);
     if (sentences.length === 0) {
-      setVoiceStatus('idle');
       setIsSpeakingActive(false);
       if (onEndCallback && !cancelSpeechRef.current && speechSessionIdRef.current === currentSessionId) {
         onEndCallback();
@@ -314,14 +297,12 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
       return;
     }
 
-    setVoiceStatus('speaking');
     setIsSpeakingActive(true);
     let idx = 0;
     const currentVoice = overrideVoice || selectedVoice;
 
     const speakNext = () => {
       if (cancelSpeechRef.current || speechSessionIdRef.current !== currentSessionId || idx >= sentences.length) {
-        setVoiceStatus('idle');
         setIsSpeakingActive(false);
         (window as any).__activeUtterance = null;
         if (onEndCallback && !cancelSpeechRef.current && speechSessionIdRef.current === currentSessionId) {
@@ -357,7 +338,6 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
 
       utterance.onend = () => {
         if (cancelSpeechRef.current || speechSessionIdRef.current !== currentSessionId) {
-          setVoiceStatus('idle');
           setIsSpeakingActive(false);
           (window as any).__activeUtterance = null;
           return;
@@ -371,7 +351,6 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
 
       utterance.onerror = (e: any) => {
         if (e?.error === 'canceled' || e?.error === 'interrupted' || cancelSpeechRef.current || speechSessionIdRef.current !== currentSessionId) {
-          setVoiceStatus('idle');
           setIsSpeakingActive(false);
           (window as any).__activeUtterance = null;
           return;
@@ -383,7 +362,6 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
             }
           }, 50);
         } else {
-          setVoiceStatus('idle');
           setIsSpeakingActive(false);
           (window as any).__activeUtterance = null;
           if (onEndCallback && !cancelSpeechRef.current && speechSessionIdRef.current === currentSessionId) {
@@ -401,45 +379,14 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
     speakNext();
   };
 
-  const handleSelectVoice = (v: SpeechSynthesisVoice) => {
-    setSelectedVoice(v);
-    localStorage.setItem('chelona_preferred_voice_uri', v.voiceURI);
-    showToast(`Voce impostata: ${getVoiceFriendlyName(v)}`, 'info');
-  };
-
-  const handleUpdateRate = (rate: number) => {
-    setSpeechRate(rate);
-    localStorage.setItem('chelona_speech_rate', rate.toString());
-  };
-
-  const handleUpdatePitch = (pitch: number) => {
-    setSpeechPitch(pitch);
-    localStorage.setItem('chelona_speech_pitch', pitch.toString());
-  };
-
-  const handlePreviewVoice = (v: SpeechSynthesisVoice) => {
-    stopSpeaking();
-    setPreviewingVoiceUri(v.voiceURI);
-    speakText(
-      `Ciao! Questa è la voce ${getVoiceFriendlyName(v)}, pronta ad aiutarti in Chelona.`,
-      () => setPreviewingVoiceUri(null),
-      v
-    );
-  };
-
   // Invio query: sostituisce la risposta attiva direttamente nella schermata
-  const handleSend = async (customQuery?: string, isVoiceSession = false, shouldSpeak = false) => {
+  const handleSend = async (customQuery?: string, shouldSpeak = false) => {
     const queryToSend = (customQuery || inputText).trim();
     if (!queryToSend || isProcessing) return;
 
     setInputText('');
     setIsProcessing(true);
     stopSpeaking();
-
-    if (isVoiceSession) {
-      setLastUserSpeech(queryToSend);
-      setVoiceStatus('thinking');
-    }
 
     // Impostiamo la query attiva con testo temporaneo
     setActiveResponse({
@@ -499,35 +446,16 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
         onAddModule(response.createdModule);
       }
 
-      const mustSpeak = isVoiceSession || shouldSpeak;
-
       if (response.autoAction && onNavigate) {
         const autoAct = response.autoAction;
-        const delay = mustSpeak ? 1000 : 350;
+        const delay = shouldSpeak ? 1000 : 350;
         setTimeout(() => {
-          if (isVoiceModeOpenRef.current) {
-            stopSpeaking();
-            setIsVoiceModeOpen(false);
-          }
           onNavigate(autoAct);
         }, delay);
       }
 
-      if (mustSpeak) {
-        if (isVoiceSession) {
-          setLastAiSpeech(response.text);
-          speakText(response.text, () => {
-            if (isVoiceModeOpenRef.current) {
-              setTimeout(() => {
-                if (isVoiceModeOpenRef.current) {
-                  startVoiceRecognition(true);
-                }
-              }, 400);
-            }
-          });
-        } else {
-          speakText(response.text);
-        }
+      if (shouldSpeak && response.text) {
+        speakText(response.text);
       }
     } catch (e) {
       console.error('AI query error', e);
@@ -537,7 +465,7 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
         text: errMsg,
         timestamp: Date.now()
       });
-      if (isVoiceSession || shouldSpeak) {
+      if (shouldSpeak) {
         speakText(errMsg);
       }
     } finally {
@@ -552,15 +480,10 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
     }
   };
 
-  const startVoiceRecognition = async (isVoiceSession = false) => {
+  const startVoiceRecognition = async () => {
     voiceRecognitionService.stop();
     playGeminiChime('start');
-
-    if (isVoiceSession) {
-      setVoiceStatus('listening');
-    } else {
-      setIsListening(true);
-    }
+    setIsListening(true);
     setLiveVoiceTranscript('');
     setLiveAudioVolume(0.2);
 
@@ -568,18 +491,13 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
       lang: 'it-IT',
       onStart: () => {
         setIsListening(true);
-        if (isVoiceSession) setVoiceStatus('listening');
       },
       onRms: (normVolume) => {
         setLiveAudioVolume(normVolume);
       },
       onPartial: (partialText) => {
         setLiveVoiceTranscript(partialText);
-        if (isVoiceSession) {
-          setLastUserSpeech(partialText);
-        } else {
-          setInputText(partialText);
-        }
+        setInputText(partialText);
       },
       onResult: (finalText) => {
         playGeminiChime('stop');
@@ -587,23 +505,17 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
         setLiveVoiceTranscript(finalText);
         const trimmed = (finalText || '').trim();
         if (trimmed.length > 0) {
-          handleSend(trimmed, isVoiceSession, true);
-        } else if (isVoiceSession) {
-          setVoiceStatus('idle');
+          handleSend(trimmed, true);
         }
       },
       onError: (errMsg) => {
         console.warn('Voice recognition error:', errMsg);
         setIsListening(false);
-        if (isVoiceSession) setVoiceStatus('idle');
         showToast(errMsg, 'error');
       },
       onEnd: () => {
         setIsListening(false);
         setLiveAudioVolume(0);
-        if (isVoiceSession && voiceStatus !== 'speaking') {
-          setVoiceStatus('idle');
-        }
       },
       autoStopSilenceMs: 1400,
     });
@@ -611,7 +523,6 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
     if (!success) {
       setIsListening(false);
       setLiveAudioVolume(0);
-      if (isVoiceSession) setVoiceStatus('idle');
     }
   };
 
@@ -621,12 +532,7 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
     setIsListening(false);
     setLiveVoiceTranscript('');
     setLiveAudioVolume(0);
-    if (!isVoiceModeOpen) {
-      setInputText('');
-    }
-    if (isVoiceModeOpen) {
-      setVoiceStatus('idle');
-    }
+    setInputText('');
   };
 
   const confirmVoiceRecognition = () => {
@@ -636,49 +542,9 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
     setIsListening(false);
     setLiveAudioVolume(0);
     if (textToSend.length > 0) {
-      handleSend(textToSend, isVoiceModeOpen, true);
+      handleSend(textToSend, true);
     }
   };
-
-  const toggleVoiceMode = () => {
-    if (!isVoiceModeOpen) {
-      playGeminiChime('start');
-      setIsVoiceModeOpen(true);
-      setShowVoiceSettings(false);
-      setLastUserSpeech('');
-      setLiveVoiceTranscript('');
-      const greeting = `Ciao ${username ? username + ', ' : ''}dimmi pure, ti ascolto.`;
-      setLastAiSpeech(greeting);
-      speakText(greeting, () => {
-        setTimeout(() => {
-          startVoiceRecognition(true);
-        }, 250);
-      });
-    } else {
-      playGeminiChime('stop');
-      voiceRecognitionService.stop();
-      stopSpeaking();
-      setIsVoiceModeOpen(false);
-      setShowVoiceSettings(false);
-      setVoiceStatus('idle');
-    }
-  };
-
-  const initialVoiceTriggeredRef = useRef(false);
-
-  useEffect(() => {
-    if (!initialVoiceMode) {
-      initialVoiceTriggeredRef.current = false;
-      return;
-    }
-    if (initialVoiceMode && !initialVoiceTriggeredRef.current && !isVoiceModeOpen) {
-      initialVoiceTriggeredRef.current = true;
-      const t = setTimeout(() => {
-        toggleVoiceMode();
-      }, 120);
-      return () => clearTimeout(t);
-    }
-  }, [initialVoiceMode, isVoiceModeOpen]);
 
   const handleToggleSpeakCurrent = () => {
     if (!activeResponse || !activeResponse.text) return;
@@ -893,7 +759,7 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
                         if (isListening) {
                           confirmVoiceRecognition();
                         } else {
-                          startVoiceRecognition(false);
+                          startVoiceRecognition();
                         }
                       }}
                       className={`p-3 sm:p-3.5 rounded-2xl sm:rounded-3xl border transition-all shrink-0 active:scale-95 shadow-xs cursor-pointer ${
@@ -946,29 +812,15 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
                           </button>
                         </>
                       ) : (
-                        <>
-                          {/* Tasto 'Live' in stile Gemini Live (Conversazione continua a mani libere) */}
-                          <button
-                            type="button"
-                            onClick={toggleVoiceMode}
-                            className="flex items-center gap-1.5 px-2.5 sm:px-3 py-2 sm:py-2.5 rounded-xl sm:rounded-2xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/25 text-amber-500 transition-all active:scale-95 cursor-pointer shadow-xs"
-                            title="Conversazione Continua a Mani Libere (Gemini Live)"
-                          >
-                            <AudioLines className="w-4 h-4 sm:w-4.5 sm:h-4.5 animate-pulse" />
-                            <span className="text-xs sm:text-sm font-bold tracking-tight">Live</span>
-                          </button>
-
-                          {/* Tasto Invia Standard */}
-                          <button
-                            type="button"
-                            onClick={() => handleSend()}
-                            disabled={!inputText.trim() || isProcessing}
-                            className="p-3 sm:p-3.5 rounded-2xl sm:rounded-3xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 disabled:opacity-30 text-white transition-all shrink-0 active:scale-95 shadow-md shadow-amber-500/20 cursor-pointer"
-                            title="Invia richiesta"
-                          >
-                            <Send className="w-5 h-5 sm:w-5.5 sm:h-5.5" />
-                          </button>
-                        </>
+                        <button
+                          type="button"
+                          onClick={() => handleSend()}
+                          disabled={!inputText.trim() || isProcessing}
+                          className="p-3 sm:p-3.5 rounded-2xl sm:rounded-3xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 disabled:opacity-30 text-white transition-all shrink-0 active:scale-95 shadow-md shadow-amber-500/20 cursor-pointer"
+                          title="Invia richiesta"
+                        >
+                          <Send className="w-5 h-5 sm:w-5.5 sm:h-5.5" />
+                        </button>
                       )}
                     </div>
                   </div>
@@ -1353,318 +1205,8 @@ export const ChelonaAiScreen: React.FC<ChelonaAiScreenProps> = ({
     );
   })()}
 
-      {/* ── OVERLAY INTERAZIONE VOCALE A TUTTO SCHERMO (VOICE MODE) ── */}
-      <AnimatePresence>
-        {isVoiceModeOpen && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[160] bg-[var(--bg)]/95 backdrop-blur-2xl flex flex-col justify-between p-6 lg:p-12 safe-area-inset"
-          >
-            {/* Header Voce */}
-            <div className="flex items-center justify-between w-full max-w-xl mx-auto">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-amber-500/10 border border-amber-500/30 p-1 flex items-center justify-center overflow-hidden">
-                  <img src="/chelona_logo.png" alt="Chelona" className="w-full h-full object-contain" />
-                </div>
-                <div>
-                  <h3 className="text-base font-black text-[var(--text-main)]">Conversazione Vocale</h3>
-                  <p className="text-xs text-[var(--text-muted)]">Parla con Chelona a mani libere</p>
-                </div>
-              </div>
 
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setShowVoiceSettings(!showVoiceSettings)}
-                  className={`p-2.5 rounded-full transition-colors border active:scale-95 ${
-                    showVoiceSettings
-                      ? 'bg-amber-500/20 text-amber-500 border-amber-500/40'
-                      : 'bg-[var(--surface-variant)] text-[var(--text-muted)] hover:text-[var(--text-main)] border-[var(--border)]'
-                  }`}
-                  title="Configura voce naturale"
-                >
-                  <Settings2 className="w-5 h-5" />
-                </button>
 
-                <button
-                  type="button"
-                  onClick={toggleVoiceMode}
-                  className="p-2.5 rounded-full bg-[var(--surface-variant)] text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors border border-[var(--border)] active:scale-95"
-                  title="Chiudi modalità voce"
-                >
-                  <X className="w-6 h-6" />
-                </button>
-              </div>
-            </div>
-
-            {/* Centro: Configurazione Voce OPPURE Visualizzatore Orb Vocale */}
-            {showVoiceSettings ? (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                className="w-full max-w-md mx-auto my-auto bg-[var(--card-bg)] border border-[var(--border)] rounded-3xl p-5 lg:p-6 shadow-2xl space-y-4 overflow-y-auto max-h-[70vh]"
-              >
-                <div className="flex items-center justify-between border-b border-[var(--border)] pb-3">
-                  <div className="flex items-center gap-2">
-                    <Sliders className="w-4 h-4 text-amber-500" />
-                    <h4 className="text-sm font-black text-[var(--text-main)]">Sintesi Vocale Umana</h4>
-                  </div>
-                  <span className="text-[11px] font-semibold text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded-full">
-                    100% Locale
-                  </span>
-                </div>
-
-                {/* Scelta Voce */}
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <label className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider">
-                      Voci Italiane ({availableVoices.length})
-                    </label>
-                    <span className="text-[10px] text-[var(--text-muted)]">Tocca per selezionare</span>
-                  </div>
-
-                  <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1">
-                    {availableVoices.length === 0 ? (
-                      <p className="text-xs text-[var(--text-muted)] italic py-2">
-                        Rilevamento voci di sistema in corso...
-                      </p>
-                    ) : (
-                      availableVoices.map((v) => {
-                        const isSelected = selectedVoice?.voiceURI === v.voiceURI;
-                        const isPreviewing = previewingVoiceUri === v.voiceURI;
-                        const friendly = getVoiceFriendlyName(v);
-                        const isHd = friendly.includes('HD') || friendly.includes('Alta Fedeltà') || friendly.includes('Naturale');
-
-                        return (
-                          <div
-                            key={v.voiceURI}
-                            onClick={() => handleSelectVoice(v)}
-                            className={`p-2.5 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-2 ${
-                              isSelected
-                                ? 'bg-amber-500/10 border-amber-500/40 text-[var(--text-main)] shadow-xs'
-                                : 'bg-[var(--surface-variant)]/60 border-[var(--border)]/60 hover:border-amber-500/30 text-[var(--text-muted)]'
-                            }`}
-                          >
-                            <div className="flex items-center gap-2.5 min-w-0">
-                              <div className={`w-4 h-4 rounded-full border flex items-center justify-center shrink-0 ${
-                                isSelected ? 'border-amber-500 bg-amber-500' : 'border-[var(--text-muted)]'
-                              }`}>
-                                {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
-                              </div>
-                              <div className="min-w-0">
-                                <p className={`text-xs font-bold truncate ${isSelected ? 'text-amber-500' : 'text-[var(--text-main)]'}`}>
-                                  {friendly}
-                                </p>
-                                <div className="flex items-center gap-1.5 text-[10px] text-[var(--text-muted)]">
-                                  <span>{v.lang}</span>
-                                  {isHd && (
-                                    <span className="text-amber-500 bg-amber-500/10 px-1 rounded font-bold text-[9px]">
-                                      HD
-                                    </span>
-                                  )}
-                                </div>
-                              </div>
-                            </div>
-
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handlePreviewVoice(v);
-                              }}
-                              className={`p-1.5 rounded-xl border transition-colors shrink-0 ${
-                                isPreviewing
-                                  ? 'bg-amber-500 text-white border-amber-500 animate-pulse'
-                                  : 'bg-[var(--card-bg)] text-[var(--text-muted)] hover:text-amber-500 border-[var(--border)]'
-                              }`}
-                              title="Ascolta anteprima voce"
-                            >
-                              <Volume2 className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        );
-                      })
-                    )}
-                  </div>
-                </div>
-
-                {/* Cadenza / Velocità */}
-                <div className="space-y-1.5 pt-1">
-                  <div className="flex items-center justify-between">
-                    <label className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider">
-                      Cadenza e Ritmo
-                    </label>
-                    <span className="text-xs font-mono font-bold text-amber-500">{speechRate.toFixed(2)}x</span>
-                  </div>
-
-                  <div className="grid grid-cols-3 gap-1.5">
-                    {[
-                      { label: 'Rilassata', val: 0.90 },
-                      { label: 'Naturale ✨', val: 0.97 },
-                      { label: 'Dinamica', val: 1.05 },
-                    ].map((item) => (
-                      <button
-                        key={item.label}
-                        type="button"
-                        onClick={() => handleUpdateRate(item.val)}
-                        className={`py-2 px-1 text-center rounded-xl border text-xs font-semibold transition-all ${
-                          Math.abs(speechRate - item.val) < 0.03
-                            ? 'bg-amber-500 text-white border-amber-500 shadow-sm'
-                            : 'bg-[var(--surface-variant)] text-[var(--text-muted)] hover:text-[var(--text-main)] border-[var(--border)]'
-                        }`}
-                      >
-                        {item.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Tono (Pitch) */}
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider">
-                    Tono Vocale
-                  </label>
-                  <div className="grid grid-cols-3 gap-1.5">
-                    {[
-                      { label: 'Caldo', val: 0.98 },
-                      { label: 'Standard', val: 1.00 },
-                      { label: 'Brillante', val: 1.03 },
-                    ].map((item) => (
-                      <button
-                        key={item.label}
-                        type="button"
-                        onClick={() => handleUpdatePitch(item.val)}
-                        className={`py-2 px-1 text-center rounded-xl border text-xs font-semibold transition-all ${
-                          Math.abs(speechPitch - item.val) < 0.02
-                            ? 'bg-amber-500 text-white border-amber-500 shadow-sm'
-                            : 'bg-[var(--surface-variant)] text-[var(--text-muted)] hover:text-[var(--text-main)] border-[var(--border)]'
-                        }`}
-                      >
-                        {item.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Comando Vocale */}
-
-                {/* Tasto Fine */}
-                <button
-                  type="button"
-                  onClick={() => setShowVoiceSettings(false)}
-                  className="w-full py-2.5 rounded-2xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold transition-all shadow-md shadow-amber-500/20 active:scale-98"
-                >
-                  Conferma e Torna al Dialogo
-                </button>
-              </motion.div>
-            ) : (
-              <div className="flex flex-col items-center justify-center my-auto space-y-6 w-full max-w-md mx-auto text-center">
-                <div className="relative w-44 h-44 flex items-center justify-center">
-                  <motion.div
-                    animate={{
-                      scale: voiceStatus === 'listening' 
-                        ? [1 + liveAudioVolume * 0.2, 1.15 + liveAudioVolume * 0.35, 1 + liveAudioVolume * 0.2] 
-                        : voiceStatus === 'speaking' 
-                        ? [1, 1.25, 1] 
-                        : [1, 1.05, 1],
-                      opacity: voiceStatus === 'idle' ? 0.2 : [0.35, 0.75, 0.35],
-                    }}
-                    transition={{ repeat: Infinity, duration: voiceStatus === 'speaking' ? 1.2 : 1.8, ease: "easeInOut" }}
-                    className="absolute inset-0 rounded-full bg-gradient-to-tr from-amber-500/30 via-rose-500/30 to-indigo-500/30 blur-xl"
-                  />
-
-                  <motion.div
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => {
-                      if (voiceStatus === 'speaking') {
-                        stopSpeaking();
-                        setTimeout(() => startVoiceRecognition(true), 150);
-                      } else if (voiceStatus === 'listening') {
-                        voiceRecognitionService.stop();
-                        setVoiceStatus('idle');
-                        setIsListening(false);
-                      } else {
-                        startVoiceRecognition(true);
-                      }
-                    }}
-                    whileTap={{ scale: 0.93 }}
-                    animate={{
-                      scale: voiceStatus === 'listening' ? (1 + liveAudioVolume * 0.15) : voiceStatus === 'speaking' ? [1, 1.15, 1] : 1,
-                    }}
-                    transition={voiceStatus === 'speaking' ? { repeat: Infinity, duration: 1.5, ease: "easeInOut" } : { type: 'spring', damping: 15, stiffness: 300 }}
-                    className="relative w-32 h-32 rounded-full bg-gradient-to-tr from-amber-500 to-amber-600 p-2 shadow-2xl shadow-amber-500/40 flex items-center justify-center border-4 border-white/20 overflow-hidden cursor-pointer select-none active:scale-95 transition-transform"
-                  >
-                    <img src="/chelona_logo.png" alt="Chelona Voice" className="w-16 h-16 object-contain filter drop-shadow-md pointer-events-none" />
-                  </motion.div>
-                </div>
-
-                <div className="space-y-2">
-                  <span className="text-xs font-black uppercase tracking-widest text-amber-500">
-                    {voiceStatus === 'listening' && '🎙️ Ti ascolto... Parla ora'}
-                    {voiceStatus === 'thinking' && '✨ Sto pensando...'}
-                    {voiceStatus === 'speaking' && '🔊 Chelona sta rispondendo...'}
-                    {voiceStatus === 'idle' && 'Tocca il logo per parlare'}
-                  </span>
-
-                  {voiceStatus === 'listening' && (
-                    <div className="flex justify-center py-1">
-                      <GeminiWaveVisualizer volume={liveAudioVolume} isActive={true} size="md" />
-                    </div>
-                  )}
-
-                  <p className="text-sm text-[var(--text-main)] font-medium max-w-sm mx-auto line-clamp-3 leading-relaxed">
-                    {liveVoiceTranscript 
-                      ? `"${liveVoiceTranscript}"` 
-                      : (lastAiSpeech || lastUserSpeech || 'Di\' qualcosa come: "Cosa ho da comprare nella lista spesa?"')}
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {/* Controlli inferiori */}
-            <div className="flex items-center justify-center gap-6 w-full max-w-sm mx-auto">
-              {voiceStatus === 'speaking' && (
-                <button
-                  type="button"
-                  onClick={stopSpeaking}
-                  className="p-3.5 rounded-full bg-[var(--surface-variant)] hover:bg-rose-500/10 text-rose-500 border border-[var(--border)] shadow-md transition-all active:scale-90"
-                  title="Interrompi risposta"
-                >
-                  <VolumeX className="w-5 h-5" />
-                </button>
-              )}
-
-              <button
-                type="button"
-                onClick={() => {
-                  if (voiceStatus === 'speaking') {
-                    stopSpeaking();
-                    setTimeout(() => startVoiceRecognition(true), 150);
-                  } else if (voiceStatus === 'listening') {
-                    voiceRecognitionService.stop();
-                    setVoiceStatus('idle');
-                    setIsListening(false);
-                  } else {
-                    startVoiceRecognition(true);
-                  }
-                }}
-                className={`p-5 rounded-full transition-all shadow-xl active:scale-90 ${
-                  voiceStatus === 'listening'
-                    ? 'bg-rose-500 text-white shadow-rose-500/30 animate-pulse'
-                    : 'bg-amber-500 text-white shadow-amber-500/30 hover:scale-105'
-                }`}
-                title={voiceStatus === 'listening' ? 'Pausa ascolto' : 'Inizia ad ascoltare'}
-              >
-                {voiceStatus === 'listening' ? <MicOff className="w-7 h-7" /> : <Mic className="w-7 h-7" />}
-              </button>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
     </div>
   );

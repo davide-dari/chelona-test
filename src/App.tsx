@@ -46,6 +46,7 @@ const ProfileScreen = React.lazy(() => import('./components/ProfileScreen').then
 const ToolsScreen = React.lazy(() => import('./components/ToolsScreen').then(m => ({ default: m.ToolsScreen })));
 const AutoManagementScreen = React.lazy(() => import('./components/AutoManagementScreen').then(m => ({ default: m.AutoManagementScreen })));
 const DocumentManagementScreen = React.lazy(() => import('./components/DocumentManagementScreen').then(m => ({ default: m.DocumentManagementScreen })));
+const DocumentSectionView = React.lazy(() => import('./components/DocumentSectionView').then(m => ({ default: m.DocumentSectionView })));
 const NoteManagementScreen = React.lazy(() => import('./components/NoteManagementScreen').then(m => ({ default: m.NoteManagementScreen })));
 const SplitScreen = React.lazy(() => import('./components/SplitScreen').then(m => ({ default: m.SplitScreen })));
 const DocumentArchive = React.lazy(() => import('./components/DocumentArchive').then(m => ({ default: m.DocumentArchive })));
@@ -335,6 +336,10 @@ export default function App() {
       const raw = localStorage.getItem('chelona_form_draft');
       if (raw) {
         const d = JSON.parse(raw);
+        if (d?.formData?.template === 'single-expense' || d?.formData?.type === 'single-expense') {
+          localStorage.removeItem('chelona_form_draft');
+          return false;
+        }
         if (d && (d.formData?.template || d.formData?.type || d.editingModuleId)) return true;
       }
     } catch {}
@@ -345,6 +350,9 @@ export default function App() {
       const raw = localStorage.getItem('chelona_form_draft');
       if (raw) {
         const d = JSON.parse(raw);
+        if (d?.formData?.template === 'single-expense' || d?.formData?.type === 'single-expense') {
+          return {};
+        }
         if (d && d.formData) return d.formData;
       }
     } catch {}
@@ -355,6 +363,9 @@ export default function App() {
       const raw = localStorage.getItem('chelona_form_draft');
       if (raw) {
         const d = JSON.parse(raw);
+        if (d?.formData?.template === 'single-expense' || d?.formData?.type === 'single-expense') {
+          return null;
+        }
         if (d?.editingModuleId) return d.editingModuleId;
       }
     } catch {}
@@ -391,7 +402,6 @@ export default function App() {
   const [activeNavTab, setActiveNavTab] = useState<'home' | 'deadlines' | 'ai' | 'tools' | 'profile'>('home');
   const [isAiOpen, setIsAiOpen] = useState(false);
   const [returnToAiOnClose, setReturnToAiOnClose] = useState(false);
-  const [aiInitialVoiceMode, setAiInitialVoiceMode] = useState(false);
   const [showGemma2Setup, setShowGemma2Setup] = useState(false);
   const [isWakeWordEnabled, setIsWakeWordEnabled] = useState(() => wakeWordService.getEnabled());
   const [deadlinesFilter, setDeadlinesFilter] = useState<'all' | 'auto' | 'document' | 'installment'>('all');
@@ -684,7 +694,6 @@ export default function App() {
         setFlyerInitialOffer({ fid, pg });
       }
       setIsAiOpen(false);
-      setAiInitialVoiceMode(false);
       setIsToolsOpen(false);
       setIsProfileOpen(false);
       setActiveNavTab('home');
@@ -730,6 +739,9 @@ export default function App() {
   // Auto-salvataggio persistente della bozza del form
   useEffect(() => {
     if (isAdding && (formData.template || formData.type || editingModuleId)) {
+      if (formData.template === 'single-expense' || formData.type === 'single-expense') {
+        return;
+      }
       try {
         const draft = {
           isAdding: true,
@@ -826,7 +838,18 @@ export default function App() {
           setIsSensitiveUnlocked(false);
           setIsProfileOpen(false);
           setIsSettingsOpen(false);
-          const hasDraft = !!localStorage.getItem('chelona_form_draft');
+          setEditingSingleExpenseModule(null);
+          const rawDraft = localStorage.getItem('chelona_form_draft');
+          let hasDraft = !!rawDraft;
+          if (rawDraft) {
+            try {
+              const d = JSON.parse(rawDraft);
+              if (d?.formData?.template === 'single-expense' || d?.formData?.type === 'single-expense') {
+                localStorage.removeItem('chelona_form_draft');
+                hasDraft = false;
+              }
+            } catch {}
+          }
           if (!hasDraft) {
             setIsAdding(false);
           }
@@ -1341,7 +1364,6 @@ export default function App() {
 
     if (route === 'ai' || route === 'chelona-ai') {
       setIsAiOpen(true);
-      if (action === 'voice') setAiInitialVoiceMode(true);
       return;
     }
 
@@ -2037,6 +2059,27 @@ export default function App() {
     setIsAdding(true);
   };
 
+  const handleOpenSingleExpense = useCallback((existing?: import('./types').SingleExpenseModule) => {
+    setIsAdding(false);
+    setFormData({});
+    try { localStorage.removeItem('chelona_form_draft'); } catch {}
+    setEditingSingleExpenseModule(existing || {
+      id: generateUUID(),
+      type: 'single-expense',
+      title: 'Spesa Singola',
+      description: '',
+      amount: 0,
+      date: new Date().toISOString().substring(0, 10),
+      category: 'other',
+      currency: 'EUR',
+      x: (modules.length * 2) % 12,
+      y: Infinity,
+      w: 3,
+      h: 3,
+      folderId: selectedFolderId || undefined
+    });
+  }, [modules.length, selectedFolderId]);
+
   const handleAddItemsToShoppingList = useCallback((newItems: { name: string; quantity?: string; category?: string }[]) => {
     if (!newItems || newItems.length === 0) return;
     const existingSupermarket = modules.find(m => m.type === 'supermarket') as import('./types').SupermarketModule;
@@ -2089,7 +2132,6 @@ export default function App() {
 
     // Chiudi sempre Chelona AI e azzera i flag vocali
     setIsAiOpen(false);
-    setAiInitialVoiceMode(false);
 
     // Chiudi eventuali altri tab/overlay per evitare conflitti visivi
     setIsToolsOpen(false);
@@ -2140,7 +2182,6 @@ export default function App() {
       setAddressParkingAutoSave(Boolean(act.autoSave || act.type === 'save_parking'));
       setIsAddressAndParkingOpen(true);
       setIsAiOpen(false);
-      setAiInitialVoiceMode(false);
       return;
     }
 
@@ -2306,7 +2347,6 @@ export default function App() {
         setAddressParkingAutoSave(Boolean(act.autoSave));
         setIsAddressAndParkingOpen(true);
         setIsAiOpen(false);
-        setAiInitialVoiceMode(false);
         return;
       }
 
@@ -2441,8 +2481,7 @@ export default function App() {
         setActiveNavTab('home');
         if (isAddAction) {
           setSpesaSubMenu(false);
-          setFormData({ template: 'single-expense' });
-          setIsAdding(true);
+          handleOpenSingleExpense();
         } else {
           handleSelectCategoryWithSecurity('single-expense');
         }
@@ -3288,7 +3327,6 @@ export default function App() {
       try { navigator.vibrate([60, 40, 80]); } catch {}
     }
     showToast("🎤 'Hey Chelona!' rilevato", 'info');
-    setAiInitialVoiceMode(true);
     setIsAiOpen(true);
     setActiveNavTab('ai');
     setIsToolsOpen(false);
@@ -3887,7 +3925,6 @@ export default function App() {
                 <ChelonaAiScreen
                   modules={modules}
                   username={username}
-                  initialVoiceMode={aiInitialVoiceMode}
                    activeSection={
                      selectedType === 'home' ? 'home' :
                      selectedType === 'split' ? 'split' :
@@ -3903,7 +3940,6 @@ export default function App() {
                    }
                   onClose={() => {
                     setIsAiOpen(false);
-                    setAiInitialVoiceMode(false);
                     if (activeNavTab === 'ai') setActiveNavTab('home');
                   }}
                   onOpenModule={(m) => {
@@ -3977,41 +4013,6 @@ export default function App() {
                 onSave={(mod) => { updateModuleDirect(mod); setEditingSplitModule(null); }}
                 onAutoSave={(mod) => { updateModuleDirect(mod); setEditingSplitModule(mod); }}
                 onClose={() => setEditingSplitModule(null)}
-                onSaveToSandbox={handleSaveToSandbox}
-              />
-            ) : editingSingleExpenseModule || formData.template === 'single-expense' ? (
-              <SingleExpenseScreen
-                module={editingSingleExpenseModule || {
-                  id: generateUUID(),
-                  type: 'single-expense',
-                  title: 'Spesa Singola',
-                  description: '',
-                  amount: 0,
-                  date: new Date().toISOString().substring(0, 10),
-                  category: 'other',
-                  currency: 'EUR',
-                  x: 0, y: 0, w: 2, h: 2
-                }}
-                onClose={() => {
-                  setEditingSingleExpenseModule(null);
-                  setFormData({});
-                  setIsAdding(false);
-                }}
-                onSave={async (updated) => {
-                  if (editingSingleExpenseModule) {
-                    const updatedModules = modules.map(m => m.id === updated.id ? updated : m);
-                    setModules(updatedModules);
-                    await saveAppState(updatedModules, folders);
-                  } else {
-                    const updatedModules = [...modules, updated];
-                    setModules(updatedModules);
-                    await saveAppState(updatedModules, folders);
-                  }
-                  setEditingSingleExpenseModule(null);
-                  setFormData({});
-                  setIsAdding(false);
-                  showToast(editingSingleExpenseModule ? 'Spesa aggiornata!' : 'Spesa creata!', 'success');
-                }}
                 onSaveToSandbox={handleSaveToSandbox}
               />
             ) : isAdding ? (
@@ -4105,8 +4106,7 @@ export default function App() {
                              const doOpen = () => {
                                setSelectedType('split');
                                setSpesaSubMenu(false);
-                               setFormData({ ...formData, template: 'single-expense', title: 'Spesa Singola', content: '' });
-                               setAutoFormStep(0);
+                               handleOpenSingleExpense();
                              };
                              if (!isSensitiveUnlocked) {
                                unlockAndProceed(doOpen);
@@ -5472,6 +5472,28 @@ export default function App() {
                           </button>
                         </div>
                       </div>
+                    ) : selectedType === 'document' ? (
+                      <React.Suspense fallback={<div className="flex items-center justify-center p-20"><div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div></div>}>
+                        <DocumentSectionView
+                          modules={modules.filter(m => m.type === 'document') as import('./types').DocumentModule[]}
+                          allModules={modules}
+                          selectedFolderId={selectedFolderId}
+                          onBack={() => { setSelectedType(null); setSelectedFolderId(null); }}
+                          onOpenDocument={(doc) => openEditModalWithSecurity(doc)}
+                          onCreateDocument={(newDoc) => {
+                            const updatedModules = [newDoc, ...modules];
+                            setModules(updatedModules);
+                            saveAppState(updatedModules, folders).catch(console.error);
+                            showToast('Documento salvato con successo!', 'success');
+                          }}
+                          onDeleteDocument={(id) => requestDelete(id)}
+                          onToggleSensitivity={handleToggleModuleSensitivity}
+                          onShareDocument={(doc) => setSharingModule(doc as Module)}
+                          showToast={showToast}
+                          onOpenRecesso={() => setIsRecessoOpen(true)}
+                          onSaveToSandbox={handleSaveToSandbox}
+                        />
+                      </React.Suspense>
                     ) : (
                       <>
                         {selectedType === 'split' && (
@@ -5551,9 +5573,7 @@ export default function App() {
                                     onClick={() => {
                                       const doOpen = () => {
                                         setSelectedType('split');
-                                        setFormData({ template: 'single-expense', title: 'Spesa Singola', content: '' });
-                                        setAutoFormStep(0);
-                                        setIsAdding(true);
+                                        handleOpenSingleExpense();
                                       };
                                       if (!isSensitiveUnlocked) unlockAndProceed(doOpen); else doOpen();
                                     }}
@@ -5686,9 +5706,7 @@ export default function App() {
                                       });
                                       setEditingInstallmentsModule(newInstallments);
                                     } else {
-                                      setFormData({ template: 'single-expense', title: 'Spesa Singola', content: '' });
-                                      setAutoFormStep(0);
-                                      setIsAdding(true);
+                                      handleOpenSingleExpense();
                                     }
                                   };
                                   if (!isSensitiveUnlocked) unlockAndProceed(doOpen); else doOpen();
@@ -5756,8 +5774,8 @@ export default function App() {
           )}
         </div>
           
-          {/* Global FAB (Only on main dashboard and specific categories except gallery/travel) */}
-          {(selectedType !== 'gallery') && !editingTravelModule && !editingStudyModule && !editingFitnessModule && !isAdding && !editingModuleId && !isArchiveOpen && !isToolsOpen && !editingAutoModule && !editingSplitModule && !editingSingleExpenseModule && !editingDocumentModule && !editingGenericModule && !editingFurnitureModule && !editingInstallmentsModule && !editingSupermarketModule && !editingVolantinoModule && (
+      {/* Global FAB (Only on main dashboard and specific categories except gallery/travel/document) */}
+      {(selectedType !== 'gallery' && selectedType !== 'document') && !editingTravelModule && !editingStudyModule && !editingFitnessModule && !isAdding && !editingModuleId && !isArchiveOpen && !isToolsOpen && !editingAutoModule && !editingSplitModule && !editingSingleExpenseModule && !editingDocumentModule && !editingGenericModule && !editingFurnitureModule && !editingInstallmentsModule && !editingSupermarketModule && !editingVolantinoModule && (
             <>
               {/* Scan QR Button: solo nelle categorie come tasto discreto e non invasivo */}
               {selectedType && selectedType !== 'home' && selectedType !== 'testing' && (
@@ -5846,9 +5864,7 @@ export default function App() {
                     } else if (selectedType === 'split' || selectedType === 'single-expense') {
                       if (financeActiveTab === 'single') {
                         const doOpen = () => {
-                          setFormData({ template: 'single-expense', title: 'Spesa Singola', content: '' });
-                          setAutoFormStep(0);
-                          setIsAdding(true);
+                          handleOpenSingleExpense();
                         };
                         if (!isSensitiveUnlocked) unlockAndProceed(doOpen); else doOpen();
                       } else if (financeActiveTab === 'split') {
@@ -5916,7 +5932,6 @@ export default function App() {
                     setActiveNavTab('home'); 
                     setIsToolsOpen(false); 
                     setIsAiOpen(false);
-                    setAiInitialVoiceMode(false);
                     setSelectedType(null); 
                     setIsProfileOpen(false); 
                     setIsSettingsOpen(false);
@@ -5933,7 +5948,6 @@ export default function App() {
                     setActiveNavTab('deadlines'); 
                     setIsToolsOpen(false); 
                     setIsAiOpen(false);
-                    setAiInitialVoiceMode(false);
                     setSelectedType(null); 
                     setIsProfileOpen(false); 
                     setIsSettingsOpen(false);
@@ -5947,7 +5961,6 @@ export default function App() {
                     closeAllEditingModals();
                     setActiveNavTab('ai'); 
                     setIsAiOpen(true);
-                    setAiInitialVoiceMode(false);
                     setIsToolsOpen(false); 
                     setIsProfileOpen(false); 
                     setIsSettingsOpen(false);
@@ -5963,7 +5976,6 @@ export default function App() {
                     setActiveNavTab('tools'); 
                     setIsToolsOpen(true); 
                     setIsAiOpen(false);
-                    setAiInitialVoiceMode(false);
                     setIsProfileOpen(false); 
                     setIsSettingsOpen(false);
                     setSelectedType(null); 
@@ -5979,7 +5991,6 @@ export default function App() {
                     setIsProfileOpen(true); 
                     setIsSettingsOpen(false);
                     setIsAiOpen(false);
-                    setAiInitialVoiceMode(false);
                     setIsToolsOpen(false); 
                     setSelectedType(null); 
                   } 
@@ -6555,22 +6566,60 @@ export default function App() {
       </AnimatePresence>
 
       <AnimatePresence>
-        {editingSingleExpenseModule && (
+        {(editingSingleExpenseModule || (isAdding && formData.template === 'single-expense')) && (
           <SingleExpenseScreen
-            module={editingSingleExpenseModule}
-            onSave={(updated) => {
-              setModules(prev => {
-                const updatedModules = prev.map(m => m.id === updated.id ? updated : m);
-                saveAppState(updatedModules, folders).catch(console.error);
-                return updatedModules;
-              });
+            module={editingSingleExpenseModule || {
+              id: generateUUID(),
+              type: 'single-expense',
+              title: 'Spesa Singola',
+              description: '',
+              amount: 0,
+              date: new Date().toISOString().substring(0, 10),
+              category: 'other',
+              currency: 'EUR',
+              x: (modules.length * 2) % 12,
+              y: Infinity,
+              w: 3,
+              h: 3,
+              folderId: selectedFolderId || undefined
+            }}
+            onSave={async (updated) => {
+              try {
+                localStorage.removeItem('chelona_form_draft');
+              } catch {}
+              const exists = modules.some(m => m.id === updated.id);
+              let updatedModules: Module[];
+              if (exists) {
+                updatedModules = modules.map(m => m.id === updated.id ? updated : m);
+              } else {
+                updatedModules = [updated, ...modules];
+              }
+              setModules(updatedModules);
+              await saveAppState(updatedModules, folders);
               setEditingSingleExpenseModule(null);
+              setFormData({});
+              setIsAdding(false);
+              showToast(exists ? 'Spesa aggiornata!' : 'Spesa creata!', 'success');
             }}
             onClose={() => {
+              try {
+                localStorage.removeItem('chelona_form_draft');
+              } catch {}
               setEditingSingleExpenseModule(null);
+              setFormData({});
+              setIsAdding(false);
               if (!selectedType || selectedType === 'home') setIsSensitiveUnlocked(false);
             }}
-            onDelete={deleteModule}
+            onDelete={(id) => {
+              try {
+                localStorage.removeItem('chelona_form_draft');
+              } catch {}
+              deleteModule(id);
+              setEditingSingleExpenseModule(null);
+              setFormData({});
+              setIsAdding(false);
+            }}
+            onSaveToSandbox={handleSaveToSandbox}
           />
         )}
       </AnimatePresence>
