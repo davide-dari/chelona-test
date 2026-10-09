@@ -3,7 +3,8 @@ import {
   calculateDistanceMeters, 
   formatDistance, 
   formatElapsedParkingTime, 
-  getNavigationUrl 
+  getNavigationUrl,
+  getOpenStreetMapEmbedUrl
 } from '../src/services/parkingService';
 
 console.log('🧪 === TEST PARKING & MOBILITY LOGIC ===');
@@ -39,14 +40,17 @@ assert.equal(formatElapsedParkingTime(now - 50 * 3600 * 1000), '2 giorni fa');
 console.log('✓ Elapsed parking time formatting passed');
 
 // 3. Navigation URLs
-console.log('3. Testing Walking Navigation URLs...');
+console.log('3. Testing Navigation URLs (Walking & Driving)...');
 const navUrlCoords = getNavigationUrl(45.4642, 9.1919, 'Duomo di Milano');
-assert.ok(navUrlCoords.includes('travelmode=walking'), 'Must request walking mode');
+assert.ok(navUrlCoords.includes('travelmode=walking'), 'Must request walking mode by default');
 assert.ok(navUrlCoords.includes('45.4642,9.1919'), 'Must include destination coordinates');
 
 const navUrlAddress = getNavigationUrl(0, 0, 'Via Roma 10, Milano');
 assert.ok(navUrlAddress.includes('destination=Via%20Roma%2010%2C%20Milano'), 'Must encode text address');
-console.log('✓ Navigation URLs generated properly');
+
+const navUrlDriving = getNavigationUrl(45.4642, 9.1919, 'Duomo di Milano', 'driving');
+assert.ok(navUrlDriving.includes('travelmode=driving'), 'Must request driving mode when specified');
+console.log('✓ Navigation URLs generated properly (Walking & Driving modes)');
 
 // 4. Parking Meter Cost & Extension Math
 console.log('4. Testing Parking Meter Math...');
@@ -59,5 +63,12 @@ const extendDelta = 30; // +30m -> 120 min (2h)
 const updatedCost = Math.round(((durationMins + extendDelta) / 60) * ratePerHour * 100) / 100;
 assert.equal(updatedCost, 3.00, `Expected 3.00 €, got ${updatedCost}`);
 console.log('✓ Parking meter cost estimation passed');
+
+// 5. OpenStreetMap Embed URL Generation
+console.log('5. Testing OpenStreetMap Embed URL...');
+const osmEmbed = getOpenStreetMapEmbedUrl(45.4642, 9.1919);
+assert.ok(osmEmbed.includes('openstreetmap.org/export/embed.html'), 'Must produce OSM embed URL');
+assert.ok(osmEmbed.includes('marker=45.4642,9.1919'), 'Must position marker at target coordinates');
+console.log('✓ OpenStreetMap embed URL verified');
 
 console.log('🎉 ALL PARKING & MOBILITY LOGIC TESTS PASSED!');

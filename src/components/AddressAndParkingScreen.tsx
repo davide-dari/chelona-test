@@ -59,7 +59,8 @@ export const AddressAndParkingScreen: React.FC<AddressAndParkingScreenProps> = (
   const [isScanningQr, setIsScanningQr] = useState(false);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [sharingAddr, setSharingAddr] = useState<Address | null>(null);
-  const [navModalTarget, setNavModalTarget] = useState<{ query: string; lat?: number; lon?: number; title: string } | null>(null);
+  const [addressToParkTarget, setAddressToParkTarget] = useState<Address | null>(null);
+  const [navModalTarget, setNavModalTarget] = useState<{ query: string; lat?: number; lon?: number; title: string; mode?: 'walking' | 'driving' } | null>(null);
 
   // ----------------------------------------------------
   // STATO PARCHEGGIO & PARCHIMETRO
@@ -83,6 +84,20 @@ export const AddressAndParkingScreen: React.FC<AddressAndParkingScreenProps> = (
   const [parkingPhotoUrl, setParkingPhotoUrl] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const gpsSuccessTimerRef = useRef<any>(null);
+
+  // Sync activeTab if initialTab changes
+  useEffect(() => {
+    if (initialTab) {
+      setActiveTab(initialTab);
+    }
+  }, [initialTab]);
+
+  useEffect(() => {
+    return () => {
+      if (gpsSuccessTimerRef.current) clearTimeout(gpsSuccessTimerRef.current);
+    };
+  }, []);
 
   // Modal helpers
   const [isAddressPickerOpen, setIsAddressPickerOpen] = useState(false);
@@ -133,18 +148,29 @@ export const AddressAndParkingScreen: React.FC<AddressAndParkingScreenProps> = (
         }
       }
 
+      // Se stiamo aggiornando un parcheggio già attivo, preserviamo note, veicolo, foto e timer
+      const notesToUse = notesText.trim() || parking?.notes || '';
+      const vehicleToUse = vehicleNameInput.trim() || parking?.vehicleName || '';
+      const expiresToUse = expiresAt !== undefined ? expiresAt : parking?.expiresAt;
+      const durationToUse = duration !== undefined ? duration : parking?.meterDurationMinutes;
+      const rateToUse = isMeterEnabled ? hourlyRate : (parking?.hourlyRate || 0);
+      const costToUse = cost !== undefined ? cost : parking?.estimatedCost;
+
       const saved = await autoSaveParking(
-        notesText,
-        vehicleNameInput,
-        expiresAt,
-        duration,
-        isMeterEnabled ? hourlyRate : 0,
-        cost
+        notesToUse,
+        vehicleToUse,
+        expiresToUse,
+        durationToUse,
+        rateToUse,
+        costToUse
       );
 
-      // Allega foto se scattata in fase di setup
+      // Allega foto se scattata o mantieni quella esistente
       if (parkingPhotoUrl) {
         saved.photoUrl = parkingPhotoUrl;
+        saveParking(saved);
+      } else if (parking?.photoUrl) {
+        saved.photoUrl = parking.photoUrl;
         saveParking(saved);
       }
 
@@ -159,7 +185,8 @@ export const AddressAndParkingScreen: React.FC<AddressAndParkingScreenProps> = (
         showToast(`Auto parcheggiata in ${saved.address}! 🚗`, 'success');
       }
 
-      setTimeout(() => {
+      if (gpsSuccessTimerRef.current) clearTimeout(gpsSuccessTimerRef.current);
+      gpsSuccessTimerRef.current = setTimeout(() => {
         setParking(saved);
         setIsAcquiringGpsParking(false);
       }, 1000);
@@ -365,11 +392,28 @@ export const AddressAndParkingScreen: React.FC<AddressAndParkingScreenProps> = (
     if (showToast) showToast(`${label} copiato negli appunti!`, 'success');
   };
 
+  const executeParkAtAddress = async (addr: Address) => {
+    try {
+      const fullAddr = addr.query ? `${addr.title} - ${addr.query}` : addr.title;
+      const saved = await manualSaveParking({
+        address: fullAddr,
+        notes: addr.notes,
+      });
+      setParking(saved);
+      setActiveTab('parking');
+      setAddressToParkTarget(null);
+      if (showToast) showToast(`Auto impostata a ${addr.title}! 🚗`, 'success');
+    } catch (err: any) {
+      if (showToast) showToast('Errore impostazione parcheggio', 'error');
+    }
+  };
+
   const handleParkAtAddress = (addr: Address) => {
-    setManualAddressInput(addr.query ? `${addr.title}: ${addr.query}` : addr.title);
-    setLocationMode('manual');
-    setActiveTab('parking');
-    if (showToast) showToast(`Impostato come parcheggio: ${addr.title}`, 'info');
+    if (parking) {
+      setAddressToParkTarget(addr);
+    } else {
+      executeParkAtAddress(addr);
+    }
   };
 
   // Indirizzi filtrati per ricerca e categoria
@@ -595,23 +639,26 @@ export const AddressAndParkingScreen: React.FC<AddressAndParkingScreenProps> = (
     }
   };
 
-  const openNavigation = (app: 'google' | 'apple' | 'waze', target: { query?: string; lat?: number; lon?: number }) => {
+  const openNavigation = (app: 'google' | 'apple' | 'waze', target: { query?: string; lat?: number; lon?: number; mode?: 'walking' | 'driving' }) => {
     const lat = target.lat;
     const lon = target.lon;
     const q = target.query || '';
+    const mode = target.mode || 'walking';
 
     let url = '';
     if (app === 'google') {
+      const gMode = mode === 'driving' ? 'driving' : 'walking';
       if (lat && lon && lat !== 0 && lon !== 0) {
-        url = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lon}&travelmode=walking`;
+        url = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lon}&travelmode=${gMode}`;
       } else {
-        url = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(q)}&travelmode=walking`;
+        url = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(q)}&travelmode=${gMode}`;
       }
     } else if (app === 'apple') {
+      const aMode = mode === 'driving' ? 'd' : 'w';
       if (lat && lon && lat !== 0 && lon !== 0) {
-        url = `maps://maps.apple.com/?daddr=${lat},${lon}&dirflg=w`;
+        url = `maps://maps.apple.com/?daddr=${lat},${lon}&dirflg=${aMode}`;
       } else {
-        url = `maps://maps.apple.com/?daddr=${encodeURIComponent(q)}&dirflg=w`;
+        url = `maps://maps.apple.com/?daddr=${encodeURIComponent(q)}&dirflg=${aMode}`;
       }
     } else if (app === 'waze') {
       if (lat && lon && lat !== 0 && lon !== 0) {
@@ -801,7 +848,7 @@ export const AddressAndParkingScreen: React.FC<AddressAndParkingScreenProps> = (
             }`}
           >
             <Car className="w-4 h-4" />
-            <span>🚗 Auto & Parcheggio</span>
+            <span>Auto & Parcheggio</span>
             {parking && (
               <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-black border border-emerald-500/20">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
@@ -820,9 +867,9 @@ export const AddressAndParkingScreen: React.FC<AddressAndParkingScreenProps> = (
             }`}
           >
             <MapPin className="w-4 h-4" />
-            <span>📍 I Miei Luoghi</span>
+            <span>I Miei Luoghi</span>
             {addresses.length > 0 && (
-              <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-[var(--surface-variant)] text-[var(--text-muted)] border border-[var(--border)] font-bold">
+              <span className="px-1.5 py-0.5 rounded-full text-[10px] bg-[var(--surface-variant)] text-[var(--text-muted)] border border-[var(--border)] font-bold">
                 {addresses.length}
               </span>
             )}
@@ -1062,7 +1109,8 @@ export const AddressAndParkingScreen: React.FC<AddressAndParkingScreenProps> = (
                         query: parking.address || '', 
                         lat: parking.latitude, 
                         lon: parking.longitude,
-                        title: 'La tua Auto' 
+                        title: 'La tua Auto',
+                        mode: 'walking'
                       })}
                       className="py-3 px-4 rounded-2xl bg-blue-600 hover:bg-blue-700 active:scale-98 text-white font-bold text-sm flex items-center justify-center gap-2 shadow-md shadow-blue-500/20 transition-all cursor-pointer"
                     >
@@ -1213,7 +1261,8 @@ export const AddressAndParkingScreen: React.FC<AddressAndParkingScreenProps> = (
                         query: parking.address || '', 
                         lat: parking.latitude, 
                         lon: parking.longitude,
-                        title: 'La tua Auto' 
+                        title: 'La tua Auto',
+                        mode: 'walking'
                       })}
                       className="absolute bottom-3 right-3 bg-[var(--card-bg)]/95 hover:bg-[var(--card-bg)] border border-[var(--border)] px-3 py-1.5 rounded-xl text-xs font-bold text-[var(--text-main)] shadow-sm flex items-center gap-1 cursor-pointer"
                     >
@@ -1492,25 +1541,29 @@ export const AddressAndParkingScreen: React.FC<AddressAndParkingScreenProps> = (
             {/* FILTRI CATEGORIA RAPIDI */}
             <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-none">
               {[
-                { id: 'all', label: 'Tutti' },
-                { id: 'home', label: '🏠 Casa' },
-                { id: 'work', label: '💼 Lavoro' },
-                { id: 'favorite', label: '⭐ Preferiti' },
-                { id: 'other', label: '📍 Altro' },
-              ].map(f => (
-                <button
-                  key={f.id}
-                  type="button"
-                  onClick={() => setAddrCategoryFilter(f.id as any)}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold shrink-0 transition-all cursor-pointer border ${
-                    addrCategoryFilter === f.id
-                      ? 'bg-blue-600 text-white border-blue-600 shadow-2xs'
-                      : 'bg-[var(--card-bg)] text-[var(--text-muted)] hover:text-[var(--text-main)] border-[var(--border)]'
-                  }`}
-                >
-                  {f.label}
-                </button>
-              ))}
+                { id: 'all', label: 'Tutti', icon: null },
+                { id: 'home', label: 'Casa', icon: Home },
+                { id: 'work', label: 'Lavoro', icon: Briefcase },
+                { id: 'favorite', label: 'Preferiti', icon: Star },
+                { id: 'other', label: 'Altro', icon: MapPin },
+              ].map(f => {
+                const FIcon = f.icon;
+                return (
+                  <button
+                    key={f.id}
+                    type="button"
+                    onClick={() => setAddrCategoryFilter(f.id as any)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold shrink-0 transition-all cursor-pointer border flex items-center gap-1.5 ${
+                      addrCategoryFilter === f.id
+                        ? 'bg-blue-600 text-white border-blue-600 shadow-2xs'
+                        : 'bg-[var(--card-bg)] text-[var(--text-muted)] hover:text-[var(--text-main)] border-[var(--border)]'
+                    }`}
+                  >
+                    {FIcon && <FIcon className="w-3.5 h-3.5" />}
+                    <span>{f.label}</span>
+                  </button>
+                );
+              })}
             </div>
 
             {/* LISTA LUOGHI */}
@@ -1583,7 +1636,7 @@ export const AddressAndParkingScreen: React.FC<AddressAndParkingScreenProps> = (
                       <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-[var(--border)]/70">
                         <button
                           type="button"
-                          onClick={() => setNavModalTarget({ query: addr.query, title: addr.title })}
+                          onClick={() => setNavModalTarget({ query: addr.query, title: addr.title, mode: 'driving' })}
                           className="flex-1 min-w-[110px] py-2 px-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-2xs active:scale-95 transition-all cursor-pointer"
                         >
                           <Navigation className="w-3.5 h-3.5" />
@@ -1822,21 +1875,21 @@ export const AddressAndParkingScreen: React.FC<AddressAndParkingScreenProps> = (
                   className="w-full py-3 px-4 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-sm cursor-pointer"
                 >
                   <Navigation className="w-4 h-4" />
-                  <span>Google Maps (A piedi / Auto)</span>
+                  <span>Google Maps ({navModalTarget.mode === 'driving' ? 'In auto' : 'A piedi'})</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => openNavigation('apple', navModalTarget)}
                   className="w-full py-3 px-4 rounded-2xl bg-[var(--surface-variant)] hover:bg-[var(--border)] text-[var(--text-main)] font-bold text-xs border border-[var(--border)] flex items-center justify-center gap-2 cursor-pointer"
                 >
-                  <span>Apple Maps</span>
+                  <span>Apple Maps ({navModalTarget.mode === 'driving' ? 'In auto' : 'A piedi'})</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => openNavigation('waze', navModalTarget)}
                   className="w-full py-3 px-4 rounded-2xl bg-[var(--surface-variant)] hover:bg-[var(--border)] text-[var(--text-main)] font-bold text-xs border border-[var(--border)] flex items-center justify-center gap-2 cursor-pointer"
                 >
-                  <span>Waze</span>
+                  <span>Waze (In auto)</span>
                 </button>
               </div>
             </motion.div>
@@ -2067,6 +2120,26 @@ export const AddressAndParkingScreen: React.FC<AddressAndParkingScreenProps> = (
         onCancel={() => setShowClearParkingConfirm(false)}
         confirmText="Sì, ho ripreso l'auto"
         cancelText="Annulla"
+      />
+
+      {/* ═══════ CONFIRM DIALOG SOSTITUISCI PARCHEGGIO DA RUBRICA ═══════ */}
+      <ConfirmDialog
+        isOpen={!!addressToParkTarget}
+        title="Imposta come parcheggio"
+        message={
+          addressToParkTarget
+            ? `Vuoi sostituire la posizione attuale dell'auto impostando "${addressToParkTarget.title}"?`
+            : ''
+        }
+        onConfirm={() => {
+          if (addressToParkTarget) {
+            executeParkAtAddress(addressToParkTarget);
+          }
+        }}
+        onCancel={() => setAddressToParkTarget(null)}
+        confirmText="Sì, Imposta Parcheggio"
+        cancelText="Annulla"
+        icon="alert"
       />
     </motion.div>
   );

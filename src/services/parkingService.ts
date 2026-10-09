@@ -157,6 +157,7 @@ export function extendParkingMeter(additionalMinutes: number): SavedParking | nu
 
   const updated: SavedParking = {
     ...current,
+    meterStartedAt: current.meterStartedAt || now,
     expiresAt: newExpiresAt,
     meterDurationMinutes: newDuration,
     estimatedCost: newCost,
@@ -184,6 +185,7 @@ export function setParkingMeterEndTime(newEndTime: number, hourlyRate?: number):
 
   const updated: SavedParking = {
     ...current,
+    meterStartedAt: current.meterStartedAt || Date.now(),
     expiresAt: newEndTime,
     meterDurationMinutes: diffMinutes,
     hourlyRate: rate,
@@ -262,15 +264,16 @@ export async function reverseGeocodeCoordinates(lat: number, lon: number): Promi
 
     if (data && data.address) {
       const a = data.address;
-      const road = a.road || a.pedestrian || a.suburb || a.neighbourhood || '';
+      const road = a.road || a.pedestrian || a.suburb || a.neighbourhood || a.amenity || a.building || a.shop || '';
       const houseNumber = a.house_number || '';
       const city = a.city || a.town || a.village || a.municipality || a.county || '';
       const cap = a.postcode || '';
 
       let address = road;
       if (houseNumber) address += ` ${houseNumber}`;
+      if (city) address = address ? `${address}, ${city}` : city;
       if (!address) {
-        address = data.display_name?.split(',')[0] || `Posizione GPS`;
+        address = data.display_name?.split(',').slice(0, 2).join(',').trim() || `Posizione GPS`;
       }
 
       return { address, city, cap };
@@ -451,14 +454,20 @@ export function formatElapsedParkingTime(timestamp: number): string {
 }
 
 /**
- * Genera il link per aprire la navigazione a piedi in Google Maps / Apple Maps
+ * Genera il link per aprire la navigazione in Google Maps / Apple Maps
  */
-export function getNavigationUrl(lat: number, lon: number, address?: string): string {
+export function getNavigationUrl(
+  lat: number, 
+  lon: number, 
+  address?: string, 
+  mode: 'walking' | 'driving' = 'walking'
+): string {
+  const travelMode = mode === 'driving' ? 'driving' : 'walking';
   if (lat !== 0 && lon !== 0) {
-    return `https://www.google.com/maps/dir/?api=1&destination=${lat},${lon}&travelmode=walking`;
+    return `https://www.google.com/maps/dir/?api=1&destination=${lat},${lon}&travelmode=${travelMode}`;
   }
   if (address) {
-    return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(address)}&travelmode=walking`;
+    return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(address)}&travelmode=${travelMode}`;
   }
   return `https://www.google.com/maps`;
 }
